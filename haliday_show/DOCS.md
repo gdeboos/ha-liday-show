@@ -786,6 +786,21 @@ Only saved shows play: a show you haven't saved yet, or have deleted, says so in
 skipped. Playing a show from the editor, or stopping it, stops the playlist, and so does pausing or
 stopping the song on the speaker.
 
+#### Music with no speaker: the Show player
+
+A show with no **Show speaker** (and no default one under **Setup → Speakers**) plays its lights only
+when a playlist, its schedule or an automation starts it. Without Home Assistant, that's every show.
+To hear the music too, use the **Show player**:
+
+1. On a computer or tablet connected to your speakers, open the **Show player** link on the
+   **Playlists** page. Without Home Assistant, the address is `http://<HA-liday Show's address>:8099/player`.
+2. Press **▶ Start the Show player** (browsers only play sound after a press on the page).
+3. Leave it open. Each song plays there from the right point, and your lights follow it.
+
+Keep that computer from going to sleep while your shows run. If the lights are ahead of the music,
+make **Light offset** bigger; if they're behind, make it smaller. Shows you play from the editor, or
+on a speaker, don't play in the Show player, so you never hear a song twice.
+
 #### Playing on a schedule
 
 Tick **Play on a schedule** on a playlist to have it start and stop by itself:
@@ -1094,7 +1109,8 @@ You set everything with these settings (environment variables). All are optional
 
 > **Speakers:** Home Assistant plays songs from its own **media** folder, so a speaker can only play
 > a song if `HALIDAY_SHOW_MEDIA` is that same folder (shared over the network, for example).
-> Otherwise, play the music in your browser.
+> Otherwise, play the music in your browser, and for playlists and schedules leave the
+> [Show player](#music-with-no-speaker-the-show-player) open on a computer with speakers.
 
 ### With Docker
 

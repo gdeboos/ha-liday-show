@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.125
+
+- New **Show player**, for music without a speaker. When a playlist, its schedule or an automation
+  starts a show that has no **Show speaker**, the song can now play in a browser instead. Open the
+  **Show player** link on **Library → Playlists** on a computer connected to your speakers, press
+  **▶ Start the Show player** and leave it open. The lights follow the music. Without Home Assistant,
+  this is how scheduled shows get their music.
+- Shows you play from the editor or on a speaker don't play in the Show player, so you never hear a
+  song twice. It has its own **Light offset**, if the lights and music need lining up.
+
 ## 0.2.124
 
 - Playlists can now start at sunset. Under **Play on a schedule**, change **From** to **sunset**. You

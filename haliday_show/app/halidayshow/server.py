@@ -111,6 +111,14 @@ async def index(request):
     return resp
 
 
+async def show_player_page(request):
+    """A page to leave open on a computer with speakers: it plays the songs of shows started without
+    a speaker (by a playlist, the schedule or an automation), and the lights follow it."""
+    resp = web.FileResponse(STATIC / "player.html")
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 async def no_cache_static(request, response):
     """Make browsers check for a newer app.js and effects.js after each update.
 
@@ -1131,7 +1139,9 @@ async def player_sync(request):
     body = await request.json()
     runner = request.app[RUNNER]
     drift = 0.0
-    if not runner.media_player:  # a speaker sets its own pace
+    # A speaker sets its own pace; a sync meant for another show (a Show player page still on the
+    # last song) is ignored.
+    if not runner.media_player and body.get("show", runner.player.show_id) == runner.player.show_id:
         drift = request.app[PLAYER].sync(float(body.get("position", 0)))
     return web.json_response({**runner.status(), "drift": round(drift, 4)})
 
@@ -1260,6 +1270,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     app.cleanup_ctx.append(lifecycle)
     r = app.router
     r.add_get("/", index)
+    r.add_get("/player", show_player_page)
     r.add_static("/static/", STATIC)
     r.add_get("/api/info", info)
     r.add_get("/api/devices", get_devices)
