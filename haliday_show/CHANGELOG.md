@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.122
+
+- New **Library → Playlists**: play several shows back to back. Press **New playlist**, add your
+  shows with **Add a show…** and put them in order with **↑** and **↓**. Set the **Pause between
+  shows**, then press **▶ Play**. The shows play one after another and start again from the top until
+  you press **■ Stop**. It keeps going with the page closed, and each show plays on its own show
+  speaker.
+- Automations can start a playlist too: send `{action: play, playlist: Halloween night}` the same way
+  you start a show.
+
 ## 0.2.121
 
 - **Preview cut** on the **Music** tab now moves the red playhead as it plays: it runs up to your

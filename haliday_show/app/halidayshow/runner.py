@@ -1,7 +1,9 @@
 """Start and stop shows, with the song on a Home Assistant media player or in the browser.
 
 Every way of playing a show goes through here: the editor, automations (add-on
-stdin) and the MQTT entities.
+stdin), the MQTT entities and playlists. A playlist plays its shows in order, each on its own
+show speaker, with a pause between them, round and round until it's stopped. Playing or stopping
+anything else ends it.
 """
 import asyncio
 import logging
@@ -38,13 +40,17 @@ class Runner:
         self.media_player: str | None = None
         self.delay = 0.0
         self._follow: asyncio.Task | None = None
+        self._playlist: asyncio.Task | None = None
+        self.playlist: dict | None = None  # the playlist playing, if any
         self._lock = asyncio.Lock()
 
     def status(self) -> dict:
         st = self.player.status()
         show = self.storage.load_show(st["show"]) if st["show"] else None
+        playlist = self.playlist if self._playlist and not self._playlist.done() else None
         return {**st, "media_player": self.media_player if st["playing"] else None,
-                "name": show.get("name") if show else None}
+                "name": show.get("name") if show else None,
+                "playlist": {"id": playlist["id"], "name": playlist["name"]} if playlist else None}
 
     async def play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
                    position: float = 0.0, offset: float = 0.0):
@@ -55,29 +61,35 @@ class Runner:
         Settings, is used when none is given.
         Without a speaker only the lights run (the browser plays the song itself).
         """
+        await self._end_playlist()
         async with self._lock:
-            blob = self.storage.load_baked(show_id)
-            show = self.storage.load_show(show_id)
-            if blob is None or show is None:
-                raise RunnerError(f"show '{show_id}' doesn't exist or hasn't been saved in the editor")
-            baked = decode(blob)
-            if use_show_speaker and not media_player:
-                media_player = (show.get("media_player")
-                                or self.storage.load_settings().get("show_speaker") or None)
-            await self._stop()
-            devices = self.storage.devices_by_id()
-            if not media_player:
-                await self.player.play(show_id, baked, devices, position=position, offset=offset)
-                return
-            audio = show.get("audio")
-            if not audio:
-                raise RunnerError("this show has no song to play on a speaker")
-            self.delay = self.storage.load_settings()["speaker_delays"].get(media_player, 0) / 1000
-            await self._start_speaker(media_player, audio["path"], position)
-            await self.player.play(show_id, baked, devices, position=position, offset=self.delay)
-            self.media_player = media_player
-            self._follow = asyncio.create_task(self._follow_speaker(media_player))
-            log.info("playing %s on %s", show_id, media_player)
+            await self._play(show_id, media_player=media_player, use_show_speaker=use_show_speaker,
+                             position=position, offset=offset)
+
+    async def _play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
+                    position: float = 0.0, offset: float = 0.0):
+        blob = self.storage.load_baked(show_id)
+        show = self.storage.load_show(show_id)
+        if blob is None or show is None:
+            raise RunnerError(f"show '{show_id}' doesn't exist or hasn't been saved in the editor")
+        baked = decode(blob)
+        if use_show_speaker and not media_player:
+            media_player = (show.get("media_player")
+                            or self.storage.load_settings().get("show_speaker") or None)
+        await self._stop()
+        devices = self.storage.devices_by_id()
+        if not media_player:
+            await self.player.play(show_id, baked, devices, position=position, offset=offset)
+            return
+        audio = show.get("audio")
+        if not audio:
+            raise RunnerError("this show has no song to play on a speaker")
+        self.delay = self.storage.load_settings()["speaker_delays"].get(media_player, 0) / 1000
+        await self._start_speaker(media_player, audio["path"], position)
+        await self.player.play(show_id, baked, devices, position=position, offset=self.delay)
+        self.media_player = media_player
+        self._follow = asyncio.create_task(self._follow_speaker(media_player))
+        log.info("playing %s on %s", show_id, media_player)
 
     async def test_speaker(self, entity: str) -> float:
         """Play a short chime on a speaker the way a show would, then stop it.
@@ -151,8 +163,50 @@ class Runner:
             pass
 
     async def stop(self):
+        await self._end_playlist()
         async with self._lock:
             await self._stop()
+
+    async def play_playlist(self, playlist: dict):
+        """Play a playlist ({id, name, shows: [show ids], gap: seconds}) until it's stopped."""
+        shows = [s for s in playlist.get("shows", []) if self.storage.load_baked(s) is not None]
+        if not shows:
+            raise RunnerError("this playlist has no saved shows to play")
+        await self.stop()
+        self.playlist = playlist
+        self._playlist = asyncio.create_task(self._run_playlist(playlist))
+
+    async def _run_playlist(self, playlist: dict):
+        gap = float(playlist.get("gap", 0))
+        try:
+            while True:
+                played = False
+                for show_id in playlist.get("shows", []):
+                    try:
+                        async with self._lock:
+                            await self._play(show_id, use_show_speaker=True)
+                    except RunnerError as e:
+                        log.warning("playlist %s: skipping %s: %s", playlist.get("name"), show_id, e)
+                        continue
+                    played = True
+                    while self.player.playing:
+                        await asyncio.sleep(0.25)
+                    await asyncio.sleep(gap)
+                if not played:  # every show failed; don't spin
+                    log.error("playlist %s has nothing it can play; stopping", playlist.get("name"))
+                    return
+        except asyncio.CancelledError:
+            pass
+
+    async def _end_playlist(self):
+        task, self._playlist = self._playlist, None
+        if task and not task.done() and task is not asyncio.current_task():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        self.playlist = None
 
     async def _stop(self):
         if self._follow:

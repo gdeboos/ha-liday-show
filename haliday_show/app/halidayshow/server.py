@@ -19,7 +19,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, backup, commands, discovery, e131, migrate, scenes, twinkly, wled
+from . import __version__, ai, backup, commands, discovery, e131, migrate, playlists, scenes, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -828,6 +828,43 @@ async def put_palettes(request):
     return web.json_response(palettes)
 
 
+# playlists ----------------------------------------------------------------------
+async def get_playlists(request):
+    return web.json_response(playlists.load(request.app[STORAGE]))
+
+
+async def put_playlists(request):
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    if not isinstance(body, list) or len(body) > playlists.MAX_PLAYLISTS:
+        raise web.HTTPBadRequest(text=f"expected a list of up to {playlists.MAX_PLAYLISTS} playlists")
+    clean = [playlists.clean(p) for p in body]
+    if not all(clean):
+        raise web.HTTPBadRequest(text=f"each playlist needs an id, a name, up to {playlists.MAX_SHOWS} "
+                                      "shows and a pause in seconds")
+    if len({p["id"] for p in clean}) != len(clean):
+        raise web.HTTPBadRequest(text="each playlist needs its own id")
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    settings["playlists"] = clean
+    storage.save_settings(settings)
+    return web.json_response(clean)
+
+
+async def play_playlist(request):
+    playlist = playlists.find(request.app[STORAGE], request.match_info["id"])
+    if playlist is None:
+        raise web.HTTPNotFound(text="no such playlist")
+    await stop_tests(request.app)
+    try:
+        await request.app[RUNNER].play_playlist(playlist)
+    except RunnerError as e:
+        raise web.HTTPConflict(text=str(e))
+    return web.json_response(request.app[RUNNER].status())
+
+
 # effect presets -------------------------------------------------------------
 # Built-in presets ship in effects.js; only the user's own are stored here. Each is a named set of
 # settings for one effect, so values are short strings, numbers or booleans.
@@ -1231,6 +1268,9 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/palettes", put_palettes)
     r.add_get("/api/presets", get_presets)
     r.add_put("/api/presets", put_presets)
+    r.add_get("/api/playlists", get_playlists)
+    r.add_put("/api/playlists", put_playlists)
+    r.add_post("/api/playlists/{id}/play", play_playlist)
     r.add_get("/api/house", get_house)
     r.add_put("/api/house", put_house)
     r.add_get("/api/house/photo", get_house_photo)

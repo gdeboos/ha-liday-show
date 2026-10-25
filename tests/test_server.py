@@ -796,3 +796,28 @@ async def test_the_copy_kept_before_a_fresh_start_brings_it_all_back(client):
     assert (await client.post("/api/backup/copies/nope.zip/restore")).status == 404
     assert (await client.post(f"/api/backup/copies/{kept}/restore")).status == 200
     assert [d["name"] for d in await (await client.get("/api/devices")).json()] == ["Roof"]
+
+
+async def test_playlists_round_trip_validation_and_play(client):
+    assert await (await client.get("/api/playlists")).json() == []
+    good = [{"id": "night", "name": " Halloween night ", "shows": ["spooky", "gone"], "gap": 1000}]
+    saved = await (await client.put("/api/playlists", json=good)).json()
+    assert saved == [{"id": "night", "name": "Halloween night", "shows": ["spooky", "gone"], "gap": 600}]
+    assert await (await client.get("/api/playlists")).json() == saved
+    for bad in ([{"id": "Bad Id", "name": "x", "shows": []}],
+                [{"id": "a", "name": "", "shows": []}],
+                [{"id": "a", "name": "x", "shows": ["../devices"]}],
+                [{"id": "a", "name": "x", "shows": [], "gap": "soon"}],
+                [{"id": "a", "name": "x", "shows": []}, {"id": "a", "name": "y", "shows": []}],
+                {"id": "a"}):
+        assert (await client.put("/api/playlists", json=bad)).status == 400, bad
+    assert (await client.post("/api/playlists/nope/play")).status == 404
+    assert (await client.post("/api/playlists/night/play")).status == 409  # no saved shows yet
+    show_id = (await (await client.post("/api/shows", json={"name": "Spooky"})).json())["id"]
+    await client.put(f"/api/shows/{show_id}", json={"name": "Spooky", "fps": 40, "duration": 10, "tracks": []})
+    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"] * 400)
+    await client.put(f"/api/shows/{show_id}/baked", data=blob)
+    st = await (await client.post("/api/playlists/night/play")).json()
+    assert st["playlist"] == {"id": "night", "name": "Halloween night"}
+    st = await (await client.post("/api/player/stop")).json()
+    assert st["playlist"] is None and not st["playing"]

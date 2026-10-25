@@ -169,6 +169,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Colour palettes for holidays and moods, plus your own (or ones the AI makes from a description), to
   recolour an effect, a light or the whole show in one click
 - Copy and paste effects between lights, play and loop just a region, undo and redo
+- Playlists: several shows back to back, round and round until you stop them
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
@@ -283,7 +284,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/output.py               Streaming to each kind of light: pace, keepalive, putting back, test pattern
   app/halidayshow/baked.py                Baked show file format
   app/halidayshow/player.py               Plays baked frames against a movable clock
-  app/halidayshow/runner.py               Starts shows on a speaker or for the browser
+  app/halidayshow/playlists.py            Saved playlists: checking them and finding one by name
+  app/halidayshow/runner.py               Starts shows on a speaker or for the browser, and plays playlists
   app/halidayshow/scenes.py               Govee scene library lookup (experimental scenes)
   app/halidayshow/storage.py              Shows, settings, songs and the house photo on disk
   app/halidayshow/backup.py               Export, import and start afresh, with copies kept first

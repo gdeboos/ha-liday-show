@@ -237,6 +237,19 @@ button.swatch:hover { border-color: var(--text); }
 .palette-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel);
   border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
 .palette-name { min-width: 11em; }
+.playlist-list { display: flex; flex-direction: column; gap: 10px; }
+.playlist-card { display: flex; flex-direction: column; gap: 8px; }
+.playlist-head, .playlist-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.playlist-head input.playlist-name { flex: 1 1 14em; font-weight: 600; }
+.playlist-head label input { width: 5em; margin-left: 6px; }
+.playlist-shows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.playlist-shows li { display: flex; gap: 6px; align-items: center; padding: 4px 8px; border: 1px solid var(--line);
+  border-radius: 6px; }
+.playlist-shows li .playlist-show { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.playlist-shows li.unplayable .playlist-show { opacity: 0.6; }
+.playlist-shows li.current { border-color: var(--accent, #2b7de9); }
+.playlist-now:empty { display: none; }
+.playlist-now { font-weight: 600; margin: 0 0 10px; }
 #preset-palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .palette-card { display: flex; flex-direction: column; gap: 8px; background: var(--panel);
   border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
