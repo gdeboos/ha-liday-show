@@ -783,7 +783,8 @@ Press **▶ Play** and HA-liday Show plays the shows in order, then starts again
 you press **■ Stop**. It carries on with the page closed, and the line above your playlists says
 what's playing. Each show plays on its own **Show speaker**, just as when an automation starts it.
 Only saved shows play: a show you haven't saved yet, or have deleted, says so in the list and is
-skipped. Playing a show from the editor, or stopping it, stops the playlist.
+skipped. Playing a show from the editor, or stopping it, stops the playlist, and so does pausing or
+stopping the song on the speaker.
 
 ## 6. Automations
 

@@ -461,7 +461,7 @@ async def test_device(request):
     if body.get("stop"):
         app[OUTPUT].release(target)
         return web.json_response({"ok": True})
-    if app[RUNNER].player.playing:  # stopping lets go of every light, which makes a lit test blink
+    if app[RUNNER].player.playing or app[RUNNER].playlist:  # stopping lets go of every light, which makes a lit test blink
         await app[RUNNER].stop()
     settings = dict(reverse=d["reverse"], gradient=d["gradient"], protocol=d["protocol"], brightness=d["brightness"])
     if rgb is None:

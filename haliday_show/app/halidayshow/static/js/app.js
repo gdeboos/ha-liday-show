@@ -2890,12 +2890,20 @@ function renderPalettes() {
 // playlists ---------------------------------------------------------------------------
 // Shows played back to back by HA-liday Show itself, so they carry on with the editor closed.
 let playlists = [], playlistShows = [], playlistPlaying = null, playlistWatch = null;
+let playlistsLoaded = false; // never save over the stored playlists before they've been read
 
 async function loadPlaylists() {
   try {
+    await flushPlaylists(); // an edit made just before leaving the page
     [playlists, playlistShows] = await Promise.all([api("api/playlists"), api("api/shows")]);
-  } catch (e) { status(`Couldn't load playlists: ${e.message}`, true); }
+    playlistsLoaded = true;
+  } catch (e) {
+    playlistsLoaded = false;
+    status(`Couldn't load playlists: ${e.message}`, true);
+  }
+  $("btn-new-playlist").disabled = !playlistsLoaded;
   await refreshPlaylistStatus();
+  renderPlaylists();
   clearInterval(playlistWatch);
   playlistWatch = setInterval(refreshPlaylistStatus, 2000);
 }
@@ -2906,15 +2914,28 @@ async function refreshPlaylistStatus() {
   let st = {};
   try { st = await api("api/player"); } catch { /* try again next tick */ }
   const now = st.playlist ? { ...st.playlist, show: st.playing ? st.show : null, name: st.playlist.name } : null;
-  const changed = JSON.stringify(now) !== JSON.stringify(playlistPlaying);
   playlistPlaying = now;
   $("playlist-now").textContent = !now ? ""
     : `▶ Playing ${now.name}: ${now.show ? (playlistShows.find((x) => x.id === now.show)?.name || now.show) : "pausing before the next show"}`;
-  if (changed) renderPlaylists();
+  markPlaylistPlaying();
+}
+
+// Marks what's playing without redrawing the list, so a name being typed isn't lost.
+function markPlaylistPlaying() {
+  for (const card of document.querySelectorAll("#my-playlists .playlist-card")) {
+    const playing = playlistPlaying?.id === card.dataset.id;
+    for (const li of card.querySelectorAll(".playlist-shows li")) {
+      li.classList.toggle("current", playing && playlistPlaying.show === li.dataset.show);
+    }
+    const play = card.querySelector(".playlist-play");
+    play.textContent = playing ? "■ Stop" : "▶ Play";
+    play.disabled = !playing && play.dataset.empty === "1";
+  }
 }
 
 let savePlaylistsTimer = null;
 function savePlaylists() {
+  if (!playlistsLoaded) return;
   clearTimeout(savePlaylistsTimer);
   savePlaylistsTimer = setTimeout(async () => {
     try {
@@ -2926,7 +2947,7 @@ function savePlaylists() {
 }
 
 async function flushPlaylists() {
-  if (!savePlaylistsTimer) return;
+  if (!savePlaylistsTimer || !playlistsLoaded) return;
   clearTimeout(savePlaylistsTimer);
   savePlaylistsTimer = null;
   await api("api/playlists", { method: "PUT", json: playlists });
@@ -2939,10 +2960,10 @@ function renderPlaylists() {
     return;
   }
   const byId = Object.fromEntries(playlistShows.map((x) => [x.id, x]));
-  box.replaceChildren(...playlists.map((pl, i) => {
+  box.replaceChildren(...playlists.map((pl) => {
     const card = document.createElement("section");
     card.className = "card playlist-card";
-    const playing = playlistPlaying?.id === pl.id;
+    card.dataset.id = pl.id;
     const name = document.createElement("input");
     name.className = "playlist-name";
     name.value = pl.name;
@@ -2980,8 +3001,8 @@ function renderPlaylists() {
     pl.shows.forEach((id, k) => {
       const li = document.createElement("li");
       const show = byId[id];
+      li.dataset.show = id;
       li.classList.toggle("unplayable", !show?.baked);
-      li.classList.toggle("current", playing && playlistPlaying.show === id);
       const label = document.createElement("span");
       label.className = "playlist-show";
       label.textContent = `${k + 1}. ${show ? show.name : "Deleted show"}`
@@ -3010,9 +3031,9 @@ function renderPlaylists() {
       renderPlaylists();
     });
     add.disabled = pl.shows.length >= 100;
-    const play = button(playing ? "■ Stop" : "▶ Play", async () => {
+    const play = button("▶ Play", async () => {
       try {
-        if (playing) await api("api/player/stop", { method: "POST" });
+        if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" });
         else {
           await flushPlaylists();
           await api(`api/playlists/${encodeURIComponent(pl.id)}/play`, { method: "POST" });
@@ -3020,13 +3041,13 @@ function renderPlaylists() {
         }
       } catch (e) { status(e.message, true); }
       refreshPlaylistStatus();
-    }, "primary");
-    play.disabled = !playing && !pl.shows.some((id) => byId[id]?.baked);
-    if (play.disabled) play.title = "Add a saved show first";
+    }, "primary playlist-play");
+    play.dataset.empty = pl.shows.some((id) => byId[id]?.baked) ? "0" : "1";
+    if (play.dataset.empty === "1") play.title = "Add a saved show first";
     const del = button("Delete playlist", async () => {
       if (!confirm(`Delete the playlist "${pl.name}"? Its shows are kept.`)) return;
-      if (playing) await api("api/player/stop", { method: "POST" }).catch(() => {});
-      playlists.splice(i, 1);
+      if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" }).catch(() => {});
+      playlists = playlists.filter((x) => x !== pl);
       savePlaylists();
       renderPlaylists();
     }, "ghost danger");
@@ -3036,9 +3057,11 @@ function renderPlaylists() {
     card.append(head, list, foot);
     return card;
   }));
+  markPlaylistPlaying();
 }
 
 function newPlaylist() {
+  if (!playlistsLoaded) return;
   const taken = new Set(playlists.map((p) => p.name.toLowerCase()));
   let name = "My playlist";
   for (let k = 2; taken.has(name.toLowerCase()); k++) name = `My playlist ${k}`;
