@@ -2919,8 +2919,10 @@ async function refreshPlaylistStatus() {
   } catch { /* try again next tick */ }
   if (scheduleState.now) {
     const [d, t] = scheduleState.now.split("T");
-    $("playlist-clock").textContent = `Schedules go by HA-liday Show's clock, which says ${t} on ${d.split("-").reverse().join("/")}.`;
+    $("playlist-clock").textContent = `Schedules go by HA-liday Show's clock, which says ${t} on ${d.split("-").reverse().join("/")}.`
+      + (scheduleState.sunset ? ` Sunset today is at ${scheduleState.sunset}.` : "");
   }
+  renderSunPlace();
   const now = st.playlist ? { ...st.playlist, show: st.playing ? st.show : null, name: st.playlist.name } : null;
   playlistPlaying = now;
   $("playlist-now").textContent = !now ? ""
@@ -2945,11 +2947,42 @@ function markPlaylistPlaying() {
   }
 }
 
+// Where sunset is worked out for: shown once a playlist starts at sunset.
+function renderSunPlace() {
+  const form = $("sun-place");
+  const usesSunset = playlists.some((p) => p.schedule?.on && p.schedule.start === "sunset");
+  const loc = scheduleState.location;
+  form.hidden = !usesSunset && !(loc?.source === "you");
+  if (form.hidden || form.contains(document.activeElement)) return;
+  $("sun-place-text").textContent = !loc
+    ? "Sunset times need to know where you are. Type your latitude and longitude (on Google Maps, right-click your house and click the numbers at the top to copy them)."
+    : loc.source === "ha" ? `Sunset times are for Home Assistant's location (${loc.lat}, ${loc.lon}). Type another place to use that instead.`
+      : `Sunset times are for ${loc.lat}, ${loc.lon}.`;
+  $("sun-lat").value = loc?.source === "you" ? loc.lat : "";
+  $("sun-lon").value = loc?.source === "you" ? loc.lon : "";
+  $("sun-place-clear").hidden = loc?.source !== "you";
+}
+
+async function saveSunPlace(e) {
+  e.preventDefault();
+  // "51.5074, -0.1278" pasted into the first box fills both.
+  const both = $("sun-lat").value.split(",");
+  const [lat, lon] = both.length === 2 ? both : [$("sun-lat").value, $("sun-lon").value];
+  try {
+    if (!lat.trim() || !String(lon).trim()) throw new Error("Type both a latitude and a longitude");
+    scheduleState = await api("api/location", { method: "PUT", json: { lat: lat.trim(), lon: String(lon).trim() } });
+    status("Saved where you are, for sunset times");
+  } catch (err) { status(err.message, true); }
+  document.activeElement?.blur();
+  refreshPlaylistStatus();
+}
+
 function scheduleNote(pl) {
   const s = pl.schedule;
   if (!s?.on) return "";
   if (scheduleState.scheduled === pl.id) return `Playing now on its schedule (${describeSchedule(s)}).`;
   const next = scheduleState.next?.[pl.id];
+  if (s.start === "sunset" && !scheduleState.location) return "Add where you are, above, so it knows when sunset is.";
   if (!next || !scheduleState.now) return s.days.length ? "" : "Pick at least one day.";
   return `Next starts ${whenNext(next, scheduleState.now)}.`;
 }
@@ -2996,8 +3029,42 @@ function scheduleEditor(pl) {
     };
     const times = document.createElement("div");
     times.className = "row";
-    times.append("From", time("start", "Start time"), "to", time("end", "End time"));
-    if (s.end <= s.start) times.append(" (the next day)");
+    const kind = document.createElement("select");
+    kind.setAttribute("aria-label", "Start at");
+    kind.add(new Option("a time", "time"));
+    kind.add(new Option("sunset", "sunset"));
+    kind.value = s.start === "sunset" ? "sunset" : "time";
+    kind.addEventListener("change", () => {
+      if (kind.value === "sunset") { s.start = "sunset"; s.offset = 0; } else { s.start = s.end === "17:00" ? "16:00" : "17:00"; delete s.offset; }
+      changed();
+      draw();
+    });
+    times.append("From", kind);
+    if (s.start === "sunset") {
+      const mins = document.createElement("input");
+      mins.type = "number";
+      mins.min = 0;
+      mins.max = 180;
+      mins.step = 5;
+      mins.value = Math.abs(s.offset || 0);
+      mins.setAttribute("aria-label", "Minutes from sunset");
+      const side = document.createElement("select");
+      side.setAttribute("aria-label", "Before or after sunset");
+      side.add(new Option("minutes after", "after"));
+      side.add(new Option("minutes before", "before"));
+      side.value = (s.offset || 0) < 0 ? "before" : "after";
+      const set = () => {
+        const m = Math.min(Math.max(Math.round(Number(mins.value) || 0), 0), 180);
+        mins.value = m;
+        s.offset = side.value === "before" ? -m : m;
+        changed();
+      };
+      mins.addEventListener("change", set);
+      side.addEventListener("change", set);
+      times.append("(", mins, side, ")");
+    } else times.append(time("start", "Start time"));
+    times.append("to", time("end", "End time"));
+    if (s.start !== "sunset" && s.end <= s.start) times.append(" (the next day)");
     const days = document.createElement("div");
     days.className = "row days";
     DAYS.forEach((name, d) => {
@@ -4836,6 +4903,11 @@ function wire() {
   });
   $("btn-new-preset").addEventListener("click", newPreset);
   $("btn-new-playlist").addEventListener("click", newPlaylist);
+  $("sun-place").addEventListener("submit", saveSunPlace);
+  $("sun-place-clear").addEventListener("click", async () => {
+    try { scheduleState = await api("api/location", { method: "PUT", json: {} }); } catch (err) { status(err.message, true); }
+    refreshPlaylistStatus();
+  });
   $("btn-new-palette").addEventListener("click", () => {
     app.palettes.push({ name: uniqueName("My palette"), colors: ["#ff0000", "#00ff00", "#0000ff"] });
     savePalettes();

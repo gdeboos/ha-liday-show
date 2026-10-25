@@ -1,7 +1,9 @@
 """Playlists that play by themselves at set times.
 
-A playlist's schedule: {"on", "start": "HH:MM", "end": "HH:MM", "days": [0-6, Monday first],
-"from": "MM-DD", "to": "MM-DD"}. The dates are optional and come round every year; "from" after "to"
+A playlist's schedule: {"on", "start": "HH:MM" or "sunset" (with "offset" minutes after it, or before
+if negative), "end": "HH:MM", "days": [0-6, Monday first], "from": "MM-DD", "to": "MM-DD"}. Sunset is
+worked out for the place in settings ("location"), else Home Assistant's; with neither, a sunset
+schedule doesn't play. The dates are optional and come round every year; "from" after "to"
 wraps over New Year (1 Dec to 6 Jan). An end before the start runs past midnight, counted as part of
 the day it started. Times are HA-liday Show's own clock (the TZ setting Home Assistant gives apps).
 
@@ -18,12 +20,19 @@ import logging
 from datetime import date, datetime, timedelta
 
 from . import playlists
+from .ha import HAError
 from .runner import Runner, RunnerError
 from .storage import Storage
+from .sun import sunset_local
 
 log = logging.getLogger(__name__)
 
 TICK_S = 15
+HA_LOCATION_EVERY_S = 3600
+
+Where = tuple[float, float] | None  # latitude and longitude, for sunset
+
+
 def _in_dates(s: dict, d: date) -> bool:
     if not s["from"]:
         return True
@@ -31,34 +40,45 @@ def _in_dates(s: dict, d: date) -> bool:
     return s["from"] <= md <= s["to"] if s["from"] <= s["to"] else md >= s["from"] or md <= s["to"]
 
 
-def _window(s: dict, d: date) -> tuple[datetime, datetime] | None:
+def start_on(s: dict, d: date, where: Where) -> datetime | None:
+    """When the schedule starts on day d: its time, or sunset plus its offset (None without a place,
+    or where the sun doesn't set that day)."""
+    if s["start"] != "sunset":
+        return datetime.combine(d, datetime.strptime(s["start"], "%H:%M").time())
+    if not where or not (sunset := sunset_local(d, *where)):
+        return None
+    return sunset + timedelta(minutes=s.get("offset", 0))
+
+
+def _window(s: dict, d: date, where: Where = None) -> tuple[datetime, datetime] | None:
     """The window that starts on day d, if the schedule plays that day."""
     if d.weekday() not in s["days"] or not _in_dates(s, d):
         return None
-    start = datetime.combine(d, datetime.strptime(s["start"], "%H:%M").time())
+    if (start := start_on(s, d, where)) is None:
+        return None
     end = datetime.combine(d, datetime.strptime(s["end"], "%H:%M").time())
     if end <= start:
         end += timedelta(days=1)
     return start, end
 
 
-def window_at(s: dict, now: datetime) -> tuple[datetime, datetime] | None:
+def window_at(s: dict, now: datetime, where: Where = None) -> tuple[datetime, datetime] | None:
     """The scheduled stretch going on at `now`, if any (yesterday's can run past midnight)."""
     if not s.get("on"):
         return None
     for d in (now.date(), now.date() - timedelta(days=1)):
-        w = _window(s, d)
+        w = _window(s, d, where)
         if w and w[0] <= now < w[1]:
             return w
     return None
 
 
-def next_start(s: dict, now: datetime) -> datetime | None:
+def next_start(s: dict, now: datetime, where: Where = None) -> datetime | None:
     """When it next starts, or None if it's off or never plays."""
-    if not s.get("on"):
+    if not s.get("on") or not s["days"]:
         return None
     for k in range(367):
-        w = _window(s, now.date() + timedelta(days=k))
+        w = _window(s, now.date() + timedelta(days=k), where)
         if w and w[0] > now:
             return w[0]
     return None
@@ -71,20 +91,46 @@ class Scheduler:
         # end (or ends it) rather than counting as a new run.
         self.handled: dict[str, date] = {}  # playlist id -> the day whose run was already dealt with
         self.running: tuple[str, date] | None = None  # the playlist it started, and that run's day
+        self.ha_where: Where = None  # Home Assistant's location, checked every hour
+        self._ha_checked: float | None = None
+
+    def where(self) -> tuple[Where, str | None]:
+        """Where sunset is worked out for, and who said: "you" (typed in) or "ha"."""
+        loc = self.storage.load_settings().get("location")
+        if isinstance(loc, dict) and isinstance(loc.get("lat"), (int, float)) and isinstance(loc.get("lon"), (int, float)):
+            return (float(loc["lat"]), float(loc["lon"])), "you"
+        return (self.ha_where, "ha") if self.ha_where else (None, None)
+
+    async def refresh_ha_location(self):
+        ha = self.runner.ha
+        loop = asyncio.get_running_loop()
+        if not ha or not ha.available or (self._ha_checked and loop.time() - self._ha_checked < HA_LOCATION_EVERY_S):
+            return
+        self._ha_checked = loop.time()
+        try:
+            config = await ha.config()
+            self.ha_where = (float(config["latitude"]), float(config["longitude"]))
+        except (HAError, KeyError, TypeError, ValueError) as e:
+            log.warning("couldn't read Home Assistant's location for sunset times: %s", e)
 
     def state(self, now: datetime | None = None) -> dict:
         now = now or datetime.now()
+        where, source = self.where()
         nexts = {}
         for p in playlists.load(self.storage):
-            if (n := next_start(p.get("schedule") or {}, now)):
+            if (n := next_start(p.get("schedule") or {}, now, where)):
                 nexts[p["id"]] = n.isoformat(timespec="minutes")
+        sunset = sunset_local(now.date(), *where) if where else None
         return {"now": now.isoformat(timespec="minutes"), "next": nexts,
-                "scheduled": self.running[0] if self.running else None}
+                "scheduled": self.running[0] if self.running else None,
+                "location": {"lat": where[0], "lon": where[1], "source": source} if where else None,
+                "sunset": sunset.strftime("%H:%M") if sunset else None}
 
     async def tick(self, now: datetime | None = None):
         now = now or datetime.now()
         found = playlists.load(self.storage)
-        windows = {p["id"]: w for p in found if (w := window_at(p.get("schedule") or {}, now))}
+        where, _ = self.where()
+        windows = {p["id"]: w for p in found if (w := window_at(p.get("schedule") or {}, now, where))}
         playing = (self.runner.playlist or {}).get("id")
         if self.running:
             pid, day = self.running
@@ -119,6 +165,7 @@ class Scheduler:
     async def run(self):
         while True:
             try:
+                await self.refresh_ha_location()
                 await self.tick()
             except Exception:  # keep the schedule going whatever one tick hits
                 log.exception("schedule tick failed")

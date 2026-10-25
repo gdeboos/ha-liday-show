@@ -195,3 +195,66 @@ def test_a_broken_schedule_in_the_file_keeps_the_playlist(tmp_path):
     storage = Storage(tmp_path / "c", tmp_path / "m")
     save(storage, {"id": "p", "name": "P", "shows": ["one"], "gap": 5, "schedule": {"on": True}})
     assert playlists.load(storage) == [{"id": "p", "name": "P", "shows": ["one"], "gap": 5.0}]
+
+
+SUNSET = {**EVENINGS, "start": "sunset", "offset": -15}
+
+
+def test_sunset_schedule_validation():
+    assert playlists.clean_schedule(SUNSET)["offset"] == -15
+    assert "offset" not in playlists.clean_schedule({**EVENINGS, "offset": 30})  # only for sunset
+    for bad in ({**SUNSET, "offset": 181}, {**SUNSET, "offset": "10"}, {**SUNSET, "offset": True},
+                {**SUNSET, "start": "dusk"}):
+        assert playlists.clean_schedule(bad) is None, bad
+
+
+def test_sunset_windows(monkeypatch):
+    # Sunset moves a minute a day; the window starts 15 minutes before it.
+    monkeypatch.setattr("halidayshow.schedule.sunset_local",
+                        lambda d, lat, lon: datetime(d.year, d.month, d.day, 16, 48 - (d.day - 25)))
+    here = (51.5, -0.13)
+    assert window_at(SUNSET, at(16, 40), here) == (at(16, 33), at(22))
+    assert window_at(SUNSET, at(16, 30), here) is None
+    assert next_start(SUNSET, at(18), here) == at(16, 32, day=26)
+    assert window_at(SUNSET, at(16, 40)) is None and next_start(SUNSET, at(12)) is None  # no place, no sunset
+    monkeypatch.setattr("halidayshow.schedule.sunset_local", lambda d, lat, lon: None)  # polar night
+    assert next_start(SUNSET, at(12), here) is None
+
+
+class FakeHA:
+    available = True
+
+    def __init__(self, config):
+        self._config, self.asked = config, 0
+
+    async def config(self):
+        self.asked += 1
+        return self._config
+
+
+async def test_location_from_settings_else_home_assistant(setup, monkeypatch):
+    storage, runner, sched = setup
+    assert sched.where() == (None, None) and sched.state(at(12))["location"] is None
+    runner.ha = FakeHA({"latitude": 51.5, "longitude": -0.13})
+    await sched.refresh_ha_location()
+    await sched.refresh_ha_location()  # once an hour is plenty
+    assert runner.ha.asked == 1 and sched.where() == ((51.5, -0.13), "ha")
+    settings = storage.load_settings()
+    settings["location"] = {"lat": 40.7, "lon": -74.0}
+    storage.save_settings(settings)
+    assert sched.where() == ((40.7, -74.0), "you")
+    st = sched.state(at(12))
+    assert st["location"]["source"] == "you" and len(st["sunset"]) == 5
+
+
+async def test_a_sunset_playlist_starts_at_sunset(setup, monkeypatch):
+    storage, runner, sched = setup
+    monkeypatch.setattr("halidayshow.schedule.sunset_local", lambda d, lat, lon: datetime(d.year, d.month, d.day, 16, 48))
+    settings = storage.load_settings()
+    settings["location"] = {"lat": 51.5, "lon": -0.13}
+    settings["playlists"] = [pl("night", {**SUNSET, "offset": 0})]
+    storage.save_settings(settings)
+    await sched.tick(at(16, 47))
+    assert runner.status()["playlist"] is None
+    await sched.tick(at(16, 48))
+    assert runner.status()["playlist"]["id"] == "night"

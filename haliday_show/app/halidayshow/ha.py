@@ -82,6 +82,10 @@ class HomeAssistant:
     async def state(self, entity_id: str) -> dict:
         return await self._request("GET", f"{self.base}/states/{entity_id}")
 
+    async def config(self) -> dict:
+        """Home Assistant's settings, including its latitude, longitude and time zone."""
+        return await self._request("GET", f"{self.base}/config")
+
     async def call(self, domain: str, service: str, data: dict):
         log.debug("calling %s.%s %s", domain, service, data)
         return await self._request("POST", f"{self.base}/services/{domain}/{service}", json=data)

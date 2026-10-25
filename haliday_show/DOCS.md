@@ -792,6 +792,8 @@ Tick **Play on a schedule** on a playlist to have it start and stop by itself:
 
 - **From** and **to** set the times, such as 17:00 to 22:00. An end time earlier than the start runs
   past midnight: 20:00 to 01:00 on a Saturday plays until 1 in the morning on Sunday.
+- To start when it gets dark, change **From** to **sunset**. You can start up to 3 hours before or
+  after it, such as 15 **minutes after**. Sunset moves through the year, so the playlist does too.
 - Untick the days it shouldn't play.
 - Tick **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
   every year, and can run over New Year (1 Dec and 6 Jan).
@@ -802,6 +804,12 @@ something else is playing. At the end time the show that's on finishes, then it 
 next start time. If HA-liday Show restarts during the scheduled time (after an update, say), the
 playlist starts again, and so does one whose schedule you turn on during its time. Changing the
 times while it plays just moves when it stops.
+
+Sunset times are worked out for Home Assistant's location (**Settings → System → General** in Home
+Assistant). Without Home Assistant, or to use another place, type your latitude and longitude in the
+box that appears above your playlists once one starts at sunset. On Google Maps, right-click your
+house and click the numbers at the top to copy them, then paste them into the first box. Sunset is
+worked out to within a couple of minutes. The page shows today's sunset next to the clock.
 
 Only one playlist plays at a time. If two playlists' times overlap, the one higher up the list plays
 first, and the other starts once it's finished.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.124
+
+- Playlists can now start at sunset. Under **Play on a schedule**, change **From** to **sunset**. You
+  can start up to 3 hours before or after it, such as 15 **minutes after**. The start time moves
+  with the sunset through the year.
+- Sunset times use Home Assistant's location. Without Home Assistant, a box appears above your
+  playlists for your latitude and longitude; you can copy them from Google Maps. The page shows
+  today's sunset next to HA-liday Show's clock.
+
 ## 0.2.123
 
 - Playlists can now play on a schedule. On **Library → Playlists**, tick **Play on a schedule**, then

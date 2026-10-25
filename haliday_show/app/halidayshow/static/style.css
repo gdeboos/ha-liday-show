@@ -255,6 +255,9 @@ button.swatch:hover { border-color: var(--text); }
 .playlist-schedule .days label { display: inline-flex; gap: 3px; align-items: center; }
 .playlist-schedule select, .playlist-schedule input[type=time] { width: auto; }
 .playlist-next { margin: 0; }
+.sun-place { margin-bottom: 10px; }
+.sun-place .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sun-place input { width: 9em; margin-left: 6px; }
 .playlist-now { font-weight: 600; margin: 0 0 10px; }
 #preset-palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .palette-card { display: flex; flex-direction: column; gap: 8px; background: var(--panel);

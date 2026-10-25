@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { describeSchedule, whenNext } from "../../haliday_show/app/halidayshow/static/js/schedule.js";
+import { describeSchedule, describeStart, whenNext } from "../../haliday_show/app/halidayshow/static/js/schedule.js";
 
 test("when a playlist next starts, in words", () => {
   assert.equal(whenNext("2026-10-25T17:00", "2026-10-25T13:55"), "today at 17:00");
@@ -17,4 +17,14 @@ test("a schedule in words", () => {
   assert.equal(describeSchedule({ ...s, days: [0, 2, 4] }), "17:00 to 22:00 on Mon, Wed and Fri");
   assert.equal(describeSchedule({ ...s, start: "20:00", end: "01:00", days: [4], from: "12-01", to: "01-06" }),
     "20:00 to 01:00 (the next day) on Fri, 1 Dec to 6 Jan");
+});
+
+test("a sunset start in words", () => {
+  const s = { start: "sunset", offset: 0, end: "22:00", days: [0, 1, 2, 3, 4, 5, 6], from: "", to: "" };
+  assert.equal(describeSchedule(s), "sunset to 22:00 every day");
+  assert.equal(describeStart({ ...s, offset: 20 }), "20 minutes after sunset");
+  assert.equal(describeStart({ ...s, offset: -60 }), "1 hour before sunset");
+  assert.equal(describeStart({ ...s, offset: -120 }), "2 hours before sunset");
+  assert.equal(describeStart({ ...s, offset: 1 }), "1 minute after sunset");
+  assert.equal(describeSchedule({ ...s, end: "01:00" }), "sunset to 01:00 every day");
 });

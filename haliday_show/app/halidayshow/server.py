@@ -859,6 +859,30 @@ async def get_schedule(request):
     return web.json_response(request.app[SCHEDULER].state())
 
 
+async def put_location(request):
+    """Where sunset is worked out for: {"lat", "lon"}, or {} to go back to Home Assistant's."""
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text="expected a latitude and longitude")
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    if body.get("lat") is None and body.get("lon") is None:
+        settings.pop("location", None)
+    else:
+        try:
+            lat, lon = float(body["lat"]), float(body["lon"])
+        except (KeyError, TypeError, ValueError):
+            raise web.HTTPBadRequest(text="latitude and longitude must be numbers")
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise web.HTTPBadRequest(text="latitude goes from -90 to 90 and longitude from -180 to 180")
+        settings["location"] = {"lat": round(lat, 4), "lon": round(lon, 4)}
+    storage.save_settings(settings)
+    return web.json_response(request.app[SCHEDULER].state())
+
+
 async def play_playlist(request):
     playlist = playlists.find(request.app[STORAGE], request.match_info["id"])
     if playlist is None:
@@ -1279,6 +1303,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/playlists", put_playlists)
     r.add_post("/api/playlists/{id}/play", play_playlist)
     r.add_get("/api/schedule", get_schedule)
+    r.add_put("/api/location", put_location)
     r.add_get("/api/house", get_house)
     r.add_put("/api/house", put_house)
     r.add_get("/api/house/photo", get_house_photo)
