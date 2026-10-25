@@ -1,9 +1,11 @@
 """Playlists: shows to play back to back, round and round, with a pause between them.
 
-Kept in settings with the palettes and presets. A show that's been deleted stays in the list and is
+Kept in settings with the palettes and presets. A playlist can also have a schedule (see schedule.py). A show that's been deleted stays in the list and is
 skipped when the playlist plays, so putting it back (from an export, say) brings it back.
 """
 import math
+import re
+from datetime import date
 
 from .storage import Storage, valid_id
 
@@ -11,9 +13,40 @@ MAX_PLAYLISTS = 50
 MAX_SHOWS = 100
 MAX_GAP_S = 600
 
+_TIME = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
+_DAY = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
-def clean(p) -> dict | None:
-    """A playlist as stored, or None if it isn't one."""
+
+def _valid_day(md: str) -> bool:
+    if not _DAY.match(md):
+        return False
+    try:
+        date(2000, int(md[:2]), int(md[3:]))  # a leap year, so 29 February is allowed
+    except ValueError:
+        return False
+    return True
+
+
+def clean_schedule(s) -> dict | None:
+    """A schedule as stored, or None if it isn't one."""
+    if not isinstance(s, dict):
+        return None
+    start, end = str(s.get("start", "")), str(s.get("end", ""))
+    days, frm, to = s.get("days"), str(s.get("from") or ""), str(s.get("to") or "")
+    if not _TIME.match(start) or not _TIME.match(end) or start == end:
+        return None
+    if not isinstance(days, list) or not all(isinstance(d, int) and not isinstance(d, bool) and 0 <= d <= 6
+                                             for d in days):
+        return None
+    if bool(frm) != bool(to) or (frm and not (_valid_day(frm) and _valid_day(to))):
+        return None
+    return {"on": bool(s.get("on")), "start": start, "end": end, "days": sorted(set(days)),
+            "from": frm, "to": to}
+
+
+def clean(p, strict: bool = True) -> dict | None:
+    """A playlist as stored, or None if it isn't one. Not strict, a broken schedule is dropped
+    rather than the whole playlist, so a hand-edited file never loses its shows."""
     if not isinstance(p, dict):
         return None
     pid, name, shows = str(p.get("id", "")), str(p.get("name", "")).strip()[:60], p.get("shows")
@@ -26,11 +59,17 @@ def clean(p) -> dict | None:
         return None
     if not math.isfinite(gap):
         return None
-    return {"id": pid, "name": name, "shows": shows, "gap": round(min(max(gap, 0), MAX_GAP_S), 1)}
+    out = {"id": pid, "name": name, "shows": shows, "gap": round(min(max(gap, 0), MAX_GAP_S), 1)}
+    if p.get("schedule") is not None:  # playlists from before schedules have none
+        if (schedule := clean_schedule(p["schedule"])) is not None:
+            out["schedule"] = schedule
+        elif strict:
+            return None
+    return out
 
 
 def load(storage: Storage) -> list[dict]:
-    return [p for p in (clean(x) for x in storage.load_settings().get("playlists", [])) if p]
+    return [p for p in (clean(x, strict=False) for x in storage.load_settings().get("playlists", [])) if p]
 
 
 def find(storage: Storage, ref: str) -> dict | None:

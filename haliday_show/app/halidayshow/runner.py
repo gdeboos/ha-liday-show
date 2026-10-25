@@ -44,6 +44,7 @@ class Runner:
         self._playlist: asyncio.Task | None = None
         self.playlist: dict | None = None  # the playlist playing, if any
         self.speaker_stopped = False  # the speaker stopped the lights (paused or stopped in HA)
+        self.finishing = False  # the playlist stops once the show that's on ends
         self._lock = asyncio.Lock()  # one show starting or stopping at a time
         # Play, stop and play-a-playlist one at a time, so two at once can't leave a playlist
         # running that nothing tracks. The playlist's own task never takes it.
@@ -55,7 +56,8 @@ class Runner:
         playlist = self.playlist if self._playlist and not self._playlist.done() else None
         return {**st, "media_player": self.media_player if st["playing"] else None,
                 "name": show.get("name") if show else None,
-                "playlist": {"id": playlist["id"], "name": playlist["name"]} if playlist else None}
+                "playlist": {"id": playlist["id"], "name": playlist["name"], "finishing": self.finishing}
+                if playlist else None}
 
     async def play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
                    position: float = 0.0, offset: float = 0.0):
@@ -192,6 +194,15 @@ class Runner:
             self.playlist = playlist
             self._playlist = asyncio.create_task(self._run_playlist(playlist))
 
+    async def finish_playlist(self):
+        """Stop the playlist once the show that's on has finished (now, if it's between shows)."""
+        if not self._playlist or self._playlist.done():
+            return
+        if self.player.playing:
+            self.finishing = True
+        else:
+            await self.stop()
+
     async def _run_playlist(self, playlist: dict):
         gap = float(playlist.get("gap", 0))
         try:
@@ -212,6 +223,9 @@ class Runner:
                     if self.speaker_stopped:  # paused or stopped on the speaker: stop the playlist too
                         log.info("playlist %s stopped with its speaker", playlist.get("name"))
                         return
+                    if self.finishing:
+                        log.info("playlist %s finished its last show", playlist.get("name"))
+                        return
                     await asyncio.sleep(max(gap, 0.1))
                 if not played:  # every show failed; don't spin
                     log.error("playlist %s has nothing it can play; stopping", playlist.get("name"))
@@ -221,9 +235,11 @@ class Runner:
         finally:
             if self._playlist is asyncio.current_task():  # ended by itself, not by _end_playlist
                 self.playlist = None
+                self.finishing = False
 
     async def _end_playlist(self):
         task, self._playlist = self._playlist, None
+        self.finishing = False
         if task and not task.done():
             task.cancel()
             try:

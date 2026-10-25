@@ -19,6 +19,7 @@ import { Layout } from "./layout.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor } from "./music.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
+import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { Timeline, fmtTime } from "./timeline.js";
 
@@ -2891,6 +2892,7 @@ function renderPalettes() {
 // Shows played back to back by HA-liday Show itself, so they carry on with the editor closed.
 let playlists = [], playlistShows = [], playlistPlaying = null, playlistWatch = null;
 let playlistsLoaded = false; // never save over the stored playlists before they've been read
+let scheduleState = { now: null, next: {}, scheduled: null }; // HA-liday Show's clock and next starts
 
 async function loadPlaylists() {
   try {
@@ -2912,11 +2914,18 @@ function stopPlaylistWatch() { clearInterval(playlistWatch); playlistWatch = nul
 
 async function refreshPlaylistStatus() {
   let st = {};
-  try { st = await api("api/player"); } catch { /* try again next tick */ }
+  try {
+    [st, scheduleState] = await Promise.all([api("api/player"), api("api/schedule")]);
+  } catch { /* try again next tick */ }
+  if (scheduleState.now) {
+    const [d, t] = scheduleState.now.split("T");
+    $("playlist-clock").textContent = `Schedules go by HA-liday Show's clock, which says ${t} on ${d.split("-").reverse().join("/")}.`;
+  }
   const now = st.playlist ? { ...st.playlist, show: st.playing ? st.show : null, name: st.playlist.name } : null;
   playlistPlaying = now;
   $("playlist-now").textContent = !now ? ""
-    : `▶ Playing ${now.name}: ${now.show ? (playlistShows.find((x) => x.id === now.show)?.name || now.show) : "pausing before the next show"}`;
+    : `▶ Playing ${now.name}: ${now.show ? (playlistShows.find((x) => x.id === now.show)?.name || now.show) : "pausing before the next show"}`
+      + (st.playlist?.finishing ? ". Its time is up, so it stops when this show ends." : "");
   markPlaylistPlaying();
 }
 
@@ -2930,7 +2939,127 @@ function markPlaylistPlaying() {
     const play = card.querySelector(".playlist-play");
     play.textContent = playing ? "■ Stop" : "▶ Play";
     play.disabled = !playing && play.dataset.empty === "1";
+    const next = card.querySelector(".playlist-next");
+    const pl = playlists.find((x) => x.id === card.dataset.id);
+    if (next && pl) next.textContent = scheduleNote(pl);
   }
+}
+
+function scheduleNote(pl) {
+  const s = pl.schedule;
+  if (!s?.on) return "";
+  if (scheduleState.scheduled === pl.id) return `Playing now on its schedule (${describeSchedule(s)}).`;
+  const next = scheduleState.next?.[pl.id];
+  if (!next || !scheduleState.now) return s.days.length ? "" : "Pick at least one day.";
+  return `Next starts ${whenNext(next, scheduleState.now)}.`;
+}
+
+// The schedule part of a playlist's card: times, days and (optionally) dates.
+function scheduleEditor(pl) {
+  const box = document.createElement("div");
+  const on = document.createElement("input");
+  on.type = "checkbox";
+  on.checked = !!pl.schedule?.on;
+  const onLabel = document.createElement("label");
+  onLabel.append(on, " Play on a schedule");
+  const body = document.createElement("div");
+  body.className = "playlist-schedule";
+  const note = document.createElement("p");
+  note.className = "hint playlist-next";
+  const changed = () => {
+    savePlaylists();
+    note.textContent = scheduleNote(pl);
+    setTimeout(refreshPlaylistStatus, 700); // after the save, for the new next start
+  };
+  const draw = () => {
+    body.hidden = !pl.schedule?.on;
+    body.replaceChildren();
+    if (!pl.schedule?.on) return;
+    const s = pl.schedule;
+    const time = (key, label) => {
+      const el = document.createElement("input");
+      el.type = "time";
+      el.value = s[key];
+      el.setAttribute("aria-label", label);
+      el.addEventListener("change", () => {
+        const other = key === "start" ? s.end : s.start;
+        if (!el.value || el.value === other) {
+          status("The start and end need different times", true);
+          el.value = s[key];
+          return;
+        }
+        s[key] = el.value;
+        changed();
+        draw();
+      });
+      return el;
+    };
+    const times = document.createElement("div");
+    times.className = "row";
+    times.append("From", time("start", "Start time"), "to", time("end", "End time"));
+    if (s.end <= s.start) times.append(" (the next day)");
+    const days = document.createElement("div");
+    days.className = "row days";
+    DAYS.forEach((name, d) => {
+      const c = document.createElement("input");
+      c.type = "checkbox";
+      c.checked = s.days.includes(d);
+      c.addEventListener("change", () => {
+        s.days = c.checked ? [...s.days, d].sort() : s.days.filter((x) => x !== d);
+        changed();
+      });
+      const l = document.createElement("label");
+      l.append(c, name);
+      days.append(l);
+    });
+    const dated = document.createElement("input");
+    dated.type = "checkbox";
+    dated.checked = !!s.from;
+    const datesRow = document.createElement("div");
+    datesRow.className = "row";
+    const dl = document.createElement("label");
+    dl.append(dated, " Only between");
+    datesRow.append(dl);
+    const pick = (key) => {
+      const day = document.createElement("select"), month = document.createElement("select");
+      for (let k = 1; k <= 31; k++) day.add(new Option(String(k), String(k).padStart(2, "0")));
+      MONTHS.forEach((m, k) => month.add(new Option(m, String(k + 1).padStart(2, "0"))));
+      day.setAttribute("aria-label", key === "from" ? "First day" : "Last day");
+      month.setAttribute("aria-label", key === "from" ? "First month" : "Last month");
+      [month.value, day.value] = s[key].split("-");
+      const set = () => {
+        const most = new Date(Date.UTC(2000, Number(month.value), 0)).getUTCDate(); // 29 in February
+        if (Number(day.value) > most) day.value = String(most).padStart(2, "0");
+        s[key] = `${month.value}-${day.value}`;
+        changed();
+      };
+      day.addEventListener("change", set);
+      month.addEventListener("change", set);
+      return [day, month];
+    };
+    if (s.from) datesRow.append(...pick("from"), "and", ...pick("to"), "every year");
+    dated.addEventListener("change", () => {
+      if (dated.checked) {
+        // From today on HA-liday Show's clock, for a week.
+        const md = (d) => `${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+        const today = new Date(`${(scheduleState.now || new Date().toISOString()).slice(0, 10)}T00:00Z`);
+        s.from = md(today);
+        s.to = md(new Date(today.getTime() + 6 * 86400000));
+      } else s.from = s.to = "";
+      changed();
+      draw();
+    });
+    body.append(times, days, datesRow);
+  };
+  on.addEventListener("change", () => {
+    pl.schedule = { ...(pl.schedule || DEFAULT_SCHEDULE), days: [...(pl.schedule || DEFAULT_SCHEDULE).days], on: on.checked };
+    changed();
+    draw();
+  });
+  draw();
+  note.textContent = scheduleNote(pl);
+  box.append(onLabel, body, note);
+  return box;
 }
 
 let savePlaylistsTimer = null;
@@ -3054,7 +3183,7 @@ function renderPlaylists() {
     const foot = document.createElement("div");
     foot.className = "playlist-foot";
     foot.append(add, play, del);
-    card.append(head, list, foot);
+    card.append(head, list, scheduleEditor(pl), foot);
     return card;
   }));
   markPlaylistPlaying();

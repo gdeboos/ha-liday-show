@@ -59,6 +59,8 @@ jobs:
           docker logs solo
           [ "$(curl -s -o /dev/null -w '%{http_code}' "$ip:8098/api/info")" = 401 ]
           curl -fsS -u any:pw "$ip:8098/api/info"
+      - name: Follows the TZ setting (playlist schedules use the local clock)
+        run: docker run --rm -e TZ=Asia/Tokyo --entrypoint python3 haliday-show-test -c "import time; z = time.strftime('%Z'); print(z); assert z == 'JST', z"
       - name: aarch64 base image exists
         run: |
           base=$(sed -n 's/^FROM \(.*\)$/\1/p' haliday_show/Dockerfile | sed 's/${BUILD_ARCH}/aarch64/')
