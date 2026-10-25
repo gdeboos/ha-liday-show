@@ -1,6 +1,7 @@
 """Commands from automations: the hassio.app_stdin action (hassio.addon_stdin before HA 2026.2) and MQTT.
 
   {"action": "play", "show": "halloween", "media_player": "media_player.garden"}
+  {"action": "play", "playlist": "Halloween night"}
   {"action": "stop"}
 
 "show" may be a show's id or its name. Without "media_player" the show's saved
@@ -13,6 +14,7 @@ import os
 import sys
 import threading
 
+from . import playlists
 from .runner import Runner, RunnerError
 from .storage import Storage
 
@@ -76,6 +78,12 @@ async def handle(runner: Runner, raw) -> str:
     if action == "stop":
         await runner.stop()
         return "stopped"
+    if action == "play" and cmd.get("playlist"):
+        playlist = playlists.find(runner.storage, str(cmd["playlist"]))
+        if not playlist:
+            raise ValueError(f"no playlist called '{cmd.get('playlist')}'")
+        await runner.play_playlist(playlist)
+        return f"playing playlist {playlist['id']}"
     if action == "play":
         show_id = find_show(runner.storage, str(cmd.get("show", "")))
         if not show_id:

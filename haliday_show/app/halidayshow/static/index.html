@@ -36,6 +36,7 @@
   <symbol id="i-palettes" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.9 1.4-1.9-.3-.9.2-2.1 1.6-2.1H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol>
   <symbol id="i-swatches" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
   <symbol id="i-presets" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></symbol>
+  <symbol id="i-playlists" viewBox="0 0 24 24"><path d="M3 6h12M3 12h12M3 18h7"/><path d="m15 15 6 3.5-6 3.5z"/></symbol>
   <symbol id="i-timing" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-automations" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></symbol>
   <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></symbol>
@@ -306,6 +307,7 @@
   <nav class="subnav" aria-label="Library">
     <button class="subtab" data-view="palettes"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg><b>Palettes</b><span>Colour sets</span></button>
     <button class="subtab" data-view="presets"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg><b>Presets</b><span>Ready-made effect settings</span></button>
+    <button class="subtab" data-view="playlists"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Playlists</b><span>Shows back to back</span></button>
   </nav>
   <div class="section-body">
 <main id="view-palettes" class="view" hidden>
@@ -349,6 +351,17 @@
     <div id="my-presets" class="preset-list"></div>
     <section id="preset-editor" class="card preset-editor"></section>
   </div>
+</main>
+<main id="view-playlists" class="view" hidden>
+  <p class="hint">A playlist plays your shows one after another, with a pause between them, then starts again
+    from the top until you press <b>Stop</b>. Each show plays on its own show speaker, as it would from an
+    automation. Only saved shows play.</p>
+  <section class="toolbar">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Your playlists</h2>
+    <button id="btn-new-playlist" class="primary">New playlist</button>
+  </section>
+  <p id="playlist-now" class="playlist-now"></p>
+  <div id="my-playlists" class="playlist-list"></div>
 </main>
   </div>
 </div>

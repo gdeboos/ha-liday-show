@@ -159,3 +159,139 @@ def test_stdin_stream_splitting():
     assert out == ['{"action":"play","show":"x"}', '"stop"'] and rest == '{"action":"st'
     assert commands.parse('"stop"') == {"action": "stop", "show": ""}
     assert commands.parse("play My Show") == {"action": "play", "show": "My Show"}
+
+
+def _short_show(storage, show_id, frames=4):
+    """A lights-only show lasting frames/40 seconds."""
+    storage.save_show(show_id, {"name": show_id.title(), "tracks": []})
+    storage.save_baked(show_id, baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * frames))
+
+
+def _save_playlists(storage, playlists):
+    settings = storage.load_settings()
+    settings["playlists"] = playlists
+    storage.save_settings(settings)
+
+
+async def test_playlist_plays_shows_in_order_round_and_round(runner, monkeypatch):
+    for s in ("one", "two"):
+        _short_show(runner.storage, s)
+    started = []
+    real_play = runner.player.play
+
+    async def play(show_id, *a, **kw):
+        started.append(show_id)
+        await real_play(show_id, *a, **kw)
+    monkeypatch.setattr(runner.player, "play", play)
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one", "gone", "two"], "gap": 0})
+    assert runner.status()["playlist"] == {"id": "night", "name": "Night"}
+    for _ in range(100):
+        if len(started) >= 4:
+            break
+        await asyncio.sleep(0.05)
+    assert started[:4] == ["one", "two", "one", "two"]  # the deleted show is skipped
+    await runner.stop()
+    assert runner.status()["playlist"] is None and not runner.player.playing
+
+
+async def test_playlist_pauses_between_shows(runner):
+    for s in ("one", "two"):
+        _short_show(runner.storage, s)
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one", "two"], "gap": 5})
+    await asyncio.sleep(0.4)  # "one" lasts 0.1 s, then the pause
+    assert not runner.player.playing and runner.status()["playlist"]["id"] == "night"
+    assert runner.player.show_id == "one"
+
+
+async def test_playing_a_show_ends_the_playlist(runner):
+    _short_show(runner.storage, "one", frames=400)
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one"], "gap": 0})
+    await asyncio.sleep(0.05)
+    await runner.play("party")
+    assert runner.status()["playlist"] is None and runner.player.show_id == "party"
+
+
+async def test_playlist_with_nothing_to_play(runner):
+    with pytest.raises(RunnerError):
+        await runner.play_playlist({"id": "x", "name": "X", "shows": ["gone"], "gap": 0})
+
+
+async def test_automation_plays_a_playlist_by_name(runner):
+    _short_show(runner.storage, "one", frames=400)
+    _save_playlists(runner.storage, [{"id": "night", "name": "Halloween night", "shows": ["one"], "gap": 5}])
+    assert await commands.handle(runner, '{"action": "play", "playlist": "halloween NIGHT"}') == "playing playlist night"
+    assert runner.status()["playlist"]["name"] == "Halloween night"
+    with pytest.raises(ValueError):
+        await commands.handle(runner, '{"action": "play", "playlist": "nope"}')
+
+
+class SlowSpeakerHA(FakeHA):
+    """A speaker that takes `start_s` to report it's playing."""
+
+    def __init__(self, start_s):
+        super().__init__()
+        self.start_s, self.asked = start_s, None
+
+    async def call(self, domain, service, data):
+        await super().call(domain, service, data)
+        if service == "play_media":
+            self.state_value, self.asked = "idle", asyncio.get_running_loop().time()
+        if service == "media_stop":
+            self.state_value, self.asked = "idle", None
+
+    async def state(self, entity):
+        if self.asked is not None and asyncio.get_running_loop().time() - self.asked >= self.start_s:
+            self.state_value = "playing"
+        return await super().state(entity)
+
+
+async def test_stopping_a_playlist_while_its_song_starts_stops_the_speaker(runner):
+    runner.ha = SlowSpeakerHA(1.0)
+    await runner.play_playlist({"id": "p", "name": "P", "shows": ["party"], "gap": 0})
+    await asyncio.sleep(0.2)  # the speaker hasn't said it's playing yet
+    await runner.stop()
+    assert ("media_player.media_stop", {"entity_id": "media_player.garden"}) in runner.ha.calls
+
+
+async def test_two_plays_at_once_leave_one_playlist_that_stop_ends(runner):
+    _short_show(runner.storage, "one", frames=400)
+    lists = [{"id": f"p{k}", "name": f"P{k}", "shows": ["one"], "gap": 0} for k in range(2)]
+    await runner.play("party", use_show_speaker=True)  # stopping a speaker takes a moment
+    await asyncio.gather(*(runner.play_playlist(p) for p in lists))
+    await runner.stop()
+    await asyncio.sleep(0.3)
+    assert runner.status()["playlist"] is None and not runner.player.playing
+    assert not [t for t in asyncio.all_tasks() if "_run_playlist" in repr(t.get_coro())]
+
+
+async def test_a_show_asked_for_during_a_playlist_start_wins(runner):
+    _short_show(runner.storage, "one", frames=400)
+    await asyncio.gather(runner.play_playlist({"id": "p", "name": "P", "shows": ["one"], "gap": 0}),
+                         runner.play("party"))
+    await asyncio.sleep(0.1)
+    # Whichever came second is what plays; nothing runs that the status doesn't show.
+    st = runner.status()
+    assert (st["playlist"] is None and runner.player.show_id == "party") or \
+        (st["playlist"] and runner.player.show_id == "one")
+
+
+async def test_pausing_the_speaker_stops_the_playlist(runner, monkeypatch):
+    monkeypatch.setattr("halidayshow.runner.FOLLOW_EVERY_S", 0.05)
+    await runner.play_playlist({"id": "p", "name": "P", "shows": ["party"], "gap": 0})
+    await asyncio.sleep(0.1)
+    runner.ha.state_value = "paused"  # 10 s show, paused near the start
+    await asyncio.sleep(0.5)
+    assert runner.status()["playlist"] is None
+    plays = [c for c in runner.ha.calls if c[0] == "media_player.play_media"]
+    assert len(plays) == 1
+
+
+async def test_a_song_ending_with_its_show_moves_the_playlist_on(runner, monkeypatch):
+    monkeypatch.setattr("halidayshow.runner.FOLLOW_EVERY_S", 0.05)
+    runner.storage.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 40))
+    await runner.play_playlist({"id": "p", "name": "P", "shows": ["party"], "gap": 0})
+    await asyncio.sleep(0.2)
+    runner.ha.state_value = "idle"  # the song has just finished (the show is 1 s long)
+    await asyncio.sleep(1.5)
+    assert runner.status()["playlist"]["id"] == "p"
+    assert len([c for c in runner.ha.calls if c[0] == "media_player.play_media"]) >= 2

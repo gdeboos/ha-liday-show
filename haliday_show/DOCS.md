@@ -772,6 +772,20 @@ speaker from the Speakers tab, or pick a speaker for this show only. So you can 
 indoors and the real show still plays outside. With no show speaker and no default, the lights play
 on their own.
 
+### Playlists
+
+To play several shows back to back, open **Library → Playlists** and press **New playlist**. Give it
+a name, add your shows with **Add a show…** and put them in order with **↑** and **↓** (**✕** takes
+one out). **Pause between shows** sets how many seconds to wait before the next one; it starts at
+5. During the pause your lights go back to how they normally look.
+
+Press **▶ Play** and HA-liday Show plays the shows in order, then starts again from the top, until
+you press **■ Stop**. It carries on with the page closed, and the line above your playlists says
+what's playing. Each show plays on its own **Show speaker**, just as when an automation starts it.
+Only saved shows play: a show you haven't saved yet, or have deleted, says so in the list and is
+skipped. Playing a show from the editor, or stopping it, stops the playlist, and so does pausing or
+stopping the song on the speaker.
+
 ## 6. Automations
 
 ### With MQTT
@@ -812,7 +826,8 @@ actions:
         media_player: media_player.garden   # optional; defaults to the show speaker
 ```
 
-Send `input: {action: stop}` to stop. **Setup → Speakers** shows the exact input for the open show, under Automations.
+To start a playlist instead, send `input: {action: play, playlist: Halloween night}` (its name, in
+any case). Send `input: {action: stop}` to stop. **Setup → Speakers** shows the exact input for the open show, under Automations.
 Automations that use the older `hassio.addon_stdin` action with `addon:` keep working, and that's
 the one to use on Home Assistant before 2026.2.
 

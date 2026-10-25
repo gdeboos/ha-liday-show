@@ -2887,6 +2887,189 @@ function renderPalettes() {
   }));
 }
 
+// playlists ---------------------------------------------------------------------------
+// Shows played back to back by HA-liday Show itself, so they carry on with the editor closed.
+let playlists = [], playlistShows = [], playlistPlaying = null, playlistWatch = null;
+let playlistsLoaded = false; // never save over the stored playlists before they've been read
+
+async function loadPlaylists() {
+  try {
+    await flushPlaylists(); // an edit made just before leaving the page
+    [playlists, playlistShows] = await Promise.all([api("api/playlists"), api("api/shows")]);
+    playlistsLoaded = true;
+  } catch (e) {
+    playlistsLoaded = false;
+    status(`Couldn't load playlists: ${e.message}`, true);
+  }
+  $("btn-new-playlist").disabled = !playlistsLoaded;
+  await refreshPlaylistStatus();
+  renderPlaylists();
+  clearInterval(playlistWatch);
+  playlistWatch = setInterval(refreshPlaylistStatus, 2000);
+}
+
+function stopPlaylistWatch() { clearInterval(playlistWatch); playlistWatch = null; }
+
+async function refreshPlaylistStatus() {
+  let st = {};
+  try { st = await api("api/player"); } catch { /* try again next tick */ }
+  const now = st.playlist ? { ...st.playlist, show: st.playing ? st.show : null, name: st.playlist.name } : null;
+  playlistPlaying = now;
+  $("playlist-now").textContent = !now ? ""
+    : `▶ Playing ${now.name}: ${now.show ? (playlistShows.find((x) => x.id === now.show)?.name || now.show) : "pausing before the next show"}`;
+  markPlaylistPlaying();
+}
+
+// Marks what's playing without redrawing the list, so a name being typed isn't lost.
+function markPlaylistPlaying() {
+  for (const card of document.querySelectorAll("#my-playlists .playlist-card")) {
+    const playing = playlistPlaying?.id === card.dataset.id;
+    for (const li of card.querySelectorAll(".playlist-shows li")) {
+      li.classList.toggle("current", playing && playlistPlaying.show === li.dataset.show);
+    }
+    const play = card.querySelector(".playlist-play");
+    play.textContent = playing ? "■ Stop" : "▶ Play";
+    play.disabled = !playing && play.dataset.empty === "1";
+  }
+}
+
+let savePlaylistsTimer = null;
+function savePlaylists() {
+  if (!playlistsLoaded) return;
+  clearTimeout(savePlaylistsTimer);
+  savePlaylistsTimer = setTimeout(async () => {
+    try {
+      await api("api/playlists", { method: "PUT", json: playlists });
+      savePlaylistsTimer = null;
+      status("Playlists saved");
+    } catch (e) { status(`Couldn't save playlists: ${e.message}`, true); }
+  }, 300);
+}
+
+async function flushPlaylists() {
+  if (!savePlaylistsTimer || !playlistsLoaded) return;
+  clearTimeout(savePlaylistsTimer);
+  savePlaylistsTimer = null;
+  await api("api/playlists", { method: "PUT", json: playlists });
+}
+
+function renderPlaylists() {
+  const box = $("my-playlists");
+  if (!playlists.length) {
+    box.innerHTML = `<p class="hint">None yet. Press <b>New playlist</b>, then add your shows in the order to play them.</p>`;
+    return;
+  }
+  const byId = Object.fromEntries(playlistShows.map((x) => [x.id, x]));
+  box.replaceChildren(...playlists.map((pl) => {
+    const card = document.createElement("section");
+    card.className = "card playlist-card";
+    card.dataset.id = pl.id;
+    const name = document.createElement("input");
+    name.className = "playlist-name";
+    name.value = pl.name;
+    name.maxLength = 60;
+    name.setAttribute("aria-label", "Playlist name");
+    name.addEventListener("change", () => {
+      const v = name.value.trim();
+      if (!v || playlists.some((q) => q !== pl && q.name.toLowerCase() === v.toLowerCase())) {
+        status("Give each playlist its own name", true);
+        name.value = pl.name;
+        return;
+      }
+      pl.name = v;
+      savePlaylists();
+    });
+    const gap = document.createElement("input");
+    gap.type = "number";
+    gap.min = 0;
+    gap.max = 600;
+    gap.step = 1;
+    gap.value = pl.gap;
+    gap.addEventListener("change", () => {
+      pl.gap = Math.min(Math.max(Number(gap.value) || 0, 0), 600);
+      gap.value = pl.gap;
+      savePlaylists();
+    });
+    const gl = document.createElement("label");
+    gl.append("Pause between shows (seconds)", gap);
+    const head = document.createElement("div");
+    head.className = "playlist-head";
+    head.append(name, gl);
+
+    const list = document.createElement("ol");
+    list.className = "playlist-shows";
+    pl.shows.forEach((id, k) => {
+      const li = document.createElement("li");
+      const show = byId[id];
+      li.dataset.show = id;
+      li.classList.toggle("unplayable", !show?.baked);
+      const label = document.createElement("span");
+      label.className = "playlist-show";
+      label.textContent = `${k + 1}. ${show ? show.name : "Deleted show"}`
+        + (!show ? " (skipped)" : !show.baked ? " (not saved yet, so skipped)" : "");
+      const move = (d) => { const [x] = pl.shows.splice(k, 1); pl.shows.splice(k + d, 0, x); savePlaylists(); renderPlaylists(); };
+      const up = button("↑", () => move(-1), "ghost");
+      up.title = "Play earlier";
+      up.disabled = k === 0;
+      const down = button("↓", () => move(1), "ghost");
+      down.title = "Play later";
+      down.disabled = k === pl.shows.length - 1;
+      const remove = button("✕", () => { pl.shows.splice(k, 1); savePlaylists(); renderPlaylists(); }, "ghost");
+      remove.title = "Take out of the playlist";
+      li.append(label, up, down, remove);
+      list.append(li);
+    });
+
+    const add = document.createElement("select");
+    add.setAttribute("aria-label", "Add a show");
+    add.add(new Option("Add a show…", ""));
+    for (const x of playlistShows) add.add(new Option(x.name, x.id));
+    add.addEventListener("change", () => {
+      if (!add.value) return;
+      pl.shows.push(add.value);
+      savePlaylists();
+      renderPlaylists();
+    });
+    add.disabled = pl.shows.length >= 100;
+    const play = button("▶ Play", async () => {
+      try {
+        if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" });
+        else {
+          await flushPlaylists();
+          await api(`api/playlists/${encodeURIComponent(pl.id)}/play`, { method: "POST" });
+          status(`Playing ${pl.name}. It carries on until you press Stop, even with this page closed.`);
+        }
+      } catch (e) { status(e.message, true); }
+      refreshPlaylistStatus();
+    }, "primary playlist-play");
+    play.dataset.empty = pl.shows.some((id) => byId[id]?.baked) ? "0" : "1";
+    if (play.dataset.empty === "1") play.title = "Add a saved show first";
+    const del = button("Delete playlist", async () => {
+      if (!confirm(`Delete the playlist "${pl.name}"? Its shows are kept.`)) return;
+      if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" }).catch(() => {});
+      playlists = playlists.filter((x) => x !== pl);
+      savePlaylists();
+      renderPlaylists();
+    }, "ghost danger");
+    const foot = document.createElement("div");
+    foot.className = "playlist-foot";
+    foot.append(add, play, del);
+    card.append(head, list, foot);
+    return card;
+  }));
+  markPlaylistPlaying();
+}
+
+function newPlaylist() {
+  if (!playlistsLoaded) return;
+  const taken = new Set(playlists.map((p) => p.name.toLowerCase()));
+  let name = "My playlist";
+  for (let k = 2; taken.has(name.toLowerCase()); k++) name = `My playlist ${k}`;
+  playlists.push({ id: `pl-${Date.now().toString(36)}`, name, shows: [], gap: 5 });
+  savePlaylists();
+  renderPlaylists();
+}
+
 // selected stretch of time ---------------------------------------------------------
 const rangeTracks = (r) => r.tracks.filter((t) => app.show.tracks[t]);
 
@@ -4368,7 +4551,7 @@ function frame() {
 
 // wiring ----------------------------------------------------------------------
 // Library and Setup each hold several pages; each remembers the page last open in it.
-const SECTIONS = { library: ["palettes", "presets"], setup: ["devices", "speakers", "house", "settings", "labs"] };
+const SECTIONS = { library: ["palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
 const sectionPage = { library: "palettes", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
@@ -4389,6 +4572,7 @@ function showView(view) {
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
   if (page === "settings") renderCopies();
+  if (page === "playlists") loadPlaylists(); else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); }
 }
 
@@ -4522,6 +4706,7 @@ function wire() {
     if (e.key === "Enter" && e.target.matches("input") && !$("add-go").hidden) { e.preventDefault(); addLightNow(); }
   });
   $("btn-new-preset").addEventListener("click", newPreset);
+  $("btn-new-playlist").addEventListener("click", newPlaylist);
   $("btn-new-palette").addEventListener("click", () => {
     app.palettes.push({ name: uniqueName("My palette"), colors: ["#ff0000", "#00ff00", "#0000ff"] });
     savePalettes();
