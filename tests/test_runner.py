@@ -314,3 +314,10 @@ async def test_a_show_with_no_speaker_offers_its_song_to_a_show_player(runner):
 async def test_a_show_on_a_speaker_offers_no_song(runner):
     await runner.play("party", use_show_speaker=True)
     assert runner.status()["media_player"] == "media_player.garden" and runner.status()["song"] is None
+
+
+async def test_each_show_start_is_counted_so_a_replay_is_told_apart(runner):
+    await runner.play("party")
+    first = runner.status()["started"]
+    await runner.play("party")
+    assert runner.status()["started"] == first + 1

@@ -48,6 +48,7 @@ class Runner:
         # The song of a show started with no speaker (by a playlist, the schedule or an automation),
         # for a Show player page to play. None when the editor plays it, or a speaker does.
         self.song: dict | None = None
+        self.started = 0  # counts show starts, so a Show player can tell a replay of the same show
         self._lock = asyncio.Lock()  # one show starting or stopping at a time
         # Play, stop and play-a-playlist one at a time, so two at once can't leave a playlist
         # running that nothing tracks. The playlist's own task never takes it.
@@ -61,7 +62,7 @@ class Runner:
                 "name": show.get("name") if show else None,
                 "playlist": {"id": playlist["id"], "name": playlist["name"], "finishing": self.finishing}
                 if playlist else None,
-                "song": self.song if st["playing"] else None}
+                "song": self.song if st["playing"] else None, "started": self.started}
 
     async def play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
                    position: float = 0.0, offset: float = 0.0):
@@ -89,6 +90,7 @@ class Runner:
             media_player = (show.get("media_player")
                             or self.storage.load_settings().get("show_speaker") or None)
         await self._stop()
+        self.started += 1
         devices = self.storage.devices_by_id()
         if not media_player:
             await self.player.play(show_id, baked, devices, position=position, offset=offset)
