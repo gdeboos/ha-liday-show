@@ -794,6 +794,8 @@ Tick **Play on a schedule** on a playlist to have it start and stop by itself:
   past midnight: 20:00 to 01:00 on a Saturday plays until 1 in the morning on Sunday.
 - To start when it gets dark, change **From** to **sunset**. You can start up to 3 hours before or
   after it, such as 15 **minutes after**. Sunset moves through the year, so the playlist does too.
+  An end time in the morning (before 12:00), such as 01:00, is the next morning. On an evening the sun
+  sets after the end time (21:00 in midsummer, say), it doesn't play.
 - Untick the days it shouldn't play.
 - Tick **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
   every year, and can run over New Year (1 Dec and 6 Jan).

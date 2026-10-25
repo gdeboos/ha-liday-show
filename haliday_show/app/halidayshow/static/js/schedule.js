@@ -38,7 +38,8 @@ export function describeSchedule(s) {
     : s.days.length === 5 && [0, 1, 2, 3, 4].every((d) => s.days.includes(d)) ? "on weekdays"
       : s.days.length === 2 && s.days.includes(5) && s.days.includes(6) ? "at weekends"
         : s.days.length ? `on ${s.days.map((d) => DAYS[d]).join(", ").replace(/, ([^,]*)$/, " and $1")}` : "on no days";
-  const late = s.start !== "sunset" && s.end <= s.start ? " (the next day)" : "";
+  // A sunset start with a morning end runs into the next day (as schedule.py reads it).
+  const late = (s.start === "sunset" ? s.end < "12:00" : s.end <= s.start) ? " (the next day)" : "";
   const md = (x) => `${Number(x.slice(3))} ${MONTHS[Number(x.slice(0, 2)) - 1]}`;
   const dates = s.from ? `, ${md(s.from)} to ${md(s.to)}` : "";
   return `${describeStart(s)} to ${s.end}${late} ${days}${dates}`;

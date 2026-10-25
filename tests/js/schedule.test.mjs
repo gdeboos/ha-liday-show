@@ -26,5 +26,5 @@ test("a sunset start in words", () => {
   assert.equal(describeStart({ ...s, offset: -60 }), "1 hour before sunset");
   assert.equal(describeStart({ ...s, offset: -120 }), "2 hours before sunset");
   assert.equal(describeStart({ ...s, offset: 1 }), "1 minute after sunset");
-  assert.equal(describeSchedule({ ...s, end: "01:00" }), "sunset to 01:00 every day");
+  assert.equal(describeSchedule({ ...s, end: "01:00" }), "sunset to 01:00 (the next day) every day");
 });

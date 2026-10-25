@@ -1,7 +1,9 @@
 """Playlists that play by themselves at set times.
 
 A playlist's schedule: {"on", "start": "HH:MM" or "sunset" (with "offset" minutes after it, or before
-if negative), "end": "HH:MM", "days": [0-6, Monday first], "from": "MM-DD", "to": "MM-DD"}. Sunset is
+if negative), "end": "HH:MM", "days": [0-6, Monday first], "from": "MM-DD", "to": "MM-DD"}. With a
+sunset start, a morning end (before 12:00) is the next morning and a day the sun sets after the end
+is skipped. Sunset is
 worked out for the place in settings ("location"), else Home Assistant's; with neither, a sunset
 schedule doesn't play. The dates are optional and come round every year; "from" after "to"
 wraps over New Year (1 Dec to 6 Jan). An end before the start runs past midnight, counted as part of
@@ -29,6 +31,7 @@ log = logging.getLogger(__name__)
 
 TICK_S = 15
 HA_LOCATION_EVERY_S = 3600
+HA_LOCATION_RETRY_S = 60  # Home Assistant may still be starting
 
 Where = tuple[float, float] | None  # latitude and longitude, for sunset
 
@@ -45,9 +48,12 @@ def start_on(s: dict, d: date, where: Where) -> datetime | None:
     or where the sun doesn't set that day)."""
     if s["start"] != "sunset":
         return datetime.combine(d, datetime.strptime(s["start"], "%H:%M").time())
-    if not where or not (sunset := sunset_local(d, *where)):
+    if not where:
         return None
-    return sunset + timedelta(minutes=s.get("offset", 0))
+    # The sunset that falls on day d on this machine's clock (one far from the place can see its
+    # sunset land on the day before or after).
+    sunset = next((x for k in (0, -1, 1) if (x := sunset_local(d + timedelta(days=k), *where)) and x.date() == d), None)
+    return sunset + timedelta(minutes=s.get("offset", 0)) if sunset else None
 
 
 def _window(s: dict, d: date, where: Where = None) -> tuple[datetime, datetime] | None:
@@ -57,7 +63,14 @@ def _window(s: dict, d: date, where: Where = None) -> tuple[datetime, datetime] 
     if (start := start_on(s, d, where)) is None:
         return None
     end = datetime.combine(d, datetime.strptime(s["end"], "%H:%M").time())
-    if end <= start:
+    if s["start"] == "sunset":
+        # Sunset moves, so "end before start" can't mean the next day: a morning end is the next
+        # morning, any other is that evening, and an evening the sun sets after the end is skipped.
+        if end.hour < 12:
+            end += timedelta(days=1)
+        if end <= start:
+            return None
+    elif end <= start:
         end += timedelta(days=1)
     return start, end
 
@@ -104,7 +117,8 @@ class Scheduler:
     async def refresh_ha_location(self):
         ha = self.runner.ha
         loop = asyncio.get_running_loop()
-        if not ha or not ha.available or (self._ha_checked and loop.time() - self._ha_checked < HA_LOCATION_EVERY_S):
+        wait = HA_LOCATION_EVERY_S if self.ha_where else HA_LOCATION_RETRY_S
+        if not ha or not ha.available or (self._ha_checked and loop.time() - self._ha_checked < wait):
             return
         self._ha_checked = loop.time()
         try:

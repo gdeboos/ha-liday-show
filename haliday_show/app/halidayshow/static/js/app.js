@@ -2965,8 +2965,9 @@ function renderSunPlace() {
 
 async function saveSunPlace(e) {
   e.preventDefault();
-  // "51.5074, -0.1278" pasted into the first box fills both.
-  const both = $("sun-lat").value.split(",");
+  // "51.5074, -0.1278" (as Google Maps copies it) pasted into the first box fills both. Only a comma
+  // with a space after it, or a space, splits them, so a decimal comma ("51,5") isn't taken apart.
+  const both = $("sun-lon").value.trim() ? [] : $("sun-lat").value.trim().split(/\s*,\s+|\s+/);
   const [lat, lon] = both.length === 2 ? both : [$("sun-lat").value, $("sun-lon").value];
   try {
     if (!lat.trim() || !String(lon).trim()) throw new Error("Type both a latitude and a longitude");
@@ -3064,7 +3065,13 @@ function scheduleEditor(pl) {
       times.append("(", mins, side, ")");
     } else times.append(time("start", "Start time"));
     times.append("to", time("end", "End time"));
-    if (s.start !== "sunset" && s.end <= s.start) times.append(" (the next day)");
+    if (s.start === "sunset" ? s.end < "12:00" : s.end <= s.start) times.append(" (the next day)");
+    if (s.start === "sunset" && s.end >= "12:00" && s.end < "22:00") {
+      const warn = document.createElement("span");
+      warn.className = "hint";
+      warn.textContent = "On evenings the sun sets after this, it won't play.";
+      times.append(warn);
+    }
     const days = document.createElement("div");
     days.className = "row days";
     DAYS.forEach((name, d) => {
