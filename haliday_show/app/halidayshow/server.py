@@ -19,7 +19,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, backup, commands, discovery, e131, migrate, playlists, scenes, twinkly, wled
+from . import __version__, ai, backup, commands, discovery, e131, migrate, playlists, scenes, schedule, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -50,6 +50,7 @@ TESTS = web.AppKey("tests", dict)
 PREVIEWS = web.AppKey("previews", dict)
 HA = web.AppKey("ha", HomeAssistant)
 RUNNER = web.AppKey("runner", Runner)
+SCHEDULER = web.AppKey("scheduler", schedule.Scheduler)
 MQTT = web.AppKey("mqtt", MqttBridge)
 BACKGROUND = web.AppKey("background", list)
 ALLOW_ALL = web.AppKey("allow_all", bool)
@@ -853,6 +854,11 @@ async def put_playlists(request):
     return web.json_response(clean)
 
 
+async def get_schedule(request):
+    """HA-liday Show's clock, and when each scheduled playlist next starts."""
+    return web.json_response(request.app[SCHEDULER].state())
+
+
 async def play_playlist(request):
     playlist = playlists.find(request.app[STORAGE], request.match_info["id"])
     if playlist is None:
@@ -1211,7 +1217,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[OUTPUT].ha = app[HA]
         app[RUNNER] = Runner(app[STORAGE], app[PLAYER], app[HA])
         app[MQTT] = MqttBridge(app[RUNNER])
-        app[BACKGROUND] = []
+        app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
+        app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run())]
         if read_stdin:
             app[BACKGROUND].append(asyncio.create_task(commands.read_stdin(app[RUNNER])))
         if (broker := await app[HA].mqtt_service()):
@@ -1271,6 +1278,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/playlists", get_playlists)
     r.add_put("/api/playlists", put_playlists)
     r.add_post("/api/playlists/{id}/play", play_playlist)
+    r.add_get("/api/schedule", get_schedule)
     r.add_get("/api/house", get_house)
     r.add_put("/api/house", put_house)
     r.add_get("/api/house/photo", get_house_photo)

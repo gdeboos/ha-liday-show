@@ -184,7 +184,7 @@ async def test_playlist_plays_shows_in_order_round_and_round(runner, monkeypatch
         await real_play(show_id, *a, **kw)
     monkeypatch.setattr(runner.player, "play", play)
     await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one", "gone", "two"], "gap": 0})
-    assert runner.status()["playlist"] == {"id": "night", "name": "Night"}
+    assert runner.status()["playlist"] == {"id": "night", "name": "Night", "finishing": False}
     for _ in range(100):
         if len(started) >= 4:
             break

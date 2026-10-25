@@ -818,6 +818,16 @@ async def test_playlists_round_trip_validation_and_play(client):
     blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"] * 400)
     await client.put(f"/api/shows/{show_id}/baked", data=blob)
     st = await (await client.post("/api/playlists/night/play")).json()
-    assert st["playlist"] == {"id": "night", "name": "Halloween night"}
+    assert st["playlist"] == {"id": "night", "name": "Halloween night", "finishing": False}
     st = await (await client.post("/api/player/stop")).json()
     assert st["playlist"] is None and not st["playing"]
+
+
+async def test_playlist_schedules_save_and_show_when_they_next_start(client):
+    evenings = {"on": True, "start": "17:00", "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""}
+    pl = {"id": "night", "name": "Night", "shows": [], "gap": 5, "schedule": evenings}
+    assert (await (await client.put("/api/playlists", json=[pl])).json())[0]["schedule"] == evenings
+    bad = {**pl, "schedule": {**evenings, "start": "17:00", "end": "17:00"}}
+    assert (await client.put("/api/playlists", json=[bad])).status == 400
+    st = await (await client.get("/api/schedule")).json()
+    assert st["now"] and st["next"]["night"].endswith("T17:00") and st["scheduled"] is None

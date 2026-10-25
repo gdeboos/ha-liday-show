@@ -248,7 +248,13 @@ button.swatch:hover { border-color: var(--text); }
 .playlist-shows li .playlist-show { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .playlist-shows li.unplayable .playlist-show { opacity: 0.6; }
 .playlist-shows li.current { border-color: var(--accent, #2b7de9); }
-.playlist-now:empty { display: none; }
+.playlist-now:empty, #playlist-clock:empty { display: none; }
+.playlist-schedule { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px dashed var(--line);
+  border-radius: 6px; }
+.playlist-schedule .row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.playlist-schedule .days label { display: inline-flex; gap: 3px; align-items: center; }
+.playlist-schedule select, .playlist-schedule input[type=time] { width: auto; }
+.playlist-next { margin: 0; }
 .playlist-now { font-weight: 600; margin: 0 0 10px; }
 #preset-palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .palette-card { display: flex; flex-direction: column; gap: 8px; background: var(--panel);

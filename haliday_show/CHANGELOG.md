@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.123
+
+- Playlists can now play on a schedule. On **Library → Playlists**, tick **Play on a schedule**, then
+  set the times (such as 17:00 to 22:00), the days, and if you like, the dates (such as 25 Oct to
+  31 Oct, every year). The playlist starts by itself at the start time. At the end time it finishes
+  the show that's on, then stops. Under each schedule it says when it next starts.
+- If you press **■ Stop** during the scheduled time, it stays off until its next start. Turning a
+  schedule on during its time starts it straight away, and changing the times while it plays just
+  moves when it stops. If two playlists' times overlap, they take turns in list order.
+- The page shows HA-liday Show's clock, so you can check it's on your time. With Docker, set `TZ` in
+  `docker-compose.yml` to your time zone.
+
 ## 0.2.122
 
 - New **Library → Playlists**: play several shows back to back. Press **New playlist**, add your

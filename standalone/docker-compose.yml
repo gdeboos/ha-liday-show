@@ -12,6 +12,7 @@ services:
       - ./media:/media     # songs
     environment:
       HALIDAY_SHOW_PASSWORD: "change-me"
+      TZ: "Europe/London"   # your time zone, for playlist schedules
       # Optional, uncomment what you use:
       # HA_URL: "http://homeassistant.local:8123"
       # HA_TOKEN: "your long-lived access token"

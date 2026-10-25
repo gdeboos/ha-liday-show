@@ -786,6 +786,30 @@ Only saved shows play: a show you haven't saved yet, or have deleted, says so in
 skipped. Playing a show from the editor, or stopping it, stops the playlist, and so does pausing or
 stopping the song on the speaker.
 
+#### Playing on a schedule
+
+Tick **Play on a schedule** on a playlist to have it start and stop by itself:
+
+- **From** and **to** set the times, such as 17:00 to 22:00. An end time earlier than the start runs
+  past midnight: 20:00 to 01:00 on a Saturday plays until 1 in the morning on Sunday.
+- Untick the days it shouldn't play.
+- Tick **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
+  every year, and can run over New Year (1 Dec and 6 Jan).
+
+Under the schedule it says when the playlist next starts. At the start time it starts, even if
+something else is playing. At the end time the show that's on finishes, then it stops. If you press
+**■ Stop**, pause the song on the speaker or play something else in between, it stays off until its
+next start time. If HA-liday Show restarts during the scheduled time (after an update, say), the
+playlist starts again, and so does one whose schedule you turn on during its time. Changing the
+times while it plays just moves when it stops.
+
+Only one playlist plays at a time. If two playlists' times overlap, the one higher up the list plays
+first, and the other starts once it's finished.
+
+Schedules go by HA-liday Show's own clock, which the page shows above your playlists. The app uses
+Home Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
+`Europe/London`); with Python, it uses your computer's clock.
+
 ## 6. Automations
 
 ### With MQTT
@@ -1052,6 +1076,7 @@ You set everything with these settings (environment variables). All are optional
 | `HALIDAY_SHOW_CONFIG` | The folder your shows, lights and settings are kept in. It holds the same files as the app's, so you can copy shows across. |
 | `HALIDAY_SHOW_MEDIA` | The folder your songs are kept in. |
 | `HALIDAY_SHOW_PORT` | The web port, `8099` unless you change it. |
+| `TZ` | Your time zone, such as `Europe/London`, for playlist schedules. Docker only; with Python it uses your computer's. |
 | `HA_URL`, `HA_TOKEN` | Your Home Assistant address (e.g. `http://homeassistant.local:8123`) and a long-lived access token (your profile in Home Assistant → **Security**). Needed for speakers, Home Assistant's AI, and Home Assistant lights and switches in shows. |
 | `ANTHROPIC_API_KEY` | A Claude API key for the AI, instead of Home Assistant's. |
 | `HALIDAY_SHOW_AI_TASK_ENTITY` | Which Home Assistant AI Task to use, if you have several. |
