@@ -45,6 +45,9 @@ class Runner:
         self.playlist: dict | None = None  # the playlist playing, if any
         self.speaker_stopped = False  # the speaker stopped the lights (paused or stopped in HA)
         self.finishing = False  # the playlist stops once the show that's on ends
+        # The song of a show started with no speaker (by a playlist, the schedule or an automation),
+        # for a Show player page to play. None when the editor plays it, or a speaker does.
+        self.song: dict | None = None
         self._lock = asyncio.Lock()  # one show starting or stopping at a time
         # Play, stop and play-a-playlist one at a time, so two at once can't leave a playlist
         # running that nothing tracks. The playlist's own task never takes it.
@@ -57,7 +60,8 @@ class Runner:
         return {**st, "media_player": self.media_player if st["playing"] else None,
                 "name": show.get("name") if show else None,
                 "playlist": {"id": playlist["id"], "name": playlist["name"], "finishing": self.finishing}
-                if playlist else None}
+                if playlist else None,
+                "song": self.song if st["playing"] else None}
 
     async def play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
                    position: float = 0.0, offset: float = 0.0):
@@ -88,6 +92,9 @@ class Runner:
         devices = self.storage.devices_by_id()
         if not media_player:
             await self.player.play(show_id, baked, devices, position=position, offset=offset)
+            audio = show.get("audio") or {}
+            if use_show_speaker and audio.get("source") and audio.get("path"):
+                self.song = {"source": audio["source"], "path": audio["path"]}
             return
         audio = show.get("audio")
         if not audio:
@@ -249,6 +256,7 @@ class Runner:
         self.playlist = None
 
     async def _stop(self):
+        self.song = None
         if self._follow:
             self._follow.cancel()
             self._follow = None

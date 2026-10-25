@@ -295,3 +295,22 @@ async def test_a_song_ending_with_its_show_moves_the_playlist_on(runner, monkeyp
     await asyncio.sleep(1.5)
     assert runner.status()["playlist"]["id"] == "p"
     assert len([c for c in runner.ha.calls if c[0] == "media_player.play_media"]) >= 2
+
+
+async def test_a_show_with_no_speaker_offers_its_song_to_a_show_player(runner):
+    show = runner.storage.load_show("party")
+    show["media_player"] = None
+    runner.storage.save_show("party", show)
+    runner.storage.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 400))
+    await runner.play("party", use_show_speaker=True)  # as automations and playlists do
+    assert runner.status()["song"] == {"source": "media", "path": "music/Party Mix.mp3"}
+    await runner.play("party")  # the editor plays the song itself
+    assert runner.status()["song"] is None
+    await runner.play("party", use_show_speaker=True)
+    await runner.stop()
+    assert runner.status()["song"] is None
+
+
+async def test_a_show_on_a_speaker_offers_no_song(runner):
+    await runner.play("party", use_show_speaker=True)
+    assert runner.status()["media_player"] == "media_player.garden" and runner.status()["song"] is None

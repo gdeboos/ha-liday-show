@@ -170,7 +170,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   recolour an effect, a light or the whole show in one click
 - Copy and paste effects between lights, play and loop just a region, undo and redo
 - Playlists: several shows back to back, round and round, by hand or on a schedule (times or
-  sunset, days and dates)
+  sunset, days and dates), with a Show player page to play the music on any computer with speakers
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
@@ -299,6 +299,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/ai.py                   Describe it, AI presets and palettes: asks Claude or HA's AI Task
   app/halidayshow/static/                 The editor (plain ES modules, no build step)
     index.html, style.css               Page and styles
+    player.html                         The Show player page
     js/app.js                           Editor state, panels, inspector and playback
     js/effects.js                       Effect definitions, House lane effects and the baker
     js/timeline.js                      Timeline canvas: waveform, clips, selection, zoom
@@ -310,6 +311,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
     js/schedule.js                      A playlist's schedule in words
+    js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music tab: cutting, trimming and splicing songs
     js/songload.js                      Fetching a song, and saying plainly why one did not load
     js/analysis.js                      Song analysis: tempo, beats, bars and sections

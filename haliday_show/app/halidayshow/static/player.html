@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Show player · HA-liday Show</title>
+<!-- Relative URLs only: ingress serves this page from /api/hassio_ingress/<token>/ -->
+<link rel="icon" type="image/svg+xml" href="static/favicon.svg">
+<link rel="stylesheet" href="static/style.css">
+<style>
+  .sp { max-width: 40em; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 14px; }
+  .sp h1 { margin: 0; font-size: 1.4em; }
+  .sp-now { font-size: 1.15em; font-weight: 600; margin: 0; }
+  .sp-error:empty { display: none; }
+  .sp-error { color: var(--danger, #c62828); margin: 0; }
+  #sp-start { font-size: 1.1em; padding: 12px 20px; align-self: flex-start; }
+  .sp label input { width: 6em; margin-left: 6px; }
+</style>
+<script type="module">
+  import { start } from "./static/js/showplayer.js";
+  start();
+</script>
+</head>
+<body>
+<main class="sp">
+  <h1>Show player</h1>
+  <p class="hint">Leave this page open on a computer or tablet that's connected to your speakers. When a playlist,
+    its schedule or an automation starts a show that has no <b>Show speaker</b>, the song plays here and your
+    lights follow it. Shows you play from the editor, or on a speaker, don't play here.</p>
+  <button id="sp-start" class="primary">▶ Start the Show player</button>
+  <section id="sp-running" class="card" hidden>
+    <p id="sp-now" class="sp-now">Waiting for a show. Leave this page open.</p>
+    <p id="sp-error" class="sp-error"></p>
+  </section>
+  <label class="hint">Light offset (ms) <input id="sp-offset" type="number" step="10" value="0"></label>
+  <p class="hint">If the lights are ahead of the music, make the offset bigger; if they're behind, make it smaller.
+    Keep the computer from going to sleep while your shows run. One Show player is enough.</p>
+</main>
+</body>
+</html>

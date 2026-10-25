@@ -840,3 +840,19 @@ async def test_location_for_sunset(client):
         assert (await client.put("/api/location", json=bad)).status == 400, bad
     st = await (await client.put("/api/location", json={})).json()
     assert st["location"] is None
+
+
+async def test_show_player_page_and_syncs_for_another_show(client):
+    resp = await client.get("/player")
+    assert resp.status == 200 and "Show player" in await resp.text()
+    show_id = (await (await client.post("/api/shows", json={"name": "Thriller"})).json())["id"]
+    await client.put(f"/api/shows/{show_id}", json={"name": "Thriller", "fps": 40, "duration": 10, "tracks": []})
+    await client.put(f"/api/shows/{show_id}/baked", data=baked.encode(40, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"] * 400))
+    await client.post("/api/player/play", json={"show": show_id})
+    st = await (await client.post("/api/player/sync", json={"show": "old-song", "position": 9})).json()
+    assert st["position"] < 2  # a sync meant for another show is ignored
+    st = await (await client.post("/api/player/sync", json={"show": show_id, "position": 9})).json()
+    assert st["position"] > 8
+    st = await (await client.post("/api/player/sync", json={"position": 5})).json()  # the editor sends no show
+    assert 4 < st["position"] < 6
+    await client.post("/api/player/stop")
