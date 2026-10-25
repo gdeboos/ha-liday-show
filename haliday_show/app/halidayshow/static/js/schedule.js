@@ -22,16 +22,27 @@ export function whenNext(nextIso, nowIso) {
   return `${day} at ${n.time}`;
 }
 
-// "17:00 to 22:00 every day", "20:00 to 01:00 (the next day) on Fri and Sat, 25 Oct to 31 Oct".
+// "sunset", "20 minutes after sunset", "1 hour before sunset".
+export function describeStart(s) {
+  if (s.start !== "sunset") return s.start;
+  const m = Math.abs(s.offset || 0);
+  if (!m) return "sunset";
+  const amount = m % 60 === 0 ? `${m / 60} hour${m === 60 ? "" : "s"}` : `${m} minute${m === 1 ? "" : "s"}`;
+  return `${amount} ${s.offset < 0 ? "before" : "after"} sunset`;
+}
+
+// "17:00 to 22:00 every day", "20:00 to 01:00 (the next day) on Fri and Sat, 25 Oct to 31 Oct",
+// "sunset to 22:00 every day".
 export function describeSchedule(s) {
   const days = s.days.length === 7 ? "every day"
     : s.days.length === 5 && [0, 1, 2, 3, 4].every((d) => s.days.includes(d)) ? "on weekdays"
       : s.days.length === 2 && s.days.includes(5) && s.days.includes(6) ? "at weekends"
         : s.days.length ? `on ${s.days.map((d) => DAYS[d]).join(", ").replace(/, ([^,]*)$/, " and $1")}` : "on no days";
-  const late = s.end <= s.start ? " (the next day)" : "";
+  // A sunset start with a morning end runs into the next day (as schedule.py reads it).
+  const late = (s.start === "sunset" ? s.end < "12:00" : s.end <= s.start) ? " (the next day)" : "";
   const md = (x) => `${Number(x.slice(3))} ${MONTHS[Number(x.slice(0, 2)) - 1]}`;
   const dates = s.from ? `, ${md(s.from)} to ${md(s.to)}` : "";
-  return `${s.start} to ${s.end}${late} ${days}${dates}`;
+  return `${describeStart(s)} to ${s.end}${late} ${days}${dates}`;
 }
 
 export { MONTHS };

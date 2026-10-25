@@ -831,3 +831,12 @@ async def test_playlist_schedules_save_and_show_when_they_next_start(client):
     assert (await client.put("/api/playlists", json=[bad])).status == 400
     st = await (await client.get("/api/schedule")).json()
     assert st["now"] and st["next"]["night"].endswith("T17:00") and st["scheduled"] is None
+
+
+async def test_location_for_sunset(client):
+    st = await (await client.put("/api/location", json={"lat": "51.50735", "lon": -0.1278})).json()
+    assert st["location"] == {"lat": 51.5074, "lon": -0.1278, "source": "you"} and st["sunset"]
+    for bad in ({"lat": 91, "lon": 0}, {"lat": "north", "lon": 0}, {"lat": 10}, [1, 2]):
+        assert (await client.put("/api/location", json=bad)).status == 400, bad
+    st = await (await client.put("/api/location", json={})).json()
+    assert st["location"] is None

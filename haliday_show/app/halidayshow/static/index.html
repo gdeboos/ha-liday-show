@@ -362,6 +362,15 @@
   </section>
   <p id="playlist-now" class="playlist-now"></p>
   <p id="playlist-clock" class="hint"></p>
+  <form id="sun-place" class="card sun-place" hidden>
+    <p id="sun-place-text" class="hint"></p>
+    <div class="row">
+      <label>Latitude <input id="sun-lat" inputmode="decimal" placeholder="e.g. 51.5074"></label>
+      <label>Longitude <input id="sun-lon" inputmode="decimal" placeholder="e.g. -0.1278"></label>
+      <button class="primary" type="submit">Save</button>
+      <button id="sun-place-clear" class="ghost" type="button">Use Home Assistant's</button>
+    </div>
+  </form>
   <div id="my-playlists" class="playlist-list"></div>
 </main>
   </div>

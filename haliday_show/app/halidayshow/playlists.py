@@ -12,6 +12,7 @@ from .storage import Storage, valid_id
 MAX_PLAYLISTS = 50
 MAX_SHOWS = 100
 MAX_GAP_S = 600
+MAX_OFFSET_MIN = 180
 
 _TIME = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _DAY = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
@@ -33,15 +34,20 @@ def clean_schedule(s) -> dict | None:
         return None
     start, end = str(s.get("start", "")), str(s.get("end", ""))
     days, frm, to = s.get("days"), str(s.get("from") or ""), str(s.get("to") or "")
-    if not _TIME.match(start) or not _TIME.match(end) or start == end:
+    if not (_TIME.match(start) or start == "sunset") or not _TIME.match(end) or start == end:
+        return None
+    offset = s.get("offset", 0)
+    if not isinstance(offset, int) or isinstance(offset, bool) or not -MAX_OFFSET_MIN <= offset <= MAX_OFFSET_MIN:
         return None
     if not isinstance(days, list) or not all(isinstance(d, int) and not isinstance(d, bool) and 0 <= d <= 6
                                              for d in days):
         return None
     if bool(frm) != bool(to) or (frm and not (_valid_day(frm) and _valid_day(to))):
         return None
-    return {"on": bool(s.get("on")), "start": start, "end": end, "days": sorted(set(days)),
-            "from": frm, "to": to}
+    out = {"on": bool(s.get("on")), "start": start, "end": end, "days": sorted(set(days)), "from": frm, "to": to}
+    if start == "sunset":
+        out["offset"] = offset  # minutes after sunset (before, if negative)
+    return out
 
 
 def clean(p, strict: bool = True) -> dict | None:
