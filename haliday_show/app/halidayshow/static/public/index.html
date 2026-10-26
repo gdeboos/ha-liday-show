@@ -22,12 +22,14 @@
     <p id="pp-now" class="pp-now"></p>
     <div id="pp-mine" class="pp-list" hidden></div>
     <p id="pp-message" class="pp-message" role="status" aria-live="polite" hidden></p>
-    <p id="pp-location" class="pp-hint" hidden>When you press <b>Start</b>, your phone asks to share your location,
-      to check you're by the lights. It's only used for that and isn't kept.</p>
+    <section id="pp-where" class="pp-card pp-where" role="status" aria-live="polite" hidden>
+      <p id="pp-where-text"></p>
+      <button id="pp-retry" type="button" hidden>Try again</button>
+    </section>
     <p id="pp-coming" class="pp-card pp-big" hidden></p>
     <div id="pp-pick">
-      <h2>Pick a show</h2>
-      <p class="pp-hint">It plays on the lights and speaker here. If something's on, yours plays next.</p>
+      <h2 id="pp-pick-head">Pick a show</h2>
+      <p id="pp-pick-hint" class="pp-hint">It plays on the lights and speaker here. If something's on, yours plays next.</p>
       <p id="pp-block" class="pp-block" hidden></p>
     </div>
     <div id="pp-choices" class="pp-list"></div>

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.165
+
+- With **Nearby only** on, the public page now checks where the phone is as soon as it opens.
+  **▶ Start** buttons only appear for phones by the lights. Anyone further away sees "You're too far
+  away to start a show. Come and see the lights!", and can still see what's on and what's coming soon.
+- A phone that won't share its location is told how to allow it, with **Try again**. The page keeps
+  checking while it's open, so someone walking up to the lights gets the buttons once they're close.
+
 ## 0.2.164
 
 - **Suggest cuts** in the **Music editor** asks the AI (if you've set one up) which option works best

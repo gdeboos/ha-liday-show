@@ -55,6 +55,20 @@ test("the code comes from the QR code's link and is kept for next time", async (
   assert.equal(codeFrom("", "abc23456"), "abc23456");
   assert.equal(codeFrom("?c=new98765", "abc23456"), "new98765");
   assert.equal(codeFrom("?c=<script>", "abc23456"), "abc23456");
-  assert.match(locationProblem({ code: 1 }), /Allow location/);
-  assert.match(locationProblem({ code: 3 }), /too long/);
+  assert.equal(locationProblem({ code: 1 }), "denied");
+  assert.equal(locationProblem({ code: 3 }), "slow");
+  assert.equal(locationProblem({ code: 2 }), "unknown");
+});
+
+test("Start only shows to phones by the lights, and the page says why not", async () => {
+  const { canStart, whereText } = await import("../../haliday_show/app/halidayshow/static/public/public.js");
+  assert.equal(canStart(false, { state: "idle" }), true); // your own Wi-Fi
+  assert.equal(canStart(true, { state: "checking" }), false);
+  assert.equal(canStart(true, { state: "far" }), false);
+  assert.equal(canStart(true, { state: "near" }), true);
+  const far = whereText({ state: "far", text: "You're too far away to start a show. Come and see the lights!" });
+  assert.equal(far.text, "You're too far away to start a show. Come and see the lights!");
+  assert.equal(whereText({ state: "denied" }).retry, true);
+  assert.match(whereText({ state: "checking" }).text, /may ask to share your location/);
+  assert.equal(whereText({ state: "near" }).text, "");
 });
