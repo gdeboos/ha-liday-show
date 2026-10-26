@@ -46,3 +46,12 @@ test("playlists whose shows are all archived aren't offered", async () => {
   const lists = [{ id: "test", shows: ["old"] }, { id: "eve", shows: ["old", "xmas"] }, { id: "none", shows: [] }];
   assert.deepEqual([...emptyPlaylists(lists, new Set(["xmas"]))], ["test", "none"]);
 });
+
+test("the sign says the opening hours in a few words", async () => {
+  const { signHours } = await import("../../haliday_show/app/halidayshow/static/js/publicsettings.js");
+  const h = { on: true, start: "17:00", end: "22:00", days: [0, 1, 2, 3, 4, 5, 6] };
+  assert.equal(signHours(h), "Shows from 5pm to 10pm, every day");
+  assert.equal(signHours({ ...h, start: "sunset", end: "21:30", days: [5, 6] }), "Shows from dusk to 9:30pm, weekends");
+  assert.equal(signHours({ ...h, days: [4, 5, 6] }), "Shows from 5pm to 10pm, Fri, Sat and Sun");
+  assert.equal(signHours({ ...h, on: false }), "");
+});

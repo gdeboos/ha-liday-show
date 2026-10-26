@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Light show sign</title>
+<!-- Relative URLs only: ingress serves this page from /api/hassio_ingress/<token>/ -->
+<link rel="icon" type="image/svg+xml" href="static/favicon.svg">
+<style>
+  @page { size: A4 portrait; margin: 14mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111; background: #e9ebee; }
+  .bar { display: flex; gap: 10px; align-items: center; justify-content: center; padding: 12px; flex-wrap: wrap; }
+  .bar button, .bar a { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid #c8ccd2; background: #fff;
+    color: #111; text-decoration: none; cursor: pointer; }
+  .bar button.primary { background: #0277bd; color: #fff; border-color: #0277bd; }
+  .bar .note { color: #444; flex-basis: 100%; text-align: center; font-size: 14px; }
+  .sheet { width: 210mm; min-height: 297mm; margin: 0 auto 24px; background: #fff; padding: 18mm 16mm;
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8mm; }
+  .title { font-size: 34pt; font-weight: 800; line-height: 1.1; margin: 0; overflow-wrap: anywhere; }
+  .scan { font-size: 24pt; font-weight: 700; margin: 0; }
+  .qr { width: 130mm; height: 130mm; image-rendering: pixelated; }
+  .hours { font-size: 18pt; font-weight: 600; margin: 0; }
+  .message { font-size: 15pt; margin: 0; white-space: pre-line; }
+  .link { font-size: 11pt; color: #444; margin: auto 0 0; overflow-wrap: anywhere; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .problem { max-width: 40em; margin: 40px auto; background: #fff; padding: 20px; border-radius: 10px; }
+  @media print {
+    body { background: #fff; }
+    .bar { display: none; }
+    .sheet { width: auto; min-height: 0; height: 269mm; margin: 0; padding: 0; }
+  }
+</style>
+<script type="module" src="static/js/sign.js"></script>
+</head>
+<body>
+<div class="bar">
+  <button id="print" class="primary" type="button">Print sign</button>
+  <a id="download" download="light-show-qr-code.svg">Download QR code</a>
+  <p class="note">Print on A4. Check your phone's camera reads the code before you put the sign up.</p>
+</div>
+<main id="sheet" class="sheet" hidden>
+  <h1 id="title" class="title"></h1>
+  <p class="scan">Scan to start a light show</p>
+  <img id="qr" class="qr" alt="QR code for the light show page">
+  <p id="hours" class="hours" hidden></p>
+  <p id="message" class="message" hidden></p>
+  <p id="link" class="link"></p>
+</main>
+<p id="problem" class="problem" hidden></p>
+</body>
+</html>

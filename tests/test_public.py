@@ -403,3 +403,25 @@ async def test_outside_the_hours_visitors_are_told_and_refused(client, monkeypat
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
     assert status == 409 and "Come back" in text
     # A visitor already waiting still gets their show; that's the runner's queue, untouched by the hours.
+
+
+async def test_the_sign_and_its_qr_code(client):
+    await client.put("/api/public", json={"on": True, "address": "https://lights.example.com",
+                                          "look": {"sign_text": "  Please be kind  "}})
+    view = await (await client.get("/api/public")).json()
+    assert view["look"]["sign_text"] == "Please be kind"
+    link = f"https://lights.example.com/?c={view['code']}"
+    resp = await client.get("/api/public/qr.svg", params={"link": link})
+    assert resp.status == 200 and resp.content_type == "image/svg+xml" and "<svg" in await resp.text()
+    resp = await client.get("/api/public/qr.svg", params={"link": link, "download": "1"})
+    assert "attachment" in resp.headers["Content-Disposition"]
+    # Only your own visitors' link, with your current code.
+    for bad in ("https://lights.example.com/?c=wrong123", "javascript:alert(1)", ""):
+        assert (await client.get("/api/public/qr.svg", params={"link": bad})).status == 400
+    assert (await client.get("/sign")).status == 200
+
+
+def test_qr_code_reads_back():
+    import segno
+    qr = segno.make("https://lights.example.com/?c=abc23456", error="m", micro=False)
+    assert qr.error == "M" and qr.designator  # a real QR code, not a micro one phones can't read

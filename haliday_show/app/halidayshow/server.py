@@ -1414,6 +1414,24 @@ async def public_preview_picture(request):
     return web.FileResponse(path, headers={"Cache-Control": "no-cache"})
 
 
+async def public_qr(request):
+    """The QR code for the sign: an SVG of the visitors' link, which must carry your current code.
+    ?download=1 hands it over as a file to use elsewhere."""
+    p = public.load(request.app[STORAGE]) or public.clean(None)
+    svg = public.qr_svg(request.query.get("link", ""), p["code"])
+    if svg is None:
+        raise web.HTTPBadRequest(text="that isn't your visitors' link")
+    headers = {"Cache-Control": "no-cache"}
+    if request.query.get("download") == "1":
+        headers["Content-Disposition"] = 'attachment; filename="light-show-qr-code.svg"'
+    return web.Response(text=svg, content_type="image/svg+xml", headers=headers)
+
+
+async def sign_page(request):
+    """A sign to print, with the QR code, for outside the house."""
+    return web.FileResponse(STATIC / "sign.html", headers={"Cache-Control": "no-cache"})
+
+
 async def new_public_code(request):
     """A new code for visitors' links: the old link and any printed QR code stop working."""
     storage = request.app[STORAGE]
@@ -1883,6 +1901,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/public/clear", clear_public_queue)
     r.add_post("/api/public/code", new_public_code)
     r.add_get("/api/public/picture", get_public_picture)
+    r.add_get("/api/public/qr.svg", public_qr)
+    r.add_get("/sign", sign_page)
     r.add_get("/public-preview/", public_preview_page)
     r.add_get("/public-preview/{name:(public\\.js|public\\.css|colours\\.js)}", public_preview_page)
     r.add_get("/public-preview/api/state", public_preview_state)

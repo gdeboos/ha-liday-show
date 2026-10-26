@@ -4108,6 +4108,8 @@ function renderPublicGuard() {
   $("pub-nearby").checked = view.nearby;
   $("pub-distance").disabled = !view.nearby;
   $("pub-link").textContent = visitorLink(view, location.hostname);
+  $("pub-sign").href = "sign";
+  if (document.activeElement !== $("pub-sign-text")) $("pub-sign-text").value = view.look?.sign_text || "";
   $("pub-nearby-hint").textContent = nearbyText(view);
   $("pub-nearby-hint").classList.toggle("warn", view.nearby && !view.home);
 }
@@ -4263,6 +4265,7 @@ function savePublic() {
       title: $("pub-title").value, welcome: $("pub-welcome").value, theme: $("pub-theme").value,
       mode: $("pub-mode").value, snow: $("pub-snow").checked, picture: picked ? picked.value : publicView.look.picture,
       link: $("pub-link-url").value.trim(), link_text: $("pub-link-text").value,
+      sign_text: $("pub-sign-text").value,
       spacing: $("pub-spacing").value, corners: $("pub-corners").value, size: $("pub-size").value,
       borders: $("pub-borders").checked,
       colours: Object.fromEntries([...document.querySelectorAll("#pub-colours input[data-colour]")]
@@ -4299,7 +4302,9 @@ function wirePublic() {
   $("pub-on").addEventListener("change", () => savePublic());
   $("pub-open").addEventListener("click", () => showView("public"));
   $("pub-per-phone").addEventListener("change", savePublic);
-  for (const id of ["pub-address-input", "pub-nearby", "pub-distance"]) $(id).addEventListener("change", savePublic);
+  for (const id of ["pub-address-input", "pub-nearby", "pub-distance", "pub-sign-text"]) {
+    $(id).addEventListener("change", savePublic);
+  }
   $("pub-hours-card").addEventListener("change", () => savePublic());
   $("pub-look").addEventListener("change", (e) => { if (e.target.id !== "pub-picture-file") savePublic(); });
   $("pub-picture-file").addEventListener("change", async (e) => {

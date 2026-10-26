@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.174
+
+- New **Print sign…** on the **Public page** tab, under **Who can start shows**. It opens an A4 sign
+  in a new tab with your title, "Scan to start a light show", a big QR code with your visitors'
+  link, your opening hours and a **Message on the sign** of your own. Press **Print sign**.
+- **Download QR code** on the sign gives you the code as a picture to use elsewhere.
+- Check your phone's camera reads the code before you put the sign up. After **New code…**, print a
+  new sign: the old code stops working.
+
 ## 0.2.173
 
 - New **Opening hours** card on the **Public page** tab. Tick **Only open at set times**, then pick
