@@ -206,7 +206,6 @@ async def test_shows_can_be_duplicated_and_renamed_keeping_their_bake(client):
     assert (await client.post("/api/shows/Bad%20Id/rename", json={"name": "A"})).status == 400
 
 
-
 async def test_song_info_is_kept_per_file_until_the_file_changes(client, tmp_path):
     q = {"source": "media", "path": "songs/tune.mp3"}
     assert await (await client.get("/api/audio/info", params=q)).json() is None
@@ -227,9 +226,15 @@ async def test_song_info_is_kept_per_file_until_the_file_changes(client, tmp_pat
         assert (await client.put("/api/audio/info", params=q, json=bad)).status == 400
     missing = {"source": "media", "path": "songs/none.mp3"}
     assert (await client.put("/api/audio/info", params=missing, json=info)).status == 404
+    songs = {x["path"]: x for x in await (await client.get("/api/songs")).json()}
+    assert songs["songs/tune.mp3"]["detected"] is True
+    assert songs["songs/tune.mp3"]["tempo"] == 120 and songs["songs/tune.mp3"]["sections"] == 1
+    assert songs["songs/tune.mp3"]["size"] > 0
     # Replacing the file drops the old results.
     (tmp_path / "media" / "songs" / "tune.mp3").write_bytes(b"ID3 a different song")
     assert await (await client.get("/api/audio/info", params=q)).json() is None
+    songs = {x["path"]: x for x in await (await client.get("/api/songs")).json()}
+    assert songs["songs/tune.mp3"]["detected"] is False and songs["songs/tune.mp3"]["sections"] == 0
 
 
 async def test_audio_listing_upload_and_path_safety(client):

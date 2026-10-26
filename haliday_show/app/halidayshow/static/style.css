@@ -254,6 +254,8 @@ table.devices td input[type="number"] { width: 5em; }
   background: color-mix(in srgb, var(--accent) 18%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--panel)); }
 .show-rename { font-size: 15px; font-weight: 600; width: min(100%, 360px); }
 .show-actions { flex: none; }
+.song-tools { margin: 4px 0 6px; }
+.song-tools input[type="search"] { width: min(60vw, 280px); }
 @media (max-width: 720px) {
   .show-row { flex-direction: column; align-items: stretch; }
   .show-actions { justify-content: flex-start; }
