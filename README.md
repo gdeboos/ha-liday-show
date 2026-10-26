@@ -239,7 +239,7 @@ flowchart LR
     E -- "realtime over LAN UDP" --> Z[💡 Twinkly, experimental]
     E -- "start song" --> G[🔊 HA media player]
     H[Automations<br/>MQTT · app_stdin] --> E
-    V[📱 Visitors' phones<br/>public page, own port] -- "pick a show" --> E
+    V["📱 Visitors' phones<br/>public page, own port"] -- "pick a show" --> E
 ```
 
 One Python service (aiohttp) serves the editor and plays shows. As an app it is reached only through

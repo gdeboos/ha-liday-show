@@ -1127,8 +1127,8 @@ without the code just says "Scan the code on the sign to start a show".
   your home Wi-Fi.
 - **Copy** copies the link. **New code…** makes a new one, if the link has been shared somewhere it
   shouldn't be. The old link (and any QR code you've printed) stops working.
-- **Nearby only within 100 m** (on to start with): a phone reaching the page through the internet
-  must be that close to your house to start a show.
+- **Nearby only within … m** (on to start with, at 100 m; anything from 25 to 2000 m): a phone
+  reaching the page through the internet must be that close to your house to start a show.
   - As the page opens, the phone asks to share its location. It's only used for this check and isn't
     kept.
   - **▶ Start** only appears once they're close enough. Further away, they see "You're too far away to
