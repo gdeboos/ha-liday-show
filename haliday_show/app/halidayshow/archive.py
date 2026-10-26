@@ -111,7 +111,7 @@ def delete_show(st: Storage, show_id: str, archived: bool = False):
 # without following a link, inside HA-liday Show's own folder: outside its Archived folder, or
 # inside it for archived songs. So nothing here can move or delete a file anywhere else.
 def _plain(rel) -> bool:
-    if not isinstance(rel, str) or not rel or rel.startswith("/") or "\\" in rel:
+    if not isinstance(rel, str) or not rel or rel.startswith("/") or "\\" in rel or "\0" in rel:
         return False
     return all(part not in ("", ".", "..") for part in rel.split("/"))
 
@@ -126,7 +126,7 @@ def _song_file(st: Storage, rel, archived: bool = False) -> Path | None:
     p = st.media_dir / rel
     try:
         real = p.resolve(strict=True)
-    except OSError:
+    except (OSError, ValueError):
         return None
     own = st.upload_dir.resolve()
     shelf = (st.upload_dir / SONG_ARCHIVE).resolve()
@@ -152,11 +152,16 @@ def _records(st: Storage) -> dict:
     if not isinstance(data, dict):
         return {}
     out = {}
+    own, shelf = st.upload_dir.resolve(), (st.upload_dir / SONG_ARCHIVE).resolve()
     for archived, rec in data.items():
-        if isinstance(rec, dict) and _plain(rec.get("path")) and Path(rec["path"]).suffix.lower() in AUDIO_EXT \
-                and _inside((st.media_dir / rec["path"]).resolve(), st.upload_dir.resolve()) \
-                and not _inside((st.media_dir / rec["path"]).resolve(), (st.upload_dir / SONG_ARCHIVE).resolve()):
-            out[archived] = {"path": rec["path"], "songless": [i for i in rec.get("songless", []) if valid_id(i)]}
+        if not isinstance(rec, dict) or not _plain(rec.get("path")) or Path(rec["path"]).suffix.lower() not in AUDIO_EXT:
+            continue
+        place = (st.media_dir / rec["path"]).resolve()
+        if not _inside(place, own) or _inside(place, shelf):
+            continue
+        songless = rec.get("songless")
+        songless = [i for i in songless if isinstance(i, str) and valid_id(i)] if isinstance(songless, list) else []
+        out[archived] = {"path": rec["path"], "songless": songless}
     return out
 
 
@@ -198,8 +203,12 @@ def check_replacement(st: Storage, rel: str, replacement) -> dict | None:
     if not isinstance(replacement, dict) or replacement.get("source") != "media":
         raise ArchiveError("that isn't a song")
     path = replacement.get("path")
-    if not _plain(path) or path == rel or st.audio_path("media", path) is None \
-            or _inside((st.media_dir / path).resolve(), (st.upload_dir / SONG_ARCHIVE).resolve()):
+    if not _plain(path) or st.audio_path("media", path) is None:
+        raise ArchiveError("pick another song that's in your songs folder")
+    real = (st.media_dir / path).resolve()
+    gone = (st.media_dir / rel).resolve() if _plain(rel) else None
+    # Not the song that's going (however it's reached), nor one that's archived.
+    if real == gone or _inside(real, (st.upload_dir / SONG_ARCHIVE).resolve()):
         raise ArchiveError("pick another song that's in your songs folder")
     return {"source": "media", "path": path}
 

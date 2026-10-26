@@ -4041,7 +4041,11 @@ async function doRemove(forGood) {
         clearTimeout(autoSaveTimer);
         if (saving) await saving;
         if (app.dirty && worthSaving()) {
-          if (!autoSaveOn()) { status(`Save ${app.show.name} first, then remove the song`, "hint"); return; }
+          if (!autoSaveOn()) {
+            $("remove-dialog").close();
+            status(`Save ${app.show.name} first, then remove the song`, "hint");
+            return;
+          }
           await save();
         }
       }
@@ -4054,6 +4058,7 @@ async function doRemove(forGood) {
     }
   } catch (e) {
     status(`Couldn't ${forGood ? "delete" : "archive"} ${r.name}: ${e.message}`, true, r.kind === "show" ? "shows" : "songs");
+    scheduleAutoSave(); // it was paused for the removal; the open show still saves as you edit
   }
 }
 

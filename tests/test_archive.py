@@ -220,3 +220,22 @@ def test_copies_are_kept_per_kind_so_deletes_cant_push_out_an_import_copy(st, mo
         backup.keep_copy(st.config_dir, "t", "delete")
     kinds = [c["reason"] for c in backup.copies(st.config_dir)]
     assert kinds.count("import") == 1 and kinds.count("delete") == backup.KEEP_COPIES
+
+
+def test_odd_input_is_refused_rather_than_breaking(st):
+    for bad in ("haliday_show/a.mp3\0.mp3", "haliday_show/bells.mp3\0"):
+        assert not archive.own_song(st, bad)
+        with pytest.raises(archive.ArchiveError):
+            archive.archive_song(st, "haliday_show/bells.mp3", {"source": "media", "path": bad})
+    # A link to the song that's going isn't another song.
+    (st.upload_dir / "same.mp3").symlink_to(st.upload_dir / "bells.mp3")
+    with pytest.raises(archive.ArchiveError):
+        archive.archive_song(st, "haliday_show/bells.mp3", {"source": "media", "path": "haliday_show/same.mp3"})
+    # Records of the wrong shape are read as best they can be, never breaking the list.
+    archive.archive_song(st, "haliday_show/other.wav")
+    data = json.loads((st.config_dir / archive.ARCHIVED_SONGS).read_text())
+    data["haliday_show/Archived/other.wav"]["songless"] = 5
+    data["bad"] = {"path": "haliday_show/x.mp3", "songless": [["x"]]}
+    (st.config_dir / archive.ARCHIVED_SONGS).write_text(json.dumps(data))
+    assert [x["path"] for x in archive.list_archived_songs(st)] == ["haliday_show/Archived/other.wav"]
+    assert archive.restore_song(st, "haliday_show/Archived/other.wav")["path"] == "haliday_show/other.wav"
