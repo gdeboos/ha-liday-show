@@ -12,6 +12,15 @@ const minutes = (s) => {
   return `${m} minute${m === 1 ? "" : "s"}`;
 };
 
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+  "October", "November", "December"];
+
+// "2026-12-01" as "1 December".
+export const dayText = (iso) => {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${d} ${MONTHS[m - 1]}`;
+};
+
 // What to tell a visitor about one of their requests.
 export function waitText(r) {
   if (r.playing) return "Playing now. Enjoy the show!";
@@ -22,9 +31,12 @@ export function waitText(r) {
 
 // Everything the page shows, worked out from api/state.
 export function describe(st) {
+  const soon = (st.soon || []).map((c) => ({ ...c, detail: `${c.kind === "playlist" ? "Playlist · from" : "From"} ${dayText(c.starts)}` }));
   if (!st.open) {
-    return { closed: true, now: "", mine: [], choices: [], block: "" };
+    return { closed: true, now: "", mine: [], choices: [], soon: [], coming: "", block: "" };
   }
+  // Nothing to pick yet: say when the first one starts.
+  const coming = !st.choices.length && soon.length ? `Coming soon on ${dayText(soon[0].starts)}` : "";
   const waiting = st.mine.filter((r) => !r.playing).length;
   let block = "";
   if (waiting >= st.per_phone) {
@@ -46,6 +58,8 @@ export function describe(st) {
       ...c, detail: c.kind === "playlist" ? `Playlist · about ${minutes(c.minutes * 60)}` : `About ${minutes(c.minutes * 60)}`,
     })),
     block,
+    soon,
+    coming,
   };
 }
 
@@ -102,7 +116,19 @@ export function start() {
     mine.hidden = !view.mine.length;
     $("pp-block").textContent = view.block;
     $("pp-block").hidden = !view.block;
-    $("pp-none").hidden = view.choices.length > 0;
+    $("pp-coming").textContent = view.coming;
+    $("pp-coming").hidden = !view.coming;
+    $("pp-now").hidden = !!view.coming && !st.now;
+    $("pp-pick").hidden = !view.choices.length;
+    $("pp-none").hidden = view.choices.length > 0 || view.soon.length > 0;
+    $("pp-soon-head").hidden = !view.soon.length;
+    $("pp-soon").replaceChildren(...view.soon.map((c) => {
+      const row = el("div", "pp-row pp-later");
+      const text = el("div", "pp-text");
+      text.append(el("div", "pp-name", c.name), el("div", "pp-hint", c.detail));
+      row.append(text);
+      return row;
+    }));
     $("pp-choices").replaceChildren(...view.choices.map((c) => {
       const row = el("div", "pp-row");
       const text = el("div", "pp-text");
