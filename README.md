@@ -30,8 +30,9 @@ its own with Docker or Python.
 
 - 🎵 **Hears the song for you.** Tempo, beats, bars and sections (intro, verse, chorus…) are detected
   in your browser as soon as you add a song, and every effect snaps to them.
-- 🪄 **A first draft in one click.** **Generate** fills every light with effects that follow the
-  music, in the palette and style you pick, ready for you to tweak. A new show can start that way.
+- 🪄 **A first draft in one click.** **Generate** fills your lights with effects that follow the
+  music, in the palette and style you pick, building up the way you would by hand: a few lights in
+  quiet parts, every light in the chorus. Ready for you to tweak.
 - 💬 **Or just describe it.** "Red and green chase on the roof in every chorus" and an AI adds it,
   using Claude or any AI you've set up in Home Assistant, local models included.
 - 🏠 **See it on your house.** Trace your lights on a photo and the editor plays the show there,
@@ -39,8 +40,9 @@ its own with Docker or Python.
 - 🔌 **Works with the lights you have.** Govee, WLED, pixel controllers over DDP or E1.31, Twinkly, and
   any Home Assistant light or smart plug, all in one show.
 - 📦 **Plan before you buy.** Add lights that haven't arrived yet and link them to the real ones later.
-- ⏯️ **Runs itself.** Shows play on any Home Assistant speaker and start from automations through MQTT
-  entities or the `hassio.app_stdin` action.
+- ⏯️ **Runs itself.** Put shows in a playlist that plays every evening, at set times or from sunset.
+  The music plays on any Home Assistant speaker, or in a browser left open on a computer with
+  speakers. Automations can start shows too, through MQTT entities or `hassio.app_stdin`.
 - 🐳 **Runs where you want.** A Home Assistant app, or on its own with Docker or Python.
 
 ## 📸 A closer look
@@ -157,7 +159,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Detect the song's tempo, beats, bars and sections automatically, in the browser, with a note on
   each section saying what it sounds like and how to light it (written by the AI, if you have one)
 - Generate a first draft of a whole show from the song in one click, in a palette and style you pick,
-  building up like a person would: a few lights in quiet parts, all of them in the chorus
+  building up like a person would (a few lights in quiet parts, all of them in the chorus), with a
+  limit on how long one effect runs; with an AI, a window shows it working and Cancel stops it
 - Describe effects in words and an AI adds them, using Claude with your API key or any AI set up in
   Home Assistant, including local ones
 - Effect suggestions for the selected part of the song, timed to its tempo
@@ -181,10 +184,13 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Your shows**: the Show editor starts on a list of your shows (also under Library → Shows), to open, duplicate or rename
 - **Library → Songs**: every song, whether it's detected and which shows use it, with a search and Edit in the Music editor
 - **Archive or delete** shows and songs, with a way back: archived ones can be restored, and shows using a song can take another one
+- Add a song in one window (name it, upload it, detect it); big songs go up in pieces, so files over
+  Home Assistant's 16 MB limit upload fine
 - Cut, trim and splice songs in the **Music editor**, with crossfades
 - **Suggest cuts**: shorten the song or one section to a length you pick, by whole bars where the join isn't heard
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
 - Arrange the editor your way: pick a page layout, then drag, collapse or hide any panel
+- The browser's Back and Forward buttons move between the app's pages, inside Home Assistant too
 - Experimental: hand a Govee light to one of Govee's built-in scenes for part of the show
 
 </details>
@@ -196,6 +202,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Play the song on any Home Assistant media player (with a per-speaker delay), or in the browser
 - Schedule or trigger shows from automations: MQTT entities (show select, play/stop buttons,
   status), or the `hassio.app_stdin` action
+- Playlists play by themselves at set times or from sunset, carrying on with the page closed
 
 </details>
 
@@ -307,6 +314,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/commands.py             Automation commands over app stdin
   app/halidayshow/mqtt.py                 MQTT discovery entities
   app/halidayshow/server.py               HTTP API for the editor; who may connect (ingress or password)
+  app/halidayshow/migrate.py              One-time copy of saved data from the old Govee Light Show add-on
   app/halidayshow/ai.py                   Describe it, AI presets, palettes and section notes: asks Claude or HA's AI Task
   app/halidayshow/static/                 The editor (plain ES modules, no build step)
     index.html, style.css               Page and styles
@@ -337,6 +345,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/analysis-worker.js               Runs the analysis off the main thread
     js/autogen.js                       Generates a draft show from the analysis
     js/newshow.js                       The New show window's name and start choices
+    js/upload.js                        Sends big songs and baked shows in pieces, under ingress's 16 MB limit
+    js/models.js                        Reads models.json: each Govee model's tested status and settings
     js/addsong.js                       The Add a song window's names and messages
     js/lightspeed.js                    How fast each protocol can change a light, and previews at that pace
     js/compat.js                        Whether a clip's effect can show on its light, for marking and blocking

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.151
+## 0.2.153
 
 - New: a **Public page**, so people passing by can start a show from their phone. Turn it on under
   **Setup → Settings → Public page** with **Let visitors start shows**, and tick the shows and playlists
@@ -16,6 +16,18 @@
 - The music plays on the show's speaker, the same as your scheduled shows.
 - For now, try it on your home Wi-Fi: the card shows the address to open on your phone. Getting it onto
   the internet for a QR code outside, opening hours and a printable sign come in the next releases.
+## 0.2.152
+
+- The user guide, the app's page in the app store and the README now cover everything added lately:
+  the **Library** tab's pages (Shows, Songs, Palettes, Presets, Playlists), playlists with schedules
+  and sunset starts, the Show player for shows with no speaker, how **Generate** builds up, what an
+  export includes, and the on-screen names of a few settings. Nothing in the app itself has changed.
+
+## 0.2.151
+
+- The user guide's **Suggest cuts** section is rewritten as step-by-step instructions, with what the
+  options mean and how it picks them. It's now in the **4. Build a show** contents, and **Editing a
+  song** points to it.
 
 ## 0.2.150
 

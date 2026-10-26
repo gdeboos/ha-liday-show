@@ -6,15 +6,16 @@ any Home Assistant light or switch, and Twinkly (experimental), in any mix. Open
 the Home Assistant sidebar.
 
 **Getting started:** [Finding your way](#finding-your-way) · [Requirements](#requirements) ·
-[Quick start](#quick-start) · [Moving from Govee Light Show](#moving-from-govee-light-show)
+[Quick start](#quick-start) · [The demo](#the-demo) · [Moving from Govee Light Show](#moving-from-govee-light-show)
 
 **Setting up:** [1. Devices](#1-devices) · [2. Speakers](#2-speakers) · [3. Your house](#3-your-house)
 
 **Making shows:** [4. Build a show](#4-build-a-show) · [Effects](#effects) · [5. Play it](#5-play-it) ·
-[The public page](#the-public-page) · [6. Automations](#6-automations)
+[Playlists](#playlists) · [The public page](#the-public-page) · [6. Automations](#6-automations)
 
 **Reference:** [Arrange the editor](#arrange-the-editor) · [Settings](#settings) ·
-[Setting up the AI](#setting-up-the-ai) · [Govee scenes](#experimental-govee-scenes) ·
+[Your data](#your-data) · [Setting up the AI](#setting-up-the-ai) · [Packet lab](#packet-lab) ·
+[Govee scenes](#experimental-govee-scenes) ·
 [Troubleshooting](#troubleshooting) · [Where things are stored](#where-things-are-stored) ·
 [Running without Home Assistant](#running-without-home-assistant)
 
@@ -25,8 +26,8 @@ Four tabs run along the top:
 | Tab | What's there |
 | --- | --- |
 | **Show editor** | Where shows are made: the timeline, previews and effect settings. |
-| **Music editor** | Where songs are cut, joined and detected. |
-| **Library** | **Palettes** and **Presets**, the colours and effect settings you reuse across shows. |
+| **Music editor** | Where songs are cut, shortened, joined and detected. |
+| **Library** | **Shows** and **Songs** (all of yours), **Palettes** and **Presets** (the colours and effect settings you reuse) and **Playlists** (shows back to back, by hand or on a schedule). |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
@@ -36,8 +37,8 @@ Your browser's **Back** and **Forward** buttons (or swiping back on a phone) mov
 pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Your shows**, as
 **← All shows** does; from a song in the Music editor, it goes to **Your songs**. Both ask first if
 you'd lose changes. Going back to **Your shows** stops the show if it's playing. **Back** does nothing
-while a window is open: close it first. Without Home
-Assistant (Docker or Python), reloading the page keeps you on the same tab or page.
+while a window is open: close it first. Without Home Assistant (Docker or Python), reloading the
+page keeps you on the same tab or page.
 
 ## Requirements
 
@@ -54,7 +55,8 @@ Assistant (Docker or Python), reloading the page keeps you on the same tab or pa
   - Any **Home Assistant** light or switch, such as Zigbee or Hue bulbs, or a smart plug for a prop.
   - **Twinkly** lights (experimental).
 - Optional: a Home Assistant media player for the music. Without one, songs play in your browser
-  while you edit, and shows started from automations play the lights only.
+  while you edit, and shows started by a playlist or an automation play their music in the
+  [Show player](#music-with-no-speaker-the-show-player) (or the lights only).
 - Optional: the Mosquitto broker app and MQTT integration, for show entities in automations.
 
 ## Quick start
@@ -70,9 +72,12 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Show editor**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, choose **Start empty**, drag across a light's track, press **＋ Add effect…** and pick one. Press
+4. **Show editor**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
+   offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Run it from an automation with the MQTT **Play** button or the `hassio.app_stdin` action.
+5. Play it by itself: put it in a [playlist](#playlists) under **Library → Playlists** and tick
+   **Play on a schedule** (at set times or from sunset), or start it from an automation with the MQTT
+   **Play** button or the `hassio.app_stdin` action.
 
 > **Just want to see it working?** On a fresh install, press **Try the demo** under **Setup → Devices**
 > (or **Setup → Settings → Demo**). See [The demo](#the-demo).
@@ -439,7 +444,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Songs](#songs) · [Editing a song](#editing-a-song) ·
+- **The song:** [Shows](#shows) · [Songs](#songs) · [Editing a song](#editing-a-song) · [Suggest cuts](#suggest-cuts) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
 - **By hand:** [The timeline](#the-timeline) · [Adding effects](#adding-effects) ·
@@ -458,8 +463,9 @@ one you were last editing has a **Last edited** badge.
   1. a **Name** and a **Song** (or **+ Add a song…**, or **No song, lights only** with its length). The
      name fills in from the song until you type your own, and each show needs its own name.
   2. with an AI set up, how it starts: **Start empty**, or **Generate with AI**, which needs a song
-     and at least one light and shows the same **Colours**, **Style** and **Build up** choices as
-     **✨ Generate**. Without an AI, the show starts empty straight after step 1. For a quick draft
+     and at least one light and shows the same choices as **✨ Generate** (**Colours**, **Style**,
+     **Build up**, **Longest effect** and, with lights traced on the house photo, the sweep across the
+     house). Without an AI, the show starts empty straight after step 1. For a quick draft
      made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
 
   **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.
@@ -472,14 +478,14 @@ one you were last editing has a **Last edited** badge.
 
 The same list is under **Library → Shows**. The Show panel shows the open show's name beside **← All
 shows**; to switch to another show, go back to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Show speaker**
-(below), **Auto save**, and **Remove show…** to archive or delete it.
+(below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
 
 ### Songs
 
 The Song panel shows the show's song with its length, tempo and sections. Press
 **Change…** to pick another from your Home Assistant **media** folder, or **+ Add a song…** (MP3,
 M4A, AAC, OGG, Opus, WAV, FLAC or WebM; see below). Songs you add go to `/media/haliday_show/` so media
-players can play them. For a lights-only show, choose **No song** and set its **Length**.
+players can play them. For a lights-only show, choose **No song, lights only** and set its **Length with no song**.
 
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
 tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
@@ -540,7 +546,8 @@ songs** each visit, the same list as **Library → Songs** (with **+ Add a song*
 until you press **Edit** on one. The open song's name sits beside **← All songs**, which goes back to
 the list to open another; switching tabs keeps your song open. **File name** and **Save as new file** are
 at the top too, with **Unsaved edits** beside them until you save. Drag across the waveform to select, then **Cut selection** to remove it or
-**Keep only selection** to shorten the song to it. **Insert at playhead** and **Add to end** splice in
+**Keep only selection** to shorten the song to it, or let **✂ Suggest cuts…** find the cuts for you (see
+[Suggest cuts](#suggest-cuts)). **Insert at playhead** and **Add to end** splice in
 another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
 time (a few hundredths of a second hides the click, a few seconds blends one song into the next), and
 **Fade in** and **Fade out** soften the ends. Zoom with the wheel, or type the selection's times for
@@ -563,17 +570,30 @@ saved, you're asked first.
 
 #### Suggest cuts
 
-To make the song (or one part of it) shorter without hearing the join, press **✂ Suggest cuts…** in
-the **Edit** card, or **✂ Shorten…** on a section you've picked in the lane. A window opens. Pick **the
-whole song** or a section under **Shorten**, type how long you'd like it **To about** (as 1:30 or 90; it
-starts at half a section or three quarters of the song), and press **Find cuts →**. You get up to three
-options. Each takes out whole bars, in 4- and 8-bar phrases where it can,
-where the music either side of the join matches: a loop that repeats, or a verse and chorus that come
-round again. For the whole song an option can be several cuts, chosen from parts that are heard again
-elsewhere. Each says how much shorter it makes things and how well its joins match (**smooth join**,
-**good join** or **join may be heard**). Press a cut's **▶** to hear a few seconds either side of its
-join (what it takes out is shown in red), then **Use** to make the cut and close the window; **Undo** in the
-**Edit** card (or Ctrl+Z) takes it back. **✂ Suggest cuts…** opens on the section you've picked, if any. **← Back** tries another length. Suggestions follow the song's bars, so press **Detect** first.
+**Suggest cuts** finds places to make the song, or one section of it, shorter without the join being
+heard: for when the intro goes on too long, say, or the song is longer than your show needs. It works
+in whole bars, so the song needs to be detected first (**Detect**).
+
+1. Press **✂ Suggest cuts…** in the **Edit** card, or pick a section in the lane and press **✂ Shorten…**.
+   A window opens, set to the section you've picked (or **the whole song** if you haven't picked one).
+2. Under **Shorten**, choose **the whole song** or a section. Under **To about**, type how long you'd
+   like it, as 1:30 or 90. It starts at half the section, or three quarters of the song, and shows how
+   long it is now.
+3. Press **Find cuts →** (or Enter). You get up to three options.
+4. Press a cut's **▶** to hear a few seconds either side of its join. What it would take out shows in
+   red on the waveform.
+5. Press **Use** on the one you like. The cut is made and the window closes. **Undo** in the **Edit**
+   card (or Ctrl+Z) takes it back. To try another length instead, press **← Back**.
+
+It only takes out whole bars, in 4- or 8-bar phrases where it can, and only where the music either side
+of the join matches, such as a loop that repeats or a verse and chorus that come round again. For the
+whole song, an option can be several cuts, taken from parts that are heard again elsewhere, and it never
+cuts off the ending (use **Fade out** for that). Each option says how many bars go, how much shorter it
+makes things, and how well its join matches: **smooth join**, **good join** or **join may be heard**.
+If nothing fits, it says so; try a length a little longer or shorter.
+
+Nothing changes until you press **Use**, and the song file you opened is never changed: keep the result
+with **Save as new file**.
 
 ### Detecting in the Music editor
 
@@ -641,13 +661,14 @@ the lot. It needs an AI to be set up first; see [Setting up the AI](#setting-up-
 
 ### Generate
 
-**✨ Generate** in the Show panel makes a first draft of the whole show from the song.
-Pick the **Colours** (any palette) and a **Style** (Calm, Balanced or Lively), and it fills every light
+**✨ Generate** in the Show panel opens **Generate a show**, which makes a first draft of the whole show
+from the song.
+Pick the **Colours** (any palette) and a **Style** (Calm, Balanced or Lively), and it fills your lights
 with effects that follow the song: soft, slow looks in quiet parts, faster ones that move on the beat
 as it gets louder, every light moving together in the chorus, the same looks each time a section comes
 back, and a change every few bars. Quiet starts and ends fade in and out, and with lights traced on the
-house photo it can add a sweep across the house as the music lifts. It runs **Detect** first if the song
-hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press it again for a
+house photo, tick **Sweep across the house as the music lifts** for a sweep from one side to the
+other. It runs **Detect** first if the song hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press it again for a
 different take, then edit whatever you like. The colours start on the palette for the time of year
 (Halloween in October, Christmas in December…) when there is one.
 
@@ -658,11 +679,12 @@ pieces, each in the next colours of your palette, so the look keeps changing.
 
 **Build up** (ticked to start with) lights the house the way you would by hand rather than lighting
 everything all the time. Quiet parts use only a few lights and leave the rest dark. Middling parts
-start with about half and bring in another every few bars, starting afresh in each part of the song. Only the loudest parts and the chorus use
-every light at once (in a song with neither, its loudest part does), so every light gets its moment.
-A song that hasn't been analysed into parts fills every light, as before. A part of the song that comes back uses the same lights each time, and the parts
-of a split light (like **Pillars · Left** and **Pillars · Right**) go on and off together. Untick it to
-fill every light all the way through, as before. It works for the **AI** too.
+start with about half and bring in another every few bars, starting afresh in each part of the song.
+Only the loudest parts and the chorus use every light at once (in a song with neither, its loudest
+part does), so every light gets its moment. A part of the song that comes back uses the same lights
+each time, and the parts of a split light (like **Pillars · Left** and **Pillars · Right**) go on and
+off together. A song that hasn't been analysed into parts fills every light. Untick it to fill every
+light all the way through. It works for the **AI** too.
 
 Lights on **Per bulb**, **App segments** or **Whole light only** can only change a few times a second,
 so Generate gives them looks that suit that: colour changes, fades and pulses of the whole light, still
@@ -672,8 +694,8 @@ in the **Selection** panel follow suit for those lights.
 With an AI set up (see [Setting up the AI](#setting-up-the-ai)), **Made by** picks who makes it:
 **Rules** is instant, as above; **AI** sends the whole song to the AI with the same colours and style,
 and it follows the **notes** you've written on the song's sections in the **Music editor** ("the guitar
-solo, make it flash", "keep this bit dark"). It takes 10 to 60 seconds. Meanwhile a **Generating…**
-window covers the editor with a spinner and the time so far, so nothing changes underneath it.
+solo, make it flash", "keep this bit dark"). It takes 10 to 60 seconds. Meanwhile a window headed **Generating** with your
+show's name covers the editor with a spinner and the time so far, so nothing changes underneath it.
 **Cancel** (or Esc, or Back on a phone) stops waiting and leaves the show as it was.
 
 ### The timeline
@@ -914,7 +936,9 @@ on their own.
 To play several shows back to back, open **Library → Playlists** and press **New playlist**. Give it
 a name, add your shows with **Add a show…** and put them in order with **↑** and **↓** (**✕** takes
 one out). **Pause between shows** sets how many seconds to wait before the next one; it starts at
-5. During the pause your lights go back to how they normally look.
+5. During the pause your lights go back to how they normally look. Type over a playlist's
+name to rename it. **Delete playlist** removes the playlist but keeps its shows. A playlist holds up
+to 100 shows, and you can have up to 50 playlists.
 
 Press **▶ Play** and HA-liday Show plays the shows in order, then starts again from the top, until
 you press **■ Stop**. It carries on with the page closed, and the line above your playlists says
@@ -961,7 +985,8 @@ times while it plays just moves when it stops.
 
 Sunset times are worked out for Home Assistant's location (**Settings → System → General** in Home
 Assistant). Without Home Assistant, or to use another place, type your latitude and longitude in the
-box that appears above your playlists once one starts at sunset. On Google Maps, right-click your
+box that appears above your playlists once one starts at sunset, and press **Save**. **Use Home
+Assistant's** goes back to Home Assistant's location. On Google Maps, right-click your
 house and click the numbers at the top to copy them, then paste them into the first box. Sunset is
 worked out to within a couple of minutes. The page shows today's sunset next to the clock.
 
@@ -1123,8 +1148,9 @@ phone has its own. It holds:
 
 **Setup → Settings → Your data** puts everything HA-liday Show saves in one file, and back:
 
-- **Export…** downloads a `.zip` of your lights (with their parts), shows (archived ones too), palettes, presets, settings,
-  the house photo and where each light is traced on it. Your songs stay in your songs folder and aren't
+- **Export…** downloads a `.zip` of your lights (with their parts), shows (archived ones too), palettes, presets, playlists and
+  their schedules, settings, what **Detect** found in each song and your notes on it, the house photo
+  and where each light is traced on it. Your songs stay in your songs folder and aren't
   in it. It's the same on every install, so you can move your shows to another Home Assistant, or
   between HA-liday Show and a Docker or pipx install.
 - **Import…** replaces all of that with what's in an exported file. A file that isn't an HA-liday Show
@@ -1256,10 +1282,11 @@ snapshots or DIYs) for as long as the clip lasts, then the show takes the light 
 
 ## Where things are stored
 
-Shows, devices, palettes, your presets, the house photo and settings live in the app's config folder
+Shows, devices, palettes, your presets, playlists and their schedules, each song's beats, parts and
+notes, the house photo and settings live in the app's config folder
 (`/addon_configs/<slug>_haliday_show/`), so they are included in Home Assistant backups. Uploaded songs
-go to `/media/haliday_show/` so media players can play them. The editor layout, the editing speaker
-and the experimental switch are kept in each browser.
+go to `/media/haliday_show/` so media players can play them. The editor layout, the editing speaker,
+the Show player's light offset and the experimental switch are kept in each browser.
 
 ## Running without Home Assistant
 
@@ -1275,7 +1302,10 @@ It works the same as the Home Assistant app, with a few differences:
   Or set `HALIDAY_SHOW_ALLOW_ALL=1` to let anyone on your home network in without one.
 - It must be on the same network as your lights, with full network access (for Docker, host
   networking), as the app is.
-- There's no `hassio.app_stdin` action. Use the MQTT entities in automations instead.
+- There's no `hassio.app_stdin` action. Use the MQTT entities in automations instead, or a playlist
+  with [a schedule](#playing-on-a-schedule).
+- There's no Home Assistant speaker unless you connect one (below). For music with scheduled shows,
+  leave the [Show player](#music-with-no-speaker-the-show-player) open on a computer with speakers.
 
 You set everything with these settings (environment variables). All are optional.
 
