@@ -1,12 +1,25 @@
 # Changelog
 
-## 0.2.161
+## 0.2.162
 
 - **Suggest cuts** in the **Music editor** asks the AI (if you've set one up) which option works best
   musically. The options appear straight away so you can listen meanwhile; when it answers, its choice
   is marked **AI's pick** and each option gets a short reason, such as "Drops the repeated second
   verse; keeps the 1:12 crash". The options stay where they are. It uses the song's name, your section names and notes and your
   marks, so it avoids cutting moments you've marked. Without an AI, nothing changes.
+
+## 0.2.161
+
+- The public page now needs a code. Visitors open a link with your code in it (the one your QR code
+  will hold); without it, the page just says to scan the sign. Find the **Visitors' link** on the
+  **Public page** tab under **Who can start shows**, with **Copy**, and **New code…** if it's been
+  shared where it shouldn't be. **After updating, your old link stops working: use the new one.**
+- New **Public address** setting: the web address your tunnel gives the page, such as
+  `https://lights.yourdomain.com`, so the link is the one visitors will use.
+- New **Nearby only within 100 m** (on to start with): phones reaching the page through the
+  internet must be by your house to start a show. They're asked to share their location when they
+  press **▶ Start**; it's only used for the check and isn't kept. Phones on your home Wi-Fi aren't
+  asked. It measures from your home location in Home Assistant.
 
 ## 0.2.160
 

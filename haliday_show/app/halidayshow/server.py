@@ -1281,6 +1281,8 @@ def _public_view(app) -> dict:
     return {**(public.load(app[STORAGE]) or public.clean(None)),
             "port": site.port, "listening": site.listening, "error": site.error,
             "today": datetime.date.today().isoformat(),
+            # Where the nearby check measures from: "you" (typed in for sunset), "ha", or None.
+            "home": app[SCHEDULER].where()[1],
             "now": runner.public_now["name"] if runner.public_now else None,
             "waiting": [{"name": r["name"], "wait": w} for r, w in zip(runner.requests, waits)]}
 
@@ -1298,7 +1300,18 @@ async def put_public(request):
         raise web.HTTPBadRequest(text="expected the public page settings")
     storage = request.app[STORAGE]
     settings = storage.load_settings()
-    settings["public"] = public.clean(body)
+    # The code only changes with New code, so a page open in another browser can't put an old one back.
+    settings["public"] = {**public.clean(body), "code": (public.load(storage) or public.clean(None))["code"]}
+    storage.save_settings(settings)
+    await request.app[PUBLIC].apply()
+    return web.json_response(_public_view(request.app))
+
+
+async def new_public_code(request):
+    """A new code for visitors' links: the old link and any printed QR code stop working."""
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    settings["public"] = {**(public.load(storage) or public.clean(None)), "code": public.new_code()}
     storage.save_settings(settings)
     await request.app[PUBLIC].apply()
     return web.json_response(_public_view(request.app))
@@ -1672,7 +1685,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[MQTT] = MqttBridge(app[RUNNER])
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
         app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run())]
-        app[PUBLIC] = public.PublicSite(app[STORAGE], app[RUNNER])
+        app[PUBLIC] = public.PublicSite(app[STORAGE], app[RUNNER], lambda: app[SCHEDULER].where()[0])
         await app[PUBLIC].apply()
         if read_stdin:
             app[BACKGROUND].append(asyncio.create_task(commands.read_stdin(app[RUNNER])))
@@ -1758,6 +1771,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/public", get_public)
     r.add_put("/api/public", put_public)
     r.add_post("/api/public/clear", clear_public_queue)
+    r.add_post("/api/public/code", new_public_code)
     r.add_put("/api/location", put_location)
     r.add_get("/api/house", get_house)
     r.add_put("/api/house", put_house)

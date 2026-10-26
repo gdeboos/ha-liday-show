@@ -901,6 +901,20 @@
 </div>
 <main id="view-public" class="view settings" hidden>
   <section class="card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Who can start shows</h2>
+    <p class="hint">Visitors need the link with your code in it, the one the QR code on your sign will hold. Opening
+      the page without it just says to scan the sign.</p>
+    <p><label>Public address <input id="pub-address-input" type="url" placeholder="https://lights.yourdomain.com"
+      size="34"></label></p>
+    <p class="hint">The web address your tunnel or proxy gives the public page. Leave it empty if visitors only use
+      your home Wi-Fi.</p>
+    <p class="row"><span>Visitors' link:</span> <code id="pub-link" class="pub-link"></code>
+      <button id="pub-copy">Copy</button> <button id="pub-new-code" class="ghost">New code…</button></p>
+    <p><label><input id="pub-nearby" type="checkbox"> Nearby only</label>
+      <label>within <input id="pub-distance" type="number" min="25" max="2000" step="25"> m</label></p>
+    <p class="hint" id="pub-nearby-hint"></p>
+  </section>
+  <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>What visitors can pick</h2>
     <p class="hint">People passing by pick one of these on their phone, and it plays on your lights and the show's
       speaker. Give one dates to have it show as coming soon until then.</p>

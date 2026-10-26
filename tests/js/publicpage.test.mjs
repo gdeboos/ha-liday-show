@@ -48,3 +48,13 @@ test("later shows are listed with the day they start, and an empty page says whe
   view = describe(st({ choices: [], soon }));
   assert.equal(view.coming, "Coming soon on 1 December");
 });
+
+test("the code comes from the QR code's link and is kept for next time", async () => {
+  const { codeFrom, locationProblem } = await import("../../haliday_show/app/halidayshow/static/public/public.js");
+  assert.equal(codeFrom("?c=abc23456", ""), "abc23456");
+  assert.equal(codeFrom("", "abc23456"), "abc23456");
+  assert.equal(codeFrom("?c=new98765", "abc23456"), "new98765");
+  assert.equal(codeFrom("?c=<script>", "abc23456"), "abc23456");
+  assert.match(locationProblem({ code: 1 }), /Allow location/);
+  assert.match(locationProblem({ code: 3 }), /too long/);
+});
