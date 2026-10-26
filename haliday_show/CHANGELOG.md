@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.136
+
+- **+ New show** now opens a short window instead of an empty show straight away:
+  - **Step 1:** give it a name and pick a song (or upload one). The name fills in from the song
+    until you type your own, and it tells you if another show already has it.
+  - **Step 2:** choose how it starts: **Start empty**, **Generate a first draft**, or **Generate with
+    AI** (when an AI is set up), with the colours and style underneath.
+- The show is saved as soon as you press **Create show** (or **Create and generate**), so it's in **Your shows** straight away.
+  **Cancel** leaves everything as it was.
+
 ## 0.2.135
 
 - In the **Remove…** window, the line saying where a show or song is used now has the same look as

@@ -232,6 +232,32 @@
       </div>
     </form>
   </dialog>
+  <dialog id="new-show-dialog" class="effect-dialog form-dialog" aria-labelledby="ns-title">
+    <form id="ns-form" method="dialog">
+      <div class="effect-dialog-head"><h3 id="ns-title">New show</h3>
+        <button type="button" class="ghost" data-ns="cancel" aria-label="Close">✕</button></div>
+      <div class="form-dialog-body" id="ns-step-1">
+        <p class="hint ns-step">Step 1 of 2: name and song</p>
+        <label class="field">Name <input id="ns-name" type="text" maxlength="80" autocomplete="off"></label>
+        <div class="field"><span id="ns-song-label">Song</span>
+          <div id="ns-songs" class="song-list" role="radiogroup" aria-labelledby="ns-song-label"></div></div>
+        <label id="ns-length-wrap" class="field">Length with no song
+          <span><input id="ns-length" type="number" min="1" step="1" value="60"> s</span></label>
+      </div>
+      <div class="form-dialog-body" id="ns-step-2" hidden>
+        <p class="hint ns-step">Step 2 of 2: how should it start?</p>
+        <div id="ns-starts" class="song-list" role="radiogroup" aria-label="How the show starts"></div>
+        <div id="ns-gen" class="ns-gen"></div>
+      </div>
+      <div class="form-dialog-foot">
+        <label class="button ghost" id="ns-upload-wrap" title="Upload a song to HA-liday Show">Upload a song…<input id="ns-upload" type="file" accept="audio/*" hidden></label>
+        <button type="button" class="ghost" id="ns-back" hidden>← Back</button>
+        <span class="spacer"></span>
+        <button type="button" data-ns="cancel">Cancel</button>
+        <button type="submit" class="primary" id="ns-next">Next →</button>
+      </div>
+    </form>
+  </dialog>
   <audio id="audio" preload="auto"></audio>
 </main>
 
