@@ -57,12 +57,19 @@ document.addEventListener("toggle", (e) => {
   if (d instanceof HTMLDetailsElement && d.matches(".howto[data-howto]")) prefs.set(`howto.${d.dataset.howto}`, d.open);
 }, true);
 
-// A message in the top bar. Pass error = true for something that went wrong (it stays until pressed),
-// or "saved" when something has just been saved (it lights up, then settles to the time).
+// A message in the top bar. Pass error = true for a failure (it stays until pressed), "saved" when
+// something has just been saved (it lights up, then settles to the time), or "hint".
 let statusLine;
-function status(msg, error = false) {
+// Thrown for something to put right rather than a failure ("… is already on the list"), so it
+// shows as a hint where it's caught.
+class Nudge extends Error {}
+const errorKind = (e) => (e instanceof Nudge ? "hint" : true);
+// "hint" is a nudge such as "Choose a song first", which fades. `topic` names what a failure was
+// about, so a later save of it, or status("", "info", topic), takes the failure away.
+function status(msg, error = false, topic = null) {
   statusLine ||= new StatusLine($("status"));
-  statusLine.show(msg, error === "saved" ? "saved" : error ? "error" : "info");
+  const kind = error === true ? "error" : error || "info";
+  statusLine.show(msg, kind, topic);
 }
 
 // bars and sections come from Detect: bar start times, and [{start, end, label, energy}].
@@ -277,8 +284,8 @@ async function saveDevices() {
   try {
     app.deviceList = await api("api/devices", { method: "PUT", json: app.deviceList });
     indexDevices();
-    status("Lights saved", "saved");
-  } catch (e) { status(`Couldn't save devices: ${e.message}`, true); return; }
+    status("Lights saved", "saved", "lights");
+  } catch (e) { status(`Couldn't save your lights: ${e.message}`, true, "lights"); return; }
   for (const d of app.deviceList) retestLight(d);
 }
 
@@ -413,7 +420,7 @@ function lightFields(d) {
     Object.assign(ip, { value: d.ip, placeholder: "Not linked yet", size: 13, title: "The light's IP address. Leave blank for a planned light." });
     ip.addEventListener("change", () => {
       const v = ip.value.trim();
-      if (v && !/^\d{1,3}(\.\d{1,3}){3}$/.test(v)) { status("That isn't an IP address", true); ip.value = d.ip; return; }
+      if (v && !/^\d{1,3}(\.\d{1,3}){3}$/.test(v)) { status("That isn't an IP address", "hint"); ip.value = d.ip; return; }
       d.ip = v;
       saveDevices();
     });
@@ -640,7 +647,7 @@ function partsPanel(d) {
     // The first gap after the last part, so parts go on round the light in order.
     const runs = unusedRuns(d), end = Math.max(0, ...parts.map((p) => p.to));
     const run = runs.find(([a]) => a > end) || runs[0];
-    if (!run) { status("Every segment is already in a part", true); return; }
+    if (!run) { status("Every segment is already in a part", "hint"); return; }
     let n = 1;
     while (parts.some((p) => p.id === `p${n}` || p.name === `Part ${n}`)) n++;
     d.parts = [...parts, { id: `p${n}`, name: `Part ${n}`, from: run[0], to: run[1] }].sort((a, b) => a.from - b.from);
@@ -693,9 +700,9 @@ function partsPanel(d) {
         const next = { ...p, [key]: v };
         const clash = parts.find((o) => o !== p && o.from <= next.to && next.from <= o.to);
         if (!(v >= 1 && v <= d.segments) || next.from > next.to) {
-          status(`Segments run from 1 to ${d.segments}, and a part's first comes before its last`, true);
+          status(`Segments run from 1 to ${d.segments}, and a part's first comes before its last`, "hint");
         } else if (clash) {
-          status(`That overlaps ${clash.name}`, true);
+          status(`That overlaps ${clash.name}`, "hint");
         } else {
           p[key] = v;
           d.parts.sort((a, b) => a.from - b.from);
@@ -898,7 +905,7 @@ async function loadHaEntities() {
 function addHaLight(entity) {
   const found = (haEntities || []).find((e) => e.entity === entity);
   if (!found) throw new Error("Pick a light or switch first");
-  if (app.deviceList.some((d) => d.entity === entity)) throw new Error(`${found.name} is already on the list`);
+  if (app.deviceList.some((d) => d.entity === entity)) throw new Nudge(`${found.name} is already on the list`);
   app.deviceList.push({ id: `ha-${entity}`, kind: "ha", name: found.name, ip: "", entity, sku: "",
     protocol: entity.startsWith("switch.") ? "ha_switch" : "ha_light", segments: 1, bulbs: 1,
     reverse: false, gradient: false, brightness: 100 });
@@ -922,7 +929,7 @@ const isPixels = (d) => ["wled", "ddp", "e131", "twinkly"].includes(d?.kind); //
 
 // Twinkly (experimental): asks the light for its name and LED count, like WLED.
 async function addTwinkly(ip) {
-  if (app.deviceList.some((d) => d.ip === ip)) throw new Error(`${ip} is already on the list`);
+  if (app.deviceList.some((d) => d.ip === ip)) throw new Nudge(`${ip} is already on the list`);
   {
     const t = await api("api/twinkly/info", { method: "POST", json: { ip } })
       .catch((e) => { throw new Error(`Couldn't reach a Twinkly light there: ${e.message}`); });
@@ -960,12 +967,12 @@ const LONG_PROTOCOLS = ["whole", "segments", "pixels", "ddp", "e131"];
 // Asks a WLED light for its name, LED count and segments (server.py wled_info).
 async function wledInfo(ip) {
   const info = await api("api/wled/info", { method: "POST", json: { ip } });
-  if (info.leds > info.max) status(`${info.name} has ${info.leds} LEDs; shows can drive the first ${info.max}`, true);
+  if (info.leds > info.max) status(`${info.name} has ${info.leds} LEDs; shows can drive the first ${info.max}`, "hint");
   return { ...info, leds: Math.min(info.leds, info.max) };
 }
 
 async function addWled(ip) {
-  if (app.deviceList.some((d) => d.ip === ip)) throw new Error(`${ip} is already on the list`);
+  if (app.deviceList.some((d) => d.ip === ip)) throw new Nudge(`${ip} is already on the list`);
   {
     const w = await wledInfo(ip).catch((e) => { throw new Error(`Couldn't reach a WLED light there: ${e.message}`); });
     app.deviceList.push({ id: `wled-${ip}`, kind: "wled", name: w.name, ip, sku: "", protocol: "ddp",
@@ -980,7 +987,7 @@ async function addWled(ip) {
 async function useWledSegments(d) {
   try {
     const w = await wledInfo(d.ip);
-    if (!w.parts.length) { status(`${d.name} has only one segment in WLED, so there's nothing to split`, true); return; }
+    if (!w.parts.length) { status(`${d.name} has only one segment in WLED, so there's nothing to split`, "hint"); return; }
     if (d.parts?.length && !confirm(`Replace ${d.name}'s parts with its ${w.parts.length} WLED segments? Clips on parts that disappear stay in your shows.`)) return;
     d.segments = w.leds;
     d.parts = w.parts;
@@ -1153,7 +1160,7 @@ function button(label, onclick, cls = "") {
 }
 
 function addDevice(found) {
-  if (app.devices[found.id] || app.deviceList.some((d) => d.ip && d.ip === found.ip)) throw new Error(`${found.ip} is already on the list`);
+  if (app.devices[found.id] || app.deviceList.some((d) => d.ip && d.ip === found.ip)) throw new Nudge(`${found.ip} is already on the list`);
   const name = `${found.sku || "Govee"} ${found.ip.split(".").pop()}`;
   app.deviceList.push(newLight(app.models[skuOf(found.sku)], { id: found.id, name, ip: found.ip, sku: found.sku || "" }));
   saveDevices();
@@ -1178,7 +1185,7 @@ async function scan() {
       const known = app.devices[f.id] || app.deviceList.find((d) => d.ip === f.ip);
       if (known) { row.append(` (${known.name})`); box.append(row); continue; }
       row.append(button("Add", () => {
-        try { addDevice(f); row.replaceChildren(`${f.sku || "Govee"} at ${f.ip} (added)`); } catch (e) { status(e.message, true); }
+        try { addDevice(f); row.replaceChildren(`${f.sku || "Govee"} at ${f.ip} (added)`); } catch (e) { status(e.message, errorKind(e)); }
       }));
       const planned = app.deviceList.filter((d) => !d.ip && (d.kind || "govee") === "govee");
       if (planned.length) {
@@ -1216,7 +1223,7 @@ async function scanWled() {
       const known = app.deviceList.find((d) => d.ip === f.ip);
       if (known) { row.append(` (${known.name})`); box.append(row); continue; }
       row.append(button("Add", async () => {
-        try { await addWled(f.ip); row.replaceChildren(`${label} (added)`); } catch (e) { status(e.message, true); }
+        try { await addWled(f.ip); row.replaceChildren(`${label} (added)`); } catch (e) { status(e.message, errorKind(e)); }
       }));
       box.append(row);
     }
@@ -2297,9 +2304,9 @@ const clone = (clip) => JSON.parse(JSON.stringify(clip));
 
 function copySelection() {
   const sel = app.selected;
-  if (!sel || sel.range) { status("Select a clip or a light to copy", true); return; }
+  if (!sel || sel.range) { status("Select a clip or a light to copy", "hint"); return; }
   const clips = sel.clip ? [sel.clip] : app.show.tracks[sel.track].clips;
-  if (!clips.length) { status("Nothing to copy on this light", true); return; }
+  if (!clips.length) { status("Nothing to copy on this light", "hint"); return; }
   app.clipboard = { clips: clips.map(clone), track: sel.track, whole: !sel.clip };
   status(`Copied ${clips.length} effect${clips.length > 1 ? "s" : ""}`);
   renderInspector();
@@ -2309,20 +2316,20 @@ function copySelection() {
 // Onto the same light, they go to the playhead.
 function paste() {
   const cb = app.clipboard, sel = app.selected;
-  if (!cb) { status("Copy a clip or a light first", true); return; }
-  if (!sel) { status("Select the light to paste onto", true); return; }
+  if (!cb) { status("Copy a clip or a light first", "hint"); return; }
+  if (!sel) { status("Select the light to paste onto", "hint"); return; }
   let shift = 0;
   if (sel.track === cb.track && !cb.whole) shift = app.time - Math.min(...cb.clips.map((c) => c.start));
   const fits = cb.clips.filter((c) => fitsTrack(c.effect, sel.track));
   if (!fits.length) {
     status(isHouse(sel.track) ? "Only House effects can go on the House lane"
-      : "House effects can only go on the House lane", true);
+      : "House effects can only go on the House lane", "hint");
     return;
   }
   const pasted = fits.map((c) => ({ ...clone(c), start: c.start + shift, end: c.end + shift }))
     .filter((c) => !unfit(c, sel.track));
   const left = fits.length - pasted.length;
-  if (!pasted.length) { status(`${left === 1 ? "That effect won't" : "Those effects won't"} work on ${trackName(sel.track)}`, true); return; }
+  if (!pasted.length) { status(`${left === 1 ? "That effect won't" : "Those effects won't"} work on ${trackName(sel.track)}`, "hint"); return; }
   app.show.tracks[sel.track].clips.push(...pasted);
   app.selected = pasted.length === 1 ? { track: sel.track, clip: pasted[0] } : { track: sel.track, clip: null };
   status(`Pasted ${pasted.length} effect${pasted.length > 1 ? "s" : ""} onto ${trackName(sel.track)}`
@@ -2331,7 +2338,7 @@ function paste() {
 }
 
 function copyClipsTo(clips, from, targets, replace = false) {
-  if (!targets.length) { status("There are no other lights", true); return; }
+  if (!targets.length) { status("There are no other lights", "hint"); return; }
   let left = 0;
   for (const t of targets) {
     const fits = clips.filter((c) => !unfit(c, t));
@@ -2436,8 +2443,8 @@ function savePresets() {
     try {
       await api("api/presets", { method: "PUT",
         json: app.myPresets.map(({ name, effect, params }) => ({ name, effect, params })) });
-      status("Presets saved", "saved");
-    } catch (e) { status(`Couldn't save presets: ${e.message}`, true); }
+      status("Presets saved", "saved", "presets");
+    } catch (e) { status(`Couldn't save presets: ${e.message}`, true, "presets"); }
   }, 400);
 }
 
@@ -2786,7 +2793,7 @@ function recolour(tracks) {
     let k = 0;
     for (const c of clips) if (applyPalette(c, colors, k)) { k++; n++; }
   }
-  if (!n) { status("No effects with colours to recolour", true); return; }
+  if (!n) { status("No effects with colours to recolour", "hint"); return; }
   status(`Recoloured ${n} effect${n > 1 ? "s" : ""} with ${currentPalette().name}`);
   app.changed();
 }
@@ -2803,9 +2810,9 @@ function savePalettes() {
   savePalettesTimer = setTimeout(async () => {
     try {
       await api("api/palettes", { method: "PUT", json: app.palettes });
-      status("Palettes saved", "saved");
+      status("Palettes saved", "saved", "palettes");
       renderInspector();
-    } catch (e) { status(`Couldn't save palettes: ${e.message}`, true); }
+    } catch (e) { status(`Couldn't save palettes: ${e.message}`, true, "palettes"); }
   }, 300);
 }
 
@@ -2860,7 +2867,7 @@ function renderPalettes() {
     name.addEventListener("change", () => {
       const v = name.value.trim();
       if (!v || allPalettes().some((q) => q !== p && q.name === v)) {
-        status("Give each palette its own name", true);
+        status("Give each palette its own name", "hint");
         name.value = p.name;
         return;
       }
@@ -2976,10 +2983,10 @@ async function saveSunPlace(e) {
   const both = $("sun-lon").value.trim() ? [] : $("sun-lat").value.trim().split(/\s*,\s+|\s+/);
   const [lat, lon] = both.length === 2 ? both : [$("sun-lat").value, $("sun-lon").value];
   try {
-    if (!lat.trim() || !String(lon).trim()) throw new Error("Type both a latitude and a longitude");
+    if (!lat.trim() || !String(lon).trim()) throw new Nudge("Type both a latitude and a longitude");
     scheduleState = await api("api/location", { method: "PUT", json: { lat: lat.trim(), lon: String(lon).trim() } });
-    status("Saved where you are, for sunset times", "saved");
-  } catch (err) { status(err.message, true); }
+    status("Saved where you are, for sunset times", "saved", "location");
+  } catch (err) { status(err.message, errorKind(err), "location"); }
   document.activeElement?.blur();
   refreshPlaylistStatus();
 }
@@ -3024,7 +3031,7 @@ function scheduleEditor(pl) {
       el.addEventListener("change", () => {
         const other = key === "start" ? s.end : s.start;
         if (!el.value || el.value === other) {
-          status("The start and end need different times", true);
+          status("The start and end need different times", "hint");
           el.value = s[key];
           return;
         }
@@ -3150,8 +3157,8 @@ function savePlaylists() {
     try {
       await api("api/playlists", { method: "PUT", json: playlists });
       savePlaylistsTimer = null;
-      status("Playlists saved", "saved");
-    } catch (e) { status(`Couldn't save playlists: ${e.message}`, true); }
+      status("Playlists saved", "saved", "playlists");
+    } catch (e) { status(`Couldn't save playlists: ${e.message}`, true, "playlists"); }
   }, 300);
 }
 
@@ -3181,7 +3188,7 @@ function renderPlaylists() {
     name.addEventListener("change", () => {
       const v = name.value.trim();
       if (!v || playlists.some((q) => q !== pl && q.name.toLowerCase() === v.toLowerCase())) {
-        status("Give each playlist its own name", true);
+        status("Give each playlist its own name", "hint");
         name.value = pl.name;
         return;
       }
@@ -3364,7 +3371,7 @@ function addToRange(effect, preset = null) {
   const tracks = kind.filter((t) => !unfit(clipFor(), t));
   const left = kind.filter((t) => !tracks.includes(t));
   const label = `${EFFECTS[effect].label}${preset ? ` (${preset.label})` : ""}`;
-  if (!tracks.length) { status(`${label} won't work on ${left.map(trackName).join(", ")}`, true); return; }
+  if (!tracks.length) { status(`${label} won't work on ${left.map(trackName).join(", ")}`, "hint"); return; }
   const added = tracks.map((t) => {
     const clip = clipFor();
     app.show.tracks[t].clips.push(clip);
@@ -3432,7 +3439,7 @@ function renderDemo() {
 }
 
 async function tryDemo() {
-  if (!canStartDemo(app.deviceList)) { status("The demo is only for a fresh start, with no lights yet", true); return; }
+  if (!canStartDemo(app.deviceList)) { status("The demo is only for a fresh start, with no lights yet", "hint"); return; }
   if (!(await confirmDiscard())) return;
   showView("editor");
   try {
@@ -3794,7 +3801,7 @@ function scheduleAutoSave() {
   autoSaveTimer = setTimeout(() => {
     // Saving re-bakes the show, so wait until playback stops.
     if (app.playing) { scheduleAutoSave(); return; }
-    autoSave().catch((e) => status(`Auto save failed: ${e.message}`, true));
+    autoSave().catch((e) => status(`Auto save failed: ${e.message}`, true, "show"));
   }, AUTOSAVE_MS);
 }
 
@@ -3804,7 +3811,7 @@ async function autoSave() {
   if (!app.dirty) return;
   renderSaveState("Saving…");
   saving = save().finally(() => { saving = null; });
-  try { await saving; status("Show saved", "saved"); } finally {
+  try { await saving; status("Show saved", "saved", "show"); } finally {
     renderSaveState();
     if (app.dirty) scheduleAutoSave(); // edited while saving
   }
@@ -3854,8 +3861,8 @@ function reportUnfit() {
   const done = (fit) => {
     if (fit.level === "no") count++;
     if (--left || !count || show !== app.show) return;
-    status(`⚠ ${count} clip${count === 1 ? " won't" : "s won't"} work on ${count === 1 ? "its light" : "their lights"}. `
-      + "They're hatched on the timeline: select one to see why.", true);
+    status(`${count} clip${count === 1 ? " won't" : "s won't"} work on ${count === 1 ? "its light" : "their lights"}. `
+      + "They're hatched on the timeline: select one to see why.", "hint");
   };
   for (const [c, i] of clips) {
     const fit = clipFitOn(c, i, done);
@@ -3895,8 +3902,8 @@ async function saveClicked() {
     status("Saving…");
     if (saving) await saving;
     await save();
-    status("Show saved", "saved");
-  } catch (e) { status(`Save failed: ${e.message}`, true); }
+    status("Show saved", "saved", "show");
+  } catch (e) { status(`Save failed: ${e.message}`, true, "show"); }
   renderSaveState();
 }
 
@@ -3938,9 +3945,9 @@ async function loadAudio(ref) {
     app.peaks = computePeaks(decoded);
     songBuffer = decoded;
     app.audioDuration = decoded.duration;
-    status("");
+    status("", "info", "song");
   } catch (e) {
-    status(songLoadMessage(e), true);
+    status(songLoadMessage(e), true, "song");
   }
   timeline.layout();
   renderSongSummary();
@@ -4263,16 +4270,17 @@ async function startPlaying() {
   if (r && !speaker() && (app.time < r.start || app.time >= r.end - 0.01)) app.seek(r.start);
   else if (app.time >= app.duration() - 0.01) app.seek(0);
   if (speaker()) {
-    if (!app.show.audio) { status("Pick a song to play on a speaker", true); return; }
+    if (!app.show.audio) { status("Pick a song to play on a speaker", "hint"); return; }
     try {
       status("Starting the speaker…");
       await save();
       const st = await api("api/player/play", {
         method: "POST", json: { show: app.showId, position: app.time, media_player: speaker() },
       });
-      status(r || app.loop ? "Play region and Loop only work with the song in this browser" : "");
+      if (r || app.loop) status("Play region and Loop only work with the song in this browser", "hint");
+      else status("", "info", "play");
       app.clockStart = performance.now() - st.position * 1000;
-    } catch (e) { status(`Couldn't play: ${e.message}`, true); return; }
+    } catch (e) { status(`Couldn't play: ${e.message}`, true, "play"); return; }
     app.remote = true;
     app.playing = true;
     $("btn-play").textContent = "⏸ Stop";
@@ -4286,9 +4294,9 @@ async function startPlaying() {
       await api("api/player/play", {
         method: "POST", json: { show: app.showId, position: app.time, offset: offset() },
       });
-      status("");
+      status("", "info", "play");
     } catch (e) {
-      status(`Lights unavailable: ${e.message}`, true);
+      status(`Lights unavailable: ${e.message}`, true, "play");
     }
   }
   if (hasAudio()) {
@@ -4323,7 +4331,7 @@ function tapBeat() {
 
 function fillBeats() {
   const bpm = Number($("bpm").value);
-  if (!(bpm >= 20 && bpm <= 300)) { status("Enter a BPM between 20 and 300", true); return; }
+  if (!(bpm >= 20 && bpm <= 300)) { status("Enter a BPM between 20 and 300", "hint"); return; }
   const start = app.time, step = 60 / bpm, end = app.duration();
   const beats = app.show.beats.filter((b) => b < start - 0.001);
   for (let t = start; t <= end; t += step) beats.push(Math.round(t * 1000) / 1000);
@@ -4351,7 +4359,7 @@ async function importSongInfo({ quiet = true } = {}) {
   const info = await songInfo(ref);
   if (ref !== app.show.audio) return;
   if (!info) {
-    if (!quiet) status("No beats saved for this song yet. Use Detect here or on the Music tab", true);
+    if (!quiet) status("No beats saved for this song yet. Use Detect here or on the Music tab", "hint");
     return;
   }
   const has = app.show.beats.length || app.show.sections?.length;
@@ -4363,7 +4371,7 @@ async function importSongInfo({ quiet = true } = {}) {
 
 // Finds the beats, bars and sections in the song, in a worker so the editor stays responsive.
 async function detectBeats() {
-  if (!songBuffer) { status("Choose a song first", true); return; }
+  if (!songBuffer) { status("Choose a song first", "hint"); return; }
   if ((app.show.beats.length || app.show.sections?.length)
       && !confirm("Replace the beat markers and sections with ones found in the song?")) return;
   const r = await analyseSong();
@@ -4474,7 +4482,7 @@ async function generate({ colors, style, house }) {
       const dev = app.devices[tr.device];
       return { id: tr.device, segments: dev.segments, slow: isSlow(dev), fits: (c) => fitFor(c, dev).level !== "no" };
     });
-  if (!lights.length) { status("Add your lights under Setup → Devices first", true); return; }
+  if (!lights.length) { status("Add your lights under Setup → Devices first", "hint"); return; }
   // Listen to the song first if that hasn't been done yet.
   if (songBuffer && !app.show.beats.length && !app.show.sections?.length && !(await analyseSong())) return;
   const show = app.show;
@@ -4673,7 +4681,7 @@ async function describeIt(e) {
 // selectionFor(lights) gives the selection to send; replaceAll clears the lights first, as Generate does.
 async function describe(request, selectionFor, { replaceAll = false, what = "your effects" } = {}) {
   const lights = aiLights();
-  if (!lights.some((l) => !l.house)) { status("Add your lights under Setup → Devices first", true); return; }
+  if (!lights.some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
   const selection = selectionFor ? selectionFor(lights) : null;
   const show = app.show, duration = app.duration();
   const context = buildContext({ show, lights, duration, selection, palettes: allPalettes() });
@@ -4704,7 +4712,7 @@ async function describe(request, selectionFor, { replaceAll = false, what = "you
   const extra = skipped.length ? ` (left out ${skipped.length}: ${[...new Set(skipped)].slice(0, 2).join("; ")})` : "";
   const message = `${reply.summary || `Added ${placed.length} effects`}${extra}`;
   done(placed.length ? `✓ ${message}` : message, !placed.length);
-  status(message, !placed.length);
+  status(message, placed.length ? "info" : "hint");
 }
 
 // Shows that the AI is working (a spinner and a running count of seconds in the panel) until the

@@ -298,7 +298,7 @@ export class House {
       const blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.85));
       await this.api("api/house/photo", { method: "PUT", body: blob, headers: { "Content-Type": "image/jpeg" } });
       await this.loadPhoto();
-      this.status("House photo saved", "saved");
+      this.status("House photo saved", "saved", "house");
     } catch (e) {
       this.status(`Couldn't use that photo: ${e.message}`, true);
     }
@@ -314,8 +314,9 @@ export class House {
     this.saveTimer = setTimeout(async () => {
       try {
         await this.api("api/house", { method: "PUT", json: { paths: this.paths, styles: this.styles, pins: this.pins, dim: this.dim } });
+        this.status("", "info", "house-view");
       } catch (e) {
-        this.status(`Couldn't save the house view: ${e.message}`, true);
+        this.status(`Couldn't save the house view: ${e.message}`, true, "house-view");
       }
     }, 400);
   }

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.128
+
+- Nudges such as "Choose a song first" or "Give each palette its own name" now show in orange and fade
+  by themselves, instead of sticking in red as if something had failed. Red that stays is kept for
+  real failures.
+- A red failure now goes away by itself once the same thing works: a song that loads clears "Couldn't
+  load the song", and a palette, preset, playlist, lights or show save that works clears its failed
+  save.
+- Screen readers announce failures straight away, and say they can be pressed to dismiss.
+
 ## 0.2.127
 
 - Saving is easier to notice. When a show, your lights, palettes, presets, playlists or the house

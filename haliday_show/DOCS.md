@@ -754,8 +754,9 @@ A new show is saved once it has its first effect. Auto save waits while a show i
 
 Whenever something saves (a show, your lights, palettes, presets, playlists or the house photo), the
 top right of the page lights up green for a few seconds, then settles to a small **✓ Saved** with the
-time, so you can always see when something last saved. If a save fails, or anything else goes wrong,
-the message shows in red and stays until you press it.
+time, so you can always see when something last saved. If a save fails, or something else goes wrong,
+the message shows in red and stays until you press it, or until the same thing works again. A nudge
+such as "Choose a song first" shows in orange and fades by itself.
 
 ### While you edit
 
