@@ -22,14 +22,15 @@ the Home Assistant sidebar.
 ## Finding your way
 
 Four tabs run along the top, and a fifth, **Public page**, once you've turned it on. HA-liday Show
-opens on **Library**; the two editors sit together after it, under **Editors**, as **Show** and
-**Music**:
+opens on **Library**; the three editors sit together after it, under **Editors**, as **Show**,
+**Music** and **Playlist**:
 
 | Tab | What's there |
 | --- | --- |
 | **Library** | In two groups. **Shows**: **Shows** (all of yours) and **Playlists** (shows back to back, by hand or on a schedule). **Building blocks**: **Songs** (all of yours), **Palettes** and **Presets** (the colours and effect settings you reuse). |
 | **Show** (the **Show editor**) | Where shows are made: the timeline, previews and effect settings. |
 | **Music** (the **Music editor**) | Where songs are cut, shortened, joined and detected. |
+| **Playlist** (the **Playlist editor**) | Where you drag shows into playlists and set when they play. |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 | **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](#the-public-page)). |
 
@@ -38,8 +39,8 @@ page you last had open. Below, "the House tab" and so on mean that page.
 
 Your browser's **Back** and **Forward** buttons (or swiping back on a phone) move between the tabs and
 pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Your shows**, as
-**← All shows** does; from a song in the Music editor, it goes to **Your songs**. Both ask first if
-you'd lose changes. Going back to **Your shows** stops the show if it's playing. **Back** does nothing
+**← All shows** does; from a song in the Music editor, it goes to **Your songs**; from a playlist, to
+**Your playlists**. The first two ask first if you'd lose changes. Going back to **Your shows** stops the show if it's playing. **Back** does nothing
 while a window is open: close it first. Without Home Assistant (Docker or Python), reloading the
 page keeps you on the same tab or page.
 
@@ -78,7 +79,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 4. **Show** tab (the Show editor), or **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Play it by itself: put it in a [playlist](#playlists) under **Library → Playlists** and tick
+5. Play it by itself: put it in a [playlist](#playlists) on the **Playlist** tab and tick
    **Play on a schedule** (at set times or from sunset), or start it from an automation with the MQTT
    **Play** button or the `hassio.app_stdin` action.
 
@@ -997,16 +998,30 @@ on their own.
 
 ### Playlists
 
-To play several shows back to back, open **Library → Playlists** and press **New playlist**. Give it
-a name, add your shows with **Add a show…** and put them in order with **↑** and **↓** (**✕** takes
-one out). **Pause between shows** sets how many seconds to wait before the next one; it starts at
-5. During the pause your lights go back to how they normally look. Type over a playlist's
-name to rename it. **Delete playlist** removes the playlist but keeps its shows. A playlist holds up
-to 100 shows, and you can have up to 50 playlists.
+To play several shows back to back, open the **Playlist** tab (the **Playlist editor**). It starts
+on **Your playlists**, the same list as **Library → Playlists**: each says how many shows it has, how
+long it takes to play through once and when it plays, with **Open**, **▶ Play** and **Delete**. Press
+**+ New playlist**, or **Open** one, to edit it:
+
+- **Your shows**, on the left, lists every show. Drag one by its card into **Running order** and let
+  go where it should play; a blue line shows where it will land. Or press **+** to add it at the end.
+  **Find a show** narrows the list. The same show can go in more than once.
+- In **Running order**, drag a show up or down to change when it plays, or drag it out of **Running
+  order** (back to **Your shows**, say) to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
+  by the dots (⠿) at the left of a card, so the page still scrolls; there, **Running order** comes
+  first.
+- The coloured bar above the order shows one time through, each show as long as it plays, with the
+  pauses between them, and next to **Running order** it says how long that takes.
+- **Pause between shows** sets how many seconds to wait before the next one; it starts at 5. During
+  the pause your lights go back to how they normally look.
+- Type over the name at the top to rename the playlist. **Delete playlist** removes it but keeps its
+  shows. **← All playlists** (or your browser's **Back**) goes back to **Your playlists**.
+
+Changes save as you make them. A playlist holds up to 100 shows, and you can have up to 50 playlists.
 
 Press **▶ Play** and HA-liday Show plays the shows in order, then starts again from the top, until
-you press **■ Stop**. It carries on with the page closed, and the line above your playlists says
-what's playing. Each show plays on its own **Show speaker**, just as when an automation starts it.
+you press **■ Stop**. It carries on with the page closed. A line at the top of **Your playlists**
+and the Playlist editor says what's playing, which is also outlined in **Running order**. Each show plays on its own **Show speaker**, just as when an automation starts it.
 Only saved shows play: a show you haven't saved yet, or have deleted, says so in the list and is
 skipped. Playing a show from the editor, or stopping it, stops the playlist, and so does pausing or
 stopping the song on the speaker.
@@ -1017,8 +1032,8 @@ A show with no **Show speaker** (and no default one under **Setup → Speakers**
 when a playlist, its schedule or an automation starts it. Without Home Assistant, that's every show.
 To hear the music too, use the **Show player**:
 
-1. On a computer or tablet connected to your speakers, open the **Show player** link on the
-   **Playlists** page. Without Home Assistant, the address is `http://<HA-liday Show's address>:8099/player`.
+1. On a computer or tablet connected to your speakers, open the **Show player** link under
+   **When it plays** in the Playlist editor. Without Home Assistant, the address is `http://<HA-liday Show's address>:8099/player`.
 2. Press **▶ Start the Show player** (browsers only play sound after a press on the page).
 3. Leave it open. Each song plays there from the right point, and your lights follow it.
 
@@ -1028,7 +1043,8 @@ on a speaker, don't play in the Show player, so you never hear a song twice.
 
 #### Playing on a schedule
 
-Tick **Play on a schedule** on a playlist to have it start and stop by itself:
+Tick **Play on a schedule** under **When it plays**, in the Playlist editor, to have a playlist start
+and stop by itself:
 
 - **From** and **to** set the times, such as 17:00 to 22:00. An end time earlier than the start runs
   past midnight: 20:00 to 01:00 on a Saturday plays until 1 in the morning on Sunday.
@@ -1049,15 +1065,15 @@ times while it plays just moves when it stops.
 
 Sunset times are worked out for Home Assistant's location (**Settings → System → General** in Home
 Assistant). Without Home Assistant, or to use another place, type your latitude and longitude in the
-box that appears above your playlists once one starts at sunset, and press **Save**. **Use Home
+boxes that appear under the schedule once a playlist starts at sunset, and press **Save**. **Use Home
 Assistant's** goes back to Home Assistant's location. On Google Maps, right-click your
 house and click the numbers at the top to copy them, then paste them into the first box. Sunset is
 worked out to within a couple of minutes. The page shows today's sunset next to the clock.
 
-Only one playlist plays at a time. If two playlists' times overlap, the one higher up the list plays
+Only one playlist plays at a time. If two playlists' times overlap, the one higher up **Your playlists** plays
 first, and the other starts once it's finished.
 
-Schedules go by HA-liday Show's own clock, which the page shows above your playlists. The app uses
+Schedules go by HA-liday Show's own clock, which the Playlist editor shows under the schedule. The app uses
 Home Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
 `Europe/London`); with Python, it uses your computer's clock.
 
@@ -1091,7 +1107,7 @@ the **Public page** tab, under **Who can start shows**:
   buttons. The page keeps checking while it's open, so walking up brings the buttons. A phone that
   won't share its location is told how to allow it, with **Try again**. Phones on your home Wi-Fi
   aren't asked. Your house is your home location in Home Assistant (**Settings → System →
-  General**), or the one you typed in for sunset under **Library → Playlists**. Without either,
+  General**), or the one you typed in for sunset under **When it plays** in the Playlist editor. Without either,
   visitors through the internet can't start shows at all until you set one, and the tab says so.
   The check stops casual use from afar, but a determined person could fake where their phone is, so
   keep **Queue length** small. The distance is measured generously: a phone that isn't sure where it

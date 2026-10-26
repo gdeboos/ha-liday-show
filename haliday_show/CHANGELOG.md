@@ -1,12 +1,24 @@
 # Changelog
 
-## 0.2.165
+## 0.2.166
 
 - With **Nearby only** on, the public page now checks where the phone is as soon as it opens.
   **▶ Start** buttons only appear for phones by the lights. Anyone further away sees "You're too far
   away to start a show. Come and see the lights!", and can still see what's on and what's coming soon.
 - A phone that won't share its location is told how to allow it, with **Try again**. The page keeps
   checking while it's open, so someone walking up to the lights gets the buttons once they're close.
+
+## 0.2.165
+
+- Playlists have their own editor: a new **Playlist** tab under **Editors**, next to **Show** and
+  **Music**. Like those, it starts on a list, **Your playlists** (also under **Library → Playlists**),
+  with **Open**, **▶ Play** and **Delete** for each.
+- Open a playlist and drag shows from **Your shows** into **Running order**, drag them up and down to
+  change the order, or drag one back out to take it out. **+**, **↑**, **↓** and **✕** still work too.
+  On a phone, drag by the dots at the left of a card.
+- A coloured bar shows one time through the playlist, each show as long as it plays, and it says how
+  long that takes. The show that's playing is outlined.
+- The schedule, sunset place and Show player link are under **When it plays** in the editor.
 
 ## 0.2.164
 
