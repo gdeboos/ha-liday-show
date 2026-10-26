@@ -572,8 +572,8 @@ where the music either side of the join matches: a loop that repeats, or a verse
 round again. For the whole song an option can be several cuts, chosen from parts that are heard again
 elsewhere. Each says how much shorter it makes things and how well its joins match (**smooth join**,
 **good join** or **join may be heard**). Press a cut's **▶** to hear a few seconds either side of its
-join (what it takes out is shown in red), then **Use** to make the cut and close the window; **Undo** takes
-it back. **← Back** tries another length. Suggestions follow the song's bars, so press **Detect** first.
+join (what it takes out is shown in red), then **Use** to make the cut and close the window; **Undo** in the
+**Edit** card (or Ctrl+Z) takes it back. **✂ Suggest cuts…** opens on the section you've picked, if any. **← Back** tries another length. Suggestions follow the song's bars, so press **Detect** first.
 
 ### Detecting in the Music editor
 
