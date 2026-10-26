@@ -328,7 +328,7 @@ export class MusicEditor {
     const decoded = await this.audio.decodeAudioData(buf);
     this.sources[key] = Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c));
     this.refs[key] = ref;
-    this.host.status("");
+    this.host.status("", "info", "song");
     return key;
   }
 
@@ -354,14 +354,14 @@ export class MusicEditor {
       const info = await this.host.api(infoUrl(ref)).catch(() => null);
       if (this.base === ref) { this.info = info; this.secSel = -1; this.updateControls(); this.draw(); }
     } catch (e) {
-      this.host.status(songLoadMessage(e), true);
+      this.host.status(songLoadMessage(e), true, "song");
     }
   }
 
   // Finds the beats, bars and sections of the base song and saves them with the file.
   async detect() {
     if (!this.base) return;
-    if (this.dirty) return this.host.status("Save the edit as a new file first; it's detected when saved", true);
+    if (this.dirty) return this.host.status("Save the edit as a new file first; it's detected when saved", "hint");
     const ref = this.base, channels = this.sources[keyOf(ref)];
     const { samples, rate } = toMono(channels, this.audio.sampleRate);
     this.host.status(`Listening to ${nameOf(ref)}…`);
@@ -416,7 +416,7 @@ export class MusicEditor {
   }
 
   cutSelection() {
-    if (!this.sel) return this.host.status("Drag across the waveform to select the part to cut", true);
+    if (!this.sel) return this.host.status("Drag across the waveform to select the part to cut", "hint");
     const { start, end } = this.sel;
     this.sel = null;
     this.time = start;
@@ -424,7 +424,7 @@ export class MusicEditor {
   }
 
   keepSelection() {
-    if (!this.sel) return this.host.status("Drag across the waveform to select the part to keep", true);
+    if (!this.sel) return this.host.status("Drag across the waveform to select the part to keep", "hint");
     const { start, end } = this.sel;
     this.sel = null;
     this.time = 0;
@@ -433,7 +433,7 @@ export class MusicEditor {
 
   async addSong(atEnd) {
     const v = $("music-insert-src").value;
-    if (!v) return this.host.status("Choose the song to add first", true);
+    if (!v) return this.host.status("Choose the song to add first", "hint");
     try {
       const key = await this.source(JSON.parse(v));
       const piece = { src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate };
@@ -558,7 +558,7 @@ export class MusicEditor {
     $("music-sec-split").addEventListener("click", () => {
       const secs = this.sections, i = sectionAt(secs, this.time);
       const out = splitSection(secs, i, this.time);
-      if (!out) return this.host.status("Move the playhead inside a section, at least half a second from its edges", true);
+      if (!out) return this.host.status("Move the playhead inside a section, at least half a second from its edges", "hint");
       this.editSections(out, i + 1);
     });
     $("music-sec-merge").addEventListener("click", () => this.editSections(mergeSections(this.sections, this.secSel)));
@@ -656,7 +656,7 @@ export class MusicEditor {
   async save() {
     if (!this.rendered) return;
     let name = $("music-name").value.trim();
-    if (!name) return this.host.status("Give the new file a name", true);
+    if (!name) return this.host.status("Give the new file a name", "hint");
     if (!/\.wav$/i.test(name)) name = `${name.replace(/\.[a-z0-9]+$/i, "")}.wav`;
     const existing = this.host.songs().some((r) => r.path.split("/").pop().toLowerCase() === name.toLowerCase());
     if (existing && !confirm(`${name} already exists. Replace it?`)) return;
@@ -685,7 +685,7 @@ export class MusicEditor {
       this.fillSongLists();
       $("music-src").value = JSON.stringify(ref);
       $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path));
-      this.host.status(`Saved ${ref.path}. Pick it under Song in the editor.`, "saved");
+      this.host.status(`Saved ${ref.path}. Pick it under Song in the editor.`, "saved", "music-save");
       if (carry) {
         await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
         this.info = carry;
@@ -695,7 +695,7 @@ export class MusicEditor {
         await this.detect();
       }
     } catch (e) {
-      this.host.status(`Couldn't save: ${e.message}`, true);
+      this.host.status(`Couldn't save: ${e.message}`, true, "music-save");
     }
   }
 
