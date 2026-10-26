@@ -16,6 +16,7 @@ smart plug.
 - 📅 Playlists play your shows back to back every evening, at set times or from sunset
 - 📱 A public page for a QR code on a sign: people near your house pick a show on their phone and it
   joins a queue
+- ✂️ Shorten and join songs in the **Music editor**, as drafts kept as you go
 - ⏯️ Play the song on any Home Assistant speaker and start shows from automations (MQTT or
   `hassio.app_stdin`)
 

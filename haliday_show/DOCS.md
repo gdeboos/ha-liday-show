@@ -21,7 +21,7 @@ the Home Assistant sidebar.
 
 ## Finding your way
 
-Four tabs run along the top, and a fifth, **Public page**, once you've turned it on. HA-liday Show
+Five tabs run along the top, and a sixth, **Public page**, once you've turned it on. HA-liday Show
 opens on **Library**; the three editors sit together after it, under **Editors**, as **Show**,
 **Music** and **Playlist**:
 
@@ -600,7 +600,9 @@ the new version too) or **Make a new file** (such as "Short version 2.wav"). Mak
 song file without changing anything is a quick way to get a WAV copy of a song.
 
 Songs you edited before drafts existed are ordinary songs: press **Edit** on one to start a draft from
-it. A draft can't be opened if a song it uses has been archived or deleted; restore the song first.
+it. A draft can't be opened if a song it uses has been archived or deleted; restore the song first
+(under **Archived songs**). Until then, drafts whose song has gone are listed together at the end of
+**Your songs**, under **Drafts of songs that aren't here any more**, so you can still delete them.
 
 #### Suggest cuts
 
@@ -667,7 +669,9 @@ made the song file is a part spliced in from another song.
 ### Detecting in the Music editor
 
 **Detect** in the Music editor finds a song's beats, bars and sections and keeps them with the song file,
-drawn over its waveform; a saved edit is detected straight after saving. When a show picks that song
+drawn over its waveform. A song file you make from a draft keeps the beats and sections that followed
+your cuts, as long as it's all from the song you opened; with another song spliced in, the new file is
+detected afresh (your marks still go with it). When a show picks that song
 under **Song**, it takes them automatically (asking first if the show already has beats), and **From
 song** in the Beats panel brings them back later. Detect in the editor also saves its results with the
 song. Each show keeps its own copy, so moving beats in one show doesn't change the song or other shows.
@@ -1420,7 +1424,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 | --- | --- |
 | Layout | Where every editor panel sits, including hidden ones, and **Reset layout**. |
 | Public page | **Let visitors start shows**, which adds the **Public page** tab (see [The public page](#the-public-page)). |
-| AI | Which AI **Describe it** uses, or how to set one up (below). |
+| AI | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](#setting-up-the-ai)). |
 | Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
 | Setup guide | **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](#quick-start)). |
 | Demo | **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](#the-demo)). |
@@ -1579,8 +1583,8 @@ Shows, devices, palettes, your presets, playlists with their schedules and build
 song's beats, parts, notes and marks, the Music editor's drafts, the house photo, the public page's
 own picture and settings live in the app's config folder (`/addon_configs/<slug>_haliday_show/`), so
 they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` so media
-players can play them. The editor layout, the editing speaker, the Show player's light offset and
-the experimental switch are kept in each browser.
+players can play them. The editor layout, the editing speaker, the song volume, the Show player's light offset,
+**Govee scenes**, **Show the Labs tab** and a few other editor choices (such as **Snap**, zoom and **Loop**) are kept in each browser.
 
 ## Running without Home Assistant
 
