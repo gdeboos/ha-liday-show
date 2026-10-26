@@ -3,7 +3,7 @@
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
 import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
-import { STYLES, applyGenerated, generateShow, suggestLooks } from "./autogen.js";
+import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, FPS, HOUSE, PRESETS, applyHouse, bake, composeLight, defaultParams, matchesPreset, presetParams,
@@ -5117,7 +5117,8 @@ function generateControls() {
   }
   const ll = document.createElement("label");
   ll.append("Longest effect", longest);
-  ll.title = "How long one effect may run before the look changes. A bar is four beats: 4 bars is about 8 seconds at 120 BPM.";
+  ll.title = "How long one effect may run before the look changes. A bar is four beats: 4 bars is about 8 seconds at 120 BPM. "
+    + "An effect from the AI that runs longer is cut into pieces in the next colours of the palette.";
   const read = () => {
     prefs.set("genStyle", style.value);
     prefs.set("genBuild", build.checked);
@@ -5351,11 +5352,14 @@ async function generateWithAI({ colors, paletteName, style, house, build, maxBar
     + (build ? " Build it up as a person would: in quiet sections use only one or a few lights and leave the rest "
       + "dark; bring more lights in as the music builds, adding them on bar lines; use every light together only "
       + "in the loudest sections and the chorus. Keep the parts of one light (named Light · Part) on or off together." : "")
-    + (house ? " Add sweeps across the house as the music lifts into louder sections." : "")
-    + (maxBars > 0 ? ` Keep every clip to ${maxBars} bars or less${app.show.tempo ? ` (about ${Math.round((maxBars * 4 * 60) / app.show.tempo)} seconds)` : ""}: `
-      + "change the effect, its colours or which lights play at least that often, so nothing runs on too long." : "");
+    + (house ? " Add sweeps across the house as the music lifts into louder sections." : "");
+  // Clips longer than Longest effect are cut at bar lines here, rather than asking the AI for more,
+  // shorter clips, which could run past how much it may write in one reply.
+  const tidy = (placed) => placed.flatMap(({ trackIndex, clip }) => splitLong([clip], {
+    maxBars, colors, bars: app.show.bars || [], bps: (app.show.tempo || 120) / 60,
+  }).map((c) => ({ trackIndex, clip: c })));
   try {
-    await describe(request, null, { replaceAll: true, what: "the show", busy });
+    await describe(request, null, { replaceAll: true, what: "the show", busy, tidy });
   } finally {
     busy.close();
   }
@@ -5591,7 +5595,7 @@ async function describeIt(e) {
 
 // Sends a request to the AI with the show's context and puts the clips it makes on the show.
 // selectionFor(lights) gives the selection to send; replaceAll clears the lights first, as Generate does.
-async function describe(request, selectionFor, { replaceAll = false, what = "your effects", busy = null } = {}) {
+async function describe(request, selectionFor, { replaceAll = false, what = "your effects", busy = null, tidy = (p) => p } = {}) {
   const lights = aiLights();
   if (!lights.some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
   const selection = selectionFor ? selectionFor(lights) : null;
@@ -5612,11 +5616,11 @@ async function describe(request, selectionFor, { replaceAll = false, what = "you
   if (show !== app.show || busy?.cancelled) { done(""); return; } // another show was opened, or Cancel
   const checked = checkClips(reply, lights, duration), skipped = checked.skipped;
   // The AI can't see what each light can show, so clips that won't work on theirs are left out.
-  const placed = checked.placed.filter(({ trackIndex, clip }) => {
+  const placed = tidy(checked.placed.filter(({ trackIndex, clip }) => {
     if (clipFitOn(clip, trackIndex).level !== "no") return true;
     skipped.push(`${EFFECTS[clip.effect].label} won't work on ${trackName(trackIndex)}`);
     return false;
-  });
+  }));
   if (placed.length) {
     if (replaceAll) for (const l of lights) show.tracks[l.trackIndex].clips = [];
     placeClips(show, placed);

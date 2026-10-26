@@ -225,3 +225,30 @@ export function applyGenerated(show, result) {
     else if (result.clips[tr.device]) tr.clips = result.clips[tr.device];
   }
 }
+
+// Cuts any clip longer than maxBars bars into pieces at bar lines, each later piece taking the next
+// colours of the palette, so the look keeps changing (for the AI's clips: asking it for many short
+// clips instead could run past how much it may write at once). bars: bar start times; without them,
+// four beats of `bps` (beats a second) make a bar. Returns new clips; short ones are left as they are.
+export function splitLong(clips, { maxBars, bars = [], bps = 2, colors = [] }) {
+  if (!(maxBars > 0)) return clips;
+  const out = [];
+  for (const clip of clips) {
+    // Where each piece may end: every maxBars-th bar line from the clip's start.
+    let cuts;
+    const inside = bars.filter((t) => t > clip.start + 0.05 && t < clip.end - 0.05);
+    if (bars.length >= 2) cuts = inside.filter((_, i) => (i + 1) % maxBars === 0);
+    else {
+      const span = (maxBars * 4) / bps;
+      cuts = [];
+      for (let t = clip.start + span; t < clip.end - 0.05; t += span) cuts.push(t);
+    }
+    if (!cuts.length) { out.push(clip); continue; }
+    [clip.start, ...cuts].forEach((start, k, all) => {
+      const piece = { ...clip, start: round(start), end: round(all[k + 1] ?? clip.end) };
+      if (k > 0 && colors.length) applyPalette(piece, colors, k);
+      out.push(piece);
+    });
+  }
+  return out;
+}

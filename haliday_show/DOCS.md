@@ -636,7 +636,8 @@ different take, then edit whatever you like. The colours start on the palette fo
 
 **Longest effect** sets how long one effect may run before the look changes: **2 bars**, **4 bars**
 (to start with), **8 bars** or **Any length**. A bar is four beats, so 4 bars is about 8 seconds at
-120 BPM. **Rules** keep to it exactly; the **AI** is asked to.
+120 BPM. **Rules** keep to it; an effect from the **AI** that runs longer is cut at bar lines into
+pieces, each in the next colours of your palette, so the look keeps changing.
 
 **Build up** (ticked to start with) lights the house the way you would by hand rather than lighting
 everything all the time. Quiet parts use only a few lights and leave the rest dark. Middling parts
