@@ -16,7 +16,8 @@ body { margin: 0; background: var(--bg); color: var(--text);
   font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 .pp { max-width: 32em; margin: 0 auto; padding: 20px 16px 40px; }
 h1 { font-size: 24px; margin: 0 0 12px; }
-h2 { font-size: 18px; margin: 20px 0 2px; }
+h2 { font-size: 18px; margin: 28px 0 10px; }
+h2 + .pp-hint { margin-top: -6px; }
 .pp-hint { color: var(--muted); margin: 2px 0 10px; font-size: 14px; }
 .pp-now { font-weight: 600; margin: 0 0 12px; }
 .pp-big { font-size: 20px; font-weight: 600; margin: 0; }

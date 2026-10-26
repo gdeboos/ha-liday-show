@@ -1,12 +1,17 @@
 # Changelog
 
-## 0.2.162
+## 0.2.163
 
 - **Suggest cuts** in the **Music editor** asks the AI (if you've set one up) which option works best
   musically. The options appear straight away so you can listen meanwhile; when it answers, its choice
   is marked **AI's pick** and each option gets a short reason, such as "Drops the repeated second
   verse; keeps the 1:12 crash". The options stay where they are. It uses the song's name, your section names and notes and your
   marks, so it avoids cutting moments you've marked. Without an AI, nothing changes.
+
+## 0.2.162
+
+- The public page has more room around its headings, so **Coming soon** no longer sits right on top of
+  the shows under it.
 
 ## 0.2.161
 
