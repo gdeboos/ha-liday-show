@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.158
+
+- HA-liday Show now opens on **Library**, with your shows, rather than the Show editor (which opened on
+  the same list anyway).
+- The tabs along the top are reordered and grouped: **Library**, then the two editors together under
+  **Editors** (now labelled **Show** and **Music**), then **Setup**, with a thin line between the
+  groups.
+
 ## 0.2.157
 
 - The **Music editor** keeps your edits as **drafts**, so you can stop and come back to them, or tweak a
