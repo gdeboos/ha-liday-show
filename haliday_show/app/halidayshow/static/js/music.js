@@ -1,4 +1,4 @@
-// Music editor: cut, shorten and splice songs, then save the result as a new file.
+// Music editor: cut, shorten and splice songs as drafts (kept as you go), then make the song file.
 //
 // An edit is a list of pieces of source songs played one after another, overlapping by a short
 // crossfade at each join, plus a fade in and out. The source files are never changed: Save renders
@@ -332,6 +332,21 @@ export function editName(path, taken = []) {
   }
 }
 
+// drafts: an edit kept as which parts of which songs, so it can be opened and changed again ------
+// A file name for name (a draft's), `name.wav`, or `name 2.wav` and so on when that's taken.
+export function freshFileName(name, taken = []) {
+  const used = new Set(taken.map((p) => p.split("/").pop().toLowerCase()));
+  for (let i = 1; ; i++) {
+    const file = `${name}${i > 1 ? ` ${i}` : ""}.wav`;
+    if (!used.has(file.toLowerCase())) return file;
+  }
+}
+
+// Whether pieces are the whole of one song, untouched (nothing edited yet).
+export function untouched(pieces, key, length) {
+  return pieces.length === 1 && pieces[0].src === key && pieces[0].start < 1e-3 && Math.abs(pieces[0].end - length) < 1e-3;
+}
+
 // editor ------------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 const keyOf = (ref) => `${ref.source}:${ref.path}`;
@@ -409,13 +424,16 @@ export class MusicEditor {
 
   // asked: the caller already checked about unsaved edits.
   async open(ref, { asked = false } = {}) {
-    if (this.dirty && !asked && !confirm("Start again with this song? Your unsaved edits will be lost.")) {
+    if (this.unsaved && !asked && !confirm("Open another song? Your last change to the draft couldn't be kept and will be lost.")) {
       this.fillSongLists();
       return;
     }
     this.stop();
+    this.flush();
     try {
       const key = await this.source(ref);
+      this.draft = null;
+      this.setFades(0, 0);
       this.pieces = [{ src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate }];
       this.base = ref;
       this.host.opened?.(ref);
@@ -425,7 +443,7 @@ export class MusicEditor {
       this.dirty = false;
       this.time = 0;
       this.sel = null;
-      $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path));
+      $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path)).replace(/\.wav$/i, "");
       this.changed(true);
       const info = await this.host.api(infoUrl(ref)).catch(() => null);
       if (this.base === ref) { this.info = info; this.secSel = -1; this.updateControls(); this.draw(); }
@@ -434,10 +452,130 @@ export class MusicEditor {
     }
   }
 
+  setFades(fadeIn, fadeOut, crossfade = null) {
+    $("music-fadein").value = fadeIn;
+    $("music-fadeout").value = fadeOut;
+    if (crossfade !== null) $("music-xf").value = crossfade;
+  }
+
+  // Opens a draft where it was left: its pieces, crossfade and fades, on its base song.
+  async openDraft(id) {
+    this.stop();
+    this.flush();
+    let d;
+    try {
+      d = await this.host.api(`api/drafts/${encodeURIComponent(id)}`);
+      const songs = [d.base, ...d.pieces.map((p) => p.song)];
+      for (const ref of songs.filter((r, i) => songs.findIndex((x) => keyOf(x) === keyOf(r)) === i)) {
+        try {
+          await this.source(ref);
+        } catch (e) {
+          this.host.status(`"${d.name}" uses ${nameOf(ref)}, which couldn't be loaded (${songLoadMessage(e)}). Is it still in your songs?`, true, "song");
+          return false;
+        }
+      }
+    } catch (e) {
+      this.host.status(`Couldn't open the draft: ${e.message}`, true, "song");
+      return false;
+    }
+    const base = d.base, baseKey = keyOf(base);
+    this.base = this.refs[baseKey];
+    this.pieces = d.pieces.map((p) => ({ src: keyOf(p.song), start: p.start, end: p.end }));
+    this.draft = { id, made: d.made || null };
+    this.setFades(d.fadeIn || 0, d.fadeOut || 0, d.crossfade ?? 0.05);
+    $("music-name").value = d.name;
+    this.host.opened?.(this.base);
+    this.info = null;
+    this.history = [];
+    this.future = [];
+    this.time = 0;
+    this.sel = null;
+    this.secSel = this.markSel = -1;
+    const length = this.sources[baseKey][0].length / this.audio.sampleRate;
+    this.dirty = !untouched(this.pieces, baseKey, length) || !!(d.fadeIn || d.fadeOut);
+    this.changed(true);
+    const ref = this.base;
+    const info = await this.host.api(infoUrl(ref)).catch(() => null);
+    if (this.base === ref) { this.info = info; this.updateControls(); this.draw(); }
+    this.host.status(`Opened the draft "${d.name}"`);
+    return true;
+  }
+
+  // Changes not kept yet: one waiting to be sent, or one that couldn't be.
+  get unsaved() { return !!this.draftTimer || !!this.keeping || !!this.draftFailed; }
+
+  draftBody() {
+    const name = $("music-name").value.trim().replace(/\.wav$/i, "") || nameOf(this.base).replace(/\.[^.]+$/, "");
+    return {
+      name, base: this.base,
+      pieces: this.pieces.map((p) => ({ song: this.refs[p.src], start: p.start, end: p.end })),
+      crossfade: this.crossfade,
+      fadeIn: Number($("music-fadein").value) || 0,
+      fadeOut: Number($("music-fadeout").value) || 0,
+      made: this.draft?.made || null,
+      length: Math.round(this.total * 100) / 100,
+    };
+  }
+
+  // Keeps the draft shortly after a change; the first change to a song starts one.
+  draftChanged() {
+    if (!this.base) return;
+    clearTimeout(this.draftTimer);
+    this.draftTimer = setTimeout(() => this.keepDraft(), 600);
+    this.updateSaveState();
+  }
+
+  async keepDraft() {
+    clearTimeout(this.draftTimer);
+    this.draftTimer = null;
+    if (!this.base || !this.pieces.length) return;
+    if (this.keeping) { this.keepAgain = true; return; }
+    this.keeping = true;
+    this.updateSaveState();
+    const body = this.draftBody(), base = this.base, draft = this.draft;
+    try {
+      if (!draft) {
+        const { id } = await this.host.api("api/drafts", { method: "POST", json: body });
+        if (this.base === base && !this.draft) this.draft = { id, made: body.made };
+      } else {
+        await this.host.api(`api/drafts/${encodeURIComponent(draft.id)}`, { method: "PUT", json: body });
+      }
+      this.draftFailed = false;
+      this.host.draftsChanged?.();
+    } catch (e) {
+      this.draftFailed = true;
+      this.host.status(`Couldn't keep the draft: ${e.message}`, true, "music-save");
+    }
+    this.keeping = false;
+    if (this.keepAgain) { this.keepAgain = false; return this.keepDraft(); }
+    this.updateSaveState();
+  }
+
+  // The open draft was deleted (from Your songs): the next change starts a new one.
+  forgetDraft() {
+    clearTimeout(this.draftTimer);
+    this.draftTimer = null;
+    this.draft = null;
+    this.draftFailed = false;
+    this.updateSaveState();
+  }
+
+  // Sends a change still waiting, now (leaving the song or the page).
+  flush() {
+    if (this.draftTimer) this.keepDraft();
+  }
+
+  updateSaveState() {
+    $("music-save-state").textContent = !this.pieces.length ? ""
+      : this.draftFailed ? "Draft not kept"
+        : this.draftTimer || this.keeping ? "Keeping the draft…"
+          : this.draft ? (this.draft.made ? `Draft kept · made ${nameOf(this.draft.made)}` : "Draft kept") : "";
+  }
+
   // Finds the beats, bars and sections of the base song and saves them with the file.
   async detect() {
     if (!this.base) return;
-    if (this.dirty) return this.host.status("Save the edit as a new file first; it's detected when saved", "hint");
+    if (this.dirty) return this.host.status("Make the song file first; it's detected when it's made", "hint");
     const ref = this.base, channels = this.sources[keyOf(ref)];
     const { samples, rate } = toMono(channels, this.audio.sampleRate);
     this.host.status(`Listening to ${nameOf(ref)}…`);
@@ -543,6 +681,7 @@ export class MusicEditor {
     this.dirty = true;
     this.markSel = this.shownMark(mark);
     this.changed(fit);
+    this.draftChanged();
   }
 
   undo(dir = -1) {
@@ -555,6 +694,7 @@ export class MusicEditor {
     this.dirty = true;
     this.markSel = this.shownMark(mark);
     this.changed();
+    this.draftChanged();
   }
 
   cutSelection() {
@@ -826,7 +966,7 @@ export class MusicEditor {
 
   // marks ---------------------------------------------------------------------
   // The marks where they fall in the result, editable even with an unsaved edit: changes go back onto
-  // the base song (so they're kept with it, and carried over when the edit is saved as a new file).
+  // the base song (so they're kept with it, and carried over when the draft's song file is made).
   get marks() { return this.base ? this.shown?.marks || [] : null; }
 
   // The base song's marks for an edited list of the shown ones (see marksToBase).
@@ -859,7 +999,7 @@ export class MusicEditor {
     if (!this.marks) return;
     if ((this.info?.marks || []).length >= MAX_MARKS) return this.host.status(`A song can have up to ${MAX_MARKS} marks; delete one first`, "hint");
     if (toBase(this.pieces, this.crossfade, keyOf(this.base), this.time) === null) {
-      return this.host.status("This part was spliced in from another song. Save the edit as a new file to mark it", "hint");
+      return this.host.status("This part was spliced in from another song. Make the song file, then mark it there", "hint");
     }
     const { marks, index } = addMark(this.marks, this.time, this.markColour || MARK_COLOUR);
     // While playing (M), the mark you had picked stays picked.
@@ -983,16 +1123,16 @@ export class MusicEditor {
     $("music-detect").disabled = !this.base || this.dirty;
     $("music-describe").disabled = !this.base || this.dirty || !this.info?.sections?.length;
     $("music-detect").title = this.dirty
-      ? "Save the edit as a new file first: it's detected when saved, and the beats here follow your edits until then"
+      ? "Make the song file first: it's detected when it's made, and the beats here follow your edits until then"
       : "Find the tempo, beats, bars and sections (verse, chorus…) and keep them with this song. A show that picks the song uses them.";
     const shown = this.shown, info = shown && (shown.beats.length || shown.sections.length) ? shown : null;
     $("music-analysis").textContent = !has ? ""
-      : this.dirty && !info ? "Save the edit to find its beats and sections"
+      : this.dirty && !info ? "Make the song file to find its beats and sections"
         : info ? `${info.tempo ? `${info.tempo} BPM, ` : ""}${info.beats.length} beats, ${info.sections.length} sections${info.sections.length ? `: ${info.sections.map((x) => x.label).join(", ")}` : ""}`
           : "Not detected yet";
-    if (this.dirty && info) $("music-analysis").textContent += " (following your edits; Detect again once saved)";
+    if (this.dirty && info) $("music-analysis").textContent += " (following your edits)";
     $("music-redo").disabled = !this.future.length;
-    $("music-save-state").textContent = has && this.dirty ? "Unsaved edits" : "";
+    this.updateSaveState();
     if (!this.sections || this.secSel >= this.sections.length) this.secSel = -1;
     this.renderSection();
     if (!this.marks || this.markSel >= this.marks.length) this.markSel = -1;
@@ -1046,55 +1186,79 @@ export class MusicEditor {
     this.draw();
   }
 
-  // saving --------------------------------------------------------------------
+  // making the song file ---------------------------------------------------------
+  // Writes the draft as a WAV in the songs folder, for shows and speakers. The draft stays open, so
+  // it can be changed and made again: then you choose between replacing that file and a new one.
   async save() {
     if (!this.rendered) return;
-    let name = $("music-name").value.trim();
-    if (!name) return this.host.status("Give the new file a name", "hint");
-    if (!/\.wav$/i.test(name)) name = `${name.replace(/\.[a-z0-9]+$/i, "")}.wav`;
-    const existing = this.host.songs().some((r) => r.path.split("/").pop().toLowerCase() === name.toLowerCase());
-    if (existing && !confirm(`${name} already exists. Replace it?`)) return;
+    const name = $("music-name").value.trim().replace(/\.wav$/i, "");
+    if (!name) return this.host.status("Give the draft a name first; the file is named after it", "hint");
+    const taken = this.host.songs().map((r) => r.path);
+    let file = `${name}.wav`;
+    const made = this.draft?.made;
+    if (made && taken.includes(made.path)) {
+      const how = await this.askMake(made, freshFileName(name, taken));
+      if (!how) return;
+      file = how === "replace" ? nameOf(made) : freshFileName(name, taken);
+    } else if (taken.some((p) => nameOf({ path: p }).toLowerCase() === file.toLowerCase())
+        && !confirm(`${file} already exists. Replace it?`)) return;
     this.stop();
-    this.host.status(`Saving ${name}…`);
+    this.host.status(`Making ${file}…`);
     const blob = new Blob([encodeWav(this.rendered, this.audio.sampleRate)], { type: "audio/wav" });
     // Beats and sections that followed the edit carry over, with their names, colours and notes, as
     // long as the result is all from the base song; anything spliced in is detected afresh.
     const baseKey = this.base && keyOf(this.base);
     // Only marks (no Detect yet) is nothing to carry: the new file is detected, then gets the marks.
     const found = this.shown?.beats?.length || this.shown?.sections?.length;
-    const carry = found && this.pieces.every((p) => p.src === baseKey)
-      ? { ...this.shown, ...(this.shown.marks ? { marks: this.shown.marks.map(({ k: _, ...m }) => m) } : {}) } : null;
-    const marks = this.shown?.marks || [];
+    const marks = (this.shown?.marks || []).map(({ k: _, ...m }) => m);
+    const carry = found && this.pieces.every((p) => p.src === baseKey) ? { ...this.shown, marks } : null;
+    const rendered = this.rendered, rate = this.audio.sampleRate;
     try {
-      const ref = await uploadSong(this.host.api, blob, name, (done) => {
-        if (done < 1) this.host.status(`Saving ${name}… ${Math.round(done * 100)}%`);
+      const ref = await uploadSong(this.host.api, blob, file, (done) => {
+        if (done < 1) this.host.status(`Making ${file}… ${Math.round(done * 100)}%`);
       });
-      // Carry on from the saved file, so Detect and further edits work on it.
-      const key = keyOf(ref);
-      this.sources[key] = this.rendered;
-      this.refs[key] = ref;
-      this.pieces = [{ src: key, start: 0, end: this.rendered[0].length / this.audio.sampleRate }];
-      this.base = ref;
-      this.info = null;
-      this.dirty = false;
-      $("music-fadein").value = $("music-fadeout").value = 0;
-      this.changed();
+      // The draft remembers the file it made, so making it again can replace it.
+      this.draft = { ...(this.draft || {}), made: ref };
+      await this.keepDraft();
       await this.host.songsChanged();
       this.fillSongLists();
-      $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path));
-      this.host.status(`Saved ${ref.path}. Pick it under Song in the Show editor.`, "saved", "music-save");
-      if (carry) {
-        await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
-        this.info = carry;
-        this.updateControls();
-        this.draw();
-      } else {
-        await this.detect();
-        if (marks.length && this.base === ref) this.editMarks(marks, -1);
-      }
+      this.host.status(`Made ${ref.path}. Pick it under Song in a show; the draft stays open to change`, "saved", "music-save");
+      if (carry) await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
+      else await this.detectMade(ref, rendered, rate, marks);
+      this.host.songsChanged();
     } catch (e) {
-      this.host.status(`Couldn't save: ${e.message}`, true, "music-save");
+      this.host.status(`Couldn't make the song file: ${e.message}`, true, "music-save");
     }
+  }
+
+  // Detect for a file just made from a draft (with something spliced in), keeping the draft's marks.
+  async detectMade(ref, channels, rate, marks) {
+    const mono = toMono(channels, rate);
+    const r = await analyseInWorker(mono.samples, mono.rate);
+    const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars,
+      sections: describeSections(r.sections, r.traits), marks };
+    await this.host.api(infoUrl(ref), { method: "PUT", json: info });
+  }
+
+  // Making a file a draft has made before: replace it, or make a new one? Lists the shows using it,
+  // since their effects stay where they are when the music changes. Resolves "replace", "new" or null.
+  async askMake(made, fresh) {
+    const shows = await this.host.api("api/shows").catch(() => []);
+    const users = shows.filter((s) => s.song === made.path).map((s) => s.name);
+    $("make-file").textContent = nameOf(made);
+    $("make-new").textContent = `Make ${fresh}`;
+    $("make-users").textContent = users.length
+      ? `Used by ${users.join(", ")}. Replacing it changes the music in ${users.length === 1 ? "that show" : "those shows"}, but their effects stay where they are, so check they still line up.`
+      : "No shows use it yet.";
+    const dlg = $("make-dialog");
+    return new Promise((resolve) => {
+      const done = (how) => { dlg.close(); resolve(how); };
+      $("make-replace").onclick = () => done("replace");
+      $("make-new").onclick = () => done("new");
+      for (const b of dlg.querySelectorAll("[data-make=cancel]")) b.onclick = () => done(null);
+      dlg.oncancel = () => resolve(null);
+      dlg.showModal();
+    });
   }
 
   // view ----------------------------------------------------------------------
@@ -1568,9 +1732,17 @@ export class MusicEditor {
     $("music-sel-start").addEventListener("change", (e) => this.setSelEdge("start", e.target.value));
     $("music-sel-end").addEventListener("change", (e) => this.setSelEdge("end", e.target.value));
     for (const id of ["music-xf", "music-fadein", "music-fadeout"]) {
-      $(id).addEventListener("change", () => { this.stop(); if (this.pieces.length) this.dirty = true; this.changed(); });
+      $(id).addEventListener("change", () => {
+        this.stop();
+        if (!this.pieces.length) return;
+        this.dirty = true;
+        this.changed();
+        this.draftChanged();
+      });
     }
     $("music-save").addEventListener("click", () => this.save());
+    // Renaming a draft keeps it; before there's a draft, it's only the name it will get.
+    $("music-name").addEventListener("change", () => { if (this.draft) this.draftChanged(); });
     $("music-detect").addEventListener("click", () => this.detect());
     $("music-describe").addEventListener("click", () => this.describe());
     $("music-suggest").addEventListener("click", () => this.openCuts(this.secSel >= 0 ? this.secSel : null));
@@ -1582,7 +1754,10 @@ export class MusicEditor {
     this.wireSections();
     this.wireMarks();
     // Some browsers (older Safari, the Home Assistant app on iPhone) also need returnValue to ask.
-    window.addEventListener("beforeunload", (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ""; } });
+    window.addEventListener("beforeunload", (e) => {
+      this.flush();
+      if (this.draftFailed) { e.preventDefault(); e.returnValue = ""; }
+    });
   }
 
   show() {

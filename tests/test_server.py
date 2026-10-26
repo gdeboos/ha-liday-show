@@ -989,6 +989,36 @@ async def test_song_marks_are_kept_when_detect_saves_without_them(client, tmp_pa
         assert (await client.put(url, json={**info, "marks": bad})).status == 400
 
 
+async def test_song_drafts_are_kept_listed_and_deleted(client, tmp_path):
+    song = {"source": "media", "path": "haliday_show/song.mp3"}
+    draft = {"name": "  Short   version ", "base": song, "crossfade": 0.05, "fadeIn": 0, "fadeOut": 2,
+             "pieces": [{"song": song, "start": 0, "end": 10}, {"song": song, "start": 20, "end": 60.123456}],
+             "length": 49.95}
+    resp = await client.post("/api/drafts", json=draft)
+    assert resp.status == 200
+    draft_id = (await resp.json())["id"]
+    assert draft_id == "short-version"
+    # A second draft with the same name gets its own id.
+    assert (await (await client.post("/api/drafts", json=draft)).json())["id"] == "short-version-2"
+    got = await (await client.get(f"/api/drafts/{draft_id}")).json()
+    assert got["name"] == "Short version" and got["made"] is None and got["pieces"][1]["end"] == 60.1235
+    made = {"source": "media", "path": "haliday_show/Short version.wav"}
+    assert (await client.put(f"/api/drafts/{draft_id}", json={**draft, "made": made})).status == 200
+    listed = {d["id"]: d for d in await (await client.get("/api/drafts")).json()}
+    assert listed[draft_id]["made"] == made and listed[draft_id]["base"] == song
+    assert listed[draft_id]["length"] == 49.95
+    assert (await client.delete(f"/api/drafts/{draft_id}")).status == 200
+    assert (await client.get(f"/api/drafts/{draft_id}")).status == 404
+    # An autosave after the draft was deleted (in another tab) doesn't bring it back.
+    assert (await client.put(f"/api/drafts/{draft_id}", json=draft)).status == 404
+    assert (await client.delete(f"/api/drafts/{draft_id}")).status == 404
+    assert (await client.get("/api/drafts/..%2Fx")).status in (400, 404)
+    for bad in ({**draft, "pieces": []}, {**draft, "name": " "}, {**draft, "base": "song.mp3"},
+                {**draft, "pieces": [{"song": song, "start": 5, "end": 5}]}, {**draft, "crossfade": 11},
+                {**draft, "made": "x"}, {**draft, "pieces": [{"song": song, "start": -1, "end": 5}]}):
+        assert (await client.post("/api/drafts", json=bad)).status == 400
+
+
 async def test_songs_upload_in_parts(client, tmp_path):
     song = bytes(range(256)) * 4096 * 3  # 3 MB
     url = "/api/audio/part?upload=0123456789abcdef"

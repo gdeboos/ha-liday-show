@@ -953,6 +953,102 @@ def _clean_song_info(body) -> dict | None:
     return out
 
 
+# song drafts --------------------------------------------------------------------
+MAX_PIECES = 500
+
+
+def _song_ref(v) -> dict | None:
+    if not isinstance(v, dict):
+        return None
+    source, path = v.get("source"), v.get("path")
+    if not isinstance(source, str) or not isinstance(path, str) or not source or not path \
+            or len(source) > 40 or len(path) > 1000:
+        return None
+    return {"source": source, "path": path}
+
+
+def _seconds(v, top: float) -> float | None:
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not 0 <= v <= top:
+        return None
+    return round(float(v), 4)
+
+
+def _clean_draft(body) -> dict | None:
+    """A Music editor draft: {name, base, pieces: [{song, start, end}], crossfade, fadeIn, fadeOut,
+    made, length}. The songs are only referred to, never copied."""
+    if not isinstance(body, dict):
+        return None
+    name = body.get("name")
+    base = _song_ref(body.get("base"))
+    pieces = body.get("pieces")
+    if not isinstance(name, str) or not name.strip() or base is None \
+            or not isinstance(pieces, list) or not 0 < len(pieces) <= MAX_PIECES:
+        return None
+    clean = []
+    for p in pieces:
+        if not isinstance(p, dict):
+            return None
+        song, start, end = _song_ref(p.get("song")), _seconds(p.get("start"), 86400), _seconds(p.get("end"), 86400)
+        if song is None or start is None or end is None or end <= start:
+            return None
+        clean.append({"song": song, "start": start, "end": end})
+    crossfade, fade_in, fade_out = (_seconds(body.get(k, 0), top) for k, top in
+                                    (("crossfade", 10), ("fadeIn", 30), ("fadeOut", 30)))
+    length = _seconds(body.get("length", 0), 86400)
+    made = body.get("made")
+    made = None if made is None else _song_ref(made)
+    if None in (crossfade, fade_in, fade_out, length) or (body.get("made") is not None and made is None):
+        return None
+    return {"name": " ".join(name.split())[:80], "base": base, "pieces": clean, "crossfade": crossfade,
+            "fadeIn": fade_in, "fadeOut": fade_out, "made": made, "length": length}
+
+
+def _draft_id(request) -> str:
+    draft_id = request.match_info["id"]
+    if not valid_id(draft_id):
+        raise web.HTTPBadRequest(text="bad draft id")
+    return draft_id
+
+
+async def list_drafts(request):
+    return web.json_response(request.app[STORAGE].list_drafts())
+
+
+async def create_draft(request):
+    draft = _clean_draft(await request.json())
+    if draft is None:
+        raise web.HTTPBadRequest(text="expected {name, base, pieces, crossfade, fadeIn, fadeOut}")
+    storage = request.app[STORAGE]
+    draft_id = storage.new_draft_id(draft["name"])
+    storage.save_draft(draft_id, draft)
+    return web.json_response({"id": draft_id})
+
+
+async def get_draft(request):
+    draft = request.app[STORAGE].load_draft(_draft_id(request))
+    if draft is None:
+        raise web.HTTPNotFound()
+    return web.json_response(draft)
+
+
+async def put_draft(request):
+    draft_id = _draft_id(request)
+    draft = _clean_draft(await request.json())
+    if draft is None:
+        raise web.HTTPBadRequest(text="expected {name, base, pieces, crossfade, fadeIn, fadeOut}")
+    storage = request.app[STORAGE]
+    if storage.load_draft(draft_id) is None:
+        raise web.HTTPNotFound()  # deleted meanwhile (another tab): not brought back by an autosave
+    storage.save_draft(draft_id, draft)
+    return web.json_response({"ok": True})
+
+
+async def delete_draft(request):
+    if not request.app[STORAGE].delete_draft(_draft_id(request)):
+        raise web.HTTPNotFound()
+    return web.json_response({"ok": True})
+
+
 async def get_song_info(request):
     q = request.query
     return web.json_response(request.app[STORAGE].load_song_info(q.get("source", ""), q.get("path", "")))
@@ -1621,6 +1717,11 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/songs/delete", delete_song)
     r.add_get("/api/audio/info", get_song_info)
     r.add_put("/api/audio/info", put_song_info)
+    r.add_get("/api/drafts", list_drafts)
+    r.add_post("/api/drafts", create_draft)
+    r.add_get("/api/drafts/{id}", get_draft)
+    r.add_put("/api/drafts/{id}", put_draft)
+    r.add_delete("/api/drafts/{id}", delete_draft)
     r.add_get("/api/speakers", list_speakers)
     r.add_put("/api/speakers/delay", put_speaker_delay)
     r.add_put("/api/speakers/show", put_show_speaker)

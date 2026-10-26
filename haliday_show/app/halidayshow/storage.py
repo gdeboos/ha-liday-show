@@ -69,6 +69,7 @@ class Storage:
         self.media_dir = media_dir
         self.shows_dir = config_dir / "shows"
         self.songs_dir = config_dir / "songs"
+        self.drafts_dir = config_dir / "drafts"
         self.upload_dir = media_dir / "haliday_show"
         self.devices_file = config_dir / "devices.json"
         self.settings_file = config_dir / "settings.json"
@@ -186,6 +187,43 @@ class Storage:
     def delete_show(self, show_id: str):
         for ext in ("json", "gshow"):
             (self.shows_dir / f"{show_id}.{ext}").unlink(missing_ok=True)
+
+    # song drafts: Music editor edits kept as recipes (which parts of which songs), no audio --------
+    def list_drafts(self) -> list[dict]:
+        out = []
+        for p in sorted(self.drafts_dir.glob("*.json")):
+            try:
+                d = json.loads(p.read_text())
+            except ValueError:
+                continue
+            out.append({"id": p.stem, "name": d.get("name", p.stem), "base": d.get("base"),
+                        "made": d.get("made"), "length": d.get("length", 0),
+                        "modified": int(p.stat().st_mtime)})
+        return out
+
+    def load_draft(self, draft_id: str) -> dict | None:
+        try:
+            return json.loads((self.drafts_dir / f"{draft_id}.json").read_text())
+        except (FileNotFoundError, ValueError):
+            return None
+
+    def new_draft_id(self, name: str) -> str:
+        base = slugify(name)
+        draft_id, n = base, 2
+        while (self.drafts_dir / f"{draft_id}.json").exists():
+            draft_id, n = f"{base}-{n}", n + 1
+        return draft_id
+
+    def save_draft(self, draft_id: str, draft: dict):
+        self.drafts_dir.mkdir(parents=True, exist_ok=True)
+        _write_atomic(self.drafts_dir / f"{draft_id}.json", json.dumps(draft, indent=1).encode())
+
+    def delete_draft(self, draft_id: str) -> bool:
+        p = self.drafts_dir / f"{draft_id}.json"
+        if not p.exists():
+            return False
+        p.unlink()
+        return True
 
     # audio ---------------------------------------------------------------
     def audio_roots(self) -> dict[str, Path]:
