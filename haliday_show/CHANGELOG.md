@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.151
+
+- The user guide's **Suggest cuts** section is rewritten as step-by-step instructions, with what the
+  options mean and how it picks them. It's now in the **4. Build a show** contents, and **Editing a
+  song** points to it.
+
 ## 0.2.150
 
 - **Suggest cuts** in the **Music editor** now opens in its own window, so you don't have to go back and
