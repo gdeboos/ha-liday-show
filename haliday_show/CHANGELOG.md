@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.140
+
+- With an AI set up, the AI now writes your songs' section notes. After **Detect** (in either editor,
+  or when you add a song) or **✨ Describe sections**, the simple notes appear straight away, and the
+  AI's replace them a little later while you carry on. It can't hear the song, so it works from what was
+  measured in each section and the song's name. If it knows the song, it uses what it knows of it.
+- It also renames the sections Detect named itself, such as **Part B** to **Verse** or **Bridge**. Names
+  you gave and notes you wrote are never changed. Without an AI, the simple notes stay as before.
+
 ## 0.2.139
 
 - The editors no longer have drop-downs to switch: the **Show editor** shows the open show's name

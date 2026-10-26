@@ -2,7 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
-import { describeSections, keepYours } from "./sectionnotes.js";
+import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
 import { STYLES, applyGenerated, generateShow, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
@@ -165,7 +165,7 @@ const volume = createVolume();
 volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
-  opened: (ref) => prefs.set("lastSong", songKey(ref)) });
+  opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
 // history -----------------------------------------------------------------
@@ -4022,6 +4022,13 @@ async function asSubmit(e) {
       const r = await analyseInWorker(samples, rate);
       info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: describeSections(r.sections, r.traits) };
       await api(songInfoUrl(ref), { method: "PUT", json: info });
+      // The AI's notes follow when they come, unless the song's sections were edited meanwhile.
+      const first = info;
+      aiSectionNotes(info.sections, r.traits, { name, duration: song.duration, tempo: info.tempo }).then(async (got) => {
+        if (!got?.used || !sameSections((await songInfo(ref))?.sections, first.sections)) return;
+        await api(songInfoUrl(ref), { method: "PUT", json: { ...first, sections: got.sections } });
+        music.reloadInfo?.(ref);
+      }).catch(() => {});
     } catch (err) {
       failed = songLoadMessage(err);
       info = null;
@@ -4974,16 +4981,18 @@ async function detectBeats() {
   if (!songBuffer) { status("Choose a song first", "hint"); return; }
   if ((app.show.beats.length || app.show.sections?.length)
       && !confirm("Replace the beat markers and sections with ones found in the song?")) return;
-  const r = await analyseSong();
+  const r = await analyseSong({ ai: true });
   if (!r) return;
   app.changed();
   const parts = `${r.sections.length} section${r.sections.length === 1 ? "" : "s"}`;
-  status(r.tempo ? `Found ${r.beats.length} beats at ${r.tempo} BPM, and ${parts}` : `No steady beat found; found ${parts}`);
+  status((r.tempo ? `Found ${r.beats.length} beats at ${r.tempo} BPM, and ${parts}` : `No steady beat found; found ${parts}`)
+    + (aiVia ? ". The AI is writing notes for them; carry on meanwhile" : ""));
 }
 
 // Analyses the loaded song and puts its beats, bars, sections and tempo on the show (without
 // committing the change). Returns the result, or null if it failed or the song changed meanwhile.
-async function analyseSong() {
+// With ai (the Detect button only), the AI then rewrites the section notes in the background.
+async function analyseSong({ ai = false } = {}) {
   const song = songBuffer;
   const channels = Array.from({ length: song.numberOfChannels }, (_, c) => song.getChannelData(c));
   const { samples, rate } = toMono(channels, song.sampleRate);
@@ -5006,8 +5015,52 @@ async function analyseSong() {
   const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars,
     sections: describeSections(keepYours(r.sections, old), r.traits) };
   applySongInfo(info);
-  if (app.show.audio) api(songInfoUrl(app.show.audio), { method: "PUT", json: info }).catch(() => {});
+  const ref = app.show.audio;
+  if (ref) api(songInfoUrl(ref), { method: "PUT", json: info }).catch(() => {});
+  // Then the AI's notes, when they come, if nothing (here or in the Music editor) has changed the
+  // sections meanwhile. Not an undo step: Ctrl+Z still takes back what you did last.
+  const applied = app.show.sections;
+  if (ai) {
+    aiSectionNotes(info.sections, r.traits, { name: songTitle(ref), duration: song.duration, tempo: info.tempo }).then(async (got) => {
+      if (!got?.used || app.show.sections !== applied || ref !== app.show.audio) return;
+      if (ref && !sameSections((await songInfo(ref))?.sections, info.sections)) return;
+      if (app.show.sections !== applied || ref !== app.show.audio) return;
+      const better = { ...info, sections: got.sections };
+      app.show.sections = better.sections.map((s) => ({ ...s }));
+      // Folded into the current undo step, so Ctrl+Z takes back your last change, not the notes.
+      if (app.history.length) app.history[app.historyIndex] = JSON.stringify(app.show);
+      app.dirty = true;
+      app.edits++;
+      timeline.layout();
+      renderSongSummary();
+      scheduleAutoSave();
+      if (ref) await api(songInfoUrl(ref), { method: "PUT", json: better });
+      music.reloadInfo?.(ref);
+      status("The AI wrote the section notes; see them in the Music editor");
+    }).catch(() => {});
+  }
   return r;
+}
+
+const sameSections = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || []);
+
+const songTitle = (ref) => (ref?.path || "").split("/").pop().replace(/\.[^.]+$/, "");
+
+// The AI's notes (and better names) for a song's sections, from what was measured in each:
+// {sections, used} (used: how many of its notes or names were kept), or null without an AI or if it
+// fails, when the notes stay as they were.
+async function aiSectionNotes(sections, traits, song) {
+  if (!aiVia || !sections?.length) return null;
+  const { request, context } = aiRequest(sections, traits, song);
+  try {
+    const reply = await api("api/ai/sections", { method: "POST", json: { request, context } });
+    const got = describeWithAI(sections, traits, reply);
+    if (!got.used) status("The AI's reply couldn't be used, so the section notes stay as they were", "hint");
+    return got;
+  } catch (e) {
+    status(`The AI couldn't write the section notes, so they stay as they were: ${e.message}`, "hint");
+    return null;
+  }
 }
 
 // Generate: a first draft of the whole show from the song, a palette and a style.

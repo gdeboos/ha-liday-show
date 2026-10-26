@@ -1,5 +1,6 @@
 """Turns a request in words into clips ("red and green chase on the roof in the chorus"), into
-effect presets ("slow icy shimmer") or into colour palettes ("frosty winter night").
+effect presets ("slow icy shimmer") or into colour palettes ("frosty winter night"), and writes notes
+on a song's sections.
 
 Two ways to reach a model: Claude directly, when the add-on's Configuration has a Claude API key,
 or else Home Assistant's AI Task action, which uses whichever AI integration the user has set up
@@ -178,6 +179,47 @@ PALETTE_SCHEMA = {
 }
 
 
+SECTION_INSTRUCTIONS = """You write notes on the sections of a song, for someone designing a Christmas or Halloween \
+light show to it on their house. Each note says, in a sentence or two, what that part of the song is like and how \
+to light it, in plain words, such as "Quiet music-box intro, bells only; keep it gentle, a soft glow on a few \
+lights" or "Biggest part of the song, drums on every beat, big crash at 1:12; everything on, flashing on the beat, \
+all white on the crash".
+
+You can't hear the song. Use the context below:
+- "song": its name (often its title and artist) and length. If you know the song, use what you know of it: which \
+part is the verse, chorus, bridge or solo, which instruments come in, where it builds. If you don't, go by the \
+measurements only, and don't guess at lyrics or instruments.
+- "sections": each section in order, with its start and end in seconds, its current name and what was measured: \
+"loudness" from 0 (the quietest section) to 1 (the loudest), "shape" (builds, fades or steady), "busy" (busy, \
+sparse or steady, against the rest of the song), "tone" (bass, bright or even), and the times of any "big_hits" \
+and moments it "goes_quiet". Mention those times as m:ss.
+- Write notes only for sections marked "write": true, under 300 characters each. Sections with "your_notes" were \
+written by the person; leave them, but you can use them to understand the song.
+- For sections marked "rename": true, also give a better name if you can tell what it is (Intro, Verse, Chorus, \
+Pre-chorus, Bridge, Solo, Drop, Build-up, Outro...), at most 40 characters. Give sections that sound alike the \
+same name. Leave "name" empty to keep the current one.
+
+Return every section you wrote for by its "index". Give a one-sentence summary of what you did."""
+
+SECTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "sections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"index": {"type": "integer"}, "name": {"type": "string"}, "notes": {"type": "string"}},
+                "required": ["index", "name", "notes"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["summary", "sections"],
+    "additionalProperties": False,
+}
+
+
 def prompt(request: str, context: dict) -> str:
     return f"Context:\n{json.dumps(context, separators=(',', ':'))}\n\nRequest: {request}"
 
@@ -225,7 +267,7 @@ async def ask_claude(key: str, text: str, instructions: str = INSTRUCTIONS, sche
     if response.stop_reason == "refusal":
         raise AIError("Claude declined that request")
     if response.stop_reason == "max_tokens":
-        raise AIError("that request needs too many clips at once; try a smaller part of the show")
+        raise AIError(f"that request needs too many {field} at once; try asking for less")
     return parse_reply(next((b.text for b in response.content if b.type == "text"), ""), field)
 
 
@@ -286,6 +328,10 @@ async def create_clips(ha: HomeAssistant, request: str, context: dict) -> dict:
 
 async def create_presets(ha: HomeAssistant, request: str, context: dict) -> dict:
     return await _create(ha, request, context, PRESET_INSTRUCTIONS, PRESET_SCHEMA, "presets")
+
+
+async def create_section_notes(ha: HomeAssistant, request: str, context: dict) -> dict:
+    return await _create(ha, request, context, SECTION_INSTRUCTIONS, SECTION_SCHEMA, "sections")
 
 
 async def create_palettes(ha: HomeAssistant, request: str, context: dict) -> dict:

@@ -1232,6 +1232,12 @@ async def ai_presets(request):
     return await _ai_request(request, ai.create_presets)
 
 
+async def ai_sections(request):
+    """Notes (and better names) for a song's sections. The editor sends what was measured in each
+    and checks the result."""
+    return await _ai_request(request, ai.create_section_notes)
+
+
 async def ai_palettes(request):
     """Colour palettes for a description in words. The editor checks the colours that come back."""
     return await _ai_request(request, ai.create_palettes)
@@ -1477,6 +1483,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/ai/clips", ai_clips)
     r.add_post("/api/ai/presets", ai_presets)
     r.add_post("/api/ai/palettes", ai_palettes)
+    r.add_post("/api/ai/sections", ai_sections)
     r.add_get("/api/player", player_status)
     r.add_post("/api/player/play", player_play)
     r.add_post("/api/player/sync", player_sync)
