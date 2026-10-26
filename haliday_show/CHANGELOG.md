@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.145
+
+- While the AI generates a show (**✨ Generate** with **AI**, or **+ New show** with **Generate with
+  AI**), a **Generating…** window now covers the editor. It shows a spinner, what's happening and
+  the time so far. The editor is paused until it's done, so nothing can change underneath it. Press
+  **Cancel** (or Esc) to stop waiting and keep the show as it was.
+
 ## 0.2.144
 
 - **+ New show** no longer offers **Generate a first draft**. It's now **Start empty** or, with an AI set

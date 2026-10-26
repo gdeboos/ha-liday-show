@@ -34,12 +34,12 @@ import { PART, sendParts, uploadSong } from "./upload.js";
 const $ = (id) => document.getElementById(id);
 
 // Relative URLs keep working behind Home Assistant ingress.
-async function api(path, { method = "GET", json, body, headers = {} } = {}) {
+async function api(path, { method = "GET", json, body, headers = {}, signal } = {}) {
   if (json !== undefined) {
     body = JSON.stringify(json);
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(path, { method, body, headers });
+  const res = await fetch(path, { method, body, headers, signal });
   if (!res.ok) throw new Error((await res.text()) || `${res.status} ${res.statusText}`);
   return res.headers.get("Content-Type")?.includes("json") ? res.json() : res.text();
 }
@@ -5325,7 +5325,14 @@ async function generate({ colors, style, house, build }) {
 
 // Generate with the AI: the whole show from the song, its sections and their notes, in one request.
 async function generateWithAI({ colors, paletteName, style, house, build }) {
-  if (songBuffer && !app.show.beats.length && !app.show.sections?.length && !(await analyseSong())) return;
+  // A window over the editor while the AI works, so it's plain it's busy and nothing is changed
+  // underneath it; Cancel (or Esc) stops waiting and leaves the show as it was.
+  const busy = busyWindow(`Generating ${app.show.name || "your show"}`);
+  if (songBuffer && !app.show.beats.length && !app.show.sections?.length) {
+    busy.say("Listening to the song first…");
+    const heard = await analyseSong();
+    if (!heard || busy.cancelled) { busy.close(); return; }
+  }
   const feel = { calm: "calm and gentle, with slow movement", balanced: "balanced, building with the music",
     lively: "lively, with lots of movement on the beat" }[style] || "balanced";
   const request = `Make a complete light show for the whole song${build ? "" : " on every light"}. Use the "${paletteName}" colours `
@@ -5335,7 +5342,67 @@ async function generateWithAI({ colors, paletteName, style, house, build }) {
       + "dark; bring more lights in as the music builds, adding them on bar lines; use every light together only "
       + "in the loudest sections and the chorus. Keep the parts of one light (named Light · Part) on or off together." : "")
     + (house ? " Add sweeps across the house as the music lifts into louder sections." : "");
-  await describe(request, null, { replaceAll: true, what: "the show" });
+  try {
+    await describe(request, null, { replaceAll: true, what: "the show", busy });
+  } finally {
+    busy.close();
+  }
+}
+
+// A window that covers the editor while something long runs: a spinner, what's happening with a
+// running count of seconds, and Cancel. Returns {say(text), close(), signal, cancelled}.
+function busyWindow(title) {
+  const dlg = document.createElement("dialog");
+  dlg.className = "effect-dialog busy-dialog";
+  dlg.setAttribute("aria-labelledby", "busy-title");
+  const h = document.createElement("h3");
+  h.id = "busy-title";
+  h.textContent = title;
+  const row = document.createElement("p");
+  row.className = "busy-row";
+  const spin = document.createElement("span");
+  spin.className = "spinner";
+  const text = document.createElement("span");
+  text.setAttribute("aria-live", "polite");
+  row.append(spin, text);
+  const hint = document.createElement("p");
+  hint.className = "hint";
+  hint.textContent = "The editor is paused until it's done. You can leave this page open and come back.";
+  const ctl = new AbortController();
+  const cancel = button("Cancel", () => stop(), "ghost");
+  const actions = document.createElement("div");
+  actions.className = "insp-actions";
+  actions.append(cancel);
+  dlg.append(h, row, hint, actions);
+  const started = performance.now();
+  let what = "";
+  const tick = () => {
+    const secs = Math.round((performance.now() - started) / 1000);
+    text.textContent = `${what} ${secs} s`;
+  };
+  const timer = setInterval(tick, 1000);
+  const state = {
+    signal: ctl.signal,
+    cancelled: false,
+    say(t) { what = t; tick(); },
+    close() {
+      clearInterval(timer);
+      if (dlg.open) dlg.close();
+      dlg.remove();
+    },
+  };
+  function stop() {
+    state.cancelled = true;
+    ctl.abort();
+    state.close();
+    status("Stopped. Your show is as it was", "hint");
+  }
+  dlg.addEventListener("cancel", (e) => { e.preventDefault(); stop(); }); // Esc
+  document.body.append(dlg);
+  dlg.showModal();
+  cancel.focus();
+  state.say("Getting ready…");
+  return state;
 }
 
 // Presets from a description in words: the AI suggests a few, shown with live previews on the Presets
@@ -5512,7 +5579,7 @@ async function describeIt(e) {
 
 // Sends a request to the AI with the show's context and puts the clips it makes on the show.
 // selectionFor(lights) gives the selection to send; replaceAll clears the lights first, as Generate does.
-async function describe(request, selectionFor, { replaceAll = false, what = "your effects" } = {}) {
+async function describe(request, selectionFor, { replaceAll = false, what = "your effects", busy = null } = {}) {
   const lights = aiLights();
   if (!lights.some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
   const selection = selectionFor ? selectionFor(lights) : null;
@@ -5520,15 +5587,17 @@ async function describe(request, selectionFor, { replaceAll = false, what = "you
   const context = buildContext({ show, lights, duration, selection, palettes: allPalettes() });
   const done = aiWorking(undefined, undefined, undefined, what);
   status(`Asking the AI to make ${what}…`);
+  busy?.say(`The AI is designing ${what} from the song and its notes (usually under a minute)…`);
   let reply;
   try {
-    reply = await api("api/ai/clips", { method: "POST", json: { request, context } });
+    reply = await api("api/ai/clips", { method: "POST", json: { request, context }, signal: busy?.signal });
   } catch (err) {
+    if (busy?.cancelled) { done("Stopped. Nothing was changed"); return; }
     done(err.message, true);
     status(err.message, true);
     return;
   }
-  if (show !== app.show) { done(""); return; } // another show was opened meanwhile
+  if (show !== app.show || busy?.cancelled) { done(""); return; } // another show was opened, or Cancel
   const checked = checkClips(reply, lights, duration), skipped = checked.skipped;
   // The AI can't see what each light can show, so clips that won't work on theirs are left out.
   const placed = checked.placed.filter(({ trackIndex, clip }) => {
