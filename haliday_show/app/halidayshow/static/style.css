@@ -318,28 +318,57 @@ button.swatch:hover { border-color: var(--text); }
 .palette-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel);
   border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
 .palette-name { min-width: 11em; }
-.playlist-list { display: flex; flex-direction: column; gap: 10px; }
-.playlist-card { display: flex; flex-direction: column; gap: 8px; }
-.playlist-head, .playlist-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.playlist-head input.playlist-name { flex: 1 1 14em; font-weight: 600; }
-.playlist-head label input { width: 5em; margin-left: 6px; }
-.playlist-shows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.playlist-shows li { display: flex; gap: 6px; align-items: center; padding: 4px 8px; border: 1px solid var(--line);
-  border-radius: 6px; }
-.playlist-shows li .playlist-show { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.playlist-shows li.unplayable .playlist-show { opacity: 0.6; }
-.playlist-shows li.current { border-color: var(--accent, #2b7de9); }
+/* The Playlist editor */
 .playlist-now:empty, #playlist-clock:empty { display: none; }
+.playlist-now { font-weight: 600; margin: 0 0 10px; }
+.show-row.playing { border-color: var(--accent); }
+.playlist-editor #pl-name { font-weight: 600; font-size: 15px; width: 18em; max-width: 60vw; }
+.pl-columns { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(300px, 1.6fr); gap: 12px; align-items: start; }
+/* On a phone the running order comes first, so a show from the long list below is dragged up to it. */
+@media (max-width: 760px) { .pl-columns { grid-template-columns: 1fr; } .pl-order { order: -1; } }
+.pl-columns h3, .pl-when h3 { margin: 0 0 6px; font-size: 15px; }
+.pl-bin input[type=search] { width: 100%; margin-bottom: 8px; }
+.pl-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
+#pl-bin { max-height: 60vh; overflow-y: auto; }
+#pl-order { min-height: 64px; }
+.pl-card { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; cursor: grab; user-select: none; -webkit-user-select: none; }
+.pl-card:hover { border-color: var(--muted); }
+#pl-order .pl-card { border-left: 6px solid hsl(var(--hue) 60% 50%); }
+#pl-order .pl-card.current { outline: 2px solid var(--accent); }
+.pl-card.unplayable .pl-card-text { opacity: 0.6; }
+.pl-grip { color: var(--muted); font-size: 18px; line-height: 1; padding: 4px 2px; cursor: grab; touch-action: none; }
+.pl-number { font-weight: 700; min-width: 1.6em; text-align: right; color: var(--muted); }
+.pl-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pl-card-text b, .pl-card-text span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-card-text span { font-size: 12px; }
+.pl-tools { display: flex; gap: 2px; }
+.pl-tools button, .pl-add { padding: 2px 8px; }
+.pl-empty { padding: 18px; text-align: center; color: var(--muted); border: 2px dashed var(--line); border-radius: 8px; }
+.pl-dragging { opacity: 0.35; }
+.pl-ghost { position: fixed; left: 0; top: 0; z-index: 1000; pointer-events: none; opacity: 0.95;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25); cursor: grabbing; }
+.pl-ghost.pl-ghost-out { opacity: 0.5; text-decoration: line-through; }
+body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
+.pl-drop-line { position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--accent);
+  pointer-events: none; }
+.pl-order-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.pl-strip { position: relative; height: 26px; margin: 4px 0 10px; border-radius: 6px; background: var(--track); overflow: hidden; }
+.pl-block { position: absolute; top: 0; bottom: 0; background: hsl(var(--hue) 60% 50%); color: #fff; font-size: 11px;
+  line-height: 26px; padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  border-right: 1px solid var(--panel); }
+.pl-order-hint { margin: 8px 0; }
+.pl-gap input { width: 5em; margin: 0 4px; }
+.pl-when { margin-top: 12px; }
 .playlist-schedule { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px dashed var(--line);
   border-radius: 6px; }
 .playlist-schedule .row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .playlist-schedule .days label { display: inline-flex; gap: 3px; align-items: center; }
 .playlist-schedule select, .playlist-schedule input[type=time] { width: auto; }
 .playlist-next { margin: 0; }
-.sun-place { margin-bottom: 10px; }
+.sun-place { margin: 10px 0; }
 .sun-place .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sun-place input { width: 9em; margin-left: 6px; }
-.playlist-now { font-weight: 600; margin: 0 0 10px; }
 #preset-palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .palette-card { display: flex; flex-direction: column; gap: 8px; background: var(--panel);
   border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
