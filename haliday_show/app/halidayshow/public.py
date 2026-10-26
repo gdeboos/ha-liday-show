@@ -252,11 +252,14 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
 
 
 def _code_ok(p: dict, code) -> bool:
-    return bool(p["code"]) and isinstance(code, str) and secrets.compare_digest(code.lower(), p["code"].lower())
+    return (bool(p["code"]) and isinstance(code, str) and bool(_CODE.match(code))
+            and secrets.compare_digest(code.lower().encode(), p["code"].lower().encode()))
 
 
 def _needs_location(request, p: dict) -> bool:
-    return p["nearby"] and not is_local(request) and request.app[WHERE]() is not None
+    """Through the internet with Nearby only on. With no home location to measure from, such a
+    request is refused rather than let through."""
+    return p["nearby"] and not is_local(request)
 
 
 def _no_store(resp: web.StreamResponse) -> web.StreamResponse:
@@ -324,6 +327,8 @@ async def post_request(request):
     if not _code_ok(p, body.get("code")):
         raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
     if _needs_location(request, p):
+        if request.app[WHERE]() is None:
+            raise web.HTTPForbidden(text="Shows can't be started from here right now. Ask at the house.")
         try:
             here = (float(body["lat"]), float(body["lon"]))
             leeway = min(max(float(body.get("accuracy") or 0), 0), MAX_LEEWAY_M)
@@ -352,6 +357,8 @@ async def post_cancel(request):
     _throttle(request.app)
     body = await _body(request)
     ticket = _ticket(body.get("ticket"))
+    if not _code_ok(load(request.app[STORAGE]) or clean(None), body.get("code")):
+        raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
     request.app[RUNNER].cancel_request(str(body.get("id", "")), ticket)
     return _no_store(web.json_response(_state(request, ticket, body.get("code"))))
 

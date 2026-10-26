@@ -58,6 +58,6 @@ export function nearbyText(view) {
   if (!view.nearby) return "Anyone with the link can start a show, wherever they are.";
   const from = view.home === "you" ? "the home location you typed in under Library → Playlists"
     : view.home === "ha" ? "your home location in Home Assistant" : "";
-  if (!from) return "⚠ There's no home location to measure from, so this can't be checked yet. Set your home's location in Home Assistant (Settings → System → General).";
+  if (!from) return "⚠ There's no home location to measure from, so visitors reaching the page through the internet can't start shows until you set one in Home Assistant (Settings → System → General). Your home Wi-Fi still works.";
   return `Phones reaching the page through the internet must be within ${view.distance} m of ${from}. On your home Wi-Fi they're not asked. Visitors' phones ask them to share their location once they press Start.`;
 }

@@ -1072,8 +1072,11 @@ the **Public page** tab, under **Who can start shows**:
   must be that close to your house to start a show. When a visitor presses **▶ Start**, their phone
   asks to share its location; it's only used for that check and isn't kept. Phones on your home
   Wi-Fi aren't asked. Your house is your home location in Home Assistant (**Settings → System →
-  General**), or the one you typed in for sunset under **Library → Playlists**. Without either, it
-  can't be checked, and the tab says so.
+  General**), or the one you typed in for sunset under **Library → Playlists**. Without either,
+  visitors through the internet can't start shows at all until you set one, and the tab says so.
+  The check stops casual use from afar, but a determined person could fake where their phone is, so
+  keep **Queue length** small. The distance is measured generously: a phone that isn't sure where it
+  is gets up to 150 m extra.
 
 **Dates.** Each show or playlist is available all year until you tick **Only from** and pick the
 first and last day, such as 1 Dec until 6 Jan. The dates come round every year, and can run over New

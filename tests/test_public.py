@@ -258,13 +258,16 @@ async def test_your_own_wifi_and_the_switch_skip_the_location_check(client):
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "nearby": False})
     status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=FAR)
     assert status == 200
-    # With no home location, it can't be checked, and the tab says so.
+    # With no home location it can't be checked, so internet visitors are refused; the tab says so.
     client.app[server.SCHEDULER].where = lambda: (None, None)
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "nearby": True})
     view = await (await client.get("/api/public")).json()
     assert view["home"] is None
-    _, st, _ = await _visitor(client, f"/api/state?ticket={T2}", headers=FAR)
-    assert st["needs_location"] is False
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party",
+                                                              "lat": 51.5, "lon": -0.12}, headers=FAR)
+    assert status == 403 and "can't be started from here" in text
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
+    assert status == 200  # your own Wi-Fi still works
 
 
 def test_distance_and_address_are_checked():
@@ -273,3 +276,19 @@ def test_distance_and_address_are_checked():
     assert public.clean({"address": "javascript:alert(1)"})["address"] == ""
     assert public.link({"address": "https://l.example.com", "code": "abc23456"}) == "https://l.example.com/?c=abc23456"
     assert round(public.metres(HOME, (51.5016, -0.1246))) == 100
+
+
+
+async def test_odd_codes_and_cancelling_need_the_code_too(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}]})
+    status, st, _ = await _visitor(client, f"/api/state?ticket={T1}&code=%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9%C3%A9", code=False)
+    assert status == 200 and st.get("locked")
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party", "code": "éééééé"},
+                                  code=False)
+    assert status == 403
+    runner = client.app[server.RUNNER]
+    await runner.play("quiet")
+    await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    rid = runner.requests[0]["id"]
+    status, _, _ = await _visitor(client, "/api/cancel", {"ticket": T1, "id": rid}, code=False)
+    assert status == 403 and runner.requests

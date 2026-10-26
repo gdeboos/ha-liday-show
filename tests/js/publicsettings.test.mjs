@@ -37,6 +37,6 @@ test("the visitors' link and the nearby check in words", async () => {
   assert.equal(visitorLink({ ...v, address: "https://lights.example.com" }, "x.ui.nabu.casa"),
     "https://lights.example.com/?c=abc23456");
   assert.match(nearbyText(v), /within 100 m of your home location in Home Assistant/);
-  assert.match(nearbyText({ ...v, home: null }), /no home location/);
+  assert.match(nearbyText({ ...v, home: null }), /can't start shows until/);
   assert.match(nearbyText({ ...v, nearby: false }), /wherever they are/);
 });
