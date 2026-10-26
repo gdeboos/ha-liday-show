@@ -35,7 +35,8 @@ page you last had open. Below, "the House tab" and so on mean that page.
 Your browser's **Back** and **Forward** buttons (or swiping back on a phone) move between the tabs and
 pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Your shows**, as
 **← All shows** does; from a song in the Music editor, it goes to **Your songs**. Both ask first if
-you'd lose changes. Reloading the page keeps you on the same tab or page.
+you'd lose changes. **Back** does nothing while a window is open: close it first. Without Home
+Assistant (Docker or Python), reloading the page keeps you on the same tab or page.
 
 ## Requirements
 

@@ -6,7 +6,8 @@
   HA-liday Show's tabs and pages, in Home Assistant too. Before, **Back** left HA-liday Show
   altogether. From an open show **Back** goes to **Your shows**, and from a song in the Music editor
   to **Your songs**, asking first if you'd lose changes, as **← All shows** and **← All songs** do.
-- Reloading the page now keeps you on the tab or page you were on.
+- Without Home Assistant (Docker or Python), reloading the page now keeps you on the tab or page you
+  were on.
 
 ## 0.2.142
 
