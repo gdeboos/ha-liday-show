@@ -63,7 +63,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Show editor**: pick or upload a song, drag across a light's track, press **＋ Add effect…** and pick one. Press
+4. **Show editor**: press **+ New show** (or **Open** one of yours), pick or upload a song, drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
 5. Run it from an automation with the MQTT **Play** button or the `hassio.app_stdin` action.
 
@@ -443,9 +443,19 @@ timeline.
 
 ### Shows
 
-Pick a show in the Show panel, or **＋ New show** to start one. **⚙ Show settings…** beside it
-opens the show's settings: its **Name**, its **Show speaker** (below), **Auto save**, and **Delete
-show…** to remove it.
+The **Show editor** opens on **Your shows** each time, so nothing changes in a show until you open
+it. Each show is listed with its song, its length and when it last changed, newest first, and the
+one you were last editing has a **Last edited** badge.
+
+- **Open** a show to edit it, or press **+ New show** to start one.
+- **Duplicate** makes a copy called "… copy", ready to play straight away.
+- **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
+- **← All shows**, at the start of the Show panel, takes you back to the list. Switching between tabs
+  keeps your show open until you go back to the list or close the page.
+
+The same list is under **Library → Shows**. You can also switch shows with the drop-down in the Show
+panel. **⚙ Show settings…** beside it opens the show's settings: its **Name**, its **Show speaker**
+(below), **Auto save**, and **Delete show…** to remove it.
 
 ### Songs
 
