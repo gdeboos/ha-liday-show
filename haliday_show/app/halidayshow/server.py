@@ -1384,7 +1384,7 @@ async def get_public_picture(request):
 # can't start or cancel anything.
 async def public_preview_page(request):
     name = request.match_info.get("name") or "index.html"
-    if name not in ("index.html", "public.js", "public.css"):
+    if name not in ("index.html", "public.js", "public.css", "colours.js"):
         raise web.HTTPNotFound()
     return web.FileResponse(public.PAGE / name, headers={"Cache-Control": "no-cache"})
 
@@ -1874,7 +1874,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/public/code", new_public_code)
     r.add_get("/api/public/picture", get_public_picture)
     r.add_get("/public-preview/", public_preview_page)
-    r.add_get("/public-preview/{name:(public\\.js|public\\.css)}", public_preview_page)
+    r.add_get("/public-preview/{name:(public\\.js|public\\.css|colours\\.js)}", public_preview_page)
     r.add_get("/public-preview/api/state", public_preview_state)
     r.add_get("/public-preview/picture", public_preview_picture)
     r.add_put("/api/public/picture", put_public_picture)

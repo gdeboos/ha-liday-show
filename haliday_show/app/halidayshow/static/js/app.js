@@ -22,6 +22,7 @@ import { MusicEditor } from "./music.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
+import { readability } from "../public/colours.js";
 import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLink } from "./publicsettings.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
@@ -4033,6 +4034,19 @@ function renderPublicLook() {
   keep("pub-link-text", look.link_text);
   $("pub-theme").value = look.theme;
   $("pub-mode").value = look.mode;
+  const own = look.theme === "custom";
+  $("pub-colours").hidden = !own;
+  $("pub-mode-label").hidden = own;
+  for (const input of document.querySelectorAll("#pub-colours input[data-colour]")) {
+    if (document.activeElement !== input) input.value = look.colours[input.dataset.colour];
+  }
+  const problems = own ? readability(look.colours) : [];
+  $("pub-readability").textContent = problems.length ? `⚠ ${problems.join(" ")}` : own ? "✓ Everything is easy to read." : "";
+  $("pub-readability").classList.toggle("warn", problems.length > 0);
+  $("pub-spacing").value = look.spacing;
+  $("pub-corners").value = look.corners;
+  $("pub-size").value = look.size;
+  $("pub-borders").checked = look.borders;
   $("pub-snow").checked = look.snow;
   for (const r of document.querySelectorAll("input[name=pub-picture]")) {
     r.checked = r.value === look.picture;
@@ -4201,6 +4215,10 @@ function savePublic() {
       title: $("pub-title").value, welcome: $("pub-welcome").value, theme: $("pub-theme").value,
       mode: $("pub-mode").value, snow: $("pub-snow").checked, picture: picked ? picked.value : publicView.look.picture,
       link: $("pub-link-url").value.trim(), link_text: $("pub-link-text").value,
+      spacing: $("pub-spacing").value, corners: $("pub-corners").value, size: $("pub-size").value,
+      borders: $("pub-borders").checked,
+      colours: Object.fromEntries([...document.querySelectorAll("#pub-colours input[data-colour]")]
+        .map((i) => [i.dataset.colour, i.value])),
     };
   }
   if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);

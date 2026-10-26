@@ -116,7 +116,13 @@ def clean(p) -> dict:
             "look": clean_look(p.get("look"))}
 
 
-THEMES = ("plain", "christmas", "frosty", "halloween")
+THEMES = ("plain", "christmas", "frosty", "halloween", "custom")
+SPACINGS = ("normal", "compact", "roomy")
+CORNERS = ("soft", "square", "round")
+SIZES = ("normal", "small", "large")
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+# "Your own colours" to start from: the Classic Christmas dark look.
+DEFAULT_COLOURS = {"bg": "#0f1a14", "panel": "#16241c", "text": "#eef4ef", "head": "#ffd36b", "accent": "#c62828"}
 MODES = ("auto", "light", "dark")
 PICTURES = ("none", "house", "upload")
 
@@ -132,7 +138,11 @@ def clean_look(x) -> dict:
             "picture": pick("picture", PICTURES), "theme": pick("theme", THEMES), "mode": pick("mode", MODES),
             "snow": x.get("snow") is True,
             "link": link if len(link) <= 300 and _LINK.match(link) else "",
-            "link_text": text("link_text", 80)}
+            "link_text": text("link_text", 80),
+            "spacing": pick("spacing", SPACINGS), "corners": pick("corners", CORNERS), "size": pick("size", SIZES),
+            "borders": x.get("borders") is not False,
+            "colours": {k: (c[k].lower() if isinstance(c := x.get("colours"), dict) and isinstance(c.get(k), str)
+                            and _HEX.match(c[k]) else v) for k, v in DEFAULT_COLOURS.items()}}
 
 
 def new_code() -> str:
@@ -248,7 +258,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
     look = p["look"]
     if p["on"] and not _code_ok(p, code):
         # Only the colours without the code: the title, words and picture are for visitors.
-        return {"open": True, "locked": True, "look": {"theme": look["theme"], "mode": look["mode"]}}
+        return {"open": True, "locked": True,
+                "look": {k: look[k] for k in ("theme", "mode", "spacing", "corners", "size", "borders", "colours")}}
     picks = choices(storage) if p["on"] else []
     st = runner.status()
     waits = runner.queue_waits()
@@ -273,7 +284,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "per_phone": p["per_phone"],
         "mine": mine,
         "needs_location": needs_location,
-        "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text")},
+        "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
+                                         "corners", "size", "borders", "colours")},
                  "picture": _picture_version(storage, look)},
     }
 
@@ -336,7 +348,7 @@ async def safe_headers(request, handler):
 
 async def page(request):
     name = request.match_info.get("name") or "index.html"
-    if name not in ("index.html", "public.js", "public.css"):
+    if name not in ("index.html", "public.js", "public.css", "colours.js"):
         raise web.HTTPNotFound()
     resp = web.FileResponse(PAGE / name)
     resp.headers["Cache-Control"] = "no-cache"
@@ -449,7 +461,7 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None) -> web
     app[NEAR] = []
     r = app.router
     r.add_get("/", page)
-    r.add_get("/{name:(public\\.js|public\\.css)}", page)
+    r.add_get("/{name:(public\\.js|public\\.css|colours\\.js)}", page)
     r.add_get("/api/state", get_state)
     r.add_get("/picture", get_picture)
     r.add_post("/api/request", post_request)
