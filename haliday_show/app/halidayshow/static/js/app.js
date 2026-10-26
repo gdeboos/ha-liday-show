@@ -2,6 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
+import { describeSections } from "./sectionnotes.js";
 import { STYLES, applyGenerated, generateShow, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
@@ -4891,7 +4892,7 @@ async function analyseSong() {
     $("btn-detect").disabled = false;
   }
   if (song !== songBuffer) return null;
-  const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: r.sections };
+  const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: describeSections(r.sections, r.traits) };
   applySongInfo(info);
   if (app.show.audio) api(songInfoUrl(app.show.audio), { method: "PUT", json: info }).catch(() => {});
   return r;

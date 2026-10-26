@@ -327,7 +327,66 @@ function nameSections(sections) {
 
 const round = (t) => Math.round(t * 1000) / 1000;
 
-// Everything at once, from mono samples: {tempo, beats, bars, sections}, times in seconds.
+// What each section sounds like, measured for its notes (sectionnotes.js): loudness 0 to 1
+// across the song ("level"), whether it builds up or fades ("shape"), how busy it is against the
+// song's average ("busy"), bass-heavy or bright against the song ("tone"), and sudden hits and
+// drops (song times). sections: [{start, end}] in seconds.
+export function measureSections(f, sections) {
+  const fps = f.fps, n = f.loud.length;
+  const frame = (t) => Math.min(n, Math.max(0, Math.round(t * fps)));
+  const mean = (a, from, to) => meanOf(a, from, Math.max(from + 1, to));
+  const third = Math.floor(BANDS / 3);
+  const balance = f.timbre.map((b) => mean(b, 0, third) - mean(b, BANDS - third, BANDS));
+  const songOnset = mean(f.onset, 0, n), songBalance = mean(balance, 0, n);
+  const louds = sections.map((s) => mean(f.loud, frame(s.start), frame(s.end)));
+  const lo = Math.min(...louds), hi = Math.max(...louds);
+  const w = (s) => Math.max(1, Math.round(s * fps));
+  return sections.map((s, i) => {
+    const a = frame(s.start), b = frame(s.end), len = b - a;
+    // Medians, so a moment of silence (a drop) doesn't read as the whole section fading.
+    const median = (from, to) => {
+      const xs = Array.from(f.loud.subarray(from, Math.max(from + 1, to))).sort((x, y) => x - y);
+      return xs[Math.floor(xs.length / 2)] ?? 0;
+    };
+    const first = median(a, a + Math.floor(len / 3)), last = median(b - Math.floor(len / 3), b);
+    const busy = mean(f.onset, a, b) / (songOnset || 1);
+    const tone = mean(balance, a, b) - songBalance;
+    // A hit: the next second is 6 dB louder than the two before and louder than the section usually
+    // is (by 8 dB); a drop: 9 dB quieter, and well below its usual. Over whole seconds, so the notes of a tune
+    // (or it coming back after a pause) don't count, only a crash or the music cutting out. Not at
+    // the section's edges (that's the section changing), and at least 4 s apart.
+    const hits = [], drops = [];
+    const from = a + w(2), to = b - w(1), usual = median(a, b);
+    const after = (k) => mean(f.loud, k, k + w(1));
+    const change = (k) => mean(f.loud, k, k + w(1)) - mean(f.loud, k - w(2), k);
+    // The moment it changes most, within a second of first passing the mark.
+    const peak = (k, sign) => {
+      let best = k;
+      for (let j = k; j < Math.min(to, k + w(1)); j++) if (sign * change(j) > sign * change(best)) best = j;
+      return best;
+    };
+    for (let k = from; k < to; k++) {
+      const c = change(k);
+      for (const [list, sign, mark] of [[hits, 1, 6], [drops, -1, 9]]) {
+        if (sign * c <= mark || list.length >= 2) continue;
+        const j = peak(k, sign), t = Math.round((j / fps) * 10) / 10;
+        if (sign > 0 ? after(j) < usual + 8 : after(j) > usual - 9) continue;
+        if (!list.length || t - list[list.length - 1] >= 4) list.push(t);
+      }
+    }
+    const r2 = (x) => Math.round(x * 100) / 100;
+    return {
+      level: hi - lo > 1 ? r2((louds[i] - lo) / (hi - lo)) : 0.5,
+      shape: last - first > 3 ? "builds" : first - last > 3 ? "fades" : "steady",
+      busy: busy > 1.25 ? "busy" : busy < 0.7 ? "sparse" : "steady",
+      tone: tone > 0.3 ? "bass" : tone < -0.3 ? "bright" : "even",
+      hits, drops,
+    };
+  });
+}
+
+// Everything at once, from mono samples: {tempo, beats, bars, sections, traits}, times in seconds;
+// traits are measureSections() for the sections found.
 export function analyse(samples, rate) {
   const duration = samples.length / rate;
   const f = features(samples, rate);
@@ -346,21 +405,29 @@ export function analyse(samples, rate) {
     for (let t = 0; t < f.onset.length; t += step) units.push(t);
     units.push(f.onset.length);
   }
+  const sections = findSections(units, f, duration);
   return {
     tempo: Math.round(tempo * 10) / 10,
     beats: frames.map((t) => round(t / f.fps)),
     bars,
-    sections: findSections(units, f, duration),
+    sections,
+    traits: measureSections(f, sections),
   };
 }
 
-// Runs analyse() in a worker so the page stays responsive; falls back to the main thread.
-export function analyseInWorker(samples, rate) {
+// Measures given sections (yours, after editing them) from the song's samples.
+export function measure(samples, rate, sections) {
+  return measureSections(features(samples, rate), sections);
+}
+
+// Runs analyse() in a worker so the page stays responsive (or, given sections, measures just them);
+// falls back to the main thread.
+export function analyseInWorker(samples, rate, sections = null) {
   let worker;
   try {
     worker = new Worker(new URL("./analysis-worker.js", import.meta.url), { type: "module" });
   } catch {
-    return Promise.resolve(analyse(samples, rate));
+    return Promise.resolve(sections ? measure(samples, rate, sections) : analyse(samples, rate));
   }
   return new Promise((resolve, reject) => {
     worker.onmessage = (e) => {
@@ -372,6 +439,6 @@ export function analyseInWorker(samples, rate) {
       worker.terminate();
       reject(new Error(e.message || "the analysis stopped"));
     };
-    worker.postMessage({ samples, rate }, [samples.buffer]);
+    worker.postMessage({ samples, rate, sections }, [samples.buffer]);
   });
 }

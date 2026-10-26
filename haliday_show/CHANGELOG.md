@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.137
+
+- Song sections now get **Notes** written for you. **Detect** writes them for every section, and the
+  new **✨ Describe sections** button in the **Music editor** writes them again for the sections as
+  they are now. Each note says what that part of the song is like, then how to light it. For example:
+  "Quiet, sparse, bass-heavy. Keep it gentle: slow fades or a soft glow on a few lights", or "Loud;
+  goes quiet at 1:43. Everything on…; go dark or very dim when it drops".
+- These notes steer **Generate** with **AI**, and **Describe it**, as your own notes do. Notes you've
+  typed or changed, and names you've given sections, are never replaced.
+
 ## 0.2.136
 
 - **+ New show** now opens a short window instead of an empty show straight away:
