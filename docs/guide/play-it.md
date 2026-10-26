@@ -9,7 +9,7 @@
 ### Saving
 
 **Save** stores the show and bakes every frame for playback (Play saves first if
-needed). With **Auto save** ticked in the show's settings (the default), the show also saves itself a couple of seconds
+needed). With **Auto save** on in the show's settings (the default), the show also saves itself a couple of seconds
 after each change and when you switch shows; the note next to it says whether everything is saved.
 A new show is saved once it has its first effect. Auto save waits while a show is playing.
 
@@ -25,7 +25,7 @@ The Playback panel chooses where the song plays. This is kept in your browser
 and never changes where the real show plays:
 
 - **Song in this browser**: the song plays in your browser and HA-liday Show streams the lights in
-  sync. Untick **Lights** to preview in the browser only. If the lights lead or lag, adjust
+  sync. Turn off **Lights** to preview in the browser only. If the lights lead or lag, adjust
   **Light offset** under **Setup → Speakers**. The 🔊 slider next to the clock sets how loud the song
   plays in your browser. The **Music editor** shares the same level, and your browser remembers it.
 - **Speaker: …**: HA-liday Show starts the song on that speaker and the lights with it, and the
@@ -105,7 +105,7 @@ on a speaker, don't play in the Show player, so you never hear a song twice.
 
 #### Playing on a schedule
 
-Tick **Play on a schedule** under **When it plays**, in the Playlist editor, to have a playlist start
+Turn on **Play on a schedule** under **When it plays**, in the Playlist editor, to have a playlist start
 and stop by itself:
 
 - **From** and **to** set the times, such as 17:00 to 22:00. An end time earlier than the start runs
@@ -114,8 +114,8 @@ and stop by itself:
   after it, such as 15 **minutes after**. Sunset moves through the year, so the playlist does too.
   An end time in the morning (before 12:00), such as 01:00, is the next morning. On an evening the sun
   sets after the end time (21:00 in midsummer, say), it doesn't play.
-- Untick the days it shouldn't play.
-- Tick **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
+- Press the days it shouldn't play to turn them off.
+- Turn on **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
   every year, and can run over New Year (1 Dec and 6 Jan).
 
 Under the schedule it says when the playlist next starts. At the start time it starts, even if

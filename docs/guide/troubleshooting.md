@@ -16,7 +16,7 @@
 | A pixel controller doesn't light | For DDP, check DDP is switched on in the controller's settings. For E1.31, check it takes E1.31 as **unicast** and that **universe** and **channel** in the light's window match the controller's set-up. Then check **Segments** matches the number of LEDs. |
 | A Home Assistant light lags behind the music | They change at most 4 times a second (a switch once a second), so fast effects look steppy. Use fades, colour changes and pulses on them. |
 | A Twinkly light doesn't light | Twinkly support is experimental and hasn't been tried on a real Twinkly yet. Please say what happens on GitHub. |
-| Effects run from the wrong end | Tick **Reverse** on the Devices tab. |
+| Effects run from the wrong end | Turn on **Reverse** on the Devices tab. |
 | Lights run ahead of or behind the music | In the browser, adjust **Light offset** under **Setup → Speakers**. On a speaker, adjust its **Delay ms** in the same place. |
 | A speaker can't be added | The test shows Home Assistant's reason. Some integrations can't play files from the media folder; use another media player for the song. |
 | A show from an automation plays no music | Set a **Show speaker** for the show, or a **Default show speaker** on the Speakers tab. |

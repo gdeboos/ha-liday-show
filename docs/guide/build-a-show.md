@@ -252,7 +252,7 @@ note. They're kept with the song, so every show that uses it gets them, and they
 - **Move it:** drag its flag. It snaps to beats and bars; hold Shift to place it freely.
 
 In the **Show editor**, a song's marks show as coloured flags on the **Beats** lane, with a line down
-through every light, and clips snap to them (when **Snap** is ticked) so you can line an effect up with
+through every light, and clips snap to them (when **Snap** is on) so you can line an effect up with
 the moment. They're read from the song each time you open the Show editor, so marks you add in the
 Music editor show straight away. To change them, go back to the Music editor.
 
@@ -309,7 +309,7 @@ with nothing sent anywhere. Detection reads songs as 4/4 and prefers a lively te
 may come out at double time; type the BPM you want and press **Fill** if so. You can also press **B**
 (or **Tap beat**) in time with the music while it plays, type a **BPM** and press **Fill** to add beats
 from the playhead, or click the beat lane to add or remove one. **Clear** removes the beats and
-sections. With **Snap** ticked, clips and selections snap to beats and to each other; hold Shift to
+sections. With **Snap** on, clips and selections snap to beats and to each other; hold Shift to
 place freely.
 
 ### Suggestions
@@ -336,7 +336,7 @@ Pick the **Colours** (any palette) and a **Style** (Calm, Balanced or Lively), a
 with effects that follow the song: soft, slow looks in quiet parts, faster ones that move on the beat
 as it gets louder, every light moving together in the chorus, the same looks each time a section comes
 back, and a change every few bars. Quiet starts and ends fade in and out, and with lights traced on the
-house photo, tick **Sweep across the house as the music lifts** for a sweep from one side to the
+house photo, turn on **Sweep across the house as the music lifts** for a sweep from one side to the
 other. It runs **Detect** first if the song hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press it again for a
 different take, then edit whatever you like. The colours start on the palette for the time of year
 (Halloween in October, Christmas in December…) when there is one.
@@ -346,13 +346,13 @@ different take, then edit whatever you like. The colours start on the palette fo
 120 BPM. **Rules** keep to it; an effect from the **AI** that runs longer is cut at bar lines into
 pieces, each in the next colours of your palette, so the look keeps changing.
 
-**Build up** (ticked to start with) lights the house the way you would by hand rather than lighting
+**Build up** (on to start with) lights the house the way you would by hand rather than lighting
 everything all the time. Quiet parts use only a few lights and leave the rest dark. Middling parts
 start with about half and bring in another every few bars, starting afresh in each part of the song.
 Only the loudest parts and the chorus use every light at once (in a song with neither, its loudest
 part does), so every light gets its moment. A part of the song that comes back uses the same lights
 each time, and the parts of a split light (like **Pillars · Left** and **Pillars · Right**) go on and
-off together. A song that hasn't been analysed into parts fills every light. Untick it to fill every
+off together. A song that hasn't been analysed into parts fills every light. Turn it off to fill every
 light all the way through. It works for the **AI** too.
 
 Lights on **Per bulb**, **App segments** or **Whole light only** can only change a few times a second,
@@ -416,7 +416,7 @@ segments can't show a chase wider than itself. A Govee scene needs a light that 
 its model set.
 
 - In the effect chooser, effects that won't work on the light are greyed out. Click one to see why.
-  Tick **Allow effects that won't work** to pick them anyway.
+  Turn on **Allow effects that won't work** to pick them anyway.
 - Effects that work, but not quite as meant (too fast for a slow light, a House lane effect that is
   too fast for one of your slow lights, or one that leaves out lights you haven't traced on the photo),
   are marked **⚠**.
@@ -434,7 +434,7 @@ its model set.
 ### Presets
 
 Most effects can look very different depending on their settings (Three colours can sit
-still, alternate, or run as a slow or fast marquee). Tick **Show presets** in the effect chooser and
+still, alternate, or run as a slow or fast marquee). Turn on **Show presets** in the effect chooser and
 each effect becomes its own boxed group: **Default** first, then its presets, each previewed. Picking
 a preset sets just the settings it names. When adding an effect it uses the effect's default colours;
 when changing a clip your colours stay. The Effect button shows the preset a clip matches, such as
@@ -443,7 +443,7 @@ when changing a clip your colours stay. The Effect button shows the preset a cli
 ### Your own presets
 
 Get a clip looking right, then press **Save as preset…** under its settings.
-Name it and choose whether to **Include colours** (ticked by default; untick it to save just the
+Name it and choose whether to **Include colours** (on by default; turn it off to save just the
 movement and other settings, so the preset takes on whatever colours a clip already has). Your
 presets appear in the effect chooser after the built-in ones, marked with a ★, and **★ My presets
 only** narrows the chooser to them.
@@ -453,7 +453,7 @@ only** narrows the chooser to them.
 **Library → Presets** lists your presets by effect, each with a live preview, and **Edit…**,
 **Duplicate** and **Delete…**. **Edit…** opens the preset in a window with a larger preview (choose
 which light's segments with **Preview on**). Rename it, change its **Effect** (or start again from one
-of that effect's presets), tick or untick **Include colours**, and change its colours (palettes work
+of that effect's presets), turn **Include colours** on or off, and change its colours (palettes work
 here too), settings and brightness; the preview follows every change. **Save** keeps the changes and
 **Cancel** leaves the preset as it was. **+ New preset** starts one from scratch: pick an effect, or
 any built-in preset, to start from, then **Add preset** in the window. Or describe a look in
@@ -463,7 +463,7 @@ set up, as for **Describe it**). Changing or deleting
 a preset doesn't change clips that already used it. They're saved in HA-liday Show, so every browser
 sees the same ones.
 
-Tick **Show on the light** to loop it on the real light too while the show is
+Turn on **Show on the light** to loop it on the real light too while the show is
 stopped; the light goes back to normal when you click away. Every effect has a **Brightness %**
 slider, so one section can glow softly and the next hit full brightness.
 
@@ -499,7 +499,7 @@ effects (Ctrl+Z brings it back), or **Remove all unplayed tracks** when there ar
 
 Drag along the time ruler to set a **play region**, or select a stretch
 and press **▶ Play this part**. Play then plays just that part, and Home goes back to its start.
-Tick **Loop** to repeat it (or the whole show when there's no region), and clear the region with
+Turn on **Loop** to repeat it (or the whole show when there's no region), and clear the region with
 its ✕. Region and Loop apply when the song plays in the browser; on a speaker the whole show plays.
 
 ### Undo

@@ -64,7 +64,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 4. **Show** tab (the Show editor), or **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Play it by itself: put it in a [playlist](play-it.md#playlists) on the **Playlist** tab and tick
+5. Play it by itself: put it in a [playlist](play-it.md#playlists) on the **Playlist** tab and turn on
    **Play on a schedule** (at set times or from sunset), or start it from an automation with the MQTT
    **Play** button or the `hassio.app_stdin` action.
 

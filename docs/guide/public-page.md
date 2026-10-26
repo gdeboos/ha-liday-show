@@ -9,7 +9,7 @@
 The public page lets people passing by start a show from their phone, usually by scanning a QR code
 on a sign outside. They see the shows and playlists you've picked, and nothing else of HA-liday Show.
 
-1. Open **Setup → Settings** and tick **Let visitors start shows** under **Public page**. A **Public
+1. Open **Setup → Settings** and turn on **Let visitors start shows** under **Public page**. A **Public
    page** tab appears along the top.
 2. On the **Public page** tab, under **What visitors can pick**, choose a show or playlist next to
    **+ Add** and press it. Add as many as you like.
@@ -58,7 +58,7 @@ without the code just says "Scan the code on the sign to start a show".
 
 ### Opening hours
 
-Off to start with, so visitors can start shows at any time. Tick **Only open at set times** to choose
+Off to start with, so visitors can start shows at any time. Turn on **Only open at set times** to choose
 when:
 
 - **Opens**: at a time, or at sunset with a number of minutes after it (or before, if less than
@@ -111,7 +111,7 @@ with your code.
   made only of archived shows, and visitors never see them. A show you archive later disappears from
   the public page straight away, and from inside any playlist visitors pick. The tab still lists it,
   marked as archived, so it comes back if you restore it.
-- **Only from … until … every year**: each show or playlist is available all year until you tick
+- **Only from … until … every year**: each show or playlist is available all year until you turn on
   **Only from** and pick the first and last day, such as 1 Dec until 6 Jan. The dates come round every
   year, and can run over New Year. Outside them, visitors see it greyed out under **Coming soon** with
   the day it starts ("From 1 December"). When nothing can be picked yet, the page says when the first
