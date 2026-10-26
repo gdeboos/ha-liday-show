@@ -25,3 +25,6 @@ Things every kind shares:
 - The editor's `lightspeed.js` lists the slow ones, so effects too fast for them are marked.
 - To check the wire without the real light, point a light at 127.0.0.1 and listen on its port: UDP 4003
   (Govee), 4048 (WLED and DDP), 5568 (E1.31), 7777 (Twinkly), or run a fake Home Assistant for `HA_URL`.
+
+Other notes: [public-page-security.md](public-page-security.md), the security review of the public page
+(what faces the internet, what was fixed, and the limits that remain).

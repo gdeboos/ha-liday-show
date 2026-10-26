@@ -1252,6 +1252,29 @@ restart the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
 To reach the page from the street on mobile data, point a tunnel or proxy at that port (only that
 port), such as Cloudflare Tunnel, and put its address in **Public address**.
 
+#### Keeping it safe
+
+- **Only the visitors' page is on the public port.** Nothing there can reach the editor, your lights'
+  settings or Home Assistant.
+- **Without your code, visitors see only the page's colours**: not your title, words, picture or
+  shows. If the link gets shared somewhere it shouldn't be, press **New code…**; the old link and any
+  printed sign stop working at once.
+- **Your picture is shared without its hidden details.** Phone photos carry where they were taken (to
+  the metre), the phone and the time, and some phones hide an extra picture or a short video in it.
+  Visitors get a copy without any of that; for a phone photo, which way up it goes is kept. Your own
+  copy, in your backups, is as you uploaded it.  A picture that can't be read well enough to be sure isn't shown at all; the
+  preview leaves it out too, so try saving it again from your phone or computer.
+- **Each visitor's phone has its own limit** on how often it can ask, so one person (or a script)
+  can't slow your lights down or crowd everyone else out. Wrong guesses at the code don't count
+  against real visitors.
+- **Nearby only** keeps out casual visitors far away, but a phone reports its own location, so
+  someone determined at a computer could get round it. **Clear the queue** and **New code…** deal with
+  anyone who does.
+- **Use a tunnel or proxy, not a plain port forward.** Visitors on your home Wi-Fi skip the location
+  check, and HA-liday Show tells them apart by the details a tunnel or proxy adds (Cloudflare Tunnel
+  and Nginx Proxy Manager both do). Forwarding the port on your router straight through would make
+  everyone look as if they're at home.
+
 > **Coming next:** step-by-step guides for reaching the page from outside your home (Cloudflare Tunnel
 > and others).
 

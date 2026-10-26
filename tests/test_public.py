@@ -50,6 +50,8 @@ async def _visitor(client, path, json=None, code=True, headers=None):
 
 
 T1, T2 = "a" * 20, "b" * 20
+# The smallest JPEG the picture cleaner can read all through: start, one scan, end.
+PHOTO = b"\xff\xd8\xff\xda\x00\x08\x01\x01\x00\x00\x3f\x00\x12\x34\xff\xd9"
 
 
 async def test_the_port_stays_shut_until_the_public_page_is_set_up(client):
@@ -341,7 +343,7 @@ async def test_visitors_get_the_look_and_picture_only_with_the_code(client):
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "look": look})
     _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert {k: state["look"][k] for k in look} == {**look, "picture": 0}  # no house photo yet
-    st.save_house_photo(b"\xff\xd8\xffphoto", ".jpg")
+    st.save_house_photo(PHOTO, ".jpg")
     _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert state["look"]["picture"] > 0
     status, body, _ = await _visitor(client, "/picture")
@@ -363,7 +365,7 @@ async def test_the_editor_previews_the_page_as_visitors_with_the_code_see_it(cli
     st = client.app[server.STORAGE]
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
                                           "look": {"title": "Deboos Lights", "picture": "house"}})
-    st.save_house_photo(b"\xff\xd8\xffphoto", ".jpg")
+    st.save_house_photo(PHOTO, ".jpg")
     resp = await client.get("/public-preview/api/state")
     view = await resp.json()
     assert view["preview"] is True and view["look"]["title"] == "Deboos Lights" and view["choices"]
@@ -425,3 +427,85 @@ def test_qr_code_reads_back():
     import segno
     qr = segno.make("https://lights.example.com/?c=abc23456", error="m", micro=False)
     assert qr.error == "M" and qr.designator  # a real QR code, not a micro one phones can't read
+
+
+async def test_guessing_the_code_cant_lock_visitors_out(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "queue": 5,
+                                          "nearby": False})
+    # Wrong codes from many addresses (as if through a tunnel) don't use up everyone's limit.
+    for k in range(public.MAX_POSTS_PER_MIN + 5):
+        status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party",
+                                                                "code": "wrongcode"},
+                                      code=False, headers={"X-Forwarded-For": f"203.0.113.{k % 250}, 10.0.0.{k % 7}"})
+        assert status in (403, 429)
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"},
+                                  headers={"X-Forwarded-For": "198.51.100.7"})
+    assert status == 200
+
+
+async def test_each_visitor_has_their_own_share(client, monkeypatch):
+    monkeypatch.setattr(public, "MAX_POSTS_PER_CLIENT_MIN", 3)
+    monkeypatch.setattr(public, "MAX_STATE_PER_CLIENT_MIN", 4)
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}]})
+    one, other = {"X-Forwarded-For": "198.51.100.1"}, {"X-Forwarded-For": "198.51.100.2"}
+    for _ in range(3):
+        await _visitor(client, "/api/cancel", {"ticket": T1, "id": "x"}, headers=one)
+    status, _, _ = await _visitor(client, "/api/cancel", {"ticket": T1, "id": "x"}, headers=one)
+    assert status == 429
+    status, _, _ = await _visitor(client, "/api/cancel", {"ticket": T2, "id": "x"}, headers=other)
+    assert status == 200
+    for _ in range(4):
+        assert (await _visitor(client, "/api/state", headers=one))[0] == 200
+    assert (await _visitor(client, "/api/state", headers=one))[0] == 429
+    assert (await _visitor(client, "/api/state", headers=other))[0] == 200
+
+
+def test_who_is_asking():
+    class R:
+        def __init__(self, remote, headers):
+            self.remote, self.headers = remote, headers
+    assert public.client(R("192.168.1.5", {"X-Forwarded-For": "1.2.3.4, 5.6.7.8"})) == "5.6.7.8"
+    assert public.client(R("172.30.32.1", {"X-Real-IP": "9.9.9.9"})) == "9.9.9.9"
+    # A header the proxy only passes on, as the visitor wrote it, isn't believed.
+    assert public.client(R("172.30.32.1", {"CF-Connecting-IP": "6.6.6.6", "X-Forwarded-For": "9.9.9.9"})) == "9.9.9.9"
+    # Straight from the internet, a visitor's own headers aren't believed.
+    assert public.client(R("81.2.69.160", {"X-Forwarded-For": "1.1.1.1"})) == "81.2.69.160"
+    # One IPv6 phone or home is one visitor, whatever the end of its address.
+    a = public.client(R("2001:db8:1:2::1", {}))
+    assert a == public.client(R("2001:db8:1:2:ffff::9", {})) != public.client(R("2001:db8:1:3::1", {}))
+
+
+def test_a_flood_of_addresses_forgets_the_longest_quiet_not_everyone(monkeypatch):
+    monkeypatch.setattr(public, "MAX_CLIENTS", 10)
+
+    class R:
+        def __init__(self, ip):
+            self.remote, self.headers, self.app = ip, {}, app
+    app = {public.CLIENTS: {}}
+    for k in range(30):
+        public._limit_client(R(f"81.2.70.{k}"), "state", 100)
+    for _ in range(5):
+        public._limit_client(R("81.2.69.1"), "state", 100)  # someone using the page right now
+    for k in range(3):
+        public._limit_client(R(f"81.2.71.{k}"), "state", 100)
+    seen = app[public.CLIENTS]
+    assert len(seen) <= 10 and len(seen[("state", "81.2.69.1")]) == 5
+
+
+async def test_a_picture_that_cant_be_cleaned_isnt_shown(client):
+    st = client.app[server.STORAGE]
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
+                                          "look": {"picture": "house"}})
+    st.save_house_photo(b"\xff\xd8\xff\xe1\x00\x10Exif GPS cut short", ".jpg")
+    assert (await _visitor(client, "/picture"))[0] == 404
+    assert (await client.get("/public-preview/picture")).status == 404
+    st.save_house_photo(PHOTO, ".jpg")
+    assert (await _visitor(client, "/picture"))[0] == 200
+
+
+def test_ipv4_visitors_written_the_ipv6_way_are_still_told_apart():
+    class R:
+        def __init__(self, remote, headers):
+            self.remote, self.headers = remote, headers
+    a = public.client(R("172.30.32.1", {"X-Forwarded-For": "::ffff:81.2.69.1"}))
+    assert a == "81.2.69.1" != public.client(R("172.30.32.1", {"X-Forwarded-For": "::ffff:81.2.69.2"}))
