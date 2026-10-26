@@ -23,7 +23,7 @@ export function songRows(songs, shows) {
       return {
         key: songKey(s), ref: { source: s.source, path: s.path }, size: s.size, modified: s.modified,
         name: title(s.path), file: base(s.path), folder: folder(s.path),
-        detected: !!s.detected, found, usedBy,
+        detected: !!s.detected, own: !!s.own, found, usedBy,
         uses: usedBy.length ? `Used by ${usedBy.join(", ")}` : "Not used by any show",
       };
     });

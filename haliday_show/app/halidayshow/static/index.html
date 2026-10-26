@@ -65,6 +65,12 @@
   <p class="hint">Open a show to change it. Nothing in a show changes until you open it.</p>
   <div class="show-list" data-show-list></div>
   <p><button type="button" class="primary" data-show-new>+ New show</button></p>
+  <details class="archived" data-show-archived hidden>
+    <summary>Archived shows</summary>
+    <p class="hint">Out of the way, but kept: playlists skip them and automations can't start them until
+      you press <b>Restore</b>.</p>
+    <div class="show-list"></div>
+  </details>
 </main>
 
 <main id="view-editor" class="view editor">
@@ -180,11 +186,32 @@
         <label><input id="autosave" type="checkbox" checked> Save automatically a couple of seconds after each change</label>
       </div>
       <div class="form-dialog-foot">
-        <button id="btn-delete" type="button" class="ghost danger" title="Delete this show">Delete show…</button>
+        <button id="btn-delete" type="button" class="ghost danger" title="Archive or delete this show">Remove show…</button>
         <span class="spacer"></span>
         <button class="primary" value="close">Done</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="remove-dialog" class="effect-dialog form-dialog" aria-labelledby="rm-title">
+    <div class="effect-dialog-head"><h3 id="rm-title">Remove</h3>
+      <button type="button" class="ghost" data-rm="close" aria-label="Close">✕</button></div>
+    <div class="form-dialog-body">
+      <p id="rm-what"></p>
+      <fieldset id="rm-shows" class="rm-shows" hidden>
+        <legend>What should those shows play instead?</legend>
+        <label><input type="radio" name="rm-instead" value="song" checked> Another song:
+          <select id="rm-replacement" aria-label="The song to use instead"></select></label>
+        <label><input type="radio" name="rm-instead" value="none"> No song for now (lights only)</label>
+      </fieldset>
+      <p id="rm-archive-note" class="hint"></p>
+      <p id="rm-delete-note" class="hint"></p>
+    </div>
+    <div class="form-dialog-foot">
+      <button type="button" class="ghost danger" id="rm-delete">Delete for good…</button>
+      <span class="spacer"></span>
+      <button type="button" class="ghost" data-rm="close">Cancel</button>
+      <button type="button" class="primary" id="rm-archive">Archive</button>
+    </div>
   </dialog>
   <dialog id="song-dialog" class="effect-dialog form-dialog" aria-labelledby="song-dialog-title">
     <form method="dialog">
@@ -328,6 +355,12 @@
   <p class="hint">Open a show to change it. Nothing in a show changes until you open it.</p>
   <div class="show-list" data-show-list></div>
   <p><button type="button" class="primary" data-show-new>+ New show</button></p>
+  <details class="archived" data-show-archived hidden>
+    <summary>Archived shows</summary>
+    <p class="hint">Out of the way, but kept: playlists skip them and automations can't start them until
+      you press <b>Restore</b>.</p>
+    <div class="show-list"></div>
+  </details>
 </main>
 <main id="view-songs" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Songs</h2>
@@ -339,6 +372,12 @@
     <span id="song-count" class="hint" aria-live="polite"></span>
   </div>
   <div id="songs-page-list" class="show-list"></div>
+  <details id="songs-archived" class="archived" hidden>
+    <summary>Archived songs</summary>
+    <p class="hint">In the <b>Archived</b> folder of HA-liday Show's songs folder, out of its song lists.
+      <b>Restore</b> puts a song back, and gives it back to any shows that were left without it.</p>
+    <div class="show-list"></div>
+  </details>
 </main>
 <main id="view-palettes" class="view" hidden>
   <p class="hint">Use a palette from an effect's settings: click a colour to drop it into a colour field, or

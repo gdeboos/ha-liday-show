@@ -1,10 +1,11 @@
 """Export, import and start afresh: everything the add-on saves, as one .zip.
 
-The zip holds the config folder's own files (lights, shows and their bakes, settings with palettes,
-presets and the house lines, the house photo, and what Detect found in each song). Songs stay in the
-media folder and aren't included. Hidden files (the old-name import markers) are never exported,
-cleared or replaced. Before an import or a fresh start, what's there is kept as an automatic copy
-in backups/, so either can be undone.
+The zip holds the config folder's own files (lights, shows and their bakes, archived shows, settings
+with palettes, presets and the house lines, the house photo, what Detect found in each song, and the
+record of archived songs). Songs stay in the media folder and aren't included. Hidden files (the
+old-name import markers) are never exported, cleared or replaced. Before an import, a fresh start or
+deleting a show or song for good, what's there is kept as an automatic copy in backups/, so it can
+be undone.
 """
 import io
 import json
@@ -24,7 +25,7 @@ KEEP_COPIES = 5
 MAX_ENTRIES = 5000
 MAX_UNPACKED = 1024 * 1024 * 1024  # a show's bake can be tens of MB; this stops a zip bomb
 
-_COPY_NAME = re.compile(r"^before-(import|fresh-start)-(\d{8}-\d{6})(?:-(\d+))?\.zip$")
+_COPY_NAME = re.compile(r"^before-(import|fresh-start|delete)-(\d{8}-\d{6})(?:-(\d+))?\.zip$")
 _SONG_INFO = re.compile(r"^[0-9a-f]{20}\.json$")
 
 
@@ -37,9 +38,13 @@ def _allowed(name: str) -> bool:
     parts = name.split("/")
     if len(parts) == 1:
         p = Path(name)
-        return name in ("devices.json", "settings.json") or (p.stem == "house" and p.suffix in PHOTO_EXT)
+        return name in ("devices.json", "settings.json", "archived-songs.json") \
+            or (p.stem == "house" and p.suffix in PHOTO_EXT)
     if len(parts) == 2 and parts[0] == "shows":
         p = Path(parts[1])
+        return p.suffix in (".json", ".gshow") and valid_id(p.stem)
+    if len(parts) == 3 and parts[:2] == ["shows", "archived"]:  # archived shows (archive.py)
+        p = Path(parts[2])
         return p.suffix in (".json", ".gshow") and valid_id(p.stem)
     if len(parts) == 2 and parts[0] == "songs":
         return bool(_SONG_INFO.match(parts[1]))
@@ -120,7 +125,8 @@ def keep_copy(config_dir: Path, version: str, reason: str) -> str | None:
     tmp = folder / f".{name}.tmp"
     tmp.write_bytes(export(config_dir, version))
     tmp.replace(folder / name)
-    for old in copies(config_dir)[KEEP_COPIES:]:
+    # The newest few of each kind, so deleting things can't push out the copy from before an import.
+    for old in [c for c in copies(config_dir) if c["reason"] == reason][KEEP_COPIES:]:
         (folder / old["name"]).unlink(missing_ok=True)
     return name
 

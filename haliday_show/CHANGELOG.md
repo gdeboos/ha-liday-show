@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.134
+
+- Shows and songs can now be archived or deleted. Press **Remove…** on a show (in **Your shows**,
+  **Library → Shows**, or **Show settings**, where **Delete show…** is now **Remove show…**) or on a song
+  in **Library → Songs**. The window says where it's used, then offers:
+  - **Archive**: kept, out of the way, under a folded **Archived** list at the foot of the page, with
+    **Restore** to bring it back.
+  - **Delete for good…**: removed after you confirm. A copy of your shows and settings is kept under
+    **Setup → Settings → Your data** first, but a deleted song file can't be brought back.
+- An archived show is skipped by its playlists (they mark it *archived*) and automations can't start it.
+  **Restore** puts it back in the same places. Deleting a show for good takes it out of its playlists.
+- When a song goes, the shows using it can play **Another song** or **No song for now** (the lights only).
+  Restoring the song gives it back to the shows that were left without one.
+- Only songs in HA-liday Show's own folder can be archived or deleted, as the rest of your media folder
+  may belong to other apps.
+- **Export…** now includes archived shows.
+
 ## 0.2.133
 
 - Fixed: since 0.2.132, the **Change…** window for a show's song came up with no songs to pick. It

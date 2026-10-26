@@ -177,6 +177,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   and previews step at a slow light's own pace so they look like the real thing
 - **Your shows**: the Show editor starts on a list of your shows (also under Library → Shows), to open, duplicate or rename
 - **Library → Songs**: every song, whether it's detected and which shows use it, with a search and Edit in the Music editor
+- **Archive or delete** shows and songs, with a way back: archived ones can be restored, and shows using a song can take another one
 - Cut, trim and splice songs in the **Music editor**, with crossfades
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
 - Arrange the editor your way: pick a page layout, then drag, collapse or hide any panel
@@ -296,6 +297,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/scenes.py               Govee scene library lookup (experimental scenes)
   app/halidayshow/storage.py              Shows, settings, songs and the house photo on disk
   app/halidayshow/backup.py               Export, import and start afresh, with copies kept first
+  app/halidayshow/archive.py              Archiving, restoring and deleting shows and songs
   app/halidayshow/ha.py                   Home Assistant API (media players, lights and switches, MQTT details)
   app/halidayshow/commands.py             Automation commands over app stdin
   app/halidayshow/mqtt.py                 MQTT discovery entities
