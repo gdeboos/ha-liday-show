@@ -177,8 +177,10 @@ function ticket() {
 
 export function start() {
   const $ = (id) => document.getElementById(id);
+  // Shown inside the editor's Public page tab: looks the same, but starts nothing.
+  const preview = /\/public-preview\/$/.test(location.pathname);
   const me = ticket();
-  const key = code();
+  const key = preview ? "" : code();
   let busy = false;
   let needsLocation = false;
   const snow = makeSnow($("pp-snow"));
@@ -378,6 +380,10 @@ export function start() {
   }
 
   async function send(path, body) {
+    if (preview) {
+      say("This is a preview. On visitors' phones, this starts the show.", true);
+      return;
+    }
     if (busy) return;
     busy = true;
     say("");
@@ -402,6 +408,8 @@ export function start() {
   }
 
   $("pp-retry").addEventListener("click", watchWhere);
+  // The editor asks the preview to catch up as soon as something's saved.
+  if (preview) addEventListener("message", (e) => { if (e.origin === location.origin && e.data === "refresh") refresh(); });
   refresh();
   setInterval(() => { if (!document.hidden) refresh(); }, 3000);
   // Location is only watched while the page is on screen, to spare the battery.

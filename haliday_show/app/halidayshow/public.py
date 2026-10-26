@@ -280,14 +280,14 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
 
 def _picture_version(storage: Storage, look: dict) -> int:
     """0 for no picture, else a number that changes with the picture, so open pages pick up a new one."""
-    path = _picture(storage, look)
+    path = picture_path(storage, look)
     try:
         return int(path.stat().st_mtime) if path else 0
     except OSError:
         return 0
 
 
-def _picture(storage: Storage, look: dict) -> Path | None:
+def picture_path(storage: Storage, look: dict) -> Path | None:
     if look["picture"] == "house":
         return storage.house_photo()
     if look["picture"] == "upload":
@@ -350,7 +350,7 @@ def _state(request, ticket, code):
 
 async def get_picture(request):
     p = load(request.app[STORAGE]) or clean(None)
-    path = _picture(request.app[STORAGE], p["look"]) if p["on"] and _code_ok(p, request.query.get("code")) else None
+    path = picture_path(request.app[STORAGE], p["look"]) if p["on"] and _code_ok(p, request.query.get("code")) else None
     if path is None:
         raise web.HTTPNotFound()
     resp = web.FileResponse(path)

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.169
+
+- The **Public page** tab now has a **Preview** beside the settings, phone-sized, showing the page as
+  visitors with your code see it. It catches up as soon as you change something, so you can try
+  colours, words and pictures and see them straight away. Its buttons don't start anything. On a
+  narrower screen it sits below the settings.
+- The **Nearby only** hint now says phones are asked for their location when the page opens.
+
 ## 0.2.168
 
 - New **How the page looks** card on the **Public page** tab, so the visitors' page can be yours:

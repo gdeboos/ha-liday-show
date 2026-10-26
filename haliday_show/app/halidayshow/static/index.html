@@ -950,7 +950,8 @@
 </main>
   </div>
 </div>
-<main id="view-public" class="view settings" hidden>
+<main id="view-public" class="view pub-view" hidden>
+  <div class="pub-settings">
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Who can start shows</h2>
     <p class="hint">Visitors need the link with your code in it, the one the QR code on your sign will hold. Opening
@@ -1017,6 +1018,13 @@
       <label>Queue length <input id="pub-queue" type="number" min="1" max="20" step="1"></label></p>
     <p class="hint">How many shows one phone can have waiting, and how many can wait in all.</p>
   </section>
+  </div>
+  <aside class="pub-preview" aria-label="Preview of the visitors' page">
+    <p class="pub-preview-head"><b>Preview</b> <span class="hint">as visitors with your code see it</span></p>
+    <iframe id="pub-preview-frame" class="pub-preview-frame" title="Preview of the visitors' page"
+      loading="lazy"></iframe>
+    <p class="hint">Buttons here don't start anything.</p>
+  </aside>
 </main>
 <!-- The setup guide: a new user's first steps in one window (app.js, "setup guide"). -->
 <dialog id="wizard" class="effect-dialog form-dialog add-dialog wizard" aria-labelledby="wz-title">
