@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.172
+
+- The user guide's public page section now follows the **Public page** tab part by part, so it's
+  easier to find what you need. **Your data** and **Where things are stored** now mention the public
+  page's own picture.
+- The app's **Info** tab in Home Assistant now mentions the public page.
+
 ## 0.2.171
 
 - More ways to style the public page, under **How the page looks** on the **Public page** tab:

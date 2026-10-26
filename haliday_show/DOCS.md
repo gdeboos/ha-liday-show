@@ -1102,31 +1102,60 @@ Home Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to you
 
 ### The public page
 
-The public page lets people passing by start a show from their phone. They see the shows and
-playlists you've picked, each with a **▶ Start** button, and nothing else of HA-liday Show.
+The public page lets people passing by start a show from their phone, usually by scanning a QR code
+on a sign outside. They see the shows and playlists you've picked, and nothing else of HA-liday Show.
 
 1. Open **Setup → Settings** and tick **Let visitors start shows** under **Public page**. A **Public
    page** tab appears along the top.
-2. On the **Public page** tab, pick a show or playlist next to **+ Add** and press it. Add as many as
-   you like. Only saved shows are offered; archived ones aren't, and never show to visitors. Nor are
-   playlists made only of archived shows.
-3. To try it, open the **Visitors' link** the tab shows on your phone, connected to your home Wi-Fi.
-   It's HA-liday Show's address with `:18099` and your code on the end, such as
+2. On the **Public page** tab, under **What visitors can pick**, choose a show or playlist next to
+   **+ Add** and press it. Add as many as you like.
+3. To try it, open the **Visitors' link** (under **Who can start shows**) on your phone, connected to
+   your home Wi-Fi. It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
 
-**How the page looks.** On the **Public page** tab, under **How the page looks**:
+The tab is in four parts, with a **Preview** beside them (below them on a narrower screen). The
+preview shows the page as visitors with your code see it, and catches up as soon as you change
+something. Its buttons don't start anything.
+
+#### Who can start shows
+
+Visitors need the link with your code in it; the QR code on your sign holds it. Opening the page
+without the code just says "Scan the code on the sign to start a show".
+
+- **Public address** is the web address your tunnel or proxy gives the public page, such as
+  `https://lights.yourdomain.com`. The **Visitors' link** uses it. Leave it empty if visitors only use
+  your home Wi-Fi.
+- **Copy** copies the link. **New code…** makes a new one, if the link has been shared somewhere it
+  shouldn't be. The old link (and any QR code you've printed) stops working.
+- **Nearby only within … m** (on to start with, at 100 m; anything from 25 to 2000 m): a phone
+  reaching the page through the internet must be that close to your house to start a show.
+  - As the page opens, the phone asks to share its location. It's only used for this check and isn't
+    kept.
+  - **▶ Start** only appears once they're close enough. Further away, they see "You're too far away to
+    start a show", with the shows listed but no buttons. The page keeps checking while it's open, so
+    walking up brings the buttons.
+  - A phone that won't share its location is told how to allow it, with **Try again**.
+  - Phones on your home Wi-Fi aren't asked.
+  - Your house is your home location in Home Assistant (**Settings → System → General**), or the one
+    you typed in for sunset under **When it plays** in the Playlist editor. Without either, visitors
+    through the internet can't start shows at all until you set one, and the tab says so.
+  - The distance is measured generously: a phone that isn't sure where it is gets up to 150 m extra.
+    The check stops casual use from afar, but a determined person could fake where their phone is,
+    so keep **Queue length** small.
+
+#### How the page looks
 
 - **Title** replaces "🎄 Light show" at the top, and **Welcome** adds a line or two under it.
 - **Picture at the top**: **None**, **Your house photo** (from **Setup → House**), or **Your own
-  picture**, which you choose with **Choose picture…** (JPEG, PNG or WebP). Your own picture is kept
-  with your other settings, and in **Export…**, even while another is picked, so you can switch back.
-  Visitors with the page open see a new picture within a few seconds.
-- **Colours**: **Plain**, **Classic Christmas**, **Frosty** or **Halloween**, and **Light or dark**:
+  picture**, chosen with **Choose picture…** (JPEG, PNG or WebP). Your own picture is kept with your
+  other settings, and in **Export…**, even while another is picked, so you can switch back. Visitors
+  with the page open see a new picture within a few seconds.
+- **Colours**: **Plain**, **Classic Christmas**, **Frosty** or **Halloween**, with **Light or dark**:
   **Follow the phone**, **Light** or **Dark**. Every combination is easy to read.
-- **Your own colours** (the last choice under **Colours**) gives you pickers for **Background**,
+- **Your own colours**, the last choice under **Colours**, gives you pickers for **Background**,
   **Cards**, **Text**, **Headings** and **Buttons**. Small print and borders are mixed from your text
   and background, and the words on buttons are black or white, whichever reads better. Underneath,
-  it says whether everything is easy to read, and which pairs aren't if not.
+  it says whether everything is easy to read, or which pairs aren't.
 - **Spacing** (**Compact**, **Normal** or **Roomy**), **Corners** (**Square**, **Soft** or **Round**),
   **Text size** (**Small**, **Normal** or **Large**) and **Card borders** (on or off) change the
   layout, and always fit a phone.
@@ -1134,41 +1163,23 @@ playlists you've picked, each with a **▶ Start** button, and nothing else of H
   motion.
 - **Link at the bottom**, with **Its words**: a charity, donation or social page, if you like.
 
-The **Preview** beside the settings (below them on a narrower screen) shows the page as visitors
-with your code see it, and catches up as soon as you change something. Its buttons don't start
-anything. **Open the page** opens your real visitors' link. The title, words and picture only show
-to people with your code.
+**Open the page** opens your real visitors' link. The title, words and picture only show to people
+with your code.
 
-**Who can start shows.** Visitors need the link with your code in it; the QR code on your sign will
-hold it. Opening the page without the code just says "Scan the code on the sign to start a show". On
-the **Public page** tab, under **Who can start shows**:
+#### What visitors can pick
 
-- **Public address** is the web address your tunnel or proxy gives the public page, such as
-  `https://lights.yourdomain.com`. The **Visitors' link** uses it. Leave it empty if visitors only use
-  your home Wi-Fi.
-- **Copy** copies the link. **New code…** makes a new one, if the link has been shared somewhere it
-  shouldn't be. The old link (and any QR code you've printed) stops working.
-- **Nearby only within 100 m** (on to start with): a phone reaching the page through the internet
-  must be that close to your house to start a show. As the page opens, their phone asks to share its
-  location; it's only used for that check and isn't kept. **▶ Start** only appears once they're close
-  enough. Further away, they see "You're too far away to start a show" with the shows listed but no
-  buttons. The page keeps checking while it's open, so walking up brings the buttons. A phone that
-  won't share its location is told how to allow it, with **Try again**. Phones on your home Wi-Fi
-  aren't asked. Your house is your home location in Home Assistant (**Settings → System →
-  General**), or the one you typed in for sunset under **When it plays** in the Playlist editor. Without either,
-  visitors through the internet can't start shows at all until you set one, and the tab says so.
-  The check stops casual use from afar, but a determined person could fake where their phone is, so
-  keep **Queue length** small. The distance is measured generously: a phone that isn't sure where it
-  is gets up to 150 m extra.
+- **+ Add** offers your saved shows and playlists. Archived shows aren't offered, nor are playlists
+  made only of archived shows, and visitors never see them. A show you archive later disappears from
+  the public page straight away, and from inside any playlist visitors pick. The tab still lists it,
+  marked as archived, so it comes back if you restore it.
+- **Only from … until … every year**: each show or playlist is available all year until you tick
+  **Only from** and pick the first and last day, such as 1 Dec until 6 Jan. The dates come round every
+  year, and can run over New Year. Outside them, visitors see it greyed out under **Coming soon** with
+  the day it starts ("From 1 December"). When nothing can be picked yet, the page says when the first
+  one starts: "Coming soon on 1 December".
+- **Remove** takes something off the public page; the show or playlist itself stays.
 
-**Dates.** Each show or playlist is available all year until you tick **Only from** and pick the
-first and last day, such as 1 Dec until 6 Jan. The dates come round every year, and can run over New
-Year. Outside them, visitors see it greyed out under **Coming soon** with the day it starts ("From 1
-December"). When nothing can be picked yet, the page says when the first one starts: "Coming soon on
-1 December". **Remove** takes something off the public page; the show or playlist itself stays.
-
-A show you archive disappears from the public page straight away, and from inside any playlist
-visitors pick. The tab still lists it, marked as archived, so it comes back if you restore it.
+#### Visitors' queue
 
 What visitors get:
 
@@ -1181,7 +1192,9 @@ What visitors get:
 - **A playlist** a visitor picks plays its shows through once, not round and round, without its
   building blocks.
 - **The music** plays on the show's **Show speaker** (or your default one), as it does for playlists.
-  A show with no speaker plays its lights only, unless the [Show player](#music-with-no-speaker-the-show-player) is open.
+  A show with no speaker plays its lights only, unless the
+  [Show player](#music-with-no-speaker-the-show-player) is open.
+- Visitors can't stop or skip anyone else's show.
 
 Keeping it fair:
 
@@ -1190,20 +1203,24 @@ Keeping it fair:
   get round; **Queue length** is the one that holds.
 - **Queue length** is how many shows can wait in all (5 to start with). When it's full, visitors are
   asked to try again in a few minutes.
-- Visitors can't stop or skip anyone else's show.
 
 You stay in charge. Playing a show from the editor or an automation goes on straight away, and the
 visitors' queue carries on afterwards. **■ Stop** (or stopping the song on the speaker) stops
-everything and empties the queue, and so does **Clear the queue** on the **Public page** tab. Turning off **Let
-visitors start shows** empties the queue too, and visitors see "No shows right now".
+everything and empties the queue, and so does **Clear the queue**. Turning off **Let visitors start
+shows** empties the queue too, and visitors see "No shows right now".
+
+#### The public page's port
 
 The public page has its own port, **18099**, so nothing of the editor can be reached through it. The
-port opens the first time you turn on **Let visitors start shows**. If another app already uses 18099, pick
-another under **Public page port** on the app's **Configuration** tab in Home Assistant, then restart
-the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
+port opens the first time you turn on **Let visitors start shows**. If another app already uses 18099,
+pick another under **Public page port** on the app's **Configuration** tab in Home Assistant, then
+restart the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
 
-> **Coming next:** opening hours, a printable sign with the QR code, and guides for reaching the page
-> from outside your home (Cloudflare Tunnel and others).
+To reach the page from the street on mobile data, point a tunnel or proxy at that port (only that
+port), such as Cloudflare Tunnel, and put its address in **Public address**.
+
+> **Coming next:** opening hours, a printable sign with the QR code, and step-by-step guides for
+> reaching the page from outside your home (Cloudflare Tunnel and others).
 
 ## 6. Automations
 
@@ -1290,9 +1307,9 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 
 | Section | What's there |
 | --- | --- |
+| Layout | Where every editor panel sits, including hidden ones, and **Reset layout**. |
 | Public page | **Let visitors start shows**, which adds the **Public page** tab (see [The public page](#the-public-page)). |
 | AI | Which AI **Describe it** uses, or how to set one up (below). |
-| Layout | Where every editor panel sits, including hidden ones, and **Reset layout**. |
 | Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
 | Setup guide | **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](#quick-start)). |
 | Demo | **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](#the-demo)). |
@@ -1311,11 +1328,12 @@ phone has its own. It holds:
 
 **Setup → Settings → Your data** puts everything HA-liday Show saves in one file, and back:
 
-- **Export…** downloads a `.zip` of your lights (with their parts), shows (archived ones too), palettes, presets, playlists and
-  their schedules, settings, what **Detect** found in each song and your notes on it, the house photo
-  and where each light is traced on it. Your songs stay in your songs folder and aren't
-  in it. It's the same on every install, so you can move your shows to another Home Assistant, or
-  between HA-liday Show and a Docker or pipx install.
+- **Export…** downloads a `.zip` of your lights (with their parts), shows (archived ones too),
+  palettes, presets, playlists and their schedules, settings (the public page's too), what
+  **Detect** found in each song and your notes on it, the house photo and where each light is traced
+  on it, and the public page's own picture. Your songs stay in your songs folder and aren't in it.
+  It's the same on every install, so you can move your shows to another Home Assistant, or between
+  HA-liday Show and a Docker or pipx install.
 - **Import…** replaces all of that with what's in an exported file. A file that isn't an HA-liday Show
   export is refused and nothing changes.
 - **Start afresh…** removes it all, so HA-liday Show is like new and the setup guide opens. It also resets
@@ -1446,11 +1464,12 @@ snapshots or DIYs) for as long as the clip lasts, then the show takes the light 
 
 ## Where things are stored
 
-Shows, devices, palettes, your presets, playlists with their schedules and building blocks, each song's beats, parts, notes and
-marks, the Music editor's drafts, the house photo and settings live in the app's config folder
-(`/addon_configs/<slug>_haliday_show/`), so they are included in Home Assistant backups. Uploaded songs
-go to `/media/haliday_show/` so media players can play them. The editor layout, the editing speaker,
-the Show player's light offset and the experimental switch are kept in each browser.
+Shows, devices, palettes, your presets, playlists with their schedules and building blocks, each
+song's beats, parts, notes and marks, the Music editor's drafts, the house photo, the public page's
+own picture and settings live in the app's config folder (`/addon_configs/<slug>_haliday_show/`), so
+they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` so media
+players can play them. The editor layout, the editing speaker, the Show player's light offset and
+the experimental switch are kept in each browser.
 
 ## Running without Home Assistant
 
