@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.147
+
+- **✨ Generate**, and **Generate with AI** in **+ New show**, have a new **Longest effect** setting: how
+  long one effect may run before the look changes. Pick **2 bars**, **4 bars**, **8 bars** or **Any
+  length**; it starts on **4 bars** (about 8 seconds at 120 BPM). Quiet parts used to hold one look
+  for 8 bars (16 with **Calm**). **Rules** keep to it, and an effect from the AI that runs longer is cut
+  at bar lines into pieces, each in the next colours of your palette.
+
 ## 0.2.146
 
 - The **Music editor** is tidier. **File name** and **Save as new file** now sit at the top, beside the
