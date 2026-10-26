@@ -337,6 +337,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music editor: cutting, trimming and splicing songs
     js/cutfinder.js                     Suggest cuts: where whole bars can go without the join being heard
+    js/drafts.js                        Keeps the Music editor's drafts on the server as you edit
     js/volume.js                        The song volume slider shared by the Show editor and Music editor
     js/songload.js                      Fetching a song, and saying plainly why one did not load
     js/statusline.js                    The message spot in the top bar: saved, settled and error states

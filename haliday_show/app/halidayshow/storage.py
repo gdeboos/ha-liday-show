@@ -196,6 +196,8 @@ class Storage:
                 d = json.loads(p.read_text())
             except ValueError:
                 continue
+            if not isinstance(d, dict):
+                continue
             out.append({"id": p.stem, "name": d.get("name", p.stem), "base": d.get("base"),
                         "made": d.get("made"), "length": d.get("length", 0),
                         "modified": int(p.stat().st_mtime)})

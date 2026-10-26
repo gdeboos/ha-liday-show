@@ -35,13 +35,18 @@ import { PART, sendParts, uploadSong } from "./upload.js";
 const $ = (id) => document.getElementById(id);
 
 // Relative URLs keep working behind Home Assistant ingress.
-async function api(path, { method = "GET", json, body, headers = {}, signal } = {}) {
+async function api(path, { method = "GET", json, body, headers = {}, signal, keepalive = false } = {}) {
   if (json !== undefined) {
     body = JSON.stringify(json);
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(path, { method, body, headers, signal });
-  if (!res.ok) throw new Error((await res.text()) || `${res.status} ${res.statusText}`);
+  // keepalive: still sent if the page closes meanwhile (the Music editor's draft, as you leave).
+  const res = await fetch(path, { method, body, headers, signal, keepalive });
+  if (!res.ok) {
+    const err = new Error((await res.text()) || `${res.status} ${res.statusText}`);
+    err.status = res.status;
+    throw err;
+  }
   return res.headers.get("Content-Type")?.includes("json") ? res.json() : res.text();
 }
 
@@ -3982,6 +3987,21 @@ function drawSongRows() {
   box.setAttribute("role", "list");
   box.setAttribute("aria-label", "Your songs");
   box.replaceChildren(...rows.map(songRow));
+  // Drafts whose song has been archived, deleted or moved, so they can still be found and deleted.
+  const keys = new Set(songRowsCache.map((r) => r.key));
+  const lost = songDrafts.filter((d) => d.base && !keys.has(songKey(d.base)));
+  if (lost.length && !$("song-filter").value.trim() && !songsMore) {
+    const row = document.createElement("div");
+    row.className = "show-row has-drafts-row";
+    const head = document.createElement("div");
+    head.className = "show-main";
+    head.innerHTML = `<div><b class="show-name">Drafts of songs that aren't here any more</b></div>
+      <div class="hint">Restore the song (under Archived songs) to open one, or delete it.</div>`;
+    row.append(head);
+    const list = draftList({ key: null, name: "songs that aren't here" }, lost);
+    if (list) row.append(list);
+    box.append(row);
+  }
 }
 
 // The Music editor's drafts, listed under the song each started from.
@@ -3994,8 +4014,8 @@ function draftsChanged() {
   }, 300);
 }
 
-function draftList(r) {
-  const mine = songDrafts.filter((d) => d.base && songKey(d.base) === r.key)
+function draftList(r, drafts = null) {
+  const mine = (drafts || songDrafts.filter((d) => d.base && songKey(d.base) === r.key))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   if (!mine.length) return null;
   const box = document.createElement("div");
@@ -4127,7 +4147,8 @@ function songRow(r) {
 
 async function editSong(ref) {
   // Ask before switching tabs, rather than after.
-  if (music.unsaved && !confirm("Open another song? Your last change to the draft in the Music editor couldn't be kept and will be lost.")) return;
+  await music.flush();
+  if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) return;
   app.songChosen = true;
   showView("music");
   await refreshAudio().catch(() => {});
@@ -5955,8 +5976,8 @@ async function pageFromHistory(e) {
       app.chosen = false;
     }
     if (shownPage === "music" && page === "songlist") {
-      if (music.unsaved && !confirm("Go back to your songs? Your last change to the draft couldn't be kept and will be lost.")) { refuse(); return; }
-      music.flush();
+      await music.flush();
+      if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) { refuse(); return; }
       app.songChosen = false;
     }
     // Forward again to the show or song that was open.
@@ -5991,9 +6012,9 @@ function wire() {
   for (const b of document.querySelectorAll("[data-as=cancel]")) b.addEventListener("click", () => $("add-song-dialog").close());
   // Not while it's uploading or listening: the song would be half added.
   $("add-song-dialog").addEventListener("cancel", (e) => { if (addSong.busy) e.preventDefault(); });
-  $("btn-all-songs").addEventListener("click", () => {
-    if (music.unsaved && !confirm("Go back to your songs? Your last change to the draft couldn't be kept and will be lost.")) return;
-    music.flush();
+  $("btn-all-songs").addEventListener("click", async () => {
+    await music.flush();
+    if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) return;
     app.songChosen = false;
     showView("music");
   });

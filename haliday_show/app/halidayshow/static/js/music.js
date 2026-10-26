@@ -7,6 +7,7 @@
 
 import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
 import { joinLabel, parseTime, sectionCuts, similarity, songPlans } from "./cutfinder.js";
+import { DraftKeeper } from "./drafts.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
@@ -375,6 +376,10 @@ export class MusicEditor {
     this.info = null; // the base song's saved beats and sections
     this.secSel = -1; // the section picked for editing
     this.markSel = -1; // the mark picked for editing
+    this.keeper = new DraftKeeper((...a) => this.host.api(...a), {
+      onState: () => this.updateSaveState(),
+      onError: (m) => this.host.status(`Couldn't keep the draft: ${m}. It'll try again with your next change`, true, "music-save"),
+    });
     this.markBoxes = []; // where each mark's flag was drawn, for clicking: [{ i, x0, x1 }]
     this.cutOpts = null; // suggested cuts: { pieces, xf, options }, for the result they were found in
     this.cutShown = -1; // the suggestion drawn on the waveform
@@ -424,15 +429,17 @@ export class MusicEditor {
 
   // asked: the caller already checked about unsaved edits.
   async open(ref, { asked = false } = {}) {
-    if (this.unsaved && !asked && !confirm("Open another song? Your last change to the draft couldn't be kept and will be lost.")) {
-      this.fillSongLists();
-      return;
+    if (!asked) {
+      await this.flush();
+      if (this.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Open another song anyway?")) {
+        this.fillSongLists();
+        return;
+      }
     }
     this.stop();
-    this.flush();
     try {
       const key = await this.source(ref);
-      this.draft = null;
+      this.keeper.start(null);
       this.setFades(0, 0);
       this.pieces = [{ src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate }];
       this.base = ref;
@@ -461,7 +468,6 @@ export class MusicEditor {
   // Opens a draft where it was left: its pieces, crossfade and fades, on its base song.
   async openDraft(id) {
     this.stop();
-    this.flush();
     let d;
     try {
       d = await this.host.api(`api/drafts/${encodeURIComponent(id)}`);
@@ -481,7 +487,7 @@ export class MusicEditor {
     const base = d.base, baseKey = keyOf(base);
     this.base = this.refs[baseKey];
     this.pieces = d.pieces.map((p) => ({ src: keyOf(p.song), start: p.start, end: p.end }));
-    this.draft = { id, made: d.made || null };
+    this.keeper.start({ id, made: d.made || null });
     this.setFades(d.fadeIn || 0, d.fadeOut || 0, d.crossfade ?? 0.05);
     $("music-name").value = d.name;
     this.host.opened?.(this.base);
@@ -501,8 +507,11 @@ export class MusicEditor {
     return true;
   }
 
-  // Changes not kept yet: one waiting to be sent, or one that couldn't be.
-  get unsaved() { return !!this.draftTimer || !!this.keeping || !!this.draftFailed; }
+  // The draft being worked on, {id, made}, or null before the first change.
+  get draft() { return this.keeper.current; }
+
+  // A change to the draft that couldn't be kept (it's tried again with the next change).
+  get unsaved() { return this.keeper.failed; }
 
   draftBody() {
     const name = $("music-name").value.trim().replace(/\.wav$/i, "") || nameOf(this.base).replace(/\.[^.]+$/, "");
@@ -512,64 +521,27 @@ export class MusicEditor {
       crossfade: this.crossfade,
       fadeIn: Number($("music-fadein").value) || 0,
       fadeOut: Number($("music-fadeout").value) || 0,
-      made: this.draft?.made || null,
       length: Math.round(this.total * 100) / 100,
     };
   }
 
   // Keeps the draft shortly after a change; the first change to a song starts one.
   draftChanged() {
-    if (!this.base) return;
-    clearTimeout(this.draftTimer);
-    this.draftTimer = setTimeout(() => this.keepDraft(), 600);
-    this.updateSaveState();
+    if (this.base && this.pieces.length) this.keeper.changed(this.draftBody());
   }
 
-  async keepDraft() {
-    clearTimeout(this.draftTimer);
-    this.draftTimer = null;
-    if (!this.base || !this.pieces.length) return;
-    if (this.keeping) { this.keepAgain = true; return; }
-    this.keeping = true;
-    this.updateSaveState();
-    const body = this.draftBody(), base = this.base, draft = this.draft;
-    try {
-      if (!draft) {
-        const { id } = await this.host.api("api/drafts", { method: "POST", json: body });
-        if (this.base === base && !this.draft) this.draft = { id, made: body.made };
-      } else {
-        await this.host.api(`api/drafts/${encodeURIComponent(draft.id)}`, { method: "PUT", json: body });
-      }
-      this.draftFailed = false;
-      this.host.draftsChanged?.();
-    } catch (e) {
-      this.draftFailed = true;
-      this.host.status(`Couldn't keep the draft: ${e.message}`, true, "music-save");
-    }
-    this.keeping = false;
-    if (this.keepAgain) { this.keepAgain = false; return this.keepDraft(); }
-    this.updateSaveState();
-  }
+  // Sends a change still waiting, now; resolves when it's kept (or couldn't be).
+  flush(opts) { return this.keeper.flush(opts); }
 
   // The open draft was deleted (from Your songs): the next change starts a new one.
-  forgetDraft() {
-    clearTimeout(this.draftTimer);
-    this.draftTimer = null;
-    this.draft = null;
-    this.draftFailed = false;
-    this.updateSaveState();
-  }
-
-  // Sends a change still waiting, now (leaving the song or the page).
-  flush() {
-    if (this.draftTimer) this.keepDraft();
-  }
+  forgetDraft() { this.keeper.forget(); }
 
   updateSaveState() {
+    const k = this.keeper, made = k.current?.made;
     $("music-save-state").textContent = !this.pieces.length ? ""
-      : this.draftFailed ? "Draft not kept"
-        : this.draftTimer || this.keeping ? "Keeping the draft…"
-          : this.draft ? (this.draft.made ? `Draft kept · made ${nameOf(this.draft.made)}` : "Draft kept") : "";
+      : k.failed ? "Draft not kept yet"
+        : k.pending ? "Keeping the draft…"
+          : k.current ? (made ? `Draft kept · made ${nameOf(made)}` : "Draft kept") : "";
   }
 
   // Finds the beats, bars and sections of the base song and saves them with the file.
@@ -1217,9 +1189,11 @@ export class MusicEditor {
       const ref = await uploadSong(this.host.api, blob, file, (done) => {
         if (done < 1) this.host.status(`Making ${file}… ${Math.round(done * 100)}%`);
       });
-      // The draft remembers the file it made, so making it again can replace it.
-      this.draft = { ...(this.draft || {}), made: ref };
-      await this.keepDraft();
+      // The draft remembers the file it made, so making it again can replace it (making a song
+      // file from an untouched song starts a draft too, so it can be made again).
+      this.keeper.setMade(ref);
+      this.draftChanged();
+      await this.flush();
       await this.host.songsChanged();
       this.fillSongLists();
       this.host.status(`Made ${ref.path}. Pick it under Song in a show; the draft stays open to change`, "saved", "music-save");
@@ -1754,10 +1728,16 @@ export class MusicEditor {
     this.wireSections();
     this.wireMarks();
     // Some browsers (older Safari, the Home Assistant app on iPhone) also need returnValue to ask.
+    // Leaving the page sends a waiting change in a way that outlives the page; it only asks first if a
+    // change is already on its way (and might be cut off) or couldn't be kept.
     window.addEventListener("beforeunload", (e) => {
-      this.flush();
-      if (this.draftFailed) { e.preventDefault(); e.returnValue = ""; }
+      const busy = this.keeper.session.sending > 0;
+      this.flush({ keepalive: true });
+      if (busy || this.keeper.failed) { e.preventDefault(); e.returnValue = ""; }
     });
+    // Phones often close a page without beforeunload; going to the background is the last chance.
+    document.addEventListener("visibilitychange", () => { if (document.hidden) this.flush({ keepalive: true }); });
+    window.addEventListener("pagehide", () => this.flush({ keepalive: true }));
   }
 
   show() {
