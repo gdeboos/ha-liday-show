@@ -556,6 +556,16 @@ move it. Changes save with the song; a show that already uses the song picks the
 Give a section **Notes** to tell **Describe it** what happens there or how you'd like it lit, such as
 "bells only, very gentle" or "big drop at the end, everything flashes"; the AI follows them.
 
+You don't have to write them all yourself. **Detect** writes notes for every section, and **✨ Describe
+sections** writes them again for the sections as they are now (after you've split or moved them,
+say). It listens to each section and notes how loud it is, whether it builds up or fades, whether it's
+busy or sparse, bass-heavy or bright, any big hits or moments it goes quiet (with their times), and
+which earlier section it's like. It then suggests how to light it, for example: "Loud, busy, lots of
+hits; builds up through it; big hit at 0:42. Everything on, moving and flashing on the beat; flash
+everything on the hit." Notes you've typed or changed are never replaced, and nor are names you've
+given sections: pressing **Detect** again carries them over to the new section that covers the same
+stretch of the song. Edit anything it writes; once you do, it's yours.
+
 ### Beats
 
 Press **Detect** to have the editor listen to the song and find its tempo, every beat,

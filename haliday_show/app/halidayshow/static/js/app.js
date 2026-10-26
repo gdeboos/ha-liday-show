@@ -2,6 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
+import { describeSections, keepYours } from "./sectionnotes.js";
 import { STYLES, applyGenerated, generateShow, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
@@ -4018,7 +4019,7 @@ async function asSubmit(e) {
       const channels = Array.from({ length: song.numberOfChannels }, (_, c) => song.getChannelData(c));
       const { samples, rate } = toMono(channels, song.sampleRate);
       const r = await analyseInWorker(samples, rate);
-      info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: r.sections };
+      info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: describeSections(r.sections, r.traits) };
       await api(songInfoUrl(ref), { method: "PUT", json: info });
     } catch (err) {
       failed = songLoadMessage(err);
@@ -5000,7 +5001,12 @@ async function analyseSong() {
     $("btn-detect").disabled = false;
   }
   if (song !== songBuffer) return null;
-  const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: r.sections };
+  // Names and notes you wrote on the song's sections (in either editor) carry over to the new ones.
+  const saved = app.show.audio ? await songInfo(app.show.audio) : null;
+  if (song !== songBuffer) return null;
+  const old = [...(saved?.sections || []), ...(app.show.sections || [])];
+  const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars,
+    sections: describeSections(keepYours(r.sections, old), r.traits) };
   applySongInfo(info);
   if (app.show.audio) api(songInfoUrl(app.show.audio), { method: "PUT", json: info }).catch(() => {});
   return r;

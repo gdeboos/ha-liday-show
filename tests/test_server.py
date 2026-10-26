@@ -955,3 +955,16 @@ async def test_an_archived_show_cant_be_saved_back_to_life(client):
     assert (await client.put(f"/api/shows/{show_id}/baked", data=blob)).status == 409
     assert await (await client.get("/api/shows")).json() == []
     assert (await client.post(f"/api/shows/{show_id}/restore")).status == 200
+
+
+async def test_song_info_keeps_section_marks(client, tmp_path):
+    (tmp_path / "media" / "song.mp3").write_bytes(b"id3")
+    sections = [{"start": 0, "end": 5, "label": "Intro", "energy": 0.1, "notes": "Quiet.", "autoNotes": True},
+                {"start": 5, "end": 9, "label": "Big bit", "energy": 1, "named": True, "notes": "mine"},
+                {"start": 9, "end": 10, "label": "Outro", "energy": 0, "autoNotes": True, "named": "yes"}]
+    url = "/api/audio/info?source=media&path=song.mp3"
+    assert (await client.put(url, json={"tempo": 120, "beats": [], "bars": [], "sections": sections})).status == 200
+    got = (await (await client.get(url)).json())["sections"]
+    assert got[0]["autoNotes"] is True and "named" not in got[0]
+    assert got[1]["named"] is True and "autoNotes" not in got[1]
+    assert "autoNotes" not in got[2] and "named" not in got[2]  # no notes to mark; "yes" isn't true

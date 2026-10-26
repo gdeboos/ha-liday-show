@@ -154,7 +154,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 <details open>
 <summary><b>🎬 Building a show</b></summary>
 
-- Detect the song's tempo, beats, bars and sections automatically, in the browser
+- Detect the song's tempo, beats, bars and sections automatically, in the browser, with a note on
+  each section saying what it sounds like and how to light it
 - Generate a first draft of a whole show from the song in one click, in a palette and style you pick,
   building up like a person would: a few lights in quiet parts, all of them in the chorus
 - Describe effects in words and an AI adds them, using Claude with your API key or any AI set up in
@@ -317,6 +318,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
     js/schedule.js                      A playlist's schedule in words
+    js/sectionnotes.js                  Notes for song sections, from what each sounds like
     js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music editor: cutting, trimming and splicing songs
     js/volume.js                        The song volume slider shared by the Show editor and Music editor

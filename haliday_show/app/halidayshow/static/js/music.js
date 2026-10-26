@@ -6,6 +6,7 @@
 // a song's beats and sections and keeps them with the file, for any show that uses it.
 
 import { analyseInWorker, toMono } from "./analysis.js";
+import { describeSections, keepYours } from "./sectionnotes.js";
 import { SECTION_ALPHA, fmtTime, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 
@@ -370,7 +371,10 @@ export class MusicEditor {
     $("music-detect").disabled = true;
     try {
       const r = await analyseInWorker(samples, rate);
-      const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: r.sections };
+      // Names and notes you wrote on the old sections carry over to the new ones.
+      const old = this.base === ref ? this.info?.sections : null;
+      const sections = describeSections(keepYours(r.sections, old || []), r.traits);
+      const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections };
       await this.host.api(infoUrl(ref), { method: "PUT", json: info });
       if (this.base === ref) { this.info = info; this.secSel = -1; }
       const parts = `${info.sections.length} section${info.sections.length === 1 ? "" : "s"}`;
@@ -380,6 +384,33 @@ export class MusicEditor {
     }
     this.updateControls();
     this.draw();
+  }
+
+  // Writes notes for the base song's sections from what each sounds like, keeping any notes and
+  // names you wrote.
+  async describe() {
+    if (!this.base || this.dirty || !this.info?.sections?.length) return;
+    const ref = this.base, channels = this.sources[keyOf(ref)];
+    const { samples, rate } = toMono(channels, this.audio.sampleRate);
+    const sections = this.info.sections;
+    this.host.status(`Listening to each part of ${nameOf(ref)}…`);
+    $("music-describe").disabled = true;
+    try {
+      const traits = await analyseInWorker(samples, rate, sections.map(({ start, end }) => ({ start, end })));
+      if (this.base !== ref || this.info?.sections !== sections) {
+        this.host.status("The sections changed while listening; press Describe sections again", "hint");
+        return;
+      }
+      const out = describeSections(sections, traits);
+      const written = out.filter((s, i) => s !== sections[i]).length;
+      this.editSections(out);
+      this.host.status(written ? `Wrote notes for ${written} section${written === 1 ? "" : "s"}; edit any you like`
+        : "Every section already has notes you wrote, so nothing was changed", written ? false : "hint");
+    } catch (e) {
+      this.host.status(`Couldn't describe the sections: ${e.message}`, true);
+    } finally {
+      this.updateControls();
+    }
   }
 
   async upload(file) {
@@ -543,13 +574,13 @@ export class MusicEditor {
     $("music-sec-name").addEventListener("change", (e) => {
       const name = e.target.value.trim().slice(0, 40);
       if (!name) { this.renderSection(); return; }
-      this.editSections(this.sections.map((x, i) => (i === this.secSel ? { ...x, label: name } : x)));
+      this.editSections(this.sections.map((x, i) => (i === this.secSel ? { ...x, label: name, named: true } : x)));
     });
     $("music-sec-notes").addEventListener("change", (e) => {
       const notes = e.target.value.trim().slice(0, 300);
       this.editSections(this.sections.map((x, i) => {
         if (i !== this.secSel) return x;
-        const { notes: _, ...rest } = x;
+        const { notes: _, autoNotes: __, ...rest } = x; // your notes now, so describing leaves them alone
         return notes ? { ...rest, notes } : rest;
       }));
     });
@@ -597,6 +628,7 @@ export class MusicEditor {
     for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview"]) $(id).disabled = !sel;
     $("music-undo").disabled = !this.history.length;
     $("music-detect").disabled = !this.base || this.dirty;
+    $("music-describe").disabled = !this.base || this.dirty || !this.info?.sections?.length;
     $("music-detect").title = this.dirty
       ? "Save the edit as a new file first: it's detected when saved, and the beats here follow your edits until then"
       : "Find the tempo, beats, bars and sections (verse, chorus…) and keep them with this song. A show that picks the song uses them.";
@@ -1104,6 +1136,7 @@ export class MusicEditor {
     }
     $("music-save").addEventListener("click", () => this.save());
     $("music-detect").addEventListener("click", () => this.detect());
+    $("music-describe").addEventListener("click", () => this.describe());
     this.wireSections();
     // Some browsers (older Safari, the Home Assistant app on iPhone) also need returnValue to ask.
     window.addEventListener("beforeunload", (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ""; } });

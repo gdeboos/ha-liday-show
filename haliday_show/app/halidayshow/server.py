@@ -818,6 +818,10 @@ def _clean_song_info(body) -> dict | None:
                 return None
             if notes.strip():
                 item["notes"] = notes.strip()[:MAX_NOTES]
+                if sec.get("autoNotes") is True:  # written for you, so describing again may replace them
+                    item["autoNotes"] = True
+        if sec.get("named") is True:  # a name you typed, which describing never changes
+            item["named"] = True
         color = sec.get("color")
         if color is not None:
             if not isinstance(color, str) or not _HEX.match(color):
