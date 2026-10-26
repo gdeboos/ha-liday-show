@@ -651,7 +651,9 @@ in the **Selection** panel follow suit for those lights.
 With an AI set up (see [Setting up the AI](#setting-up-the-ai)), **Made by** picks who makes it:
 **Rules** is instant, as above; **AI** sends the whole song to the AI with the same colours and style,
 and it follows the **notes** you've written on the song's sections in the **Music editor** ("the guitar
-solo, make it flash", "keep this bit dark"). It takes 10 to 60 seconds, shown in the Describe it panel.
+solo, make it flash", "keep this bit dark"). It takes 10 to 60 seconds. Meanwhile a **Generating…**
+window covers the editor with a spinner and the time so far, so nothing changes underneath it.
+**Cancel** (or Esc, or Back on a phone) stops waiting and leaves the show as it was.
 
 ### The timeline
 

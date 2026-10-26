@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.145
+## 0.2.146
 
 - The **Music editor** is tidier. **File name** and **Save as new file** now sit at the top, beside the
   song's name and **← All songs**, as **Save** does in the Show editor, so they no longer move down the
@@ -8,6 +8,13 @@
 - Its two **How to…** lists are now one, at the top, and it also holds the tips that used to sit above
   the song and beside the old save button. The **From** and **to** boxes show a dash until you select
   something.
+
+## 0.2.145
+
+- While the AI generates a show (**✨ Generate** with **Made by** set to **AI**, or **+ New show** with
+  **Generate with AI**), a **Generating…** window now covers the editor. It shows a spinner, what's
+  happening and the time so far, and nothing in the show can change underneath it. Press **Cancel**
+  (or Esc, or Back on a phone) to stop waiting and keep the show as it was.
 
 ## 0.2.144
 
