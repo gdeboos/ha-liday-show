@@ -429,18 +429,21 @@ def _state(request, ticket, code):
                  request.app[WHERE]())
 
 
-_PICTURE_TYPES = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+PICTURE_TYPES = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 _STRIPPED: dict = {}  # picture's path -> (its identity, the copy without its hidden details)
 
 
-def stripped_picture(path: Path) -> bytes:
-    """The picture without its GPS location and other hidden details, worked out once per picture."""
+def stripped_picture(path: Path) -> bytes | None:
+    """The picture without its GPS location and other hidden details, worked out once per picture;
+    None if it can't be read well enough to be sure, so it isn't shown rather than shown with them."""
     st = path.stat()
     key = (st.st_mtime_ns, st.st_size)
     known = _STRIPPED.get(path)
     if known and known[0] == key:
         return known[1]
-    data = imagemeta.strip(path.read_bytes(), path.suffix.lower())
+    data = imagemeta.clean(path.read_bytes(), path.suffix.lower())
+    if data is None:
+        log.warning("public page: %s couldn't be read to take its hidden details out, so it isn't shown", path.name)
     _STRIPPED.clear()  # one picture at a time is all the page shows
     _STRIPPED[path] = (key, data)
     return data
@@ -450,14 +453,16 @@ async def get_picture(request):
     _limit_client(request, "state", MAX_STATE_PER_CLIENT_MIN)
     p = load(request.app[STORAGE]) or clean(None)
     path = picture_path(request.app[STORAGE], p["look"]) if p["on"] and _code_ok(p, request.query.get("code")) else None
-    if path is None or path.suffix.lower() not in _PICTURE_TYPES:
+    if path is None or path.suffix.lower() not in PICTURE_TYPES:
         raise web.HTTPNotFound()
     try:
         data = stripped_picture(path)
     except OSError:
+        data = None
+    if data is None:
         raise web.HTTPNotFound()
     # The page asks with ?v=, which changes with the picture.
-    return web.Response(body=data, content_type=_PICTURE_TYPES[path.suffix.lower()],
+    return web.Response(body=data, content_type=PICTURE_TYPES[path.suffix.lower()],
                         headers={"Cache-Control": "private, max-age=86400"})
 
 
@@ -495,6 +500,8 @@ def _network(address: str) -> str:
         ip = ipaddress.ip_address(address)
     except ValueError:
         return address
+    if ip.version == 6 and ip.ipv4_mapped:  # how a dual-stack proxy writes an IPv4 visitor
+        return str(ip.ipv4_mapped)
     return str(ipaddress.ip_network(f"{ip}/64", strict=False)) if ip.version == 6 else str(ip)
 
 

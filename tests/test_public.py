@@ -50,6 +50,8 @@ async def _visitor(client, path, json=None, code=True, headers=None):
 
 
 T1, T2 = "a" * 20, "b" * 20
+# The smallest JPEG the picture cleaner can read all through: start, one scan, end.
+PHOTO = b"\xff\xd8\xff\xda\x00\x08\x01\x01\x00\x00\x3f\x00\x12\x34\xff\xd9"
 
 
 async def test_the_port_stays_shut_until_the_public_page_is_set_up(client):
@@ -341,7 +343,7 @@ async def test_visitors_get_the_look_and_picture_only_with_the_code(client):
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "look": look})
     _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert {k: state["look"][k] for k in look} == {**look, "picture": 0}  # no house photo yet
-    st.save_house_photo(b"\xff\xd8\xffphoto", ".jpg")
+    st.save_house_photo(PHOTO, ".jpg")
     _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert state["look"]["picture"] > 0
     status, body, _ = await _visitor(client, "/picture")
@@ -363,7 +365,7 @@ async def test_the_editor_previews_the_page_as_visitors_with_the_code_see_it(cli
     st = client.app[server.STORAGE]
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
                                           "look": {"title": "Deboos Lights", "picture": "house"}})
-    st.save_house_photo(b"\xff\xd8\xffphoto", ".jpg")
+    st.save_house_photo(PHOTO, ".jpg")
     resp = await client.get("/public-preview/api/state")
     view = await resp.json()
     assert view["preview"] is True and view["look"]["title"] == "Deboos Lights" and view["choices"]
@@ -488,3 +490,22 @@ def test_a_flood_of_addresses_forgets_the_longest_quiet_not_everyone(monkeypatch
         public._limit_client(R(f"81.2.71.{k}"), "state", 100)
     seen = app[public.CLIENTS]
     assert len(seen) <= 10 and len(seen[("state", "81.2.69.1")]) == 5
+
+
+async def test_a_picture_that_cant_be_cleaned_isnt_shown(client):
+    st = client.app[server.STORAGE]
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
+                                          "look": {"picture": "house"}})
+    st.save_house_photo(b"\xff\xd8\xff\xe1\x00\x10Exif GPS cut short", ".jpg")
+    assert (await _visitor(client, "/picture"))[0] == 404
+    assert (await client.get("/public-preview/picture")).status == 404
+    st.save_house_photo(PHOTO, ".jpg")
+    assert (await _visitor(client, "/picture"))[0] == 200
+
+
+def test_ipv4_visitors_written_the_ipv6_way_are_still_told_apart():
+    class R:
+        def __init__(self, remote, headers):
+            self.remote, self.headers = remote, headers
+    a = public.client(R("172.30.32.1", {"X-Forwarded-For": "::ffff:81.2.69.1"}))
+    assert a == "81.2.69.1" != public.client(R("172.30.32.1", {"X-Forwarded-For": "::ffff:81.2.69.2"}))

@@ -52,6 +52,12 @@ longest are forgotten (never everyone's at once).
 - **Phones sharing one address** (a mobile network's, a venue's, or every visitor when a proxy adds no
   address header) share one visitor's limits. `MAX_STATE_PER_CLIENT_MIN` (300) leaves room for a dozen
   or so phones polling every 3 s; beyond that some see "That's a lot of asking" for a minute.
+- **A photo that can't be read isn't shown** (`imagemeta.clean` gives None, `/picture` a 404, and the
+  editor's preview leaves it out too), rather than shown with its details. The log says which.
+- **Proxies:** with only `X-Real-IP` (no `X-Forwarded-For`) a visitor could add their own
+  `X-Forwarded-For` and dodge their limit; with Cloudflare in front of Nginx Proxy Manager the last entry
+  is a Cloudflare edge address shared by many visitors (they share limits). IPv4 visitors written as
+  `::ffff:` addresses by a dual-stack proxy count as their IPv4 address.
 - **Orientation is kept for JPEGs only.** PNG and WebP lose theirs with the rest; phone photos are
   almost always JPEG.
 - The `Server` header names aiohttp and Python. Left as is: it reveals nothing that isn't public.

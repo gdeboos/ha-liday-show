@@ -3,7 +3,8 @@
 Phone photos carry the exact spot they were taken (GPS), the phone, the time and more. The public page
 shows your house photo or your own picture to anyone with the code, so it gets a copy without them.
 Only which way up the photo goes is kept, so a phone photo isn't shown on its side. The picture
-itself is copied byte for byte. Anything that doesn't parse is given back as it was.
+itself is copied byte for byte. clean() gives None for anything it can't read, so the public page
+leaves it out rather than show it with its details.
 
 Many phones put more after a JPEG's picture: a second picture for HDR screens, or a short video, each
 with its own details. Only the first picture is kept. Which way up is kept for JPEGs only; PNG and
@@ -17,7 +18,8 @@ _PNG_DROP = {b"eXIf", b"tEXt", b"zTXt", b"iTXt", b"tIME"}
 _WEBP_DROP = {b"EXIF", b"XMP "}
 
 
-def strip(data: bytes, ext: str) -> bytes:
+def clean(data: bytes, ext: str) -> bytes | None:
+    """The photo without its hidden details, or None if it can't be read well enough to be sure."""
     try:
         if ext == ".jpg":
             return _jpeg(data)
@@ -27,7 +29,13 @@ def strip(data: bytes, ext: str) -> bytes:
             return _webp(data)
     except (ValueError, IndexError, struct.error):
         pass
-    return data
+    return None
+
+
+def strip(data: bytes, ext: str) -> bytes:
+    """As clean(), but anything that can't be read comes back as it was."""
+    out = clean(data, ext)
+    return data if out is None else out
 
 
 def _orientation(exif: bytes) -> int:
@@ -92,7 +100,9 @@ def _jpeg_end(data: bytes, i: int) -> int:
     n = len(data)
     while i < n - 1:
         if data[i] != 0xFF:
-            i += 1
+            i = data.find(b"\xff", i)  # the picture's own bytes: jump to the next marker
+            if i < 0:
+                break
             continue
         marker = data[i + 1]
         if marker == 0xD9:

@@ -1407,11 +1407,17 @@ async def public_preview_state(request):
 
 
 async def public_preview_picture(request):
+    # The copy visitors get, so a picture they won't see doesn't show in the preview either.
     st = request.app[STORAGE]
     path = public.picture_path(st, (public.load(st) or public.clean(None))["look"])
-    if path is None:
+    try:
+        data = public.stripped_picture(path) if path is not None else None
+    except OSError:
+        data = None
+    if data is None:
         raise web.HTTPNotFound()
-    return web.FileResponse(path, headers={"Cache-Control": "no-cache"})
+    return web.Response(body=data, content_type=public.PICTURE_TYPES.get(path.suffix.lower(), "application/octet-stream"),
+                        headers={"Cache-Control": "no-cache"})
 
 
 async def public_qr(request):

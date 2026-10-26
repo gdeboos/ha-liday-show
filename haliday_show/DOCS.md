@@ -1262,7 +1262,8 @@ port), such as Cloudflare Tunnel, and put its address in **Public address**.
 - **Your picture is shared without its hidden details.** Phone photos carry where they were taken (to
   the metre), the phone and the time, and some phones hide an extra picture or a short video in it.
   Visitors get a copy without any of that; for a phone photo, which way up it goes is kept. Your own
-  copy, in your backups, is as you uploaded it.
+  copy, in your backups, is as you uploaded it.  A picture that can't be read well enough to be sure isn't shown at all; the
+  preview leaves it out too, so try saving it again from your phone or computer.
 - **Each visitor's phone has its own limit** on how often it can ask, so one person (or a script)
   can't slow your lights down or crowd everyone else out. Wrong guesses at the code don't count
   against real visitors.
