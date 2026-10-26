@@ -805,3 +805,5 @@ a.button { text-decoration: none; }
 .pub-colours label { display: flex; align-items: center; gap: 6px; }
 .pub-colours input[type=color] { width: 36px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; }
 .pub-colours .hint { flex-basis: 100%; margin: 2px 0; }
+.pub-days label { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+#pub-hours-offset { width: 5em; }

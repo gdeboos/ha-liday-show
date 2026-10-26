@@ -131,7 +131,7 @@ def test_settings_are_cleaned():
                                                 {"kind": "show", "id": "c", "from": "02-30", "to": "03-01"}],
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
-        "look": public.clean_look(None),
+        "look": public.clean_look(None), "hours": public.DEFAULT_HOURS,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -373,3 +373,33 @@ async def test_the_editor_previews_the_page_as_visitors_with_the_code_see_it(cli
     assert (await client.get("/public-preview/public.js")).status == 200
     # It can't start or cancel anything.
     assert (await client.post("/public-preview/api/request", json={})).status in (404, 405)
+
+
+
+def test_opening_hours():
+    from datetime import datetime
+    p = public.clean({"hours": {"on": True, "start": "17:00", "end": "22:00", "days": [5, 6], "from": "12-01", "to": "12-02"}})
+    assert p["hours"]["from"] == ""  # dates belong to each show, not the hours
+    sat = datetime(2026, 10, 31, 18, 0)  # a Saturday
+    assert public.hours_now(p, None, sat) == {"open": True}
+    morning = public.hours_now(p, None, datetime(2026, 10, 31, 9, 30))
+    assert morning == {"open": False, "next": "2026-10-31T17:00", "now": "2026-10-31T09:30"}
+    assert public.hours_now(p, None, datetime(2026, 10, 26, 18, 0))["next"] == "2026-10-31T17:00"  # Monday
+    assert public.hours_now(public.clean({}), None, sat) == {"open": True}  # off: always open
+    assert public.clean({"hours": {"on": True, "start": "25:00"}})["hours"] == public.DEFAULT_HOURS
+    # Sunset with nowhere to work it out from never opens.
+    dusk = public.clean({"hours": {"on": True, "start": "sunset", "offset": 0, "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6]}})
+    assert public.hours_now(dusk, None, sat) == {"open": False, "next": None, "now": "2026-10-31T18:00"}
+
+
+async def test_outside_the_hours_visitors_are_told_and_refused(client, monkeypatch):
+    from datetime import datetime
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
+                                          "hours": {"on": True, "start": "17:00", "end": "17:01", "days": [0]}})
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    if datetime.now().weekday() == 0 and datetime.now().strftime("%H:%M") == "17:00":
+        return  # by chance it's open this minute
+    assert st["hours"]["open"] is False and st["hours"]["next"].endswith("T17:00")
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    assert status == 409 and "Come back" in text
+    # A visitor already waiting still gets their show; that's the runner's queue, untouched by the hours.

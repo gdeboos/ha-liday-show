@@ -972,6 +972,22 @@
       <label>within <input id="pub-distance" type="number" min="25" max="2000" step="25"> m</label></p>
     <p class="hint" id="pub-nearby-hint"></p>
   </section>
+  <section class="card" id="pub-hours-card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-timing"/></svg>Opening hours</h2>
+    <p class="hint">When visitors can start shows. Outside these hours the page says when to come back, and
+      shows aren't offered. Anyone already waiting still gets their show.</p>
+    <p><label><input id="pub-hours-on" type="checkbox"> Only open at set times</label></p>
+    <div id="pub-hours" class="pub-hours" hidden>
+      <p class="row"><label>From <select id="pub-hours-start-kind">
+          <option value="time">a time</option><option value="sunset">sunset</option></select></label>
+        <input id="pub-hours-start" type="time" aria-label="Opening time">
+        <span id="pub-hours-offset-wrap" hidden><input id="pub-hours-offset" type="number" min="-180" max="180"
+          step="5" aria-label="Minutes after sunset"> minutes after (or before, if less than 0)</span>
+        <label>until <input id="pub-hours-end" type="time" aria-label="Closing time"></label></p>
+      <p class="row pub-days" id="pub-hours-days"></p>
+    </div>
+    <p class="hint" id="pub-hours-hint" aria-live="polite"></p>
+  </section>
   <section class="card" id="pub-look">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg>How the page looks</h2>
     <p class="hint">What visitors see at the top and bottom of the page, and its colours.

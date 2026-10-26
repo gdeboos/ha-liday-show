@@ -23,6 +23,28 @@ export const dayText = (iso) => {
   return `${d} ${MONTHS[m - 1]}`;
 };
 
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// "17:00" as "5pm", "16:32" as "4:32pm".
+export function clockText(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const hour = h % 12 || 12;
+  return `${hour}${m ? `:${String(m).padStart(2, "0")}` : ""}${h < 12 ? "am" : "pm"}`;
+}
+
+// When the page opens again, from HA-liday Show's clock ("YYYY-MM-DDTHH:MM", no time zone).
+export function comeBackText(hours) {
+  if (!hours || hours.open) return "";
+  if (!hours.next) return "There are no shows right now. Come back another time!";
+  const day = (iso) => Date.UTC(...iso.slice(0, 10).split("-").map((v, i) => Number(v) - (i === 1 ? 1 : 0))) / 86400000;
+  const ahead = day(hours.next) - day(hours.now);
+  const at = clockText(hours.next.slice(11, 16));
+  const d = new Date(`${hours.next.slice(0, 10)}T00:00Z`);
+  const when = ahead === 0 ? `at ${at}` : ahead === 1 ? `tomorrow at ${at}`
+    : ahead < 7 ? `on ${DAY_NAMES[d.getUTCDay()]} at ${at}` : `on ${dayText(hours.next.slice(0, 10))} at ${at}`;
+  return `Shows start ${when}. Come back then!`;
+}
+
 // What to tell a visitor about one of their requests.
 export function waitText(r) {
   if (r.playing) return "Playing now. Enjoy the show!";
@@ -320,14 +342,18 @@ export function start() {
       return;
     }
     last = st;
+    const closed = comeBackText(st.hours);
+    $("pp-hours").textContent = closed;
+    $("pp-hours").hidden = !closed;
     needsLocation = !!st.needs_location;
-    if (needsLocation && where.state === "idle" && st.open && !document.hidden) watchWhere();
+    // Outside opening hours nobody's asked for their location: there's nothing to start yet.
+    if (needsLocation && where.state === "idle" && st.open && !closed && !document.hidden) watchWhere();
     if (!needsLocation && where.state !== "idle") { // e.g. Nearby only turned off: start afresh if it comes back
       stopWatching();
       Object.assign(where, { state: "idle", text: "", pos: null });
     }
     if (!needsLocation) $("pp-where").hidden = true;
-    const startable = canStart(needsLocation, where);
+    const startable = !closed && canStart(needsLocation, where);
     const view = describe(st);
     $("pp-closed").hidden = !view.closed;
     $("pp-open").hidden = view.closed;
@@ -352,7 +378,7 @@ export function start() {
     $("pp-block").hidden = !view.block;
     $("pp-coming").textContent = view.coming;
     $("pp-coming").hidden = !view.coming;
-    $("pp-now").hidden = !!view.coming && !st.now;
+    $("pp-now").hidden = (!!view.coming || !!closed) && !st.now;
     $("pp-pick").hidden = !view.choices.length;
     $("pp-none").hidden = view.choices.length > 0 || view.soon.length > 0;
     $("pp-soon-head").hidden = !view.soon.length;

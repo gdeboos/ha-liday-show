@@ -85,3 +85,4 @@ h1, h2 { color: var(--head, var(--text)); }
 /* Your own colours: hints and borders are worked out from the text and background. */
 :root[data-theme="custom"] { --muted: color-mix(in srgb, var(--text) 72%, var(--bg));
   --line: color-mix(in srgb, var(--text) 18%, var(--bg)); }
+.pp-hours { margin: 0 0 calc(8px * var(--s)); }

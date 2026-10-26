@@ -1324,6 +1324,7 @@ def _public_view(app) -> dict:
             "today": datetime.date.today().isoformat(),
             # Where the nearby check measures from: "you" (typed in for sunset), "ha", or None.
             "home": app[SCHEDULER].where()[1],
+            "hours_now": public.hours_now(public.load(app[STORAGE]) or public.clean(None), app[SCHEDULER].where()[0]),
             "has_house_photo": app[STORAGE].house_photo() is not None,
             "has_picture": app[STORAGE].public_picture() is not None,
             "now": runner.public_now["name"] if runner.public_now else None,
@@ -1392,7 +1393,8 @@ async def public_preview_page(request):
 async def public_preview_state(request):
     st = request.app[STORAGE]
     p = public.load(st) or public.clean(None)
-    return web.json_response({**public.state(st, request.app[RUNNER], None, p["code"]), "preview": True},
+    view = public.state(st, request.app[RUNNER], None, p["code"], where=request.app[SCHEDULER].where()[0])
+    return web.json_response({**view, "preview": True},
                              headers={"Cache-Control": "no-store"})
 
 

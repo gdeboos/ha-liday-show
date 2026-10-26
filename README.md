@@ -211,7 +211,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     playlist's shows; one request per phone and a queue limit keep it fair
   - A code in the link (for a QR code on a sign) and a nearby-only location check keep it to people
     near your house; **Start** only appears once they're close enough
-  - Each show or playlist can have dates every year, and shows as coming soon until then
+  - Opening hours (set times or from sunset, chosen days), telling visitors when to come back; each
+    show or playlist can also have dates every year, and shows as coming soon until then
   - Your own title, welcome, picture, colour theme or your own colours (with a readability check),
     spacing, corners, text size, falling snow and a link, with a live preview beside the settings
 
