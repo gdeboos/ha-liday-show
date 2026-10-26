@@ -37,6 +37,7 @@ import {
   itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
 } from "./playlisteditor.js";
 import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
+import { addFolder, deleteFolder, folderNameProblem, folderOf, inFolders, moveSong, renameFolder } from "./songfolders.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
 import { PART, sendParts, uploadSong } from "./upload.js";
@@ -5168,8 +5169,10 @@ let songRowsCache = [], songsMore = false, songsAsked = 0;
 async function renderSongsPage() {
   const mine = ++songsAsked; // only the latest answer is drawn
   try {
-    const [list, shows, drafts] = await Promise.all([api("api/songs"), api("api/shows"), api("api/drafts").catch(() => [])]);
+    const [list, shows, drafts, folders] = await Promise.all([api("api/songs"), api("api/shows"), api("api/drafts").catch(() => []),
+      api("api/song-folders").catch(() => songFolders)]);
     if (mine !== songsAsked) return;
+    songFolders = folders;
     songRowsCache = songRows(list.songs, shows);
     songDrafts = drafts;
     songsMore = list.more;
@@ -5199,9 +5202,8 @@ function drawSongRows() {
       : `<p class="hint">No songs yet. Press <b>+ Add a song</b> to add one.</p>`;
     return;
   }
-  box.setAttribute("role", "list");
-  box.setAttribute("aria-label", "Your songs");
-  box.replaceChildren(...fams.map(songFamilyCard));
+  box.removeAttribute("role");
+  box.replaceChildren(...songFolderSections(fams, filtered));
   // Drafts whose song has been archived, deleted or moved, so they can still be found and deleted.
   const keys = new Set(songRowsCache.map((r) => r.key));
   const lost = songDrafts.filter((d) => d.base && !keys.has(songKey(d.base)));
@@ -5304,6 +5306,112 @@ async function deleteDraft(d) {
     status(`Deleted the draft "${d.name}"`, "saved", "songs");
     renderSongsPage();
   } catch (e) { status(`Couldn't delete the draft: ${e.message}`, true, "songs"); }
+}
+
+// Folders you make (songfolders.js), each folding away, then the songs in none.
+let songFolders = [];
+function songFolderSections(fams, filtered) {
+  const list = (items, label) => {
+    const box = document.createElement("div");
+    box.className = "show-list";
+    box.setAttribute("role", "list");
+    box.setAttribute("aria-label", label);
+    box.append(...items.map(songFamilyCard));
+    return box;
+  };
+  if (!songFolders.length) return [list(fams, "Your songs")];
+  const { groups, loose } = inFolders(fams, songFolders);
+  const out = [];
+  for (const { folder, families } of groups) {
+    if (filtered && !families.length) continue; // while finding, only folders with something in
+    const d = document.createElement("details");
+    d.className = "song-folder";
+    d.open = filtered ? true : prefs.get(`songFolderOpen.${folder.id}`, true);
+    d.addEventListener("toggle", () => { if (!filtered) prefs.set(`songFolderOpen.${folder.id}`, d.open); });
+    const s = document.createElement("summary");
+    const name = document.createElement("b");
+    name.textContent = folder.name;
+    const count = document.createElement("span");
+    count.className = "hint";
+    count.textContent = families.length ? familyCount(families) : "empty";
+    const spacer = document.createElement("span");
+    spacer.className = "spacer";
+    const ren = button("Rename…", (e) => { e.preventDefault(); renameSongFolder(folder); }, "ghost");
+    ren.setAttribute("aria-label", `Rename the folder ${folder.name}`);
+    const del = button("Delete…", (e) => { e.preventDefault(); deleteSongFolder(folder); }, "ghost danger");
+    del.setAttribute("aria-label", `Delete the folder ${folder.name}`);
+    s.append(name, count, spacer, ren, del);
+    d.append(s, families.length ? list(families, `Songs in ${folder.name}`)
+      : Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in it yet. Pick it under Folder on a song." }));
+    out.push(d);
+  }
+  if (loose.length) {
+    const h = document.createElement("h3");
+    h.className = "item-group";
+    h.textContent = "Not in a folder";
+    out.push(h, list(loose, "Songs not in a folder"));
+  }
+  return out;
+}
+
+async function saveSongFolders(next, what) {
+  const before = songFolders;
+  songFolders = next;
+  drawSongRows();
+  try {
+    songFolders = await api("api/song-folders", { method: "PUT", json: next });
+    status(what, "saved", "songs");
+  } catch (e) {
+    songFolders = before;
+    drawSongRows();
+    status(`Couldn't save the folders: ${e.message}`, true, "songs");
+  }
+}
+
+function askFolderName(title, current = "", except = null) {
+  for (;;) {
+    const name = prompt(title, current);
+    if (name === null) return null;
+    const problem = folderNameProblem(songFolders, name, except);
+    if (!problem) return name;
+    alert(problem);
+    current = name;
+  }
+}
+
+function newSongFolder(thenMove = null) {
+  const name = askFolderName("Name the new folder");
+  if (name === null) { drawSongRows(); return; }
+  const { folders, id } = addFolder(songFolders, name);
+  saveSongFolders(thenMove ? moveSong(folders, thenMove, id) : folders, thenMove ? `Moved into ${name.trim()}` : `Folder ${name.trim()} made`);
+}
+
+function renameSongFolder(folder) {
+  const name = askFolderName("Rename the folder", folder.name, folder.id);
+  if (name !== null && name.trim() !== folder.name) saveSongFolders(renameFolder(songFolders, folder.id, name), "Folder renamed");
+}
+
+function deleteSongFolder(folder) {
+  if (!confirm(`Delete the folder ${folder.name}? Its songs aren't deleted: they move to Not in a folder.`)) return;
+  saveSongFolders(deleteFolder(songFolders, folder.id), `Folder ${folder.name} deleted`);
+}
+
+// Which folder a song (and its edits) is in, picked on its card.
+function folderPicker(r) {
+  const sel = document.createElement("select");
+  sel.className = "song-folder-pick";
+  sel.setAttribute("aria-label", `Folder for ${r.name}`);
+  sel.title = "Which folder this song (and its edits) is in";
+  sel.add(new Option("No folder", ""));
+  for (const f of [...songFolders].sort((a, b) => a.name.localeCompare(b.name))) sel.add(new Option(f.name, f.id));
+  sel.add(new Option("New folder…", "__new__"));
+  sel.value = folderOf(songFolders, r.key);
+  sel.addEventListener("change", () => {
+    if (sel.value === "__new__") { newSongFolder(r.ref); return; }
+    const f = songFolders.find((x) => x.id === sel.value);
+    saveSongFolders(moveSong(songFolders, r.ref, sel.value), f ? `Moved ${r.name} into ${f.name}` : `${r.name} is in no folder now`);
+  });
+  return sel;
 }
 
 function songFamilyCard(f) {
@@ -5428,6 +5536,7 @@ function songRow(r) {
   actions.className = "group show-actions";
   const edit = button("Edit", () => editSong(r.ref), "primary");
   edit.setAttribute("aria-label", `Edit ${r.name} in the Music editor`);
+  if (songFolders.length) actions.append(folderPicker(r));
   actions.append(edit);
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
@@ -7316,6 +7425,7 @@ function wire() {
     b.addEventListener("click", () => { prefs.set("songShow", b.dataset.show); drawSongRows(); });
   }
   $("btn-add-song").addEventListener("click", openAddSong);
+  $("btn-new-folder").addEventListener("click", () => newSongFolder());
   $("as-form").addEventListener("submit", asSubmit);
   $("as-back").addEventListener("click", () => asStep(1));
   $("as-name").addEventListener("input", () => { addSong.named = true; });

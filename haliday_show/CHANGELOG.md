@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.189
+
+- **Your songs** can be sorted into your own folders, such as **Christmas** or **Party**. Press **+ New
+  folder** under the list, then pick the folder under **Folder** on a song; its edits and drafts go
+  with it. Each folder folds away when you press its name, with **Rename…** and **Delete…** beside it.
+- Folders only sort the list: song files stay where they are, so your shows and speakers still find
+  them.
+
 ## 0.2.188
 
 - Splicing a song into another in the **Music editor** no longer loses its beats, parts and marks. They

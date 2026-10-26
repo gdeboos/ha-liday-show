@@ -1208,6 +1208,54 @@ async def put_palettes(request):
     return web.json_response(palettes)
 
 
+# song folders -------------------------------------------------------------------
+# Folders you make in Your songs: names only, each holding the songs (by where they are) put in it.
+# The files stay where they are, so shows and speakers still find them.
+MAX_FOLDERS, MAX_FOLDER_SONGS = 100, 2000
+_FOLDER_ID = re.compile(r"^[a-z0-9-]{1,40}$")
+
+
+def _clean_song_folders(body) -> list[dict]:
+    if not isinstance(body, list) or len(body) > MAX_FOLDERS:
+        raise web.HTTPBadRequest(text=f"expected a list of up to {MAX_FOLDERS} folders")
+    out, ids, names, placed = [], set(), set(), set()
+    for f in body:
+        if not isinstance(f, dict):
+            raise web.HTTPBadRequest(text="each folder needs an id, a name and its songs")
+        fid, name = str(f.get("id", "")), " ".join(str(f.get("name", "")).split())[:60]
+        songs = f.get("songs")
+        if not _FOLDER_ID.match(fid) or fid in ids or not name or name.lower() in names \
+                or not isinstance(songs, list) or len(songs) > MAX_FOLDER_SONGS:
+            raise web.HTTPBadRequest(text="each folder needs its own id and name, and a list of songs")
+        ids.add(fid)
+        names.add(name.lower())
+        kept = []
+        for s in songs:
+            src, path = (s.get("source"), s.get("path")) if isinstance(s, dict) else (None, None)
+            if not isinstance(src, str) or not isinstance(path, str) or not 0 < len(src) <= 20 or not 0 < len(path) <= 500:
+                raise web.HTTPBadRequest(text="each song in a folder needs its source and path")
+            if (src, path) in placed:  # a song is in one folder at most
+                continue
+            placed.add((src, path))
+            kept.append({"source": src, "path": path})
+        out.append({"id": fid, "name": name, "songs": kept})
+    return out
+
+
+async def get_song_folders(request):
+    folders = request.app[STORAGE].load_settings().get("song_folders")
+    return web.json_response(folders if isinstance(folders, list) else [])
+
+
+async def put_song_folders(request):
+    folders = _clean_song_folders(await request.json())
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    settings["song_folders"] = folders
+    storage.save_settings(settings)
+    return web.json_response(folders)
+
+
 # playlists ----------------------------------------------------------------------
 async def get_playlists(request):
     return web.json_response(playlists.load(request.app[STORAGE]))
@@ -1897,6 +1945,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/palettes", put_palettes)
     r.add_get("/api/presets", get_presets)
     r.add_put("/api/presets", put_presets)
+    r.add_get("/api/song-folders", get_song_folders)
+    r.add_put("/api/song-folders", put_song_folders)
     r.add_get("/api/playlists", get_playlists)
     r.add_put("/api/playlists", put_playlists)
     r.add_post("/api/playlists/{id}/play", play_playlist)

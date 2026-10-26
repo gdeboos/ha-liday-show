@@ -544,6 +544,14 @@ Each song you added is one card, marked **Original**. Inside it, under **Edits o
 **All**, **Originals**, **Edits** and **Drafts**, beside **Find**, show just those, and the count says
 how many songs, edits and drafts there are.
 
+**Folders** sort your songs, such as **Christmas**, **Halloween** or **Party**. Press **+ New folder**
+under the list and name it, then pick it under **Folder** on a song; the song's edits and drafts go
+with it. Each folder folds away (press its name), and remembers whether you left it open; songs in no
+folder are listed after them, under **Not in a folder**. **Rename…** and **Delete…** are on each
+folder; deleting one leaves its songs, just in no folder. Folders only sort the list: the song files
+stay where they are, so shows and speakers still find them. They're saved with your settings, so
+they're in **Export…** too.
+
 **+ Add a song**, under the list, opens a short window:
 
 1. **Choose a file…** and give it a **Name**. It's saved under that name in `/media/haliday_show/`; if
