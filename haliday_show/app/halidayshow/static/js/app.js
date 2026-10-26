@@ -2905,14 +2905,15 @@ function renderPalettes() {
 
 // playlists ---------------------------------------------------------------------------
 // Shows played back to back by HA-liday Show itself, so they carry on with the editor closed.
-let playlists = [], playlistShows = [], playlistPlaying = null, playlistWatch = null;
+let playlists = [], playlistShows = [], playlistArchived = [], playlistPlaying = null, playlistWatch = null;
 let playlistsLoaded = false; // never save over the stored playlists before they've been read
 let scheduleState = { now: null, next: {}, scheduled: null }; // HA-liday Show's clock and next starts
 
 async function loadPlaylists() {
   try {
     await flushPlaylists(); // an edit made just before leaving the page
-    [playlists, playlistShows] = await Promise.all([api("api/playlists"), api("api/shows")]);
+    [playlists, playlistShows, playlistArchived] = await Promise.all([api("api/playlists"), api("api/shows"),
+      api("api/shows/archived").catch(() => [])]);
     playlistsLoaded = true;
   } catch (e) {
     playlistsLoaded = false;
@@ -3223,8 +3224,9 @@ function renderPlaylists() {
       li.classList.toggle("unplayable", !show?.baked);
       const label = document.createElement("span");
       label.className = "playlist-show";
-      label.textContent = `${k + 1}. ${show ? show.name : "Deleted show"}`
-        + (!show ? " (skipped)" : !show.baked ? " (not saved yet, so skipped)" : "");
+      const shelved = !show && playlistArchived.find((x) => x.id === id);
+      label.textContent = `${k + 1}. ${show ? show.name : shelved ? shelved.name : "Deleted show"}`
+        + (shelved ? " (archived, so skipped until it's restored)" : !show ? " (skipped)" : !show.baked ? " (not saved yet, so skipped)" : "");
       const move = (d) => { const [x] = pl.shows.splice(k, 1); pl.shows.splice(k + d, 0, x); savePlaylists(); renderPlaylists(); };
       const up = button("↑", () => move(-1), "ghost");
       up.title = "Play earlier";
@@ -3513,7 +3515,7 @@ async function renderCopies() {
       href: `api/backup/copies/${encodeURIComponent(c.name)}`, download: c.name });
     const put = button("Put back", () => replaceData(`api/backup/copies/${encodeURIComponent(c.name)}/restore`, null,
       `Put back the copy from ${when(c.made)}? It replaces what you have now, and a copy of that is kept first.`));
-    return wizardRow(c.reason === "import" ? "Before an import" : "Before a fresh start",
+    return wizardRow(c.reason === "import" ? "Before an import" : c.reason === "delete" ? "Before deleting" : "Before a fresh start",
       `${when(c.made)} · ${Math.max(1, Math.round(c.size / 1024))} KB`, get, put);
   }));
 }
@@ -3771,6 +3773,7 @@ function wireWizard() {
 let showListCache = [];
 async function renderShowLists(shows = null) {
   try { showListCache = shows || await api("api/shows"); } catch { return; }
+  renderArchivedShows();
   const rows = showRows(showListCache, prefs.get("lastShow", null));
   for (const box of document.querySelectorAll("[data-show-list]")) {
     if (rows.length) {
@@ -3820,7 +3823,10 @@ function showRow(r) {
   open.dataset.act = "open";
   ren.dataset.act = "rename";
   ren.setAttribute("aria-label", `Rename ${r.name}`);
-  actions.append(open, dup, ren);
+  const rm = button("Remove…", () => openRemoveShow(r), "ghost");
+  rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
+  rm.dataset.act = "remove";
+  actions.append(open, dup, ren, rm);
   row.append(main, actions);
   return row;
 }
@@ -3837,6 +3843,7 @@ async function renderSongsPage() {
   } catch (e) { status(`Couldn't list your songs: ${e.message}`, true, "songs"); return; }
   status("", "info", "songs");
   drawSongRows();
+  renderArchivedSongs();
 }
 
 function drawSongRows() {
@@ -3894,6 +3901,13 @@ function songRow(r) {
   const edit = button("Edit", () => editSong(r.ref), "primary");
   edit.setAttribute("aria-label", `Edit ${r.name} in the Music editor`);
   actions.append(edit);
+  const rm = button("Remove…", () => openRemoveSong(r), "ghost");
+  rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
+  if (!r.own) {
+    rm.disabled = true;
+    rm.title = "Only songs in HA-liday Show's own folder (haliday_show in your media folder) can be archived or deleted here";
+  }
+  actions.append(rm);
   row.append(main, actions);
   // The length is read once the row is on screen; a redraw starts over with new rows.
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
@@ -3952,6 +3966,186 @@ function readSongLength(ref) {
     a.addEventListener("error", () => done("can't play here"), { once: true });
     a.src = audioUrl(ref);
   });
+}
+
+// Archive or delete -------------------------------------------------------------
+// One window for both: a show (from its row or Show settings) or a song (from Library → Songs).
+let removing = null;
+const listOf = (names) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function openRemoveShow(r) {
+  let lists = [];
+  try { lists = (await api("api/playlists")).filter((p) => p.shows.includes(r.id)).map((p) => p.name); } catch { /* still removable */ }
+  removing = { kind: "show", id: r.id, name: r.name };
+  $("rm-title").textContent = `Remove ${r.name}`;
+  $("rm-what").textContent = lists.length ? `It's in ${lists.length === 1 ? "the playlist" : "the playlists"} ${listOf(lists)}.`
+    : "It isn't in any playlist.";
+  $("rm-shows").hidden = true;
+  $("rm-archive-note").innerHTML = `<b>Archive</b> keeps it, out of the way, under <b>Archived shows</b> at the foot of
+    your shows, where <b>Restore</b> brings it back.${lists.length ? " Its playlists skip it until then." : ""}
+    Automations that start it won't find it while it's archived.`;
+  $("rm-delete-note").innerHTML = `<b>Delete for good</b> removes it${lists.length ? ` and takes it out of ${esc(listOf(lists))}` : ""}.
+    A copy of everything is kept under <b>Setup → Settings → Your data</b>, just in case.`;
+  $("remove-dialog").showModal();
+}
+
+async function openRemoveSong(r) {
+  let users = [];
+  try { users = (await api(`api/songs/users?path=${encodeURIComponent(r.ref.path)}`)).shows; } catch { /* asked below */ }
+  removing = { kind: "song", path: r.ref.path, name: r.name, users };
+  $("rm-title").textContent = `Remove ${r.name}`;
+  $("rm-what").textContent = users.length ? `Used by ${listOf(users.map((s) => s.name))}.` : "No show uses it.";
+  $("rm-shows").hidden = !users.length;
+  const sel = $("rm-replacement");
+  sel.replaceChildren(...(app.songs || []).filter((x) => x.source === "media" && x.path !== r.ref.path)
+    .map((x) => new Option(x.path, JSON.stringify(x))));
+  const radio = document.querySelector("input[name=rm-instead][value=song]");
+  radio.disabled = sel.disabled = !sel.options.length;
+  (sel.options.length ? radio : document.querySelector("input[name=rm-instead][value=none]")).checked = true;
+  $("rm-archive-note").innerHTML = `<b>Archive</b> moves it to the <b>Archived</b> folder in HA-liday Show's songs folder,
+    out of its song lists. <b>Restore</b>, under <b>Archived songs</b>, puts it back${users.length
+    ? " and gives it back to any of these shows left without a song" : ""}.`;
+  $("rm-delete-note").innerHTML = `<b>Delete for good</b> removes the song file. A copy of your shows and settings is kept
+    under <b>Setup → Settings → Your data</b>, but the song file itself can't be brought back.`;
+  $("remove-dialog").showModal();
+}
+
+async function doRemove(forGood) {
+  const r = removing;
+  if (!r) return;
+  if (forGood && !confirm(`Delete ${r.name} for good?`)) return;
+  try {
+    if (r.kind === "show") {
+      if (r.id === app.showId) {
+        // Its unsaved changes are saved first, and nothing saves it again afterwards.
+        if (!(await confirmDiscard())) return;
+        clearTimeout(autoSaveTimer);
+        if (saving) await saving;
+      }
+      if (forGood) await api(`api/shows/${encodeURIComponent(r.id)}`, { method: "DELETE" });
+      else await api(`api/shows/${encodeURIComponent(r.id)}/archive`, { method: "POST" });
+      $("remove-dialog").close();
+      status(forGood ? `Deleted ${r.name}` : `Archived ${r.name}`, "saved", "shows");
+      if (r.id === app.showId) {
+        app.dirty = false;
+        app.chosen = false;
+        await openShow(null, { chosen: false });
+        showView("editor");
+      } else await refreshShows();
+    } else {
+      const keep = !$("rm-shows").hidden && document.querySelector("input[name=rm-instead][value=song]").checked;
+      const replacement = keep ? JSON.parse($("rm-replacement").value) : null;
+      const res = await api(`api/songs/${forGood ? "delete" : "archive"}`, { method: "POST", json: { path: r.path, replacement } });
+      $("remove-dialog").close();
+      status(forGood ? `Deleted ${r.name}` : `Archived ${r.name}`, "saved", "songs");
+      await songMovedFor(res.shows);
+    }
+  } catch (e) {
+    status(`Couldn't ${forGood ? "delete" : "archive"} ${r.name}: ${e.message}`, true, r.kind === "show" ? "shows" : "songs");
+  }
+}
+
+// The server changed these shows' songs; the open one follows, without counting as an edit.
+async function songMovedFor(shows) {
+  const mine = (shows || []).find((s) => s.id === app.showId);
+  if (mine) {
+    if (mine.audio) app.show.audio = mine.audio; else delete app.show.audio;
+    await loadAudio(app.show.audio);
+  }
+  await refreshAudio().catch(() => {});
+  await Promise.all([renderSongsPage(), refreshShows()]);
+}
+
+function archivedRow(name, details, actions) {
+  const row = document.createElement("div");
+  row.className = "show-row";
+  row.setAttribute("role", "listitem");
+  const main = document.createElement("div");
+  main.className = "show-main";
+  const head = document.createElement("div");
+  const b = document.createElement("b");
+  b.className = "show-name";
+  b.textContent = name;
+  head.append(b);
+  main.append(head);
+  for (const d of details) {
+    const line = document.createElement("div");
+    line.className = "hint";
+    line.textContent = d;
+    main.append(line);
+  }
+  const group = document.createElement("div");
+  group.className = "group show-actions";
+  group.append(...actions);
+  row.append(main, group);
+  return row;
+}
+
+function fillArchived(box, rows) {
+  const summary = box.querySelector("summary");
+  summary.dataset.label ||= summary.textContent;
+  summary.textContent = `${summary.dataset.label} (${rows.length})`;
+  box.hidden = !rows.length;
+  const list = box.querySelector(".show-list");
+  list.setAttribute("role", "list");
+  list.setAttribute("aria-label", summary.dataset.label);
+  list.replaceChildren(...rows);
+}
+
+async function renderArchivedShows() {
+  let list = [];
+  try { list = await api("api/shows/archived"); } catch { return; }
+  const rows = () => showRows(list, null).map((r) => {
+    const restore = button("Restore", async () => {
+      try {
+        const res = await api(`api/shows/${encodeURIComponent(r.id)}/restore`, { method: "POST" });
+        status(res.name === r.name ? `Restored ${r.name}` : `Restored ${r.name} as ${res.name}`, "saved", "shows");
+        await refreshShows();
+      } catch (e) { status(`Couldn't restore ${r.name}: ${e.message}`, true, "shows"); }
+    }, "ghost");
+    restore.setAttribute("aria-label", `Restore ${r.name}`);
+    const del = button("Delete for good…", async () => {
+      if (!confirm(`Delete ${r.name} for good? It's also taken out of any playlists.`)) return;
+      try {
+        await api(`api/shows/${encodeURIComponent(r.id)}?archived=1`, { method: "DELETE" });
+        status(`Deleted ${r.name}`, "saved", "shows");
+        await refreshShows();
+      } catch (e) { status(`Couldn't delete ${r.name}: ${e.message}`, true, "shows"); }
+    }, "ghost danger");
+    del.setAttribute("aria-label", `Delete ${r.name} for good`);
+    return archivedRow(r.name, [r.details], [restore, del]);
+  });
+  for (const box of document.querySelectorAll("[data-show-archived]")) fillArchived(box, rows());
+}
+
+async function renderArchivedSongs() {
+  let list = [];
+  try { list = await api("api/songs/archived"); } catch { return; }
+  const rows = list.map((x) => {
+    const name = x.path.split("/").pop().replace(/\.[^.]+$/, "");
+    const restore = button("Restore", async () => {
+      try {
+        const res = await api("api/songs/restore", { method: "POST", json: { path: x.path } });
+        status(`Restored ${name}`, "saved", "songs");
+        await songMovedFor(res.shows);
+      } catch (e) { status(`Couldn't restore ${name}: ${e.message}`, true, "songs"); }
+    }, "ghost");
+    restore.setAttribute("aria-label", `Restore ${name}`);
+    const del = button("Delete for good…", async () => {
+      if (!confirm(`Delete ${name} for good? The song file can't be brought back.`)) return;
+      try {
+        await api("api/songs/delete", { method: "POST", json: { path: x.path, archived: true } });
+        status(`Deleted ${name}`, "saved", "songs");
+        renderArchivedSongs();
+      } catch (e) { status(`Couldn't delete ${name}: ${e.message}`, true, "songs"); }
+    }, "ghost danger");
+    del.setAttribute("aria-label", `Delete ${name} for good`);
+    const from = x.from.split("/").slice(0, -1).join("/");
+    return archivedRow(name, [`was in ${from || "your songs folder"}`,
+      x.songless.length ? `Left without a song: ${x.songless.join(", ")}` : "No show was left without it"], [restore, del]);
+  });
+  fillArchived($("songs-archived"), rows);
 }
 
 // After the list is redrawn, puts keyboard focus back on a row's button in the list you're looking at.
@@ -5120,17 +5314,15 @@ function wire() {
   }
   $("autosave").checked = prefs.get("autosave", true);
   $("autosave").addEventListener("change", (e) => { prefs.set("autosave", e.target.checked); scheduleAutoSave(); });
-  $("btn-delete").addEventListener("click", async () => {
-    if (!app.showId || !confirm(`Delete "${app.show.name}"? This can't be undone.`)) return;
-    clearTimeout(autoSaveTimer);
-    await api(`api/shows/${app.showId}`, { method: "DELETE" });
-    app.dirty = false;
+  $("btn-delete").addEventListener("click", () => {
+    if (!app.showId) return;
     $("show-dialog").close();
-    status(`Deleted ${app.show.name}`, "saved", "shows");
-    await openShow(null, { chosen: false });
-    app.chosen = false;
-    showView("editor");
+    openRemoveShow({ id: app.showId, name: app.show.name });
   });
+  for (const b of document.querySelectorAll("[data-rm=close]")) b.addEventListener("click", () => $("remove-dialog").close());
+  $("rm-archive").addEventListener("click", () => doRemove(false));
+  $("rm-delete").addEventListener("click", () => doRemove(true));
+  $("rm-replacement").addEventListener("change", () => { document.querySelector("input[name=rm-instead][value=song]").checked = true; });
   $("btn-show-settings").addEventListener("click", () => {
     $("btn-delete").disabled = !app.showId;
     $("show-dialog").showModal();

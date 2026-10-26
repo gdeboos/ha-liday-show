@@ -156,7 +156,8 @@ class Storage:
     def new_show_id(self, name: str) -> str:
         base = slugify(name)
         show_id, n = base, 2
-        while (self.shows_dir / f"{show_id}.json").exists():
+        # Archived shows keep their ids, so a new show can't take one and be played in its place.
+        while (self.shows_dir / f"{show_id}.json").exists() or (self.shows_dir / "archived" / f"{show_id}.json").exists():
             show_id, n = f"{base}-{n}", n + 1
         return show_id
 
@@ -195,8 +196,9 @@ class Storage:
         for source, root in self.audio_roots().items():
             if not root.is_dir():
                 continue
+            archive = self.upload_dir / "Archived"  # archive.py: archived songs stay out of the lists
             for dirpath, dirnames, filenames in os.walk(root):
-                dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+                dirnames[:] = sorted(d for d in dirnames if not d.startswith(".") and Path(dirpath, d) != archive)
                 for f in sorted(filenames):
                     if Path(f).suffix.lower() in AUDIO_EXT and f != SPEAKER_TEST:
                         rel = os.path.relpath(os.path.join(dirpath, f), root)

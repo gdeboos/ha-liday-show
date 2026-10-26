@@ -19,7 +19,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, backup, commands, discovery, e131, migrate, playlists, scenes, schedule, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, scenes, schedule, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -630,9 +630,90 @@ async def put_baked(request):
 
 
 async def delete_show(request):
-    request.app[STORAGE].delete_show(_show_id(request))
+    """Deletes a show (or, with ?archived=1, an archived one) for good, keeping a copy of the config
+    folder first, and takes it out of every playlist."""
+    show_id = _show_id(request)
+    st = request.app[STORAGE]
+    archived = request.query.get("archived") == "1"
+    if not archive.show_exists(st, show_id, archived):
+        raise web.HTTPNotFound(text="that show isn't there")
+    try:
+        backup.keep_copy(st.config_dir, __version__, "delete")
+        archive.delete_show(st, show_id, archived=archived)
+    except archive.ArchiveError as e:
+        raise web.HTTPNotFound(text=str(e))
     request.app[MQTT].refresh()
     return web.json_response({"ok": True})
+
+
+async def list_archived_shows(request):
+    return web.json_response(archive.list_archived_shows(request.app[STORAGE]))
+
+
+async def archive_show(request):
+    try:
+        archive.archive_show(request.app[STORAGE], _show_id(request))
+    except archive.ArchiveError as e:
+        raise web.HTTPNotFound(text=str(e))
+    request.app[MQTT].refresh()
+    return web.json_response({"ok": True})
+
+
+async def restore_show(request):
+    try:
+        restored = archive.restore_show(request.app[STORAGE], _show_id(request))
+    except archive.ArchiveError as e:
+        raise web.HTTPNotFound(text=str(e))
+    request.app[MQTT].refresh()
+    return web.json_response(restored)
+
+
+def _song_body(body) -> tuple[str, object]:
+    if not isinstance(body, dict) or not isinstance(body.get("path"), str) or not body["path"]:
+        raise web.HTTPBadRequest(text="expected {path}")
+    return body["path"], body.get("replacement")
+
+
+async def list_archived_songs(request):
+    st = request.app[STORAGE]
+    return web.json_response(await asyncio.to_thread(archive.list_archived_songs, st))
+
+
+async def song_users(request):
+    path = request.query.get("path", "")
+    st = request.app[STORAGE]
+    return web.json_response({"shows": archive.users_of(st, path), "own": archive.own_song(st, path)})
+
+
+async def archive_song(request):
+    path, replacement = _song_body(await request.json())
+    try:
+        return web.json_response(archive.archive_song(request.app[STORAGE], path, replacement))
+    except archive.ArchiveError as e:
+        raise web.HTTPBadRequest(text=str(e))
+
+
+async def restore_song(request):
+    path, _ = _song_body(await request.json())
+    try:
+        return web.json_response(archive.restore_song(request.app[STORAGE], path))
+    except archive.ArchiveError as e:
+        raise web.HTTPBadRequest(text=str(e))
+
+
+async def delete_song(request):
+    body = await request.json()
+    path, replacement = _song_body(body)
+    st = request.app[STORAGE]
+    archived = body.get("archived") is True
+    try:
+        if not archive.song_deletable(st, path, archived):
+            raise archive.ArchiveError("only songs in HA-liday Show's own folder can be deleted")
+        archive.check_replacement(st, path, replacement)
+        backup.keep_copy(st.config_dir, __version__, "delete")
+        return web.json_response(archive.delete_song(st, path, archived=archived, replacement=replacement))
+    except archive.ArchiveError as e:
+        raise web.HTTPBadRequest(text=str(e))
 
 
 # audio -------------------------------------------------------------------
@@ -643,7 +724,14 @@ async def list_audio(request):
 async def list_songs(request):
     # The media folder can be big (it's all of Home Assistant's media), so walk it off the event loop,
     # which also streams the lights.
-    return web.json_response(await asyncio.to_thread(request.app[STORAGE].list_songs))
+    st = request.app[STORAGE]
+
+    def songs():
+        out = st.list_songs()
+        for s in out["songs"]:
+            s["own"] = archive.own_song(st, s["path"])  # only these can be archived or deleted here
+        return out
+    return web.json_response(await asyncio.to_thread(songs))
 
 
 async def get_audio(request):
@@ -1324,6 +1412,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/lab/speed", lab_speed)
     r.add_get("/api/lab", lab_status)
     r.add_get("/api/shows", list_shows)
+    r.add_get("/api/shows/archived", list_archived_shows)  # before /api/shows/{id}
     r.add_post("/api/shows", create_show)
     r.add_get("/api/shows/{id}", get_show)
     r.add_put("/api/shows/{id}", put_show)
@@ -1331,10 +1420,17 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/shows/{id}/baked", put_baked)
     r.add_post("/api/shows/{id}/duplicate", duplicate_show)
     r.add_post("/api/shows/{id}/rename", rename_show)
+    r.add_post("/api/shows/{id}/archive", archive_show)
+    r.add_post("/api/shows/{id}/restore", restore_show)
     r.add_get("/api/audio", list_audio)
     r.add_post("/api/audio", upload_audio)
     r.add_get("/api/audio/file", get_audio)
     r.add_get("/api/songs", list_songs)
+    r.add_get("/api/songs/archived", list_archived_songs)
+    r.add_get("/api/songs/users", song_users)
+    r.add_post("/api/songs/archive", archive_song)
+    r.add_post("/api/songs/restore", restore_song)
+    r.add_post("/api/songs/delete", delete_song)
     r.add_get("/api/audio/info", get_song_info)
     r.add_put("/api/audio/info", put_song_info)
     r.add_get("/api/speakers", list_speakers)

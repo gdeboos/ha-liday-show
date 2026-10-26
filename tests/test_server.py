@@ -905,3 +905,41 @@ async def test_show_player_page_and_syncs_for_another_show(client):
     st = await (await client.post("/api/player/sync", json={"position": 5})).json()  # the editor sends no show
     assert 4 < st["position"] < 6
     await client.post("/api/player/stop")
+
+
+async def test_archive_restore_and_delete_through_the_server(client, tmp_path):
+    media = tmp_path / "media" / "haliday_show"
+    media.mkdir(parents=True, exist_ok=True)
+    (media / "bells.mp3").write_bytes(b"ID3 bells")
+    (media / "other.mp3").write_bytes(b"ID3 other")
+    show_id = (await (await client.post("/api/shows", json={"name": "Xmas"})).json())["id"]
+    await client.put(f"/api/shows/{show_id}", json={"name": "Xmas", "tracks": [],
+                                                    "audio": {"source": "media", "path": "haliday_show/bells.mp3"}})
+    users = await (await client.get("/api/songs/users", params={"path": "haliday_show/bells.mp3"})).json()
+    assert users == {"shows": [{"id": show_id, "name": "Xmas"}], "own": True}
+
+    # Shows
+    assert (await client.post(f"/api/shows/{show_id}/archive")).status == 200
+    assert await (await client.get("/api/shows")).json() == []
+    assert [s["id"] for s in await (await client.get("/api/shows/archived")).json()] == [show_id]
+    assert (await client.post(f"/api/shows/{show_id}/restore")).status == 200
+    assert (await client.post("/api/shows/nope/archive")).status == 404
+
+    # Songs: archive giving the show another song, restore, then delete for good.
+    r = await client.post("/api/songs/archive", json={"path": "haliday_show/bells.mp3",
+                                                       "replacement": {"source": "media", "path": "haliday_show/other.mp3"}})
+    assert r.status == 200 and (await r.json())["archived"] == "haliday_show/Archived/bells.mp3"
+    assert (await (await client.get(f"/api/shows/{show_id}")).json())["audio"]["path"] == "haliday_show/other.mp3"
+    assert [s["path"] for s in await (await client.get("/api/songs/archived")).json()] == ["haliday_show/Archived/bells.mp3"]
+    assert (await client.post("/api/songs/restore", json={"path": "haliday_show/Archived/bells.mp3"})).status == 200
+    assert (await client.post("/api/songs/archive", json={"path": "../etc/passwd"})).status == 400
+    assert (await client.post("/api/songs/archive", json={})).status == 400
+
+    r = await client.post("/api/songs/delete", json={"path": "haliday_show/other.mp3"})
+    assert r.status == 200 and (await r.json())["shows"] == [{"id": show_id, "audio": None}]
+    assert not (media / "other.mp3").exists()
+    copies = await (await client.get("/api/backup/copies")).json()
+    assert copies and copies[0]["reason"] == "delete", "a copy is kept before deleting for good"
+
+    assert (await client.delete(f"/api/shows/{show_id}")).status == 200
+    assert (await client.delete(f"/api/shows/{show_id}")).status == 404

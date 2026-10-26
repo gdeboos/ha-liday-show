@@ -451,12 +451,13 @@ one you were last editing has a **Last edited** badge.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
   Each show needs its own name. An automation that starts the show by its name needs the new name.
+- **Remove…** archives or deletes a show (see [Archiving and deleting](#archiving-and-deleting)).
 - **← All shows**, at the start of the Show panel, takes you back to the list. Switching between tabs
   keeps your show open until you go back to the list or close the page.
 
 The same list is under **Library → Shows**. You can also switch shows with the drop-down in the Show
 panel. **⚙ Show settings…** beside it opens the show's settings: its **Name**, its **Show speaker**
-(below), **Auto save**, and **Delete show…** to remove it.
+(below), **Auto save**, and **Remove show…** to archive or delete it.
 
 ### Songs
 
@@ -467,8 +468,32 @@ them. For a lights-only show, choose **No song** and set its **Length**.
 
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
 tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
-list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Upload a song…**
-adds one.
+list by name, folder or show. **Edit** opens a song in the **Music editor**, **Upload a song…**
+adds one, and **Remove…** archives or deletes one.
+
+### Archiving and deleting
+
+**Remove…**, on a show or a song, opens a window that says where it's used and offers two ways to
+take it away:
+
+- **Archive** keeps it, out of the way. Archived shows and songs are listed, folded, under **Archived
+  shows** and **Archived songs** at the foot of each list, and **Restore** brings one back.
+- **Delete for good…** removes it, after asking you once more. Before it does, HA-liday Show keeps a copy
+  of your shows and settings under **Setup → Settings → Your data** (*Before deleting*). A deleted song
+  file itself can't be brought back.
+
+**Shows.** An archived show is skipped by playlists (they show it as *archived*) and can't be started
+by an automation, and comes back to the same places in its playlists when you restore it. If another
+show has taken its name meanwhile, it comes back as "… (restored)". Deleting a show for good also
+takes it out of its playlists. Archived shows are included in **Export…**.
+
+**Songs.** Only songs in HA-liday Show's own folder (`haliday_show` in your media folder, where uploads
+and the Music editor's saves go) can be archived or deleted here, as the rest of your media folder
+may belong to other apps; **Remove…** is greyed out for the others. If shows use the song, choose what
+they play instead: **Another song**, or **No song for now** (they keep their effects and beats, and
+play the lights only). An archived song moves to an **Archived** folder inside HA-liday Show's
+folder, where it's out of HA-liday Show's song lists but still in Home Assistant's Media. Restoring it
+puts it back and gives it back to the shows that were left without a song.
 
 ### Editing a song
 
@@ -971,7 +996,7 @@ phone has its own. It holds:
 
 **Setup → Settings → Your data** puts everything HA-liday Show saves in one file, and back:
 
-- **Export…** downloads a `.zip` of your lights (with their parts), shows, palettes, presets, settings,
+- **Export…** downloads a `.zip` of your lights (with their parts), shows (archived ones too), palettes, presets, settings,
   the house photo and where each light is traced on it. Your songs stay in your songs folder and aren't
   in it. It's the same on every install, so you can move your shows to another Home Assistant, or
   between HA-liday Show and a Docker or pipx install.
@@ -980,7 +1005,8 @@ phone has its own. It holds:
 - **Start afresh…** removes it all, so HA-liday Show is like new and the setup guide opens. It also resets
   this browser's layout and choices (like **Show the Labs tab**). Your songs are kept.
 
-Before an import or a fresh start, HA-liday Show keeps a copy of what you had, listed under **Your data**
+Before an import, a fresh start or deleting a show or song for good, HA-liday Show keeps a copy of what
+you had, listed under **Your data**
 (the newest five). **Put back** restores one, and **Download** saves it as an export. So to try the
 setup guide without losing anything: **Start afresh…**, try it, then **Put back** the copy *Before a
 fresh start* (or **Import…** your export).
