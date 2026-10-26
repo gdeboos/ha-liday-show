@@ -32,12 +32,18 @@ async def client(aiohttp_client, tmp_path, monkeypatch):
     return c
 
 
-async def _visitor(port, path, json=None):
-    async with ClientSession() as s:
+async def _visitor(client, path, json=None, code=True, headers=None):
+    """A visitor's phone on the public port, with the code from the QR code unless code=False."""
+    p = public.load(client.app[server.STORAGE])
+    if code and p and p["code"]:
         if json is None:
-            async with s.get(f"http://127.0.0.1:{port}{path}") as r:
-                return r.status, (await r.json() if r.content_type == "application/json" else await r.text()), r.headers
-        async with s.post(f"http://127.0.0.1:{port}{path}", json=json) as r:
+            path += ("&" if "?" in path else "?") + f"code={p['code']}"
+        else:
+            json = {"code": p["code"], **json}
+    async with ClientSession() as s:
+        url = f"http://127.0.0.1:{client.public_port}{path}"
+        req = s.get(url, headers=headers) if json is None else s.post(url, json=json, headers=headers)
+        async with req as r:
             return r.status, (await r.json() if r.content_type == "application/json" else await r.text()), r.headers
 
 
@@ -48,10 +54,10 @@ async def test_the_port_stays_shut_until_the_public_page_is_set_up(client):
     view = await (await client.get("/api/public")).json()
     assert view["listening"] is False and view["on"] is False and view["port"] == client.public_port
     with pytest.raises(OSError):
-        await _visitor(client.public_port, "/api/state")
+        await _visitor(client, "/api/state")
     resp = await client.put("/api/public", json={"on": False})
     assert (await resp.json())["listening"] is True
-    status, st, _ = await _visitor(client.public_port, "/api/state")
+    status, st, _ = await _visitor(client, "/api/state")
     assert status == 200 and st["open"] is False and st["choices"] == []
 
 
@@ -59,23 +65,23 @@ async def test_visitors_see_only_ticked_shows_and_playlists(client):
     await client.put("/api/public", json={"on": True, "items": [
         {"kind": "show", "id": "party"}, {"kind": "show", "id": "nope"}, {"kind": "show", "id": "BAD id"},
         {"kind": "playlist", "id": "eve"}]})
-    _, st, headers = await _visitor(client.public_port, f"/api/state?ticket={T1}")
+    _, st, headers = await _visitor(client, f"/api/state?ticket={T1}")
     assert [(c["kind"], c["id"], c["name"]) for c in st["choices"]] == [
         ("show", "party", "Party"), ("playlist", "eve", "Christmas Eve")]
     assert st["choices"][1]["minutes"] == 1  # two 10 s shows and a 5 s pause, rounded up to a minute
     assert headers["Cache-Control"] == "no-store"
-    status, _, _ = await _visitor(client.public_port, "/api/request", {"ticket": T1, "kind": "show", "id": "hidden"})
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "hidden"})
     assert status == 404
 
 
 async def test_the_public_port_has_nothing_of_the_editor(client):
     await client.put("/api/public", json={"on": True})
     for path in ("/api/shows", "/api/devices", "/api/public", "/static/js/app.js", "/player", "/api/backup"):
-        status, _, _ = await _visitor(client.public_port, path)
+        status, _, _ = await _visitor(client, path)
         assert status == 404, path
-    status, html, headers = await _visitor(client.public_port, "/")
+    status, html, headers = await _visitor(client, "/")
     assert status == 200 and "Light show" in html and "frame-ancestors 'none'" in headers["Content-Security-Policy"]
-    status, _, _ = await _visitor(client.public_port, "/public.js")
+    status, _, _ = await _visitor(client, "/public.js")
     assert status == 200
 
 
@@ -83,20 +89,20 @@ async def test_one_request_per_phone_and_a_full_queue(client):
     await client.put("/api/public", json={"on": True, "shows": ["party", "quiet"], "per_phone": 1, "queue": 2})
     runner = client.app[server.RUNNER]
     await runner.play("party")  # something's on, so requests wait
-    status, st, _ = await _visitor(client.public_port, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    status, st, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
     assert status == 200 and st["mine"][0]["place"] == 1 and 5 <= st["mine"][0]["wait"] <= 10
-    status, text, _ = await _visitor(client.public_port, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
     assert status == 409 and "already got a show waiting" in text
-    await _visitor(client.public_port, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
-    status, text, _ = await _visitor(client.public_port, "/api/request", {"ticket": "c" * 20, "kind": "show", "id": "party"})
+    await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": "c" * 20, "kind": "show", "id": "party"})
     assert status == 409 and "queue is full" in text
     view = await (await client.get("/api/public")).json()
     assert [w["name"] for w in view["waiting"]] == ["Quiet", "Party"]
     # Visitors can take back their own request, not someone else's.
     rid = runner.requests[0]["id"]
-    await _visitor(client.public_port, "/api/cancel", {"ticket": T2, "id": rid})
+    await _visitor(client, "/api/cancel", {"ticket": T2, "id": rid})
     assert len(runner.requests) == 2
-    _, st, _ = await _visitor(client.public_port, "/api/cancel", {"ticket": T1, "id": rid})
+    _, st, _ = await _visitor(client, "/api/cancel", {"ticket": T1, "id": rid})
     assert st["mine"] == [] and len(runner.requests) == 1
     await client.post("/api/public/clear")
     assert runner.requests == []
@@ -104,15 +110,15 @@ async def test_one_request_per_phone_and_a_full_queue(client):
 
 async def test_bad_tickets_and_turning_visitors_off(client):
     await client.put("/api/public", json={"on": True, "shows": ["party"]})
-    status, _, _ = await _visitor(client.public_port, "/api/request", {"ticket": "short", "kind": "show", "id": "party"})
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": "short", "kind": "show", "id": "party"})
     assert status == 400
     runner = client.app[server.RUNNER]
     await runner.play("quiet")
-    await _visitor(client.public_port, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
     assert runner.requests
     await client.put("/api/public", json={"on": False, "shows": ["party"]})
     assert runner.requests == []  # switched off: nobody's left waiting for a show that won't come
-    status, text, _ = await _visitor(client.public_port, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
     assert status == 409 and "no shows right now" in text
 
 
@@ -122,7 +128,7 @@ def test_settings_are_cleaned():
                                                 {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                                                 {"kind": "show", "id": "c", "from": "02-30", "to": "03-01"}],
                          "per_phone": 99, "queue": 0}) == {
-        "on": False, "per_phone": 5, "queue": 1,
+        "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -153,10 +159,10 @@ async def test_visitors_see_later_shows_as_coming_soon(client, monkeypatch):
         {"kind": "playlist", "id": "eve", "from": "11-20", "to": "11-30"}]})
     monkeypatch.setattr(public, "date", type("D", (date,), {"today": classmethod(lambda c: date(2026, 10, 26))}))
     public._CHOICES.clear()
-    _, st, _ = await _visitor(client.public_port, f"/api/state?ticket={T1}")
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert [c["id"] for c in st["choices"]] == ["party"]
     assert [(c["id"], c["starts"]) for c in st["soon"]] == [("eve", "2026-11-20"), ("quiet", "2026-12-01")]
-    status, _, _ = await _visitor(client.public_port, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
     assert status == 404
 
 
@@ -180,9 +186,90 @@ async def test_archived_shows_are_never_offered(client):
                                                                 {"kind": "playlist", "id": "eve"}]})
     archive.archive_show(client.app[server.STORAGE], "quiet")
     public._CHOICES.clear()
-    _, st, _ = await _visitor(client.public_port, f"/api/state?ticket={T1}")
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert [c["id"] for c in st["choices"]] == ["party", "eve"]
-    status, _, _ = await _visitor(client.public_port, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
     assert status == 404
     # The playlist plays without it.
     assert public.choices(client.app[server.STORAGE])[1]["shows"] == ["party"]
+
+
+
+async def test_visitors_need_the_code_from_the_sign(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "code": "mine123"})
+    code = public.load(client.app[server.STORAGE])["code"]
+    assert len(code) == 8 and code != "mine123"  # made by the app, not taken from the editor
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", code=False)
+    assert st == {"open": True, "locked": True}
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party", "code": "nope1234"},
+                                     code=False)
+    assert status == 403 and "Scan the code" in text
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}&code={code.upper()}", code=False)
+    assert st["choices"]  # typed in capitals from a sign still works
+    # A new code stops the old link working.
+    view = await (await client.post("/api/public/code")).json()
+    assert view["code"] != code
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}&code={code}", code=False)
+    assert st.get("locked")
+
+
+async def test_settings_saved_before_codes_get_one(tmp_path):
+    from halidayshow.runner import Runner
+    from halidayshow.storage import Storage
+
+    st = Storage(tmp_path / "c", tmp_path / "m")
+    settings = st.load_settings()
+    settings["public"] = {"on": True, "items": []}
+    st.save_settings(settings)
+    site = public.PublicSite(st, Runner(st, None, None))
+    site.port = _free_port()
+    await site.apply()
+    await site.close()
+    assert len(public.load(st)["code"]) == 8
+
+
+FAR = {"CF-Connecting-IP": "203.0.113.9"}  # through a Cloudflare tunnel
+HOME = (51.5007, -0.1246)
+
+
+async def test_through_a_tunnel_phones_must_be_by_the_lights(client):
+    client.app[server.SCHEDULER].where = lambda: (HOME, "you")
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "distance": 100})
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers=FAR)
+    assert st["needs_location"] is True
+    ask = {"ticket": T1, "kind": "show", "id": "party"}
+    status, text, _ = await _visitor(client, "/api/request", ask, headers=FAR)
+    assert status == 403 and "Turn on location" in text
+    # About 1 km away.
+    status, text, _ = await _visitor(client, "/api/request", {**ask, "lat": 51.5097, "lon": -0.1246, "accuracy": 20},
+                                     headers=FAR)
+    assert status == 403 and "by the lights" in text
+    # Across the road, with a rough fix that might be closer than it says.
+    status, _, _ = await _visitor(client, "/api/request", {**ask, "lat": 51.5009, "lon": -0.1246, "accuracy": 80},
+                                  headers=FAR)
+    assert status == 200
+
+
+async def test_your_own_wifi_and_the_switch_skip_the_location_check(client):
+    client.app[server.SCHEDULER].where = lambda: (HOME, "you")
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}]})
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")  # straight from this machine
+    assert st["needs_location"] is False
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "nearby": False})
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=FAR)
+    assert status == 200
+    # With no home location, it can't be checked, and the tab says so.
+    client.app[server.SCHEDULER].where = lambda: (None, None)
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "nearby": True})
+    view = await (await client.get("/api/public")).json()
+    assert view["home"] is None
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T2}", headers=FAR)
+    assert st["needs_location"] is False
+
+
+def test_distance_and_address_are_checked():
+    assert public.clean({"distance": 5})["distance"] == 25 and public.clean({"distance": "x"})["distance"] == 100
+    assert public.clean({"address": "https://lights.example.com/"})["address"] == "https://lights.example.com"
+    assert public.clean({"address": "javascript:alert(1)"})["address"] == ""
+    assert public.link({"address": "https://l.example.com", "code": "abc23456"}) == "https://l.example.com/?c=abc23456"
+    assert round(public.metres(HOME, (51.5016, -0.1246))) == 100

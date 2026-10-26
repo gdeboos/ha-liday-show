@@ -29,3 +29,14 @@ test("each show or playlist says when visitors can pick it", async () => {
   assert.equal(itemText(xmas, "2026-10-26"), "Playlist · 1 Dec to 6 Jan every year · coming soon until 1 Dec");
   assert.equal(itemText(xmas, "2026-12-02"), "Playlist · 1 Dec to 6 Jan every year · visitors can pick it now");
 });
+
+test("the visitors' link and the nearby check in words", async () => {
+  const { visitorLink, nearbyText } = await import("../../haliday_show/app/halidayshow/static/js/publicsettings.js");
+  const v = { code: "abc23456", port: 18099, address: "", nearby: true, distance: 100, home: "ha" };
+  assert.equal(visitorLink(v, "192.168.2.10"), "http://192.168.2.10:18099/?c=abc23456");
+  assert.equal(visitorLink({ ...v, address: "https://lights.example.com" }, "x.ui.nabu.casa"),
+    "https://lights.example.com/?c=abc23456");
+  assert.match(nearbyText(v), /within 100 m of your home location in Home Assistant/);
+  assert.match(nearbyText({ ...v, home: null }), /no home location/);
+  assert.match(nearbyText({ ...v, nearby: false }), /wherever they are/);
+});

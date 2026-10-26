@@ -178,7 +178,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   sunset, days and dates), with a Show player page to play the music on any computer with speakers
 - Public page: people passing by pick a show on their phone and it joins a queue, slotting in between
   your playlist's shows, with one request per phone; each show or playlist can have dates every year,
-  showing as coming soon until then
+  showing as coming soon until then; a code in the link and a nearby-only check keep it to people
+  outside your house
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing

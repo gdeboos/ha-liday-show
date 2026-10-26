@@ -1055,8 +1055,25 @@ playlists you've picked, each with a **▶ Start** button, and nothing else of H
    page** tab appears along the top.
 2. On the **Public page** tab, pick a show or playlist next to **+ Add** and press it. Add as many as
    you like. Only saved shows are offered; archived ones aren't, and never show to visitors.
-3. To try it, open the address the tab shows on your phone, connected to your home Wi-Fi. It's
-   HA-liday Show's address with `:18099` on the end, such as `http://192.168.1.20:18099`.
+3. To try it, open the **Visitors' link** the tab shows on your phone, connected to your home Wi-Fi.
+   It's HA-liday Show's address with `:18099` and your code on the end, such as
+   `http://192.168.1.20:18099/?c=5fjzqr26`.
+
+**Who can start shows.** Visitors need the link with your code in it; the QR code on your sign will
+hold it. Opening the page without the code just says "Scan the code on the sign to start a show". On
+the **Public page** tab, under **Who can start shows**:
+
+- **Public address** is the web address your tunnel or proxy gives the public page, such as
+  `https://lights.yourdomain.com`. The **Visitors' link** uses it. Leave it empty if visitors only use
+  your home Wi-Fi.
+- **Copy** copies the link. **New code…** makes a new one, if the link has been shared somewhere it
+  shouldn't be. The old link (and any QR code you've printed) stops working.
+- **Nearby only within 100 m** (on to start with): a phone reaching the page through the internet
+  must be that close to your house to start a show. When a visitor presses **▶ Start**, their phone
+  asks to share its location; it's only used for that check and isn't kept. Phones on your home
+  Wi-Fi aren't asked. Your house is your home location in Home Assistant (**Settings → System →
+  General**), or the one you typed in for sunset under **Library → Playlists**. Without either, it
+  can't be checked, and the tab says so.
 
 **Dates.** Each show or playlist is available all year until you tick **Only from** and pick the
 first and last day, such as 1 Dec until 6 Jan. The dates come round every year, and can run over New
@@ -1098,8 +1115,8 @@ port opens the first time you turn on **Let visitors start shows**. If another a
 another under **Public page port** on the app's **Configuration** tab in Home Assistant, then restart
 the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
 
-> **Coming next:** opening hours, reaching the page from outside your home (for a QR code on a sign),
-> and a printable sign.
+> **Coming next:** opening hours, a printable sign with the QR code, and guides for reaching the page
+> from outside your home (Cloudflare Tunnel and others).
 
 ## 6. Automations
 

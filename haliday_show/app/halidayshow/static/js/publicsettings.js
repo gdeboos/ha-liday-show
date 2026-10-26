@@ -43,3 +43,21 @@ export function itemText(item, todayIso) {
   const range = `${md(item.from)} to ${md(item.to)} every year`;
   return `${kind} · ${range} · ${inDates(item, todayIso) ? "visitors can pick it now" : `coming soon until ${md(item.from)}`}`;
 }
+
+// The link visitors open: your public address, or this machine on your home Wi-Fi, with the code.
+export function visitorLink(view, hostname) {
+  if (!view.code) return "";
+  const local = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || /\.(local|lan|home|internal)$/.test(hostname)
+    || !hostname.includes(".");
+  const base = view.address || `http://${local ? hostname : "<your Home Assistant's address>"}:${view.port}`;
+  return `${base}/?c=${view.code}`;
+}
+
+// What the nearby check measures from, or why it can't run.
+export function nearbyText(view) {
+  if (!view.nearby) return "Anyone with the link can start a show, wherever they are.";
+  const from = view.home === "you" ? "the home location you typed in under Library → Playlists"
+    : view.home === "ha" ? "your home location in Home Assistant" : "";
+  if (!from) return "⚠ There's no home location to measure from, so this can't be checked yet. Set your home's location in Home Assistant (Settings → System → General).";
+  return `Phones reaching the page through the internet must be within ${view.distance} m of ${from}. On your home Wi-Fi they're not asked. Visitors' phones ask them to share their location once they press Start.`;
+}
