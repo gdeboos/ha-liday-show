@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   arrange, cut, editName, mapInfo, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
-  render, sectionAt, splitSection, beatsToDraw, previewTime,
+  render, sectionAt, splitSection, beatsToDraw, previewTime, addMark, moveMark,
 } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-6, `${msg ?? ""} ${a} != ${b}`);
@@ -143,4 +143,25 @@ test("a cut preview's playhead runs up to the selection, then jumps over it", ()
   assert.equal(previewTime(2.9, 7, 10, 20, 60).toFixed(1), "9.9");
   assert.equal(previewTime(3.5, 7, 10, 20, 60), 20.5);
   assert.equal(previewTime(99, 7, 10, 20, 60), 60);
+});
+
+test("marks are added in time order, and moving one keeps them in order", () => {
+  let { marks, index } = addMark([], 10, "#00ff00");
+  ({ marks, index } = addMark(marks, 4.12345));
+  assert.equal(index, 0);
+  assert.deepEqual(marks.map((m) => m.t), [4.123, 10]);
+  assert.equal(marks[1].color, "#00ff00");
+  const named = marks.map((m, i) => (i === 0 ? { ...m, label: "Bells" } : m));
+  ({ marks, index } = moveMark(named, 0, 20));
+  assert.equal(index, 1);
+  assert.deepEqual(marks.map((m) => [m.t, m.label]), [[10, ""], [20, "Bells"]]);
+  assert.equal(moveMark(marks, 0, -3).marks[0].t, 0);
+});
+
+test("marks follow cuts, and those in the cut part go", () => {
+  const info = { beats: [], bars: [], sections: [{ start: 0, end: 60, label: "Song" }],
+    marks: [{ t: 5, label: "a" }, { t: 15, label: "b" }, { t: 30, label: "c" }] };
+  const got = mapInfo(info, cut(song, 0, 10, 20), 0, "a");
+  assert.deepEqual(got.marks.map((m) => [m.t, m.label]), [[5, "a"], [20, "c"]]);
+  assert.equal(mapInfo({ ...info, marks: undefined }, song, 0, "a").marks, undefined);
 });

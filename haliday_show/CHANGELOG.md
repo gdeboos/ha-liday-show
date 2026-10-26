@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.154
+
+- New: **marks**. In the **Music editor**, press **⚑ Add mark** (or **M**, even while the song plays) to
+  flag a moment, such as a big hit or the bells coming in. Click a flag to give it a **Name** and
+  **Colour**, move it or delete it, and drag it to move it.
+- Marks are kept with the song, so every show using it gets them: in the **Show editor** they show as
+  coloured flags on the **Beats** lane, with a line down through the lights, and clips snap to them.
+- **Detect** leaves your marks alone, and they follow your cuts and are kept when you **Save as new file**.
+
 ## 0.2.153
 
 - New: a **Public page**, so people passing by can start a show from their phone. Turn it on under

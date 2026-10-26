@@ -445,6 +445,7 @@ beats and sections, then **Generate** a draft or **Describe it**, and fine-tune 
 timeline.
 
 - **The song:** [Shows](#shows) · [Songs](#songs) · [Editing a song](#editing-a-song) · [Suggest cuts](#suggest-cuts) ·
+  [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
 - **By hand:** [The timeline](#the-timeline) · [Adding effects](#adding-effects) ·
@@ -564,7 +565,7 @@ the music stays visible; zoom in to see every beat.
 
 You can also use the keyboard: press Tab until the waveform is outlined, then **←** and **→** move the
 playhead a beat at a time (a second at a time before **Detect**), and holding Shift selects as you go.
-Space plays, Delete cuts the selection, and Ctrl+Z undoes. Saving a song without changing it is a quick
+Space plays, Delete cuts the selection, M adds a [mark](#marks) and Ctrl+Z undoes. Saving a song without changing it is a quick
 way to get a WAV copy of it that plays on every speaker. If you close the page with an edit you haven't
 saved, you're asked first.
 
@@ -594,6 +595,29 @@ If nothing fits, it says so; try a length a little longer or shorter.
 
 Nothing changes until you press **Use**, and the song file you opened is never changed: keep the result
 with **Save as new file**.
+
+### Marks
+
+Marks flag moments in a song you want to light, such as a big hit, the bells coming in or the last
+note. They're kept with the song, so every show that uses it gets them, and they don't change when you
+**Detect** again.
+
+- **Add one:** in the Music editor, put the playhead where you want it and press **⚑ Add mark** (in the
+  **Beats, sections and marks** card), or press **M**. **M** works while the song plays, so you can tap
+  it along with the music and name the marks afterwards. You don't need to **Detect** the song first.
+- **Name, colour or delete it:** click its flag in the beat lane (the playhead jumps to it). Type a
+  **Name**, pick a **Colour**, or press **Delete**. **Move to playhead** moves it to where the playhead is,
+  and **✕** or Esc closes it. Each new mark takes the colour you picked last.
+- **Move it:** drag its flag. It snaps to beats and bars; hold Shift to place it freely.
+
+In the **Show editor**, a song's marks show as coloured flags on the **Beats** lane, with a line down
+through every light, and clips snap to them (when **Snap** is ticked) so you can line an effect up with
+the moment. They're read from the song each time you open the Show editor, so marks you add in the
+Music editor show straight away. To change them, go back to the Music editor.
+
+Marks follow your cuts, so a mark in a part you cut out goes with it, and they're kept when you **Save
+as new file**. While you have an unsaved edit they show where they'll land but can't be changed: save
+the edit first.
 
 ### Detecting in the Music editor
 

@@ -127,6 +127,7 @@ export class Timeline {
       ctx.lineTo(x, RULER_H + WAVE_H + BEAT_H - 3); ctx.fill();
     }
 
+    this.drawMarks(col, h);
     this.drawWave(col);
     this.drawSections(col, true);
     this.drawRuler(col);
@@ -375,6 +376,35 @@ export class Timeline {
     octx.beginPath(); octx.moveTo(x, 0); octx.lineTo(x, h); octx.stroke();
   }
 
+  // The song's marks (made in the Music editor): a coloured line down through the tracks and a
+  // flag with its name in the beat lane.
+  drawMarks(col, h) {
+    const { ctx, w } = this, y = RULER_H + WAVE_H;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(HEADER_W, 0, w - HEADER_W, h); ctx.clip();
+    for (const m of this.app.songMarks || []) {
+      const x = Math.round(this.x(m.t));
+      if (x < HEADER_W - 200 || x > w) continue;
+      const colour = m.color || MARK_COLOUR;
+      ctx.fillStyle = colour;
+      ctx.globalAlpha = 0.7;
+      ctx.fillRect(x - 1, y, 2, h - y);
+      ctx.globalAlpha = 1;
+      ctx.font = "600 11px system-ui, sans-serif";
+      const wide = m.label ? Math.min(140, ctx.measureText(m.label).width) + 10 : 8;
+      ctx.beginPath();
+      ctx.moveTo(x, y + 1); ctx.lineTo(x + wide + 4, y + 1); ctx.lineTo(x + wide, y + BEAT_H / 2);
+      ctx.lineTo(x + wide + 4, y + BEAT_H - 1); ctx.lineTo(x, y + BEAT_H - 1);
+      ctx.closePath();
+      ctx.fill();
+      if (m.label) {
+        ctx.fillStyle = markText(colour);
+        ctx.fillText(m.label, x + 4, y + BEAT_H - 4, wide - 6);
+      }
+    }
+    ctx.restore();
+  }
+
   // interaction ---------------------------------------------------------------
   snapTime(t, e, ignore) {
     if (!this.app.snap || e.shiftKey) return t;
@@ -386,6 +416,7 @@ export class Timeline {
     };
     consider(0);
     this.app.show.beats.forEach(consider);
+    for (const m of this.app.songMarks || []) consider(m.t);
     for (const tr of this.app.show.tracks) {
       for (const c of tr.clips) if (c !== ignore) { consider(c.start); consider(c.end); }
     }
@@ -556,6 +587,16 @@ function clipText(ctx, text, max) {
   if (ctx.measureText(text).width <= max) return text;
   while (text.length > 1 && ctx.measureText(text + "…").width > max) text = text.slice(0, -1);
   return text + "…";
+}
+
+// A mark's colour when none was picked (marks: named moments flagged in a song, Music editor).
+export const MARK_COLOUR = "#e53935";
+
+// Black or white, whichever reads better on a mark's colour.
+export function markText(hex) {
+  const n = parseInt(String(hex).slice(1), 16) || 0;
+  const lum = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  return lum > 150 ? "#111" : "#fff";
 }
 
 export function fmtTime(t, frac = true) {

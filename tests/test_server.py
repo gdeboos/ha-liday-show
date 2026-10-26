@@ -970,6 +970,25 @@ async def test_song_info_keeps_section_marks(client, tmp_path):
     assert "autoNotes" not in got[2] and "named" not in got[2]  # no notes to mark; "yes" isn't true
 
 
+async def test_song_marks_are_kept_when_detect_saves_without_them(client, tmp_path):
+    (tmp_path / "media" / "song.mp3").write_bytes(b"id3")
+    url = "/api/audio/info?source=media&path=song.mp3"
+    marks = [{"t": 12.5, "label": " Big hit ", "color": "#FF0000"}, {"t": 3, "label": ""}]
+    info = {"tempo": 120, "beats": [0.5], "bars": [0.5], "sections": []}
+    assert (await client.put(url, json={**info, "marks": marks})).status == 200
+    got = await (await client.get(url)).json()
+    assert got["marks"] == [{"t": 3.0, "label": ""}, {"t": 12.5, "label": "Big hit", "color": "#ff0000"}]
+    # Detecting again sends only beats and sections; the marks stay.
+    assert (await client.put(url, json={**info, "beats": [0.25]})).status == 200
+    got = await (await client.get(url)).json()
+    assert got["beats"] == [0.25] and len(got["marks"]) == 2
+    # Sending marks replaces them, and an empty list clears them.
+    assert (await client.put(url, json={**info, "marks": []})).status == 200
+    assert (await (await client.get(url)).json())["marks"] == []
+    for bad in ([{"t": -1}], [{"t": 1, "color": "red"}], [{"t": 1, "label": 5}], "x", [{"t": 1}] * 201):
+        assert (await client.put(url, json={**info, "marks": bad})).status == 400
+
+
 async def test_songs_upload_in_parts(client, tmp_path):
     song = bytes(range(256)) * 4096 * 3  # 3 MB
     url = "/api/audio/part?upload=0123456789abcdef"
