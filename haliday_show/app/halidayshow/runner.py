@@ -4,6 +4,11 @@ Every way of playing a show goes through here: the editor, automations (add-on
 stdin), the MQTT entities and playlists. A playlist plays its shows in order, each on its own
 show speaker, with a pause between them, round and round until it's stopped. Playing or stopping
 anything else ends it.
+
+Visitors on the public page add requests (a show, or a playlist to play through once) to a queue.
+A request plays once nothing else is on; during a playlist it slots in after the show that's on, and
+the playlist carries on afterwards. Stopping from the editor, an automation or the speaker clears
+the queue.
 """
 import asyncio
 import logging
@@ -53,6 +58,10 @@ class Runner:
         # Play, stop and play-a-playlist one at a time, so two at once can't leave a playlist
         # running that nothing tracks. The playlist's own task never takes it.
         self._control = asyncio.Lock()
+        self.requests: list[dict] = []  # visitors' requests waiting: {id, ticket, kind, ref, name, shows, gap}
+        self.public_now: dict | None = None  # the visitor's request playing
+        self._public: asyncio.Task | None = None
+        self._durations: dict[str, tuple[float, float]] = {}  # show id -> (baked file's mtime, seconds)
 
     def status(self) -> dict:
         st = self.player.status()
@@ -91,6 +100,7 @@ class Runner:
                             or self.storage.load_settings().get("show_speaker") or None)
         await self._stop()
         self.started += 1
+        self.speaker_stopped = False
         devices = self.storage.devices_by_id()
         if not media_player:
             await self.player.play(show_id, baked, devices, position=position, offset=offset)
@@ -186,6 +196,7 @@ class Runner:
             pass
 
     async def stop(self):
+        self.requests.clear()
         async with self._control:
             await self._end_playlist()
             async with self._lock:
@@ -207,10 +218,13 @@ class Runner:
         """Stop the playlist once the show that's on has finished (now, if it's between shows)."""
         if not self._playlist or self._playlist.done():
             return
-        if self.player.playing:
+        if self.player.playing or self.public_now:
             self.finishing = True
-        else:
-            await self.stop()
+        else:  # between shows; visitors' requests still waiting play afterwards
+            async with self._control:
+                await self._end_playlist()
+                async with self._lock:
+                    await self._stop()
 
     async def _run_playlist(self, playlist: dict):
         gap = float(playlist.get("gap", 0))
@@ -231,11 +245,21 @@ class Runner:
                         await asyncio.sleep(0.25)
                     if self.speaker_stopped:  # paused or stopped on the speaker: stop the playlist too
                         log.info("playlist %s stopped with its speaker", playlist.get("name"))
+                        self.requests.clear()
                         return
                     if self.finishing:
                         log.info("playlist %s finished its last show", playlist.get("name"))
                         return
                     await asyncio.sleep(max(gap, 0.1))
+                    # Visitors' requests slot in here; the playlist carries on with its next show.
+                    while self.requests and not self.finishing:
+                        await self._play_request(self.requests.pop(0))
+                        if self.speaker_stopped:
+                            self.requests.clear()
+                            return
+                        if self.finishing:  # its end time came during a visitor's show
+                            return
+                        await asyncio.sleep(max(gap, 0.1))
                 if not played:  # every show failed; don't spin
                     log.error("playlist %s has nothing it can play; stopping", playlist.get("name"))
                     return
@@ -269,3 +293,95 @@ class Runner:
             except HAError as e:
                 log.warning("couldn't stop %s: %s", self.media_player, e)
             self.media_player = None
+
+    # visitors' requests ---------------------------------------------------------------
+    def _playlist_running(self) -> bool:
+        return bool(self._playlist and not self._playlist.done())
+
+    def add_request(self, request: dict):
+        """Queue a visitor's request: {id, ticket, kind, ref, name, shows: [show ids], gap}."""
+        self.requests.append(request)
+        if not self._public or self._public.done():
+            self._public = asyncio.create_task(self._run_requests())
+
+    def cancel_request(self, request_id: str, ticket: str) -> bool:
+        before = len(self.requests)
+        self.requests = [r for r in self.requests if not (r["id"] == request_id and r["ticket"] == ticket)]
+        return len(self.requests) < before
+
+    def clear_requests(self):
+        self.requests.clear()
+
+    async def _run_requests(self):
+        """Play visitors' requests whenever nothing else is on. A playlist plays them itself."""
+        try:
+            while self.requests:
+                if self._playlist_running() or self.player.playing or self._lock.locked():
+                    await asyncio.sleep(0.25)
+                    continue
+                await self._play_request(self.requests.pop(0))
+                if self.speaker_stopped:  # paused or stopped on the speaker: the house wants quiet
+                    self.requests.clear()
+        except asyncio.CancelledError:
+            pass
+
+    async def _play_request(self, request: dict):
+        """Play a request's shows once each. Anything else started meanwhile ends it."""
+        self.public_now = request
+        try:
+            for k, show_id in enumerate(request["shows"]):
+                if k:
+                    await asyncio.sleep(max(float(request.get("gap", 0)), 0.1))
+                try:
+                    async with self._lock:
+                        await self._play(show_id, use_show_speaker=True)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:  # a damaged or missing show is skipped
+                    log.warning("visitor request %s: skipping %s: %s", request.get("name"), show_id, e)
+                    continue
+                mine = self.started
+                while self.player.playing and self.started == mine:
+                    await asyncio.sleep(0.25)
+                if self.started != mine or self.speaker_stopped:
+                    return
+        finally:
+            self.public_now = None
+
+    def show_duration(self, show_id: str) -> float:
+        """How long a saved show lasts, in seconds (0 if it can't be read)."""
+        path = self.storage.shows_dir / f"{show_id}.gshow"
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            return 0.0
+        known = self._durations.get(show_id)
+        if known and known[0] == mtime:
+            return known[1]
+        try:
+            seconds = float(decode(path.read_bytes()).duration)
+        except Exception:
+            seconds = 0.0
+        self._durations[show_id] = (mtime, seconds)
+        return seconds
+
+    def request_seconds(self, request: dict) -> float:
+        shows = request["shows"]
+        return sum(self.show_duration(s) for s in shows) + max(len(shows) - 1, 0) * float(request.get("gap", 0))
+
+    def queue_waits(self) -> list[float]:
+        """Roughly how many seconds until each waiting request starts."""
+        now_left = 0.0
+        if self.player.playing and self.player.baked:
+            now_left = max(self.player.baked.duration - self.player.position(), 0)
+        if self.public_now:  # the rest of a visitor's playlist still to come
+            shows = self.public_now["shows"]
+            if self.player.show_id in shows:
+                after = shows[shows.index(self.player.show_id) + 1:]
+                now_left += sum(self.show_duration(s) for s in after)
+        gap = float((self.playlist or {}).get("gap", 0)) if self._playlist_running() else 0.0
+        waits, t = [], now_left + gap
+        for r in self.requests:
+            waits.append(round(t))
+            t += self.request_seconds(r) + gap
+        return waits

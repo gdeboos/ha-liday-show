@@ -321,3 +321,96 @@ async def test_each_show_start_is_counted_so_a_replay_is_told_apart(runner):
     first = runner.status()["started"]
     await runner.play("party")
     assert runner.status()["started"] == first + 1
+
+
+# visitors' requests from the public page ----------------------------------------------------------
+def _request(rid, shows, ticket="t" * 16, gap=0):
+    return {"id": rid, "ticket": ticket, "kind": "show", "ref": shows[0], "name": rid, "shows": shows, "gap": gap}
+
+
+async def _until(check, tries=100):
+    for _ in range(tries):
+        if check():
+            return True
+        await asyncio.sleep(0.05)
+    return False
+
+
+async def test_a_visitors_request_plays_straight_away_when_nothing_is_on(runner):
+    _short_show(runner.storage, "one", frames=20)
+    runner.add_request(_request("r1", ["one"]))
+    assert await _until(lambda: runner.public_now is not None)
+    assert runner.player.show_id == "one" and not runner.requests
+    assert await _until(lambda: runner.public_now is None)
+
+
+async def test_requests_slot_into_a_playlist_which_then_carries_on(runner, monkeypatch):
+    for s in ("one", "two", "vis"):
+        _short_show(runner.storage, s, frames=8)
+    started = []
+    real_play = runner.player.play
+
+    async def play(show_id, *a, **kw):
+        started.append(show_id)
+        await real_play(show_id, *a, **kw)
+    monkeypatch.setattr(runner.player, "play", play)
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one", "two"], "gap": 0})
+    await _until(lambda: started)
+    runner.add_request(_request("r1", ["vis"]))
+    assert await _until(lambda: len(started) >= 3)
+    assert started[:3] == ["one", "vis", "two"]
+    assert runner.status()["playlist"]["id"] == "night"  # the schedule still sees its playlist
+
+
+async def test_a_visitors_playlist_plays_through_once(runner, monkeypatch):
+    for s in ("a1", "a2"):
+        _short_show(runner.storage, s, frames=4)
+    started = []
+    real_play = runner.player.play
+
+    async def play(show_id, *a, **kw):
+        started.append(show_id)
+        await real_play(show_id, *a, **kw)
+    monkeypatch.setattr(runner.player, "play", play)
+    runner.add_request(_request("r1", ["a1", "a2"]))
+    assert await _until(lambda: runner.public_now is None and len(started) == 2)
+    await asyncio.sleep(0.3)
+    assert started == ["a1", "a2"]
+
+
+async def test_waits_add_up_and_stop_clears_the_queue(runner):
+    _short_show(runner.storage, "long", frames=400)  # 10 s
+    _short_show(runner.storage, "mid", frames=2400)  # 60 s
+    await runner.play("long")
+    runner.add_request(_request("r1", ["mid"]))
+    runner.add_request(_request("r2", ["mid"]))
+    waits = runner.queue_waits()
+    assert 8 <= waits[0] <= 10 and 68 <= waits[1] <= 70
+    assert runner.cancel_request("r2", "t" * 16) and not runner.cancel_request("r1", "x" * 16)
+    await runner.stop()
+    assert runner.requests == []
+
+
+async def test_the_schedule_ending_keeps_visitors_waiting(runner):
+    _short_show(runner.storage, "one", frames=4)
+    _short_show(runner.storage, "vis", frames=4)
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one"], "gap": 5})
+    await asyncio.sleep(0.3)  # in the pause after "one"
+    runner.requests.append(_request("r1", ["vis"]))  # waiting, as if it came in during the pause
+    await runner.finish_playlist()
+    assert runner.status()["playlist"] is None and runner.requests
+
+
+async def test_the_scheduler_lets_a_visitors_show_finish(runner):
+    from halidayshow.schedule import Scheduler
+
+    _short_show(runner.storage, "one", frames=400)
+    _short_show(runner.storage, "vis", frames=400)
+    _save_playlists(runner.storage, [{"id": "night", "name": "Night", "shows": ["one"], "gap": 0,
+                                      "schedule": {"on": True, "start": "00:00", "end": "23:59",
+                                                   "days": list(range(7)), "from": "", "to": ""}}])
+    runner.add_request(_request("r1", ["vis"]))
+    assert await _until(lambda: runner.public_now is not None)
+    sched = Scheduler(runner.storage, runner)
+    await sched.tick(datetime(2026, 12, 1, 18, 0))
+    assert runner.status()["playlist"] is None and runner.player.show_id == "vis"

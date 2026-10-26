@@ -1,0 +1,37 @@
+/* The same colours and type as HA-liday Show's editor. */
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --text: #1c1f24; --muted: #5f6672; --line: #d9dce1;
+  --accent: #0277bd; --accent-text: #ffffff; --danger: #c62828; --ok: #13733a; --warn: #a84d08;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111418; --panel: #1b1f25; --text: #e6e8eb; --muted: #9aa3ad; --line: #2f353d;
+    --danger: #f2786d; --ok: #4ade80; --warn: #fbbf24; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.pp { max-width: 32em; margin: 0 auto; padding: 20px 16px 40px; }
+h1 { font-size: 24px; margin: 0 0 12px; }
+h2 { font-size: 18px; margin: 20px 0 2px; }
+.pp-hint { color: var(--muted); margin: 2px 0 10px; font-size: 14px; }
+.pp-now { font-weight: 600; margin: 0 0 12px; }
+.pp-big { font-size: 20px; font-weight: 600; margin: 0; }
+.pp-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.pp-list { display: flex; flex-direction: column; gap: 8px; }
+.pp-row { display: flex; align-items: center; gap: 12px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.pp-yours { border-color: var(--accent); }
+.pp-text { flex: 1; min-width: 0; }
+.pp-name { font-weight: 600; overflow-wrap: anywhere; }
+.pp-row .pp-hint { margin: 0; }
+.pp-block { color: var(--warn); font-weight: 600; margin: 6px 0 10px; }
+.pp-message { color: var(--danger); font-weight: 600; margin: 10px 0; }
+button { font: inherit; min-height: 44px; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+  background: var(--panel); color: var(--text); border: 1px solid var(--line); flex: none; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

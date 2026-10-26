@@ -14,7 +14,8 @@ time the show that's on finishes and the playlist stops. If you stop it or play 
 the meantime, it leaves it be until the next start. Only one playlist plays at a time: where times
 overlap, the one higher in the list goes first, and another starts once it's done. After a restart
 during the scheduled time, or turning a schedule on during its time, the playlist starts straight
-away; changing the times during it just moves its end. Times are the local clock as written, so on the
+away; changing the times during it just moves its end. A visitor's show from the public page that's
+playing at the start time finishes first. Times are the local clock as written, so on the
 night the clocks change a stretch over 01:00-02:00 runs an hour longer or shorter.
 """
 import asyncio
@@ -157,7 +158,9 @@ class Scheduler:
                 log.info("schedule: %s's time is up; finishing the show that's on", pid)
                 self.running = None
                 await self.runner.finish_playlist()
-        if self.running or self.runner.finishing:  # let the last show end before the next playlist
+        # Let the last show end before the next playlist, and never cut off a visitor's show: the
+        # playlist starts at the next tick after it.
+        if self.running or self.runner.finishing or self.runner.public_now:
             return
         for p in found:
             w = windows.get(p["id"])

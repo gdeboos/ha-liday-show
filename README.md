@@ -173,6 +173,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Copy and paste effects between lights, play and loop just a region, undo and redo
 - Playlists: several shows back to back, round and round, by hand or on a schedule (times or
   sunset, days and dates), with a Show player page to play the music on any computer with speakers
+- Public page: people passing by pick a show on their phone and it joins a queue, slotting in between
+  your playlist's shows, with one request per phone
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
@@ -295,7 +297,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/playlists.py            Saved playlists: checking them and finding one by name
   app/halidayshow/schedule.py             Starts and stops playlists at their scheduled times
   app/halidayshow/sun.py                  Sunset times, for playlists that start at sunset
-  app/halidayshow/runner.py               Starts shows on a speaker or for the browser, and plays playlists
+  app/halidayshow/runner.py               Starts shows on a speaker or for the browser, plays playlists and visitors' requests
+  app/halidayshow/public.py               The public page on its own port: visitors' choices and their queue
   app/halidayshow/scenes.py               Govee scene library lookup (experimental scenes)
   app/halidayshow/storage.py              Shows, settings, songs and the house photo on disk
   app/halidayshow/backup.py               Export, import and start afresh, with copies kept first
@@ -308,6 +311,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/static/                 The editor (plain ES modules, no build step)
     index.html, style.css               Page and styles
     player.html                         The Show player page
+    public/                             The public page visitors see (only file served on its port)
     js/app.js                           Editor state, panels, inspector and playback
     js/effects.js                       Effect definitions, House lane effects and the baker
     js/timeline.js                      Timeline canvas: waveform, clips, selection, zoom
@@ -319,6 +323,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
     js/schedule.js                      A playlist's schedule in words
+    js/publicsettings.js                Setup → Settings → Public page: its address and queue in words
     js/sectionnotes.js                  Notes for song sections, from what each sounds like
     js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music editor: cutting, trimming and splicing songs

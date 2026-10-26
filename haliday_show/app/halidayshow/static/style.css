@@ -704,3 +704,11 @@ a.button { text-decoration: none; }
 .busy-dialog .busy-row { display: flex; gap: 12px; align-items: center; font-weight: 600; margin: 0 0 8px; }
 .busy-dialog .busy-row .spinner { flex: none; width: 1.4em; height: 1.4em; border-width: 3px; color: var(--accent); }
 .busy-dialog .insp-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+
+/* Setup → Settings → Public page */
+.pub-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 720px) { .pub-cols { grid-template-columns: 1fr; } }
+.pub-head { font-weight: 600; margin: 8px 0 4px; }
+.pub-list { display: flex; flex-direction: column; gap: 2px; max-height: 16em; overflow: auto; }
+.pub-list label { display: flex; gap: 6px; align-items: center; min-height: 24px; }
+#pub-per-phone, #pub-queue { width: 4.5em; margin-left: 6px; }

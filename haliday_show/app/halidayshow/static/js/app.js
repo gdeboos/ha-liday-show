@@ -22,6 +22,7 @@ import { MusicEditor } from "./music.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
+import { addressText, queueText } from "./publicsettings.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
@@ -3585,6 +3586,93 @@ function wireData() {
   $("btn-export").addEventListener("click", () => status("Exporting… check your downloads"));
 }
 
+// Setup → Settings → Public page: what visitors can pick from the public page, and its queue.
+let publicView = null;
+
+function renderPublicQueue(view) {
+  publicView = view;
+  $("pub-now").textContent = queueText(view);
+  $("pub-clear").hidden = !view.waiting.length;
+  $("pub-address").textContent = addressText(view, location.hostname);
+}
+
+async function loadPublic() {
+  let view, shows, lists;
+  try {
+    [view, shows, lists] = await Promise.all([api("api/public"), api("api/shows"), api("api/playlists")]);
+  } catch (e) {
+    status(`Couldn't load the public page settings: ${e.message}`, true, "public");
+    return;
+  }
+  $("pub-on").checked = view.on;
+  $("pub-per-phone").value = view.per_phone;
+  $("pub-queue").value = view.queue;
+  const ticks = (box, items, chosen, empty) => {
+    const rows = items.map((it) => {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.value = it.id;
+      input.checked = chosen.includes(it.id);
+      label.append(input, ` ${it.name}`);
+      return label;
+    });
+    if (!rows.length) {
+      const p = document.createElement("p");
+      p.className = "hint";
+      p.textContent = empty;
+      rows.push(p);
+    }
+    box.replaceChildren(...rows);
+  };
+  ticks($("pub-shows"), shows.filter((s) => s.baked).sort((a, b) => a.name.localeCompare(b.name)), view.shows,
+    "Save a show in the editor first.");
+  ticks($("pub-playlists"), lists, view.playlists, "No playlists yet. Make one under Library → Playlists.");
+  renderPublicQueue(view);
+}
+
+async function savePublic() {
+  const ticked = (id) => [...$(id).querySelectorAll("input:checked")].map((i) => i.value);
+  // Ticks for shows or playlists that aren't listed here (not saved yet, say) are kept.
+  const listed = (id) => new Set([...$(id).querySelectorAll("input")].map((i) => i.value));
+  const keep = (key, id) => (publicView?.[key] || []).filter((x) => !listed(id).has(x));
+  const body = {
+    on: $("pub-on").checked,
+    shows: [...ticked("pub-shows"), ...keep("shows", "pub-shows")],
+    playlists: [...ticked("pub-playlists"), ...keep("playlists", "pub-playlists")],
+    per_phone: Number($("pub-per-phone").value) || 1,
+    queue: Number($("pub-queue").value) || 5,
+  };
+  try {
+    const view = await api("api/public", { method: "PUT", json: body });
+    $("pub-per-phone").value = view.per_phone;
+    $("pub-queue").value = view.queue;
+    renderPublicQueue(view);
+    status("Public page saved", "saved", "public");
+  } catch (e) {
+    status(`Couldn't save the public page settings: ${e.message}`, true, "public");
+  }
+}
+
+function wirePublic() {
+  $("public-card").addEventListener("change", (e) => {
+    if (e.target.matches("input")) savePublic();
+  });
+  $("pub-clear").addEventListener("click", async () => {
+    try {
+      renderPublicQueue(await api("api/public/clear", { method: "POST" }));
+      status("Visitors' queue cleared");
+    } catch (e) {
+      status(`Couldn't clear the queue: ${e.message}`, true, "public");
+    }
+  });
+  // Keep the queue up to date while you're looking at it.
+  setInterval(async () => {
+    if (document.hidden || $("view-settings")?.hidden !== false || !publicView) return;
+    try { renderPublicQueue(await api("api/public")); } catch { /* offline for a moment */ }
+  }, 5000);
+}
+
 // setup guide ----------------------------------------------------------------
 // One window that walks a new user from nothing to a show. Each step uses the add-on's own windows
 // (Add a light, Find, Add a speaker), so there's one way of doing each thing.
@@ -5717,7 +5805,7 @@ function showView(view, { push = true } = {}) {
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
-  if (page === "settings") renderCopies();
+  if (page === "settings") { renderCopies(); loadPublic(); }
   if (page === "playlists") loadPlaylists(); else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); }
   rememberPage(page, push);
@@ -6106,6 +6194,7 @@ async function init() {
   wireHouse();
   wireWizard();
   wireData();
+  wirePublic();
   const layout = new Layout(() => { layoutPreview(); timeline.layout(); });
   $("btn-reset-layout").addEventListener("click", () => layout.reset());
   $("exp-labs").checked = labsOn();

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.151
+
+- New: a **Public page**, so people passing by can start a show from their phone. Turn it on under
+  **Setup → Settings → Public page** with **Let visitors start shows**, and tick the shows and playlists
+  they can pick.
+- Visitors see your ticked shows and playlists, each with a **▶ Start** button. If nothing's on, theirs
+  starts straight away. If something is, they're told where they are in the queue and roughly how long
+  it'll be ("You're next, starting in about 2 minutes").
+- During one of your playlists, a visitor's pick plays after the show that's on, then your playlist
+  carries on. A scheduled playlist that's due to start waits for a visitor's show to finish. A playlist
+  a visitor picks plays through once.
+- Each phone can have one show waiting, and up to 5 can wait in all. Change both with **Requests per
+  phone** and **Queue length**. **Clear the queue** empties it, and so does pressing **■ Stop**.
+- The music plays on the show's speaker, the same as your scheduled shows.
+- For now, try it on your home Wi-Fi: the card shows the address to open on your phone. Getting it onto
+  the internet for a QR code outside, opening hours and a printable sign come in the next releases.
+
 ## 0.2.150
 
 - **Suggest cuts** in the **Music editor** now opens in its own window, so you don't have to go back and
