@@ -422,6 +422,21 @@ export function analyse(samples, rate) {
   };
 }
 
+// One vector per bar, for telling which bars sound alike (cut suggestions, cutfinder.js): harmony,
+// timbre and loudness, z-scored across the song as findSections does. bars: bar start times in
+// seconds; the last bar runs to the end.
+export function barVectors(samples, rate, bars) {
+  if (!bars.length) return [];
+  const f = features(samples, rate);
+  const n = f.onset.length;
+  const at = (t) => Math.min(n - 1, Math.max(0, Math.round(t * f.fps)));
+  const raw = bars.map((t, i) => {
+    const a = at(t), b = Math.max(a + 1, i + 1 < bars.length ? at(bars[i + 1]) : n);
+    return [...unit(average(f.chroma, a, b)), ...average(f.timbre, a, b), meanOf(f.loud, a, b) / 10];
+  });
+  return zscore(raw).map((v) => Array.from(unit(v)));
+}
+
 // Measures given sections (yours, after editing them) from the song's samples.
 export function measure(samples, rate, sections) {
   return measureSections(features(samples, rate), sections);
@@ -430,11 +445,20 @@ export function measure(samples, rate, sections) {
 // Runs analyse() in a worker so the page stays responsive (or, given sections, measures just them);
 // falls back to the main thread.
 export function analyseInWorker(samples, rate, sections = null) {
+  return inWorker({ samples, rate, sections }, () => (sections ? measure(samples, rate, sections) : analyse(samples, rate)));
+}
+
+// barVectors() in a worker.
+export function barVectorsInWorker(samples, rate, bars) {
+  return inWorker({ samples, rate, bars }, () => barVectors(samples, rate, bars));
+}
+
+function inWorker(message, here) {
   let worker;
   try {
     worker = new Worker(new URL("./analysis-worker.js", import.meta.url), { type: "module" });
   } catch {
-    return Promise.resolve(sections ? measure(samples, rate, sections) : analyse(samples, rate));
+    return Promise.resolve(here());
   }
   return new Promise((resolve, reject) => {
     worker.onmessage = (e) => {
@@ -446,6 +470,6 @@ export function analyseInWorker(samples, rate, sections = null) {
       worker.terminate();
       reject(new Error(e.message || "the analysis stopped"));
     };
-    worker.postMessage({ samples, rate, sections }, [samples.buffer]);
+    worker.postMessage(message, [message.samples.buffer]);
   });
 }

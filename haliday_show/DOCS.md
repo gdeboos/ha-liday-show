@@ -560,6 +560,20 @@ Space plays, Delete cuts the selection, and Ctrl+Z undoes. Saving a song without
 way to get a WAV copy of it that plays on every speaker. If you close the page with an edit you haven't
 saved, you're asked first.
 
+#### Suggest cuts
+
+To make the song (or one part of it) shorter without hearing the join, use **Suggest cuts** in the
+**Edit** card. Pick **the whole song** or a section under **Shorten**, type how long you'd like it **to
+about** (as 1:30 or 90; it starts at half a section or three quarters of the song), and press **✂ Find
+cuts**. You get up to three options. Each takes out whole bars, in 4- and 8-bar phrases where it can,
+where the music either side of the join matches: a loop that repeats, or a verse and chorus that come
+round again. For the whole song an option can be several cuts, chosen from parts that are heard again
+elsewhere. Each says how much shorter it makes things and how well its joins match (**smooth join**,
+**good join** or **join may be heard**). Press a cut's **▶** to hear a few seconds either side of its
+join (what it takes out is shown in red), then **Use** to make the cut; **Undo** takes it back. A section
+you've picked in the lane has a **✂ Shorten…** button that sets this up for that section. Suggestions
+follow the song's bars, so press **Detect** first.
+
 ### Detecting in the Music editor
 
 **Detect** in the Music editor finds a song's beats, bars and sections and keeps them with the song file,
@@ -572,6 +586,7 @@ song. Each show keeps its own copy, so moving beats in one show doesn't change t
 
 In the Music editor, the lane above the waveform shows each section in its colour.
 Click one to rename it or pick its colour (every section with the same name changes colour together),
+**✂ Shorten…** it (see [Suggest cuts](#suggest-cuts)),
 **Split at playhead**, **Merge with next** or **Delete** it, and drag the line between two sections to
 move it. Changes save with the song; a show that already uses the song picks them up with **From song**.
 Give a section **Notes** to tell **Describe it** what happens there or how you'd like it lit, such as
