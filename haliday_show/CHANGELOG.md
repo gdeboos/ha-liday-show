@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.145
+
+- The **Music editor** is tidier. **File name** and **Save as new file** now sit at the top, beside the
+  song's name and **← All songs**, as **Save** does in the Show editor, so they no longer move down the
+  page when you open a section. **Unsaved edits** shows next to them until you save.
+- The tips that sat above the song (and the long note beside the old save button) are now under
+  **How to…**, and the **From** and **to** boxes show a dash until you select something.
+
 ## 0.2.144
 
 - **+ New show** no longer offers **Generate a first draft**. It's now **Start empty** or, with an AI set

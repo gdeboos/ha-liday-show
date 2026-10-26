@@ -217,6 +217,8 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .music-stage { width: 100%; border-radius: 6px; overflow: hidden; }
 .music-stage canvas { display: block; touch-action: none; cursor: text; }
 .music .toolbar + .toolbar { margin-top: 8px; }
+.music-head { justify-content: space-between; margin-bottom: 4px; }
+.music-head .save-state { min-width: 0; }
 .music-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .music-sec-notes { flex-basis: 100%; }
 .music-sec-notes input { flex: 1; }
