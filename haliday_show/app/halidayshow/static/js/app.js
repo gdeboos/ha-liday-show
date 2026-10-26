@@ -36,7 +36,7 @@ import {
   MAX_SHOWS as PLAYLIST_MAX, bakeKey, blockLabel as playlistBlockLabel, blockShow, dropIndex, fits as fitsPlaylist, inserted,
   itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
 } from "./playlisteditor.js";
-import { filterRows, songKey, songRows } from "./songlist.js";
+import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
 import { PART, sendParts, uploadSong } from "./upload.js";
@@ -5179,15 +5179,20 @@ async function renderSongsPage() {
   renderArchivedSongs();
 }
 
+// Each original song as one card, with the edits made from it and its drafts inside (songlist.js).
+const SONG_SHOWS = { all: "All", originals: "Originals", edits: "Edits", drafts: "Drafts" };
 function drawSongRows() {
-  const rows = filterRows(songRowsCache, $("song-filter").value);
+  const showing = prefs.get("songShow", "all") in SONG_SHOWS ? prefs.get("songShow", "all") : "all";
+  for (const b of document.querySelectorAll("#song-show button")) b.setAttribute("aria-pressed", String(b.dataset.show === showing));
+  const everything = songFamilies(songRowsCache, songDrafts);
+  const fams = filterFamilies(everything, showing, $("song-filter").value);
   const box = $("songs-page-list");
   songSeen?.disconnect();
-  const all = `${songRowsCache.length}${songsMore ? "+" : ""}`;
+  const filtered = showing !== "all" || $("song-filter").value.trim();
   $("song-count").textContent = !songRowsCache.length ? ""
-    : (rows.length === songRowsCache.length ? `${all} song${rows.length === 1 && !songsMore ? "" : "s"}` : `${rows.length} of ${all}`)
+    : (filtered ? `${familyCount(fams)} shown, of ${familyCount(everything)}` : familyCount(everything))
       + (songsMore ? ". Only the first 2000 songs in your media folder are listed." : "");
-  if (!rows.length) {
+  if (!fams.length) {
     box.removeAttribute("role");
     box.innerHTML = songRowsCache.length
       ? `<p class="hint">No songs match that.</p>`
@@ -5196,7 +5201,7 @@ function drawSongRows() {
   }
   box.setAttribute("role", "list");
   box.setAttribute("aria-label", "Your songs");
-  box.replaceChildren(...rows.map(songRow));
+  box.replaceChildren(...fams.map(songFamilyCard));
   // Drafts whose song has been archived, deleted or moved, so they can still be found and deleted.
   const keys = new Set(songRowsCache.map((r) => r.key));
   const lost = songDrafts.filter((d) => d.base && !keys.has(songKey(d.base)));
@@ -5301,17 +5306,99 @@ async function deleteDraft(d) {
   } catch (e) { status(`Couldn't delete the draft: ${e.message}`, true, "songs"); }
 }
 
+function songFamilyCard(f) {
+  const card = document.createElement("div");
+  card.className = "song-family";
+  card.setAttribute("role", "listitem");
+  card.append(songRow(f.original));
+  if (f.edits.length || f.drafts.length) {
+    const kids = document.createElement("div");
+    kids.className = "song-kids";
+    kids.setAttribute("role", "group");
+    kids.setAttribute("aria-label", `Edits of ${f.original.name}`);
+    const h = document.createElement("div");
+    h.className = "song-kids-head";
+    h.textContent = "Edits of this song";
+    kids.append(h, ...f.edits.map(editKid), ...f.drafts.map(draftKid));
+    card.append(kids);
+  }
+  return card;
+}
+
+// One edit or draft under its song: a mark, a name and badge, a line or two of detail, and buttons.
+function songKid(kind, icon, name, badge, lines, actions) {
+  const row = document.createElement("div");
+  row.className = `song-kid ${kind}`;
+  const mark = document.createElement("span");
+  mark.className = "song-kid-mark";
+  mark.setAttribute("aria-hidden", "true");
+  mark.textContent = icon;
+  const main = document.createElement("div");
+  main.className = "show-main";
+  const head = document.createElement("div");
+  const b = document.createElement("b");
+  b.className = "show-name";
+  b.textContent = name;
+  const tag = document.createElement("span");
+  tag.className = `song-badge ${kind}`;
+  tag.textContent = badge;
+  head.append(b, tag);
+  main.append(head, ...lines);
+  const acts = document.createElement("div");
+  acts.className = "group show-actions";
+  acts.append(...actions);
+  row.append(mark, main, acts);
+  return row;
+}
+
+function editKid(e) {
+  const r = e.row, d = e.draft;
+  const details = document.createElement("div");
+  details.className = "hint";
+  const len = document.createElement("span");
+  len.textContent = "…";
+  details.append(len, ` · ${r.found} · `, d ? `made from the draft "${d.name}"` : "made before drafts, so Edit starts a new one");
+  const uses = document.createElement("div");
+  uses.className = "hint";
+  uses.textContent = r.uses;
+  const edit = d ? button("Edit draft", () => openDraft(d.id), "primary") : button("Edit", () => editSong(r.ref), "primary");
+  edit.setAttribute("aria-label", d ? `Edit the draft ${d.name}, which made ${r.name}` : `Edit ${r.name} in the Music editor`);
+  const rm = button("Remove…", () => openRemoveSong(r), "ghost");
+  rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
+  rm.disabled = !r.own;
+  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, rm]);
+  row.title = r.file;
+  row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
+  songSeen ? songSeen.observe(row) : row._songLength();
+  return row;
+}
+
+function draftKid(d) {
+  const details = document.createElement("div");
+  details.className = "hint";
+  details.textContent = `${d.length ? `${fmtTime(d.length, false)} · ` : ""}shows can use it once you press Make song file`;
+  const open = button("Open", () => openDraft(d.id), "primary");
+  open.setAttribute("aria-label", `Open the draft ${d.name}`);
+  const rename = button("Rename…", () => renameDraft(d), "ghost");
+  rename.setAttribute("aria-label", `Rename the draft ${d.name}`);
+  const del = button("Delete…", () => deleteDraft(d), "ghost danger");
+  del.setAttribute("aria-label", `Delete the draft ${d.name}`);
+  return songKid("draft", "✎", d.name, "Draft · no file yet", [details], [open, rename, del]);
+}
+
 function songRow(r) {
   const row = document.createElement("div");
-  row.className = "show-row has-drafts-row";
-  row.setAttribute("role", "listitem");
+  row.className = "show-row";
   const main = document.createElement("div");
   main.className = "show-main";
   const head = document.createElement("div");
   const name = document.createElement("b");
   name.className = "show-name";
   name.textContent = r.name;
-  head.append(name);
+  const orig = document.createElement("span");
+  orig.className = "song-badge original";
+  orig.textContent = "Original";
+  head.append(name, orig);
   if (r.key === prefs.get("lastSong", "")) {
     const badge = document.createElement("span");
     badge.className = "show-last";
@@ -5350,8 +5437,6 @@ function songRow(r) {
   }
   actions.append(rm);
   row.append(main, actions);
-  const drafts = draftList(r);
-  if (drafts) row.append(drafts);
   // The length is read once the row is on screen; a redraw starts over with new rows.
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
@@ -7227,6 +7312,9 @@ function wire() {
   });
   $("btn-save").addEventListener("click", saveClicked);
   $("song-filter").addEventListener("input", drawSongRows);
+  for (const b of document.querySelectorAll("#song-show button")) {
+    b.addEventListener("click", () => { prefs.set("songShow", b.dataset.show); drawSongRows(); });
+  }
   $("btn-add-song").addEventListener("click", openAddSong);
   $("as-form").addEventListener("submit", asSubmit);
   $("as-back").addEventListener("click", () => asStep(1));

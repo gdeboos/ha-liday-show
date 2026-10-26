@@ -529,7 +529,20 @@ players can play them. For a lights-only show, choose **No song, lights only** a
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
 tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
 list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Remove…** archives
-or deletes one. A song's [drafts](#drafts) are listed under it. The song you last opened in the Music editor has a **Last edited** badge.
+or deletes one. The song you last opened in the Music editor has a **Last edited** badge.
+
+Each song you added is one card, marked **Original**. Inside it, under **Edits of this song**:
+
+- **✂ Edit · song file** (purple): a song file made in the Music editor from this song, with its length,
+  the shows that use it and the [draft](#drafts) it was made from. **Edit draft** reopens that draft;
+  **Remove…** archives or deletes the file (the draft stays). An edit of an edit sits under the first
+  song. Edits made before drafts existed (named "… (edit)") are found by their name; **Edit** on one
+  starts a new draft.
+- **✎ Draft · no file yet** (amber, dashed): a draft that hasn't made a song file, so shows can't use
+  it yet. **Open**, **Rename…** or **Delete…** it.
+
+**All**, **Originals**, **Edits** and **Drafts**, beside **Find**, show just those, and the count says
+how many songs, edits and drafts there are.
 
 **+ Add a song**, under the list, opens a short window:
 

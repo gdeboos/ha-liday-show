@@ -579,12 +579,14 @@
 </main>
 <main id="view-songs" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Songs</h2>
-  <p class="hint">Every song in your songs folder, and which shows use it. <b>Edit</b> opens a song in the
-    Music editor.</p>
+  <p class="hint">Every song in your songs folder, each with the edits made from it in the Music editor (✂) and its drafts (✎),
+    and which shows use them. <b>Edit</b> opens a song in the Music editor.</p>
   <!-- One list of songs, moved between here and Your songs in the Music editor, whichever is showing. -->
   <div id="songs-block">
     <div class="group song-tools">
       <label>Find <input id="song-filter" type="search" placeholder="Name, folder or show" autocomplete="off"></label>
+      <span id="song-show" class="seg-buttons" role="group" aria-label="Show">
+        <button type="button" data-show="all">All</button><button type="button" data-show="originals">Originals</button><button type="button" data-show="edits">Edits</button><button type="button" data-show="drafts">Drafts</button></span>
       <span id="song-count" class="hint" aria-live="polite"></span>
     </div>
     <div id="songs-page-list" class="show-list"></div>
