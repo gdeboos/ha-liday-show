@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.164
+
+- **Suggest cuts** in the **Music editor** asks the AI (if you've set one up) which option works best
+  musically. The options appear straight away so you can listen meanwhile; when it answers, its choice
+  is marked **AI's pick** and each option gets a short reason, such as "Drops the repeated second
+  verse; keeps the 1:12 crash". The options stay where they are. It uses the song's name, your section names and notes and your
+  marks, so it avoids cutting moments you've marked. Without an AI, nothing changes.
+
 ## 0.2.163
 
 - On the **Public page** tab, **+ Add** no longer offers a playlist whose shows are all archived (or
