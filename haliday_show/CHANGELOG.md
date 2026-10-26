@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.173
+
+- New **Opening hours** card on the **Public page** tab. Tick **Only open at set times**, then pick
+  **From** (a time, or sunset plus or minus some minutes), **until** and the days. Underneath, it
+  says whether the page is open now or when it next opens.
+- Outside those hours, visitors see when to come back, such as "Shows start at 5pm. Come back then!"
+  or "Shows start tomorrow at 4:32pm". The shows are still listed, with no **▶ Start** buttons, and
+  their phones aren't asked for their location until it opens.
+- Anyone already waiting in the queue at closing time still gets their show.
+
 ## 0.2.172
 
 - The user guide's public page section now follows the **Public page** tab part by part, so it's

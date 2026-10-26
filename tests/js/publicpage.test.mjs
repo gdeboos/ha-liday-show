@@ -79,3 +79,18 @@ test("the footer link says your words, or the site's name", async () => {
   assert.equal(linkText({ link: "https://www.justgiving.com/page/x", link_text: "" }), "justgiving.com");
   assert.equal(linkText({ link: "https://example.org", link_text: "Donate to the hospice" }), "Donate to the hospice");
 });
+
+test("outside opening hours visitors are told when to come back", async () => {
+  const { clockText, comeBackText } = await import("../../haliday_show/app/halidayshow/static/public/public.js");
+  assert.equal(clockText("17:00"), "5pm");
+  assert.equal(clockText("16:32"), "4:32pm");
+  assert.equal(clockText("09:05"), "9:05am");
+  assert.equal(clockText("00:00"), "12am");
+  assert.equal(comeBackText({ open: true }), "");
+  const now = "2026-10-26T09:30"; // a Monday
+  assert.equal(comeBackText({ open: false, now, next: "2026-10-26T17:00" }), "Shows start at 5pm. Come back then!");
+  assert.equal(comeBackText({ open: false, now, next: "2026-10-27T16:32" }), "Shows start tomorrow at 4:32pm. Come back then!");
+  assert.equal(comeBackText({ open: false, now, next: "2026-10-31T17:00" }), "Shows start on Saturday at 5pm. Come back then!");
+  assert.equal(comeBackText({ open: false, now, next: "2026-12-01T17:00" }), "Shows start on 1 December at 5pm. Come back then!");
+  assert.match(comeBackText({ open: false, now, next: null }), /not open at the moment/);
+});

@@ -1113,3 +1113,15 @@ async def test_playlist_blocks_are_baked_kept_and_tidied_away(client):
     # Taken out of the playlist, its frames go too.
     await client.put("/api/playlists", json=[{"id": "night", "name": "Night", "items": items[:1]}])
     assert await (await client.get("/api/blocks")).json() == {"baked": []}
+
+
+async def test_public_page_settings_keep_what_isnt_sent(client):
+    hours = {"on": True, "start": "17:00", "end": "22:00", "days": [4, 5]}
+    view = await (await client.put("/api/public", json={"on": True, "hours": hours})).json()
+    assert view["hours"]["on"] and view["hours"]["days"] == [4, 5] and "hours_now" in view
+    # An editor from before opening hours doesn't send them: they stay.
+    view = await (await client.put("/api/public", json={"on": True, "queue": 3})).json()
+    assert view["hours"]["on"] and view["queue"] == 3
+    resp = await client.put("/api/public", json={"on": True, "hours": {**hours, "end": "17:00"}})
+    assert resp.status == 400
+    assert (await (await client.get("/api/public")).json())["hours"]["end"] == "22:00"

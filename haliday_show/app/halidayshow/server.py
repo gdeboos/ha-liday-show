@@ -1324,6 +1324,7 @@ def _public_view(app) -> dict:
             "today": datetime.date.today().isoformat(),
             # Where the nearby check measures from: "you" (typed in for sunset), "ha", or None.
             "home": app[SCHEDULER].where()[1],
+            "hours_now": public.hours_now(public.load(app[STORAGE]) or public.clean(None), app[SCHEDULER].where()[0]),
             "has_house_photo": app[STORAGE].house_photo() is not None,
             "has_picture": app[STORAGE].public_picture() is not None,
             "now": runner.public_now["name"] if runner.public_now else None,
@@ -1342,9 +1343,17 @@ async def put_public(request):
     if not isinstance(body, dict):
         raise web.HTTPBadRequest(text="expected the public page settings")
     storage = request.app[STORAGE]
+    stored = public.load(storage) or public.clean(None)
+    if "hours" in body and playlists.clean_schedule({**body["hours"], "from": "", "to": ""}
+                                                    if isinstance(body["hours"], dict) else None) is None:
+        raise web.HTTPBadRequest(text="opening hours need a start, a different end time and their days")
     settings = storage.load_settings()
-    # The code only changes with New code, so a page open in another browser can't put an old one back.
-    settings["public"] = {**public.clean(body), "code": (public.load(storage) or public.clean(None))["code"]}
+    # Anything not sent stays as it was, so an editor still open from an older version can't wipe
+    # settings it doesn't know about (opening hours turning off, say). The code only changes with New code.
+    merged = {**stored, **body}
+    if "items" not in body and ("shows" in body or "playlists" in body):  # picks in the format from before dates
+        merged.pop("items")
+    settings["public"] = {**public.clean(merged), "code": stored["code"]}
     storage.save_settings(settings)
     await request.app[PUBLIC].apply()
     return web.json_response(_public_view(request.app))
@@ -1392,7 +1401,8 @@ async def public_preview_page(request):
 async def public_preview_state(request):
     st = request.app[STORAGE]
     p = public.load(st) or public.clean(None)
-    return web.json_response({**public.state(st, request.app[RUNNER], None, p["code"]), "preview": True},
+    view = public.state(st, request.app[RUNNER], None, p["code"], where=request.app[SCHEDULER].where()[0])
+    return web.json_response({**view, "preview": True},
                              headers={"Cache-Control": "no-store"})
 
 

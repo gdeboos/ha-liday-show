@@ -4066,6 +4066,40 @@ function renderPublicLook() {
   $("pub-open-page").href = visitorLink(view, location.hostname);
 }
 
+function renderPublicHours() {
+  const h = publicView.hours;
+  const sunset = h.start === "sunset";
+  $("pub-hours-on").checked = h.on;
+  $("pub-hours").hidden = !h.on;
+  $("pub-hours-start-kind").value = sunset ? "sunset" : "time";
+  $("pub-hours-start").hidden = sunset;
+  $("pub-hours-offset-wrap").hidden = !sunset;
+  const keep = (id, value) => { if (document.activeElement !== $(id)) $(id).value = value; };
+  if (!sunset) keep("pub-hours-start", h.start);
+  keep("pub-hours-offset", h.offset ?? 0);
+  keep("pub-hours-end", h.end);
+  const days = $("pub-hours-days");
+  if (!days.children.length) {
+    DAYS.forEach((name, k) => {
+      const label = document.createElement("label");
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.value = String(k);
+      label.append(box, name);
+      days.append(label);
+    });
+  }
+  for (const box of days.querySelectorAll("input")) box.checked = h.days.includes(Number(box.value));
+  const now = publicView.hours_now || { open: true };
+  const hint = !h.on ? "Open all the time." : now.open ? "✓ Open now."
+    : now.next ? `Closed now. Opens ${whenNext(now.next, now.now)}.`
+      : sunset && !publicView.home ? "⚠ There's no home location to work out sunset from, so the page won't open. Set it in Home Assistant (Settings → System → General)."
+        : !h.days.length ? "⚠ No days are ticked, so the page never opens."
+          : "⚠ These hours don't come round: the sun doesn't set before they end. Pick a later closing time.";
+  $("pub-hours-hint").textContent = hint;
+  $("pub-hours-hint").classList.toggle("warn", hint.startsWith("⚠"));
+}
+
 function renderPublicGuard() {
   const view = publicView;
   const keep = (id, value) => { if (document.activeElement !== $(id)) $(id).value = value; };
@@ -4081,6 +4115,7 @@ function renderPublicGuard() {
 function renderPublicItems() {
   const view = publicView;
   renderPublicGuard();
+  renderPublicHours();
   renderPublicLook();
   const dayPick = (k, key, label) => {
     const it = view.items[k];
@@ -4209,6 +4244,19 @@ function savePublic() {
   publicView.nearby = $("pub-nearby").checked;
   if (Number($("pub-distance").value)) publicView.distance = Number($("pub-distance").value);
   if (shownPage === "public") {
+    const sunset = $("pub-hours-start-kind").value === "sunset";
+    const hours = {
+      on: $("pub-hours-on").checked,
+      start: sunset ? "sunset"
+        : $("pub-hours-start").value || (publicView.hours.start === "sunset" ? "17:00" : publicView.hours.start),
+      end: $("pub-hours-end").value || publicView.hours.end,
+      days: [...$("pub-hours-days").querySelectorAll("input:checked")].map((b) => Number(b.value)),
+      from: "", to: "",
+    };
+    if (sunset) hours.offset = Math.max(-180, Math.min(180, Math.round(Number($("pub-hours-offset").value) || 0)));
+    // Start and end can't be the same time: say so, and keep the saved hours (everything else saves).
+    if (hours.start !== hours.end) publicView.hours = hours;
+    else status("Opening and closing can't be the same time. Pick a different time for one of them.", "hint");
     const picked = document.querySelector("input[name=pub-picture]:checked");
     publicView.look = {
       ...publicView.look,
@@ -4226,10 +4274,10 @@ function savePublic() {
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue, address, nearby, distance, look } = publicView;
+    const { on, items, per_phone, queue, address, nearby, distance, look, hours } = publicView;
     try {
       const view = await api("api/public", {
-        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look },
+        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours },
       });
       if (pubPending === 1) {
         publicView = view;
@@ -4252,6 +4300,7 @@ function wirePublic() {
   $("pub-open").addEventListener("click", () => showView("public"));
   $("pub-per-phone").addEventListener("change", savePublic);
   for (const id of ["pub-address-input", "pub-nearby", "pub-distance"]) $(id).addEventListener("change", savePublic);
+  $("pub-hours-card").addEventListener("change", () => savePublic());
   $("pub-look").addEventListener("change", (e) => { if (e.target.id !== "pub-picture-file") savePublic(); });
   $("pub-picture-file").addEventListener("change", async (e) => {
     const file = e.target.files[0];
@@ -4307,7 +4356,12 @@ function wirePublic() {
   // Keep the queue up to date while you're looking at it.
   setInterval(async () => {
     if (document.hidden || shownPage !== "public") return;
-    try { renderPublicQueue(await api("api/public")); } catch { /* offline for a moment */ }
+    try {
+      const view = await api("api/public");
+      renderPublicQueue(view);
+      // Open or closed changes by the clock, so the Opening hours line follows it.
+      if (publicView && !pubPending) { publicView.hours_now = view.hours_now; renderPublicHours(); }
+    } catch { /* offline for a moment */ }
   }, 5000);
 }
 

@@ -20,7 +20,7 @@ import os
 import re
 import secrets
 import time
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from aiohttp import web
@@ -113,7 +113,33 @@ def clean(p) -> dict:
             "nearby": p.get("nearby") is not False,
             "distance": min(max(distance, MIN_DISTANCE_M), MAX_DISTANCE_M),
             "address": address if len(address) <= 200 and _ADDRESS.match(address) else "",
-            "look": clean_look(p.get("look"))}
+            "look": clean_look(p.get("look")),
+            "hours": clean_hours(p.get("hours"))}
+
+
+DEFAULT_HOURS = {"on": False, "start": "17:00", "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""}
+
+
+def clean_hours(h) -> dict:
+    """Opening hours: a playlist-style schedule with no dates (each show has its own). Off means always open."""
+    if isinstance(h, dict):
+        h = {**h, "from": "", "to": ""}
+        if (out := playlists.clean_schedule(h)) is not None:
+            return out
+    return dict(DEFAULT_HOURS)
+
+
+def hours_now(p: dict, where, now: datetime | None = None) -> dict:
+    """Whether the page is open now, and if not, when it next opens (local time, no zone, or None)."""
+    h = p["hours"]
+    if not h["on"]:
+        return {"open": True}
+    now = now or datetime.now()
+    if schedule.window_at(h, now, where):
+        return {"open": True}
+    nxt = schedule.next_start(h, now, where)
+    return {"open": False, "next": nxt.isoformat(timespec="minutes") if nxt else None,
+            "now": now.isoformat(timespec="minutes")}
 
 
 THEMES = ("plain", "christmas", "frosty", "halloween", "custom")
@@ -253,7 +279,7 @@ def _ticket(value) -> str:
 
 
 def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None = None,
-          needs_location: bool = False) -> dict:
+          needs_location: bool = False, where=None, now: datetime | None = None) -> dict:
     p = load(storage) or clean(None)
     look = p["look"]
     if p["on"] and not _code_ok(p, code):
@@ -284,6 +310,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "per_phone": p["per_phone"],
         "mine": mine,
         "needs_location": needs_location,
+        "hours": hours_now(p, where, now),
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
                                          "corners", "size", "borders", "colours")},
                  "picture": _picture_version(storage, look)},
@@ -357,7 +384,8 @@ async def page(request):
 
 def _state(request, ticket, code):
     p = load(request.app[STORAGE]) or clean(None)
-    return state(request.app[STORAGE], request.app[RUNNER], ticket, code, _needs_location(request, p))
+    return state(request.app[STORAGE], request.app[RUNNER], ticket, code, _needs_location(request, p),
+                 request.app[WHERE]())
 
 
 async def get_picture(request):
@@ -405,6 +433,8 @@ async def post_request(request):
         raise web.HTTPConflict(text="There are no shows right now.")
     if not _code_ok(p, body.get("code")):
         raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
+    if not hours_now(p, request.app[WHERE]())["open"]:
+        raise web.HTTPConflict(text="Shows can't be started right now. Come back when we're open.")
     if _needs_location(request, p):
         _check_near(request, p, body)
     pick = next((c for c in choices(storage) if c["available"] and c["kind"] == body.get("kind")

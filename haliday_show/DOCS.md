@@ -1113,7 +1113,7 @@ on a sign outside. They see the shows and playlists you've picked, and nothing e
    your home Wi-Fi. It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
 
-The tab is in four parts, with a **Preview** beside them (below them on a narrower screen). The
+The tab is in five parts, with a **Preview** beside them (below them on a narrower screen). The
 preview shows the page as visitors with your code see it, and catches up as soon as you change
 something. Its buttons don't start anything.
 
@@ -1142,6 +1142,28 @@ without the code just says "Scan the code on the sign to start a show".
   - The distance is measured generously: a phone that isn't sure where it is gets up to 150 m extra.
     The check stops casual use from afar, but a determined person could fake where their phone is,
     so keep **Queue length** small.
+
+#### Opening hours
+
+Off to start with, so visitors can start shows at any time. Tick **Only open at set times** to choose
+when:
+
+- **From** a time, or **sunset** with a number of minutes after it (or before, if less than 0), so the
+  opening time moves with the sunset through the year.
+- **until** a time. With a set start, a time before it means after midnight, such as 17:00 until
+  01:00. With a sunset start, a closing time before midday is the next morning, and any other is
+  that evening; on a day the sun sets after it, the page doesn't open (in summer, say, with a 22:00
+  close).
+- The days of the week it opens.
+
+The line underneath says whether the page is open now, or when it next opens. Sunset is worked out
+for your home location, as for playlists; without one, a sunset start never opens, and it says so.
+
+Outside the hours, visitors see when to come back ("Shows start at 5pm. Come back then!", "Shows
+start tomorrow at 4:32pm" or "on Saturday at 5pm"), with your shows listed but no **▶ Start**
+buttons. Their phones aren't asked for their location until it opens. Anyone already waiting in the
+queue at closing time still gets their show. Each show's own dates (below) still apply within the
+hours.
 
 #### How the page looks
 
@@ -1219,8 +1241,8 @@ restart the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
 To reach the page from the street on mobile data, point a tunnel or proxy at that port (only that
 port), such as Cloudflare Tunnel, and put its address in **Public address**.
 
-> **Coming next:** opening hours, a printable sign with the QR code, and step-by-step guides for
-> reaching the page from outside your home (Cloudflare Tunnel and others).
+> **Coming next:** a printable sign with the QR code, and step-by-step guides for reaching the page
+> from outside your home (Cloudflare Tunnel and others).
 
 ## 6. Automations
 
