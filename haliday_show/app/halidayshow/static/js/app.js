@@ -4167,8 +4167,7 @@ async function renameDraft(d) {
     return;
   }
   try {
-    const full = await api(`api/drafts/${encodeURIComponent(d.id)}`);
-    await api(`api/drafts/${encodeURIComponent(d.id)}`, { method: "PUT", json: { ...full, name } });
+    await api(`api/drafts/${encodeURIComponent(d.id)}/rename`, { method: "POST", json: { name } });
     renderSongsPage();
   } catch (e) { status(`Couldn't rename the draft: ${e.message}`, true, "songs"); }
 }

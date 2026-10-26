@@ -166,3 +166,24 @@ test("leaving the page sends with keepalive", async () => {
   await keeper.flush({ keepalive: true });
   assert.deepEqual(seen, [true]);
 });
+
+test("a draft you've left whose last change failed is reported, kept and sent with your next change", async () => {
+  const { keeper, timers, calls, drafts, failOnce } = setup();
+  const errors = [];
+  keeper.onError = (m, s, current) => errors.push([m, s.latest?.name, current]);
+  drafts.set("d9", body("A"));
+  keeper.start({ id: "d9", made: null });
+  failOnce();
+  keeper.changed(body("A changed"));
+  keeper.start(null); // leave A: its change is sent now, and fails
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(errors, [["offline", "A changed", false]]);
+  assert.ok(!keeper.failed && keeper.anyFailed, "this song is fine, but A's change is waiting");
+  keeper.changed(body("B"));
+  timers.run();
+  await keeper.flush();
+  assert.equal(drafts.get("d9").name, "A changed");
+  assert.ok(!keeper.anyFailed);
+  assert.deepEqual(calls.map((c) => c.slice(0, 3)).filter((c) => c[2] !== "B"),
+    [["PUT", "api/drafts/d9", "A changed"], ["PUT", "api/drafts/d9", "A changed"]]);
+});

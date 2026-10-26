@@ -8,7 +8,7 @@
 
 export class DraftKeeper {
   // api(path, {method, json, keepalive}) as in app.js (errors carry .status); onState() runs whenever
-  // what to show next to the draft might have changed; onError(message).
+  // what to show next to the draft might have changed; onError(message, session, isCurrent).
   constructor(api, { onState = () => {}, onError = () => {}, delay = 600, timers = globalThis } = {}) {
     this.api = api;
     this.onState = onState;
@@ -16,6 +16,7 @@ export class DraftKeeper {
     this.delay = delay;
     this.timers = timers;
     this.session = this.newSession(null);
+    this.stalled = new Set(); // drafts you've left whose last change couldn't be sent yet
   }
 
   newSession(draft) {
@@ -31,11 +32,14 @@ export class DraftKeeper {
 
   get pending() { return !!(this.session.timer || this.session.sending); }
   get failed() { return this.session.failed; }
+  // Including drafts you've left (leaving the page then would lose their last change).
+  get anyFailed() { return this.session.failed || [...this.stalled].some((s) => s.failed); }
 
   // Starts working on a draft ({id, made}) or a song with none yet (null). The last one's waiting
   // change is sent to it straight away.
   start(draft) {
     this.flush();
+    if (this.session.failed) this.stalled.add(this.session);
     this.session = this.newSession(draft);
     this.onState();
   }
@@ -49,6 +53,7 @@ export class DraftKeeper {
   changed(body, s = this.session) {
     s.latest = body;
     if (s !== this.session) { this.send(s); return; }
+    this.retryStalled();
     this.timers.clearTimeout(s.timer);
     s.timer = this.timers.setTimeout(() => { s.timer = null; this.send(s); }, this.delay);
     this.onState();
@@ -60,7 +65,12 @@ export class DraftKeeper {
     this.timers.clearTimeout(s.timer);
     s.timer = null;
     if (s.latest) this.send(s, { keepalive }); // also retries one that failed
-    return s.chain;
+    this.retryStalled({ keepalive });
+    return Promise.all([s.chain, ...[...this.stalled].map((x) => x.chain)]).then(() => {});
+  }
+
+  retryStalled(opts) {
+    for (const s of this.stalled) if (s.latest && !s.sending) this.send(s, opts);
   }
 
   // The current draft was deleted (from Your songs): forget it, so nothing more is sent to it. The
@@ -94,10 +104,12 @@ export class DraftKeeper {
           s.id = id;
         }
         s.failed = false;
+        this.stalled.delete(s);
       } catch (e) {
         s.failed = true;
         s.latest ||= body; // sent with the next change, or the next flush
-        if (s === this.session) this.onError(e.message);
+        if (s !== this.session) this.stalled.add(s);
+        this.onError(e.message, s, s === this.session);
       }
     }).finally(() => {
       s.sending--;

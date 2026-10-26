@@ -575,7 +575,9 @@ An edit is kept as a **draft**: a note of which parts of which songs it uses, wi
 fades, but no audio of its own. Your first change to a song (a cut, a splice, a crossfade or a fade)
 starts one, named after the song, such as "sample-song (edit)"; type a better name under **Draft** at
 the top. **Draft kept** beside it says it's saved, which happens a moment after every change, so you
-can close the page or carry on from another device. A song can have several drafts, such as a "Short
+can close the page or carry on from another device. If a change can't be kept (HA-liday Show stopped,
+say), the status bar says so, even for a draft you've moved on from, and it's tried again with your
+next change; closing the page then asks first. A song can have several drafts, such as a "Short
 version" and a "Party mix": press **Edit** on the song again to start another.
 
 **Your songs** lists each song's drafts under it, with a **Draft** badge until a song file has been
@@ -586,7 +588,8 @@ renames it, and **Delete…** deletes the draft (not the song, or any file it ma
 so every speaker can play it; pick it under **Song** in a show. Its beats, sections and marks go with it.
 The draft stays open, so you can keep changing it. Making it again asks whether to **Replace it** (the
 same file, so shows and playlists using it get the new version; the window lists those shows, since
-their effects don't move with the music) or **Make a new file** (such as "Short version 2.wav"). Making a
+their effects don't move with the music, and any other drafts that splice that file in, which will play
+the new version too) or **Make a new file** (such as "Short version 2.wav"). Making a
 song file without changing anything is a quick way to get a WAV copy of a song.
 
 Songs you edited before drafts existed are ordinary songs: press **Edit** on one to start a draft from

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.158
+
+- **Make song file** again: the window that asks whether to **Replace it** now also lists any other
+  drafts that splice that file in, since they'll play the new version too.
+- If a change to a draft can't be kept, you're told even when you've already moved on to another song,
+  and it's tried again with your next change. Closing the page asks first while one is still waiting.
+- **Rename…** on a draft in **Your songs** changes only its name, so it can't undo an edit made in
+  another tab meanwhile.
+
 ## 0.2.157
 
 - The **Music editor** keeps your edits as **drafts**, so you can stop and come back to them, or tweak a
