@@ -22,6 +22,7 @@ async function start() {
       + "takes people to your page.";
     $("problem").hidden = false;
     $("print").disabled = true;
+    $("download").hidden = true;
     return;
   }
   const qr = `api/public/qr.svg?link=${encodeURIComponent(link)}`;

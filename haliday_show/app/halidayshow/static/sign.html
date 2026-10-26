@@ -19,7 +19,7 @@
     display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8mm; }
   .title { font-size: 34pt; font-weight: 800; line-height: 1.1; margin: 0; overflow-wrap: anywhere; }
   .scan { font-size: 24pt; font-weight: 700; margin: 0; }
-  .qr { width: 130mm; height: 130mm; image-rendering: pixelated; }
+  .qr { width: 125mm; height: 125mm; }
   .hours { font-size: 18pt; font-weight: 600; margin: 0; }
   .message { font-size: 15pt; margin: 0; white-space: pre-line; }
   .link { font-size: 11pt; color: #444; margin: auto 0 0; overflow-wrap: anywhere; font-family: ui-monospace, Menlo, Consolas, monospace; }
@@ -27,7 +27,7 @@
   @media print {
     body { background: #fff; }
     .bar { display: none; }
-    .sheet { width: auto; min-height: 0; height: 269mm; margin: 0; padding: 0; }
+    .sheet { width: auto; min-height: 0; height: 269mm; margin: 0; padding: 0; overflow: hidden; }
   }
 </style>
 <script type="module" src="static/js/sign.js"></script>
