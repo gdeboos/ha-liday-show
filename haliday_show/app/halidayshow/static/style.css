@@ -255,6 +255,9 @@ table.devices td input[type="number"] { width: 5em; }
 .show-rename { font-size: 15px; font-weight: 600; width: min(100%, 360px); }
 .show-actions { flex: none; }
 .song-tools { margin: 4px 0 6px; }
+/* Words for screen readers only. */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .song-tools input[type="search"] { width: min(60vw, 280px); }
 @media (max-width: 720px) {
   .show-row { flex-direction: column; align-items: stretch; }

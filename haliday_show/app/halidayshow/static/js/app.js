@@ -3826,10 +3826,12 @@ function showRow(r) {
 }
 
 // Library → Songs --------------------------------------------------------------
-let songRowsCache = [], songsMore = false;
+let songRowsCache = [], songsMore = false, songsAsked = 0;
 async function renderSongsPage() {
+  const mine = ++songsAsked; // only the latest answer is drawn
   try {
     const [list, shows] = await Promise.all([api("api/songs"), api("api/shows")]);
+    if (mine !== songsAsked) return;
     songRowsCache = songRows(list.songs, shows);
     songsMore = list.more;
   } catch (e) { status(`Couldn't list your songs: ${e.message}`, true, "songs"); return; }
@@ -3844,7 +3846,7 @@ function drawSongRows() {
   const all = `${songRowsCache.length}${songsMore ? "+" : ""}`;
   $("song-count").textContent = !songRowsCache.length ? ""
     : (rows.length === songRowsCache.length ? `${all} song${rows.length === 1 && !songsMore ? "" : "s"}` : `${rows.length} of ${all}`)
-      + (songsMore ? ". Only the first 2000 are listed; type in Find to look for one." : "");
+      + (songsMore ? ". Only the first 2000 songs in your media folder are listed." : "");
   if (!rows.length) {
     box.removeAttribute("role");
     box.innerHTML = songRowsCache.length
@@ -3876,10 +3878,13 @@ function songRow(r) {
   }
   const details = document.createElement("div");
   details.className = "hint";
+  // "Length" is there for screen readers; on screen the time speaks for itself.
+  const label = document.createElement("span");
+  label.className = "sr-only";
+  label.textContent = "Length ";
   const len = document.createElement("span");
-  len.setAttribute("aria-label", "Length still loading");
   len.textContent = "…";
-  details.append(len, ` · ${r.found}`);
+  details.append(label, len, ` · ${r.found}`);
   const uses = document.createElement("div");
   uses.className = "hint";
   uses.textContent = r.uses;
@@ -3891,10 +3896,7 @@ function songRow(r) {
   actions.append(edit);
   row.append(main, actions);
   // The length is read once the row is on screen; a redraw starts over with new rows.
-  row._songLength = () => songLength(r).then((text) => {
-    len.textContent = text;
-    len.setAttribute("aria-label", `Length ${text}`);
-  });
+  row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
   return row;
 }
