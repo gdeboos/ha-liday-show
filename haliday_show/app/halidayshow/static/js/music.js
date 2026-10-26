@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
 import { joinLabel, parseTime, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
-import { SECTION_ALPHA, fmtTime, sectionHue, sectionTint } from "./timeline.js";
+import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 
 const EPS = 1e-6;
@@ -164,13 +164,27 @@ export function hueHex(h) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+// marks: named moments you flag in the song, [{t, label, color}] sorted by time ----------------
+// Adds a mark at t; returns the new list and where it went.
+export function addMark(marks = [], t, color = MARK_COLOUR) {
+  const out = [...marks, { t: Math.round(t * 1000) / 1000, label: "", color }].sort((a, b) => a.t - b.t);
+  return { marks: out, index: out.findIndex((m) => m.t === Math.round(t * 1000) / 1000 && m.label === "" && m.color === color) };
+}
+
+// Moves mark i to t, keeping the list in order; returns the new list and the mark's new place.
+export function moveMark(marks, i, t) {
+  const moved = { ...marks[i], t: Math.max(0, Math.round(t * 1000) / 1000) };
+  const out = marks.filter((_, k) => k !== i).concat(moved).sort((a, b) => a.t - b.t);
+  return { marks: out, index: out.indexOf(moved) };
+}
+
 // Where the base song's beats, bars and sections land in the edited result, so they follow cuts
 // and splices. Only pieces of the base song (src) carry them; a section cut in two by an edit that
 // joins up again becomes one.
 export function mapInfo(info, pieces, crossfade, src) {
   const { places, total } = arrange(pieces, crossfade);
   const r3 = (t) => Math.round(t * 1000) / 1000;
-  const beats = [], bars = [], parts = [];
+  const beats = [], bars = [], parts = [], marks = [];
   pieces.forEach((p, i) => {
     if (p.src !== src) return;
     const { at, xf } = places[i];
@@ -182,6 +196,9 @@ export function mapInfo(info, pieces, crossfade, src) {
     };
     keep(info.beats, beats);
     keep(info.bars, bars);
+    for (const m of info.marks || []) {
+      if (m.t >= p.start && m.t <= p.end && map(m.t) >= own0 - EPS && map(m.t) < own1 - EPS) marks.push({ ...m, t: r3(map(m.t)) });
+    }
     for (const sec of info.sections) {
       const a = Math.max(map(sec.start), own0), b = Math.min(map(sec.end), own1);
       if (b - a > 1e-3) parts.push({ ...sec, start: r3(a), end: r3(b) });
@@ -194,7 +211,7 @@ export function mapInfo(info, pieces, crossfade, src) {
         && Math.abs(last.end - sec.start) < 2e-3) last.end = sec.end;
     else sections.push(sec);
   }
-  return { ...info, beats, bars, sections };
+  return { ...info, beats, bars, sections, ...(info.marks ? { marks } : {}) };
 }
 
 // rendering ---------------------------------------------------------------------
@@ -289,6 +306,8 @@ export class MusicEditor {
     this.dirty = false;
     this.info = null; // the base song's saved beats and sections
     this.secSel = -1; // the section picked for editing
+    this.markSel = -1; // the mark picked for editing
+    this.markBoxes = []; // where each mark's flag was drawn, for clicking: [{ i, x0, x1 }]
     this.cutOpts = null; // suggested cuts: { pieces, xf, options }, for the result they were found in
     this.cutShown = -1; // the suggestion drawn on the waveform
     this.canvas.tabIndex = 0;
@@ -375,7 +394,8 @@ export class MusicEditor {
       // Names and notes you wrote on the old sections carry over to the new ones.
       const old = this.base === ref ? this.info?.sections : null;
       const sections = describeSections(keepYours(r.sections, old || []), r.traits);
-      const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections };
+      const marks = this.base === ref ? this.info?.marks : null; // the server keeps them too
+      const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections, ...(marks ? { marks } : {}) };
       await this.host.api(infoUrl(ref), { method: "PUT", json: info });
       if (this.base === ref) { this.info = info; this.secSel = -1; }
       const parts = `${info.sections.length} section${info.sections.length === 1 ? "" : "s"}`;
@@ -729,17 +749,81 @@ export class MusicEditor {
   // Applies a change to the base song's sections and saves it with the song shortly after.
   editSections(sections, select = this.secSel) {
     if (!sections) return;
-    this.editedAt = Date.now();
     this.info = { ...this.info, sections };
     this.secSel = select;
+    this.saveInfoSoon();
+  }
+
+  // Saves the base song's beats, sections and marks with it, shortly after the last change.
+  saveInfoSoon() {
+    this.editedAt = Date.now();
     clearTimeout(this.saveTimer);
     const ref = this.base, info = this.info;
     this.saveTimer = setTimeout(() => {
       this.host.api(infoUrl(ref), { method: "PUT", json: info })
-        .catch((e) => this.host.status(`Couldn't save the sections: ${e.message}`, true));
+        .catch((e) => this.host.status(`Couldn't save the song's sections and marks: ${e.message}`, true));
     }, 400);
     this.updateControls();
     this.draw();
+  }
+
+  // marks ---------------------------------------------------------------------
+  // The base song's marks, editable while there's no unsaved edit (like its sections).
+  get marks() { return this.base && !this.dirty ? this.info?.marks || [] : null; }
+
+  editMarks(marks, select = this.markSel) {
+    this.info = { tempo: null, beats: [], bars: [], sections: [], ...this.info, marks };
+    this.markSel = select;
+    if (select >= 0) this.secSel = -1;
+    this.saveInfoSoon();
+  }
+
+  addMarkHere({ open = true } = {}) {
+    if (!this.rendered) return;
+    if (!this.marks) return this.host.status("Save the edit as a new file first, then add marks to it", "hint");
+    const { marks, index } = addMark(this.marks, this.time, this.markColour || MARK_COLOUR);
+    this.editMarks(marks, open ? index : this.markSel);
+    if (open) $("music-mark-name").focus();
+    else this.host.status(`Marked ${fmtTime(this.time)}`);
+  }
+
+  renderMark() {
+    const m = this.marks?.[this.markSel];
+    $("music-mark").hidden = !m;
+    if (!m) return;
+    if (document.activeElement !== $("music-mark-name")) $("music-mark-name").value = m.label || "";
+    $("music-mark-colour").value = m.color || MARK_COLOUR;
+    $("music-mark-time").textContent = `At ${fmtTime(m.t)}`;
+  }
+
+  wireMarks() {
+    const change = (fn) => {
+      const marks = this.marks;
+      if (!marks?.[this.markSel]) return;
+      this.editMarks(marks.map((m, i) => (i === this.markSel ? fn(m) : m)));
+    };
+    $("music-mark-add").addEventListener("click", () => this.addMarkHere());
+    $("music-mark-name").addEventListener("input", (e) => change((m) => ({ ...m, label: e.target.value.slice(0, 40) })));
+    $("music-mark-name").addEventListener("keydown", (e) => { if (e.key === "Enter") e.target.blur(); });
+    $("music-mark-colour").addEventListener("input", (e) => {
+      this.markColour = e.target.value;
+      change((m) => ({ ...m, color: e.target.value }));
+    });
+    $("music-mark-here").addEventListener("click", () => {
+      if (!this.marks?.[this.markSel]) return;
+      const { marks, index } = moveMark(this.marks, this.markSel, this.time);
+      this.editMarks(marks, index);
+    });
+    $("music-mark-delete").addEventListener("click", () => {
+      this.editMarks(this.marks.filter((_, i) => i !== this.markSel), -1);
+    });
+    $("music-mark-close").addEventListener("click", () => { this.markSel = -1; this.updateControls(); this.draw(); });
+  }
+
+  // The mark whose flag is under (x, y), or -1.
+  markAt(x, y) {
+    if (y < RULER_H || y >= RULER_H + BEAT_H) return -1;
+    return this.markBoxes.find((b) => x >= b.x0 && x <= b.x1)?.i ?? -1;
   }
 
   renderSection() {
@@ -820,7 +904,7 @@ export class MusicEditor {
     $("music-detect").title = this.dirty
       ? "Save the edit as a new file first: it's detected when saved, and the beats here follow your edits until then"
       : "Find the tempo, beats, bars and sections (verse, chorus…) and keep them with this song. A show that picks the song uses them.";
-    const info = this.shown;
+    const shown = this.shown, info = shown && (shown.beats.length || shown.sections.length) ? shown : null;
     $("music-analysis").textContent = !has ? ""
       : this.dirty && !info ? "Save the edit to find its beats and sections"
         : info ? `${info.tempo ? `${info.tempo} BPM, ` : ""}${info.beats.length} beats, ${info.sections.length} sections${info.sections.length ? `: ${info.sections.map((x) => x.label).join(", ")}` : ""}`
@@ -830,6 +914,11 @@ export class MusicEditor {
     $("music-save-state").textContent = has && this.dirty ? "Unsaved edits" : "";
     if (!this.sections || this.secSel >= this.sections.length) this.secSel = -1;
     this.renderSection();
+    if (!this.marks || this.markSel >= this.marks.length) this.markSel = -1;
+    this.renderMark();
+    $("music-mark-add").disabled = !has || !this.marks;
+    $("music-mark-add").title = this.marks || !has ? "Put a mark at the playhead, to name a moment such as a big hit (M)"
+      : "Save the edit as a new file first, then add marks to it";
     $("music-suggest").disabled = !has;
     this.renderCuts();
     $("music-sel-start").disabled = $("music-sel-end").disabled = !sel;
@@ -893,6 +982,7 @@ export class MusicEditor {
     // long as the result is all from the base song; anything spliced in is detected afresh.
     const baseKey = this.base && keyOf(this.base);
     const carry = this.shown && this.pieces.every((p) => p.src === baseKey) ? this.shown : null;
+    const marks = this.shown?.marks || [];
     try {
       const ref = await uploadSong(this.host.api, blob, name, (done) => {
         if (done < 1) this.host.status(`Saving ${name}… ${Math.round(done * 100)}%`);
@@ -918,6 +1008,7 @@ export class MusicEditor {
         this.draw();
       } else {
         await this.detect();
+        if (marks.length && this.base === ref) this.editMarks(marks, -1);
       }
     } catch (e) {
       this.host.status(`Couldn't save: ${e.message}`, true, "music-save");
@@ -1067,6 +1158,35 @@ export class MusicEditor {
       }
     }
 
+    // marks: a coloured line down through the waveform and a flag with its name in the beat lane
+    this.markBoxes = [];
+    (info?.marks || []).forEach((m, i) => {
+      const x = Math.round(this.x(m.t));
+      if (x < -200 || x > w + 4) return;
+      const colour = m.color || MARK_COLOUR, picked = i === this.markSel;
+      ctx.fillStyle = colour;
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(x - 1, RULER_H, 2, waveB - RULER_H);
+      ctx.globalAlpha = 1;
+      ctx.font = "600 11px system-ui, sans-serif";
+      const label = m.label || "";
+      const wide = label ? Math.min(140, ctx.measureText(label).width) + 10 : 8;
+      ctx.beginPath();
+      ctx.moveTo(x, RULER_H + 1); ctx.lineTo(x + wide + 4, RULER_H + 1); ctx.lineTo(x + wide, RULER_H + BEAT_H / 2);
+      ctx.lineTo(x + wide + 4, RULER_H + BEAT_H - 1); ctx.lineTo(x, RULER_H + BEAT_H - 1);
+      ctx.closePath();
+      ctx.fill();
+      if (picked) { ctx.strokeStyle = col("--text"); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1; }
+      if (label) {
+        ctx.fillStyle = markText(colour);
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x, RULER_H, wide, BEAT_H); ctx.clip();
+        ctx.fillText(label, x + 4, RULER_H + BEAT_H - 4);
+        ctx.restore();
+      }
+      this.markBoxes.push({ i, x0: x - 5, x1: x + wide + 4 });
+    });
+
     // ruler
     ctx.fillStyle = col("--panel");
     ctx.fillRect(0, 0, w, RULER_H);
@@ -1172,6 +1292,12 @@ export class MusicEditor {
     const join = this.joinAt(x, e.offsetY);
     if (join !== null) { this.drag = null; this.hearJoin(join); return; }
     this.canvas.setPointerCapture(e.pointerId);
+    const mark = this.markAt(x, e.offsetY);
+    if (mark >= 0) {
+      if (!this.marks) { this.drag = null; this.host.status("Save the edit as a new file first, then change its marks", "hint"); return; }
+      this.drag = { mark, before: this.marks, x, moved: false };
+      return;
+    }
     if (this.inLane(e.offsetY) && this.shown) {
       const edge = this.sections ? this.edgeNear(x) : -1;
       if (edge > 0) { this.drag = { section: edge, before: this.sections }; return; }
@@ -1184,6 +1310,7 @@ export class MusicEditor {
         ? { start: Math.min(this.sel.start, sec.start), end: Math.max(this.sel.end, sec.end) }
         : { start: sec.start, end: sec.end };
       this.secSel = this.sections ? i : -1;
+      if (this.secSel >= 0) this.markSel = -1;
       this.updateControls();
       this.draw();
       return;
@@ -1196,7 +1323,21 @@ export class MusicEditor {
   move(e) {
     const x = e.offsetX, raw = Math.min(Math.max(this.t(x), 0), this.total), d = this.drag;
     const t = d && !d.section ? this.snap(raw, e) : raw;
+    if (d?.mark !== undefined) {
+      if (!d.moved && Math.abs(x - d.x) < 3) return;
+      d.moved = true;
+      const { marks, index } = moveMark(d.before, d.mark, t);
+      this.info = { ...this.info, marks };
+      d.now = index;
+      this.draw();
+      return;
+    }
     if (!d) {
+      if (this.markAt(x, e.offsetY) >= 0) {
+        this.canvas.style.cursor = this.marks ? "grab" : "pointer";
+        this.canvas.title = (this.shown?.marks?.[this.markAt(x, e.offsetY)]?.label || "Mark") + (this.marks ? ": click to edit, drag to move" : "");
+        return;
+      }
       if (this.joinAt(x, e.offsetY) !== null) { this.canvas.style.cursor = "pointer"; this.canvas.title = "Hear this join"; return; }
       this.canvas.title = "";
       const lane = this.inLane(e.offsetY) && this.shown;
@@ -1228,6 +1369,16 @@ export class MusicEditor {
     const d = this.drag;
     this.drag = null;
     if (d?.section) { this.editSections(this.info.sections); return; }
+    if (d?.mark !== undefined) {
+      if (d.moved) { this.editMarks(this.info.marks, d.now); return; }
+      // A click picks the mark and puts the playhead on it.
+      this.markSel = d.mark;
+      this.secSel = -1;
+      this.time = this.marks[d.mark].t;
+      this.updateControls();
+      this.draw();
+      return;
+    }
     if (!d || d.edge || d.moved) return;
     this.sel = null;
     this.time = Math.min(Math.max(this.t(e.offsetX), 0), this.total);
@@ -1266,10 +1417,11 @@ export class MusicEditor {
     else if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); this.undo(1); }
     else if (e.key === " ") { e.preventDefault(); this.playing ? this.stop() : this.play(); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); this.cutSelection(); }
+    else if (e.key === "m" || e.key === "M") { e.preventDefault(); this.addMarkHere({ open: !this.playing }); }
     else if (e.key === "Home") { this.time = 0; this.follow(); this.draw(); }
     else if (e.key === "+" || e.key === "=") this.zoom(0.66);
     else if (e.key === "-") this.zoom(1.5);
-    else if (e.key === "Escape") { this.sel = null; this.kbAnchor = null; this.updateControls(); this.draw(); }
+    else if (e.key === "Escape") { this.sel = null; this.kbAnchor = null; this.markSel = -1; this.updateControls(); this.draw(); }
     else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && document.activeElement === this.canvas && this.rendered) {
       e.preventDefault();
       this.arrow(e.key === "ArrowRight" ? 1 : -1, e.shiftKey);
@@ -1341,6 +1493,7 @@ export class MusicEditor {
     for (const b of document.querySelectorAll("[data-cuts=cancel]")) b.addEventListener("click", () => $("cuts-dialog").close());
     $("cuts-dialog").addEventListener("close", () => this.closeCuts());
     this.wireSections();
+    this.wireMarks();
     // Some browsers (older Safari, the Home Assistant app on iPhone) also need returnValue to ask.
     window.addEventListener("beforeunload", (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ""; } });
   }

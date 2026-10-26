@@ -298,6 +298,9 @@
       <li><b>✂ Suggest cuts…</b> finds whole bars to take out of the song or one section (or press <b>✂ Shorten…</b>
         on a section) where the music either side of the join matches. Press a cut's ▶ to hear its join, then
         <b>Use</b>. It needs the song detected first.</li>
+      <li><b>⚑ Add mark</b> (or M, even while it plays) flags a moment, such as a big hit. Click a flag to name it,
+        change its colour or delete it, and drag it to move it. Marks are kept with the song and show in the Show
+        editor too, where clips snap to them.</li>
       <li>Space plays, Delete cuts the selection, and Ctrl+Z undoes.</li>
     </ul>
   </details>
@@ -354,9 +357,10 @@
   </section>
   <section class="card">
     <div class="group">
-      <span class="section-label">Beats and sections</span>
+      <span class="section-label">Beats, sections and marks</span>
       <button id="music-detect" title="Find the tempo, beats, bars and sections (verse, chorus…) and keep them with this song. A show that picks the song uses them.">Detect</button>
       <button id="music-describe" title="Write notes for each section from what it sounds like, for Generate's AI option and Describe it. Notes and names you wrote are kept.">✨ Describe sections</button>
+      <button id="music-mark-add" title="Put a mark at the playhead, to name a moment such as a big hit (M)">⚑ Add mark</button>
       <span id="music-analysis" class="hint"></span>
     </div>
     <div id="music-section" class="group music-section" hidden>
@@ -372,6 +376,14 @@
       <label class="music-sec-notes">Notes
         <input id="music-sec-notes" maxlength="300" placeholder="For Describe it: e.g. bells only, very gentle; big drop at the end, everything flashes"
           title="What happens in this part of the music, or how you'd like it lit. Describe it in the editor passes this to the AI."></label>
+    </div>
+    <div id="music-mark" class="group music-section" hidden>
+      <span id="music-mark-time" class="hint"></span>
+      <label>Name <input id="music-mark-name" size="18" maxlength="40" placeholder="e.g. Big hit" autocomplete="off"></label>
+      <label>Colour <input id="music-mark-colour" type="color"></label>
+      <button id="music-mark-here" title="Move this mark to where the playhead is">Move to playhead</button>
+      <button id="music-mark-delete" class="ghost danger" title="Remove this mark">Delete</button>
+      <button id="music-mark-close" class="ghost" title="Done">✕</button>
     </div>
   </section>
   <dialog id="cuts-dialog" class="effect-dialog form-dialog cuts-dialog" aria-labelledby="cuts-title">

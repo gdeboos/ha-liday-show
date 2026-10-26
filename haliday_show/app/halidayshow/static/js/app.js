@@ -2154,6 +2154,7 @@ function renderInspector() {
         <li>Click a light's name to copy or recolour all its effects.</li>
         <li>Drag along the time ruler to set a play region, and tick Loop to repeat it.</li>
         <li>Click the beat lane to add or remove a beat. Hold Shift to drag without snapping.</li>
+        <li>Coloured flags on the beat lane are the song's marks, made in the Music editor. Clips snap to them.</li>
       </ul></details>`;
     restoreHowTo(box);
     return;
@@ -4652,6 +4653,8 @@ let songBuffer = null; // the decoded song, for Detect
 async function loadAudio(ref) {
   app.peaks = null;
   songBuffer = null;
+  app.songMarks = [];
+  loadSongMarks();
   app.audioDuration = 0;
   await refreshAudio();
   if (!ref) {
@@ -5059,6 +5062,18 @@ async function songInfo(ref) {
   try { return ref ? await api(songInfoUrl(ref)) : null; } catch { return null; }
 }
 
+// The marks put on the show's song in the Music editor, drawn on the beat lane and snapped to. They
+// stay with the song (not the show), so they're read afresh whenever the editor shows.
+async function loadSongMarks() {
+  const ref = app.show?.audio;
+  const info = ref ? await songInfo(ref) : null;
+  if (ref !== app.show?.audio) return;
+  const marks = info?.marks || [];
+  if (JSON.stringify(marks) === JSON.stringify(app.songMarks || [])) return;
+  app.songMarks = marks;
+  timeline.layout();
+}
+
 function applySongInfo(info) {
   Object.assign(app.show, {
     beats: [...info.beats], bars: [...info.bars], sections: info.sections.map((s) => ({ ...s })), tempo: info.tempo || null,
@@ -5071,7 +5086,7 @@ async function importSongInfo({ quiet = true } = {}) {
   const ref = app.show.audio;
   const info = await songInfo(ref);
   if (ref !== app.show.audio) return;
-  if (!info) {
+  if (!info?.beats?.length && !info?.sections?.length) { // nothing, or only its marks
     if (!quiet) status("No beats saved for this song yet. Use Detect here or in the Music editor", "hint");
     return;
   }
@@ -5807,7 +5822,7 @@ function showView(view, { push = true } = {}) {
   if (page === "house") renderHouseLights();
   if (page === "settings") { renderCopies(); loadPublic(); }
   if (page === "playlists") loadPlaylists(); else stopPlaylistWatch();
-  if (page === "editor") { layoutPreview(); timeline.layout(); }
+  if (page === "editor") { layoutPreview(); timeline.layout(); loadSongMarks(); }
   rememberPage(page, push);
 }
 

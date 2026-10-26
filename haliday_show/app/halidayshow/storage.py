@@ -219,7 +219,8 @@ class Storage:
             st = p.stat()
             info = self.load_song_info(ref["source"], ref["path"])
             out.append({**ref, "size": st.st_size, "modified": int(st.st_mtime),
-                        "detected": info is not None,
+                        # Marks alone (put on before Detect) don't make it detected.
+                        "detected": bool(info and (info.get("beats") or info.get("sections"))),
                         "tempo": (info or {}).get("tempo"),
                         "sections": len((info or {}).get("sections") or [])})
         return {"songs": out, "more": len(refs) > limit}

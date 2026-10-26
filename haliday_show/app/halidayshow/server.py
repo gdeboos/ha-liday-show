@@ -870,6 +870,7 @@ def _clear_old_parts(folder: Path, older_than_s: float = 3600):
 MAX_MARKS = 50000
 MAX_SECTIONS = 500
 MAX_NOTES = 300  # a section's notes, for the AI
+MAX_SONG_MARKS = 200  # named moments you flag in a song (the Music editor's marks)
 
 
 def _times(v) -> list[float] | None:
@@ -883,8 +884,30 @@ def _times(v) -> list[float] | None:
     return out
 
 
+def _clean_marks(marks) -> list[dict] | None:
+    """Marks you put on a song: [{t, label, color}], sorted by time."""
+    if not isinstance(marks, list) or len(marks) > MAX_SONG_MARKS:
+        return None
+    out = []
+    for m in marks:
+        if not isinstance(m, dict):
+            return None
+        t = _times([m.get("t")])
+        label, color = m.get("label", ""), m.get("color")
+        if t is None or not isinstance(label, str):
+            return None
+        item = {"t": t[0], "label": label.strip()[:40]}
+        if color is not None:
+            if not isinstance(color, str) or not _HEX.match(color):
+                return None
+            item["color"] = color.lower()
+        out.append(item)
+    return sorted(out, key=lambda m: m["t"])
+
+
 def _clean_song_info(body) -> dict | None:
-    """Detect's results for a song: {tempo, beats, bars, sections: [{start, end, label, energy}]}."""
+    """Detect's results for a song: {tempo, beats, bars, sections: [{start, end, label, energy}]}, and
+    the marks you've put on it ({marks: [{t, label, color}]}) when they're sent."""
     if not isinstance(body, dict):
         return None
     tempo = body.get("tempo")
@@ -921,7 +944,13 @@ def _clean_song_info(body) -> dict | None:
                 return None
             item["color"] = color.lower()
         clean.append(item)
-    return {"tempo": tempo, "beats": beats, "bars": bars, "sections": clean}
+    out = {"tempo": tempo, "beats": beats, "bars": bars, "sections": clean}
+    if "marks" in body:
+        marks = _clean_marks(body["marks"])
+        if marks is None:
+            return None
+        out["marks"] = marks
+    return out
 
 
 async def get_song_info(request):
@@ -934,7 +963,13 @@ async def put_song_info(request):
     if info is None:
         raise web.HTTPBadRequest(text="expected {tempo, beats, bars, sections}")
     q = request.query
-    if not request.app[STORAGE].save_song_info(q.get("source", ""), q.get("path", ""), info):
+    source, path = q.get("source", ""), q.get("path", "")
+    # Detect (here or in the Show editor) sends only what it found, so the song's marks stay.
+    if "marks" not in info:
+        old = request.app[STORAGE].load_song_info(source, path) or {}
+        if old.get("marks"):
+            info["marks"] = old["marks"]
+    if not request.app[STORAGE].save_song_info(source, path, info):
         raise web.HTTPNotFound()
     return web.json_response({"ok": True})
 

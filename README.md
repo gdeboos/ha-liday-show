@@ -188,6 +188,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   Home Assistant's 16 MB limit upload fine
 - Cut, trim and splice songs in the **Music editor**, with crossfades
 - **Suggest cuts**: shorten the song or one section to a length you pick, by whole bars where the join isn't heard
+- **Marks**: flag and name moments in a song (a big hit, the bells coming in); every show using the song sees them and clips snap to them
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
 - Arrange the editor your way: pick a page layout, then drag, collapse or hide any panel
 - The browser's Back and Forward buttons move between the app's pages, inside Home Assistant too
