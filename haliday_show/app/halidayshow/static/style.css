@@ -105,6 +105,10 @@ body {
 .subtab:hover { background: var(--track); }
 .subtab.active { background: var(--track-alt); box-shadow: inset 3px 0 var(--accent); }
 .section-body { flex: 1; min-width: 0; }
+/* A group name over some of the side menu's pages ("Shows", "Building blocks"). */
+.subnav-group { margin: 12px 12px 2px; font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted); }
+.subnav-group:first-child { margin-top: 0; }
 .table-scroll { overflow-x: auto; }
 details.help summary { cursor: pointer; }
 /* "How to…": the longer help under a one-line hint, folded until you open it. */
@@ -120,6 +124,9 @@ details.howto li { margin: 2px 0; }
   .subnav::-webkit-scrollbar { display: none; }
   .subtab { flex: none; }
   .subtab span { display: none; }
+  /* In the sideways row a thin line stands in for the group names. */
+  .subnav-group { font-size: 0; margin: 6px 6px; width: 1px; align-self: stretch; background: var(--line); flex: none; }
+  .subnav-group:first-child { display: none; }
 }
 
 button, .button, select, input {
