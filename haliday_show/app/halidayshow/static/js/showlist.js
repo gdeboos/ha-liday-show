@@ -22,7 +22,7 @@ export function changed(when, now = new Date()) {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}${d.getFullYear() === now.getFullYear() ? "" : ` ${d.getFullYear()}`}`;
 }
 
-const songName = (path) => (path ? path.split("/").pop().replace(/\.[^.]+$/, "") : null);
+export const songName = (path) => (path ? path.split("/").pop().replace(/\.[^.]+$/, "") : null);
 
 // shows as the server lists them ({id, name, duration, song, modified}), newest change first, each
 // with what the row says. `last` is the show this browser last had open.

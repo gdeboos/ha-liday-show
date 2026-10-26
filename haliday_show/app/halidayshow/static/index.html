@@ -57,6 +57,7 @@
     <span class="tab-group" id="tab-editors-label">Editors</span>
     <button class="tab" data-view="editor" aria-label="Show editor"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><span>Show</span></button>
     <button class="tab" data-view="music" aria-label="Music editor"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><span>Music</span></button>
+    <button class="tab" data-view="playlist" aria-label="Playlist editor"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><span>Playlist</span></button>
     <span class="tab-sep" aria-hidden="true"></span>
     <button class="tab" data-view="setup"><svg class="ico" aria-hidden="true"><use href="#i-setup"/></svg><span>Setup</span></button>
     <button class="tab" data-view="public" id="tab-public" hidden><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><span>Public page</span></button>
@@ -264,6 +265,62 @@
     </form>
   </dialog>
   <audio id="audio" preload="auto"></audio>
+</main>
+
+<!-- Your playlists: where the Playlist editor starts each visit; the same list is under Library → Playlists. -->
+<main id="view-playlistlist" class="view showlist" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Your playlists</h2>
+  <p class="hint">A playlist plays your shows one after another, then starts again from the top until you
+    press <b>Stop</b>, even with this page closed. Open one to put shows in it and set when it plays.</p>
+  <p class="playlist-now" data-playlist-now></p>
+  <div class="show-list" data-playlist-list></div>
+  <p><button type="button" class="primary" data-playlist-new>+ New playlist</button></p>
+</main>
+
+<main id="view-playlist" class="view playlist-editor" hidden>
+  <section class="toolbar music-head">
+    <div class="group">
+      <button type="button" id="btn-all-playlists" class="ghost" title="Back to Your playlists">← All playlists</button>
+      <input id="pl-name" class="playlist-name" maxlength="60" aria-label="Playlist name" autocomplete="off">
+    </div>
+    <div class="group">
+      <button type="button" id="pl-play" class="primary">▶ Play</button>
+      <button type="button" id="pl-delete" class="ghost danger">Delete playlist</button>
+    </div>
+  </section>
+  <p class="playlist-now" data-playlist-now></p>
+  <div class="pl-columns">
+    <section class="card pl-bin">
+      <h3>Your shows</h3>
+      <p class="hint">Drag a show into the running order, or press <b>+</b> to add it at the end.</p>
+      <input id="pl-filter" type="search" placeholder="Find a show" aria-label="Find a show" autocomplete="off">
+      <ul id="pl-bin" class="pl-cards" aria-label="Your shows"></ul>
+    </section>
+    <section class="card pl-order" id="pl-order-box">
+      <div class="pl-order-head"><h3>Running order</h3><span id="pl-summary" class="hint"></span></div>
+      <div id="pl-strip" class="pl-strip"></div>
+      <ol id="pl-order" class="pl-cards" aria-label="Running order"></ol>
+      <p class="hint pl-order-hint">Drag the shows into the order to play them in. Drag one back to <b>Your shows</b>,
+        or press <b>✕</b>, to take it out.</p>
+      <label class="pl-gap">Pause between shows <input id="pl-gap" type="number" min="0" max="600" step="1"> seconds</label>
+    </section>
+  </div>
+  <section class="card pl-when">
+    <h3>When it plays</h3>
+    <div id="pl-schedule"></div>
+    <p id="playlist-clock" class="hint"></p>
+    <form id="sun-place" class="sun-place" hidden>
+      <p id="sun-place-text" class="hint"></p>
+      <div class="row">
+        <label>Latitude <input id="sun-lat" inputmode="decimal" placeholder="e.g. 51.5074"></label>
+        <label>Longitude <input id="sun-lon" inputmode="decimal" placeholder="e.g. -0.1278"></label>
+        <button class="primary" type="submit">Save</button>
+        <button id="sun-place-clear" class="ghost" type="button">Use Home Assistant's</button>
+      </div>
+    </form>
+    <p class="hint">For shows with no speaker, open the <a href="player" target="_blank" rel="noopener">Show player</a>
+      on a computer connected to speakers and leave it open: the songs play there.</p>
+  </section>
 </main>
 
 <!-- Your songs: where the Music editor starts each visit; the same list is under Library → Songs. -->
@@ -554,28 +611,13 @@
     <section id="preset-editor" class="card preset-editor"></section>
   </div>
 </main>
-<main id="view-playlists" class="view" hidden>
-  <p class="hint">A playlist plays your shows one after another, with a pause between them, then starts again
-    from the top until you press <b>Stop</b>. Each show plays on its own show speaker, as it would from an
-    automation. Only saved shows play. Tick <b>Play on a schedule</b> and it starts and stops by itself.
-    For shows with no speaker, open the <a href="player" target="_blank" rel="noopener">Show player</a> on a
-    computer connected to speakers and leave it open: the songs play there.</p>
-  <section class="toolbar">
-    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Your playlists</h2>
-    <button id="btn-new-playlist" class="primary">New playlist</button>
-  </section>
-  <p id="playlist-now" class="playlist-now"></p>
-  <p id="playlist-clock" class="hint"></p>
-  <form id="sun-place" class="card sun-place" hidden>
-    <p id="sun-place-text" class="hint"></p>
-    <div class="row">
-      <label>Latitude <input id="sun-lat" inputmode="decimal" placeholder="e.g. 51.5074"></label>
-      <label>Longitude <input id="sun-lon" inputmode="decimal" placeholder="e.g. -0.1278"></label>
-      <button class="primary" type="submit">Save</button>
-      <button id="sun-place-clear" class="ghost" type="button">Use Home Assistant's</button>
-    </div>
-  </form>
-  <div id="my-playlists" class="playlist-list"></div>
+<main id="view-playlists" class="view showlist" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Playlists</h2>
+  <p class="hint">A playlist plays your shows one after another, then starts again from the top until you
+    press <b>Stop</b>, even with this page closed. Open one to put shows in it and set when it plays.</p>
+  <p class="playlist-now" data-playlist-now></p>
+  <div class="show-list" data-playlist-list></div>
+  <p><button type="button" class="primary" data-playlist-new>+ New playlist</button></p>
 </main>
   </div>
 </div>

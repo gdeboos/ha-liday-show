@@ -174,6 +174,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Colour palettes for holidays and moods, plus your own (or ones the AI makes from a description), to
   recolour an effect, a light or the whole show in one click
 - Copy and paste effects between lights, play and loop just a region, undo and redo
+- A **Playlist editor**: drag shows into a running order, with a bar showing how long each plays
 - Playlists: several shows back to back, round and round, by hand or on a schedule (times or
   sunset, days and dates), with a Show player page to play the music on any computer with speakers
 - Public page: people passing by pick a show on their phone and it joins a queue, slotting in between
@@ -334,6 +335,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
     js/schedule.js                      A playlist's schedule in words
+    js/playlisteditor.js                Playlist editor: where a dragged show lands, running time, list rows
     js/publicsettings.js                The Public page tab: its address, dates and queue in words
     js/sectionnotes.js                  Notes for song sections, from what each sounds like
     js/showplayer.js                    Show player: plays songs of shows started with no speaker

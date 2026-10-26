@@ -26,7 +26,8 @@ import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLi
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
-import { copyName, showRows } from "./showlist.js";
+import { copyName, length as fmtLength, showRows, songName } from "./showlist.js";
+import { MAX_SHOWS as PLAYLIST_MAX, dropIndex, inserted, moved, playlistRows, strip as playlistStrip, summary as playlistSummary } from "./playlisteditor.js";
 import { filterRows, songKey, songRows } from "./songlist.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
@@ -2956,7 +2957,6 @@ async function loadPlaylists() {
     playlistsLoaded = false;
     status(`Couldn't load playlists: ${e.message}`, true);
   }
-  $("btn-new-playlist").disabled = !playlistsLoaded;
   await refreshPlaylistStatus();
   renderPlaylists();
   clearInterval(playlistWatch);
@@ -2978,26 +2978,39 @@ async function refreshPlaylistStatus() {
   renderSunPlace();
   const now = st.playlist ? { ...st.playlist, show: st.playing ? st.show : null, name: st.playlist.name } : null;
   playlistPlaying = now;
-  $("playlist-now").textContent = !now ? ""
+  const nowText = !now ? ""
     : `▶ Playing ${now.name}: ${now.show ? (playlistShows.find((x) => x.id === now.show)?.name || now.show) : "pausing before the next show"}`
       + (st.playlist?.finishing ? ". Its time is up, so it stops when this show ends." : "");
+  for (const p of document.querySelectorAll("[data-playlist-now]")) p.textContent = nowText;
   markPlaylistPlaying();
 }
 
-// Marks what's playing without redrawing the list, so a name being typed isn't lost.
+// Marks what's playing without redrawing, so a name being typed isn't lost.
 function markPlaylistPlaying() {
-  for (const card of document.querySelectorAll("#my-playlists .playlist-card")) {
-    const playing = playlistPlaying?.id === card.dataset.id;
-    for (const li of card.querySelectorAll(".playlist-shows li")) {
-      li.classList.toggle("current", playing && playlistPlaying.show === li.dataset.show);
-    }
-    const play = card.querySelector(".playlist-play");
+  const byId = playlistShowById();
+  for (const row of document.querySelectorAll("[data-playlist-list] .show-row")) {
+    const playing = playlistPlaying?.id === row.dataset.playlistId;
+    row.classList.toggle("playing", playing);
+    const play = row.querySelector(".playlist-play");
     play.textContent = playing ? "■ Stop" : "▶ Play";
     play.disabled = !playing && play.dataset.empty === "1";
-    const next = card.querySelector(".playlist-next");
-    const pl = playlists.find((x) => x.id === card.dataset.id);
-    if (next && pl) next.textContent = scheduleNote(pl);
+    const next = row.querySelector(".playlist-next");
+    const pl = playlists.find((x) => x.id === row.dataset.playlistId);
+    if (pl) next.textContent = scheduleNote(pl);
   }
+  const pl = openPlaylist();
+  if (!pl || $("view-playlist").hidden) return;
+  const playing = playlistPlaying?.id === pl.id;
+  for (const li of document.querySelectorAll("#pl-order > li[data-k]")) {
+    li.classList.toggle("current", playing && playlistPlaying.show === li.dataset.show);
+  }
+  const play = $("pl-play");
+  const empty = !pl.shows.some((id) => byId[id]?.baked);
+  play.textContent = playing ? "■ Stop" : "▶ Play";
+  play.disabled = !playing && empty;
+  play.title = !playing && empty ? "Add a saved show first" : "";
+  const next = document.querySelector("#pl-schedule .playlist-next");
+  if (next) next.textContent = scheduleNote(pl);
 }
 
 // Where sunset is worked out for: shown once a playlist starts at sunset.
@@ -3036,7 +3049,7 @@ function scheduleNote(pl) {
   if (!s?.on) return "";
   if (scheduleState.scheduled === pl.id) return `Playing now on its schedule (${describeSchedule(s)}).`;
   const next = scheduleState.next?.[pl.id];
-  if (s.start === "sunset" && !scheduleState.location) return "Add where you are, above, so it knows when sunset is.";
+  if (s.start === "sunset" && !scheduleState.location) return "To know when sunset is, it needs where you are: add it under When it plays.";
   if (!next || !scheduleState.now) return s.days.length ? "" : "Pick at least one day.";
   return `Next starts ${whenNext(next, scheduleState.now)}.`;
 }
@@ -3209,112 +3222,89 @@ async function flushPlaylists() {
   await api("api/playlists", { method: "PUT", json: playlists });
 }
 
+let openPlaylistId = null; // the playlist open in the Playlist editor
+const openPlaylist = () => playlists.find((p) => p.id === openPlaylistId) || null;
+const playlistShowById = () => Object.fromEntries(playlistShows.map((x) => [x.id, x]));
+
 function renderPlaylists() {
-  const box = $("my-playlists");
-  if (!playlists.length) {
-    box.innerHTML = `<p class="hint">None yet. Press <b>New playlist</b>, then add your shows in the order to play them.</p>`;
-    return;
-  }
-  const byId = Object.fromEntries(playlistShows.map((x) => [x.id, x]));
-  box.replaceChildren(...playlists.map((pl) => {
-    const card = document.createElement("section");
-    card.className = "card playlist-card";
-    card.dataset.id = pl.id;
-    const name = document.createElement("input");
-    name.className = "playlist-name";
-    name.value = pl.name;
-    name.maxLength = 60;
-    name.setAttribute("aria-label", "Playlist name");
-    name.addEventListener("change", () => {
-      const v = name.value.trim();
-      if (!v || playlists.some((q) => q !== pl && q.name.toLowerCase() === v.toLowerCase())) {
-        status("Give each playlist its own name", "hint");
-        name.value = pl.name;
-        return;
-      }
-      pl.name = v;
-      savePlaylists();
-    });
-    const gap = document.createElement("input");
-    gap.type = "number";
-    gap.min = 0;
-    gap.max = 600;
-    gap.step = 1;
-    gap.value = pl.gap;
-    gap.addEventListener("change", () => {
-      pl.gap = Math.min(Math.max(Number(gap.value) || 0, 0), 600);
-      gap.value = pl.gap;
-      savePlaylists();
-    });
-    const gl = document.createElement("label");
-    gl.append("Pause between shows (seconds)", gap);
-    const head = document.createElement("div");
-    head.className = "playlist-head";
-    head.append(name, gl);
-
-    const list = document.createElement("ol");
-    list.className = "playlist-shows";
-    pl.shows.forEach((id, k) => {
-      const li = document.createElement("li");
-      const show = byId[id];
-      li.dataset.show = id;
-      li.classList.toggle("unplayable", !show?.baked);
-      const label = document.createElement("span");
-      label.className = "playlist-show";
-      const shelved = !show && playlistArchived.find((x) => x.id === id);
-      label.textContent = `${k + 1}. ${show ? show.name : shelved ? shelved.name : "Deleted show"}`
-        + (shelved ? " (archived, so skipped until it's restored)" : !show ? " (skipped)" : !show.baked ? " (not saved yet, so skipped)" : "");
-      const move = (d) => { const [x] = pl.shows.splice(k, 1); pl.shows.splice(k + d, 0, x); savePlaylists(); renderPlaylists(); };
-      const up = button("↑", () => move(-1), "ghost");
-      up.title = "Play earlier";
-      up.disabled = k === 0;
-      const down = button("↓", () => move(1), "ghost");
-      down.title = "Play later";
-      down.disabled = k === pl.shows.length - 1;
-      const remove = button("✕", () => { pl.shows.splice(k, 1); savePlaylists(); renderPlaylists(); }, "ghost");
-      remove.title = "Take out of the playlist";
-      li.append(label, up, down, remove);
-      list.append(li);
-    });
-
-    const add = document.createElement("select");
-    add.setAttribute("aria-label", "Add a show");
-    add.add(new Option("Add a show…", ""));
-    for (const x of playlistShows) add.add(new Option(x.name, x.id));
-    add.addEventListener("change", () => {
-      if (!add.value) return;
-      pl.shows.push(add.value);
-      savePlaylists();
-      renderPlaylists();
-    });
-    add.disabled = pl.shows.length >= 100;
-    const play = button("▶ Play", async () => {
-      try {
-        if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" });
-        else {
-          await flushPlaylists();
-          await api(`api/playlists/${encodeURIComponent(pl.id)}/play`, { method: "POST" });
-          status(`Playing ${pl.name}. It carries on until you press Stop, even with this page closed.`);
-        }
-      } catch (e) { status(e.message, true); }
-      refreshPlaylistStatus();
-    }, "primary playlist-play");
-    play.dataset.empty = pl.shows.some((id) => byId[id]?.baked) ? "0" : "1";
-    if (play.dataset.empty === "1") play.title = "Add a saved show first";
-    const del = button("Delete playlist", async () => {
-      if (!confirm(`Delete the playlist "${pl.name}"? Its shows are kept.`)) return;
-      if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" }).catch(() => {});
-      playlists = playlists.filter((x) => x !== pl);
-      savePlaylists();
-      renderPlaylists();
-    }, "ghost danger");
-    const foot = document.createElement("div");
-    foot.className = "playlist-foot";
-    foot.append(add, play, del);
-    card.append(head, list, scheduleEditor(pl), foot);
-    return card;
-  }));
+  renderPlaylistLists();
+  if (!$("view-playlist").hidden) renderPlaylistEditor();
   markPlaylistPlaying();
+}
+
+// Your playlists (the Playlist editor's start) and Library → Playlists.
+function renderPlaylistLists() {
+  const rows = playlistRows(playlists, playlistShows);
+  for (const b of document.querySelectorAll("[data-playlist-new]")) b.disabled = !playlistsLoaded;
+  for (const box of document.querySelectorAll("[data-playlist-list]")) {
+    if (!rows.length) {
+      box.removeAttribute("role");
+      box.innerHTML = playlistsLoaded ? `<p class="hint">No playlists yet. Press <b>+ New playlist</b> to make one.</p>` : "";
+      continue;
+    }
+    box.setAttribute("role", "list");
+    box.setAttribute("aria-label", "Your playlists");
+    box.replaceChildren(...rows.map(playlistRow));
+  }
+}
+
+function playlistRow(r) {
+  const row = document.createElement("div");
+  row.className = "show-row";
+  row.setAttribute("role", "listitem");
+  row.dataset.playlistId = r.id;
+  const main = document.createElement("div");
+  main.className = "show-main";
+  const name = document.createElement("b");
+  name.className = "show-name";
+  name.textContent = r.name;
+  const details = document.createElement("div");
+  details.className = "hint";
+  details.textContent = r.details;
+  const next = document.createElement("div");
+  next.className = "hint playlist-next";
+  main.append(name, details, next);
+  const actions = document.createElement("div");
+  actions.className = "group show-actions";
+  const open = button("Open", () => openPlaylistEditor(r.id), "primary");
+  open.setAttribute("aria-label", `Open ${r.name}`);
+  const play = button("▶ Play", () => { const pl = playlists.find((x) => x.id === r.id); if (pl) togglePlaylist(pl); }, "ghost playlist-play");
+  play.dataset.empty = r.playable ? "0" : "1";
+  if (!r.playable) play.title = "Add a saved show first";
+  const del = button("Delete", async () => {
+    const pl = playlists.find((x) => x.id === r.id);
+    if (pl && await deletePlaylist(pl)) renderPlaylists();
+  }, "ghost");
+  del.setAttribute("aria-label", `Delete ${r.name}`);
+  actions.append(open, play, del);
+  row.append(main, actions);
+  return row;
+}
+
+function openPlaylistEditor(id) {
+  openPlaylistId = id;
+  app.playlistChosen = true;
+  showView("playlist");
+}
+
+async function togglePlaylist(pl) {
+  try {
+    if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" });
+    else {
+      await flushPlaylists();
+      await api(`api/playlists/${encodeURIComponent(pl.id)}/play`, { method: "POST" });
+      status(`Playing ${pl.name}. It carries on until you press Stop, even with this page closed.`);
+    }
+  } catch (e) { status(e.message, true); }
+  refreshPlaylistStatus();
+}
+
+async function deletePlaylist(pl) {
+  if (!confirm(`Delete the playlist "${pl.name}"? Its shows are kept.`)) return false;
+  if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" }).catch(() => {});
+  playlists = playlists.filter((x) => x !== pl);
+  savePlaylists();
+  return true;
 }
 
 function newPlaylist() {
@@ -3322,9 +3312,204 @@ function newPlaylist() {
   const taken = new Set(playlists.map((p) => p.name.toLowerCase()));
   let name = "My playlist";
   for (let k = 2; taken.has(name.toLowerCase()); k++) name = `My playlist ${k}`;
-  playlists.push({ id: `pl-${Date.now().toString(36)}`, name, shows: [], gap: 5 });
+  const pl = { id: `pl-${Date.now().toString(36)}`, name, shows: [], gap: 5 };
+  playlists.push(pl);
   savePlaylists();
-  renderPlaylists();
+  openPlaylistEditor(pl.id);
+}
+
+// The Playlist editor ---------------------------------------------------------------
+function renderPlaylistEditor() {
+  const pl = openPlaylist();
+  if (!pl) {
+    if (playlistsLoaded) { app.playlistChosen = false; showView("playlist", { push: false }); }
+    return;
+  }
+  if (document.activeElement !== $("pl-name")) $("pl-name").value = pl.name;
+  if (document.activeElement !== $("pl-gap")) $("pl-gap").value = pl.gap;
+  renderPlaylistBin();
+  renderPlaylistOrder();
+  $("pl-schedule").replaceChildren(scheduleEditor(pl)); // the list was just read again, so a new pl
+}
+
+const showHue = (k) => (k * 67 + 200) % 360; // each place in the order has its own colour, on the strip too
+
+function showCard(show, id) {
+  const li = document.createElement("li");
+  li.className = "pl-card";
+  li.dataset.show = id;
+  const grip = document.createElement("span");
+  grip.className = "pl-grip";
+  grip.textContent = "⠿";
+  grip.title = "Drag";
+  grip.setAttribute("aria-hidden", "true");
+  const text = document.createElement("div");
+  text.className = "pl-card-text";
+  const name = document.createElement("b");
+  const shelved = !show && playlistArchived.find((x) => x.id === id);
+  name.textContent = show ? show.name : shelved ? shelved.name : "Deleted show";
+  const details = document.createElement("span");
+  details.className = "hint";
+  details.textContent = shelved ? "Archived, so skipped until it's restored"
+    : !show ? "Skipped"
+      : [songName(show.song) || "No song", fmtLength(show.duration), show.baked ? "" : "not saved yet, so skipped"].filter(Boolean).join(" · ");
+  li.classList.toggle("unplayable", !show?.baked);
+  text.append(name, details);
+  li.append(grip, text);
+  return li;
+}
+
+function renderPlaylistBin() {
+  const pl = openPlaylist();
+  if (!pl) return;
+  const q = $("pl-filter").value.trim().toLowerCase();
+  const shows = [...playlistShows].sort((a, b) => a.name.localeCompare(b.name))
+    .filter((s) => !q || s.name.toLowerCase().includes(q));
+  const full = pl.shows.length >= PLAYLIST_MAX;
+  $("pl-bin").replaceChildren(...shows.map((s) => {
+    const li = showCard(s, s.id);
+    const add = button("+", () => changeOrder(inserted(openPlaylist().shows, s.id), true), "ghost pl-add");
+    add.title = full ? `A playlist holds up to ${PLAYLIST_MAX} shows` : "Add at the end";
+    add.setAttribute("aria-label", `Add ${s.name} at the end`);
+    add.disabled = full;
+    li.append(add);
+    li.addEventListener("pointerdown", (e) => dragCard(e, li, s.id, null));
+    return li;
+  }));
+  if (!shows.length) {
+    $("pl-bin").innerHTML = `<li class="hint pl-empty">${playlistShows.length ? "No shows match that." : "No shows yet. Make one in the Show editor first."}</li>`;
+  }
+}
+
+function renderPlaylistOrder() {
+  const pl = openPlaylist();
+  if (!pl) return;
+  const byId = playlistShowById();
+  $("pl-summary").textContent = playlistSummary(pl.shows, byId, pl.gap);
+  const s = playlistStrip(pl.shows, byId, pl.gap);
+  $("pl-strip").hidden = !s.blocks.length;
+  $("pl-strip").replaceChildren(...s.blocks.map((b) => {
+    const el = document.createElement("span");
+    el.className = "pl-block";
+    el.style.left = `${b.start * 100}%`;
+    el.style.width = `${b.width * 100}%`;
+    el.style.setProperty("--hue", showHue(b.k));
+    el.title = `${b.k + 1}. ${b.name}, ${fmtLength(byId[b.id].duration)}`;
+    if (b.width > 0.08) el.textContent = b.name;
+    return el;
+  }));
+  $("pl-strip").setAttribute("aria-label", `What plays each time round: ${s.blocks.map((b) => b.name).join(", ")}`);
+  const order = $("pl-order");
+  order.replaceChildren(...pl.shows.map((id, k) => {
+    const li = showCard(byId[id], id);
+    li.dataset.k = k;
+    li.style.setProperty("--hue", showHue(k));
+    const n = document.createElement("span");
+    n.className = "pl-number";
+    n.textContent = k + 1;
+    li.querySelector(".pl-grip").after(n);
+    const up = button("↑", () => changeOrder(moved(openPlaylist().shows, k, k - 1)), "ghost");
+    up.title = "Play earlier";
+    up.setAttribute("aria-label", `Play ${li.querySelector("b").textContent} earlier`);
+    up.disabled = k === 0;
+    const down = button("↓", () => changeOrder(moved(openPlaylist().shows, k, k + 2)), "ghost");
+    down.title = "Play later";
+    down.setAttribute("aria-label", `Play ${li.querySelector("b").textContent} later`);
+    down.disabled = k === pl.shows.length - 1;
+    const rm = button("✕", () => changeOrder(openPlaylist().shows.filter((_, j) => j !== k)), "ghost");
+    rm.title = "Take out of the playlist";
+    rm.setAttribute("aria-label", `Take ${li.querySelector("b").textContent} out`);
+    const tools = document.createElement("span");
+    tools.className = "pl-tools";
+    tools.append(up, down, rm);
+    li.append(tools);
+    li.addEventListener("pointerdown", (e) => dragCard(e, li, id, k));
+    return li;
+  }));
+  if (!pl.shows.length) order.innerHTML = `<li class="pl-empty">Drag shows here</li>`;
+  for (const b of document.querySelectorAll("#pl-bin .pl-add")) b.disabled = pl.shows.length >= PLAYLIST_MAX;
+  markPlaylistPlaying();
+}
+
+function changeOrder(shows, adding = false) {
+  const pl = openPlaylist();
+  if (!pl) return;
+  if (shows.length === pl.shows.length && shows.every((x, k) => x === pl.shows[k])) {
+    if (adding) status(`A playlist holds up to ${PLAYLIST_MAX} shows`, "hint");
+    return;
+  }
+  pl.shows = shows;
+  savePlaylists();
+  renderPlaylistOrder();
+}
+
+// Dragging a show card: from Your shows into the running order, within it, or back out of it.
+// Pointer events rather than the browser's own dragging, so it works with a finger too; a finger
+// drags by the grip, so the lists still scroll.
+function dragCard(e, card, id, from) {
+  if (e.button !== 0 || e.target.closest("button, input")) return;
+  if (e.pointerType !== "mouse" && !e.target.closest(".pl-grip")) return;
+  e.preventDefault();
+  const x0 = e.clientX, y0 = e.clientY;
+  const box = $("pl-order-box"), order = $("pl-order");
+  let ghost = null, line = null, at = null, dx = 0, dy = 0;
+  card.setPointerCapture(e.pointerId);
+  const place = (ev) => {
+    ghost.style.transform = `translate(${ev.clientX - dx}px, ${ev.clientY - dy}px)`;
+    const r = box.getBoundingClientRect();
+    const inside = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+    const cards = [...order.querySelectorAll(":scope > li[data-k]")];
+    if (inside) {
+      at = dropIndex(cards.map((c) => { const b = c.getBoundingClientRect(); return b.top + b.height / 2; }), ev.clientY);
+      const top = !cards.length ? 0 : at < cards.length ? cards[at].offsetTop - 4 : cards.at(-1).offsetTop + cards.at(-1).offsetHeight + 2;
+      line.style.top = `${top}px`;
+      if (!line.isConnected) order.append(line);
+    } else {
+      at = null;
+      line.remove();
+    }
+    ghost.classList.toggle("pl-ghost-out", from !== null && !inside);
+    if (ev.clientY < 50) window.scrollBy(0, -12);
+    else if (ev.clientY > innerHeight - 50) window.scrollBy(0, 12);
+  };
+  const move = (ev) => {
+    if (!ghost) {
+      if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+      const r = card.getBoundingClientRect();
+      dx = x0 - r.left;
+      dy = y0 - r.top;
+      ghost = card.cloneNode(true);
+      ghost.classList.add("pl-ghost");
+      ghost.style.width = `${r.width}px`;
+      ghost.setAttribute("aria-hidden", "true");
+      document.body.append(ghost);
+      line = document.createElement("li");
+      line.className = "pl-drop-line";
+      line.setAttribute("aria-hidden", "true");
+      card.classList.add("pl-dragging");
+      document.body.classList.add("pl-drag-on");
+    }
+    place(ev);
+  };
+  const end = (ev, drop) => {
+    card.removeEventListener("pointermove", move);
+    card.removeEventListener("pointerup", up);
+    card.removeEventListener("pointercancel", cancel);
+    if (!ghost) return; // just a click
+    ghost.remove();
+    line.remove();
+    card.classList.remove("pl-dragging");
+    document.body.classList.remove("pl-drag-on");
+    const pl = openPlaylist();
+    if (!drop || !pl) return;
+    if (at !== null) changeOrder(from === null ? inserted(pl.shows, id, at) : moved(pl.shows, from, at), from === null);
+    else if (from !== null) changeOrder(pl.shows.filter((_, k) => k !== from));
+  };
+  const up = (ev) => end(ev, true);
+  const cancel = (ev) => end(ev, false);
+  card.addEventListener("pointermove", move);
+  card.addEventListener("pointerup", up);
+  card.addEventListener("pointercancel", cancel);
 }
 
 // selected stretch of time ---------------------------------------------------------
@@ -6057,14 +6242,16 @@ function showView(view, { push = true } = {}) {
   if (page === "editor" && !app.chosen) page = "showlist";
   // And the Music editor on Your songs.
   if (page === "music" && !app.songChosen) page = "songlist";
+  // And the Playlist editor on Your playlists.
+  if (page === "playlist" && !app.playlistChosen) page = "playlistlist";
   const top = section || view;
   for (const t of document.querySelectorAll(".tab")) {
-    t.classList.toggle("active", t.dataset.view === ({ showlist: "editor", songlist: "music" }[top] || top));
+    t.classList.toggle("active", t.dataset.view === ({ showlist: "editor", songlist: "music", playlistlist: "playlist" }[top] || top));
     if (t.dataset.view === top) t.scrollIntoView({ block: "nearest", inline: "nearest" }); // on a phone the tab row scrolls
   }
   for (const t of document.querySelectorAll(".subtab")) t.classList.toggle("active", t.dataset.view === page);
   for (const k of Object.keys(SECTIONS)) $(`section-${k}`).hidden = k !== top;
-  for (const v of ["showlist", "editor", "songlist", "music", "public", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
+  for (const v of ["showlist", "editor", "songlist", "music", "playlistlist", "playlist", "public", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
   if (page === "songlist") document.querySelector("[data-songs-slot]").append($("songs-block"));
   if (page === "songs") $("view-songs").append($("songs-block"));
   if (page === "showlist" || page === "shows") renderShowLists();
@@ -6076,7 +6263,7 @@ function showView(view, { push = true } = {}) {
   if (page === "house") renderHouseLights();
   if (page === "settings") { renderCopies(); loadPublic(); }
   if (page === "public") loadPublic({ items: true });
-  if (page === "playlists") loadPlaylists(); else stopPlaylistWatch();
+  if (["playlists", "playlistlist", "playlist"].includes(page)) loadPlaylists(); else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); loadSongMarks(); }
   rememberPage(page, push);
 }
@@ -6126,7 +6313,9 @@ async function pageFromHistory(e) {
       if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) { refuse(); return; }
       app.songChosen = false;
     }
-    // Forward again to the show or song that was open.
+    if (shownPage === "playlist" && page === "playlistlist") app.playlistChosen = false;
+    // Forward again to the show, song or playlist that was open.
+    if (page === "playlist" && !app.playlistChosen && openPlaylist()) app.playlistChosen = true;
     if (page === "editor" && !app.chosen && app.showId) app.chosen = true;
     if (page === "music" && !app.songChosen && music.base) app.songChosen = true;
     shownN = n;
@@ -6296,7 +6485,40 @@ function wire() {
     if (e.key === "Enter" && e.target.matches("input") && !$("add-go").hidden) { e.preventDefault(); addLightNow(); }
   });
   $("btn-new-preset").addEventListener("click", newPreset);
-  $("btn-new-playlist").addEventListener("click", newPlaylist);
+  for (const b of document.querySelectorAll("[data-playlist-new]")) b.addEventListener("click", newPlaylist);
+  $("btn-all-playlists").addEventListener("click", async () => {
+    await flushPlaylists().catch(() => {});
+    app.playlistChosen = false;
+    showView("playlist");
+  });
+  $("pl-name").addEventListener("change", () => {
+    const pl = openPlaylist();
+    if (!pl) return;
+    const v = $("pl-name").value.trim();
+    if (!v || playlists.some((q) => q !== pl && q.name.toLowerCase() === v.toLowerCase())) {
+      status("Give each playlist its own name", "hint");
+      $("pl-name").value = pl.name;
+      return;
+    }
+    pl.name = v;
+    savePlaylists();
+  });
+  $("pl-gap").addEventListener("change", () => {
+    const pl = openPlaylist();
+    if (!pl) return;
+    pl.gap = Math.min(Math.max(Math.round(Number($("pl-gap").value)) || 0, 0), 600);
+    $("pl-gap").value = pl.gap;
+    savePlaylists();
+    renderPlaylistOrder();
+  });
+  $("pl-filter").addEventListener("input", renderPlaylistBin);
+  $("pl-play").addEventListener("click", () => { const pl = openPlaylist(); if (pl) togglePlaylist(pl); });
+  $("pl-delete").addEventListener("click", async () => {
+    const pl = openPlaylist();
+    if (!pl || !(await deletePlaylist(pl))) return;
+    app.playlistChosen = false;
+    showView("playlist");
+  });
   $("sun-place").addEventListener("submit", saveSunPlace);
   $("sun-place-clear").addEventListener("click", async () => {
     try { scheduleState = await api("api/location", { method: "PUT", json: {} }); } catch (err) { status(err.message, true); }
