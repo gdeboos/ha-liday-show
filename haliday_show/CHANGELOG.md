@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.185
+
+- Every on/off setting is now a switch that slides across (blue when on), instead of a tick box: in
+  the editor (**Lights**, **Loop**, **Snap**), windows, **Setup**, playlists and the **Public page**.
+- Days of the week, in a playlist's schedule and the public page's **Opening hours**, are pill
+  buttons with a ✓ that fill in when picked.
+- The user guide now says "turn on" and "turn off" to match.
+
 ## 0.2.184
 
 - **Import show…** now has **▶ Preview on your house** on its **Match your lights** step. It plays the

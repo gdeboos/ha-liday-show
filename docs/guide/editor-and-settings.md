@@ -53,7 +53,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 | Experimental | **Govee scenes** (below), and **Show the Labs tab**. |
 
 **Labs** is a tab under **Setup** for working out new ways to drive Govee lights. It's hidden until you
-tick **Show the Labs tab** under **Experimental**; that's saved in this browser, so each computer or
+turn on **Show the Labs tab** under **Experimental**; that's saved in this browser, so each computer or
 phone has its own. It holds:
 
 | Section | What's there |

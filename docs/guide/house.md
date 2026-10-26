@@ -35,7 +35,7 @@ house so you can trace them on your photo. **Remove photo** goes back to the sam
 
 While a light is picked, it's drawn in a rainbow from red at the plug to the far end, so you can
 check it runs the same way as the real light. If it's backwards, retrace it from the other end, or
-tick **Reverse** on the Devices tab if the effects themselves run the wrong way. Each light's
+turn on **Reverse** on the Devices tab if the effects themselves run the wrong way. Each light's
 **Brightness %** applies here as well. Click a light in the list, or its line on the photo, to pick
 it; Esc lets go.
 

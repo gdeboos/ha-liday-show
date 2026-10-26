@@ -24,7 +24,7 @@ else on the line (or **Edit**) to open the light's window, which has all its set
 | Segments | How many separately controllable sections it has. For WLED, Twinkly and pixel controllers it's the number of LEDs, filled in or typed when you add it; a Home Assistant light has one. Govee doesn't report it, so set it with **Find** or **Test** (see [Govee lights](#govee-lights)); most Govee strips and outdoor lights have 10 to 15. |
 | Bulbs | The real number of bulbs, so the House view draws each one. Leave blank to draw 4 per segment. |
 | Brightness % | Caps the light in every show, handy when one string is much brighter than the rest. It applies straight away, to previews too, without re-saving shows. |
-| Reverse | Tick it if effects run from the wrong end. |
+| Reverse | Turn it on if effects run from the wrong end. |
 | Blend | Govee only: asks the light to blend smoothly between neighbouring segments. |
 | Protocol | Govee only: how colours are sent (see [Govee lights](#govee-lights)). Other kinds show how they're driven, such as **DDP** or **E1.31**. |
 
@@ -42,7 +42,7 @@ segments a light has, and different models take colours in different ways.
 
 Press **Test**: a rainbow runs along the light with a white dot
 stepping from segment to segment. Set **Segments** so the dot visits every segment once per lap,
-and tick **Reverse** if it runs the wrong way. If the light is still on its reel, press **Find**
+and turn on **Reverse** if it runs the wrong way. If the light is still on its reel, press **Find**
 next to **Segments** instead: a window opens, lights one segment and asks whether anything is lit.
 Each answer halves the possible range, so after about 7 answers the count is filled in and the
 window says what it found. **Cancel** stops it and lets the light go back to normal. Set **Reverse** later,
@@ -191,7 +191,7 @@ whole house. Press the light's line to open its window, then **Split into parts�
 segment; set its first and last segment, then press **+ Add part** for the next stretch (it starts
 just after the last part). For example, a 60-segment Permanent Outdoor Pro could be **Front roof**
 3–23, **Side** 24–40 and **Back** 41–60. Segments are counted the way effects run, so with
-**Reverse** ticked segment 1 is the far end. Parts are listed one per line, each with its colour,
+**Reverse** on, segment 1 is the far end. Parts are listed one per line, each with its colour,
 and the bar above them maps the light's segments: each part in its colour, unused ones grey.
 
 To check where a part really is, press **Test** on its line: the real light shows just that part,
@@ -207,14 +207,14 @@ shorter trims them. Remove a part with ✕; its effects stay in your shows.
 
 ### The whole light as one
 
-Unless you untick **Also play as one** under the parts, the light
+Unless you turn off **Also play as one** under the parts, the light
 keeps its own track too, marked *All parts*. Effects on it
 run across all its parts joined end to end, as if the unused segments weren't there. A 30 m string
 that goes up the left pillar, across the top and down the right pillar could be split into *Left*,
 *Top* and *Right*: a chase on the light's own track then runs up, across and down in one go. While
 a clip is playing on a part's own track, that part shows its clip instead, so you can run one
 effect over the whole string and drop a different one on just the left pillar. **Generate** puts
-effects on the parts and leaves the light's own track for you. Untick **Also play as one** for a
+effects on the parts and leaves the light's own track for you. Turn off **Also play as one** for a
 light you only ever use in parts, like a roof line where only the front 30 segments are seen: its
 own track goes away (or, if it has effects on it, is marked *Not played: parts only*).
 

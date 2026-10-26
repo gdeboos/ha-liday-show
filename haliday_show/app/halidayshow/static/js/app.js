@@ -533,7 +533,7 @@ function lightFields(d) {
     cell(bulbs, "Bulbs", "So the House view draws each one. Blank guesses 4 per segment.");
     cell(input("number", "brightness", { min: 1, max: 100, title: "Caps this light in every show. 100 is full brightness." }),
       "Brightness %", "Caps this light in every show.");
-    if (!isHa(d)) cell(input("checkbox", "reverse"), "Reverse", "Tick if Test's white dot runs the wrong way.");
+    if (!isHa(d)) cell(input("checkbox", "reverse"), "Reverse", "Turn on if Test's white dot runs the wrong way.");
     if (!wled) cell(input("checkbox", "gradient"), "Blend", "Ask the light to blend between segments.");
     if (wled) {
       const how = document.createElement("span");
@@ -2168,7 +2168,7 @@ function renderInspector() {
         <li>Click a clip to edit it: drag it to move, or drag its edges to resize. D duplicates, Ctrl+C and Ctrl+V
           copy and paste, and Ctrl+Z undoes.</li>
         <li>Click a light's name to copy or recolour all its effects.</li>
-        <li>Drag along the time ruler to set a play region, and tick Loop to repeat it.</li>
+        <li>Drag along the time ruler to set a play region, and turn on Loop to repeat it.</li>
         <li>Click the beat lane to add or remove a beat. Hold Shift to drag without snapping.</li>
         <li>Coloured flags on the beat lane are the song's marks, made in the Music editor. Clips snap to them.</li>
       </ul></details>`;
@@ -2524,7 +2524,7 @@ function savePresetFrom(clip) {
   colours.checked = true;
   const cl = document.createElement("label");
   cl.append(colours, "Include colours");
-  cl.title = "Untick to save only the movement and other settings, so the preset keeps whatever colours a clip has";
+  cl.title = "Turn off to save only the movement and other settings, so the preset keeps whatever colours a clip has";
   const hasColours = fx.params.some((p) => p.type === "color");
   cl.hidden = !hasColours;
   const actions = document.createElement("div");
@@ -2801,7 +2801,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
     });
     const il = document.createElement("label");
     il.append(include, "Include colours");
-    il.title = "Untick to keep whatever colours a clip already has when this preset is picked";
+    il.title = "Turn off to keep whatever colours a clip already has when this preset is picked";
     groups.colours.append(il);
   }
   const colourKeys = [];
@@ -3297,7 +3297,7 @@ function scheduleEditor(pl) {
       times.append(warn);
     }
     const days = document.createElement("div");
-    days.className = "row days";
+    days.className = "day-chips days";
     DAYS.forEach((name, d) => {
       const c = document.createElement("input");
       c.type = "checkbox";
@@ -4244,7 +4244,7 @@ function renderPublicHours() {
   const hint = !h.on ? "Open all the time." : now.open ? "✓ Open now."
     : now.next ? `Closed now. Opens ${whenNext(now.next, now.now)}.`
       : sunset && !publicView.home ? "⚠ There's no home location to work out sunset from, so the page won't open. Set it in Home Assistant (Settings → System → General)."
-        : !h.days.length ? "⚠ No days are ticked, so the page never opens."
+        : !h.days.length ? "⚠ No days are picked, so the page never opens."
           : "⚠ These hours don't come round: the sun doesn't set before they end. Pick a later closing time.";
   $("pub-hours-hint").textContent = hint;
   $("pub-hours-hint").classList.toggle("warn", hint.startsWith("⚠"));

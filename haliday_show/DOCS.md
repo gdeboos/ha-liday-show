@@ -79,7 +79,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 4. **Show** tab (the Show editor), or **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Play it by itself: put it in a [playlist](#playlists) on the **Playlist** tab and tick
+5. Play it by itself: put it in a [playlist](#playlists) on the **Playlist** tab and turn on
    **Play on a schedule** (at set times or from sunset), or start it from an automation with the MQTT
    **Play** button or the `hassio.app_stdin` action.
 
@@ -143,7 +143,7 @@ else on the line (or **Edit**) to open the light's window, which has all its set
 | Segments | How many separately controllable sections it has. For WLED, Twinkly and pixel controllers it's the number of LEDs, filled in or typed when you add it; a Home Assistant light has one. Govee doesn't report it, so set it with **Find** or **Test** (see [Govee lights](#govee-lights)); most Govee strips and outdoor lights have 10 to 15. |
 | Bulbs | The real number of bulbs, so the House view draws each one. Leave blank to draw 4 per segment. |
 | Brightness % | Caps the light in every show, handy when one string is much brighter than the rest. It applies straight away, to previews too, without re-saving shows. |
-| Reverse | Tick it if effects run from the wrong end. |
+| Reverse | Turn it on if effects run from the wrong end. |
 | Blend | Govee only: asks the light to blend smoothly between neighbouring segments. |
 | Protocol | Govee only: how colours are sent (see [Govee lights](#govee-lights)). Other kinds show how they're driven, such as **DDP** or **E1.31**. |
 
@@ -161,7 +161,7 @@ segments a light has, and different models take colours in different ways.
 
 Press **Test**: a rainbow runs along the light with a white dot
 stepping from segment to segment. Set **Segments** so the dot visits every segment once per lap,
-and tick **Reverse** if it runs the wrong way. If the light is still on its reel, press **Find**
+and turn on **Reverse** if it runs the wrong way. If the light is still on its reel, press **Find**
 next to **Segments** instead: a window opens, lights one segment and asks whether anything is lit.
 Each answer halves the possible range, so after about 7 answers the count is filled in and the
 window says what it found. **Cancel** stops it and lets the light go back to normal. Set **Reverse** later,
@@ -310,7 +310,7 @@ whole house. Press the light's line to open its window, then **Split into parts�
 segment; set its first and last segment, then press **+ Add part** for the next stretch (it starts
 just after the last part). For example, a 60-segment Permanent Outdoor Pro could be **Front roof**
 3–23, **Side** 24–40 and **Back** 41–60. Segments are counted the way effects run, so with
-**Reverse** ticked segment 1 is the far end. Parts are listed one per line, each with its colour,
+**Reverse** on, segment 1 is the far end. Parts are listed one per line, each with its colour,
 and the bar above them maps the light's segments: each part in its colour, unused ones grey.
 
 To check where a part really is, press **Test** on its line: the real light shows just that part,
@@ -326,14 +326,14 @@ shorter trims them. Remove a part with ✕; its effects stay in your shows.
 
 ### The whole light as one
 
-Unless you untick **Also play as one** under the parts, the light
+Unless you turn off **Also play as one** under the parts, the light
 keeps its own track too, marked *All parts*. Effects on it
 run across all its parts joined end to end, as if the unused segments weren't there. A 30 m string
 that goes up the left pillar, across the top and down the right pillar could be split into *Left*,
 *Top* and *Right*: a chase on the light's own track then runs up, across and down in one go. While
 a clip is playing on a part's own track, that part shows its clip instead, so you can run one
 effect over the whole string and drop a different one on just the left pillar. **Generate** puts
-effects on the parts and leaves the light's own track for you. Untick **Also play as one** for a
+effects on the parts and leaves the light's own track for you. Turn off **Also play as one** for a
 light you only ever use in parts, like a roof line where only the front 30 segments are seen: its
 own track goes away (or, if it has effects on it, is marked *Not played: parts only*).
 
@@ -387,7 +387,7 @@ house so you can trace them on your photo. **Remove photo** goes back to the sam
 
 While a light is picked, it's drawn in a rainbow from red at the plug to the far end, so you can
 check it runs the same way as the real light. If it's backwards, retrace it from the other end, or
-tick **Reverse** on the Devices tab if the effects themselves run the wrong way. Each light's
+turn on **Reverse** on the Devices tab if the effects themselves run the wrong way. Each light's
 **Brightness %** applies here as well. Click a light in the list, or its line on the photo, to pick
 it; Esc lets go.
 
@@ -690,7 +690,7 @@ note. They're kept with the song, so every show that uses it gets them, and they
 - **Move it:** drag its flag. It snaps to beats and bars; hold Shift to place it freely.
 
 In the **Show editor**, a song's marks show as coloured flags on the **Beats** lane, with a line down
-through every light, and clips snap to them (when **Snap** is ticked) so you can line an effect up with
+through every light, and clips snap to them (when **Snap** is on) so you can line an effect up with
 the moment. They're read from the song each time you open the Show editor, so marks you add in the
 Music editor show straight away. To change them, go back to the Music editor.
 
@@ -747,7 +747,7 @@ with nothing sent anywhere. Detection reads songs as 4/4 and prefers a lively te
 may come out at double time; type the BPM you want and press **Fill** if so. You can also press **B**
 (or **Tap beat**) in time with the music while it plays, type a **BPM** and press **Fill** to add beats
 from the playhead, or click the beat lane to add or remove one. **Clear** removes the beats and
-sections. With **Snap** ticked, clips and selections snap to beats and to each other; hold Shift to
+sections. With **Snap** on, clips and selections snap to beats and to each other; hold Shift to
 place freely.
 
 ### Suggestions
@@ -774,7 +774,7 @@ Pick the **Colours** (any palette) and a **Style** (Calm, Balanced or Lively), a
 with effects that follow the song: soft, slow looks in quiet parts, faster ones that move on the beat
 as it gets louder, every light moving together in the chorus, the same looks each time a section comes
 back, and a change every few bars. Quiet starts and ends fade in and out, and with lights traced on the
-house photo, tick **Sweep across the house as the music lifts** for a sweep from one side to the
+house photo, turn on **Sweep across the house as the music lifts** for a sweep from one side to the
 other. It runs **Detect** first if the song hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press it again for a
 different take, then edit whatever you like. The colours start on the palette for the time of year
 (Halloween in October, Christmas in December…) when there is one.
@@ -784,13 +784,13 @@ different take, then edit whatever you like. The colours start on the palette fo
 120 BPM. **Rules** keep to it; an effect from the **AI** that runs longer is cut at bar lines into
 pieces, each in the next colours of your palette, so the look keeps changing.
 
-**Build up** (ticked to start with) lights the house the way you would by hand rather than lighting
+**Build up** (on to start with) lights the house the way you would by hand rather than lighting
 everything all the time. Quiet parts use only a few lights and leave the rest dark. Middling parts
 start with about half and bring in another every few bars, starting afresh in each part of the song.
 Only the loudest parts and the chorus use every light at once (in a song with neither, its loudest
 part does), so every light gets its moment. A part of the song that comes back uses the same lights
 each time, and the parts of a split light (like **Pillars · Left** and **Pillars · Right**) go on and
-off together. A song that hasn't been analysed into parts fills every light. Untick it to fill every
+off together. A song that hasn't been analysed into parts fills every light. Turn it off to fill every
 light all the way through. It works for the **AI** too.
 
 Lights on **Per bulb**, **App segments** or **Whole light only** can only change a few times a second,
@@ -854,7 +854,7 @@ segments can't show a chase wider than itself. A Govee scene needs a light that 
 its model set.
 
 - In the effect chooser, effects that won't work on the light are greyed out. Click one to see why.
-  Tick **Allow effects that won't work** to pick them anyway.
+  Turn on **Allow effects that won't work** to pick them anyway.
 - Effects that work, but not quite as meant (too fast for a slow light, a House lane effect that is
   too fast for one of your slow lights, or one that leaves out lights you haven't traced on the photo),
   are marked **⚠**.
@@ -872,7 +872,7 @@ its model set.
 ### Presets
 
 Most effects can look very different depending on their settings (Three colours can sit
-still, alternate, or run as a slow or fast marquee). Tick **Show presets** in the effect chooser and
+still, alternate, or run as a slow or fast marquee). Turn on **Show presets** in the effect chooser and
 each effect becomes its own boxed group: **Default** first, then its presets, each previewed. Picking
 a preset sets just the settings it names. When adding an effect it uses the effect's default colours;
 when changing a clip your colours stay. The Effect button shows the preset a clip matches, such as
@@ -881,7 +881,7 @@ when changing a clip your colours stay. The Effect button shows the preset a cli
 ### Your own presets
 
 Get a clip looking right, then press **Save as preset…** under its settings.
-Name it and choose whether to **Include colours** (ticked by default; untick it to save just the
+Name it and choose whether to **Include colours** (on by default; turn it off to save just the
 movement and other settings, so the preset takes on whatever colours a clip already has). Your
 presets appear in the effect chooser after the built-in ones, marked with a ★, and **★ My presets
 only** narrows the chooser to them.
@@ -891,7 +891,7 @@ only** narrows the chooser to them.
 **Library → Presets** lists your presets by effect, each with a live preview, and **Edit…**,
 **Duplicate** and **Delete…**. **Edit…** opens the preset in a window with a larger preview (choose
 which light's segments with **Preview on**). Rename it, change its **Effect** (or start again from one
-of that effect's presets), tick or untick **Include colours**, and change its colours (palettes work
+of that effect's presets), turn **Include colours** on or off, and change its colours (palettes work
 here too), settings and brightness; the preview follows every change. **Save** keeps the changes and
 **Cancel** leaves the preset as it was. **+ New preset** starts one from scratch: pick an effect, or
 any built-in preset, to start from, then **Add preset** in the window. Or describe a look in
@@ -901,7 +901,7 @@ set up, as for **Describe it**). Changing or deleting
 a preset doesn't change clips that already used it. They're saved in HA-liday Show, so every browser
 sees the same ones.
 
-Tick **Show on the light** to loop it on the real light too while the show is
+Turn on **Show on the light** to loop it on the real light too while the show is
 stopped; the light goes back to normal when you click away. Every effect has a **Brightness %**
 slider, so one section can glow softly and the next hit full brightness.
 
@@ -937,7 +937,7 @@ effects (Ctrl+Z brings it back), or **Remove all unplayed tracks** when there ar
 
 Drag along the time ruler to set a **play region**, or select a stretch
 and press **▶ Play this part**. Play then plays just that part, and Home goes back to its start.
-Tick **Loop** to repeat it (or the whole show when there's no region), and clear the region with
+Turn on **Loop** to repeat it (or the whole show when there's no region), and clear the region with
 its ✕. Region and Loop apply when the song plays in the browser; on a speaker the whole show plays.
 
 ### Undo
@@ -1009,7 +1009,7 @@ House lane. They sit on top of each light's own effects.
 ### Saving
 
 **Save** stores the show and bakes every frame for playback (Play saves first if
-needed). With **Auto save** ticked in the show's settings (the default), the show also saves itself a couple of seconds
+needed). With **Auto save** on in the show's settings (the default), the show also saves itself a couple of seconds
 after each change and when you switch shows; the note next to it says whether everything is saved.
 A new show is saved once it has its first effect. Auto save waits while a show is playing.
 
@@ -1025,7 +1025,7 @@ The Playback panel chooses where the song plays. This is kept in your browser
 and never changes where the real show plays:
 
 - **Song in this browser**: the song plays in your browser and HA-liday Show streams the lights in
-  sync. Untick **Lights** to preview in the browser only. If the lights lead or lag, adjust
+  sync. Turn off **Lights** to preview in the browser only. If the lights lead or lag, adjust
   **Light offset** under **Setup → Speakers**. The 🔊 slider next to the clock sets how loud the song
   plays in your browser. The **Music editor** shares the same level, and your browser remembers it.
 - **Speaker: …**: HA-liday Show starts the song on that speaker and the lights with it, and the
@@ -1105,7 +1105,7 @@ on a speaker, don't play in the Show player, so you never hear a song twice.
 
 #### Playing on a schedule
 
-Tick **Play on a schedule** under **When it plays**, in the Playlist editor, to have a playlist start
+Turn on **Play on a schedule** under **When it plays**, in the Playlist editor, to have a playlist start
 and stop by itself:
 
 - **From** and **to** set the times, such as 17:00 to 22:00. An end time earlier than the start runs
@@ -1114,8 +1114,8 @@ and stop by itself:
   after it, such as 15 **minutes after**. Sunset moves through the year, so the playlist does too.
   An end time in the morning (before 12:00), such as 01:00, is the next morning. On an evening the sun
   sets after the end time (21:00 in midsummer, say), it doesn't play.
-- Untick the days it shouldn't play.
-- Tick **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
+- Press the days it shouldn't play to turn them off.
+- Turn on **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
   every year, and can run over New Year (1 Dec and 6 Jan).
 
 Under the schedule it says when the playlist next starts. At the start time it starts, even if
@@ -1145,7 +1145,7 @@ Home Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to you
 The public page lets people passing by start a show from their phone, usually by scanning a QR code
 on a sign outside. They see the shows and playlists you've picked, and nothing else of HA-liday Show.
 
-1. Open **Setup → Settings** and tick **Let visitors start shows** under **Public page**. A **Public
+1. Open **Setup → Settings** and turn on **Let visitors start shows** under **Public page**. A **Public
    page** tab appears along the top.
 2. On the **Public page** tab, under **What visitors can pick**, choose a show or playlist next to
    **+ Add** and press it. Add as many as you like.
@@ -1194,7 +1194,7 @@ without the code just says "Scan the code on the sign to start a show".
 
 #### Opening hours
 
-Off to start with, so visitors can start shows at any time. Tick **Only open at set times** to choose
+Off to start with, so visitors can start shows at any time. Turn on **Only open at set times** to choose
 when:
 
 - **Opens**: at a time, or at sunset with a number of minutes after it (or before, if less than
@@ -1247,7 +1247,7 @@ with your code.
   made only of archived shows, and visitors never see them. A show you archive later disappears from
   the public page straight away, and from inside any playlist visitors pick. The tab still lists it,
   marked as archived, so it comes back if you restore it.
-- **Only from … until … every year**: each show or playlist is available all year until you tick
+- **Only from … until … every year**: each show or playlist is available all year until you turn on
   **Only from** and pick the first and last day, such as 1 Dec until 6 Jan. The dates come round every
   year, and can run over New Year. Outside them, visitors see it greyed out under **Coming soon** with
   the day it starts ("From 1 December"). When nothing can be picked yet, the page says when the first
@@ -1467,7 +1467,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 | Experimental | **Govee scenes** (below), and **Show the Labs tab**. |
 
 **Labs** is a tab under **Setup** for working out new ways to drive Govee lights. It's hidden until you
-tick **Show the Labs tab** under **Experimental**; that's saved in this browser, so each computer or
+turn on **Show the Labs tab** under **Experimental**; that's saved in this browser, so each computer or
 phone has its own. It holds:
 
 | Section | What's there |
@@ -1520,7 +1520,7 @@ found). It's never sent the song itself.
 ## Packet lab
 
 **Setup → Labs → Packet lab** is for experiments with Govee lights: it sends one light a message you
-choose and lists anything the light sends back. You won't need it to make shows. To see **Labs**, tick
+choose and lists anything the light sends back. You won't need it to make shows. To see **Labs**, turn on
 **Show the Labs tab** under **Setup → Settings → Experimental**.
 
 1. Pick the **Light** (only Govee lights on the Devices tab with an IP address are offered).
@@ -1606,7 +1606,7 @@ snapshots or DIYs) for as long as the clip lasts, then the show takes the light 
 | A pixel controller doesn't light | For DDP, check DDP is switched on in the controller's settings. For E1.31, check it takes E1.31 as **unicast** and that **universe** and **channel** in the light's window match the controller's set-up. Then check **Segments** matches the number of LEDs. |
 | A Home Assistant light lags behind the music | They change at most 4 times a second (a switch once a second), so fast effects look steppy. Use fades, colour changes and pulses on them. |
 | A Twinkly light doesn't light | Twinkly support is experimental and hasn't been tried on a real Twinkly yet. Please say what happens on GitHub. |
-| Effects run from the wrong end | Tick **Reverse** on the Devices tab. |
+| Effects run from the wrong end | Turn on **Reverse** on the Devices tab. |
 | Lights run ahead of or behind the music | In the browser, adjust **Light offset** under **Setup → Speakers**. On a speaker, adjust its **Delay ms** in the same place. |
 | A speaker can't be added | The test shows Home Assistant's reason. Some integrations can't play files from the media folder; use another media player for the song. |
 | A show from an automation plays no music | Set a **Show speaker** for the show, or a **Default show speaker** on the Speakers tab. |

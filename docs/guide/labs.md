@@ -7,7 +7,7 @@
 ## Packet lab
 
 **Setup → Labs → Packet lab** is for experiments with Govee lights: it sends one light a message you
-choose and lists anything the light sends back. You won't need it to make shows. To see **Labs**, tick
+choose and lists anything the light sends back. You won't need it to make shows. To see **Labs**, turn on
 **Show the Labs tab** under **Setup → Settings → Experimental**.
 
 1. Pick the **Light** (only Govee lights on the Devices tab with an IP address are offered).
