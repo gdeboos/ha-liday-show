@@ -14,6 +14,8 @@ smart plug.
 - 🏠 Watch the show on a photo of your house, bulb by bulb, before it runs for real
 - 📦 Plan shows for lights that haven't arrived yet
 - 📅 Playlists play your shows back to back every evening, at set times or from sunset
+- 📱 A public page for a QR code on a sign: people near your house pick a show on their phone and it
+  joins a queue
 - ⏯️ Play the song on any Home Assistant speaker and start shows from automations (MQTT or
   `hassio.app_stdin`)
 

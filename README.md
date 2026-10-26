@@ -43,6 +43,8 @@ its own with Docker or Python.
 - ⏯️ **Runs itself.** Put shows in a playlist that plays every evening, at set times or from sunset.
   The music plays on any Home Assistant speaker, or in a browser left open on a computer with
   speakers. Automations can start shows too, through MQTT entities or `hassio.app_stdin`.
+- 📱 **Let passers-by join in.** A public page for a QR code on a sign: people near your house pick a
+  show on their phone and it joins a queue between your own, in a look you choose.
 - 🐳 **Runs where you want.** A Home Assistant app, or on its own with Docker or Python.
 
 ## 📸 A closer look
@@ -178,11 +180,6 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   one colour, lights off or an effect), and a bar showing how long each plays
 - Playlists: several shows back to back, round and round, by hand or on a schedule (times or
   sunset, days and dates), with a Show player page to play the music on any computer with speakers
-- Public page: people passing by pick a show on their phone and it joins a queue, slotting in between
-  your playlist's shows, with one request per phone; each show or playlist can have dates every year,
-  showing as coming soon until then; a code in the link and a nearby-only check keep it to people
-  near your house; your own title, welcome, picture, colour theme or your own colours (with a
-  readability check), spacing, corners, text size, falling snow and a link
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
@@ -209,6 +206,14 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Schedule or trigger shows from automations: MQTT entities (show select, play/stop buttons,
   status), or the `hassio.app_stdin` action
 - Playlists play by themselves at set times or from sunset, carrying on with the page closed
+- A **public page** for people passing by, on its own port, with its own **Public page** tab:
+  - They pick a show or playlist on their phone and it joins a queue, slotting in between your
+    playlist's shows; one request per phone and a queue limit keep it fair
+  - A code in the link (for a QR code on a sign) and a nearby-only location check keep it to people
+    near your house; **Start** only appears once they're close enough
+  - Each show or playlist can have dates every year, and shows as coming soon until then
+  - Your own title, welcome, picture, colour theme or your own colours (with a readability check),
+    spacing, corners, text size, falling snow and a link, with a live preview beside the settings
 
 </details>
 
@@ -234,11 +239,13 @@ flowchart LR
     E -- "realtime over LAN UDP" --> Z[💡 Twinkly, experimental]
     E -- "start song" --> G[🔊 HA media player]
     H[Automations<br/>MQTT · app_stdin] --> E
+    V[📱 Visitors' phones<br/>public page, own port] -- "pick a show" --> E
 ```
 
 One Python service (aiohttp) serves the editor and plays shows. As an app it is reached only through
 Home Assistant ingress; run on its own (Docker or pipx) it answers its own port, and other devices need
-the password set in `HALIDAY_SHOW_PASSWORD`.
+the password set in `HALIDAY_SHOW_PASSWORD`. The public page for visitors is a separate small web app
+on its own port (18099) that serves only that page and its queue, never the editor.
 Effects are written once, in JavaScript: the editor uses them for the live preview and, on save,
 renders every frame of the show into a compact baked file. The player only streams those frames, each
 light in its own protocol and at the pace it can take: Govee lights over Govee's undocumented
@@ -325,8 +332,9 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/static/                 The editor (plain ES modules, no build step)
     index.html, style.css               Page and styles
     player.html                         The Show player page
-    public/                             The public page visitors see (the only files served on its port);
-                                        colours.js: readability sums shared with the editor
+    public/                             The public page visitors see (the only files served on its port):
+                                        index.html, public.js and public.css; colours.js has the
+                                        readability sums shared with the editor
     js/app.js                           Editor state, panels, inspector and playback
     js/effects.js                       Effect definitions, House lane effects and the baker
     js/timeline.js                      Timeline canvas: waveform, clips, selection, zoom

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.172
+
+- The user guide's **public page** section is reorganised to match the **Public page** tab, a part at a
+  time: **Who can start shows**, **How the page looks**, **What visitors can pick**, **Visitors' queue**
+  and the page's port. **Your data** and **Where things are stored** now mention the public page's
+  own picture.
+- The app's **Info** tab mentions the public page.
+
 ## 0.2.171
 
 - More ways to style the public page, under **How the page looks** on the **Public page** tab:
