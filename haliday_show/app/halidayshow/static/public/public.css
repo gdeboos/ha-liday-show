@@ -79,7 +79,9 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-welcome { margin: 6px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
 .pp-footer { margin: calc(32px * var(--s)) 0 0; text-align: center; }
 .pp-footer a { color: var(--head, var(--text)); font-weight: 600; overflow-wrap: anywhere; }
-.pp-snow { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+/* Sized to the screen: the canvas itself is drawn at the phone's full pixel density, and left to its own
+   size it would be two or three screens wide, which shrinks the whole page on a phone. */
+.pp-snow { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .pp { position: relative; z-index: 1; }
 
 /* Your own colours: hints and borders are worked out from the text and background. */
