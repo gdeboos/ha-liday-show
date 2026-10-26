@@ -274,8 +274,17 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "mine": mine,
         "needs_location": needs_location,
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text")},
-                 "picture": _picture(storage, look) is not None},
+                 "picture": _picture_version(storage, look)},
     }
+
+
+def _picture_version(storage: Storage, look: dict) -> int:
+    """0 for no picture, else a number that changes with the picture, so open pages pick up a new one."""
+    path = _picture(storage, look)
+    try:
+        return int(path.stat().st_mtime) if path else 0
+    except OSError:
+        return 0
 
 
 def _picture(storage: Storage, look: dict) -> Path | None:
@@ -345,7 +354,7 @@ async def get_picture(request):
     if path is None:
         raise web.HTTPNotFound()
     resp = web.FileResponse(path)
-    resp.headers["Cache-Control"] = "private, max-age=300"
+    resp.headers["Cache-Control"] = "private, max-age=86400"  # the page asks with ?v=, which changes with it
     return resp
 
 

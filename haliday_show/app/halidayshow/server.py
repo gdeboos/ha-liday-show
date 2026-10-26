@@ -1304,8 +1304,6 @@ async def put_public(request):
     settings = storage.load_settings()
     # The code only changes with New code, so a page open in another browser can't put an old one back.
     settings["public"] = {**public.clean(body), "code": (public.load(storage) or public.clean(None))["code"]}
-    if settings["public"]["look"]["picture"] != "upload":
-        storage.delete_public_picture()
     storage.save_settings(settings)
     await request.app[PUBLIC].apply()
     return web.json_response(_public_view(request.app))

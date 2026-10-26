@@ -1096,7 +1096,8 @@ playlists you've picked, each with a **▶ Start** button, and nothing else of H
 - **Title** replaces "🎄 Light show" at the top, and **Welcome** adds a line or two under it.
 - **Picture at the top**: **None**, **Your house photo** (from **Setup → House**), or **Your own
   picture**, which you choose with **Choose picture…** (JPEG, PNG or WebP). Your own picture is kept
-  with your other settings and is in **Export…**.
+  with your other settings, and in **Export…**, even while another is picked, so you can switch back.
+  Visitors with the page open see a new picture within a few seconds.
 - **Colours**: **Plain**, **Classic Christmas**, **Frosty** or **Halloween**, and **Light or dark**:
   **Follow the phone**, **Light** or **Dark**. Every combination is easy to read.
 - **Falling snow** drifts behind the page. It's left out for anyone whose phone is set to reduce

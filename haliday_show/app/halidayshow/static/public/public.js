@@ -86,10 +86,10 @@ function makeSnow(canvas) {
       r: 1 + Math.random() * 2.5, v: 0.3 + Math.random() * 0.8, d: Math.random() * Math.PI * 2,
     }));
   };
+  let colour = "";
   const draw = () => {
     ctx.clearRect(0, 0, innerWidth, innerHeight);
-    ctx.fillStyle = getComputedStyle(document.documentElement).colorScheme === "dark"
-      ? "rgba(255,255,255,.75)" : "rgba(150,170,195,.55)";
+    ctx.fillStyle = colour;
     for (const f of flakes) {
       f.y += f.v;
       f.d += 0.01;
@@ -106,11 +106,17 @@ function makeSnow(canvas) {
     frame = null;
     const go = on && !still() && !document.hidden;
     canvas.hidden = !go;
-    if (go) { if (!flakes.length) size(); draw(); }
+    if (go) {
+      if (!flakes.length) size();
+      colour = getComputedStyle(document.documentElement).colorScheme === "dark"
+        ? "rgba(255,255,255,.75)" : "rgba(150,170,195,.55)";
+      draw();
+    }
   };
+  matchMedia("(prefers-reduced-motion: reduce)").addEventListener?.("change", run);
   addEventListener("resize", () => { if (on) size(); });
   document.addEventListener("visibilitychange", run);
-  return (want) => { if (want !== on) { on = want; run(); } };
+  return (want) => { on = want; run(); }; // run again too when the colours change
 }
 
 const TICKET_KEY = "halidayshow.publicTicket";
@@ -176,7 +182,7 @@ export function start() {
   let busy = false;
   let needsLocation = false;
   const snow = makeSnow($("pp-snow"));
-  let pictureShown = false;
+  let pictureShown = 0;
 
   function applyLook(look) {
     if (!look) return;
@@ -188,8 +194,10 @@ export function start() {
     document.title = look.title || "Light show";
     $("pp-welcome").textContent = look.welcome || "";
     $("pp-welcome").hidden = !look.welcome;
-    if (look.picture && !pictureShown) $("pp-picture").src = `picture?code=${encodeURIComponent(key)}`;
-    pictureShown = !!look.picture;
+    if (look.picture && look.picture !== pictureShown) {
+      $("pp-picture").src = `picture?code=${encodeURIComponent(key)}&v=${look.picture}`;
+    }
+    pictureShown = look.picture || 0;
     $("pp-picture").hidden = !look.picture;
     $("pp-link").textContent = linkText(look);
     if (look.link) $("pp-link").href = look.link;

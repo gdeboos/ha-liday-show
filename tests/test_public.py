@@ -332,20 +332,20 @@ async def test_visitors_get_the_look_and_picture_only_with_the_code(client):
             "picture": "house", "link": "https://example.org/give", "link_text": "Give"}
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "look": look})
     _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
-    assert state["look"] == {**look, "picture": False}  # no house photo yet
+    assert state["look"] == {**look, "picture": 0}  # no house photo yet
     st.save_house_photo(b"\xff\xd8\xffphoto", ".jpg")
     _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
-    assert state["look"]["picture"] is True
+    assert state["look"]["picture"] > 0
     status, body, _ = await _visitor(client, "/picture")
     assert status == 200
     status, _, _ = await _visitor(client, "/picture", code=False)
     assert status == 404
     _, locked, _ = await _visitor(client, f"/api/state?ticket={T1}", code=False)
     assert locked["look"] == {"theme": "christmas", "mode": "dark"}
-    # An uploaded picture instead; choosing another goes back to the house photo and drops the upload.
+    # An uploaded picture instead; choosing another keeps it, in case you change your mind.
     resp = await client.put("/api/public/picture", data=b"\x89PNGpic", headers={"Content-Type": "image/png"})
     assert (await resp.json())["look"]["picture"] == "upload" and st.public_picture() is not None
     assert (await client.put("/api/public/picture", data=b"x", headers={"Content-Type": "text/html"})).status == 415
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
                                           "look": {**look, "picture": "house"}})
-    assert st.public_picture() is None
+    assert st.public_picture() is not None
