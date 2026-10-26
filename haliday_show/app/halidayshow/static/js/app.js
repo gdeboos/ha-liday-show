@@ -4339,7 +4339,7 @@ function fillBeats() {
   app.changed();
 }
 
-// What Detect found in a song is also kept with the song file (on the Music tab or here), so any
+// What Detect found in a song is also kept with the song file (in the Music editor or here), so any
 // show using that song can start from it.
 const songInfoUrl = (a) => `api/audio/info?source=${encodeURIComponent(a.source)}&path=${encodeURIComponent(a.path)}`;
 async function songInfo(ref) {

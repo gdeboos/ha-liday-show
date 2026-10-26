@@ -1,4 +1,4 @@
-// The editor's song volume: one level shared by the Edit and Music tabs, remembered in this browser.
+// The editor's song volume: one level shared by the Show editor and Music editor, remembered in this browser.
 // It only changes what plays here; speakers and the lights are untouched.
 
 export const DEFAULT_VOLUME = 100;

@@ -481,7 +481,7 @@ saved, you're asked first.
 
 ### Detecting in the Music editor
 
-**Detect in the Music editor** finds a song's beats, bars and sections and keeps them with the song file,
+**Detect** in the Music editor finds a song's beats, bars and sections and keeps them with the song file,
 drawn over its waveform; a saved edit is detected straight after saving. When a show picks that song
 under **Song**, it takes them automatically (asking first if the show already has beats), and **From
 song** in the Beats panel brings them back later. Detect in the editor also saves its results with the
