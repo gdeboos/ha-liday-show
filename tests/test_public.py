@@ -294,16 +294,18 @@ async def test_odd_codes_and_cancelling_need_the_code_too(client):
     assert status == 403 and runner.requests
 
 
-
 async def test_the_page_asks_whether_its_near_before_offering_start(client):
     client.app[server.SCHEDULER].where = lambda: (HOME, "you")
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}]})
-    status, text, _ = await _visitor(client, "/api/near", {"lat": 51.5097, "lon": -0.1246, "accuracy": 20}, headers=FAR)
-    assert status == 403 and "too far away" in text
+    status, st, _ = await _visitor(client, "/api/near", {"lat": 51.5097, "lon": -0.1246, "accuracy": 20}, headers=FAR)
+    assert status == 200 and st["near"] is False and st["why"] == "far" and "too far away" in st["text"]
     status, st, _ = await _visitor(client, "/api/near", {"lat": 51.5008, "lon": -0.1246, "accuracy": 10}, headers=FAR)
     assert status == 200 and st == {"near": True}
-    status, _, _ = await _visitor(client, "/api/near", {}, headers=FAR)
-    assert status == 403
+    _, st, _ = await _visitor(client, "/api/near", {}, headers=FAR)
+    assert st["why"] == "location"
+    client.app[server.SCHEDULER].where = lambda: (None, None)
+    _, st, _ = await _visitor(client, "/api/near", {"lat": 51.5008, "lon": -0.1246}, headers=FAR)
+    assert st["why"] == "closed"
     status, st, _ = await _visitor(client, "/api/near", {})  # your own Wi-Fi: no need
     assert st == {"near": True}
     status, _, _ = await _visitor(client, "/api/near", {"lat": 51.5008, "lon": -0.1246}, code=False, headers=FAR)

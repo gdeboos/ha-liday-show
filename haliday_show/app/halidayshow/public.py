@@ -49,7 +49,7 @@ RUNNER = web.AppKey("runner", Runner)
 STORAGE = web.AppKey("storage", Storage)
 POSTS = web.AppKey("posts", list)
 NEAR = web.AppKey("near", list)
-MAX_NEAR_PER_MIN = 600  # each open page checks its location every so often
+MAX_NEAR_PER_MIN = 3000  # each open page checks its location every 10 s or so while it's on screen
 
 
 def port() -> int:
@@ -313,11 +313,10 @@ async def get_state(request):
     return _no_store(web.json_response(_state(request, ticket, request.query.get("code"))))
 
 
-def _throttle(app, key=None):
-    key = key or POSTS
+def _throttle(app, key=POSTS, limit=MAX_POSTS_PER_MIN):
     now, posts = time.monotonic(), app[key]
     posts[:] = [t for t in posts if now - t < 60]
-    if len(posts) >= (MAX_NEAR_PER_MIN if key is NEAR else MAX_POSTS_PER_MIN):
+    if len(posts) >= limit:
         raise web.HTTPTooManyRequests(text="Lots of people are asking right now. Try again in a minute.")
     posts.append(now)
 
@@ -364,13 +363,18 @@ async def post_request(request):
 async def post_near(request):
     """Whether this phone is by the lights, asked when the page opens so the Start buttons only show
     for people who could use them. Requests are checked again when they're made."""
-    _throttle(request.app, NEAR)
     body = await _body(request)
     p = load(request.app[STORAGE]) or clean(None)
     if not _code_ok(p, body.get("code")):
         raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
+    _throttle(request.app, NEAR, MAX_NEAR_PER_MIN)
     if _needs_location(request, p):
-        _check_near(request, p, body)
+        try:
+            _check_near(request, p, body)
+        except web.HTTPForbidden as e:
+            # "far" can change as they walk; "closed" (nothing to measure from) and "location" can't by themselves.
+            why = "far" if "too far" in e.text else "location" if "location" in e.text else "closed"
+            return _no_store(web.json_response({"near": False, "why": why, "text": e.text}))
     return _no_store(web.json_response({"near": True}))
 
 

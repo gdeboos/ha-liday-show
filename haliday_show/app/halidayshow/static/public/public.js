@@ -156,33 +156,47 @@ export function start() {
     }
     asking = true;
     asked = Date.now();
+    let again = false;
     try {
       const res = await fetch("api/near", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...where.pos, code: key }),
       });
-      if (res.ok) setWhere("near");
-      else {
-        const text = await res.text();
-        setWhere(/too far/.test(text) ? "far" : "closed", text);
-      }
-    } catch { /* offline for a moment: the next position tries again */ } finally {
+      if (!res.ok) throw new Error(String(res.status)); // busy, or a blip: ask again shortly
+      const ans = await res.json();
+      if (!where.pos) return; // location was turned off meanwhile
+      if (ans.near) setWhere("near");
+      else setWhere(ans.why === "far" ? "far" : "closed", ans.text);
+    } catch {
+      again = true;
+    } finally {
       asking = false;
     }
+    // A phone standing still may not report a new position, so a failed check tries again by itself.
+    if (again) {
+      clearTimeout(later);
+      later = setTimeout(() => checkNear(true), 10000);
+    }
+  }
+
+  function stopWatching() {
+    if (watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    clearTimeout(later);
   }
 
   function watchWhere() {
     if (!navigator.geolocation) { setWhere("unknown"); return; }
-    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-    setWhere("checking");
+    stopWatching();
+    if (where.state !== "near") setWhere("checking");
     watchId = navigator.geolocation.watchPosition((pos) => {
       const first = !where.pos;
       where.pos = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
       checkNear(first || where.state === "checking");
     }, (err) => {
       if (where.pos && err.code !== 1) return; // a hiccup after a fix: keep the last one
-      navigator.geolocation.clearWatch(watchId);
-      watchId = null;
+      stopWatching();
+      where.pos = null;
       setWhere(locationProblem(err));
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
   }
@@ -209,7 +223,11 @@ export function start() {
     }
     last = st;
     needsLocation = !!st.needs_location;
-    if (needsLocation && where.state === "idle" && st.open) watchWhere();
+    if (needsLocation && where.state === "idle" && st.open && !document.hidden) watchWhere();
+    if (!needsLocation && where.state !== "idle") { // e.g. Nearby only turned off: start afresh if it comes back
+      stopWatching();
+      Object.assign(where, { state: "idle", text: "", pos: null });
+    }
     if (!needsLocation) $("pp-where").hidden = true;
     const startable = canStart(needsLocation, where);
     const view = describe(st);
@@ -306,7 +324,14 @@ export function start() {
   $("pp-retry").addEventListener("click", watchWhere);
   refresh();
   setInterval(() => { if (!document.hidden) refresh(); }, 3000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+  // Location is only watched while the page is on screen, to spare the battery.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopWatching();
+    else {
+      if (needsLocation && ["near", "far", "checking"].includes(where.state)) watchWhere();
+      refresh();
+    }
+  });
 }
 
 if (typeof document !== "undefined") start();

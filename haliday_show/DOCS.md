@@ -1088,8 +1088,9 @@ the **Public page** tab, under **Who can start shows**:
   must be that close to your house to start a show. As the page opens, their phone asks to share its
   location; it's only used for that check and isn't kept. **▶ Start** only appears once they're close
   enough. Further away, they see "You're too far away to start a show" with the shows listed but no
-  buttons. The page keeps checking while it's open, so walking up brings the buttons. Phones on your
-  home Wi-Fi aren't asked. Your house is your home location in Home Assistant (**Settings → System →
+  buttons. The page keeps checking while it's open, so walking up brings the buttons. A phone that
+  won't share its location is told how to allow it, with **Try again**. Phones on your home Wi-Fi
+  aren't asked. Your house is your home location in Home Assistant (**Settings → System →
   General**), or the one you typed in for sunset under **Library → Playlists**. Without either,
   visitors through the internet can't start shows at all until you set one, and the tab says so.
   The check stops casual use from afar, but a determined person could fake where their phone is, so
