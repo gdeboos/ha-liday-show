@@ -3952,6 +3952,11 @@ async function loadPublic({ items = false } = {}) {
   }
 }
 
+// The preview beside the settings catches up as soon as something's saved.
+function refreshPreview() {
+  $("pub-preview-frame").contentWindow?.postMessage("refresh", location.origin);
+}
+
 // Saves go one at a time, each sending your latest settings; only the last answer is drawn.
 let pubSaving = Promise.resolve();
 let pubPending = 0;
@@ -3989,6 +3994,7 @@ function savePublic() {
         if (shownPage === "public") renderPublicItems();
       }
       renderPublicQueue(view);
+      refreshPreview();
       status("Public page saved", "saved", "public");
     } catch (e) {
       status(`Couldn't save the public page settings: ${e.message}`, true, "public");
@@ -4015,6 +4021,7 @@ function wirePublic() {
       const view = await api("api/public/picture", { method: "PUT", body: file, headers: { "Content-Type": file.type } });
       publicView = { ...view, items: publicView.items };
       renderPublicItems();
+      refreshPreview();
       status("Public page picture saved", "saved", "public");
     } catch (e2) {
       status(`Couldn't save the picture: ${e2.message}`, true, "public");
@@ -6318,7 +6325,11 @@ function showView(view, { push = true } = {}) {
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
   if (page === "settings") { renderCopies(); loadPublic(); }
-  if (page === "public") loadPublic({ items: true });
+  if (page === "public") {
+    loadPublic({ items: true });
+    const frame = $("pub-preview-frame");
+    if (!frame.src) frame.src = "public-preview/";
+  }
   if (["playlists", "playlistlist", "playlist"].includes(page)) loadPlaylists(); else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); loadSongMarks(); }
   rememberPage(page, push);

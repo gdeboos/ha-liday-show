@@ -349,3 +349,19 @@ async def test_visitors_get_the_look_and_picture_only_with_the_code(client):
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
                                           "look": {**look, "picture": "house"}})
     assert st.public_picture() is not None
+
+
+async def test_the_editor_previews_the_page_as_visitors_with_the_code_see_it(client):
+    st = client.app[server.STORAGE]
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
+                                          "look": {"title": "Deboos Lights", "picture": "house"}})
+    st.save_house_photo(b"\xff\xd8\xffphoto", ".jpg")
+    resp = await client.get("/public-preview/api/state")
+    view = await resp.json()
+    assert view["preview"] is True and view["look"]["title"] == "Deboos Lights" and view["choices"]
+    assert view["needs_location"] is False and "locked" not in view
+    assert (await client.get("/public-preview/picture")).status == 200
+    assert (await client.get("/public-preview/")).status == 200
+    assert (await client.get("/public-preview/public.js")).status == 200
+    # It can't start or cancel anything.
+    assert (await client.post("/public-preview/api/request", json={})).status in (404, 405)

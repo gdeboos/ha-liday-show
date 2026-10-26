@@ -1338,6 +1338,31 @@ async def get_public_picture(request):
     return web.FileResponse(p, headers={"Cache-Control": "no-cache"})
 
 
+# A preview of the visitors' page for the Public page tab, served here (behind Home Assistant's
+# login) rather than on the public port: the same page, shown as visitors with the code see it, but it
+# can't start or cancel anything.
+async def public_preview_page(request):
+    name = request.match_info.get("name") or "index.html"
+    if name not in ("index.html", "public.js", "public.css"):
+        raise web.HTTPNotFound()
+    return web.FileResponse(public.PAGE / name, headers={"Cache-Control": "no-cache"})
+
+
+async def public_preview_state(request):
+    st = request.app[STORAGE]
+    p = public.load(st) or public.clean(None)
+    return web.json_response({**public.state(st, request.app[RUNNER], None, p["code"]), "preview": True},
+                             headers={"Cache-Control": "no-store"})
+
+
+async def public_preview_picture(request):
+    st = request.app[STORAGE]
+    path = public.picture_path(st, (public.load(st) or public.clean(None))["look"])
+    if path is None:
+        raise web.HTTPNotFound()
+    return web.FileResponse(path, headers={"Cache-Control": "no-cache"})
+
+
 async def new_public_code(request):
     """A new code for visitors' links: the old link and any printed QR code stop working."""
     storage = request.app[STORAGE]
@@ -1804,6 +1829,10 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/public/clear", clear_public_queue)
     r.add_post("/api/public/code", new_public_code)
     r.add_get("/api/public/picture", get_public_picture)
+    r.add_get("/public-preview/", public_preview_page)
+    r.add_get("/public-preview/{name:(public\\.js|public\\.css)}", public_preview_page)
+    r.add_get("/public-preview/api/state", public_preview_state)
+    r.add_get("/public-preview/picture", public_preview_picture)
     r.add_put("/api/public/picture", put_public_picture)
     r.add_put("/api/location", put_location)
     r.add_get("/api/house", get_house)
