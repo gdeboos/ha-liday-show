@@ -616,8 +616,9 @@ the moment. They're read from the song each time you open the Show editor, so ma
 Music editor show straight away. To change them, go back to the Music editor.
 
 Marks follow your cuts, so a mark in a part you cut out goes with it, and they're kept when you **Save
-as new file**. While you have an unsaved edit they show where they'll land but can't be changed: save
-the edit first.
+as new file**. You can add, change and move marks while you're editing too. They're also kept on the
+song you opened (where that moment is in it), so a mark in a part you then cut out stays there. The one
+place you can't mark until you've saved is a part spliced in from another song.
 
 ### Detecting in the Music editor
 

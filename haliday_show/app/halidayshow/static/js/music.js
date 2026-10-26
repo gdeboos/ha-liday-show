@@ -179,6 +179,43 @@ export function moveMark(marks, i, t) {
   return { marks: out, index: out.indexOf(moved) };
 }
 
+// Where time t in the edited result comes from in the base song (src), or null when it's in a part
+// spliced in from another song.
+export function toBase(pieces, crossfade, src, t) {
+  const { places, total } = arrange(pieces, crossfade);
+  for (let i = 0; i < pieces.length; i++) {
+    const p = pieces[i], { at, xf } = places[i];
+    const own0 = i === 0 ? 0 : at + xf / 2;
+    const own1 = i === pieces.length - 1 ? total + EPS : places[i + 1].at + places[i + 1].xf / 2;
+    if (t >= own0 - EPS && t < own1) return p.src === src ? Math.round((p.start + (t - at)) * 1000) / 1000 : null;
+  }
+  return null;
+}
+
+// The base song's marks after editing the ones shown in the edited result. shown: the marks as
+// mapInfo placed them (each with k, its index in base, while there's an edit); edited: that list
+// after a change, in result times. Marks in parts cut out are kept. One that would land in a
+// spliced-in part keeps its old time, or isn't added if it's new. Returns the new base list and
+// where edited[pick] went in it (-1 if nowhere).
+export function marksToBase(base, shown, edited, toBaseT, pick = -1) {
+  const visible = new Set(shown.map((m, i) => m.k ?? i));
+  const out = base.filter((_, i) => !visible.has(i));
+  let picked = null;
+  edited.forEach((m, i) => {
+    let t = toBaseT(m.t);
+    if (t === null) {
+      if (m.k === undefined || !base[m.k]) return;
+      t = base[m.k].t;
+    }
+    const { k: _, ...rest } = m;
+    const b = { ...rest, t };
+    out.push(b);
+    if (i === pick) picked = b;
+  });
+  out.sort((a, b) => a.t - b.t);
+  return { marks: out, index: picked ? out.indexOf(picked) : -1 };
+}
+
 // Where the base song's beats, bars and sections land in the edited result, so they follow cuts
 // and splices. Only pieces of the base song (src) carry them; a section cut in two by an edit that
 // joins up again becomes one.
@@ -197,9 +234,9 @@ export function mapInfo(info, pieces, crossfade, src) {
     };
     keep(info.beats, beats);
     keep(info.bars, bars);
-    for (const m of info.marks || []) {
-      if (m.t >= p.start && m.t <= p.end && map(m.t) >= own0 - EPS && map(m.t) < own1 - EPS) marks.push({ ...m, t: r3(map(m.t)) });
-    }
+    (info.marks || []).forEach((m, k) => {
+      if (m.t >= p.start && m.t <= p.end && map(m.t) >= own0 - EPS && map(m.t) < own1 - EPS) marks.push({ ...m, t: r3(map(m.t)), k });
+    });
     for (const sec of info.sections) {
       const a = Math.max(map(sec.start), own0), b = Math.min(map(sec.end), own1);
       if (b - a > 1e-3) parts.push({ ...sec, start: r3(a), end: r3(b) });
@@ -212,6 +249,7 @@ export function mapInfo(info, pieces, crossfade, src) {
         && Math.abs(last.end - sec.start) < 2e-3) last.end = sec.end;
     else sections.push(sec);
   }
+  marks.sort((a, b) => a.t - b.t);
   return { ...info, beats, bars, sections, ...(info.marks ? { marks } : {}) };
 }
 
@@ -769,22 +807,38 @@ export class MusicEditor {
   }
 
   // marks ---------------------------------------------------------------------
-  // The base song's marks, editable while there's no unsaved edit (like its sections).
-  get marks() { return this.base && !this.dirty ? this.info?.marks || [] : null; }
+  // The marks where they fall in the result, editable even with an unsaved edit: changes go back onto
+  // the base song (so they're kept with it, and carried over when the edit is saved as a new file).
+  get marks() { return this.base ? this.shown?.marks || [] : null; }
 
-  editMarks(marks, select = this.markSel) {
+  // The base song's marks for an edited list of the shown ones (see marksToBase).
+  marksFrom(edited, pick, base = this.info?.marks || [], shown = this.shown?.marks || []) {
+    const src = this.base && keyOf(this.base);
+    return marksToBase(base, shown, edited, (t) => toBase(this.pieces, this.crossfade, src, t), pick);
+  }
+
+  // The shown mark that is base mark k, or -1 (cut out).
+  shownMark(k) {
+    return k < 0 ? -1 : (this.shown?.marks || []).findIndex((m, i) => (m.k ?? i) === k);
+  }
+
+  editMarks(edited, pick = this.markSel) {
+    const { marks, index } = this.marksFrom(edited, pick);
     this.info = { tempo: null, beats: [], bars: [], sections: [], ...this.info, marks };
-    this.markSel = select;
-    if (select >= 0) this.secSel = -1;
+    this.markSel = this.shownMark(index);
+    if (this.markSel >= 0) this.secSel = -1;
     this.saveInfoSoon();
   }
 
   addMarkHere({ open = true } = {}) {
     if (!this.rendered) return;
-    if (!this.marks) return this.host.status("Save the edit as a new file first, then add marks to it", "hint");
-    if (this.marks.length >= MAX_MARKS) return this.host.status(`A song can have up to ${MAX_MARKS} marks; delete one first`, "hint");
+    if (!this.marks) return;
+    if ((this.info?.marks || []).length >= MAX_MARKS) return this.host.status(`A song can have up to ${MAX_MARKS} marks; delete one first`, "hint");
+    if (toBase(this.pieces, this.crossfade, keyOf(this.base), this.time) === null) {
+      return this.host.status("This part was spliced in from another song. Save the edit as a new file to mark it", "hint");
+    }
     const { marks, index } = addMark(this.marks, this.time, this.markColour || MARK_COLOUR);
-    this.editMarks(marks, open ? index : this.markSel);
+    this.editMarks(marks, open ? index : -1);
     if (open) $("music-mark-name").focus();
     else this.host.status(`Marked ${fmtTime(this.time)}`);
   }
@@ -919,8 +973,6 @@ export class MusicEditor {
     if (!this.marks || this.markSel >= this.marks.length) this.markSel = -1;
     this.renderMark();
     $("music-mark-add").disabled = !has || !this.marks;
-    $("music-mark-add").title = this.marks || !has ? "Put a mark at the playhead, to name a moment such as a big hit (M)"
-      : "Save the edit as a new file first, then add marks to it";
     $("music-suggest").disabled = !has;
     this.renderCuts();
     $("music-sel-start").disabled = $("music-sel-end").disabled = !sel;
@@ -985,7 +1037,8 @@ export class MusicEditor {
     const baseKey = this.base && keyOf(this.base);
     // Only marks (no Detect yet) is nothing to carry: the new file is detected, then gets the marks.
     const found = this.shown?.beats?.length || this.shown?.sections?.length;
-    const carry = found && this.pieces.every((p) => p.src === baseKey) ? this.shown : null;
+    const carry = found && this.pieces.every((p) => p.src === baseKey)
+      ? { ...this.shown, ...(this.shown.marks ? { marks: this.shown.marks.map(({ k: _, ...m }) => m) } : {}) } : null;
     const marks = this.shown?.marks || [];
     try {
       const ref = await uploadSong(this.host.api, blob, name, (done) => {
@@ -1298,8 +1351,7 @@ export class MusicEditor {
     this.canvas.setPointerCapture(e.pointerId);
     const mark = this.markAt(x, e.offsetY);
     if (mark >= 0) {
-      if (!this.marks) { this.drag = null; this.host.status("Save the edit as a new file first, then change its marks", "hint"); return; }
-      this.drag = { mark, before: this.marks, x, moved: false };
+      this.drag = { mark, base: this.info?.marks || [], shown: this.marks, x, moved: false };
       return;
     }
     if (this.inLane(e.offsetY) && this.shown) {
@@ -1330,7 +1382,8 @@ export class MusicEditor {
     if (d?.mark !== undefined) {
       if (!d.moved && Math.abs(x - d.x) < 3) return;
       d.moved = true;
-      const { marks, index } = moveMark(d.before, d.mark, t);
+      const moved = moveMark(d.shown, d.mark, t);
+      const { marks, index } = this.marksFrom(moved.marks, moved.index, d.base, d.shown);
       this.info = { ...this.info, marks };
       d.now = index;
       this.draw();
@@ -1338,8 +1391,8 @@ export class MusicEditor {
     }
     if (!d) {
       if (this.markAt(x, e.offsetY) >= 0) {
-        this.canvas.style.cursor = this.marks ? "grab" : "pointer";
-        this.canvas.title = (this.shown?.marks?.[this.markAt(x, e.offsetY)]?.label || "Mark") + (this.marks ? ": click to edit, drag to move" : "");
+        this.canvas.style.cursor = "grab";
+        this.canvas.title = `${this.marks?.[this.markAt(x, e.offsetY)]?.label || "Mark"}: click to edit, drag to move`;
         return;
       }
       if (this.joinAt(x, e.offsetY) !== null) { this.canvas.style.cursor = "pointer"; this.canvas.title = "Hear this join"; return; }
@@ -1374,7 +1427,12 @@ export class MusicEditor {
     this.drag = null;
     if (d?.section) { this.editSections(this.info.sections); return; }
     if (d?.mark !== undefined) {
-      if (d.moved) { this.editMarks(this.info.marks, d.now); return; }
+      if (d.moved) {
+        this.markSel = this.shownMark(d.now);
+        if (this.markSel >= 0) this.secSel = -1;
+        this.saveInfoSoon();
+        return;
+      }
       // A click picks the mark and puts the playhead on it.
       this.markSel = d.mark;
       this.secSel = -1;
