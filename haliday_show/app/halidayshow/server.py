@@ -1327,6 +1327,8 @@ def _public_view(app) -> dict:
             "hours_now": public.hours_now(public.load(app[STORAGE]) or public.clean(None), app[SCHEDULER].where()[0]),
             "has_house_photo": app[STORAGE].house_photo() is not None,
             "has_picture": app[STORAGE].public_picture() is not None,
+            # Changes whenever the picture does, so the editor's thumbnail reloads after a new one.
+            "picture_v": public.picture_version(app[STORAGE], (public.load(app[STORAGE]) or public.clean(None))["look"]),
             "now": runner.public_now["name"] if runner.public_now else None,
             "waiting": [{"name": r["name"], "wait": w} for r, w in zip(runner.requests, waits)]}
 

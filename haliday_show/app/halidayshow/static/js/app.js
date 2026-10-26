@@ -4208,9 +4208,11 @@ function renderPublicLook() {
     : !view.has_house_photo ? "There's no house photo yet (Setup → House)." : "";
   const src = look.picture === "house" ? "api/house/photo" : look.picture === "upload" ? "api/public/picture" : "";
   const preview = $("pub-picture-preview");
-  if (src && preview.dataset.src !== `${src}#${view.has_picture}`) {
-    preview.dataset.src = `${src}#${view.has_picture}`;
-    preview.src = `${src}?t=${Date.now()}`;
+  // Reload when the picture itself changes (a new upload, or a new house photo), not only its kind.
+  const key = `${src}#${view.picture_v || 0}`;
+  if (src && preview.dataset.src !== key) {
+    preview.dataset.src = key;
+    preview.src = `${src}?v=${view.picture_v || Date.now()}`;
   }
   preview.hidden = !src;
   $("pub-open-page").href = visitorLink(view, location.hostname);

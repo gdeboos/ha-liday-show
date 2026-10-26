@@ -531,3 +531,15 @@ def test_tunnels_and_proxies_never_count_as_your_home_wifi(monkeypatch):
     assert public.is_local(req("10.0.0.7")) and public.is_local(req("fd00::7"))
     monkeypatch.setattr(public, "LOOPBACK_IS_LOCAL", True)
     assert public.is_local(req("127.0.0.1"))
+
+
+
+async def test_the_editor_is_told_when_the_picture_changes(client):
+    import os
+    await client.put("/api/public", json={"on": True})
+    resp = await client.put("/api/public/picture", data=b"\x89PNGone", headers={"Content-Type": "image/png"})
+    first = (await resp.json())["picture_v"]
+    assert first > 0
+    pic = client.app[server.STORAGE].public_picture()
+    os.utime(pic, (first + 60, first + 60))  # as if a new one came a minute later
+    assert (await (await client.get("/api/public")).json())["picture_v"] == first + 60

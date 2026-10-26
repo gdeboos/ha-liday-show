@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.186
+
+- On the **Public page** tab, the small picture under **Picture at the top** now changes when you choose
+  a new picture. It used to keep showing the old one, although visitors and the preview already got
+  the new one.
+
 ## 0.2.185
 
 - Every on/off setting is now a switch that slides across (blue when on), instead of a tick box: in
