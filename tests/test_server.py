@@ -226,15 +226,28 @@ async def test_song_info_is_kept_per_file_until_the_file_changes(client, tmp_pat
         assert (await client.put("/api/audio/info", params=q, json=bad)).status == 400
     missing = {"source": "media", "path": "songs/none.mp3"}
     assert (await client.put("/api/audio/info", params=missing, json=info)).status == 404
-    songs = {x["path"]: x for x in await (await client.get("/api/songs")).json()}
+    songs = {x["path"]: x for x in (await (await client.get("/api/songs")).json())["songs"]}
     assert songs["songs/tune.mp3"]["detected"] is True
     assert songs["songs/tune.mp3"]["tempo"] == 120 and songs["songs/tune.mp3"]["sections"] == 1
     assert songs["songs/tune.mp3"]["size"] > 0
     # Replacing the file drops the old results.
     (tmp_path / "media" / "songs" / "tune.mp3").write_bytes(b"ID3 a different song")
     assert await (await client.get("/api/audio/info", params=q)).json() is None
-    songs = {x["path"]: x for x in await (await client.get("/api/songs")).json()}
+    songs = {x["path"]: x for x in (await (await client.get("/api/songs")).json())["songs"]}
     assert songs["songs/tune.mp3"]["detected"] is False and songs["songs/tune.mp3"]["sections"] == 0
+
+
+def test_the_song_list_says_when_it_stopped_short(tmp_path):
+    from halidayshow.storage import Storage
+    media = tmp_path / "media"
+    (media / "a").mkdir(parents=True)
+    for name in ("one.mp3", "two.mp3", "three.wav"):
+        (media / "a" / name).write_bytes(b"ID3 tune")
+    (media / "a" / "photo.jpg").write_bytes(b"not a song")
+    st = Storage(tmp_path / "config", media)
+    assert st.list_songs(limit=2)["more"] is True and len(st.list_songs(limit=2)["songs"]) == 2
+    full = st.list_songs()
+    assert full["more"] is False and sorted(x["path"] for x in full["songs"]) == ["a/one.mp3", "a/three.wav", "a/two.mp3"]
 
 
 async def test_audio_listing_upload_and_path_safety(client):

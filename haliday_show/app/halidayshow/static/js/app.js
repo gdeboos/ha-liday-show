@@ -3826,11 +3826,12 @@ function showRow(r) {
 }
 
 // Library → Songs --------------------------------------------------------------
-let songRowsCache = [];
+let songRowsCache = [], songsMore = false;
 async function renderSongsPage() {
   try {
-    const [songs, shows] = await Promise.all([api("api/songs"), api("api/shows")]);
-    songRowsCache = songRows(songs, shows);
+    const [list, shows] = await Promise.all([api("api/songs"), api("api/shows")]);
+    songRowsCache = songRows(list.songs, shows);
+    songsMore = list.more;
   } catch (e) { status(`Couldn't list your songs: ${e.message}`, true, "songs"); return; }
   status("", "info", "songs");
   drawSongRows();
@@ -3839,9 +3840,11 @@ async function renderSongsPage() {
 function drawSongRows() {
   const rows = filterRows(songRowsCache, $("song-filter").value);
   const box = $("song-list");
-  $("song-count").textContent = songRowsCache.length
-    ? (rows.length === songRowsCache.length ? `${rows.length} song${rows.length === 1 ? "" : "s"}` : `${rows.length} of ${songRowsCache.length}`)
-    : "";
+  songSeen?.disconnect();
+  const all = `${songRowsCache.length}${songsMore ? "+" : ""}`;
+  $("song-count").textContent = !songRowsCache.length ? ""
+    : (rows.length === songRowsCache.length ? `${all} song${rows.length === 1 && !songsMore ? "" : "s"}` : `${rows.length} of ${all}`)
+      + (songsMore ? ". Only the first 2000 are listed; type in Find to look for one." : "");
   if (!rows.length) {
     box.removeAttribute("role");
     box.innerHTML = songRowsCache.length
@@ -3874,6 +3877,7 @@ function songRow(r) {
   const details = document.createElement("div");
   details.className = "hint";
   const len = document.createElement("span");
+  len.setAttribute("aria-label", "Length still loading");
   len.textContent = "…";
   details.append(len, ` · ${r.found}`);
   const uses = document.createElement("div");
@@ -3882,47 +3886,66 @@ function songRow(r) {
   main.append(head, details, uses);
   const actions = document.createElement("div");
   actions.className = "group show-actions";
-  const edit = button("Edit", async () => {
-    showView("music");
-    await refreshAudio().catch(() => {});
-    music.open(r.ref);
-  }, "primary");
+  const edit = button("Edit", () => editSong(r.ref), "primary");
   edit.setAttribute("aria-label", `Edit ${r.name} in the Music editor`);
   actions.append(edit);
   row.append(main, actions);
-  songLength(r.ref, row).then((s) => { len.textContent = s; });
+  // The length is read once the row is on screen; a redraw starts over with new rows.
+  row._songLength = () => songLength(r).then((text) => {
+    len.textContent = text;
+    len.setAttribute("aria-label", `Length ${text}`);
+  });
+  songSeen ? songSeen.observe(row) : row._songLength();
   return row;
 }
 
-// A song's length, read from the file's header by the browser once its row is on screen, a few at a time.
-const lengths = new Map();
-const lengthQueue = [];
-let lengthsRunning = 0;
-const seen = typeof IntersectionObserver === "function"
-  ? new IntersectionObserver((entries) => {
-    for (const e of entries) if (e.isIntersecting) { seen.unobserve(e.target); e.target._lengthGo?.(); }
-  }) : null;
-function songLength(ref, row) {
-  const key = `${ref.source}:${ref.path}`;
-  if (lengths.has(key)) return lengths.get(key);
-  const p = new Promise((resolve) => {
-    const go = () => { lengthQueue.push(() => readLength(ref).then(resolve)); pumpLengths(); };
-    if (seen) { row._lengthGo = go; seen.observe(row); } else go();
-  });
-  lengths.set(key, p);
-  return p;
+async function editSong(ref) {
+  // Ask before switching tabs, rather than after.
+  if (music.dirty && !confirm("Start again with this song? Your unsaved edits in the Music editor will be lost.")) return;
+  showView("music");
+  await refreshAudio().catch(() => {});
+  music.open(ref, { asked: true });
 }
-function pumpLengths() {
-  while (lengthsRunning < 3 && lengthQueue.length) {
-    lengthsRunning++;
-    lengthQueue.shift()().finally(() => { lengthsRunning--; pumpLengths(); });
+
+// Song lengths, read from each file's header by the browser, a few at a time. Kept for the visit,
+// by file size and time too, so a song saved over or uploaded again is read afresh.
+const songLengths = new Map(), songLengthQueue = [];
+let songLengthsRunning = 0;
+const songSeen = typeof IntersectionObserver === "function"
+  ? new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { songSeen.unobserve(e.target); e.target._songLength?.(); }
+  }) : null;
+function songLength(r) {
+  const key = `${r.key}|${r.size}|${r.modified}`;
+  if (!songLengths.has(key)) {
+    songLengths.set(key, new Promise((resolve) => {
+      songLengthQueue.push(() => readSongLength(r.ref).then(resolve));
+      pumpSongLengths();
+    }));
+  }
+  return songLengths.get(key);
+}
+function pumpSongLengths() {
+  while (songLengthsRunning < 3 && songLengthQueue.length) {
+    songLengthsRunning++;
+    songLengthQueue.shift()().finally(() => { songLengthsRunning--; pumpSongLengths(); });
   }
 }
-function readLength(ref) {
+function readSongLength(ref) {
   return new Promise((resolve) => {
     const a = new Audio();
     a.preload = "metadata";
-    const done = (text) => { a.removeAttribute("src"); a.load(); resolve(text); };
+    let settled = false;
+    const done = (text) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      a.removeAttribute("src");
+      a.load();
+      resolve(text);
+    };
+    // A file that never answers mustn't hold up the rest.
+    const timer = setTimeout(() => done("?:??"), 10000);
     a.addEventListener("loadedmetadata", () => done(Number.isFinite(a.duration) ? fmtTime(a.duration, false) : "?:??"), { once: true });
     a.addEventListener("error", () => done("can't play here"), { once: true });
     a.src = audioUrl(ref);

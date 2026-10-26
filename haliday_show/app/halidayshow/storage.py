@@ -205,10 +205,12 @@ class Storage:
                             return out
         return out
 
-    def list_songs(self, limit: int = 2000) -> list[dict]:
-        """Every song with what Library → Songs shows: its size, when it changed, and what Detect found."""
+    def list_songs(self, limit: int = 2000) -> dict:
+        """Every song with what Library → Songs shows: its size, when it changed, and what Detect found.
+        `more` says the list stopped at `limit`. Walks the media folder, so run it off the event loop."""
+        refs = self.list_audio(limit + 1)
         out = []
-        for ref in self.list_audio(limit):
+        for ref in refs[:limit]:
             p = self.audio_path(ref["source"], ref["path"])
             if p is None:
                 continue
@@ -218,7 +220,7 @@ class Storage:
                         "detected": info is not None,
                         "tempo": (info or {}).get("tempo"),
                         "sections": len((info or {}).get("sections") or [])})
-        return out
+        return {"songs": out, "more": len(refs) > limit}
 
     def speaker_test_path(self) -> str:
         """Writes the test chime into the uploads folder if needed; returns its path under /media."""
