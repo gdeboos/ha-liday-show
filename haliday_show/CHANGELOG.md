@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.150
+
+- **Suggest cuts** in the **Music editor** now opens in its own window, so you don't have to go back and
+  forth between the section panel and the **Edit** card. Press **✂ Shorten…** on a section (it opens set
+  to that section) or **✂ Suggest cuts…** in the **Edit** card. Step 1 is what to shorten and how long
+  you'd like it; step 2 lists the options to hear and **Use**. **← Back** tries another length.
+
 ## 0.2.149
 
 - Going back to **Your shows** (with **← All shows** or your browser's **Back**) now stops the show if

@@ -294,7 +294,7 @@
         Shift-click adds the next one, and dragging the line between two sections moves it. Section changes save
         with the song; a show already using it picks them up with <b>From song</b>.</li>
       <li>Click to move the playhead. Use the wheel to zoom, and Shift + wheel to scroll.</li>
-      <li><b>Suggest cuts</b> finds whole bars to take out of the song or one section (or press <b>✂ Shorten…</b>
+      <li><b>✂ Suggest cuts…</b> finds whole bars to take out of the song or one section (or press <b>✂ Shorten…</b>
         on a section) where the music either side of the join matches. Press a cut's ▶ to hear its join, then
         <b>Use</b>. It needs the song detected first.</li>
       <li>Space plays, Delete cuts the selection, and Ctrl+Z undoes.</li>
@@ -329,6 +329,7 @@
         <button id="music-preview" title="Hear the few seconds either side of the join, as if the selection were cut">Preview cut</button>
         <button id="music-cut" title="Remove the selection and join the parts either side (Delete)">Cut selection</button>
         <button id="music-keep" title="Keep only the selection, to shorten the song">Keep only selection</button>
+        <button id="music-suggest" title="Find whole bars to cut from the song or a section, where the join won't be heard">✂ Suggest cuts…</button>
         <button id="music-undo" class="ghost" title="Undo (Ctrl+Z)">Undo</button>
         <button id="music-redo" class="ghost" title="Redo (Ctrl+Shift+Z)">Redo</button>
       </div>
@@ -349,16 +350,6 @@
         <label title="Fade the end down to silence">Fade out <input id="music-fadeout" type="number" min="0" max="30" step="0.5" value="0"> s</label>
       </div>
     </div>
-    <div class="toolbar">
-      <div class="group">
-        <span class="section-label">Suggest cuts</span>
-        <label title="The whole song, or one of its sections">Shorten <select id="music-cuts-scope"></select></label>
-        <label title="How long you'd like it to be, as 1:30 or 90">to about <input id="music-cuts-target" size="6" autocomplete="off"></label>
-        <span id="music-cuts-now" class="hint"></span>
-        <button id="music-cuts-find" title="Find whole bars to cut where the music either side of the join matches, so the cut isn't heard">✂ Find cuts</button>
-      </div>
-    </div>
-    <div id="music-cuts" class="music-cuts" hidden></div>
   </section>
   <section class="card">
     <div class="group">
@@ -382,6 +373,34 @@
           title="What happens in this part of the music, or how you'd like it lit. Describe it in the editor passes this to the AI."></label>
     </div>
   </section>
+  <dialog id="cuts-dialog" class="effect-dialog form-dialog cuts-dialog" aria-labelledby="cuts-title">
+    <form id="cuts-form" method="dialog">
+      <div class="effect-dialog-head"><h3 id="cuts-title">Suggest cuts</h3>
+        <button type="button" class="ghost" data-cuts="cancel" aria-label="Close">✕</button></div>
+      <div class="form-dialog-body" id="cuts-step-1">
+        <p class="hint ns-step">Step 1 of 2: what to shorten</p>
+        <label class="field">Shorten <select id="music-cuts-scope"></select></label>
+        <label class="field">To about <input id="music-cuts-target" autocomplete="off" inputmode="decimal">
+          <span id="music-cuts-now" class="hint"></span></label>
+        <p class="hint">Whole bars are taken out where the music either side of the join matches, so the cut isn't
+          heard. You'll hear each one before anything changes.</p>
+        <p id="cuts-note" class="dialog-note hint" aria-live="polite" hidden></p>
+      </div>
+      <div class="form-dialog-body" id="cuts-step-2" hidden>
+        <p class="hint ns-step" id="cuts-step-2-title">Step 2 of 2: pick a cut</p>
+        <div id="music-cuts" class="music-cuts"></div>
+        <p class="hint">Press ▶ to hear a few seconds either side of a join. What it takes out shows in red on the
+          waveform. <b>Use</b> makes the cut and closes this window; <b>Undo</b> in the <b>Edit</b> card (or Ctrl+Z)
+          takes it back.</p>
+      </div>
+      <div class="form-dialog-foot">
+        <button type="button" class="ghost" id="cuts-back" hidden>← Back</button>
+        <span class="spacer"></span>
+        <button type="button" data-cuts="cancel">Cancel</button>
+        <button type="submit" class="primary" id="music-cuts-find">Find cuts →</button>
+      </div>
+    </form>
+  </dialog>
 </main>
 
 

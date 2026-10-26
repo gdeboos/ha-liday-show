@@ -602,29 +602,49 @@ export class MusicEditor {
     $("music-cuts-now").textContent = this.pieces.length ? `now ${fmtTime(to - from, false)}` : "";
   }
 
-  // From the section panel: suggest cuts for the picked section.
-  shortenSection() {
-    if (this.secSel < 0) return;
+  // Opens Suggest cuts on step 1, for a section (its index in the lane) or the whole song.
+  openCuts(section = null) {
+    if (!this.rendered) return;
     this.fillCutScope();
-    $("music-cuts-scope").value = String(this.secSel);
+    $("music-cuts-scope").value = section === null ? "" : String(section);
     this.defaultCutTarget();
+    this.cutStep(1);
+    this.cutNote(this.shown?.bars?.length ? "" : "Press Detect first: suggested cuts follow the song's bars.");
+    $("cuts-dialog").showModal();
     $("music-cuts-target").focus();
     $("music-cuts-target").select();
-    $("music-cuts-target").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  cutStep(n) {
+    $("cuts-step-1").hidden = n !== 1;
+    $("cuts-step-2").hidden = n !== 2;
+    $("cuts-back").hidden = n !== 2;
+    $("music-cuts-find").hidden = n !== 1;
+  }
+
+  cutNote(text) {
+    $("cuts-note").textContent = text;
+    $("cuts-note").hidden = !text;
+  }
+
+  closeCuts() {
+    if (this.playing?.preview) this.stop();
+    this.cutShown = -1;
+    this.draw();
   }
 
   async findCuts() {
     const info = this.shown;
     if (!this.rendered) return;
-    if (!info?.bars?.length) return this.host.status("Press Detect first: suggested cuts follow the song's bars", "hint");
+    if (!info?.bars?.length) return this.cutNote("Press Detect first: suggested cuts follow the song's bars.");
     const { from, to, sec } = this.cutScope, total = this.total;
     const target = parseTime($("music-cuts-target").value);
-    if (target === null) return this.host.status("Type the length you'd like, such as 1:30 or 90", "hint");
+    if (target === null) return this.cutNote("Type the length you'd like, such as 1:30 or 90.");
     const remove = to - from - target;
-    if (remove < 0.5) return this.host.status(`That's no shorter than it is now (${fmtTime(to - from, false)})`, "hint");
+    if (remove < 0.5) return this.cutNote(`That's no shorter than it is now (${fmtTime(to - from, false)}).`);
     const pieces = this.pieces, xf = this.crossfade;
     const bars = info.bars.filter((t) => t < total - 0.05);
-    this.host.status("Listening for bars that repeat…");
+    this.cutNote("Listening for bars that repeat…");
     $("music-cuts-find").disabled = true;
     try {
       // Bar vectors of the result as it is now, kept until it changes.
@@ -640,11 +660,15 @@ export class MusicEditor {
         : songPlans({ bars, total, sim, sections: info.sections, remove });
       this.cutOpts = { pieces, xf, options, section: sec && { label: sec.label, len: to - from } };
       this.cutShown = -1;
-      if (options.length) this.host.status("Press ▶ on a cut to hear its join, then Use the one you like");
-      else this.host.status(`No good places to cut ${sec ? `"${sec.label}"` : "the song"} by that much. Try a different length`, "hint");
+      if (options.length) {
+        this.cutNote("");
+        $("cuts-step-2-title").textContent = `Step 2 of 2: pick a cut to shorten ${sec ? `"${sec.label}"` : "the song"} to about ${fmtTime(target, false)}`;
+        this.cutStep(2);
+      } else this.cutNote(`No good places to cut ${sec ? `"${sec.label}"` : "the song"} by that much. Try a different length.`);
     } catch (e) {
-      this.host.status(`Couldn't find cuts: ${e.message}`, true);
+      this.cutNote(`Couldn't find cuts: ${e.message}`);
     } finally {
+      $("music-cuts-find").disabled = false;
       this.updateControls();
       this.draw();
     }
@@ -663,7 +687,6 @@ export class MusicEditor {
       if (text) e.textContent = text;
       return e;
     };
-    $("music-cuts").hidden = !opts.length;
     $("music-cuts").replaceChildren(...opts.map((o, k) => {
       const n = o.cuts.length, bars = o.cuts.reduce((s, c) => s + c.bars, 0);
       const row = el("div", "cut-option" + (k === this.cutShown ? " shown" : ""));
@@ -686,7 +709,7 @@ export class MusicEditor {
       const use = el("button", "primary", "Use");
       use.type = "button";
       use.title = n > 1 ? "Make all these cuts (Ctrl+Z undoes)" : "Make this cut (Ctrl+Z undoes)";
-      use.addEventListener("click", () => this.useCuts(o));
+      use.addEventListener("click", () => { $("cuts-dialog").close(); this.useCuts(o); });
       row.append(el("b", "", `Option ${k + 1}`), what, chips, el("span", "spacer"), use);
       return row;
     }));
@@ -763,7 +786,7 @@ export class MusicEditor {
       const i = this.secSel;
       this.editSections(removeSection(this.sections, i), Math.max(0, i - 1));
     });
-    $("music-sec-shorten").addEventListener("click", () => this.shortenSection());
+    $("music-sec-shorten").addEventListener("click", () => this.openCuts(this.secSel));
     $("music-sec-close").addEventListener("click", () => { this.secSel = -1; this.updateControls(); this.draw(); });
   }
 
@@ -807,10 +830,7 @@ export class MusicEditor {
     $("music-save-state").textContent = has && this.dirty ? "Unsaved edits" : "";
     if (!this.sections || this.secSel >= this.sections.length) this.secSel = -1;
     this.renderSection();
-    this.fillCutScope();
-    if (!$("music-cuts-target").value && has) this.defaultCutTarget();
-    this.updateCutNow();
-    $("music-cuts-find").disabled = !has;
+    $("music-suggest").disabled = !has;
     this.renderCuts();
     $("music-sel-start").disabled = $("music-sel-end").disabled = !sel;
     $("music-sel-start").value = sel ? sel.start.toFixed(2) : "";
@@ -1314,9 +1334,12 @@ export class MusicEditor {
     $("music-save").addEventListener("click", () => this.save());
     $("music-detect").addEventListener("click", () => this.detect());
     $("music-describe").addEventListener("click", () => this.describe());
-    $("music-cuts-scope").addEventListener("change", () => this.defaultCutTarget());
-    $("music-cuts-find").addEventListener("click", () => this.findCuts());
-    $("music-cuts-target").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); this.findCuts(); } });
+    $("music-suggest").addEventListener("click", () => this.openCuts(this.secSel >= 0 ? this.secSel : null));
+    $("music-cuts-scope").addEventListener("change", () => { this.cutNote(""); this.defaultCutTarget(); });
+    $("cuts-form").addEventListener("submit", (e) => { e.preventDefault(); this.findCuts(); });
+    $("cuts-back").addEventListener("click", () => { this.closeCuts(); this.cutStep(1); });
+    for (const b of document.querySelectorAll("[data-cuts=cancel]")) b.addEventListener("click", () => $("cuts-dialog").close());
+    $("cuts-dialog").addEventListener("close", () => this.closeCuts());
     this.wireSections();
     // Some browsers (older Safari, the Home Assistant app on iPhone) also need returnValue to ask.
     window.addEventListener("beforeunload", (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ""; } });
