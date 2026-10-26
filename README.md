@@ -146,7 +146,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   in one press, with no lights needed
 - A setup guide on first run: lights, a speaker, the house, then a first show generated from a song
 - **Share** a show as a small file, and **Import** one someone shared: pick your copy of the song,
-  then match their lights to yours (suggested by kind, size and where they are on the house)
+  then match their lights to yours (suggested by kind, size and where they are on the house), and
+  preview it on your house photo before importing
 - **Export** and **Import** everything in one file, or **Start afresh**, with a copy kept first so it
   can be undone
 - Draw icicle lights as hanging drops and spotlights as beams aimed at the wall

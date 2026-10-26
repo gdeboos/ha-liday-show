@@ -5058,6 +5058,8 @@ function imParts(t, m, p) {
 // ▶ Preview on your house: the show as it would import, with the pairings as they are now, on the
 // house photo, with the song in this browser. Nothing is saved and no lights are sent anything.
 const imPrev = { on: false, audio: null, start: 0, raf: 0, tracks: null };
+// Effects this copy knows, on the lane they belong on: what an import keeps, and so what the preview plays.
+const imFits = (fx, house) => !!EFFECTS[fx] && !!EFFECTS[fx].house === house;
 
 function imPreviewReady() {
   housePositionsAll(); // brings house.devices up to date
@@ -5072,6 +5074,8 @@ function imPreviewButton() {
   b.title = ready ? "Play it on your house photo with these pairings. Your lights aren't sent anything"
     : "Put your lights on the house photo under Setup → House to preview shows there";
   b.textContent = imPrev.on ? "■ Stop preview" : "▶ Preview on your house";
+  // A greyed-out button's tooltip doesn't show on a phone, so say why in the window too.
+  $("im-preview-hint").hidden = ready || imp.step !== 2 || !imp.share.lights.length;
 }
 
 function imPreviewStart() {
@@ -5101,7 +5105,7 @@ function imPreviewFrame() {
   const end = imp.share.duration;
   const t = imPrev.audio ? imPrev.audio.currentTime : (performance.now() - imPrev.start) / 1000;
   if (t >= end || imPrev.audio?.ended) { imPreviewStop(); return; }
-  imPrev.tracks ||= buildTracks(imp.share, imp.plan, imp.mine).tracks;
+  imPrev.tracks ||= buildTracks(imp.share, imp.plan, imp.mine, imFits).tracks;
   const byId = new Map(imPrev.tracks.map((tr) => [tr.device, tr]));
   const pos = housePositionsAll(), houseFx = byId.get(HOUSE)?.clips || [];
   const frames = new Map();
@@ -5133,7 +5137,7 @@ async function imSubmit(e) {
   const share = imp.share;
   $("import-dialog").close();
   await openShow(null);
-  const { tracks, dropped } = buildTracks(share, imp.plan, imp.mine, (fx, house) => !!EFFECTS[fx] && !!EFFECTS[fx].house === house);
+  const { tracks, dropped } = buildTracks(share, imp.plan, imp.mine, imFits);
   Object.assign(app.show, { name, audio: imp.song ? JSON.parse(imp.song) : null, duration: share.duration,
     beats: share.beats, bars: share.bars, sections: share.sections, tracks });
   if (share.tempo !== null) app.show.tempo = share.tempo;
