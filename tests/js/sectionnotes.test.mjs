@@ -97,3 +97,48 @@ test("Detect again keeps the names and notes you wrote", async () => {
   const described = describeSections(out, out.map(() => trait), { write: () => "new" });
   assert.deepEqual(described.map((x) => x.notes), ["bells only", "new", "everything flashes at the end"]);
 });
+
+test("the AI is told the song, the measurements and which sections it may write or rename", async () => {
+  const { aiRequest } = await import("../../haliday_show/app/halidayshow/static/js/sectionnotes.js");
+  const secs = [
+    { start: 0, end: 10.04, label: "Intro" },
+    { start: 10.04, end: 20, label: "Big bit", named: true, notes: "everything flashes" },
+  ];
+  const { request, context } = aiRequest(secs, [trait, { ...trait, alone: true }], { name: "Jingle Bells", duration: 20, tempo: 120 });
+  assert.ok(request.length > 10);
+  assert.deepEqual(context.song, { name: "Jingle Bells", duration: 20, tempo: 120 });
+  assert.equal(context.sections[0].end, 10);
+  assert.equal(context.sections[0].write, true);
+  assert.equal(context.sections[0].rename, true);
+  assert.equal(context.sections[0].measured.loudness, 0.9);
+  assert.deepEqual(context.sections[0].measured.big_hits, [42.3]);
+  assert.equal(context.sections[1].write, false);
+  assert.equal(context.sections[1].rename, false);
+  assert.equal(context.sections[1].your_notes, "everything flashes");
+  assert.equal("loudness" in context.sections[1].measured, false);
+});
+
+test("the AI's notes and names are checked, and the rules fill any it skipped", async () => {
+  const { describeWithAI } = await import("../../haliday_show/app/halidayshow/static/js/sectionnotes.js");
+  const secs = [
+    { start: 0, end: 10, label: "Part A" },
+    { start: 10, end: 20, label: "Mine", named: true, notes: "my words" },
+    { start: 20, end: 30, label: "Part B" },
+    { start: 30, end: 40, label: "Part A" },
+  ];
+  const reply = { sections: [
+    { index: 0, name: "Verse", notes: "Gentle bells; a soft glow." },
+    { index: 1, name: "Chorus", notes: "overwrite attempt" },
+    { index: 2, name: "", notes: "x".repeat(400) },
+    { index: 9, name: "Nope", notes: "out of range" },
+    { index: "1", name: 5, notes: null },
+  ] };
+  const out = describeWithAI(secs, secs.map(() => trait), reply);
+  assert.deepEqual(out.map((s) => s.label), ["Verse", "Mine", "Part B", "Part A"]);
+  assert.equal(out[0].notes, "Gentle bells; a soft glow.");
+  assert.equal(out[1].notes, "my words");
+  assert.equal(out[2].notes.length, 300);
+  assert.match(out[3].notes, /^Loud/); // skipped by the AI: the rule note
+  assert.ok(out.filter((s) => s.autoNotes).length === 3);
+  assert.deepEqual(describeWithAI(secs, secs.map(() => trait), null).map((s) => s.label), secs.map((s) => s.label));
+});

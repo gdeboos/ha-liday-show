@@ -155,7 +155,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 <summary><b>🎬 Building a show</b></summary>
 
 - Detect the song's tempo, beats, bars and sections automatically, in the browser, with a note on
-  each section saying what it sounds like and how to light it
+  each section saying what it sounds like and how to light it (written by the AI, if you have one)
 - Generate a first draft of a whole show from the song in one click, in a palette and style you pick,
   building up like a person would: a few lights in quiet parts, all of them in the chorus
 - Describe effects in words and an AI adds them, using Claude with your API key or any AI set up in
@@ -303,7 +303,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/commands.py             Automation commands over app stdin
   app/halidayshow/mqtt.py                 MQTT discovery entities
   app/halidayshow/server.py               HTTP API for the editor; who may connect (ingress or password)
-  app/halidayshow/ai.py                   Describe it, AI presets and palettes: asks Claude or HA's AI Task
+  app/halidayshow/ai.py                   Describe it, AI presets, palettes and section notes: asks Claude or HA's AI Task
   app/halidayshow/static/                 The editor (plain ES modules, no build step)
     index.html, style.css               Page and styles
     player.html                         The Show player page

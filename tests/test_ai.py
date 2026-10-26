@@ -160,3 +160,18 @@ async def test_ai_palettes_endpoint(aiohttp_client, tmp_path, monkeypatch):
     resp = await client.post("/api/ai/palettes", json={"request": "fire", "context": {}})
     assert resp.status == 200 and (await resp.json())["palettes"] == reply["palettes"]
     assert (await client.post("/api/ai/palettes", json={"request": "fire"})).status == 400
+
+
+async def test_section_notes_use_their_own_instructions_and_schema(aiohttp_client, tmp_path, monkeypatch):
+    reply = {"summary": "Described 2", "sections": [{"index": 0, "name": "Verse", "notes": "Gentle."}]}
+    ha = FakeHA(reply=json.dumps(reply))
+    out = await ai.create_section_notes(ha, "Write notes", {"song": {"name": "Jingle Bells"}, "sections": []})
+    assert out["via"] == "ha" and out["sections"] == reply["sections"]
+    instructions = ha.calls[0][2]["instructions"]
+    assert "can't hear the song" in instructions and '"sections"' in instructions and "Jingle Bells" in instructions
+    monkeypatch.setattr(server, "HomeAssistant", lambda: FakeHA(reply=json.dumps(reply)))
+    app = server.make_app(tmp_path / "config", tmp_path / "media", allow_all=True)
+    client = await aiohttp_client(app)
+    resp = await client.post("/api/ai/sections", json={"request": "Write notes", "context": {"sections": []}})
+    assert resp.status == 200 and (await resp.json())["sections"] == reply["sections"]
+    assert (await client.post("/api/ai/sections", json={"request": "x"})).status == 400

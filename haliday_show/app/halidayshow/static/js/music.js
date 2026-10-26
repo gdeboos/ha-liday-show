@@ -379,6 +379,7 @@ export class MusicEditor {
       if (this.base === ref) { this.info = info; this.secSel = -1; }
       const parts = `${info.sections.length} section${info.sections.length === 1 ? "" : "s"}`;
       this.host.status(info.tempo ? `Found ${info.beats.length} beats at ${info.tempo} BPM, and ${parts}` : `No steady beat found; found ${parts}`);
+      this.askAI(ref, info.sections, r.traits, info.tempo);
     } catch (e) {
       this.host.status(`Couldn't analyse the song: ${e.message}`, true);
     }
@@ -404,13 +405,35 @@ export class MusicEditor {
       const out = describeSections(sections, traits);
       const written = out.filter((s, i) => s !== sections[i]).length;
       this.editSections(out);
-      this.host.status(written ? `Wrote notes for ${written} section${written === 1 ? "" : "s"}; edit any you like`
+      if (written && this.host.hasAI?.()) this.askAI(ref, out, traits, this.info.tempo);
+      else this.host.status(written ? `Wrote notes for ${written} section${written === 1 ? "" : "s"}; edit any you like`
         : "Every section already has notes you wrote, so nothing was changed", written ? false : "hint");
     } catch (e) {
       this.host.status(`Couldn't describe the sections: ${e.message}`, true);
     } finally {
       this.updateControls();
     }
+  }
+
+  // Has the AI rewrite the notes (and automatic names) just written, and puts them in if the
+  // sections haven't been edited meanwhile. The rule-written ones stay if there's no AI.
+  async askAI(ref, sections, traits, tempo) {
+    if (!this.host.hasAI?.()) return;
+    this.host.status(`Asking the AI to describe each part of ${nameOf(ref)}… (usually 10 to 60 seconds; carry on meanwhile)`);
+    const duration = sections[sections.length - 1]?.end || 0;
+    const out = await this.host.aiSectionNotes(sections, traits, { name: nameOf(ref).replace(/\.[^.]+$/, ""), duration, tempo });
+    if (!out) return;
+    if (this.base === ref && this.info?.sections === sections) {
+      this.editSections(out);
+      this.host.status("The AI wrote the section notes; edit any you like");
+    } else this.host.status("The sections changed while the AI was writing, so its notes weren't used", "hint");
+  }
+
+  // Reloads a song's saved sections if it's the one open (after something else saved them).
+  async reloadInfo(ref) {
+    if (this.base !== ref || this.dirty) return;
+    const info = await this.host.api(infoUrl(ref)).catch(() => null);
+    if (info && this.base === ref) { this.info = info; this.updateControls(); this.draw(); }
   }
 
   async upload(file) {

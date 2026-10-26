@@ -566,6 +566,14 @@ everything on the hit." Notes you've typed or changed are never replaced, and no
 given sections: pressing **Detect** again carries them over to the new section that covers the same
 stretch of the song. Edit anything it writes; once you do, it's yours.
 
+With an AI set up (see [Setting up the AI](#setting-up-the-ai)), the AI then rewrites those notes,
+usually within a minute, while you carry on. It can't hear the song, so it works from the same
+measurements and the song's name. If it knows the song, it uses what it knows: which part is the verse
+or the chorus, where it builds. It also gives the sections Detect named itself better names, such as
+**Part B** becoming **Verse**, but never a name you gave. If you edit the sections before it's done,
+its notes aren't used, so press **✨ Describe sections** to ask again. Without an AI, or if it can't
+answer, the simpler notes stay.
+
 ### Beats
 
 Press **Detect** to have the editor listen to the song and find its tempo, every beat,
@@ -1044,7 +1052,8 @@ Home Assistant's own backups include all of this too, as the app's config folder
 
 ## Setting up the AI
 
-**Describe it**, **✨ Make presets**, **✨ Make palettes** and Generate's **AI** option need one of these:
+**Describe it**, **✨ Make presets**, **✨ Make palettes**, Generate's **AI** option and the AI's section
+notes need one of these:
 
 - **Claude, with your own API key.** Create a key at console.anthropic.com, then in Home Assistant open
   **Settings → Apps → HA-liday Show → Configuration**, paste it into **Claude API key** and save.

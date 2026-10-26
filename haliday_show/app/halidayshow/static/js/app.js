@@ -2,7 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
-import { describeSections, keepYours } from "./sectionnotes.js";
+import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
 import { STYLES, applyGenerated, generateShow, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
@@ -165,7 +165,7 @@ const volume = createVolume();
 volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
-  opened: (ref) => prefs.set("lastSong", songKey(ref)) });
+  opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
 // history -----------------------------------------------------------------
@@ -4021,6 +4021,15 @@ async function asSubmit(e) {
       const r = await analyseInWorker(samples, rate);
       info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: describeSections(r.sections, r.traits) };
       await api(songInfoUrl(ref), { method: "PUT", json: info });
+      // The AI's notes follow when they come, unless the song's sections were edited meanwhile.
+      const first = info;
+      aiSectionNotes(info.sections, r.traits, { name, duration: song.duration, tempo: info.tempo }).then(async (out) => {
+        if (!out) return;
+        const now = await songInfo(ref);
+        if (JSON.stringify(now?.sections) !== JSON.stringify(first.sections)) return;
+        await api(songInfoUrl(ref), { method: "PUT", json: { ...first, sections: out } }).catch(() => {});
+        music.reloadInfo?.(ref);
+      });
     } catch (err) {
       failed = songLoadMessage(err);
       info = null;
@@ -5008,8 +5017,34 @@ async function analyseSong() {
   const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars,
     sections: describeSections(keepYours(r.sections, old), r.traits) };
   applySongInfo(info);
-  if (app.show.audio) api(songInfoUrl(app.show.audio), { method: "PUT", json: info }).catch(() => {});
+  const ref = app.show.audio;
+  if (ref) api(songInfoUrl(ref), { method: "PUT", json: info }).catch(() => {});
+  // Then the AI's notes, when they come, if nothing has changed the sections meanwhile.
+  const applied = app.show.sections;
+  aiSectionNotes(info.sections, r.traits, { name: songTitle(ref), duration: song.duration, tempo: info.tempo }).then((out) => {
+    if (!out || app.show.sections !== applied || ref !== app.show.audio) return;
+    const better = { ...info, sections: out };
+    applySongInfo(better);
+    app.changed();
+    if (ref) api(songInfoUrl(ref), { method: "PUT", json: better }).catch(() => {});
+  });
   return r;
+}
+
+const songTitle = (ref) => (ref?.path || "").split("/").pop().replace(/\.[^.]+$/, "");
+
+// The AI's notes (and better names) for a song's sections, from what was measured in each; null
+// without an AI, or if it fails, when the rule-written notes stay.
+async function aiSectionNotes(sections, traits, song) {
+  if (!aiVia || !sections?.length) return null;
+  const { request, context } = aiRequest(sections, traits, song);
+  try {
+    const reply = await api("api/ai/sections", { method: "POST", json: { request, context } });
+    return describeWithAI(sections, traits, reply);
+  } catch (e) {
+    status(`The AI couldn't write the section notes, so they're the simpler ones: ${e.message}`, "hint");
+    return null;
+  }
 }
 
 // Generate: a first draft of the whole show from the song, a palette and a style.

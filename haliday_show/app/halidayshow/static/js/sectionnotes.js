@@ -67,9 +67,57 @@ export function describeSections(sections, traits, { write = ruleNote, names = {
     let out = sec;
     if (names[i] && autoNamed(sec)) out = { ...out, label: String(names[i]).slice(0, 40) };
     if (traits[i] && notesFree(sec)) {
-      const notes = String(write(traits[i], out, sections) || "").trim().slice(0, 300);
+      const notes = String(write(traits[i], out, sections, i) || "").trim().slice(0, 300);
       if (notes) out = { ...out, notes, autoNotes: true };
     }
     return out;
+  });
+}
+
+// What the AI is told: the song's name (it may know the song), and for each section its time, name,
+// what was measured, and the notes you wrote (to leave alone, and for context). It writes notes only
+// for "write" sections and names only for "rename" ones.
+export function aiRequest(sections, traits, song) {
+  const r1 = (t) => Math.round(t * 10) / 10;
+  return {
+    request: "Write notes for this song's sections: what each part is like and how to light it.",
+    context: {
+      song: { name: song.name || "", duration: r1(song.duration || sections[sections.length - 1]?.end || 0), tempo: song.tempo || null },
+      sections: sections.map((sec, i) => {
+        const t = traits[i] || {};
+        return {
+          index: i, start: r1(sec.start), end: r1(sec.end), name: sec.label,
+          write: notesFree(sec), rename: autoNamed(sec),
+          ...(notesFree(sec) ? {} : { your_notes: sec.notes }),
+          measured: {
+            ...(t.alone ? {} : { loudness: t.level }), shape: t.shape, busy: t.busy, tone: t.tone,
+            big_hits: (t.hits || []).map(r1), goes_quiet: (t.drops || []).map(r1),
+          },
+        };
+      }),
+    },
+  };
+}
+
+// The AI's reply checked: notes (up to 300 characters) only for sections it may write, names (up to
+// 40) only for sections it may rename. Returns {notes: {index: text}, names: {index: name}}.
+export function fromAI(reply, sections) {
+  const notes = {}, names = {};
+  for (const r of Array.isArray(reply?.sections) ? reply.sections : []) {
+    const i = Number(r?.index), sec = sections[i];
+    if (!Number.isInteger(i) || !sec) continue;
+    const note = String(r.notes ?? "").trim().slice(0, 300);
+    const name = String(r.name ?? "").trim().slice(0, 40);
+    if (note && notesFree(sec)) notes[i] = note;
+    if (name && autoNamed(sec) && name !== sec.label) names[i] = name;
+  }
+  return { notes, names };
+}
+
+// Sections described with the AI's notes and names, and the rules for any section it skipped.
+export function describeWithAI(sections, traits, reply) {
+  const { notes, names } = fromAI(reply, sections);
+  return describeSections(sections, traits, {
+    names, write: (t, sec, all, i) => notes[i] ?? ruleNote(t, sec, all),
   });
 }
