@@ -1127,6 +1127,13 @@ without the code just says "Scan the code on the sign to start a show".
   your home Wi-Fi.
 - **Copy** copies the link. **New code…** makes a new one, if the link has been shared somewhere it
   shouldn't be. The old link (and any QR code you've printed) stops working.
+- **Print sign…** opens an A4 sign in a new tab: your **Title** (in your heading colour, if it reads
+  well on white paper), "Scan to start a light show", a big QR code with your visitors' link, your
+  opening hours, the **Message on the sign** you type above the button, and the link written out
+  for anyone without a camera app. Press **Print sign** there, or **Download QR code** for the code on
+  its own as a picture. Set the **Public address** first, so the code takes people to your page from
+  the street. Check your phone's camera reads it before you put the sign up, and print a new one
+  after **New code…**.
 - **Nearby only within … m** (on to start with, at 100 m; anything from 25 to 2000 m): a phone
   reaching the page through the internet must be that close to your house to start a show.
   - As the page opens, the phone asks to share its location. It's only used for this check and isn't
@@ -1245,8 +1252,8 @@ restart the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
 To reach the page from the street on mobile data, point a tunnel or proxy at that port (only that
 port), such as Cloudflare Tunnel, and put its address in **Public address**.
 
-> **Coming next:** a printable sign with the QR code, and step-by-step guides for reaching the page
-> from outside your home (Cloudflare Tunnel and others).
+> **Coming next:** step-by-step guides for reaching the page from outside your home (Cloudflare Tunnel
+> and others).
 
 ## 6. Automations
 

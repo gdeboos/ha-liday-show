@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.174
+## 0.2.176
 
 - The **Public page** settings are tidier and easier to scan:
   - Every setting has its name above it and its explanation under it, and short ones sit side by
@@ -8,9 +8,23 @@
   - **How the page looks** is split into **Words**, **Picture at the top**, **Colours and style** and
     **Link at the bottom**.
   - **Opening hours** now reads **Opens** and **Closes**, and the days are buttons you press on and off.
-  - The visitors' link sits in a box with **Copy** and **New code…**, and warnings (such as no home
-    location) stand out on an orange tint.
+  - The visitors' link sits in a box with **Copy** and **New code…**, with **Message on the sign** and
+    **Print sign…** under it, and warnings (such as no home location) stand out on an orange tint.
   - The picture choice is one row of three, and a choice you can't pick yet (no house photo) is faded.
+
+## 0.2.175
+
+- The public page now fits phones properly. With **Falling snow** on, the page was shrunk to a small
+  column with tiny text on many phones; it now fills the screen at a normal size.
+
+## 0.2.174
+
+- New **Print sign…** on the **Public page** tab, under **Who can start shows**. It opens an A4 sign
+  in a new tab with your title, "Scan to start a light show", a big QR code with your visitors'
+  link, your opening hours and a **Message on the sign** of your own. Press **Print sign**.
+- **Download QR code** on the sign gives you the code as a picture to use elsewhere.
+- Check your phone's camera reads the code before you put the sign up. After **New code…**, print a
+  new sign: the old code stops working.
 
 ## 0.2.173
 

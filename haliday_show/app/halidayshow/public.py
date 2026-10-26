@@ -13,6 +13,7 @@ network must be within "distance" metres of the house (settings' location, else 
 phone sends a random ticket it keeps, which is how "one request per phone" is counted: mobile
 networks put many phones behind one internet address.
 """
+import io
 import ipaddress
 import logging
 import math
@@ -165,10 +166,27 @@ def clean_look(x) -> dict:
             "snow": x.get("snow") is True,
             "link": link if len(link) <= 300 and _LINK.match(link) else "",
             "link_text": text("link_text", 80),
+            "sign_text": text("sign_text", 120),
             "spacing": pick("spacing", SPACINGS), "corners": pick("corners", CORNERS), "size": pick("size", SIZES),
             "borders": x.get("borders") is not False,
             "colours": {k: (c[k].lower() if isinstance(c := x.get("colours"), dict) and isinstance(c.get(k), str)
                             and _HEX.match(c[k]) else v) for k, v in DEFAULT_COLOURS.items()}}
+
+
+_VISITOR_LINK = re.compile(r"^https?://[A-Za-z0-9.-]+(:\d{1,5})?(/[^\s?#]*)?/\?c=([A-Za-z0-9]{6,16})$")
+
+
+def qr_svg(link: str, code: str) -> str | None:
+    """The sign's QR code for a visitors' link with your current code in it, or None if it isn't one."""
+    import segno  # only needed for the sign
+
+    m = _VISITOR_LINK.match(link or "")
+    if not m or len(link) > 300 or not code or m.group(3).lower() != code.lower():
+        return None
+    buf = io.BytesIO()
+    segno.make(link, error="m", micro=False).save(buf, kind="svg", scale=10, border=4, xmldecl=False,
+                                                  dark="#000000", light="#ffffff", title="QR code: " + link)
+    return buf.getvalue().decode()
 
 
 def new_code() -> str:
