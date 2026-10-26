@@ -119,6 +119,12 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
   const houseClips = [];
   let prevTier = null;
   const groups = [...new Set(lights.map((l) => l.group ?? l.id))];
+  // Building up needs the song's sections; without them every light plays, as before.
+  if (!analysis.sections?.length) build = false;
+  // Every light gets its moment: if no section is loud or a chorus, the loudest one uses them all.
+  const together = (sec, t) => t === "high" || sec.label === "Chorus";
+  const peak = sections.some((sec) => together(sec, tier(sec.energy ?? 0.5, style))) ? null
+    : Math.max(...sections.map((sec) => sec.energy ?? 0.5));
 
   sections.forEach((sec, si) => {
     const t = tier(sec.energy ?? 0.5, style);
@@ -131,12 +137,12 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
     };
     const fast = pick(LOOKS[t]), slow = pick(SLOW_LOOKS[t]);
     // Loud sections and the chorus move together on every light; the rest alternate across lights.
-    const unison = t === "high" || sec.label === "Chorus";
+    const unison = together(sec, t);
     // Which lights play: by the section's name, so a repeated verse uses the same ones, and in an
     // order that holds for the whole section, so lights join rather than swap as it builds.
     const order = [...groups].sort((a, b) => hash(key, seed, textHash(String(a))) - hash(key, seed, textHash(String(b))));
     const lit = (phrase) => {
-      if (!build || unison) return new Set(groups);
+      if (!build || unison || (sec.energy ?? 0.5) === peak) return new Set(groups);
       const n = groups.length;
       if (t === "low") return new Set(order.slice(0, Math.max(1, Math.round(n / 3))));
       const target = Math.max(1, Math.ceil((n * 2) / 3));

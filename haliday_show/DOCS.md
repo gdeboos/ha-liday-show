@@ -538,8 +538,9 @@ different take, then edit whatever you like. The colours start on the palette fo
 
 **Build up** (ticked to start with) lights the house the way you would by hand rather than lighting
 everything all the time. Quiet parts use only a few lights and leave the rest dark. Middling parts
-start with about half and bring in another every few bars. Only the loudest parts and the chorus use
-every light at once. A part of the song that comes back uses the same lights each time, and the parts
+start with about half and bring in another every few bars, starting afresh in each part of the song. Only the loudest parts and the chorus use
+every light at once (in a song with neither, its loudest part does), so every light gets its moment.
+A song that hasn't been analysed into parts fills every light, as before. A part of the song that comes back uses the same lights each time, and the parts
 of a split light (like **Pillars · Left** and **Pillars · Right**) go on and off together. Untick it to
 fill every light all the way through, as before. It works for the **AI** too.
 

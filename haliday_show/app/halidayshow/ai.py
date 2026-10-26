@@ -61,9 +61,11 @@ where or when, use the selection, else the whole song.
 - "palettes": named colour sets, for requests like "in Christmas colours".
 - "clips": what the lights have now, for requests that refer to it.
 
-A light with no clip at a moment is dark then. For a whole show or a long stretch, design as a person \
-would rather than lighting everything all the time: let quiet parts use fewer lights, bring lights in as the \
-music builds, and save every light together for the biggest moments, unless the request says otherwise.
+When asked for a complete new show (the lights are cleared first, so a light with no clip is dark), design \
+it as a person would rather than lighting everything all the time: quiet parts use fewer lights, lights come \
+in as the music builds, and every light together is saved for the biggest moments, unless the request says \
+otherwise. For anything smaller (a selection, named lights, a change to what's there), do just what's asked \
+on the lights it's about.
 
 Use only light names and effect keys from the context. Keep clips within the song. Give a one-sentence \
 summary of what you made, in plain words. If the request can't be done with these lights and effects, \

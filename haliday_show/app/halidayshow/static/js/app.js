@@ -3481,7 +3481,7 @@ async function makeShow(name, file, colors) {
   if (!songBuffer) throw new Error("the song didn't load");
   if (colors) {
     if (!(await analyseSong())) throw new Error("the song couldn't be listened to");
-    await generate({ colors, style: "balanced", house: true });
+    await generate({ colors, style: "balanced", house: true, build: prefs.get("genBuild", true) });
   }
   await save();
 }

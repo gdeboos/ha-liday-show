@@ -6,6 +6,7 @@
   the time. Quiet parts use a few lights and leave the rest dark. As the music builds, more lights
   join every few bars, and the chorus and loudest parts use every light at once. A verse that comes
   back uses the same lights as before, and the parts of a split light go on and off together.
+  Every light gets its moment: in a song with no chorus or loud part, the loudest part uses them all.
 - It's the new **Build up** box in the Generate window, ticked to start with. Untick it to fill every
   light as before. It works whether **Made by** is **Rules** or **AI**, and the AI is now told to
   design this way for whole shows in **Describe it** too, unless you ask otherwise.

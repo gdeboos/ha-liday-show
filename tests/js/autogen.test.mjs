@@ -174,3 +174,28 @@ test("building up only fades in the lights that are on at the start", () => {
     if (list.length && list[0].start > 0) assert.notEqual(list[0].effect === "fade" && list[0].from === "#000000", true, id);
   }
 });
+
+test("building up with no sections fills every light", () => {
+  const { clips } = generateShow({ ...analysis, sections: [] }, house6, colors, { build: true });
+  for (const l of house6) assert.ok(clips[l.id].length, `${l.id} left dark`);
+});
+
+test("building up a calm song with no chorus still uses every light somewhere", () => {
+  const calm = [["Intro", 0.2], ["Verse", 0.5], ["Bridge", 0.45], ["Outro", 0.2]]
+    .map(([label, energy], i) => ({ start: i * 16, end: (i + 1) * 16, label, energy }));
+  for (const style of ["calm", "balanced"]) {
+    for (const seed of [1, 2, 3]) {
+      const { clips } = generateShow({ ...analysis, sections: calm, duration: 64 }, house6, colors, { build: true, style, seed });
+      for (const l of house6) assert.ok(clips[l.id].length, `${l.id} left dark (${style}, seed ${seed})`);
+      assert.equal(groupsAt(clips, 17).size, 6); // the loudest part, the verse, uses them all
+    }
+  }
+});
+
+test("building up works with one or two lights", () => {
+  for (const few of [[{ id: "a", segments: 10 }], [{ id: "a", segments: 10 }, { id: "b", segments: 10 }]]) {
+    const { clips } = generateShow(analysis, few, colors, { build: true });
+    for (const l of few) assert.ok(clips[l.id].length);
+    assert.ok(Object.values(clips).some((list) => list.some((c) => c.start <= 4 && 4 < c.end))); // something in the intro
+  }
+});
