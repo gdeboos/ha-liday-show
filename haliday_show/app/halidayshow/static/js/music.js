@@ -52,6 +52,25 @@ export function joins(pieces, crossfade = 0) {
   return places.slice(1).map((pl) => pl.at + pl.xf / 2);
 }
 
+// What the join before piece i is: a cut (part of one song taken out, `from` to `to` in that song) or
+// a splice (where another song, or another part of this one, starts).
+export function joinInfo(pieces, i) {
+  const a = pieces[i - 1], b = pieces[i];
+  if (!a || !b) return null;
+  return a.src === b.src && b.start > a.end + EPS ? { kind: "cut", src: a.src, from: a.end, to: b.start } : { kind: "splice", src: b.src };
+}
+
+// Puts a cut's part back (the join before piece i), as it was. Returns the pieces and where that
+// part now is in the result, so it can be selected to cut again differently; null if it isn't a cut.
+export function putBack(pieces, crossfade, i) {
+  const info = joinInfo(pieces, i);
+  if (info?.kind !== "cut") return null;
+  const a = pieces[i - 1], b = pieces[i];
+  const out = merge([...pieces.slice(0, i - 1), { src: a.src, start: a.start, end: b.end }, ...pieces.slice(i + 1)]);
+  const start = arrange(out, crossfade).places[i - 1].at + (a.end - a.start);
+  return { pieces: out, start, end: start + (b.start - a.end) };
+}
+
 // Adjacent pieces that continue the same song without a gap become one again.
 export function merge(pieces) {
   const out = [];
@@ -376,6 +395,7 @@ export class MusicEditor {
     this.info = null; // the base song's saved beats and sections
     this.secSel = -1; // the section picked for editing
     this.markSel = -1; // the mark picked for editing
+    this.joinSel = -1; // the join (index of the piece after it) whose ✂ was clicked
     this.keeper = new DraftKeeper((...a) => this.host.api(...a), {
       onState: () => this.updateSaveState(),
       onError: (m, s, current) => this.host.status(current
@@ -498,7 +518,7 @@ export class MusicEditor {
     this.future = [];
     this.time = 0;
     this.sel = null;
-    this.secSel = this.markSel = -1;
+    this.secSel = this.markSel = this.joinSel = -1;
     const length = this.sources[baseKey][0].length / this.audio.sampleRate;
     this.dirty = !untouched(this.pieces, baseKey, length) || !!(d.fadeIn || d.fadeOut);
     this.changed(true);
@@ -654,6 +674,7 @@ export class MusicEditor {
     this.pieces = pieces;
     this.dirty = true;
     this.markSel = this.shownMark(mark);
+    this.joinSel = -1;
     this.changed(fit);
     this.draftChanged();
   }
@@ -667,6 +688,7 @@ export class MusicEditor {
     this.pieces = from.pop();
     this.dirty = true;
     this.markSel = this.shownMark(mark);
+    this.joinSel = -1;
     this.changed();
     this.draftChanged();
   }
@@ -1093,6 +1115,10 @@ export class MusicEditor {
       const i = this.secSel;
       this.editSections(removeSection(this.sections, i), Math.max(0, i - 1));
     });
+    $("music-join-hear").addEventListener("click", () => this.hearJoin(this.joinSel));
+    $("music-join-adjust").addEventListener("click", () => this.putJoinBack(true));
+    $("music-join-back").addEventListener("click", () => this.putJoinBack(false));
+    $("music-join-close").addEventListener("click", () => { this.joinSel = -1; this.updateControls(); this.draw(); });
     $("music-sec-shorten").addEventListener("click", () => this.openCuts(this.secSel));
     $("music-sec-close").addEventListener("click", () => { this.secSel = -1; this.updateControls(); this.draw(); });
   }
@@ -1137,6 +1163,8 @@ export class MusicEditor {
     this.updateSaveState();
     if (!this.sections || this.secSel >= this.sections.length) this.secSel = -1;
     this.renderSection();
+    if (this.joinSel >= this.pieces.length) this.joinSel = -1;
+    this.renderJoin();
     if (!this.marks || this.markSel >= this.marks.length) this.markSel = -1;
     this.renderMark();
     $("music-mark-add").disabled = !has || !this.marks;
@@ -1470,16 +1498,17 @@ export class MusicEditor {
     ctx.setLineDash([]);
     ctx.lineWidth = 1;
     ctx.font = "12px system-ui, sans-serif";
-    for (const j of joins(this.pieces, this.crossfade)) {
+    joins(this.pieces, this.crossfade).forEach((j, k) => {
       const x = this.x(j);
-      if (x < -8 || x > w + 8) continue;
-      ctx.fillStyle = col("--panel");
+      if (x < -8 || x > w + 8) return;
+      const picked = k + 1 === this.joinSel;
+      ctx.fillStyle = col(picked ? "--accent" : "--panel");
       ctx.fillRect(x - 9, 1, 18, RULER_H - 3);
       ctx.strokeStyle = col("--text");
       ctx.strokeRect(Math.round(x - 9) + 0.5, 1.5, 18, RULER_H - 4);
-      ctx.fillStyle = col("--text");
+      ctx.fillStyle = picked ? "#fff" : col("--text");
       ctx.fillText("✂", x - 6, RULER_H - 7);
-    }
+    });
 
     // the suggestion being heard: red bands over what it would take out
     for (const c of this.cutOpts?.options?.[this.cutShown]?.cuts || []) {
@@ -1530,25 +1559,55 @@ export class MusicEditor {
     return secs.findIndex((s, i) => i > 0 && Math.abs(x - this.x(s.start)) < EDGE_PX);
   }
 
-  // The join whose ✂ grip in the ruler is under (x, y), or null.
+  // The join whose ✂ grip in the ruler is under (x, y): the index of the piece after it, or -1.
   joinAt(x, y) {
-    if (y >= RULER_H) return null;
-    return joins(this.pieces, this.crossfade).find((j) => Math.abs(this.x(j) - x) <= 10) ?? null;
+    if (y >= RULER_H) return -1;
+    const i = joins(this.pieces, this.crossfade).findIndex((j) => Math.abs(this.x(j) - x) <= 10);
+    return i < 0 ? -1 : i + 1;
   }
 
-  // Moves the playhead to a join and plays a few seconds either side of it.
-  hearJoin(j) {
+  // Picks a join (its panel opens under the waveform) and plays a few seconds either side of it.
+  hearJoin(i) {
+    const j = joins(this.pieces, this.crossfade)[i - 1];
+    if (j === undefined) return;
+    this.joinSel = i;
     this.sel = null;
     this.time = j;
     this.updateControls();
     this.play(Math.max(0, j - 3), Math.min(this.total, j + 3));
   }
 
+  renderJoin() {
+    const info = this.joinSel > 0 ? joinInfo(this.pieces, this.joinSel) : null;
+    $("music-join").hidden = !info;
+    if (!info) return;
+    const at = joins(this.pieces, this.crossfade)[this.joinSel - 1];
+    const song = nameOf(this.refs[info.src] || { path: "" }).replace(/\.[^.]+$/, "");
+    $("music-join-what").textContent = info.kind === "cut"
+      ? `Cut at ${fmtTime(at)}: ${(info.to - info.from).toFixed(2)} s of ${song} taken out (its ${fmtTime(info.from)} to ${fmtTime(info.to)})`
+      : `Join at ${fmtTime(at)}: ${song} starts here`;
+    $("music-join-adjust").hidden = $("music-join-back").hidden = info.kind !== "cut";
+  }
+
+  // Puts the picked cut's part back; with select, it's selected so its edges can be moved and cut again.
+  putJoinBack(select) {
+    const got = putBack(this.pieces, this.crossfade, this.joinSel);
+    if (!got) return;
+    this.edit(got.pieces);
+    this.sel = select ? { start: got.start, end: got.end } : null;
+    this.time = got.start;
+    if (select) this.zoomTo(Math.max(0, got.start - 4), Math.min(this.total, got.end + 4));
+    this.updateControls();
+    this.draw();
+    this.host.status(select ? "The cut part is back and selected: drag its edges (or type the times), then press Cut selection"
+      : "Put the cut part back. Ctrl+Z takes it out again", select ? "hint" : "saved");
+  }
+
   down(e) {
     if (!this.rendered) return;
     const x = e.offsetX, t = Math.min(Math.max(this.t(x), 0), this.total);
     const join = this.joinAt(x, e.offsetY);
-    if (join !== null) { this.drag = null; this.hearJoin(join); return; }
+    if (join > 0) { this.drag = null; this.hearJoin(join); return; }
     this.canvas.setPointerCapture(e.pointerId);
     const mark = this.markAt(x, e.offsetY);
     if (mark >= 0) {
@@ -1596,7 +1655,7 @@ export class MusicEditor {
         this.canvas.title = `${this.marks?.[this.markAt(x, e.offsetY)]?.label || "Mark"}: click to edit, drag to move`;
         return;
       }
-      if (this.joinAt(x, e.offsetY) !== null) { this.canvas.style.cursor = "pointer"; this.canvas.title = "Hear this join"; return; }
+      if (this.joinAt(x, e.offsetY) > 0) { this.canvas.style.cursor = "pointer"; this.canvas.title = "Hear this join, and change or undo its cut"; return; }
       this.canvas.title = "";
       const lane = this.inLane(e.offsetY) && this.shown;
       const near = lane ? this.sections && this.edgeNear(x) > 0
@@ -1684,7 +1743,7 @@ export class MusicEditor {
     else if (e.key === "Home") { this.time = 0; this.follow(); this.draw(); }
     else if (e.key === "+" || e.key === "=") this.zoom(0.66);
     else if (e.key === "-") this.zoom(1.5);
-    else if (e.key === "Escape") { this.sel = null; this.kbAnchor = null; this.markSel = -1; this.updateControls(); this.draw(); }
+    else if (e.key === "Escape") { this.sel = null; this.kbAnchor = null; this.markSel = this.joinSel = -1; this.updateControls(); this.draw(); }
     else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && document.activeElement === this.canvas && this.rendered) {
       e.preventDefault();
       this.arrow(e.key === "ArrowRight" ? 1 : -1, e.shiftKey);

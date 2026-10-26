@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   arrange, cut, editName, mapInfo, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
-  render, sectionAt, splitSection, beatsToDraw, previewTime, addMark, moveMark, toBase, marksToBase, freshFileName, untouched,
+  render, sectionAt, splitSection, beatsToDraw, previewTime, addMark, moveMark, toBase, marksToBase, freshFileName, untouched, joinInfo, putBack,
 } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-6, `${msg ?? ""} ${a} != ${b}`);
@@ -224,4 +224,27 @@ test("a song is untouched until something's cut, spliced or trimmed", () => {
   assert.ok(!untouched(cut(song, 0, 10, 20), "a", 60));
   assert.ok(!untouched(keep(song, 0, 0, 30), "a", 60));
   assert.ok(!untouched(song, "b", 60));
+});
+
+test("a cut can be put back, and its part comes back where it was", () => {
+  for (const xf of [0, 0.5]) {
+    let p = cut(song, xf, 10, 20); // 0-10 + 20-60 of song a
+    p = cut(p, xf, 30, 35); // another cut later on
+    assert.deepEqual(joinInfo(p, 1), { kind: "cut", src: "a", from: 10, to: 20 });
+    const got = putBack(p, xf, 1);
+    assert.equal(got.pieces.length, 2, "one cut left");
+    // 10 s longer, plus the crossfade that overlapped at that join.
+    near(arrange(got.pieces, xf).total, arrange(p, xf).total + 10 + xf, "longer");
+    near(got.end - got.start, 10);
+    near(got.start, 10, "the part starts where the cut was");
+    // Cutting the same stretch again gives back the same pieces.
+    assert.deepEqual(cut(got.pieces, xf, got.start, got.end), p);
+  }
+});
+
+test("a splice isn't a cut, so there's nothing to put back", () => {
+  const p = insert(song, 0, 30, [{ src: "b", start: 0, end: 5 }]);
+  assert.deepEqual(joinInfo(p, 1), { kind: "splice", src: "b" });
+  assert.equal(putBack(p, 0, 1), null);
+  assert.equal(joinInfo(p, 9), null);
 });
