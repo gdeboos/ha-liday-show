@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.152
+
+- The user guide, the app's page in the app store and the README now cover everything added lately:
+  the **Library** tab's pages (Shows, Songs, Palettes, Presets, Playlists), playlists with schedules
+  and sunset starts, the Show player for shows with no speaker, how **Generate** builds up, what an
+  export includes, and the on-screen names of a few settings. Nothing in the app itself has changed.
+
 ## 0.2.151
 
 - The user guide's **Suggest cuts** section is rewritten as step-by-step instructions, with what the
