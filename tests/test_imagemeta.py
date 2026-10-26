@@ -60,3 +60,20 @@ def test_a_webp_loses_its_exif_and_says_so():
 def test_anything_that_doesnt_parse_comes_back_as_it_was():
     for data, ext in ((b"\xff\xd8\xffphoto", ".jpg"), (b"\x89PNGpic", ".png"), (b"RIFFxx", ".webp"), (b"x", ".gif")):
         assert imagemeta.strip(data, ext) == data
+
+
+def test_extra_pictures_after_a_jpeg_are_left_off():
+    # Phones put an HDR picture or a short video after the first picture, each with its own details.
+    mpf = _segment(0xE2, b"MPF\0index of the extra pictures")
+    first = _jpeg(_segment(0xE1, _exif(1)), mpf)
+    extra = _jpeg(_segment(0xE1, _exif(1, b" second"))) + b"ftypmp4 video"
+    out = imagemeta.strip(first + extra, ".jpg")
+    assert out.endswith(b"\xff\xd9") and b"second" not in out and b"video" not in out and b"MPF" not in out
+
+
+def test_a_progressive_jpeg_keeps_every_scan():
+    scan = b"\xff\xda" + struct.pack(">H", 8) + b"\x01\x01\x00\x00\x3f\x00"
+    data = (b"\xff\xd8" + _segment(0xDB, b"\x00" + bytes(64)) + scan + b"\x11\xff\x00\x22"
+            + _segment(0xC4, b"\x00" + bytes(17)) + scan + b"\x33\xff\xd3\x44" + b"\xff\xd9" + b"trailing")
+    out = imagemeta.strip(data, ".jpg")
+    assert out == data[:-len(b"trailing")]

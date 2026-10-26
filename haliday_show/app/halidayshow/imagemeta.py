@@ -4,6 +4,10 @@ Phone photos carry the exact spot they were taken (GPS), the phone, the time and
 shows your house photo or your own picture to anyone with the code, so it gets a copy without them.
 Only which way up the photo goes is kept, so a phone photo isn't shown on its side. The picture
 itself is copied byte for byte. Anything that doesn't parse is given back as it was.
+
+Many phones put more after a JPEG's picture: a second picture for HDR screens, or a short video, each
+with its own details. Only the first picture is kept. Which way up is kept for JPEGs only; PNG and
+WebP photos from phones are rare, and their browsers mostly ignore it anyway.
 """
 import struct
 
@@ -62,10 +66,10 @@ def _jpeg(data: bytes) -> bytes:
         if marker == 0xFF:  # padding
             i += 1
             continue
-        if marker == 0xDA:  # start of the picture itself: the rest is copied as it is
+        if marker == 0xDA:  # start of the picture itself: copied as it is, up to its end
             if turn != 1:
                 out.insert(1, _orientation_only(turn))
-            out.append(data[i:])
+            out.append(data[i:_jpeg_end(data, i)])
             return b"".join(out)
         if 0xD0 <= marker <= 0xD7 or marker == 0x01:
             out.append(data[i:i + 2])
@@ -77,9 +81,29 @@ def _jpeg(data: bytes) -> bytes:
             raise ValueError("cut short")
         if marker == 0xE1:
             turn = _orientation(segment[4:]) if turn == 1 else turn
-        if marker not in _JPEG_DROP:
+        # APP2 is kept for the colour profile, but not the index of the extra pictures dropped below.
+        if marker not in _JPEG_DROP and not (marker == 0xE2 and segment[4:8] == b"MPF\0"):
             out.append(segment)
         i += 2 + size
+
+
+def _jpeg_end(data: bytes, i: int) -> int:
+    """Where the first picture ends (just after its end marker), starting at its first scan."""
+    n = len(data)
+    while i < n - 1:
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        if marker == 0xD9:
+            return i + 2
+        if marker in (0x00, 0xFF) or 0xD0 <= marker <= 0xD7:  # a stuffed byte, padding, or a restart
+            i += 1 if marker == 0xFF else 2
+            continue
+        # Another segment between scans (a progressive JPEG's tables and scans): skip its header.
+        size = struct.unpack(">H", data[i + 2:i + 4])[0]
+        i += 2 + size
+    raise ValueError("no end to the picture")
 
 
 def _png(data: bytes) -> bytes:

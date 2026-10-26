@@ -29,12 +29,16 @@ and the limits that remain. Re-read them before changing `public.py`.
 | --- | --- | --- |
 | Wrong-code POSTs counted towards everyone's 120 a minute, so anyone could lock out every visitor | 120 wrong guesses, then a real visitor got 429 | The shared limit counts only requests with the code; each client also has its own (`MAX_POSTS_PER_CLIENT_MIN`) |
 | `GET /api/state` had no limit, and each call read the settings file, in the process that sends frames | 1000 calls in 0.5 s, all 200 | Per-client limit (`MAX_STATE_PER_CLIENT_MIN`, also `/picture` and `near`); `load()` keeps the settings until the file changes |
-| Photos were served exactly as uploaded: GPS, phone, time | By reading `storage.save_house_photo` | `imagemeta.strip` on the way out (JPEG APP1/APP3–13/APP15/COM, PNG text and eXIf, WebP EXIF/XMP); Orientation is kept so phone photos stay upright |
+| Photos were served exactly as uploaded: GPS, phone, time | By reading `storage.save_house_photo` | `imagemeta.strip` on the way out (JPEG APP1/APP3–13/APP15/COM and the MPF index, PNG text and eXIf, WebP EXIF/XMP); a JPEG's Orientation is kept so phone photos stay upright |
+| Phones' extra pictures after a JPEG's end (HDR gain maps, motion-photo video), each with its own Exif | Second review | `_jpeg_end` finds the first picture's end, through every scan of a progressive JPEG; the rest is dropped |
 
-`client()` decides who's asking: behind a proxy (the connection comes from a private address) the
-proxy's header (`CF-Connecting-IP`, `X-Real-IP`, the **last** `X-Forwarded-For` entry); straight from the
-internet, the connection's own address, as visitors can write those headers themselves. Remembered
-addresses are capped (`MAX_CLIENTS`).
+`client()` decides who's asking: behind a proxy (the connection comes from a private address) only
+what the proxy itself writes, the **last** `X-Forwarded-For` entry, else `X-Real-IP`; straight from the
+internet, the connection's own address, as visitors can write those headers themselves.
+`CF-Connecting-IP` is deliberately not used: Cloudflare sets it, but Nginx Proxy Manager and most other
+proxies pass it on as the visitor wrote it, which would give each request a new identity. IPv6
+addresses count by their /64. At `MAX_CLIENTS` remembered addresses, the half not heard from for
+longest are forgotten (never everyone's at once).
 
 ## Limits that remain
 
@@ -45,4 +49,9 @@ addresses are capped (`MAX_CLIENTS`).
 - **"On your own network" (`is_local`)** is true for a private address with no proxy headers. A proxy
   that adds none, or a router port forward that keeps private source addresses (unusual), would let
   everyone skip the location check. The user guide says to use a tunnel or proxy.
+- **Phones sharing one address** (a mobile network's, a venue's, or every visitor when a proxy adds no
+  address header) share one visitor's limits. `MAX_STATE_PER_CLIENT_MIN` (300) leaves room for a dozen
+  or so phones polling every 3 s; beyond that some see "That's a lot of asking" for a minute.
+- **Orientation is kept for JPEGs only.** PNG and WebP lose theirs with the rest; phone photos are
+  almost always JPEG.
 - The `Server` header names aiohttp and Python. Left as is: it reveals nothing that isn't public.

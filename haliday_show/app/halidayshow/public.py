@@ -42,7 +42,7 @@ MAX_POSTS_PER_MIN = 120  # for everyone together: a script can't flood the queue
 # Each visitor's own share, counted by internet address: a phone sends one request now and then, and
 # polls its state every 3 s, so these leave room for a few phones on one mobile network address.
 MAX_POSTS_PER_CLIENT_MIN = 20
-MAX_STATE_PER_CLIENT_MIN = 120
+MAX_STATE_PER_CLIENT_MIN = 300  # a dozen or so phones sharing one address
 MAX_CLIENTS = 5000  # addresses remembered at once, so a flood of them can't use up the memory
 _TICKET = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 _CODE = re.compile(r"^[A-Za-z0-9]{6,16}$")
@@ -479,11 +479,23 @@ def client(request) -> str:
     except ValueError:
         proxied = False
     if proxied:
-        # A forwarded list's last entry is the one your own proxy added; the first could be anything.
-        for h in ("CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For"):
-            if (value := request.headers.get(h, "").split(",")[-1].strip()):
-                return value[:64]
-    return remote
+        # Only what the proxy itself writes: the last X-Forwarded-For entry (Cloudflare Tunnel and Nginx
+        # Proxy Manager both add it), else X-Real-IP. Other headers, CF-Connecting-IP among them, pass
+        # through most proxies just as the visitor wrote them.
+        for value in (request.headers.get("X-Forwarded-For", "").split(",")[-1], request.headers.get("X-Real-IP", "")):
+            if value.strip():
+                return _network(value.strip()[:64])
+    return _network(remote)
+
+
+def _network(address: str) -> str:
+    """IPv6 addresses by their /64, the block one phone or home gets, so changing the rest doesn't
+    make a new visitor."""
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return address
+    return str(ipaddress.ip_network(f"{ip}/64", strict=False)) if ip.version == 6 else str(ip)
 
 
 def _limit_client(request, kind: str, limit: int):
@@ -495,10 +507,9 @@ def _limit_client(request, kind: str, limit: int):
         seen[key] = times
         raise web.HTTPTooManyRequests(text="That's a lot of asking. Wait a minute and try again.")
     if key not in seen and len(seen) >= MAX_CLIENTS:
-        for k in [k for k, ts in seen.items() if not ts or now - ts[-1] >= 60]:
+        # Forget the half not heard from for longest, rather than everyone's counts at once.
+        for k in sorted(seen, key=lambda k: seen[k][-1] if seen[k] else 0)[:len(seen) // 2]:
             del seen[k]
-        if len(seen) >= MAX_CLIENTS:
-            seen.clear()
     times.append(now)
     seen[key] = times
 

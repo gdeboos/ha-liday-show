@@ -1260,8 +1260,9 @@ port), such as Cloudflare Tunnel, and put its address in **Public address**.
   shows. If the link gets shared somewhere it shouldn't be, press **New code…**; the old link and any
   printed sign stop working at once.
 - **Your picture is shared without its hidden details.** Phone photos carry where they were taken (to
-  the metre), the phone and the time. Visitors get a copy without them; only which way up it goes is
-  kept. Your own copy, in your backups, is as you uploaded it.
+  the metre), the phone and the time, and some phones hide an extra picture or a short video in it.
+  Visitors get a copy without any of that; for a phone photo, which way up it goes is kept. Your own
+  copy, in your backups, is as you uploaded it.
 - **Each visitor's phone has its own limit** on how often it can ask, so one person (or a script)
   can't slow your lights down or crowd everyone else out. Wrong guesses at the code don't count
   against real visitors.

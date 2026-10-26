@@ -8,7 +8,8 @@
   - **Each visitor's phone has its own limit** on how often it can ask, so one person or a script
     can't flood the page and slow your lights down.
   - **Your house photo or own picture reaches visitors without its hidden details**, such as the exact
-    spot it was taken, the phone and the time. Which way up it goes is kept. Your own copy is unchanged.
+    spot it was taken, the phone and the time, or the extra picture or short video some phones hide in
+    a photo. A phone photo still shows the right way up. Your own copy is unchanged.
 - The user guide has a new **Keeping it safe** section under **The public page**, including why a
   tunnel or proxy is better than forwarding the port on your router.
 

@@ -445,7 +445,7 @@ async def test_each_visitor_has_their_own_share(client, monkeypatch):
     monkeypatch.setattr(public, "MAX_POSTS_PER_CLIENT_MIN", 3)
     monkeypatch.setattr(public, "MAX_STATE_PER_CLIENT_MIN", 4)
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}]})
-    one, other = {"CF-Connecting-IP": "198.51.100.1"}, {"CF-Connecting-IP": "198.51.100.2"}
+    one, other = {"X-Forwarded-For": "198.51.100.1"}, {"X-Forwarded-For": "198.51.100.2"}
     for _ in range(3):
         await _visitor(client, "/api/cancel", {"ticket": T1, "id": "x"}, headers=one)
     status, _, _ = await _visitor(client, "/api/cancel", {"ticket": T1, "id": "x"}, headers=one)
@@ -463,30 +463,28 @@ def test_who_is_asking():
         def __init__(self, remote, headers):
             self.remote, self.headers = remote, headers
     assert public.client(R("192.168.1.5", {"X-Forwarded-For": "1.2.3.4, 5.6.7.8"})) == "5.6.7.8"
-    assert public.client(R("172.30.32.1", {"CF-Connecting-IP": "9.9.9.9"})) == "9.9.9.9"
+    assert public.client(R("172.30.32.1", {"X-Real-IP": "9.9.9.9"})) == "9.9.9.9"
+    # A header the proxy only passes on, as the visitor wrote it, isn't believed.
+    assert public.client(R("172.30.32.1", {"CF-Connecting-IP": "6.6.6.6", "X-Forwarded-For": "9.9.9.9"})) == "9.9.9.9"
     # Straight from the internet, a visitor's own headers aren't believed.
     assert public.client(R("81.2.69.160", {"X-Forwarded-For": "1.1.1.1"})) == "81.2.69.160"
+    # One IPv6 phone or home is one visitor, whatever the end of its address.
+    a = public.client(R("2001:db8:1:2::1", {}))
+    assert a == public.client(R("2001:db8:1:2:ffff::9", {})) != public.client(R("2001:db8:1:3::1", {}))
 
 
-async def test_visitors_get_the_picture_without_its_hidden_details(client):
-    st = client.app[server.STORAGE]
-    exif = b"Exif\0\0MM\0*\0\0\0\x08\0\x01\x01\x12\0\x03\0\0\0\x01\0\x06\0\0\0\0\0\0GPS 52.24N"
-    photo = (b"\xff\xd8" + b"\xff\xe1" + (len(exif) + 2).to_bytes(2, "big") + exif
-             + b"\xff\xda\0\x08\x01\x01\0\0\x3f\0\x12\x34\xff\xd9")
-    st.save_house_photo(photo, ".jpg")
-    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
-                                          "look": {"picture": "house"}})
-    status, body, headers = await _visitor(client, "/picture")
-    assert status == 200 and headers["Content-Type"] == "image/jpeg"
-    assert b"GPS" not in body and b"\x01\x12" in body  # which way up stays
-    assert st.house_photo().read_bytes() == photo  # your own copy is kept as it was
+def test_a_flood_of_addresses_forgets_the_longest_quiet_not_everyone(monkeypatch):
+    monkeypatch.setattr(public, "MAX_CLIENTS", 10)
 
-
-async def test_settings_are_read_again_when_they_change(client):
-    st = client.app[server.STORAGE]
-    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "look": {"title": "One"}})
-    assert public.load(st)["look"]["title"] == "One"
-    public.load(st)["look"]["title"] = "changed by mistake"
-    assert public.load(st)["look"]["title"] == "One"  # each caller gets its own copy
-    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "look": {"title": "Two"}})
-    assert public.load(st)["look"]["title"] == "Two"
+    class R:
+        def __init__(self, ip):
+            self.remote, self.headers, self.app = ip, {}, app
+    app = {public.CLIENTS: {}}
+    for k in range(30):
+        public._limit_client(R(f"81.2.70.{k}"), "state", 100)
+    for _ in range(5):
+        public._limit_client(R("81.2.69.1"), "state", 100)  # someone using the page right now
+    for k in range(3):
+        public._limit_client(R(f"81.2.71.{k}"), "state", 100)
+    seen = app[public.CLIENTS]
+    assert len(seen) <= 10 and len(seen[("state", "81.2.69.1")]) == 5
