@@ -450,6 +450,7 @@ one you were last editing has a **Last edited** badge.
 - **Open** a show to edit it, or press **+ New show** to start one.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
+  Each show needs its own name. An automation that starts the show by its name needs the new name.
 - **← All shows**, at the start of the Show panel, takes you back to the list. Switching between tabs
   keeps your show open until you go back to the list or close the page.
 

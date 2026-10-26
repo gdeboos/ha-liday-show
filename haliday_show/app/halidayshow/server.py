@@ -583,8 +583,14 @@ def _clean_show_name(body) -> str:
     return " ".join(name.split())[:80]
 
 
+def _name_taken(storage, name: str, but: str | None = None) -> bool:
+    return any(s["name"].lower() == name.lower() and s["id"] != but for s in storage.list_shows())
+
+
 async def duplicate_show(request):
     name = _clean_show_name(await request.json())
+    if _name_taken(request.app[STORAGE], name):
+        raise web.HTTPConflict(text=f"there's already a show called {name}")
     new_id = request.app[STORAGE].duplicate_show(_show_id(request), name)
     if new_id is None:
         raise web.HTTPNotFound()
@@ -594,6 +600,9 @@ async def duplicate_show(request):
 
 async def rename_show(request):
     name = _clean_show_name(await request.json())
+    # Automations can start a show by its name, so two shows mustn't share one.
+    if _name_taken(request.app[STORAGE], name, but=_show_id(request)):
+        raise web.HTTPConflict(text=f"there's already a show called {name}")
     if not request.app[STORAGE].rename_show(_show_id(request), name):
         raise web.HTTPNotFound()
     request.app[MQTT].refresh()

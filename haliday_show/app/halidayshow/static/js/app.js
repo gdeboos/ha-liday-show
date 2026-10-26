@@ -3493,7 +3493,7 @@ async function removeDemo() {
   for (const s of shows.filter((x) => x.name === DEMO_SHOW)) {
     await api(`api/shows/${encodeURIComponent(s.id)}`, { method: "DELETE" });
   }
-  if (app.show.name === DEMO_SHOW) { app.dirty = false; await openShow(null); }
+  if (app.show.name === DEMO_SHOW) { app.dirty = false; app.chosen = false; await openShow(null, { chosen: false }); }
   Object.assign(house, withoutDemo(house));
   await api("api/house", { method: "PUT", json: { paths: house.paths, styles: house.styles, pins: house.pins, dim: house.dim } });
   app.deviceList = app.deviceList.filter((d) => !isDemoId(d.id));
@@ -3772,6 +3772,8 @@ async function renderShowLists(shows = null) {
   try { showListCache = shows || await api("api/shows"); } catch { return; }
   const rows = showRows(showListCache, prefs.get("lastShow", null));
   for (const box of document.querySelectorAll("[data-show-list]")) {
+    box.setAttribute("role", "list");
+    box.setAttribute("aria-label", "Your shows");
     if (!rows.length) {
       box.innerHTML = `<p class="hint">No shows yet. Press <b>+ New show</b> to make your first one.</p>`;
       continue;
@@ -3783,6 +3785,8 @@ async function renderShowLists(shows = null) {
 function showRow(r) {
   const row = document.createElement("div");
   row.className = "show-row";
+  row.setAttribute("role", "listitem");
+  row.dataset.showId = r.id;
   const main = document.createElement("div");
   main.className = "show-main";
   const name = document.createElement("b");
@@ -3807,10 +3811,18 @@ function showRow(r) {
   const dup = button("Duplicate", () => duplicateShow(r), "ghost");
   dup.setAttribute("aria-label", `Duplicate ${r.name}`);
   const ren = button("Rename", () => renameInPlace(row, head, r), "ghost");
+  open.dataset.act = "open";
+  ren.dataset.act = "rename";
   ren.setAttribute("aria-label", `Rename ${r.name}`);
   actions.append(open, dup, ren);
   row.append(main, actions);
   return row;
+}
+
+// After the list is redrawn, puts keyboard focus back on a row's button in the list you're looking at.
+function focusRow(id, act) {
+  const box = [...document.querySelectorAll("[data-show-list]")].find((b) => b.offsetParent);
+  box?.querySelector(`.show-row[data-show-id="${CSS.escape(id)}"] [data-act="${act}"]`)?.focus();
 }
 
 async function openFromList(id) {
@@ -3820,14 +3832,16 @@ async function openFromList(id) {
   }
   app.chosen = true;
   showView("editor");
+  $("btn-all-shows").focus();
 }
 
 async function duplicateShow(r) {
   const name = copyName(r.name, showListCache.map((s) => s.name));
   try {
-    await api(`api/shows/${encodeURIComponent(r.id)}/duplicate`, { method: "POST", json: { name } });
+    const { id } = await api(`api/shows/${encodeURIComponent(r.id)}/duplicate`, { method: "POST", json: { name } });
     status(`Made ${name}`, "saved", "shows");
     await refreshShows();
+    focusRow(id, "open");
   } catch (e) { status(`Couldn't duplicate ${r.name}: ${e.message}`, true, "shows"); }
 }
 
@@ -3848,19 +3862,26 @@ function renameInPlace(row, head, r) {
     if (done) return;
     done = true;
     const name = input.value.trim().replace(/\s+/g, " ");
-    if (!keep || !name || name === r.name) { head.replaceChildren(...before); return; }
+    if (!keep || !name || name === r.name) { head.replaceChildren(...before); focusRow(r.id, "rename"); return; }
     if (showListCache.some((s) => s.id !== r.id && s.name.toLowerCase() === name.toLowerCase())) {
       status("Give each show its own name", "hint");
       head.replaceChildren(...before);
+      focusRow(r.id, "rename");
       return;
     }
+    const isOpen = r.id === app.showId;
+    if (isOpen && saving) await saving;
+    const old = app.show.name;
+    if (isOpen) { app.show.name = name; $("show-name").value = name; }
     try {
       await api(`api/shows/${encodeURIComponent(r.id)}/rename`, { method: "POST", json: { name } });
-      if (r.id === app.showId) { app.show.name = name; $("show-name").value = name; }
       status("Show renamed", "saved", "shows");
       await refreshShows();
+      focusRow(r.id, "rename");
     } catch (e) {
+      if (isOpen) { app.show.name = old; $("show-name").value = old; }
       head.replaceChildren(...before);
+      focusRow(r.id, "rename");
       status(`Couldn't rename ${r.name}: ${e.message}`, true, "shows");
     }
   };
@@ -4928,8 +4949,11 @@ function wire() {
   $("btn-save").addEventListener("click", saveClicked);
   $("btn-all-shows").addEventListener("click", async () => {
     if (!(await confirmDiscard())) return;
+    const id = app.showId;
     app.chosen = false;
     showView("editor");
+    await renderShowLists();
+    if (id) focusRow(id, "open");
   });
   for (const b of document.querySelectorAll("[data-show-new]")) {
     b.addEventListener("click", async () => {
@@ -4946,7 +4970,10 @@ function wire() {
     await api(`api/shows/${app.showId}`, { method: "DELETE" });
     app.dirty = false;
     $("show-dialog").close();
-    await openShow(null);
+    status(`Deleted ${app.show.name}`, "saved", "shows");
+    await openShow(null, { chosen: false });
+    app.chosen = false;
+    showView("editor");
   });
   $("btn-show-settings").addEventListener("click", () => {
     $("btn-delete").disabled = !app.showId;

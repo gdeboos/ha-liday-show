@@ -197,6 +197,10 @@ async def test_shows_can_be_duplicated_and_renamed_keeping_their_bake(client):
     assert listed[show_id]["name"] == "Christmas Eve" and listed[show_id]["baked"] is True
 
     assert (await client.post(f"/api/shows/{show_id}/rename", json={"name": "  "})).status == 400
+    # Two shows can't share a name, as automations can start a show by its name.
+    assert (await client.post(f"/api/shows/{show_id}/rename", json={"name": "xmas COPY"})).status == 409
+    assert (await client.post(f"/api/shows/{show_id}/duplicate", json={"name": "Xmas copy"})).status == 409
+    assert (await client.post(f"/api/shows/{show_id}/rename", json={"name": "Christmas eve"})).status == 200
     assert (await client.post("/api/shows/nope/rename", json={"name": "A"})).status == 404
     assert (await client.post("/api/shows/nope/duplicate", json={"name": "A"})).status == 404
     assert (await client.post("/api/shows/Bad%20Id/rename", json={"name": "A"})).status == 400
