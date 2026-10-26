@@ -177,7 +177,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Playlists: several shows back to back, round and round, by hand or on a schedule (times or
   sunset, days and dates), with a Show player page to play the music on any computer with speakers
 - Public page: people passing by pick a show on their phone and it joins a queue, slotting in between
-  your playlist's shows, with one request per phone
+  your playlist's shows, with one request per phone; each show or playlist can have dates every year,
+  showing as coming soon until then
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
@@ -332,7 +333,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
     js/schedule.js                      A playlist's schedule in words
-    js/publicsettings.js                Setup → Settings → Public page: its address and queue in words
+    js/publicsettings.js                The Public page tab: its address, dates and queue in words
     js/sectionnotes.js                  Notes for song sections, from what each sounds like
     js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music editor: cutting, trimming and splicing songs

@@ -5,20 +5,23 @@ but this page and its three API calls, so whatever route reaches it from the int
 proxy) can never reach the editor. The port opens once the Public page settings have been saved,
 and stays open after visitors are switched off, so they see "no shows right now" rather than an error.
 
-Settings, under "public": {"on", "shows": [show ids], "playlists": [playlist ids], "per_phone",
-"queue"}. Each phone sends a random ticket it keeps, which is how "one request per phone" is
-counted: mobile networks put many phones behind one internet address.
+Settings, under "public": {"on", "items": [{"kind": "show" or "playlist", "id", "from", "to"}],
+"per_phone", "queue"}. "from" and "to" ("MM-DD", or both empty for all year) come round every year,
+like a playlist schedule's dates; an item outside them is listed for visitors as coming soon. Each
+phone sends a random ticket it keeps, which is how "one request per phone" is counted: mobile
+networks put many phones behind one internet address.
 """
 import logging
 import os
 import re
 import secrets
 import time
+from datetime import date
 from pathlib import Path
 
 from aiohttp import web
 
-from . import ai, playlists
+from . import ai, playlists, schedule
 from .runner import Runner
 from .storage import Storage, valid_id
 
@@ -28,6 +31,7 @@ PAGE = Path(__file__).parent / "static" / "public"
 DEFAULT_PORT = 18099
 MAX_PER_PHONE = 5
 MAX_QUEUE = 20
+MAX_ITEMS = 200
 MAX_POSTS_PER_MIN = 120  # for everyone together: a script can't flood the queue faster than people
 _TICKET = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 
@@ -53,13 +57,36 @@ def _count(value, default: int, top: int) -> int:
     return min(max(n, 1), top)
 
 
+def _item(x) -> dict | None:
+    """One show or playlist on the public page: {"kind", "id", "from", "to"} with optional dates."""
+    if not isinstance(x, dict) or x.get("kind") not in ("show", "playlist"):
+        return None
+    iid, frm, to = str(x.get("id", "")), str(x.get("from") or ""), str(x.get("to") or "")
+    if not valid_id(iid):
+        return None
+    if bool(frm) != bool(to) or (frm and not (playlists.valid_day(frm) and playlists.valid_day(to))):
+        frm = to = ""  # a broken date range means always available, rather than losing the item
+    return {"kind": x["kind"], "id": iid, "from": frm, "to": to}
+
+
 def clean(p) -> dict:
-    """The public settings as stored; anything missing or wrong falls back to the defaults."""
+    """The public settings as stored; anything missing or wrong falls back to the defaults.
+
+    Before 0.2.156 the picks were two lists of ids, "shows" and "playlists", with no dates; they read as
+    items available all year.
+    """
     p = p if isinstance(p, dict) else {}
-    ids = lambda key: [x for x in p.get(key, []) if isinstance(x, str) and valid_id(x)][:500] \
-        if isinstance(p.get(key), list) else []
-    return {"on": p.get("on") is True, "shows": list(dict.fromkeys(ids("shows"))),
-            "playlists": list(dict.fromkeys(ids("playlists"))),
+    if isinstance(p.get("items"), list):
+        raw = p["items"]
+    else:
+        old = lambda key: p.get(key) if isinstance(p.get(key), list) else []
+        raw = [{"kind": "show", "id": x} for x in old("shows")] + [{"kind": "playlist", "id": x} for x in old("playlists")]
+    items, seen = [], set()
+    for x in raw[:MAX_ITEMS]:
+        if (it := _item(x)) and (it["kind"], it["id"]) not in seen:
+            seen.add((it["kind"], it["id"]))
+            items.append(it)
+    return {"on": p.get("on") is True, "items": items,
             "per_phone": _count(p.get("per_phone"), 1, MAX_PER_PHONE),
             "queue": _count(p.get("queue"), 5, MAX_QUEUE)}
 
@@ -74,41 +101,65 @@ def _baked(storage: Storage, show_id: str) -> bool:
     return (storage.shows_dir / f"{show_id}.gshow").is_file()
 
 
-_CHOICES: dict = {}  # config folder -> (when, settings file's mtime, choices): every phone polls
+def available(item: dict, today: date) -> bool:
+    return not item["from"] or schedule.in_dates(item, today)
+
+
+def next_from(item: dict, today: date) -> date:
+    """The next day an item's dates begin, today or later (29 February falls on 1 March in other years)."""
+    m, d = int(item["from"][:2]), int(item["from"][3:])
+    for year in (today.year, today.year + 1):
+        try:
+            day = date(year, m, d)
+        except ValueError:
+            day = date(year, 3, 1)
+        if day >= today:
+            return day
+    return day
+
+
+_CHOICES: dict = {}  # config folder -> (when, settings file's mtime, today, choices): every phone polls
 CHOICES_FOR_S = 2.0
 
 
-def choices(storage: Storage) -> list[dict]:
-    """What visitors can pick, worked out at most every couple of seconds (or when settings change)."""
+def choices(storage: Storage, today: date | None = None) -> list[dict]:
+    """Every show and playlist on the public page that can play, each marked "available" today or with
+    the day it "starts". Worked out at most every couple of seconds, or when the settings change."""
+    today = today or date.today()
     try:
         changed = storage.settings_file.stat().st_mtime_ns
     except OSError:
         changed = 0
     now = time.monotonic()
     known = _CHOICES.get(storage.config_dir)
-    if known and known[1] == changed and now - known[0] < CHOICES_FOR_S:
-        return known[2]
-    out = _choices(storage)
-    _CHOICES[storage.config_dir] = (now, changed, out)
+    if known and known[1] == changed and known[2] == today and now - known[0] < CHOICES_FOR_S:
+        return known[3]
+    out = _choices(storage, today)
+    _CHOICES[storage.config_dir] = (now, changed, today, out)
     return out
 
 
-def _choices(storage: Storage) -> list[dict]:
-    """What visitors can pick: the ticked shows that are saved and playable, then ticked playlists."""
+def _choices(storage: Storage, today: date) -> list[dict]:
     p = load(storage) or clean(None)
-    out = []
-    for show_id in p["shows"]:
-        show = storage.load_show(show_id)
-        if show is not None and _baked(storage, show_id):
-            out.append({"kind": "show", "id": show_id, "name": show.get("name") or show_id, "shows": [show_id]})
     by_id = {pl["id"]: pl for pl in playlists.load(storage)}
-    for pid in p["playlists"]:
-        pl = by_id.get(pid)
-        if not pl:
-            continue
-        shows = [s for s in pl["shows"] if _baked(storage, s)]
-        if shows:
-            out.append({"kind": "playlist", "id": pid, "name": pl["name"], "shows": shows, "gap": pl["gap"]})
+    out = []
+    for it in p["items"]:
+        if it["kind"] == "show":
+            show = storage.load_show(it["id"])
+            if show is None or not _baked(storage, it["id"]):
+                continue
+            pick = {"kind": "show", "id": it["id"], "name": show.get("name") or it["id"], "shows": [it["id"]]}
+        else:
+            pl = by_id.get(it["id"])
+            shows = [s for s in pl["shows"] if _baked(storage, s)] if pl else []
+            if not shows:
+                continue
+            pick = {"kind": "playlist", "id": it["id"], "name": pl["name"], "shows": shows, "gap": pl["gap"]}
+        if available(it, today):
+            pick["available"] = True
+        else:
+            pick["available"], pick["starts"] = False, next_from(it, today).isoformat()
+        out.append(pick)
     return out
 
 
@@ -135,7 +186,10 @@ def state(storage: Storage, runner: Runner, ticket: str | None) -> dict:
     return {
         "open": p["on"],
         "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"],
-                     "minutes": max(1, round(runner.request_seconds(c) / 60))} for c in picks],
+                     "minutes": max(1, round(runner.request_seconds(c) / 60))} for c in picks if c["available"]],
+        # Later ones, soonest first, so visitors know to come back.
+        "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"]}
+                        for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
         "now": {"name": st["name"], "visitor": runner.public_now is not None} if st["playing"] else None,
         "waiting": len(runner.requests),
         "full": len(runner.requests) >= p["queue"],
@@ -201,7 +255,8 @@ async def post_request(request):
     p = load(storage) or clean(None)
     if not p["on"]:
         raise web.HTTPConflict(text="There are no shows right now.")
-    pick = next((c for c in choices(storage) if c["kind"] == body.get("kind") and c["id"] == body.get("id")), None)
+    pick = next((c for c in choices(storage) if c["available"] and c["kind"] == body.get("kind")
+                 and c["id"] == body.get("id")), None)
     if pick is None:
         raise web.HTTPNotFound(text="That show isn't available any more.")
     yours = sum(r["ticket"] == ticket for r in runner.requests)

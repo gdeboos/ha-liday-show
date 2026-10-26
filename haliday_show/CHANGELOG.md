@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.156
+## 0.2.157
 
 - The **Music editor** keeps your edits as **drafts**, so you can stop and come back to them, or tweak a
   cut later. Your first change to a song starts a draft (name it under **Draft** at the top), and it's
@@ -13,6 +13,18 @@
   shows that use it) or **Make a new file**.
 - The song you opened is never changed. Songs you edited before this are ordinary songs: **Edit** starts
   a draft from them.
+
+## 0.2.156
+
+- The public page has its own **Public page** tab along the top. It appears once you tick **Let
+  visitors start shows** under **Setup → Settings**. The shows and playlists you'd already ticked are
+  on it, available all year.
+- Add shows and playlists with **+ Add**, and take them off with **Remove**.
+- Each can have dates: tick **Only from** and pick the first and last day (say 1 Dec until 6 Jan).
+  They come round every year. Outside them, visitors see it greyed out under **Coming soon** with the
+  day it starts, and when nothing can be picked yet, the page says "Coming soon on 1 December".
+- Archived shows are never offered to visitors, on their own or inside a playlist.
+- The queue, **Requests per phone** and **Queue length** have moved to the new tab.
 
 ## 0.2.155
 

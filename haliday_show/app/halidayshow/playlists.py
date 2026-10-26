@@ -18,7 +18,7 @@ _TIME = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _DAY = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
 
-def _valid_day(md: str) -> bool:
+def valid_day(md: str) -> bool:
     if not _DAY.match(md):
         return False
     try:
@@ -42,7 +42,7 @@ def clean_schedule(s) -> dict | None:
     if not isinstance(days, list) or not all(isinstance(d, int) and not isinstance(d, bool) and 0 <= d <= 6
                                              for d in days):
         return None
-    if bool(frm) != bool(to) or (frm and not (_valid_day(frm) and _valid_day(to))):
+    if bool(frm) != bool(to) or (frm and not (valid_day(frm) and valid_day(to))):
         return None
     out = {"on": bool(s.get("on")), "start": start, "end": end, "days": sorted(set(days)), "from": frm, "to": to}
     if start == "sunset":

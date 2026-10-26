@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { describe, waitText } from "../../haliday_show/app/halidayshow/static/public/public.js";
+import { dayText, describe, waitText } from "../../haliday_show/app/halidayshow/static/public/public.js";
 
 const st = (extra = {}) => ({
   open: true, choices: [{ kind: "show", id: "party", name: "Party", minutes: 3 },
@@ -36,4 +36,15 @@ test("each choice says how long it lasts", () => {
   assert.equal(show.detail, "About 3 minutes");
   assert.equal(list.detail, "Playlist · about 12 minutes");
   assert.equal(describe(st()).now, "Nothing's on right now. Pick a show to start it.");
+});
+
+test("later shows are listed with the day they start, and an empty page says when it opens", () => {
+  assert.equal(dayText("2026-12-01"), "1 December");
+  const soon = [{ kind: "show", id: "snow", name: "Let It Snow", starts: "2026-12-01" },
+    { kind: "playlist", id: "eve", name: "Christmas Eve", starts: "2026-12-24" }];
+  let view = describe(st({ soon }));
+  assert.equal(view.coming, "");
+  assert.deepEqual(view.soon.map((c) => c.detail), ["From 1 December", "Playlist · from 24 December"]);
+  view = describe(st({ choices: [], soon }));
+  assert.equal(view.coming, "Coming soon on 1 December");
 });

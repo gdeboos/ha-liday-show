@@ -7,6 +7,7 @@ import asyncio
 import base64
 import binascii
 import contextlib
+import datetime
 import hmac
 import ipaddress
 import json
@@ -1268,6 +1269,7 @@ def _public_view(app) -> dict:
     waits = runner.queue_waits()
     return {**(public.load(app[STORAGE]) or public.clean(None)),
             "port": site.port, "listening": site.listening, "error": site.error,
+            "today": datetime.date.today().isoformat(),
             "now": runner.public_now["name"] if runner.public_now else None,
             "waiting": [{"name": r["name"], "wait": w} for r, w in zip(runner.requests, waits)]}
 

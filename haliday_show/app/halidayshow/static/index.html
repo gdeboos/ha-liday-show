@@ -56,6 +56,7 @@
     <button class="tab" data-view="music"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><span>Music editor</span></button>
     <button class="tab" data-view="library"><svg class="ico" aria-hidden="true"><use href="#i-library"/></svg><span>Library</span></button>
     <button class="tab" data-view="setup"><svg class="ico" aria-hidden="true"><use href="#i-setup"/></svg><span>Setup</span></button>
+    <button class="tab" data-view="public" id="tab-public" hidden><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><span>Public page</span></button>
   </nav>
   <span id="status" class="status"></span>
 </header>
@@ -772,21 +773,10 @@
   </section>
   <section class="card" id="public-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Public page</h2>
-    <p class="hint">Lets people passing by start a show from their phone. They pick one of the shows or playlists
-      you tick here, and it plays on your lights and the show's speaker. If something's already on, theirs plays
-      after the show that's on, then your playlist carries on.</p>
+    <p class="hint">Lets people passing by start a show from their phone. Turning it on adds a <b>Public page</b>
+      tab, where you choose what they can pick and when.</p>
     <p><label><input id="pub-on" type="checkbox"> Let visitors start shows</label></p>
-    <p class="hint" id="pub-address"></p>
-    <div class="pub-cols">
-      <div><p class="pub-head">Shows visitors can pick</p><div id="pub-shows" class="pub-list"></div></div>
-      <div><p class="pub-head">Playlists visitors can pick</p><div id="pub-playlists" class="pub-list"></div>
-        <p class="hint">A playlist picked by a visitor plays through once.</p></div>
-    </div>
-    <p class="row"><label>Requests per phone <input id="pub-per-phone" type="number" min="1" max="5" step="1"></label>
-      <label>Queue length <input id="pub-queue" type="number" min="1" max="20" step="1"></label></p>
-    <p class="hint">How many shows one phone can have waiting, and how many can wait in all.</p>
-    <p class="hint" id="pub-now" aria-live="polite"></p>
-    <p><button id="pub-clear" class="ghost" hidden>Clear the queue</button></p>
+    <p><button id="pub-open" hidden>Open the Public page tab</button></p>
   </section>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg>AI</h2>
@@ -901,6 +891,28 @@
 </main>
   </div>
 </div>
+<main id="view-public" class="view settings" hidden>
+  <section class="card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>What visitors can pick</h2>
+    <p class="hint">People passing by pick one of these on their phone, and it plays on your lights and the show's
+      speaker. Give one dates to have it show as coming soon until then.</p>
+    <p class="hint" id="pub-address"></p>
+    <div id="pub-items" class="pub-items"></div>
+    <p class="row" id="pub-add-row"><select id="pub-add-pick" aria-label="Show or playlist to add"></select>
+      <button id="pub-add">+ Add</button></p>
+    <p class="hint" id="pub-all-added" hidden>Every saved show and playlist is on the list.</p>
+  </section>
+  <section class="card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Visitors' queue</h2>
+    <p class="hint">If something's already on, a visitor's pick plays after the show that's on, then your playlist
+      carries on. A playlist picked by a visitor plays through once.</p>
+    <p class="hint" id="pub-now" aria-live="polite"></p>
+    <p><button id="pub-clear" class="ghost" hidden>Clear the queue</button></p>
+    <p class="row"><label>Requests per phone <input id="pub-per-phone" type="number" min="1" max="5" step="1"></label>
+      <label>Queue length <input id="pub-queue" type="number" min="1" max="20" step="1"></label></p>
+    <p class="hint">How many shows one phone can have waiting, and how many can wait in all.</p>
+  </section>
+</main>
 <!-- The setup guide: a new user's first steps in one window (app.js, "setup guide"). -->
 <dialog id="wizard" class="effect-dialog form-dialog add-dialog wizard" aria-labelledby="wz-title">
   <div class="effect-dialog-head"><h3 id="wz-title">Welcome to HA-liday Show</h3>

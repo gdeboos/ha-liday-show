@@ -56,7 +56,9 @@ async def test_the_port_stays_shut_until_the_public_page_is_set_up(client):
 
 
 async def test_visitors_see_only_ticked_shows_and_playlists(client):
-    await client.put("/api/public", json={"on": True, "shows": ["party", "nope", "BAD id"], "playlists": ["eve"]})
+    await client.put("/api/public", json={"on": True, "items": [
+        {"kind": "show", "id": "party"}, {"kind": "show", "id": "nope"}, {"kind": "show", "id": "BAD id"},
+        {"kind": "playlist", "id": "eve"}]})
     _, st, headers = await _visitor(client.public_port, f"/api/state?ticket={T1}")
     assert [(c["kind"], c["id"], c["name"]) for c in st["choices"]] == [
         ("show", "party", "Party"), ("playlist", "eve", "Christmas Eve")]
@@ -115,9 +117,47 @@ async def test_bad_tickets_and_turning_visitors_off(client):
 
 
 def test_settings_are_cleaned():
-    assert public.clean({"on": "yes", "shows": ["a", "a", 3], "per_phone": 99, "queue": 0}) == {
-        "on": False, "shows": ["a"], "playlists": [], "per_phone": 5, "queue": 1}
+    assert public.clean({"on": "yes", "items": [{"kind": "show", "id": "a"}, {"kind": "show", "id": "a"},
+                                                {"kind": "song", "id": "b"}, {"kind": "playlist", "id": "Bad Id"},
+                                                {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
+                                                {"kind": "show", "id": "c", "from": "02-30", "to": "03-01"}],
+                         "per_phone": 99, "queue": 0}) == {
+        "on": False, "per_phone": 5, "queue": 1,
+        "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
+                  {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
+                  {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
     assert public.clean(None)["per_phone"] == 1 and public.clean(None)["queue"] == 5
+
+
+def test_picks_saved_before_dates_come_back_as_items():
+    assert public.clean({"on": True, "shows": ["party"], "playlists": ["eve"]})["items"] == [
+        {"kind": "show", "id": "party", "from": "", "to": ""}, {"kind": "playlist", "id": "eve", "from": "", "to": ""}]
+
+
+def test_dates_come_round_every_year():
+    from datetime import date
+    xmas = {"kind": "show", "id": "x", "from": "12-01", "to": "01-06"}
+    assert public.available(xmas, date(2026, 12, 25)) and public.available(xmas, date(2027, 1, 6))
+    assert not public.available(xmas, date(2026, 10, 26))
+    assert public.next_from(xmas, date(2026, 10, 26)) == date(2026, 12, 1)
+    assert public.next_from(xmas, date(2027, 1, 7)) == date(2027, 12, 1)
+    leap = {"kind": "show", "id": "x", "from": "02-29", "to": "03-02"}
+    assert public.next_from(leap, date(2027, 1, 1)) == date(2027, 3, 1)
+
+
+async def test_visitors_see_later_shows_as_coming_soon(client, monkeypatch):
+    from datetime import date
+    await client.put("/api/public", json={"on": True, "items": [
+        {"kind": "show", "id": "party"},
+        {"kind": "show", "id": "quiet", "from": "12-01", "to": "12-31"},
+        {"kind": "playlist", "id": "eve", "from": "11-20", "to": "11-30"}]})
+    monkeypatch.setattr(public, "date", type("D", (date,), {"today": classmethod(lambda c: date(2026, 10, 26))}))
+    public._CHOICES.clear()
+    _, st, _ = await _visitor(client.public_port, f"/api/state?ticket={T1}")
+    assert [c["id"] for c in st["choices"]] == ["party"]
+    assert [(c["id"], c["starts"]) for c in st["soon"]] == [("eve", "2026-11-20"), ("quiet", "2026-12-01")]
+    status, _, _ = await _visitor(client.public_port, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    assert status == 404
 
 
 def test_port_from_the_configuration_tab_or_environment(tmp_path, monkeypatch):
@@ -130,3 +170,19 @@ def test_port_from_the_configuration_tab_or_environment(tmp_path, monkeypatch):
     assert public.port() == 21000
     (tmp_path / "options.json").write_text('{"public_port": 80}')
     assert public.port() == 18099
+
+
+async def test_archived_shows_are_never_offered(client):
+    from halidayshow import archive
+
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"},
+                                                                {"kind": "show", "id": "quiet"},
+                                                                {"kind": "playlist", "id": "eve"}]})
+    archive.archive_show(client.app[server.STORAGE], "quiet")
+    public._CHOICES.clear()
+    _, st, _ = await _visitor(client.public_port, f"/api/state?ticket={T1}")
+    assert [c["id"] for c in st["choices"]] == ["party", "eve"]
+    status, _, _ = await _visitor(client.public_port, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    assert status == 404
+    # The playlist plays without it.
+    assert public.choices(client.app[server.STORAGE])[1]["shows"] == ["party"]

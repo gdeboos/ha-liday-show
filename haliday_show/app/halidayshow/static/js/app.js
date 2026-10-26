@@ -22,7 +22,7 @@ import { MusicEditor } from "./music.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
-import { addressText, queueText } from "./publicsettings.js";
+import { addressText, itemText, queueText } from "./publicsettings.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
@@ -3593,77 +3593,173 @@ function wireData() {
   $("btn-export").addEventListener("click", () => status("Exporting… check your downloads"));
 }
 
-// Setup → Settings → Public page: what visitors can pick from the public page, and its queue.
+// The Public page: switched on under Setup → Settings, set up on its own tab. What visitors can pick
+// (shows and playlists, each with optional dates every year) and the queue they're waiting in.
 let publicView = null;
+let publicNames = { show: {}, playlist: {}, archived: {} };
 
+function showPublicTab(on) {
+  $("tab-public").hidden = !on;
+  $("pub-open").hidden = !on;
+}
+
+// The queue and address from the server. It never touches publicView.items: those are yours, and an
+// answer that left before your latest edit would undo it.
 function renderPublicQueue(view) {
-  publicView = view;
+  showPublicTab(view.on);
+  if (!view.on && shownPage === "public") showView("settings", { push: false });
   $("pub-now").textContent = queueText(view);
   $("pub-clear").hidden = !view.waiting.length;
   $("pub-address").textContent = addressText(view, location.hostname);
 }
 
-async function loadPublic() {
-  let view, shows, lists;
-  try {
-    [view, shows, lists] = await Promise.all([api("api/public"), api("api/shows"), api("api/playlists")]);
-  } catch (e) {
-    status(`Couldn't load the public page settings: ${e.message}`, true, "public");
-    return;
+function renderPublicItems() {
+  const view = publicView;
+  const dayPick = (k, key, label) => {
+    const it = view.items[k];
+    const day = document.createElement("select"), month = document.createElement("select");
+    for (let k = 1; k <= 31; k++) day.add(new Option(String(k), String(k).padStart(2, "0")));
+    MONTHS.forEach((m, k) => month.add(new Option(m, String(k + 1).padStart(2, "0"))));
+    day.setAttribute("aria-label", `${label} day`);
+    month.setAttribute("aria-label", `${label} month`);
+    [month.value, day.value] = it[key].split("-");
+    const set = () => {
+      const most = new Date(Date.UTC(2000, Number(month.value), 0)).getUTCDate(); // 29 in February
+      if (Number(day.value) > most) day.value = String(most).padStart(2, "0");
+      publicView.items[k][key] = `${month.value}-${day.value}`;
+      savePublic();
+    };
+    day.addEventListener("change", set);
+    month.addEventListener("change", set);
+    return [day, month];
+  };
+  const rows = view.items.map((it, k) => {
+    const row = document.createElement("div");
+    row.className = "pub-item";
+    const text = document.createElement("div");
+    text.className = "pub-item-text";
+    const name = document.createElement("div");
+    name.className = "pub-item-name";
+    const archived = it.kind === "show" && !(it.id in publicNames.show) && it.id in publicNames.archived;
+    const missing = !archived && !(it.id in publicNames[it.kind]);
+    name.textContent = publicNames[it.kind][it.id] ?? publicNames.archived[it.id] ?? it.id;
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = archived ? "Archived, so visitors don't see it. Restore it under Library → Shows to show it again."
+      : missing ? `Not found or not saved yet, so visitors don't see it.`
+        : itemText(it, view.today);
+    const dates = document.createElement("div");
+    dates.className = "row";
+    const dated = document.createElement("input");
+    dated.type = "checkbox";
+    dated.checked = !!it.from;
+    const dl = document.createElement("label");
+    dl.append(dated, " Only from");
+    dates.append(dl);
+    if (it.from) dates.append(...dayPick(k, "from", "First"), "until", ...dayPick(k, "to", "Last"), "every year");
+    dated.addEventListener("change", () => {
+      const cur = publicView.items[k];
+      if (dated.checked) [cur.from, cur.to] = ["12-01", "01-06"];
+      else cur.from = cur.to = "";
+      savePublic();
+    });
+    text.append(name, hint, dates);
+    const remove = document.createElement("button");
+    remove.className = "ghost";
+    remove.textContent = "Remove";
+    remove.title = "Takes it off the public page. The show or playlist itself stays.";
+    remove.addEventListener("click", () => { publicView.items.splice(k, 1); savePublic(); });
+    row.append(text, remove);
+    return row;
+  });
+  if (!rows.length) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "Nothing yet. Add a show or playlist below.";
+    rows.push(p);
   }
-  $("pub-on").checked = view.on;
+  $("pub-items").replaceChildren(...rows);
+  const pick = $("pub-add-pick");
+  const added = new Set(view.items.map((it) => `${it.kind}:${it.id}`));
+  pick.replaceChildren();
+  for (const kind of ["show", "playlist"]) {
+    const group = document.createElement("optgroup");
+    group.label = kind === "show" ? "Shows" : "Playlists";
+    for (const [id, name] of Object.entries(publicNames[kind]).sort((a, b) => a[1].localeCompare(b[1]))) {
+      if (!added.has(`${kind}:${id}`)) group.append(new Option(name, `${kind}:${id}`));
+    }
+    if (group.children.length) pick.append(group);
+  }
+  $("pub-add-row").hidden = !pick.options.length;
+  $("pub-all-added").hidden = !!pick.options.length;
   $("pub-per-phone").value = view.per_phone;
   $("pub-queue").value = view.queue;
-  const ticks = (box, items, chosen, empty) => {
-    const rows = items.map((it) => {
-      const label = document.createElement("label");
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.value = it.id;
-      input.checked = chosen.includes(it.id);
-      label.append(input, ` ${it.name}`);
-      return label;
-    });
-    if (!rows.length) {
-      const p = document.createElement("p");
-      p.className = "hint";
-      p.textContent = empty;
-      rows.push(p);
-    }
-    box.replaceChildren(...rows);
-  };
-  ticks($("pub-shows"), shows.filter((s) => s.baked).sort((a, b) => a.name.localeCompare(b.name)), view.shows,
-    "Save a show in the editor first.");
-  ticks($("pub-playlists"), lists, view.playlists, "No playlists yet. Make one under Library → Playlists.");
-  renderPublicQueue(view);
 }
 
-async function savePublic() {
-  const ticked = (id) => [...$(id).querySelectorAll("input:checked")].map((i) => i.value);
-  // Ticks for shows or playlists that aren't listed here (not saved yet, say) are kept.
-  const listed = (id) => new Set([...$(id).querySelectorAll("input")].map((i) => i.value));
-  const keep = (key, id) => (publicView?.[key] || []).filter((x) => !listed(id).has(x));
-  const body = {
-    on: $("pub-on").checked,
-    shows: [...ticked("pub-shows"), ...keep("shows", "pub-shows")],
-    playlists: [...ticked("pub-playlists"), ...keep("playlists", "pub-playlists")],
-    per_phone: Number($("pub-per-phone").value) || 1,
-    queue: Number($("pub-queue").value) || 5,
-  };
+async function loadPublic({ items = false } = {}) {
   try {
-    const view = await api("api/public", { method: "PUT", json: body });
-    $("pub-per-phone").value = view.per_phone;
-    $("pub-queue").value = view.queue;
+    const view = await api("api/public");
+    if (!pubPending) publicView = view;
     renderPublicQueue(view);
-    status("Public page saved", "saved", "public");
+    $("pub-on").checked = view.on;
+    if (!items) return;
+    const [shows, lists, archived] = await Promise.all([api("api/shows"), api("api/playlists"),
+      api("api/shows/archived").catch(() => [])]);
+    // Archived shows aren't offered: visitors can't see them until they're restored.
+    publicNames = {
+      show: Object.fromEntries(shows.filter((s) => s.baked).map((s) => [s.id, s.name])),
+      playlist: Object.fromEntries(lists.map((p) => [p.id, p.name])),
+      archived: Object.fromEntries(archived.map((s) => [s.id, s.name])),
+    };
+    renderPublicItems();
   } catch (e) {
-    status(`Couldn't save the public page settings: ${e.message}`, true, "public");
+    status(`Couldn't load the public page settings: ${e.message}`, true, "public");
   }
+}
+
+// Saves go one at a time, each sending your latest settings; only the last answer is drawn.
+let pubSaving = Promise.resolve();
+let pubPending = 0;
+
+function savePublic() {
+  if (!publicView) {
+    status("Couldn't save the public page settings: they haven't loaded. Reload the page and try again.", true, "public");
+    return pubSaving;
+  }
+  publicView.on = $("pub-on").checked;
+  if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);
+  if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
+  if (shownPage === "public") renderPublicItems();
+  pubPending++;
+  pubSaving = pubSaving.then(async () => {
+    const { on, items, per_phone, queue } = publicView;
+    try {
+      const view = await api("api/public", { method: "PUT", json: { on, items, per_phone, queue } });
+      if (pubPending === 1) {
+        publicView = view;
+        if (shownPage === "public") renderPublicItems();
+      }
+      renderPublicQueue(view);
+      status("Public page saved", "saved", "public");
+    } catch (e) {
+      status(`Couldn't save the public page settings: ${e.message}`, true, "public");
+    } finally {
+      pubPending--;
+    }
+  });
+  return pubSaving;
 }
 
 function wirePublic() {
-  $("public-card").addEventListener("change", (e) => {
-    if (e.target.matches("input")) savePublic();
+  $("pub-on").addEventListener("change", () => savePublic());
+  $("pub-open").addEventListener("click", () => showView("public"));
+  $("pub-per-phone").addEventListener("change", savePublic);
+  $("pub-queue").addEventListener("change", savePublic);
+  $("pub-add").addEventListener("click", () => {
+    const [kind, id] = $("pub-add-pick").value.split(":");
+    if (!kind || !publicView) return;
+    publicView.items.push({ kind, id, from: "", to: "" });
+    savePublic();
   });
   $("pub-clear").addEventListener("click", async () => {
     try {
@@ -3675,7 +3771,7 @@ function wirePublic() {
   });
   // Keep the queue up to date while you're looking at it.
   setInterval(async () => {
-    if (document.hidden || $("view-settings")?.hidden !== false || !publicView) return;
+    if (document.hidden || shownPage !== "public") return;
     try { renderPublicQueue(await api("api/public")); } catch { /* offline for a moment */ }
   }, 5000);
 }
@@ -5908,6 +6004,7 @@ const sectionPage = { library: "shows", setup: "devices" };
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
 function showView(view, { push = true } = {}) {
   if (view === "labs" && !labsOn()) view = "settings";
+  if (view === "public" && $("tab-public").hidden) view = "settings";
   const section = Object.keys(SECTIONS).find((k) => SECTIONS[k].includes(view));
   if (section) sectionPage[section] = view;
   let page = SECTIONS[view] ? sectionPage[view] : view;
@@ -5922,7 +6019,7 @@ function showView(view, { push = true } = {}) {
   }
   for (const t of document.querySelectorAll(".subtab")) t.classList.toggle("active", t.dataset.view === page);
   for (const k of Object.keys(SECTIONS)) $(`section-${k}`).hidden = k !== top;
-  for (const v of ["showlist", "editor", "songlist", "music", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
+  for (const v of ["showlist", "editor", "songlist", "music", "public", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
   if (page === "songlist") document.querySelector("[data-songs-slot]").append($("songs-block"));
   if (page === "songs") $("view-songs").append($("songs-block"));
   if (page === "showlist" || page === "shows") renderShowLists();
@@ -5933,6 +6030,7 @@ function showView(view, { push = true } = {}) {
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
   if (page === "settings") { renderCopies(); loadPublic(); }
+  if (page === "public") loadPublic({ items: true });
   if (page === "playlists") loadPlaylists(); else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); loadSongMarks(); }
   rememberPage(page, push);
@@ -6344,6 +6442,7 @@ async function init() {
     loadPalettes();
     loadPresets();
     loadAiStatus();
+    await loadPublic();
     house.load().then(renderHouseLights);
     const shows = await api("api/shows");
     await openShow(null, { chosen: false });

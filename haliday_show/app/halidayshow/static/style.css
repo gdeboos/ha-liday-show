@@ -705,13 +705,16 @@ a.button { text-decoration: none; }
 .busy-dialog .busy-row .spinner { flex: none; width: 1.4em; height: 1.4em; border-width: 3px; color: var(--accent); }
 .busy-dialog .insp-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 
-/* Setup → Settings → Public page */
-.pub-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 720px) { .pub-cols { grid-template-columns: 1fr; } }
-.pub-head { font-weight: 600; margin: 8px 0 4px; }
-.pub-list { display: flex; flex-direction: column; gap: 2px; max-height: 16em; overflow: auto; }
-.pub-list label { display: flex; gap: 6px; align-items: center; min-height: 24px; }
+/* The Public page tab */
+.pub-items { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.pub-item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; gap: 12px;
+  align-items: flex-start; }
+.pub-item-text { flex: 1; min-width: 0; }
+.pub-item-name { font-weight: 600; }
+.pub-item .row { margin: 6px 0 0; flex-wrap: wrap; }
+.pub-item select { width: auto; }
 #pub-per-phone, #pub-queue { width: 4.5em; margin-left: 6px; }
+@media (max-width: 720px) { .pub-item { flex-direction: column; } }
 @media (min-width: 721px) { .has-drafts-row { flex-wrap: wrap; } }
 .song-drafts { flex-basis: 100%; display: flex; flex-direction: column; gap: 4px; padding-top: 6px;
   border-top: 1px dashed var(--line); }
