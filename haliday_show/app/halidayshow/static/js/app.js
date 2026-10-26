@@ -3772,8 +3772,13 @@ async function renderShowLists(shows = null) {
   try { showListCache = shows || await api("api/shows"); } catch { return; }
   const rows = showRows(showListCache, prefs.get("lastShow", null));
   for (const box of document.querySelectorAll("[data-show-list]")) {
-    box.setAttribute("role", "list");
-    box.setAttribute("aria-label", "Your shows");
+    if (rows.length) {
+      box.setAttribute("role", "list");
+      box.setAttribute("aria-label", "Your shows");
+    } else {
+      box.removeAttribute("role");
+      box.removeAttribute("aria-label");
+    }
     if (!rows.length) {
       box.innerHTML = `<p class="hint">No shows yet. Press <b>+ New show</b> to make your first one.</p>`;
       continue;
@@ -3858,15 +3863,16 @@ function renameInPlace(row, head, r) {
   input.focus();
   input.select();
   let done = false;
-  const finish = async (keep) => {
+  const finish = async (keep, byKey = false) => {
     if (done) return;
     done = true;
+    const refocus = () => { if (byKey) focusRow(r.id, "rename"); };
     const name = input.value.trim().replace(/\s+/g, " ");
-    if (!keep || !name || name === r.name) { head.replaceChildren(...before); focusRow(r.id, "rename"); return; }
+    if (!keep || !name || name === r.name) { head.replaceChildren(...before); refocus(); return; }
     if (showListCache.some((s) => s.id !== r.id && s.name.toLowerCase() === name.toLowerCase())) {
       status("Give each show its own name", "hint");
       head.replaceChildren(...before);
-      focusRow(r.id, "rename");
+      refocus();
       return;
     }
     const isOpen = r.id === app.showId;
@@ -3877,17 +3883,17 @@ function renameInPlace(row, head, r) {
       await api(`api/shows/${encodeURIComponent(r.id)}/rename`, { method: "POST", json: { name } });
       status("Show renamed", "saved", "shows");
       await refreshShows();
-      focusRow(r.id, "rename");
+      refocus();
     } catch (e) {
       if (isOpen) { app.show.name = old; $("show-name").value = old; }
       head.replaceChildren(...before);
-      focusRow(r.id, "rename");
+      refocus();
       status(`Couldn't rename ${r.name}: ${e.message}`, true, "shows");
     }
   };
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); finish(true); }
-    else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    if (e.key === "Enter") { e.preventDefault(); finish(true, true); }
+    else if (e.key === "Escape") { e.preventDefault(); finish(false, true); }
   });
   input.addEventListener("blur", () => finish(true));
 }

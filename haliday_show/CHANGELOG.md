@@ -6,7 +6,8 @@
   when it last changed. Nothing changes in a show until you press **Open**, so a stray click or key
   can't alter it. The show you were last editing has a **Last edited** badge.
 - From the list you can **Duplicate** a show (the copy plays straight away) or **Rename** it in place.
-  **+ New show** starts a fresh one.
+  Each show needs its own name, as automations can start a show by its name. **+ New show** starts a
+  fresh one.
 - **← All shows**, at the start of the Show panel, takes you back to the list. Switching tabs keeps
   your show open.
 - The same list is under **Library → Shows**.
