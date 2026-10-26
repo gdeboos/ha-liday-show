@@ -5,8 +5,9 @@
 - The **Music editor** is tidier. **File name** and **Save as new file** now sit at the top, beside the
   song's name and **← All songs**, as **Save** does in the Show editor, so they no longer move down the
   page when you open a section. **Unsaved edits** shows next to them until you save.
-- The tips that sat above the song (and the note about WAV files beside the old save button) are now under
-  **How to…**, and the **From** and **to** boxes show a dash until you select something.
+- Its two **How to…** lists are now one, at the top, and it also holds the tips that used to sit above
+  the song and beside the old save button. The **From** and **to** boxes show a dash until you select
+  something.
 
 ## 0.2.144
 

@@ -290,7 +290,9 @@
         them straight away.</li>
       <li>Drag across the waveform to select. The edges snap to bars once the song is detected; hold Shift to place
         them freely.</li>
-      <li>Click a section in the lane to select it, and Shift-click to add the next one.</li>
+      <li>Click a section in the lane to select it and edit its name, colour and notes for <b>Describe it</b>.
+        Shift-click adds the next one, and dragging the line between two sections moves it. Section changes save
+        with the song; a show already using it picks them up with <b>From song</b>.</li>
       <li>Click to move the playhead. Use the wheel to zoom, and Shift + wheel to scroll.</li>
       <li>Space plays, Delete cuts the selection, and Ctrl+Z undoes.</li>
     </ul>
@@ -352,14 +354,6 @@
       <button id="music-describe" title="Write notes for each section from what it sounds like, for Generate's AI option and Describe it. Notes and names you wrote are kept.">✨ Describe sections</button>
       <span id="music-analysis" class="hint"></span>
     </div>
-    <details class="howto" data-howto="music-sections"><summary>How to…</summary>
-      <ul>
-        <li>Click a section in the lane above the waveform to rename it, change its colour or add notes for
-          <b>Describe it</b>.</li>
-        <li>Drag the line between two sections to move it.</li>
-        <li>Changes save with the song. A show already using the song picks them up with <b>From song</b>.</li>
-      </ul>
-    </details>
     <div id="music-section" class="group music-section" hidden>
       <span id="music-sec-time" class="hint"></span>
       <label>Name <input id="music-sec-name" size="14" maxlength="40"></label>
