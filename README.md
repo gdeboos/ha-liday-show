@@ -175,6 +175,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
 - Cut, trim and splice songs on the **Music** tab, with crossfades
+- A volume slider for the song while you edit, on the **Editor** and **Music** tabs
 - Arrange the editor your way: pick a page layout, then drag, collapse or hide any panel
 - Experimental: hand a Govee light to one of Govee's built-in scenes for part of the show
 
@@ -313,6 +314,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/schedule.js                      A playlist's schedule in words
     js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music tab: cutting, trimming and splicing songs
+    js/volume.js                        The song volume slider shared by the Editor and Music tabs
     js/songload.js                      Fetching a song, and saying plainly why one did not load
     js/analysis.js                      Song analysis: tempo, beats, bars and sections
     js/analysis-worker.js               Runs the analysis off the main thread

@@ -268,7 +268,8 @@ const urlOf = (ref) => `api/audio/file?${query(ref)}`;
 const infoUrl = (ref) => `api/audio/info?${query(ref)}`;
 
 export class MusicEditor {
-  // host provides: api(path, opts), status(msg, error), songs() -> [ref], songsChanged() -> Promise.
+  // host provides: api(path, opts), status(msg, error), songs() -> [ref], songsChanged() -> Promise,
+  // and optionally volume (volume.js) for the browser playback level.
   constructor(host) {
     this.host = host;
     this.canvas = $("music-wave");
@@ -306,6 +307,16 @@ export class MusicEditor {
       for (const r of songs) sel.append(new Option(r.path, JSON.stringify(r)));
       sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "";
     }
+  }
+
+  // Everything played here goes through one gain node so the volume slider covers previews too.
+  output() {
+    if (!this.gainNode) {
+      this.gainNode = this.audio.createGain();
+      this.gainNode.connect(this.audio.destination);
+    }
+    this.gainNode.gain.value = this.host.volume?.gain ?? 1;
+    return this.gainNode;
   }
 
   async source(ref) {
@@ -477,7 +488,7 @@ export class MusicEditor {
     channels.forEach((ch, c) => buf.copyToChannel(ch, c));
     const node = this.audio.createBufferSource();
     node.buffer = buf;
-    node.connect(this.audio.destination);
+    node.connect(this.output());
     this.audio.resume();
     node.start();
     const from = Math.max(0, start - 3);
@@ -615,7 +626,7 @@ export class MusicEditor {
     this.rendered.forEach((ch, c) => buf.copyToChannel(ch, c));
     const node = this.audio.createBufferSource();
     node.buffer = buf;
-    node.connect(this.audio.destination);
+    node.connect(this.output());
     if (from >= to - 0.01) from = 0;
     node.start(0, from, to - from);
     this.audio.resume();
@@ -1070,6 +1081,7 @@ export class MusicEditor {
       const ref = f && await this.upload(f);
       if (ref) $("music-insert-src").value = JSON.stringify(ref);
     });
+    this.host.volume?.bind($("music-volume"), (g) => { if (this.gainNode) this.gainNode.gain.value = g; });
     $("music-play").addEventListener("click", () => (this.playing ? this.stop() : this.play()));
     $("music-play-sel").addEventListener("click", () => this.sel && this.play(this.sel.start, this.sel.end));
     $("music-preview").addEventListener("click", () => this.previewCut());

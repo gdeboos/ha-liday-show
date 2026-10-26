@@ -131,6 +131,8 @@ label { display: inline-flex; align-items: center; gap: 4px; }
   select, input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]) {
     max-width: 100%; min-width: 0; }
 }
+.volume { display: inline-flex; align-items: center; gap: 4px; }
+.volume input[type="range"] { width: 90px; }
 .clock { font-variant-numeric: tabular-nums; min-width: 6.5em; font-family: ui-monospace, monospace; }
 .hint { color: var(--muted); font-size: 13px; margin: 0; }
 

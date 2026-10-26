@@ -462,7 +462,7 @@ song (or **Upload** one), drag across the waveform to select, then **Cut selecti
 another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
 time (a few hundredths of a second hides the click, a few seconds blends one song into the next), and
 **Fade in** and **Fade out** soften the ends. Zoom with the wheel, or type the selection's times for
-precision. **Save as new file** writes a WAV to `/media/haliday_show/` and leaves the original alone, so
+precision. The 🔊 slider by the clock sets how loud it plays in your browser. **Save as new file** writes a WAV to `/media/haliday_show/` and leaves the original alone, so
 pick the new file under **Song** in the editor. Once the song is detected, selection edges snap to bars
 (hold Shift to place them freely), clicking a section in the lane selects exactly its stretch (Shift-click
 adds the next), and **Preview cut** plays the join before you cut, with the playhead jumping over the selection as the cut would. Beats and sections follow your edits
@@ -759,7 +759,8 @@ and never changes where the real show plays:
 
 - **Song in this browser**: the song plays in your browser and HA-liday Show streams the lights in
   sync. Untick **Lights** to preview in the browser only. If the lights lead or lag, adjust
-  **Light offset** under **Setup → Speakers**.
+  **Light offset** under **Setup → Speakers**. The 🔊 slider next to the clock sets how loud the song
+  plays in your browser. The **Music** tab shares the same level, and your browser remembers it.
 - **Speaker: …**: HA-liday Show starts the song on that speaker and the lights with it, and the
   playhead follows along. Line the lights up with the speaker's **Delay ms** under **Setup →
   Speakers** (also shown under Timing there while that speaker is picked).
