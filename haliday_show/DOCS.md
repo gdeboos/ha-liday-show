@@ -456,9 +456,10 @@ one you were last editing has a **Last edited** badge.
 - **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
   1. a **Name** and a **Song** (or **+ Add a song…**, or **No song, lights only** with its length). The
      name fills in from the song until you type your own, and each show needs its own name.
-  2. how it starts: **Start empty**, **Generate a first draft** (see [Generate](#generate)), or
-     **Generate with AI** when an AI is set up. Generating needs a song and at least one light, and
-     shows the same **Colours**, **Style** and **Build up** choices as **✨ Generate**.
+  2. with an AI set up, how it starts: **Start empty**, or **Generate with AI**, which needs a song
+     and at least one light and shows the same **Colours**, **Style** and **Build up** choices as
+     **✨ Generate**. Without an AI, the show starts empty straight after step 1. For a quick draft
+     made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
 
   **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
