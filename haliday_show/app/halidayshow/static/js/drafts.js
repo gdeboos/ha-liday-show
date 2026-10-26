@@ -40,13 +40,15 @@ export class DraftKeeper {
     this.onState();
   }
 
-  // Remembers which song file the current draft made.
-  setMade(ref) { this.session.made = ref; }
+  // Remembers which song file a draft made (the current one unless a session is given, for when you
+  // switched away while the file was being made).
+  setMade(ref, s = this.session) { s.made = ref; }
 
-  // A change: body (the whole draft, made now) is sent shortly, unless another change comes first.
-  changed(body) {
-    const s = this.session;
+  // A change: body (the whole draft, made now) is sent shortly, unless another change comes first. To
+  // a draft you've since left (s), it's sent straight away.
+  changed(body, s = this.session) {
     s.latest = body;
+    if (s !== this.session) { this.send(s); return; }
     this.timers.clearTimeout(s.timer);
     s.timer = this.timers.setTimeout(() => { s.timer = null; this.send(s); }, this.delay);
     this.onState();
@@ -83,6 +85,7 @@ export class DraftKeeper {
             await this.api(`api/drafts/${encodeURIComponent(s.id)}`, { method: "PUT", json: { ...body, made: s.made }, keepalive });
           } catch (e) {
             if (e.status !== 404) throw e;
+            if (s.gone) return; // deleted here meanwhile: leave it deleted
             s.id = null; // deleted elsewhere: make it again from what's on screen
           }
         }

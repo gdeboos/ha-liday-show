@@ -127,3 +127,42 @@ test("a change made while the first save is on its way goes to that draft, even 
   assert.deepEqual(byName.B1, ["POST", "api/drafts"]);
   assert.equal(calls.filter((c) => c[0] === "POST").length, 2);
 });
+
+test("a file made while you switched drafts is recorded on the draft that made it", async () => {
+  const { keeper, calls, drafts } = setup();
+  drafts.set("d1", body("A"));
+  keeper.start({ id: "d1", made: null });
+  const making = keeper.session; // Make song file pressed on A
+  keeper.start(null); // then song B opened while it uploads
+  keeper.setMade({ path: "A.wav" }, making);
+  keeper.changed(body("A"), making);
+  await making.chain;
+  assert.deepEqual(calls, [["PUT", "api/drafts/d1", "A", "A.wav"]]);
+  assert.equal(keeper.current, null, "song B has no draft and nothing made");
+});
+
+test("a draft deleted here while a save was on its way isn't made again", async () => {
+  const { keeper, timers, calls, drafts, holdUntil } = setup();
+  drafts.set("d1", body("A"));
+  keeper.start({ id: "d1", made: null });
+  const go = holdUntil();
+  keeper.changed(body("A2"));
+  timers.run();
+  await new Promise((r) => setTimeout(r, 0));
+  keeper.forget();
+  drafts.delete("d1");
+  go();
+  await new Promise((r) => setTimeout(r, 0));
+  await keeper.flush();
+  assert.deepEqual(calls.map((c) => c[0]), ["PUT"]);
+  assert.equal(drafts.size, 0);
+});
+
+test("leaving the page sends with keepalive", async () => {
+  const seen = [];
+  const keeper = new DraftKeeper(async (path, opts) => { seen.push(opts.keepalive); return { id: "d1" }; },
+    { timers: { setTimeout: () => 1, clearTimeout() {} } });
+  keeper.changed(body("x"));
+  await keeper.flush({ keepalive: true });
+  assert.deepEqual(seen, [true]);
+});

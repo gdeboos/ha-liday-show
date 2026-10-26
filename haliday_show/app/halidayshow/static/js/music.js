@@ -1185,15 +1185,18 @@ export class MusicEditor {
     const marks = (this.shown?.marks || []).map(({ k: _, ...m }) => m);
     const carry = found && this.pieces.every((p) => p.src === baseKey) ? { ...this.shown, marks } : null;
     const rendered = this.rendered, rate = this.audio.sampleRate;
+    // The draft as it was when you pressed it, and which draft: you might open another while it's made.
+    const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
     try {
       const ref = await uploadSong(this.host.api, blob, file, (done) => {
         if (done < 1) this.host.status(`Making ${file}… ${Math.round(done * 100)}%`);
       });
       // The draft remembers the file it made, so making it again can replace it (making a song
       // file from an untouched song starts a draft too, so it can be made again).
-      this.keeper.setMade(ref);
-      this.draftChanged();
-      await this.flush();
+      this.keeper.setMade(ref, session);
+      if (body) this.keeper.changed(body, session);
+      if (session === this.keeper.session) await this.flush();
+      else await session.chain;
       await this.host.songsChanged();
       this.fillSongLists();
       this.host.status(`Made ${ref.path}. Pick it under Song in a show; the draft stays open to change`, "saved", "music-save");
