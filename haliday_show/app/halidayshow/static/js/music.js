@@ -669,6 +669,7 @@ export class MusicEditor {
           : "Not detected yet";
     if (this.dirty && info) $("music-analysis").textContent += " (following your edits; Detect again once saved)";
     $("music-redo").disabled = !this.future.length;
+    $("music-save-state").textContent = has && this.dirty ? "Unsaved edits" : "";
     if (!this.sections || this.secSel >= this.sections.length) this.secSel = -1;
     this.renderSection();
     $("music-sel-start").disabled = $("music-sel-end").disabled = !sel;
