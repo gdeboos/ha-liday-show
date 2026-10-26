@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.183
+
+- Share shows. **Share**, on each show in **Your shows** and **Library → Shows**, downloads the show as a
+  small `.halidayshow` file to send to anyone with HA-liday Show. It holds the effects and a short
+  description of each light, but not the song, your house photo or your settings.
+- **Import show…**, beside **+ New show**, makes a new show from one of those files. First pick your copy
+  of the song (the closest name is picked for you, and a ⚠ says if its length is different). Then match
+  your lights: each of theirs is paired with the most similar of yours, with the reason shown, and you
+  can change any pairing, match parts, let two share one of your lights, or leave one out.
+
 ## 0.2.182
 
 - **Library → Palettes** and **Library → Presets** are now lists like **Your shows**, with **Edit…**,

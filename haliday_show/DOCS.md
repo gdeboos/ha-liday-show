@@ -448,7 +448,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Songs](#songs) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Suggest cuts](#suggest-cuts) ·
+- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Suggest cuts](#suggest-cuts) ·
   [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
@@ -477,6 +477,7 @@ one you were last editing has a **Last edited** badge.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
   Each show needs its own name. An automation that starts the show by its name needs the new name.
+- **Share** downloads the show as a file you can send to anyone with HA-liday Show (see [Sharing shows](#sharing-shows)).
 - **Remove…** archives or deletes a show (see [Archiving and deleting](#archiving-and-deleting)).
 - **← All shows**, at the start of the Show panel, takes you back to the list. Switching between tabs
   keeps your show open until you go back to the list or close the page.
@@ -484,6 +485,34 @@ one you were last editing has a **Last edited** badge.
 The same list is under **Library → Shows**. The Show panel shows the open show's name beside **← All
 shows**; to switch to another show, go back to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Show speaker**
 (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
+
+### Sharing shows
+
+You can swap shows with friends, or post one on a forum, without either of you changing your lights.
+
+- **Share** on a show's row downloads a small file ending in `.halidayshow`. It holds the show's effects,
+  its beats and sections, the song's name and length, and a short description of each light it uses
+  (its name, what kind of light it is, how many segments and parts it has, and roughly where it is on
+  your house photo). It doesn't hold the song, your house photo, IP addresses or any settings. Lights
+  with no effects in the show are left out.
+- **Import show…**, beside **+ New show**, asks for a `.halidayshow` file, then opens a short window.
+  It always makes a new show, so nothing you already have changes.
+  1. **Name and song.** Songs aren't shared, so pick your own copy. The song with the closest name is
+     picked for you. If your copy is a different length, a ⚠ says so: the show still imports, and you
+     can move effects in the editor afterwards. You can also pick **No song for now** and add it later.
+  2. **Match your lights.** Each light in the show has a row, with a small map of where it was on their
+     house. Pick which of your lights plays it. Your lights are suggested for you, most alike first,
+     and each suggestion says why, such as "✓ Suggested: same model, 3 parts each". A light that isn't
+     much like any of yours starts on **Leave it out**, and its effects don't come across.
+     - Effects stretch to fit your light, however many bulbs it has.
+     - A light with parts shows a **Parts** box, so you can pick which of your light's parts plays each
+       of theirs, or **Whole light**.
+     - Two of their lights can play on one of yours: the picker says "(also playing …)". Where both
+       have an effect at the same time, the one that started later shows.
+     - Effects across the whole house, on the **House** lane, always come along.
+
+  **Import show** saves it and opens it in the editor. Effects a light can't show are marked as usual
+  (see [Effects a light can't show](#effects-a-light-cant-show)).
 
 ### Songs
 

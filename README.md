@@ -145,6 +145,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Try the demo**: seven planned lights on the sample house, a sample song and a show ready to play,
   in one press, with no lights needed
 - A setup guide on first run: lights, a speaker, the house, then a first show generated from a song
+- **Share** a show as a small file, and **Import** one someone shared: pick your copy of the song,
+  then match their lights to yours (suggested by kind, size and where they are on the house)
 - **Export** and **Import** everything in one file, or **Start afresh**, with a copy kept first so it
   can be undone
 - Draw icicle lights as hanging drops and spotlights as beams aimed at the wall
@@ -370,6 +372,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/analysis-worker.js               Runs the analysis off the main thread
     js/autogen.js                       Generates a draft show from the analysis
     js/newshow.js                       The New show window's name and start choices
+    js/sharing.js                       Share and Import show: the .halidayshow file, light suggestions, tracks
     js/upload.js                        Sends big songs and baked shows in pieces, under ingress's 16 MB limit
     js/models.js                        Reads models.json: each Govee model's tested status and settings
     js/addsong.js                       The Add a song window's names and messages
