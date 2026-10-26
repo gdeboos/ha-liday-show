@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.161
+
+- The public page now needs a code. Visitors open a link with your code in it (the one your QR code
+  will hold); without it, the page just says to scan the sign. Find the **Visitors' link** on the
+  **Public page** tab under **Who can start shows**, with **Copy**, and **New code…** if it's been
+  shared where it shouldn't be. **After updating, your old link stops working: use the new one.**
+- New **Public address** setting: the web address your tunnel gives the page, such as
+  `https://lights.yourdomain.com`, so the link is the one visitors will use.
+- New **Nearby only within 100 m** (on to start with): phones reaching the page through the
+  internet must be by your house to start a show. They're asked to share their location when they
+  press **▶ Start**; it's only used for the check and isn't kept. Phones on your home Wi-Fi aren't
+  asked. It measures from your home location in Home Assistant.
+
 ## 0.2.160
 
 - **Make song file** again: the window that asks whether to **Replace it** now also lists any other

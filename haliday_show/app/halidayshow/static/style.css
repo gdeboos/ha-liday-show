@@ -725,6 +725,9 @@ a.button { text-decoration: none; }
 .pub-item select { width: auto; }
 #pub-per-phone, #pub-queue { width: 4.5em; margin-left: 6px; }
 @media (max-width: 720px) { .pub-item { flex-direction: column; } }
+.pub-link { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+#pub-distance { width: 5.5em; margin: 0 4px; }
+#pub-address-input { max-width: 100%; }
 @media (min-width: 721px) { .has-drafts-row { flex-wrap: wrap; } }
 .song-drafts { flex-basis: 100%; display: flex; flex-direction: column; gap: 4px; padding-top: 6px;
   border-top: 1px dashed var(--line); }

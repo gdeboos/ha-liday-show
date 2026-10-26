@@ -10,6 +10,10 @@
 <body>
 <main class="pp">
   <h1>🎄 Light show</h1>
+  <section id="pp-locked" class="pp-card" hidden>
+    <p class="pp-big">Scan the code on the sign to start a show.</p>
+    <p class="pp-hint">This page only works from the link in the code.</p>
+  </section>
   <section id="pp-closed" class="pp-card" hidden>
     <p class="pp-big">No shows right now.</p>
     <p class="pp-hint">Come back later to start one.</p>
@@ -18,6 +22,8 @@
     <p id="pp-now" class="pp-now"></p>
     <div id="pp-mine" class="pp-list" hidden></div>
     <p id="pp-message" class="pp-message" role="status" aria-live="polite" hidden></p>
+    <p id="pp-location" class="pp-hint" hidden>When you press <b>Start</b>, your phone asks to share your location,
+      to check you're by the lights. It's only used for that and isn't kept.</p>
     <p id="pp-coming" class="pp-card pp-big" hidden></p>
     <div id="pp-pick">
       <h2>Pick a show</h2>
