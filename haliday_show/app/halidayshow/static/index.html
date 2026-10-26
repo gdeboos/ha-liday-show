@@ -269,24 +269,34 @@
 </main>
 
 <main id="view-music" class="view music" hidden>
-  <p class="hint">Cut, shorten and splice songs here, then <b>Save as new file</b> and pick it under <b>Song</b> in the
-    editor. The original file isn't changed.</p>
+  <section class="toolbar music-head">
+    <div class="group">
+      <button type="button" id="btn-all-songs" class="ghost" title="Back to Your songs">← All songs</button>
+      <b id="music-title" class="editor-title"></b>
+      <span id="music-info" class="hint"></span>
+    </div>
+    <div class="group music-save">
+      <label>File name <input id="music-name" size="24" placeholder="song (edit).wav"></label>
+      <button id="music-save" class="primary" title="Save the result as a new WAV in your songs folder, so it plays on every speaker. The original isn't changed (Ctrl+S)">Save as new file</button>
+      <span id="music-save-state" class="save-state"></span>
+    </div>
+  </section>
   <details class="howto" data-howto="music"><summary>How to…</summary>
     <ul>
+      <li>Cut, shorten and splice the song, then <b>Save as new file</b> and pick it under <b>Song</b> in a show.
+        It's saved as a WAV in your songs folder, so it plays on every speaker, and the original isn't changed.
+        Saving a song unchanged gives you a WAV copy of it.</li>
       <li><b>Detect</b> finds the beats and sections and keeps them with the song, so a show that picks it gets
         them straight away.</li>
       <li>Drag across the waveform to select. The edges snap to bars once the song is detected; hold Shift to place
         them freely.</li>
-      <li>Click a section in the lane to select it, and Shift-click to add the next one.</li>
+      <li>Click a section in the lane to select it and edit its name, colour and notes for <b>Describe it</b>.
+        Shift-click adds the next one, and dragging the line between two sections moves it. Section changes save
+        with the song; a show already using it picks them up with <b>From song</b>.</li>
       <li>Click to move the playhead. Use the wheel to zoom, and Shift + wheel to scroll.</li>
       <li>Space plays, Delete cuts the selection, and Ctrl+Z undoes.</li>
     </ul>
   </details>
-  <section class="toolbar">
-    <button type="button" id="btn-all-songs" class="ghost" title="Back to Your songs">← All songs</button>
-    <b id="music-title" class="editor-title"></b>
-    <span id="music-info" class="hint"></span>
-  </section>
   <section class="card music-card">
     <div class="music-stage"><canvas id="music-wave"></canvas></div>
     <div class="toolbar">
@@ -297,8 +307,8 @@
         <label class="volume" title="How loud the song plays in this browser. The same level as in the Show editor.">🔊 <input id="music-volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label>
       </div>
       <div class="group">
-        <label title="Selection start in seconds">From <input id="music-sel-start" type="number" min="0" step="0.01"> s</label>
-        <label title="Selection end in seconds">to <input id="music-sel-end" type="number" min="0" step="0.01"> s</label>
+        <label title="Selection start in seconds">From <input id="music-sel-start" type="number" min="0" step="0.01" placeholder="–"> s</label>
+        <label title="Selection end in seconds">to <input id="music-sel-end" type="number" min="0" step="0.01" placeholder="–"> s</label>
         <span id="music-sel-len" class="hint"></span>
       </div>
       <div class="group">
@@ -344,14 +354,6 @@
       <button id="music-describe" title="Write notes for each section from what it sounds like, for Generate's AI option and Describe it. Notes and names you wrote are kept.">✨ Describe sections</button>
       <span id="music-analysis" class="hint"></span>
     </div>
-    <details class="howto" data-howto="music-sections"><summary>How to…</summary>
-      <ul>
-        <li>Click a section in the lane above the waveform to rename it, change its colour or add notes for
-          <b>Describe it</b>.</li>
-        <li>Drag the line between two sections to move it.</li>
-        <li>Changes save with the song. A show already using the song picks them up with <b>From song</b>.</li>
-      </ul>
-    </details>
     <div id="music-section" class="group music-section" hidden>
       <span id="music-sec-time" class="hint"></span>
       <label>Name <input id="music-sec-name" size="14" maxlength="40"></label>
@@ -365,11 +367,6 @@
         <input id="music-sec-notes" maxlength="300" placeholder="For Describe it: e.g. bells only, very gentle; big drop at the end, everything flashes"
           title="What happens in this part of the music, or how you'd like it lit. Describe it in the editor passes this to the AI."></label>
     </div>
-  </section>
-  <section class="toolbar">
-    <label>File name <input id="music-name" size="32" placeholder="song (edit).wav"></label>
-    <button id="music-save" class="primary" title="Save the result as a new song in HA-liday Show's songs folder (Ctrl+S)">Save as new file</button>
-    <span class="hint">Saved as WAV in your songs folder, so it plays on every speaker. Save a song unchanged to get a WAV copy of it.</span>
   </section>
 </main>
 
