@@ -263,3 +263,10 @@ test("a song spliced in brings its own beats, sections and marks", () => {
   // Without the other song's info, as before.
   assert.equal(mapInfo(a, p, 0, "a").otherMarks, undefined);
 });
+
+test("sections from two songs that meet aren't merged, even with the same name", () => {
+  const a = { beats: [], bars: [], sections: [{ start: 0, end: 10, label: "Verse" }] };
+  const b = { beats: [], bars: [], sections: [{ start: 0, end: 5, label: "Verse" }] };
+  const m = mapInfo(a, [{ src: "a", start: 0, end: 10 }, { src: "b", start: 0, end: 5 }], 0, "a", { b });
+  assert.deepEqual(m.sections.map((x) => [x.start, x.end, x.label, x.from]), [[0, 10, "Verse", undefined], [10, 15, "Verse", undefined]]);
+});

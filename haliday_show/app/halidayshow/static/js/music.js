@@ -280,16 +280,17 @@ export function mapInfo(info, pieces, crossfade, src, others = {}) {
     });
     for (const sec of from.sections || []) {
       const a = Math.max(map(sec.start), own0), b = Math.min(map(sec.end), own1);
-      if (b - a > 1e-3) parts.push({ ...sec, start: r3(a), end: r3(b) });
+      if (b - a > 1e-3) parts.push({ ...sec, start: r3(a), end: r3(b), from: p.src });
     }
   });
   const sections = [];
   for (const sec of parts) {
     const last = sections[sections.length - 1];
-    if (last && last.label === sec.label && last.color === sec.color && last.notes === sec.notes
+    if (last && last.from === sec.from && last.label === sec.label && last.color === sec.color && last.notes === sec.notes
         && Math.abs(last.end - sec.start) < 2e-3) last.end = sec.end;
     else sections.push(sec);
   }
+  for (const sec of sections) delete sec.from;
   marks.sort((a, b) => a.t - b.t);
   otherMarks.sort((a, b) => a.t - b.t);
   beats.sort((a, b) => a - b);
@@ -447,8 +448,17 @@ export class MusicEditor {
     return this.gainNode;
   }
 
+  // A song's saved beats, sections and marks, fetched afresh (they may have changed since it was
+  // first loaded), for when it's spliced into another song.
+  loadInfo(ref) {
+    const key = keyOf(ref);
+    return this.host.api(infoUrl(ref)).then((info) => { this.infos[key] = info; this.updateControls?.(); this.draw?.(); return info; })
+      .catch(() => this.infos[key] || null);
+  }
+
   async source(ref) {
     const key = keyOf(ref);
+    this.loadInfo(ref);
     if (this.sources[key]) return key;
     this.host.status(`Loading ${nameOf(ref)}…`);
     const buf = await fetchSong(urlOf(ref));
@@ -456,8 +466,6 @@ export class MusicEditor {
     const decoded = await this.audio.decodeAudioData(buf);
     this.sources[key] = Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c));
     this.refs[key] = ref;
-    // Its beats, sections and marks, for when it's spliced into another song.
-    this.host.api(infoUrl(ref)).then((info) => { this.infos[key] = info; this.updateControls?.(); this.draw?.(); }).catch(() => {});
     this.host.status("", "info", "song");
     return key;
   }
@@ -1254,6 +1262,10 @@ export class MusicEditor {
       file = how === "replace" ? nameOf(made) : freshFileName(name, taken);
     } else if (taken.some((p) => nameOf({ path: p }).toLowerCase() === file.toLowerCase())
         && !confirm(`${file} already exists. Replace it?`)) return;
+    // The spliced-in songs' info as it is now, so none of their marks are missed or out of date.
+    const mainKey = this.base && keyOf(this.base);
+    await Promise.all([...new Set(this.pieces.map((p) => p.src))].filter((k) => k !== mainKey && this.refs[k])
+      .map((k) => this.loadInfo(this.refs[k])));
     this.stop();
     this.host.status(`Making ${file}…`);
     const blob = new Blob([encodeWav(this.rendered, this.audio.sampleRate)], { type: "audio/wav" });
