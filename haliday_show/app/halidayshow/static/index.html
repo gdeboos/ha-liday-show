@@ -50,11 +50,14 @@
 <header class="topbar">
   <h1><img class="brand" src="static/favicon.svg" alt="" width="26" height="26">HA-liday Show</h1>
   <nav>
-    <!-- Making shows, then what they're made from, then setting up the house. Library and Setup hold
-         several pages each, picked from the side menu under them. -->
-    <button class="tab active" data-view="editor"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><span>Show editor</span></button>
-    <button class="tab" data-view="music"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><span>Music editor</span></button>
-    <button class="tab" data-view="library"><svg class="ico" aria-hidden="true"><use href="#i-library"/></svg><span>Library</span></button>
+    <!-- Your things first (where the app opens), then the two editors, then setting up the house.
+         Library and Setup hold several pages each, picked from the side menu under them. -->
+    <button class="tab active" data-view="library"><svg class="ico" aria-hidden="true"><use href="#i-library"/></svg><span>Library</span></button>
+    <span class="tab-sep" aria-hidden="true"></span>
+    <span class="tab-group" id="tab-editors-label">Editors</span>
+    <button class="tab" data-view="editor" aria-label="Show editor"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><span>Show</span></button>
+    <button class="tab" data-view="music" aria-label="Music editor"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><span>Music</span></button>
+    <span class="tab-sep" aria-hidden="true"></span>
     <button class="tab" data-view="setup"><svg class="ico" aria-hidden="true"><use href="#i-setup"/></svg><span>Setup</span></button>
     <button class="tab" data-view="public" id="tab-public" hidden><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><span>Public page</span></button>
   </nav>
@@ -425,6 +428,7 @@
       <p>This draft already made <b id="make-file"></b>. Replace it with this version, or keep it and make a new
         file?</p>
       <p id="make-users" class="hint"></p>
+      <p id="make-drafts" class="hint" hidden></p>
     </div>
     <div class="form-dialog-foot">
       <button type="button" data-make="cancel">Cancel</button>
@@ -439,11 +443,14 @@
 
 <div id="section-library" class="section" hidden>
   <nav class="subnav" aria-label="Library">
+    <!-- What plays, then what shows are made from. -->
+    <p class="subnav-group" id="lib-group-shows">Shows</p>
     <button class="subtab" data-view="shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><b>Shows</b><span>All your shows</span></button>
+    <button class="subtab" data-view="playlists"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Playlists</b><span>Shows back to back</span></button>
+    <p class="subnav-group" id="lib-group-blocks">Building blocks</p>
     <button class="subtab" data-view="songs"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><b>Songs</b><span>Your songs folder</span></button>
     <button class="subtab" data-view="palettes"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg><b>Palettes</b><span>Colour sets</span></button>
     <button class="subtab" data-view="presets"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg><b>Presets</b><span>Ready-made effect settings</span></button>
-    <button class="subtab" data-view="playlists"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Playlists</b><span>Shows back to back</span></button>
   </nav>
   <div class="section-body">
 <main id="view-shows" class="view" hidden>

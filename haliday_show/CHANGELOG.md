@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.158
+## 0.2.161
 
 - The public page now needs a code. Visitors open a link with your code in it (the one your QR code
   will hold); without it, the page just says to scan the sign. Find the **Visitors' link** on the
@@ -12,6 +12,29 @@
   internet must be by your house to start a show. They're asked to share their location when they
   press **▶ Start**; it's only used for the check and isn't kept. Phones on your home Wi-Fi aren't
   asked. It measures from your home location in Home Assistant.
+
+## 0.2.160
+
+- **Make song file** again: the window that asks whether to **Replace it** now also lists any other
+  drafts that splice that file in, since they'll play the new version too.
+- If a change to a draft can't be kept, you're told even when you've already moved on to another song,
+  and it's tried again with your next change. Closing the page asks first while one is still waiting.
+- **Rename…** on a draft in **Your songs** changes only its name, so it can't undo an edit made in
+  another tab meanwhile.
+
+## 0.2.159
+
+- The **Library** side menu is grouped: **Shows** (your shows and **Playlists**, now next to each
+  other) and **Building blocks** (**Songs**, **Palettes** and **Presets**). On a phone a thin line
+  separates the groups.
+
+## 0.2.158
+
+- HA-liday Show now opens on **Library**, with your shows, rather than the Show editor (which opened on
+  the same list anyway).
+- The tabs along the top are reordered and grouped: **Library**, then the two editors together under
+  **Editors** (now labelled **Show** and **Music**), then **Setup**, with a thin line between the
+  groups.
 
 ## 0.2.157
 

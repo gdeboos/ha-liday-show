@@ -198,8 +198,11 @@ class Storage:
                 continue
             if not isinstance(d, dict):
                 continue
+            # Every song it uses, so replacing one can say which drafts would change.
+            uses = sorted({(x.get("song") or {}).get("path") for x in d.get("pieces") or []
+                           if isinstance(x, dict) and isinstance(x.get("song"), dict)} - {None})
             out.append({"id": p.stem, "name": d.get("name", p.stem), "base": d.get("base"),
-                        "made": d.get("made"), "length": d.get("length", 0),
+                        "made": d.get("made"), "length": d.get("length", 0), "uses": uses,
                         "modified": int(p.stat().st_mtime)})
         return out
 
@@ -219,6 +222,15 @@ class Storage:
     def save_draft(self, draft_id: str, draft: dict):
         self.drafts_dir.mkdir(parents=True, exist_ok=True)
         _write_atomic(self.drafts_dir / f"{draft_id}.json", json.dumps(draft, indent=1).encode())
+
+    def rename_draft(self, draft_id: str, name: str) -> bool:
+        """Changes only the name, so an edit saved from another tab meanwhile isn't undone."""
+        d = self.load_draft(draft_id)
+        if not isinstance(d, dict):
+            return False
+        d["name"] = name
+        self.save_draft(draft_id, d)
+        return True
 
     def delete_draft(self, draft_id: str) -> bool:
         p = self.drafts_dir / f"{draft_id}.json"

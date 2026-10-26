@@ -378,7 +378,9 @@ export class MusicEditor {
     this.markSel = -1; // the mark picked for editing
     this.keeper = new DraftKeeper((...a) => this.host.api(...a), {
       onState: () => this.updateSaveState(),
-      onError: (m) => this.host.status(`Couldn't keep the draft: ${m}. It'll try again with your next change`, true, "music-save"),
+      onError: (m, s, current) => this.host.status(current
+        ? `Couldn't keep the draft: ${m}. It'll try again with your next change`
+        : `Couldn't keep your last change to "${s.latest?.name || "a draft"}": ${m}. It'll try again with your next change`, true, "music-save"),
     });
     this.markBoxes = []; // where each mark's flag was drawn, for clicking: [{ i, x0, x1 }]
     this.cutOpts = null; // suggested cuts: { pieces, xf, options }, for the result they were found in
@@ -1220,13 +1222,18 @@ export class MusicEditor {
   // Making a file a draft has made before: replace it, or make a new one? Lists the shows using it,
   // since their effects stay where they are when the music changes. Resolves "replace", "new" or null.
   async askMake(made, fresh) {
-    const shows = await this.host.api("api/shows").catch(() => []);
+    const [shows, drafts] = await Promise.all([this.host.api("api/shows").catch(() => []), this.host.api("api/drafts").catch(() => [])]);
     const users = shows.filter((s) => s.song === made.path).map((s) => s.name);
+    const mine = this.draft?.id;
+    const splicers = drafts.filter((d) => d.id !== mine && (d.uses || []).includes(made.path)).map((d) => `"${d.name}"`);
     $("make-file").textContent = nameOf(made);
     $("make-new").textContent = `Make ${fresh}`;
     $("make-users").textContent = users.length
       ? `Used by ${users.join(", ")}. Replacing it changes the music in ${users.length === 1 ? "that show" : "those shows"}, but their effects stay where they are, so check they still line up.`
       : "No shows use it yet.";
+    $("make-drafts").textContent = splicers.length
+      ? `It's also part of the draft${splicers.length === 1 ? "" : "s"} ${splicers.join(", ")}, which will play the new version too.` : "";
+    $("make-drafts").hidden = !splicers.length;
     const dlg = $("make-dialog");
     return new Promise((resolve) => {
       const done = (how) => { dlg.close(); resolve(how); };
@@ -1736,7 +1743,7 @@ export class MusicEditor {
     window.addEventListener("beforeunload", (e) => {
       const busy = this.keeper.session.sending > 0;
       this.flush({ keepalive: true });
-      if (busy || this.keeper.failed) { e.preventDefault(); e.returnValue = ""; }
+      if (busy || this.keeper.anyFailed) { e.preventDefault(); e.returnValue = ""; }
     });
     // Phones often close a page without beforeunload; going to the background is the last chance.
     document.addEventListener("visibilitychange", () => { if (document.hidden) this.flush({ keepalive: true }); });

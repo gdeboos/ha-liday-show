@@ -4206,8 +4206,8 @@ async function renameDraft(d) {
     return;
   }
   try {
-    const full = await api(`api/drafts/${encodeURIComponent(d.id)}`);
-    await api(`api/drafts/${encodeURIComponent(d.id)}`, { method: "PUT", json: { ...full, name } });
+    await api(`api/drafts/${encodeURIComponent(d.id)}/rename`, { method: "POST", json: { name } });
+    music.keeper.renamed(d.id, name);
     renderSongsPage();
   } catch (e) { status(`Couldn't rename the draft: ${e.message}`, true, "songs"); }
 }
@@ -4215,8 +4215,8 @@ async function renameDraft(d) {
 async function deleteDraft(d) {
   const made = d.made ? ` The song file it made (${d.made.path.split("/").pop()}) stays.` : "";
   if (!confirm(`Delete the draft "${d.name}"? The song it started from isn't changed.${made}`)) return;
-  // Forgotten first, so a save on its way can't make it again.
-  if (music.draft?.id === d.id) music.forgetDraft();
+  // Forgotten first, so a save on its way (or waiting to be tried again) can't make it again.
+  music.keeper.forgetId(d.id);
   try {
     await api(`api/drafts/${encodeURIComponent(d.id)}`, { method: "DELETE" }).catch((e) => {
       if (e.status !== 404) throw e; // already gone (deleted in another tab) is fine
@@ -6487,7 +6487,8 @@ async function init() {
     await openShow(null, { chosen: false });
     // Reloaded or bookmarked on a page: open that page (an editor opens on its list).
     const wanted = location.hash.slice(1);
-    showView("editor");
+    // It opens on the Library: your shows and songs, with the editors a tab away.
+    showView("library");
     if (isPage(wanted) && wanted !== shownPage) showView(wanted, { push: false });
     window.addEventListener("popstate", pageFromHistory);
     // A fresh install opens the setup guide, once.
