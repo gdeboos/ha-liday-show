@@ -5,7 +5,8 @@
 // the pieces to a WAV and uploads it like any other song, ready to pick in the editor. Detect finds
 // a song's beats and sections and keeps them with the file, for any show that uses it.
 
-import { analyseInWorker, toMono } from "./analysis.js";
+import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
+import { joinLabel, parseTime, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
 import { SECTION_ALPHA, fmtTime, sectionHue, sectionTint } from "./timeline.js";
@@ -288,6 +289,8 @@ export class MusicEditor {
     this.dirty = false;
     this.info = null; // the base song's saved beats and sections
     this.secSel = -1; // the section picked for editing
+    this.cutOpts = null; // suggested cuts: { pieces, xf, options }, for the result they were found in
+    this.cutShown = -1; // the suggestion drawn on the waveform
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute("role", "slider");
     this.canvas.setAttribute("aria-label", "Song waveform. Left and right arrows move the playhead a beat; hold Shift to select.");
@@ -569,6 +572,136 @@ export class MusicEditor {
     requestAnimationFrame(tick);
   }
 
+  // cut suggestions -----------------------------------------------------------
+  // The sections to shorten, as they fall in the result now; "" is the whole song.
+  fillCutScope() {
+    const sel = $("music-cuts-scope"), cur = sel.value;
+    const secs = this.shown?.sections || [];
+    const opts = [new Option("the whole song", ""),
+      ...secs.map((x, i) => new Option(`${x.label} (${fmtTime(x.start, false)}–${fmtTime(x.end, false)})`, String(i)))];
+    const same = opts.length === sel.options.length && opts.every((o, i) => o.text === sel.options[i].text);
+    if (!same) sel.replaceChildren(...opts);
+    sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "";
+  }
+
+  get cutScope() {
+    const v = $("music-cuts-scope").value, sec = v === "" ? null : this.shown?.sections?.[Number(v)];
+    return sec ? { from: sec.start, to: sec.end, sec } : { from: 0, to: this.total, sec: null };
+  }
+
+  // A length to aim for: half a section, or three quarters of the song, to the nearest 5 s.
+  defaultCutTarget() {
+    const { from, to, sec } = this.cutScope, len = to - from;
+    const t = sec ? Math.max(1, Math.round(len / 2)) : Math.max(5, Math.round((len * 0.75) / 5) * 5);
+    $("music-cuts-target").value = fmtTime(t, false);
+    this.updateCutNow();
+  }
+
+  updateCutNow() {
+    const { from, to } = this.cutScope;
+    $("music-cuts-now").textContent = this.pieces.length ? `now ${fmtTime(to - from, false)}` : "";
+  }
+
+  // From the section panel: suggest cuts for the picked section.
+  shortenSection() {
+    if (this.secSel < 0) return;
+    this.fillCutScope();
+    $("music-cuts-scope").value = String(this.secSel);
+    this.defaultCutTarget();
+    $("music-cuts-target").focus();
+    $("music-cuts-target").select();
+    $("music-cuts-target").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  async findCuts() {
+    const info = this.shown;
+    if (!this.rendered) return;
+    if (!info?.bars?.length) return this.host.status("Press Detect first: suggested cuts follow the song's bars", "hint");
+    const { from, to, sec } = this.cutScope, total = this.total;
+    const target = parseTime($("music-cuts-target").value);
+    if (target === null) return this.host.status("Type the length you'd like, such as 1:30 or 90", "hint");
+    const remove = to - from - target;
+    if (remove < 0.5) return this.host.status(`That's no shorter than it is now (${fmtTime(to - from, false)})`, "hint");
+    const pieces = this.pieces, xf = this.crossfade;
+    const bars = info.bars.filter((t) => t < total - 0.05);
+    this.host.status("Listening for bars that repeat…");
+    $("music-cuts-find").disabled = true;
+    try {
+      // Bar vectors of the result as it is now, kept until it changes.
+      if (this.barVecs?.pieces !== pieces || this.barVecs.xf !== xf) {
+        const { samples, rate } = toMono(this.rendered, this.audio.sampleRate);
+        this.barVecs = { pieces, xf, vecs: await barVectorsInWorker(samples, rate, bars) };
+      }
+      if (this.pieces !== pieces) return;
+      const sim = similarity(this.barVecs.vecs);
+      const options = sec
+        ? sectionCuts({ bars, total, sim, from, to, remove })
+        : songPlans({ bars, total, sim, sections: info.sections, remove });
+      this.cutOpts = { pieces, xf, options, section: sec && { label: sec.label, len: to - from } };
+      this.cutShown = -1;
+      if (options.length) this.host.status("Press ▶ on a cut to hear its join, then Use the one you like");
+      else this.host.status(`No good places to cut ${sec ? `"${sec.label}"` : "the song"} by that much. Try a different length`, "hint");
+    } catch (e) {
+      this.host.status(`Couldn't find cuts: ${e.message}`, true);
+    } finally {
+      this.updateControls();
+      this.draw();
+    }
+  }
+
+  // The suggestions as a list: what each takes out, a ▶ per cut to hear its join, and Use.
+  renderCuts() {
+    if (this.cutOpts && (this.cutOpts.pieces !== this.pieces || this.cutOpts.xf !== this.crossfade)) {
+      this.cutOpts = null;
+      this.cutShown = -1;
+    }
+    const opts = this.cutOpts?.options || [], total = this.total, section = this.cutOpts?.section;
+    const el = (tag, cls, text) => {
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text) e.textContent = text;
+      return e;
+    };
+    $("music-cuts").hidden = !opts.length;
+    $("music-cuts").replaceChildren(...opts.map((o, k) => {
+      const n = o.cuts.length, bars = o.cuts.reduce((s, c) => s + c.bars, 0);
+      const row = el("div", "cut-option" + (k === this.cutShown ? " shown" : ""));
+      const after = section ? `${section.label} becomes ${fmtTime(section.len - o.removed, false)}` : `${fmtTime(total - o.removed, false)} long`;
+      const what = el("span", "hint", `${n > 1 ? `${n} cuts, ` : ""}${bars} bars, ${Math.round(o.removed)} s shorter (${after}) · `
+        + (n > 1 && o.join < 0.8 ? `weakest ${joinLabel(o.join)}` : joinLabel(o.join)));
+      const chips = el("span", "cut-chips");
+      for (const c of o.cuts) {
+        const b = el("button", "", `▶ ${fmtTime(c.start, false)}–${fmtTime(c.end, false)}`);
+        b.type = "button";
+        b.title = `Hear the join: ${c.bars} bar${c.bars === 1 ? "" : "s"} cut, ${joinLabel(c.join)}`;
+        b.addEventListener("click", () => {
+          this.cutShown = k;
+          this.sel = { start: c.start, end: c.end };
+          this.updateControls();
+          this.previewCut();
+        });
+        chips.append(b);
+      }
+      const use = el("button", "primary", "Use");
+      use.type = "button";
+      use.title = n > 1 ? "Make all these cuts (Ctrl+Z undoes)" : "Make this cut (Ctrl+Z undoes)";
+      use.addEventListener("click", () => this.useCuts(o));
+      row.append(el("b", "", `Option ${k + 1}`), what, chips, el("span", "spacer"), use);
+      return row;
+    }));
+  }
+
+  useCuts(option) {
+    const xf = this.crossfade;
+    // Latest first, so the earlier cuts' times still hold.
+    const cuts = [...option.cuts].sort((a, b) => b.start - a.start);
+    const pieces = cuts.reduce((p, c) => cut(p, xf, c.start, c.end), this.pieces);
+    this.sel = null;
+    this.time = cuts[cuts.length - 1].start;
+    this.edit(pieces);
+    this.host.status(`${cuts.length > 1 ? `Made ${cuts.length} cuts` : "Cut"}; it's now ${fmtTime(this.total, false)} long. Ctrl+Z undoes`, "saved");
+  }
+
   // Applies a change to the base song's sections and saves it with the song shortly after.
   editSections(sections, select = this.secSel) {
     if (!sections) return;
@@ -629,6 +762,7 @@ export class MusicEditor {
       const i = this.secSel;
       this.editSections(removeSection(this.sections, i), Math.max(0, i - 1));
     });
+    $("music-sec-shorten").addEventListener("click", () => this.shortenSection());
     $("music-sec-close").addEventListener("click", () => { this.secSel = -1; this.updateControls(); this.draw(); });
   }
 
@@ -672,6 +806,11 @@ export class MusicEditor {
     $("music-save-state").textContent = has && this.dirty ? "Unsaved edits" : "";
     if (!this.sections || this.secSel >= this.sections.length) this.secSel = -1;
     this.renderSection();
+    this.fillCutScope();
+    if (!$("music-cuts-target").value && has) this.defaultCutTarget();
+    this.updateCutNow();
+    $("music-cuts-find").disabled = !has;
+    this.renderCuts();
     $("music-sel-start").disabled = $("music-sel-end").disabled = !sel;
     $("music-sel-start").value = sel ? sel.start.toFixed(2) : "";
     $("music-sel-end").value = sel ? sel.end.toFixed(2) : "";
@@ -943,6 +1082,19 @@ export class MusicEditor {
       ctx.fillText("✂", x - 6, RULER_H - 7);
     }
 
+    // the suggestion being heard: red bands over what it would take out
+    for (const c of this.cutOpts?.options?.[this.cutShown]?.cuts || []) {
+      const x0 = this.x(c.start), x1 = this.x(c.end);
+      if (x1 < 0 || x0 > w) continue;
+      ctx.save();
+      ctx.fillStyle = col("--danger");
+      ctx.globalAlpha = 0.18;
+      ctx.fillRect(x0, waveT, x1 - x0, waveB - waveT);
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(x0, waveT, x1 - x0, 3);
+      ctx.restore();
+    }
+
     // selection on top of everything: dim what's outside it, band the ruler, solid edges with grips
     if (this.sel) {
       ctx.fillStyle = "#000";
@@ -1161,6 +1313,9 @@ export class MusicEditor {
     $("music-save").addEventListener("click", () => this.save());
     $("music-detect").addEventListener("click", () => this.detect());
     $("music-describe").addEventListener("click", () => this.describe());
+    $("music-cuts-scope").addEventListener("change", () => this.defaultCutTarget());
+    $("music-cuts-find").addEventListener("click", () => this.findCuts());
+    $("music-cuts-target").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); this.findCuts(); } });
     this.wireSections();
     // Some browsers (older Safari, the Home Assistant app on iPhone) also need returnValue to ask.
     window.addEventListener("beforeunload", (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ""; } });

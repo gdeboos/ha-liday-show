@@ -180,6 +180,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Library → Songs**: every song, whether it's detected and which shows use it, with a search and Edit in the Music editor
 - **Archive or delete** shows and songs, with a way back: archived ones can be restored, and shows using a song can take another one
 - Cut, trim and splice songs in the **Music editor**, with crossfades
+- **Suggest cuts**: shorten the song or one section to a length you pick, by whole bars where the join isn't heard
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
 - Arrange the editor your way: pick a page layout, then drag, collapse or hide any panel
 - Experimental: hand a Govee light to one of Govee's built-in scenes for part of the show
@@ -321,6 +322,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/sectionnotes.js                  Notes for song sections, from what each sounds like
     js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music editor: cutting, trimming and splicing songs
+    js/cutfinder.js                     Suggest cuts: where whole bars can go without the join being heard
     js/volume.js                        The song volume slider shared by the Show editor and Music editor
     js/songload.js                      Fetching a song, and saying plainly why one did not load
     js/statusline.js                    The message spot in the top bar: saved, settled and error states

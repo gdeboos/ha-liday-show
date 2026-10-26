@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.147
+
+- New in the **Music editor**: **Suggest cuts**, in the **Edit** card. Pick **the whole song** or one
+  section under **Shorten**, type how long you'd like it **to about** (such as 1:30 or 20), and press
+  **✂ Find cuts**. You get up to three options, each taking out whole bars where the music either side
+  of the join matches, so the cut isn't heard. Press a cut's **▶** to hear its join (it's shown in red
+  on the waveform), then **Use**. **Undo** takes it back.
+- A section you've picked has a **✂ Shorten…** button that sets this up for that section, for when the
+  intro, say, goes on too long.
+- Suggestions need the song detected first (**Detect**), since they follow its bars.
+
 ## 0.2.146
 
 - The **Music editor** is tidier. **File name** and **Save as new file** now sit at the top, beside the

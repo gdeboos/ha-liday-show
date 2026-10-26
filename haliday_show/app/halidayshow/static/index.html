@@ -294,6 +294,9 @@
         Shift-click adds the next one, and dragging the line between two sections moves it. Section changes save
         with the song; a show already using it picks them up with <b>From song</b>.</li>
       <li>Click to move the playhead. Use the wheel to zoom, and Shift + wheel to scroll.</li>
+      <li><b>Suggest cuts</b> finds whole bars to take out of the song or one section (or press <b>✂ Shorten…</b>
+        on a section) where the music either side of the join matches. Press a cut's ▶ to hear its join, then
+        <b>Use</b>. It needs the song detected first.</li>
       <li>Space plays, Delete cuts the selection, and Ctrl+Z undoes.</li>
     </ul>
   </details>
@@ -346,6 +349,16 @@
         <label title="Fade the end down to silence">Fade out <input id="music-fadeout" type="number" min="0" max="30" step="0.5" value="0"> s</label>
       </div>
     </div>
+    <div class="toolbar">
+      <div class="group">
+        <span class="section-label">Suggest cuts</span>
+        <label title="The whole song, or one of its sections">Shorten <select id="music-cuts-scope"></select></label>
+        <label title="How long you'd like it to be, as 1:30 or 90">to about <input id="music-cuts-target" size="6" autocomplete="off"></label>
+        <span id="music-cuts-now" class="hint"></span>
+        <button id="music-cuts-find" title="Find whole bars to cut where the music either side of the join matches, so the cut isn't heard">✂ Find cuts</button>
+      </div>
+    </div>
+    <div id="music-cuts" class="music-cuts" hidden></div>
   </section>
   <section class="card">
     <div class="group">
@@ -359,6 +372,7 @@
       <label>Name <input id="music-sec-name" size="14" maxlength="40"></label>
       <label>Colour <input id="music-sec-colour" type="color"></label>
       <span id="music-sec-colour-hint" class="hint"></span>
+      <button id="music-sec-shorten" title="Suggest cuts that make this section shorter">✂ Shorten…</button>
       <button id="music-sec-split" title="Split the section under the playhead in two">Split at playhead</button>
       <button id="music-sec-merge" title="Join this section and the next into one">Merge with next</button>
       <button id="music-sec-delete" class="ghost danger" title="Remove this section; the one before takes its time">Delete</button>
