@@ -134,3 +134,68 @@ test("a look a light can't show is swapped for another of the section's looks", 
     }
   }
 });
+
+// Six lights, one of them split in two parts that must go on and off together.
+const house6 = [
+  { id: "roof", segments: 30 }, { id: "icicles", segments: 40 }, { id: "porch", segments: 10 },
+  { id: "tree", segments: 50 }, { id: "door", segments: 8 },
+  { id: "pl", segments: 60, group: "pillars" }, { id: "pr", segments: 60, group: "pillars" },
+];
+const litAt = (clips, t) => Object.keys(clips).filter((id) => clips[id].some((c) => c.start <= t && t < c.end));
+const groupsAt = (clips, t) => new Set(litAt(clips, t).map((id) => house6.find((l) => l.id === id).group ?? id));
+
+test("building up: few lights when quiet, more as it builds, all of them in the chorus", () => {
+  const { clips } = generateShow(analysis, house6, colors, { build: true });
+  const intro = groupsAt(clips, 4).size, verse = groupsAt(clips, 17).size, laterVerse = groupsAt(clips, 31).size;
+  assert.ok(intro >= 1 && intro <= 2, `intro lights ${intro}`);
+  assert.ok(verse < 6 && laterVerse >= verse, `verse builds ${verse} → ${laterVerse}`);
+  assert.equal(groupsAt(clips, 33).size, 6); // chorus: every light
+  assert.equal(groupsAt(clips, 65).size, 6); // second chorus
+});
+
+test("building up: a repeated section uses the same lights, and parts of a light stay together", () => {
+  const { clips } = generateShow(analysis, house6, colors, { build: true, seed: 4 });
+  assert.deepEqual(litAt(clips, 17).sort(), litAt(clips, 49).sort()); // both verses, first phrase
+  for (const t of [4, 17, 31, 49, 90]) {
+    const on = litAt(clips, t);
+    assert.equal(on.includes("pl"), on.includes("pr"), `pillars split at ${t}`);
+  }
+});
+
+test("without building up, every light plays all the way through", () => {
+  const { clips } = generateShow(analysis, house6, colors, { build: false });
+  for (const t of [4, 17, 33, 90]) assert.equal(litAt(clips, t).length, house6.length);
+});
+
+test("building up only fades in the lights that are on at the start", () => {
+  const { clips } = generateShow(analysis, house6, colors, { build: true });
+  for (const [id, list] of Object.entries(clips)) {
+    if (list[0]?.effect === "fade" && list[0].from === "#000000") assert.equal(list[0].start, 0, id);
+    if (list.length && list[0].start > 0) assert.notEqual(list[0].effect === "fade" && list[0].from === "#000000", true, id);
+  }
+});
+
+test("building up with no sections fills every light", () => {
+  const { clips } = generateShow({ ...analysis, sections: [] }, house6, colors, { build: true });
+  for (const l of house6) assert.ok(clips[l.id].length, `${l.id} left dark`);
+});
+
+test("building up a calm song with no chorus still uses every light somewhere", () => {
+  const calm = [["Intro", 0.2], ["Verse", 0.5], ["Bridge", 0.45], ["Outro", 0.2]]
+    .map(([label, energy], i) => ({ start: i * 16, end: (i + 1) * 16, label, energy }));
+  for (const style of ["calm", "balanced"]) {
+    for (const seed of [1, 2, 3]) {
+      const { clips } = generateShow({ ...analysis, sections: calm, duration: 64 }, house6, colors, { build: true, style, seed });
+      for (const l of house6) assert.ok(clips[l.id].length, `${l.id} left dark (${style}, seed ${seed})`);
+      assert.equal(groupsAt(clips, 17).size, 6); // the loudest part, the verse, uses them all
+    }
+  }
+});
+
+test("building up works with one or two lights", () => {
+  for (const few of [[{ id: "a", segments: 10 }], [{ id: "a", segments: 10 }, { id: "b", segments: 10 }]]) {
+    const { clips } = generateShow(analysis, few, colors, { build: true });
+    for (const l of few) assert.ok(clips[l.id].length);
+    assert.ok(Object.values(clips).some((list) => list.some((c) => c.start <= 4 && 4 < c.end))); // something in the intro
+  }
+});

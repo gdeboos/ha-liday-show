@@ -3481,7 +3481,7 @@ async function makeShow(name, file, colors) {
   if (!songBuffer) throw new Error("the song didn't load");
   if (colors) {
     if (!(await analyseSong())) throw new Error("the song couldn't be listened to");
-    await generate({ colors, style: "balanced", house: true });
+    await generate({ colors, style: "balanced", house: true, build: prefs.get("genBuild", true) });
   }
   await save();
 }
@@ -4453,6 +4453,11 @@ function generateDialog() {
   const hl = document.createElement("label");
   hl.append(house, "Sweep across the house as the music lifts");
   hl.hidden = !Object.keys(housePositionsAll()).length;
+  const build = document.createElement("input");
+  build.type = "checkbox";
+  build.checked = prefs.get("genBuild", true);
+  const bl = document.createElement("label");
+  bl.append(build, "Build up: a few lights in quiet parts, more as the music builds, all of them in the loudest");
   const actions = document.createElement("div");
   actions.className = "insp-actions";
   const go = button("Generate", () => {}, "primary");
@@ -4460,13 +4465,14 @@ function generateDialog() {
   const cancel = button("Cancel", () => dlg.close(), "ghost");
   cancel.type = "button";
   actions.append(go, cancel);
-  form.append(h, hint, ml, notesHint, pl, sl, hl, actions);
+  form.append(h, hint, ml, notesHint, pl, sl, bl, hl, actions);
   dlg.append(form);
   form.addEventListener("submit", () => {
     prefs.set("genStyle", style.value);
+    prefs.set("genBuild", build.checked);
     if (!ml.hidden) prefs.set("genMaker", maker.value);
     const chosen = allPalettes().find((p) => p.name === palette.value) || currentPalette();
-    const opts = { colors: chosen.colors, style: style.value, house: !hl.hidden && house.checked };
+    const opts = { colors: chosen.colors, style: style.value, house: !hl.hidden && house.checked, build: build.checked };
     if (maker.value === "ai") generateWithAI({ ...opts, paletteName: chosen.name });
     else generate(opts);
   });
@@ -4475,18 +4481,20 @@ function generateDialog() {
   dlg.showModal();
 }
 
-async function generate({ colors, style, house }) {
+async function generate({ colors, style, house, build }) {
   // A split light gets effects on its parts; its own track (all the parts at once) is left for you.
+  // Its parts light up and go dark together when building up.
   const lights = app.show.tracks.filter((tr) => tr.device !== HOUSE && playingDev(tr) && !playingDev(tr).light)
     .map((tr) => {
       const dev = app.devices[tr.device];
-      return { id: tr.device, segments: dev.segments, slow: isSlow(dev), fits: (c) => fitFor(c, dev).level !== "no" };
+      return { id: tr.device, group: dev.parent || dev.id, segments: dev.segments, slow: isSlow(dev),
+        fits: (c) => fitFor(c, dev).level !== "no" };
     });
   if (!lights.length) { status("Add your lights under Setup → Devices first", "hint"); return; }
   // Listen to the song first if that hasn't been done yet.
   if (songBuffer && !app.show.beats.length && !app.show.sections?.length && !(await analyseSong())) return;
   const show = app.show;
-  const result = generateShow({ ...show, duration: app.duration() }, lights, colors, { style, house, seed: ++generateSeed });
+  const result = generateShow({ ...show, duration: app.duration() }, lights, colors, { style, house, build, seed: ++generateSeed });
   applyGenerated(show, result);
   app.select(null);
   app.changed();
@@ -4494,13 +4502,16 @@ async function generate({ colors, style, house }) {
 }
 
 // Generate with the AI: the whole show from the song, its sections and their notes, in one request.
-async function generateWithAI({ colors, paletteName, style, house }) {
+async function generateWithAI({ colors, paletteName, style, house, build }) {
   if (songBuffer && !app.show.beats.length && !app.show.sections?.length && !(await analyseSong())) return;
   const feel = { calm: "calm and gentle, with slow movement", balanced: "balanced, building with the music",
     lively: "lively, with lots of movement on the beat" }[style] || "balanced";
-  const request = `Make a complete light show for the whole song on every light. Use the "${paletteName}" colours `
+  const request = `Make a complete light show for the whole song${build ? "" : " on every light"}. Use the "${paletteName}" colours `
     + `(${colors.join(", ")}). Keep it ${feel}: quiet sections soft, loud sections bright and on the beat, and the `
     + "same looks each time a section comes back. Change looks on bar lines. Follow each section's notes."
+    + (build ? " Build it up as a person would: in quiet sections use only one or a few lights and leave the rest "
+      + "dark; bring more lights in as the music builds, adding them on bar lines; use every light together only "
+      + "in the loudest sections and the chorus. Keep the parts of one light (named Light · Part) on or off together." : "")
     + (house ? " Add sweeps across the house as the music lifts into louder sections." : "");
   await describe(request, null, { replaceAll: true, what: "the show" });
 }
