@@ -448,7 +448,7 @@ it. Each show is listed with its song, its length and when it last changed, newe
 one you were last editing has a **Last edited** badge.
 
 - **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
-  1. a **Name** and a **Song** (or **Upload a song…**, or **No song, lights only** with its length). The
+  1. a **Name** and a **Song** (or **+ Add a song…**, or **No song, lights only** with its length). The
      name fills in from the song until you type your own, and each show needs its own name.
   2. how it starts: **Start empty**, **Generate a first draft** (see [Generate](#generate)), or
      **Generate with AI** when an AI is set up. Generating needs a song and at least one light, and
@@ -469,9 +469,9 @@ shows**; to switch to another show, go back to the list. **⚙ Show settings…*
 ### Songs
 
 The Song panel shows the show's song with its length, tempo and sections. Press
-**Change…** to pick another from your Home Assistant **media** folder, or **Upload a song…** (MP3,
-M4A, AAC, OGG, Opus, WAV, FLAC or WebM). Uploads go to `/media/haliday_show/` so media players can play
-them. For a lights-only show, choose **No song** and set its **Length**.
+**Change…** to pick another from your Home Assistant **media** folder, or **+ Add a song…** (MP3,
+M4A, AAC, OGG, Opus, WAV, FLAC or WebM; see below). Songs you add go to `/media/haliday_show/` so media
+players can play them. For a lights-only show, choose **No song** and set its **Length**.
 
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
 tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
@@ -482,9 +482,17 @@ or deletes one. The song you last opened in the Music editor has a **Last edited
 
 1. **Choose a file…** and give it a **Name**. It's saved under that name in `/media/haliday_show/`; if
    a song there already has it, the window asks for another, so nothing is replaced by mistake.
-2. **Detect beats and parts now** (picked to start with) finds its tempo, beats and parts before it's
-   added, so any show that picks it gets them straight away. **Add it as it is** leaves that for later
-   (**Detect** in the Music editor). Press **Add song**.
+2. How to get it ready, then press **Add song**:
+   - **Detect, then let the AI name the parts** (picked to start with when an AI is set up): finds its
+     tempo, beats and parts, then the AI names the parts and writes their notes a little later (see
+     the section notes under [Detecting in the Music editor](#detecting-in-the-music-editor)).
+   - **Detect only** (picked to start with without an AI): the same, with the simple notes.
+   - **Add it as it is**: leaves it for later (**Detect** in the Music editor).
+
+   Detected songs are ready to use: a show that picks one gets its beats and parts straight away.
+
+The same window opens from **+ Add a song…** in the **New show** window and in a show's **Choose a
+song** window, and the song comes back picked.
 
 ### Archiving and deleting
 

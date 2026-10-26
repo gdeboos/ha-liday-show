@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.141
+
+- **+ Add a song** now asks, in step 2, whether the AI should name the parts: **Detect, then let the AI
+  name the parts** is picked to start with when an AI is set up, or choose **Detect only** or **Add it
+  as it is**. The top bar tells you when the AI's names and notes have arrived.
+- **+ Add a song…** in the **New show** window and in a show's **Choose a song** window (in place of
+  **Upload a song…**) opens the same window, so every song you add is detected, and it comes back
+  picked.
+
 ## 0.2.140
 
 - With an AI set up, the AI now writes your songs' section notes. After **Detect** (in either editor,
