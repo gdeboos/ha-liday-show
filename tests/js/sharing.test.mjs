@@ -96,13 +96,20 @@ test("tracks are built on your lights, sharing a light where asked", () => {
   const share = readShare(JSON.stringify(makeShare(show, [pillars, roof, tree], { models, positions })));
   const mine = myLights([{ ...pillars, id: "p2" }, { ...roof, id: "eaves" }], { models });
   const plan = { L1: { light: "p2", parts: { P1: "p2#l", P2: "p2#c", P3: null } }, L2: { light: "p2", parts: {} } };
-  const tracks = buildTracks(share, plan, mine);
+  const { tracks, dropped } = buildTracks(share, plan, mine);
+  assert.equal(dropped, 0);
   const by = Object.fromEntries(tracks.map((t) => [t.device, t.clips.map((c) => c.start)]));
   assert.deepEqual(by, { "@house": [0], p2: [0, 1], "p2#l": [4] });
   // A light that plays its parts only takes a whole-light track on every part.
   const partsOnly = myLights([{ ...pillars, id: "p2", whole: false }], { models });
-  const t2 = buildTracks(share, { L1: { light: "p2", parts: {} } }, partsOnly);
+  const t2 = buildTracks(share, { L1: { light: "p2", parts: {} } }, partsOnly).tracks;
   assert.deepEqual(t2.map((t) => t.device), ["@house", "p2#l", "p2#c", "p2#r"]);
+  // Effects this copy doesn't know, or on the wrong lane, are left out and counted.
+  const known = buildTracks(share, plan, mine, (fx, house) => (fx === "sweep") === house && fx !== "chase");
+  assert.equal(known.dropped, 0);
+  const strict = buildTracks(share, plan, mine, (fx, house) => fx === "solid" && !house);
+  assert.equal(strict.dropped, 1);
+  assert.deepEqual(strict.tracks.find((t) => t.device === "@house").clips, []);
   // Clips are copies.
   tracks[1].clips[0].start = 99;
   assert.equal(share.tracks[1].clips[0].start, 0);

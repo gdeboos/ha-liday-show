@@ -1,4 +1,4 @@
-// Sharing shows: Library → Shows › Share… writes a .halidayshow file (the show's effects and a
+// Sharing shows: Share, on a show's row, writes a .halidayshow file (the show's effects and a
 // short description of each light it uses, with nothing private), and Import show reads one,
 // suggests which of your lights plays each of theirs, and builds the tracks of a new show.
 // The song never travels; only its name and length.
@@ -119,7 +119,7 @@ export function readShare(text) {
   return {
     version: s.version, name: text64(s.name, "Shared show") || "Shared show",
     song: s.song && typeof s.song === "object" ? { name: text64(s.song.name), length: num(s.song.length) } : null,
-    fps: num(s.fps, 0) || undefined, duration: Math.max(1, num(s.duration, 60)), tempo: Number.isFinite(s.tempo) ? s.tempo : null,
+    duration: Math.max(1, num(s.duration, 60)), tempo: Number.isFinite(s.tempo) ? s.tempo : null,
     beats: nums(s.beats), bars: nums(s.bars),
     sections: (Array.isArray(s.sections) ? s.sections : []).filter((x) => x && Number.isFinite(x.start) && Number.isFinite(x.end)),
     lights: lights.filter((l) => tracks.some((t) => t.light === l.key)), tracks,
@@ -209,12 +209,17 @@ export function suggest(theirs, mine) {
 
 // The new show's tracks from the share and the pairings. Effects that end up on one light are put
 // in time order, so where two of theirs share one of yours and play at once, the later one shows.
-export function buildTracks(share, plan, mine) {
+// `fits(effect, house)` says whether this copy knows an effect and it goes on that lane: a file
+// from a newer HA-liday Show can hold effects this one hasn't got, and those are left out.
+export function buildTracks(share, plan, mine, fits = () => true) {
   const byId = new Map(mine.map((m) => [m.id, m]));
   const out = new Map([[HOUSE, []]]);
+  let dropped = 0;
   const put = (id, clips) => {
     if (!out.has(id)) out.set(id, []);
-    out.get(id).push(...clips.map((c) => JSON.parse(JSON.stringify(c))));
+    const ok = clips.filter((c) => fits(c.effect, id === HOUSE));
+    dropped += clips.length - ok.length;
+    out.get(id).push(...ok.map((c) => JSON.parse(JSON.stringify(c))));
   };
   // A light that plays its parts only has no track of its own that plays: its parts take it instead.
   const wholeOf = (m) => (m.whole ? [m.id] : m.parts.map((p) => p.id));
@@ -228,7 +233,7 @@ export function buildTracks(share, plan, mine) {
     for (const id of to === "whole" ? wholeOf(m) : [to]) put(id, t.clips);
   }
   for (const clips of out.values()) clips.sort((a, b) => a.start - b.start);
-  return [...out].map(([device, clips]) => ({ device, clips }));
+  return { tracks: [...out].map(([device, clips]) => ({ device, clips })), dropped };
 }
 
 export function matchCount(share, plan) {

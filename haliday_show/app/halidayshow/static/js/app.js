@@ -5067,8 +5067,9 @@ async function imSubmit(e) {
   const share = imp.share;
   $("import-dialog").close();
   await openShow(null);
+  const { tracks, dropped } = buildTracks(share, imp.plan, imp.mine, (fx, house) => !!EFFECTS[fx] && !!EFFECTS[fx].house === house);
   Object.assign(app.show, { name, audio: imp.song ? JSON.parse(imp.song) : null, duration: share.duration,
-    beats: share.beats, bars: share.bars, sections: share.sections, tracks: buildTracks(share, imp.plan, imp.mine) });
+    beats: share.beats, bars: share.bars, sections: share.sections, tracks });
   if (share.tempo !== null) app.show.tempo = share.tempo;
   ensureTracks();
   $("show-name").value = name;
@@ -5079,6 +5080,8 @@ async function imSubmit(e) {
     app.changed();
     await save();
     status(`${name} imported`, "saved", "show");
+    // Effects from a newer HA-liday Show than this one.
+    if (dropped) status(`${plural(dropped, "effect")} in ${name} need a newer HA-liday Show, so they were left out. Update, then import it again to get them`, "hint");
   } catch (err) {
     status(`Couldn't save ${name}: ${err.message}`, true, "show");
   }
