@@ -1148,9 +1148,9 @@ without the code just says "Scan the code on the sign to start a show".
 Off to start with, so visitors can start shows at any time. Tick **Only open at set times** to choose
 when:
 
-- **Opens** **at a time**, or **at sunset** with a number of minutes after it (or before, if less than
+- **Opens**: at a time, or at sunset with a number of minutes after it (or before, if less than
   0), so the opening time moves with the sunset through the year.
-- **Closes** at a time. With a set start, a time before it means after midnight, such as 17:00 until
+- **Closes**: at a time. With a set start, a time before it means after midnight, such as 17:00 until
   01:00. With a sunset start, a closing time before midday is the next morning, and any other is
   that evening; on a day the sun sets after it, the page doesn't open (in summer, say, with a 22:00
   close).
@@ -1189,7 +1189,7 @@ the bottom**. The preview beside them shows each change as you make it.
 - **Link at the bottom**: its **Web address** and **Its words**, for a charity, donation or social page, if
   you like.
 
-**open the page**, in the line under the heading, opens your real visitors' link. The title, words and picture only show to people
+The **open the page** link under the heading opens your real visitors' link. The title, words and picture only show to people
 with your code.
 
 #### What visitors can pick
