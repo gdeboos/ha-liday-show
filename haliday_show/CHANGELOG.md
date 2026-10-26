@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.188
+
+- Splicing a song into another in the **Music editor** no longer loses its beats, parts and marks. They
+  show where the spliced-in song lands (its marks faintly, with a dashed line), and **Make song file**
+  keeps them in the new file along with the song you opened, rather than detecting it all afresh.
+  Only a spliced-in song that hasn't been detected yet means the new file is detected again.
+
 ## 0.2.186
 
 - On the **Public page** tab, the small picture under **Picture at the top** now changes when you choose

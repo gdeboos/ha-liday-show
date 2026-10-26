@@ -251,14 +251,18 @@ export function marksToBase(base, shown, edited, toBaseT, pick = -1) {
 }
 
 // Where the base song's beats, bars and sections land in the edited result, so they follow cuts
-// and splices. Only pieces of the base song (src) carry them; a section cut in two by an edit that
+// and splices. Pieces of other songs spliced in bring theirs too, from `others` (each song's saved
+// info by key); their marks go in otherMarks, shown but kept with their own song, so only the base
+// song's marks (each with k, its index there) are edited here. A section cut in two by an edit that
 // joins up again becomes one.
-export function mapInfo(info, pieces, crossfade, src) {
+export function mapInfo(info, pieces, crossfade, src, others = {}) {
   const { places, total } = arrange(pieces, crossfade);
   const r3 = (t) => Math.round(t * 1000) / 1000;
-  const beats = [], bars = [], parts = [], marks = [];
+  const beats = [], bars = [], parts = [], marks = [], otherMarks = [];
   pieces.forEach((p, i) => {
-    if (p.src !== src) return;
+    const own = p.src === src;
+    const from = own ? info : others[p.src];
+    if (!from) return;
     const { at, xf } = places[i];
     const own0 = i === 0 ? 0 : at + xf / 2;
     const own1 = i === pieces.length - 1 ? total : places[i + 1].at + places[i + 1].xf / 2;
@@ -266,12 +270,15 @@ export function mapInfo(info, pieces, crossfade, src) {
     const keep = (list, out) => {
       for (const t of list) if (t >= p.start && t <= p.end && map(t) >= own0 - EPS && map(t) < own1 - EPS) out.push(r3(map(t)));
     };
-    keep(info.beats, beats);
-    keep(info.bars, bars);
-    (info.marks || []).forEach((m, k) => {
-      if (m.t >= p.start && m.t <= p.end && map(m.t) >= own0 - EPS && map(m.t) < own1 - EPS) marks.push({ ...m, t: r3(map(m.t)), k });
+    keep(from.beats || [], beats);
+    keep(from.bars || [], bars);
+    (from.marks || []).forEach((m, k) => {
+      if (m.t >= p.start && m.t <= p.end && map(m.t) >= own0 - EPS && map(m.t) < own1 - EPS) {
+        if (own) marks.push({ ...m, t: r3(map(m.t)), k });
+        else otherMarks.push({ ...m, t: r3(map(m.t)) });
+      }
     });
-    for (const sec of info.sections) {
+    for (const sec of from.sections || []) {
       const a = Math.max(map(sec.start), own0), b = Math.min(map(sec.end), own1);
       if (b - a > 1e-3) parts.push({ ...sec, start: r3(a), end: r3(b) });
     }
@@ -284,7 +291,10 @@ export function mapInfo(info, pieces, crossfade, src) {
     else sections.push(sec);
   }
   marks.sort((a, b) => a.t - b.t);
-  return { ...info, beats, bars, sections, ...(info.marks ? { marks } : {}) };
+  otherMarks.sort((a, b) => a.t - b.t);
+  beats.sort((a, b) => a - b);
+  bars.sort((a, b) => a - b);
+  return { ...info, beats, bars, sections, ...(info.marks ? { marks } : {}), ...(otherMarks.length ? { otherMarks } : {}) };
 }
 
 // rendering ---------------------------------------------------------------------
@@ -383,6 +393,7 @@ export class MusicEditor {
     this.canvas = $("music-wave");
     this.ctx = this.canvas.getContext("2d");
     this.refs = {}; // src key -> ref
+    this.infos = {}; // src key -> its saved beats, sections and marks (for songs spliced in)
     this.sources = {}; // src key -> Float32Array[]
     this.pieces = [];
     this.history = [];
@@ -445,6 +456,8 @@ export class MusicEditor {
     const decoded = await this.audio.decodeAudioData(buf);
     this.sources[key] = Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c));
     this.refs[key] = ref;
+    // Its beats, sections and marks, for when it's spliced into another song.
+    this.host.api(infoUrl(ref)).then((info) => { this.infos[key] = info; this.updateControls?.(); this.draw?.(); }).catch(() => {});
     this.host.status("", "info", "song");
     return key;
   }
@@ -734,9 +747,18 @@ export class MusicEditor {
 
   // The base song's beats, bars and sections where they fall in the result, following any edits.
   get shown() {
-    if (!this.info || !this.base) return null;
+    if (!this.base) return null;
     if (!this.dirty) return this.info;
-    return mapInfo(this.info, this.pieces, this.crossfade, keyOf(this.base));
+    const baseKey = keyOf(this.base), others = this.otherInfos();
+    if (!this.info && !Object.keys(others).length) return null;
+    return mapInfo(this.info || { beats: [], bars: [], sections: [] }, this.pieces, this.crossfade, baseKey, others);
+  }
+
+  // The saved info of each other song spliced into this one, by key.
+  otherInfos() {
+    const baseKey = this.base && keyOf(this.base), out = {};
+    for (const p of this.pieces) if (p.src !== baseKey && this.infos[p.src]) out[p.src] = this.infos[p.src];
+    return out;
   }
 
   // t pulled to the nearest bar or section edge within reach, else the nearest beat; Shift places freely.
@@ -1236,12 +1258,15 @@ export class MusicEditor {
     this.host.status(`Making ${file}…`);
     const blob = new Blob([encodeWav(this.rendered, this.audio.sampleRate)], { type: "audio/wav" });
     // Beats and sections that followed the edit carry over, with their names, colours and notes, as
-    // long as the result is all from the base song; anything spliced in is detected afresh.
+    // long as every song in it has been detected (a spliced-in song brings its own); otherwise the
+    // result is detected afresh. Marks always come along: the base song's and any spliced-in song's.
     const baseKey = this.base && keyOf(this.base);
-    // Only marks (no Detect yet) is nothing to carry: the new file is detected, then gets the marks.
-    const found = this.shown?.beats?.length || this.shown?.sections?.length;
-    const marks = (this.shown?.marks || []).map(({ k: _, ...m }) => m);
-    const carry = found && this.pieces.every((p) => p.src === baseKey) ? { ...this.shown, marks } : null;
+    const detected = (info) => Boolean(info?.beats?.length || info?.sections?.length);
+    const everyDetected = this.pieces.every((p) => detected(p.src === baseKey ? this.info : this.infos[p.src]));
+    const marks = [...(this.shown?.marks || []).map(({ k: _, ...m }) => m), ...(this.shown?.otherMarks || [])]
+      .sort((a, b) => a.t - b.t);
+    const { otherMarks: _o, ...shownInfo } = this.shown || {};
+    const carry = everyDetected && this.shown ? { ...shownInfo, marks } : null;
     const rendered = this.rendered, rate = this.audio.sampleRate;
     // The draft as it was when you pressed it, and which draft: you might open another while it's made.
     const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
@@ -1444,6 +1469,28 @@ export class MusicEditor {
       }
     }
 
+    // A spliced-in song's marks: shown faintly with a dashed line, and edited on that song itself.
+    for (const m of info?.otherMarks || []) {
+      const x = Math.round(this.x(m.t));
+      if (x < -200 || x > w + 4) continue;
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = ctx.fillStyle = m.color || MARK_COLOUR;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(x + 0.5, RULER_H); ctx.lineTo(x + 0.5, waveB); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = "600 11px system-ui, sans-serif";
+      const label = m.label || "";
+      const wide = label ? Math.min(140, ctx.measureText(label).width) + 10 : 8;
+      ctx.fillRect(x, RULER_H + 1, wide, BEAT_H - 2);
+      if (label) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = markText(m.color || MARK_COLOUR);
+        ctx.beginPath(); ctx.rect(x, RULER_H, wide, BEAT_H); ctx.clip();
+        ctx.fillText(label, x + 4, RULER_H + BEAT_H - 4);
+      }
+      ctx.restore();
+    }
     // marks: a coloured line down through the waveform and a flag with its name in the beat lane
     this.markBoxes = [];
     (info?.marks || []).forEach((m, i) => {

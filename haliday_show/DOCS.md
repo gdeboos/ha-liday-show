@@ -697,15 +697,17 @@ Music editor show straight away. To change them, go back to the Music editor.
 Marks follow your cuts: a mark in a part you cut out disappears from the edit, and the rest move with
 the music and go with the song file when you **Make song file**. You can add, change and move marks while you're
 editing too. They're saved on the song you opened as well, at the same moment in it, and that song keeps
-all its marks, even ones in parts you cut out of the edit. The one place you can't mark until you've
-made the song file is a part spliced in from another song.
+all its marks, even ones in parts you cut out of the edit. A song spliced in brings its own marks,
+shown faintly with a dashed line; they go with the song file too, but you change them on that song
+itself. The one place you can't add a mark until you've made the song file is a part spliced in.
 
 ### Detecting in the Music editor
 
 **Detect** in the Music editor finds a song's beats, bars and sections and keeps them with the song file,
 drawn over its waveform. A song file you make from a draft keeps the beats and sections that followed
-your cuts, as long as it's all from the song you opened; with another song spliced in, the new file is
-detected afresh (your marks still go with it). When a show picks that song
+your cuts. A song spliced in brings its own beats, sections (with their names and notes) and marks, so
+nothing is lost. Only if a song in it hasn't been detected yet is the new file detected afresh (the
+marks still go with it). When a show picks that song
 under **Song**, it takes them automatically (asking first if the show already has beats), and **From
 song** in the Beats panel brings them back later. Detect in the editor also saves its results with the
 song. Each show keeps its own copy, so moving beats in one show doesn't change the song or other shows.

@@ -248,3 +248,18 @@ test("a splice isn't a cut, so there's nothing to put back", () => {
   assert.equal(putBack(p, 0, 1), null);
   assert.equal(joinInfo(p, 9), null);
 });
+
+test("a song spliced in brings its own beats, sections and marks", () => {
+  const a = { tempo: 120, beats: [1, 5, 15], bars: [1], sections: [{ start: 0, end: 40, label: "Verse" }],
+    marks: [{ t: 2, label: "Mine", color: "#ff0000" }] };
+  const b = { tempo: 90, beats: [0.5, 2, 4], bars: [0.5], sections: [{ start: 0, end: 5, label: "Bells" }],
+    marks: [{ t: 3, label: "Drop", color: "#00ff00" }] };
+  const p = insert([{ src: "a", start: 0, end: 40 }], 0, 10, [{ src: "b", start: 0, end: 5 }]);
+  const m = mapInfo(a, p, 0, "a", { b });
+  assert.deepEqual(m.beats, [1, 5, 10.5, 12, 14, 20]);
+  assert.deepEqual(m.sections.map((x) => [x.start, x.end, x.label]), [[0, 10, "Verse"], [10, 15, "Bells"], [15, 45, "Verse"]]);
+  assert.deepEqual(m.marks.map((x) => [x.t, x.label, x.k]), [[2, "Mine", 0]]); // only the base song's are edited here
+  assert.deepEqual(m.otherMarks.map((x) => [x.t, x.label]), [[13, "Drop"]]);
+  // Without the other song's info, as before.
+  assert.equal(mapInfo(a, p, 0, "a").otherMarks, undefined);
+});
