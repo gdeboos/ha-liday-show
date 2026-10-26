@@ -909,3 +909,6 @@ a.button { text-decoration: none; }
   .import-dialog .form-dialog-foot { flex-wrap: wrap; }
   .im-count { flex-basis: 100%; text-align: center; order: -1; }
 }
+.im-preview { display: flex; flex-direction: column; gap: 4px; }
+.im-preview-frame { width: 100%; }
+.im-preview-frame canvas { display: block; margin: 0 auto; border-radius: 6px; }

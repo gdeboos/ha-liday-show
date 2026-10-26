@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.184
+
+- **Import show…** now has **▶ Preview on your house** on its **Match your lights** step. It plays the
+  show on your house photo with the pairings you've picked, and your song in this browser, so you can
+  try different pairings before you import. Nothing is sent to your lights.
+
 ## 0.2.183
 
 - Share shows. **Share**, on each show in **Your shows** and **Library → Shows**, downloads the show as a

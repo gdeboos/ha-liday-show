@@ -72,6 +72,11 @@ You can swap shows with friends, or post one on a forum, without either of you c
      - Two of their lights can play on one of yours: the picker says "(also playing …)". Where both
        have an effect at the same time, the one that started later shows.
      - Effects across the whole house, on the **House** lane, always come along.
+     - **▶ Preview on your house** plays the show on your house photo, with the pairings as they are
+       now and your song in this browser, so you can see it before you import it. Change a pairing
+       while it plays and the preview follows. Nothing is sent to your lights, and nothing is saved.
+       Press **■ Stop preview** to stop it. It needs your lights on the house photo
+       (**Setup → House**).
 
   **Import show** saves it and opens it in the editor. Effects a light can't show are marked as usual
   (see [Effects a light can't show](#effects-a-light-cant-show)).

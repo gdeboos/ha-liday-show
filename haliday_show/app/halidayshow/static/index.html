@@ -281,12 +281,19 @@
       <div class="form-dialog-body" id="im-step-2" hidden>
         <p class="hint ns-step">Step 2 of 2: match your lights</p>
         <p id="im-song-note" hidden></p>
+        <div id="im-preview" class="im-preview" hidden>
+          <div class="im-preview-frame"><canvas id="im-canvas" aria-label="The show with these pairings, on your house photo" role="img"></canvas></div>
+          <p class="hint" id="im-preview-time" aria-live="off"></p>
+        </div>
         <p class="hint" id="im-lights-hint"></p>
+        <p class="hint" id="im-preview-hint" hidden>To preview it on your house photo first, put your lights on it under
+          <b>Setup → House</b>.</p>
         <div id="im-lights" class="im-lights"></div>
       </div>
       <div class="form-dialog-foot">
         <button type="button" class="ghost" id="im-add-song" title="Add a song to HA-liday Show, detected as it's added">+ Add a song…</button>
         <button type="button" class="ghost" id="im-back" hidden>← Back</button>
+        <button type="button" id="im-play" hidden>▶ Preview on your house</button>
         <span class="spacer"></span>
         <span class="hint im-count" id="im-count" role="status"></span>
         <button type="button" data-im="cancel">Cancel</button>
