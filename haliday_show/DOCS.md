@@ -27,7 +27,7 @@ opens on **Library**; the three editors sit together after it, under **Editors**
 
 | Tab | What's there |
 | --- | --- |
-| **Library** | In two groups. **Shows**: **Shows** (all of yours) and **Playlists** (shows back to back, by hand or on a schedule). **Building blocks**: **Songs** (all of yours), **Palettes** and **Presets** (the colours and effect settings you reuse). |
+| **Library** | In two groups. **Shows**: **Shows** (all of yours) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Palettes** and **Presets** (the colours and effect settings you reuse). |
 | **Show** (the **Show editor**) | Where shows are made: the timeline, previews and effect settings. |
 | **Music** (the **Music editor**) | Where songs are cut, shortened, joined and detected. |
 | **Playlist** (the **Playlist editor**) | Where you drag shows into playlists and set when they play. |

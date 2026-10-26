@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.181
+
+- In the **Library** side menu, the group holding **Songs**, **Palettes** and **Presets** is now called
+  **Ingredients**, so it isn't mixed up with a playlist's **Building blocks** (Pause, Colour, Off and
+  Effect).
+
 ## 0.2.180
 
 - The user guide is checked against everything released lately. It now counts the tabs along the top
