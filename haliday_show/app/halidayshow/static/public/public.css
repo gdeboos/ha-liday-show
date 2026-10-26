@@ -39,3 +39,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pp-later { opacity: .5; }
 #pp-coming { margin: 0 0 8px; }
 .pp-message.pp-info { color: var(--muted); font-weight: 400; }
+.pp-where { margin: 0 0 8px; }
+.pp-where p { margin: 0; }
+.pp-where button { margin-top: 12px; }

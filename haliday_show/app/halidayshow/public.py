@@ -48,6 +48,8 @@ WHERE = web.AppKey("where", object)  # () -> (lat, lon) of the house, or None
 RUNNER = web.AppKey("runner", Runner)
 STORAGE = web.AppKey("storage", Storage)
 POSTS = web.AppKey("posts", list)
+NEAR = web.AppKey("near", list)
+MAX_NEAR_PER_MIN = 3000  # each open page checks its location every 10 s or so while it's on screen
 
 
 def port() -> int:
@@ -256,6 +258,19 @@ def _code_ok(p: dict, code) -> bool:
             and secrets.compare_digest(code.lower().encode(), p["code"].lower().encode()))
 
 
+def _check_near(request, p: dict, body: dict):
+    """Refuses (403) a phone that isn't by the lights, or can't say where it is."""
+    if request.app[WHERE]() is None:
+        raise web.HTTPForbidden(text="Shows can't be started from here right now. Ask at the house.")
+    try:
+        here = (float(body["lat"]), float(body["lon"]))
+        leeway = min(max(float(body.get("accuracy") or 0), 0), MAX_LEEWAY_M)
+    except (KeyError, TypeError, ValueError):
+        raise web.HTTPForbidden(text="Turn on location so we can check you're by the lights.")
+    if not all(map(math.isfinite, (*here, leeway))) or metres(here, request.app[WHERE]()) - leeway > p["distance"]:
+        raise web.HTTPForbidden(text="You're too far away to start a show. Come and see the lights!")
+
+
 def _needs_location(request, p: dict) -> bool:
     """Through the internet with Nearby only on. With no home location to measure from, such a
     request is refused rather than let through."""
@@ -298,10 +313,10 @@ async def get_state(request):
     return _no_store(web.json_response(_state(request, ticket, request.query.get("code"))))
 
 
-def _throttle(app):
-    now, posts = time.monotonic(), app[POSTS]
+def _throttle(app, key=POSTS, limit=MAX_POSTS_PER_MIN):
+    now, posts = time.monotonic(), app[key]
     posts[:] = [t for t in posts if now - t < 60]
-    if len(posts) >= MAX_POSTS_PER_MIN:
+    if len(posts) >= limit:
         raise web.HTTPTooManyRequests(text="Lots of people are asking right now. Try again in a minute.")
     posts.append(now)
 
@@ -327,15 +342,7 @@ async def post_request(request):
     if not _code_ok(p, body.get("code")):
         raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
     if _needs_location(request, p):
-        if request.app[WHERE]() is None:
-            raise web.HTTPForbidden(text="Shows can't be started from here right now. Ask at the house.")
-        try:
-            here = (float(body["lat"]), float(body["lon"]))
-            leeway = min(max(float(body.get("accuracy") or 0), 0), MAX_LEEWAY_M)
-        except (KeyError, TypeError, ValueError):
-            raise web.HTTPForbidden(text="Turn on location so we can check you're by the lights.")
-        if not all(map(math.isfinite, (*here, leeway))) or metres(here, request.app[WHERE]()) - leeway > p["distance"]:
-            raise web.HTTPForbidden(text="You need to be by the lights to start a show.")
+        _check_near(request, p, body)
     pick = next((c for c in choices(storage) if c["available"] and c["kind"] == body.get("kind")
                  and c["id"] == body.get("id")), None)
     if pick is None:
@@ -351,6 +358,24 @@ async def post_request(request):
                         "name": pick["name"], "shows": pick["shows"], "gap": pick.get("gap", 0)})
     log.info("public page: %s %s requested (%d waiting)", pick["kind"], pick["id"], len(runner.requests))
     return _no_store(web.json_response(_state(request, ticket, body.get("code"))))
+
+
+async def post_near(request):
+    """Whether this phone is by the lights, asked when the page opens so the Start buttons only show
+    for people who could use them. Requests are checked again when they're made."""
+    body = await _body(request)
+    p = load(request.app[STORAGE]) or clean(None)
+    if not _code_ok(p, body.get("code")):
+        raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
+    _throttle(request.app, NEAR, MAX_NEAR_PER_MIN)
+    if _needs_location(request, p):
+        try:
+            _check_near(request, p, body)
+        except web.HTTPForbidden as e:
+            # "far" can change as they walk; "closed" (nothing to measure from) and "location" can't by themselves.
+            why = "far" if "too far" in e.text else "location" if "location" in e.text else "closed"
+            return _no_store(web.json_response({"near": False, "why": why, "text": e.text}))
+    return _no_store(web.json_response({"near": True}))
 
 
 async def post_cancel(request):
@@ -369,12 +394,14 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None) -> web
     app[RUNNER] = runner
     app[WHERE] = where
     app[POSTS] = []
+    app[NEAR] = []
     r = app.router
     r.add_get("/", page)
     r.add_get("/{name:(public\\.js|public\\.css)}", page)
     r.add_get("/api/state", get_state)
     r.add_post("/api/request", post_request)
     r.add_post("/api/cancel", post_cancel)
+    r.add_post("/api/near", post_near)
     return app
 
 

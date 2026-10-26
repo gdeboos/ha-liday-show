@@ -243,7 +243,7 @@ async def test_through_a_tunnel_phones_must_be_by_the_lights(client):
     # About 1 km away.
     status, text, _ = await _visitor(client, "/api/request", {**ask, "lat": 51.5097, "lon": -0.1246, "accuracy": 20},
                                      headers=FAR)
-    assert status == 403 and "by the lights" in text
+    assert status == 403 and "too far away" in text
     # Across the road, with a rough fix that might be closer than it says.
     status, _, _ = await _visitor(client, "/api/request", {**ask, "lat": 51.5009, "lon": -0.1246, "accuracy": 80},
                                   headers=FAR)
@@ -292,3 +292,21 @@ async def test_odd_codes_and_cancelling_need_the_code_too(client):
     rid = runner.requests[0]["id"]
     status, _, _ = await _visitor(client, "/api/cancel", {"ticket": T1, "id": rid}, code=False)
     assert status == 403 and runner.requests
+
+
+async def test_the_page_asks_whether_its_near_before_offering_start(client):
+    client.app[server.SCHEDULER].where = lambda: (HOME, "you")
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}]})
+    status, st, _ = await _visitor(client, "/api/near", {"lat": 51.5097, "lon": -0.1246, "accuracy": 20}, headers=FAR)
+    assert status == 200 and st["near"] is False and st["why"] == "far" and "too far away" in st["text"]
+    status, st, _ = await _visitor(client, "/api/near", {"lat": 51.5008, "lon": -0.1246, "accuracy": 10}, headers=FAR)
+    assert status == 200 and st == {"near": True}
+    _, st, _ = await _visitor(client, "/api/near", {}, headers=FAR)
+    assert st["why"] == "location"
+    client.app[server.SCHEDULER].where = lambda: (None, None)
+    _, st, _ = await _visitor(client, "/api/near", {"lat": 51.5008, "lon": -0.1246}, headers=FAR)
+    assert st["why"] == "closed"
+    status, st, _ = await _visitor(client, "/api/near", {})  # your own Wi-Fi: no need
+    assert st == {"near": True}
+    status, _, _ = await _visitor(client, "/api/near", {"lat": 51.5008, "lon": -0.1246}, code=False, headers=FAR)
+    assert status == 403

@@ -80,21 +80,33 @@ function code() {
   return c;
 }
 
-// Why a phone's location couldn't be had, in words.
+// Where the phone stands, from the browser's answer: "denied", "slow" or "unknown".
 export function locationProblem(err) {
-  if (err?.code === 1) return "Without your location you can't start a show from here. Allow location for this page in your browser's settings, then try again.";
-  if (err?.code === 3) return "Your phone took too long to find where you are. Try again.";
-  return "Your phone couldn't tell where you are. Try again in a moment.";
+  return err?.code === 1 ? "denied" : err?.code === 3 ? "slow" : "unknown";
 }
 
-function whereAmI() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject({ code: 2 }); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-      reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
-  });
+// What to say about where the phone is, and whether to offer Try again. "far" and "closed" carry the
+// server's own words.
+export function whereText(where) {
+  switch (where.state) {
+    case "checking":
+      return { text: "Checking you're by the lights… Your phone may ask to share your location. It's only used for this and isn't kept.", retry: false };
+    case "far":
+    case "closed":
+      return { text: where.text, retry: where.state === "far" };
+    case "denied":
+      return { text: "To start a show, let this page use your location: it's only used to check you're by the lights. Allow it in your browser's settings, then press Try again.", retry: true };
+    case "slow":
+      return { text: "Your phone took too long to find where you are.", retry: true };
+    case "unknown":
+      return { text: "Your phone couldn't tell where you are.", retry: true };
+    default:
+      return { text: "", retry: false };
+  }
 }
+
+// Start buttons only show to phones that could use them.
+export const canStart = (needsLocation, where) => !needsLocation || where.state === "near";
 
 function ticket() {
   let t = null;
@@ -113,6 +125,81 @@ export function start() {
   const key = code();
   let busy = false;
   let needsLocation = false;
+  let last = null; // the latest state from the server
+  // Where the phone is: {state: "idle" | "checking" | "near" | "far" | "closed" | "denied" | "slow" |
+  // "unknown", text, pos}. Watched while the page is open, so walking up to the lights brings the
+  // Start buttons.
+  const where = { state: "idle", text: "", pos: null };
+  let watchId = null;
+  let asked = 0;
+  let asking = false;
+
+  function setWhere(state, text = "") {
+    where.state = state;
+    where.text = text;
+    const words = whereText(where);
+    $("pp-where-text").textContent = words.text;
+    $("pp-retry").hidden = !words.retry;
+    $("pp-where").hidden = !words.text;
+    if (last) render(last);
+  }
+
+  let later = null;
+  async function checkNear(force = false) {
+    if (!where.pos) return;
+    const wait = 10000 - (Date.now() - asked);
+    if (asking || (!force && wait > 0)) {
+      // A newer position waits its turn rather than being dropped, so walking up still counts.
+      clearTimeout(later);
+      later = setTimeout(() => checkNear(), Math.max(wait, 500));
+      return;
+    }
+    asking = true;
+    asked = Date.now();
+    let again = false;
+    try {
+      const res = await fetch("api/near", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...where.pos, code: key }),
+      });
+      if (!res.ok) throw new Error(String(res.status)); // busy, or a blip: ask again shortly
+      const ans = await res.json();
+      if (!where.pos) return; // location was turned off meanwhile
+      if (ans.near) setWhere("near");
+      else setWhere(ans.why === "far" ? "far" : "closed", ans.text);
+    } catch {
+      again = true;
+    } finally {
+      asking = false;
+    }
+    // A phone standing still may not report a new position, so a failed check tries again by itself.
+    if (again) {
+      clearTimeout(later);
+      later = setTimeout(() => checkNear(true), 10000);
+    }
+  }
+
+  function stopWatching() {
+    if (watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    clearTimeout(later);
+  }
+
+  function watchWhere() {
+    if (!navigator.geolocation) { setWhere("unknown"); return; }
+    stopWatching();
+    if (where.state !== "near") setWhere("checking");
+    watchId = navigator.geolocation.watchPosition((pos) => {
+      const first = !where.pos;
+      where.pos = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy };
+      checkNear(first || where.state === "checking");
+    }, (err) => {
+      if (where.pos && err.code !== 1) return; // a hiccup after a fix: keep the last one
+      stopWatching();
+      where.pos = null;
+      setWhere(locationProblem(err));
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
+  }
 
   // A problem, or with info = true, a plain progress note.
   const say = (text, info = false) => {
@@ -134,8 +221,15 @@ export function start() {
       $("pp-closed").hidden = $("pp-open").hidden = true;
       return;
     }
+    last = st;
     needsLocation = !!st.needs_location;
-    $("pp-location").hidden = !needsLocation;
+    if (needsLocation && where.state === "idle" && st.open && !document.hidden) watchWhere();
+    if (!needsLocation && where.state !== "idle") { // e.g. Nearby only turned off: start afresh if it comes back
+      stopWatching();
+      Object.assign(where, { state: "idle", text: "", pos: null });
+    }
+    if (!needsLocation) $("pp-where").hidden = true;
+    const startable = canStart(needsLocation, where);
     const view = describe(st);
     $("pp-closed").hidden = !view.closed;
     $("pp-open").hidden = view.closed;
@@ -171,16 +265,22 @@ export function start() {
       row.append(text);
       return row;
     }));
+    $("pp-pick-hint").hidden = !startable;
+    $("pp-pick-head").textContent = startable ? "Pick a show" : "Shows";
+    $("pp-block").hidden = !view.block || !startable;
     $("pp-choices").replaceChildren(...view.choices.map((c) => {
       const row = el("div", "pp-row");
       const text = el("div", "pp-text");
       text.append(el("div", "pp-name", c.name), el("div", "pp-hint", c.detail));
-      const b = el("button", "primary", "▶ Start");
-      b.type = "button";
-      b.disabled = !!view.block || busy;
-      b.setAttribute("aria-label", `Start ${c.name}`);
-      b.addEventListener("click", () => send("api/request", { kind: c.kind, id: c.id }));
-      row.append(text, b);
+      row.append(text);
+      if (startable) {
+        const b = el("button", "primary", "▶ Start");
+        b.type = "button";
+        b.disabled = !!view.block || busy;
+        b.setAttribute("aria-label", `Start ${c.name}`);
+        b.addEventListener("click", () => send("api/request", { kind: c.kind, id: c.id }));
+        row.append(b);
+      }
       return row;
     }));
   }
@@ -203,20 +303,9 @@ export function start() {
     say("");
     $("pp-message").dataset.kind = "";
     try {
-      let where = {};
-      if (needsLocation && path === "api/request") {
-        say("Checking you're by the lights…", true);
-        try {
-          where = await whereAmI();
-        } catch (err) {
-          say(locationProblem(err));
-          return;
-        }
-        say("");
-      }
       const res = await fetch(path, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...body, ...where, ticket: me, code: key }),
+        body: JSON.stringify({ ...body, ...(needsLocation ? where.pos : {}), ticket: me, code: key }),
       });
       if (res.ok) {
         render(await res.json());
@@ -232,9 +321,17 @@ export function start() {
     }
   }
 
+  $("pp-retry").addEventListener("click", watchWhere);
   refresh();
   setInterval(() => { if (!document.hidden) refresh(); }, 3000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+  // Location is only watched while the page is on screen, to spare the battery.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopWatching();
+    else {
+      if (needsLocation && ["near", "far", "checking"].includes(where.state)) watchWhere();
+      refresh();
+    }
+  });
 }
 
 if (typeof document !== "undefined") start();
