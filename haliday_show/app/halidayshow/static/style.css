@@ -715,3 +715,9 @@ a.button { text-decoration: none; }
 .pub-item select { width: auto; }
 #pub-per-phone, #pub-queue { width: 4.5em; margin-left: 6px; }
 @media (max-width: 720px) { .pub-item { flex-direction: column; } }
+@media (min-width: 721px) { .has-drafts-row { flex-wrap: wrap; } }
+.song-drafts { flex-basis: 100%; display: flex; flex-direction: column; gap: 4px; padding-top: 6px;
+  border-top: 1px dashed var(--line); }
+.song-draft { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.song-draft .spacer { flex: 1; }
+.song-draft button { padding: 2px 10px; }

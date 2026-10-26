@@ -35,13 +35,18 @@ import { PART, sendParts, uploadSong } from "./upload.js";
 const $ = (id) => document.getElementById(id);
 
 // Relative URLs keep working behind Home Assistant ingress.
-async function api(path, { method = "GET", json, body, headers = {}, signal } = {}) {
+async function api(path, { method = "GET", json, body, headers = {}, signal, keepalive = false } = {}) {
   if (json !== undefined) {
     body = JSON.stringify(json);
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(path, { method, body, headers, signal });
-  if (!res.ok) throw new Error((await res.text()) || `${res.status} ${res.statusText}`);
+  // keepalive: still sent if the page closes meanwhile (the Music editor's draft, as you leave).
+  const res = await fetch(path, { method, body, headers, signal, keepalive });
+  if (!res.ok) {
+    const err = new Error((await res.text()) || `${res.status} ${res.statusText}`);
+    err.status = res.status;
+    throw err;
+  }
   return res.headers.get("Content-Type")?.includes("json") ? res.json() : res.text();
 }
 
@@ -190,7 +195,8 @@ const volume = createVolume();
 volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
-  opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia });
+  opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia,
+  draftsChanged: () => draftsChanged() });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
 // history -----------------------------------------------------------------
@@ -4048,9 +4054,10 @@ let songRowsCache = [], songsMore = false, songsAsked = 0;
 async function renderSongsPage() {
   const mine = ++songsAsked; // only the latest answer is drawn
   try {
-    const [list, shows] = await Promise.all([api("api/songs"), api("api/shows")]);
+    const [list, shows, drafts] = await Promise.all([api("api/songs"), api("api/shows"), api("api/drafts").catch(() => [])]);
     if (mine !== songsAsked) return;
     songRowsCache = songRows(list.songs, shows);
+    songDrafts = drafts;
     songsMore = list.more;
   } catch (e) { status(`Couldn't list your songs: ${e.message}`, true, "songs"); return; }
   status("", "info", "songs");
@@ -4076,11 +4083,113 @@ function drawSongRows() {
   box.setAttribute("role", "list");
   box.setAttribute("aria-label", "Your songs");
   box.replaceChildren(...rows.map(songRow));
+  // Drafts whose song has been archived, deleted or moved, so they can still be found and deleted.
+  const keys = new Set(songRowsCache.map((r) => r.key));
+  const lost = songDrafts.filter((d) => d.base && !keys.has(songKey(d.base)));
+  if (lost.length && !$("song-filter").value.trim() && !songsMore) {
+    const row = document.createElement("div");
+    row.className = "show-row has-drafts-row";
+    const head = document.createElement("div");
+    head.className = "show-main";
+    head.innerHTML = `<div><b class="show-name">Drafts of songs that aren't here any more</b></div>
+      <div class="hint">Restore the song (under Archived songs) to open one, or delete it.</div>`;
+    row.append(head);
+    const list = draftList({ key: null, name: "songs that aren't here" }, lost);
+    if (list) row.append(list);
+    box.append(row);
+  }
+}
+
+// The Music editor's drafts, listed under the song each started from.
+let songDrafts = [];
+let draftsRedraw = null;
+function draftsChanged() {
+  clearTimeout(draftsRedraw);
+  draftsRedraw = setTimeout(() => {
+    if (!$("view-songlist").hidden || !$("view-songs").hidden) renderSongsPage();
+  }, 300);
+}
+
+function draftList(r, drafts = null) {
+  const mine = (drafts || songDrafts.filter((d) => d.base && songKey(d.base) === r.key))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  if (!mine.length) return null;
+  const box = document.createElement("div");
+  box.className = "song-drafts";
+  box.setAttribute("aria-label", `Drafts of ${r.name}`);
+  for (const d of mine) {
+    const line = document.createElement("div");
+    line.className = "song-draft";
+    const name = document.createElement("b");
+    name.textContent = `✎ ${d.name}`;
+    const about = document.createElement("span");
+    about.className = "hint";
+    about.textContent = d.length ? fmtTime(d.length, false) : "";
+    line.append(name, about);
+    if (d.made) {
+      const made = document.createElement("span");
+      made.className = "hint";
+      made.textContent = `· made ${d.made.path.split("/").pop()}`;
+      line.append(made);
+    } else {
+      const badge = document.createElement("span");
+      badge.className = "show-last";
+      badge.textContent = "Draft";
+      line.append(badge);
+    }
+    const spacer = document.createElement("span");
+    spacer.className = "spacer";
+    const open = button("Open", () => openDraft(d.id), "");
+    open.setAttribute("aria-label", `Open the draft ${d.name}`);
+    const rename = button("Rename…", () => renameDraft(d), "ghost");
+    rename.setAttribute("aria-label", `Rename the draft ${d.name}`);
+    const del = button("Delete…", () => deleteDraft(d), "ghost danger");
+    del.setAttribute("aria-label", `Delete the draft ${d.name}`);
+    line.append(spacer, open, rename, del);
+    box.append(line);
+  }
+  return box;
+}
+
+async function openDraft(id) {
+  app.songChosen = true;
+  showView("music");
+  await refreshAudio().catch(() => {});
+  if (!(await music.openDraft(id))) { app.songChosen = !!music.base; showView("music"); }
+}
+
+async function renameDraft(d) {
+  const name = prompt("Rename the draft", d.name)?.trim();
+  if (!name || name === d.name) return;
+  if (music.draft?.id === d.id) {
+    $("music-name").value = name;
+    music.draftChanged();
+    return;
+  }
+  try {
+    const full = await api(`api/drafts/${encodeURIComponent(d.id)}`);
+    await api(`api/drafts/${encodeURIComponent(d.id)}`, { method: "PUT", json: { ...full, name } });
+    renderSongsPage();
+  } catch (e) { status(`Couldn't rename the draft: ${e.message}`, true, "songs"); }
+}
+
+async function deleteDraft(d) {
+  const made = d.made ? ` The song file it made (${d.made.path.split("/").pop()}) stays.` : "";
+  if (!confirm(`Delete the draft "${d.name}"? The song it started from isn't changed.${made}`)) return;
+  // Forgotten first, so a save on its way can't make it again.
+  if (music.draft?.id === d.id) music.forgetDraft();
+  try {
+    await api(`api/drafts/${encodeURIComponent(d.id)}`, { method: "DELETE" }).catch((e) => {
+      if (e.status !== 404) throw e; // already gone (deleted in another tab) is fine
+    });
+    status(`Deleted the draft "${d.name}"`, "saved", "songs");
+    renderSongsPage();
+  } catch (e) { status(`Couldn't delete the draft: ${e.message}`, true, "songs"); }
 }
 
 function songRow(r) {
   const row = document.createElement("div");
-  row.className = "show-row";
+  row.className = "show-row has-drafts-row";
   row.setAttribute("role", "listitem");
   const main = document.createElement("div");
   main.className = "show-main";
@@ -4127,6 +4236,8 @@ function songRow(r) {
   }
   actions.append(rm);
   row.append(main, actions);
+  const drafts = draftList(r);
+  if (drafts) row.append(drafts);
   // The length is read once the row is on screen; a redraw starts over with new rows.
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
@@ -4135,7 +4246,8 @@ function songRow(r) {
 
 async function editSong(ref) {
   // Ask before switching tabs, rather than after.
-  if (music.dirty && !confirm("Start again with this song? Your unsaved edits in the Music editor will be lost.")) return;
+  await music.flush();
+  if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) return;
   app.songChosen = true;
   showView("music");
   await refreshAudio().catch(() => {});
@@ -5965,8 +6077,8 @@ async function pageFromHistory(e) {
       app.chosen = false;
     }
     if (shownPage === "music" && page === "songlist") {
-      if (music.dirty && !confirm("Go back to your songs? Your unsaved edits in the Music editor will be lost.")) { refuse(); return; }
-      music.dirty = false;
+      await music.flush();
+      if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) { refuse(); return; }
       app.songChosen = false;
     }
     // Forward again to the show or song that was open.
@@ -6001,9 +6113,9 @@ function wire() {
   for (const b of document.querySelectorAll("[data-as=cancel]")) b.addEventListener("click", () => $("add-song-dialog").close());
   // Not while it's uploading or listening: the song would be half added.
   $("add-song-dialog").addEventListener("cancel", (e) => { if (addSong.busy) e.preventDefault(); });
-  $("btn-all-songs").addEventListener("click", () => {
-    if (music.dirty && !confirm("Go back to your songs? Your unsaved edits in the Music editor will be lost.")) return;
-    music.dirty = false;
+  $("btn-all-songs").addEventListener("click", async () => {
+    await music.flush();
+    if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) return;
     app.songChosen = false;
     showView("music");
   });

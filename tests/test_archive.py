@@ -152,6 +152,16 @@ def test_exports_include_archived_shows_and_the_song_record(st):
     assert json.loads((st.config_dir / archive.ARCHIVED_SONGS).read_text())
 
 
+def test_exports_include_song_drafts(st):
+    st.save_draft("short", {"name": "Short", "pieces": []})
+    assert "drafts/short.json" in backup._files(st.config_dir)
+    data = backup.export(st.config_dir, "test")
+    backup.clear(st.config_dir)
+    assert st.load_draft("short") is None
+    backup.restore(st.config_dir, data)
+    assert st.load_draft("short")["name"] == "Short"
+
+
 def test_paths_that_escape_haliday_shows_folder_are_refused(st):
     music = st.media_dir / "Music/theirs.mp3"
     for bad in ("haliday_show/../Music/theirs.mp3", "haliday_show/./bells.mp3", "haliday_show//bells.mp3",

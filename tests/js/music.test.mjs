@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   arrange, cut, editName, mapInfo, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
-  render, sectionAt, splitSection, beatsToDraw, previewTime, addMark, moveMark, toBase, marksToBase,
+  render, sectionAt, splitSection, beatsToDraw, previewTime, addMark, moveMark, toBase, marksToBase, freshFileName, untouched,
 } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-6, `${msg ?? ""} ${a} != ${b}`);
@@ -212,4 +212,16 @@ test("a song spliced into itself shows its marks twice, but they stay one mark",
   assert.deepEqual(marksToBase(base, shown, [shown[1]], back).marks, []);
   // Unchanged, nothing changes.
   assert.deepEqual(marksToBase(base, shown, shown, back).marks, base);
+});
+
+test("a draft's song file is named after it, numbered when the name's taken", () => {
+  assert.equal(freshFileName("Short version"), "Short version.wav");
+  assert.equal(freshFileName("Short version", ["haliday_show/short version.wav", "x/Short version 2.wav"]), "Short version 3.wav");
+});
+
+test("a song is untouched until something's cut, spliced or trimmed", () => {
+  assert.ok(untouched(song, "a", 60));
+  assert.ok(!untouched(cut(song, 0, 10, 20), "a", 60));
+  assert.ok(!untouched(keep(song, 0, 0, 30), "a", 60));
+  assert.ok(!untouched(song, "b", 60));
 });
