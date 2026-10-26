@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.133
+
+- Fixed: since 0.2.132, the **Change…** window for a show's song came up with no songs to pick. It
+  works again.
+
 ## 0.2.132
 
 - New **Library → Songs**: every song in your media folder, with its length, what **Detect** found (or
