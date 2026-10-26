@@ -634,6 +634,10 @@ hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them bac
 different take, then edit whatever you like. The colours start on the palette for the time of year
 (Halloween in October, Christmas in December…) when there is one.
 
+**Longest effect** sets how long one effect may run before the look changes: **2 bars**, **4 bars**
+(to start with), **8 bars** or **Any length**. A bar is four beats, so 4 bars is about 8 seconds at
+120 BPM. **Rules** keep to it exactly; the **AI** is asked to.
+
 **Build up** (ticked to start with) lights the house the way you would by hand rather than lighting
 everything all the time. Quiet parts use only a few lights and leave the rest dark. Middling parts
 start with about half and bring in another every few bars, starting afresh in each part of the song. Only the loudest parts and the chorus use

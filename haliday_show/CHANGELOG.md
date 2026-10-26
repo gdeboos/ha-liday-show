@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.146
+
+- **✨ Generate**, and **Generate with AI** in **+ New show**, have a new **Longest effect** setting: how
+  long one effect may run before the look changes. Pick **2 bars**, **4 bars**, **8 bars** or **Any
+  length**; it starts on **4 bars** (about 8 seconds at 120 BPM). Before, quiet parts could keep one
+  look for 16 bars, around half a minute. **Rules** keep to it exactly, and the AI is asked to.
+
 ## 0.2.145
 
 - While the AI generates a show (**✨ Generate** with **Made by** set to **AI**, or **+ New show** with

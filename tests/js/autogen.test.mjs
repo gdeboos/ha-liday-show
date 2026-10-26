@@ -199,3 +199,15 @@ test("building up works with one or two lights", () => {
     assert.ok(Object.values(clips).some((list) => list.some((c) => c.start <= 4 && 4 < c.end))); // something in the intro
   }
 });
+
+test("the longest effect setting caps how long one look runs", () => {
+  for (const [maxBars, style] of [[2, "balanced"], [4, "calm"], [8, "calm"]]) {
+    const { clips } = generateShow(analysis, lights, colors, { maxBars, style });
+    for (const list of Object.values(clips)) {
+      for (const c of list) assert.ok(c.end - c.start <= maxBars * bar + 1e-6, `${c.effect} ${c.end - c.start}s over ${maxBars} bars (${style})`);
+    }
+  }
+  // Without a cap, calm looks run a whole 8-bar section here.
+  const { clips } = generateShow(analysis, lights, colors, { style: "calm" });
+  assert.ok(Object.values(clips).flat().some((c) => c.end - c.start > 4 * bar));
+});
