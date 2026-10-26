@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.143
+
+- Your browser's **Back** and **Forward** buttons (and swiping back on a phone) now move between
+  HA-liday Show's tabs and pages, in Home Assistant too. Before, **Back** left HA-liday Show
+  altogether. From an open show **Back** goes to **Your shows**, and from a song in the Music editor
+  to **Your songs**, asking first if you'd lose changes, as **← All shows** and **← All songs** do.
+- Without Home Assistant (Docker or Python), reloading the page now keeps you on the tab or page you
+  were on.
+
 ## 0.2.142
 
 - Songs over 16 MB can be added now. Through Home Assistant they used to fail with "Maximum request

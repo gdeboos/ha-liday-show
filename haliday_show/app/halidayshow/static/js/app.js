@@ -4190,7 +4190,7 @@ async function doRemove(forGood) {
         app.dirty = false;
         app.chosen = false;
         await openShow(null, { chosen: false });
-        showView("editor");
+        showView("editor", { push: false }); // the show is gone, so Back mustn't lead to it
       } else await refreshShows();
     } else {
       // The server changes the shows' songs on disk, so the open show must be on disk first, or a
@@ -5605,7 +5605,7 @@ const SECTIONS = { library: ["shows", "songs", "palettes", "presets", "playlists
 const sectionPage = { library: "shows", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
-function showView(view) {
+function showView(view, { push = true } = {}) {
   if (view === "labs" && !labsOn()) view = "settings";
   const section = Object.keys(SECTIONS).find((k) => SECTIONS[k].includes(view));
   if (section) sectionPage[section] = view;
@@ -5632,6 +5632,58 @@ function showView(view) {
   if (page === "settings") renderCopies();
   if (page === "playlists") loadPlaylists(); else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); }
+  rememberPage(page, push);
+}
+
+// The browser's Back and Forward move between pages of HA-liday Show (inside Home Assistant too:
+// the app's frame shares the tab's history), instead of leaving it. Each page visited is an entry,
+// named in the address after # and numbered, so a refused Back can be undone step for step.
+let shownPage = null, undoing = false, navigating = false;
+let shownN = (() => { try { return Number.isInteger(history.state?.n) ? history.state.n : 0; } catch { return 0; } })();
+const isPage = (p) => typeof p === "string" && /^[a-z]+$/.test(p) && !!$(`view-${p}`);
+
+function rememberPage(page, push) {
+  if (page === shownPage && push) return;
+  const first = shownPage === null;
+  shownPage = page;
+  try {
+    if (push && !first) history.pushState({ page, n: (shownN += 1) }, "", `#${page}`); // drops any Forward
+    else history.replaceState({ page, n: shownN }, "", `#${page}`);
+  } catch { /* a sandboxed frame may refuse; the pages still work */ }
+}
+
+// Back or Forward: go to that page as the app's own buttons would, asking first where they would.
+async function pageFromHistory(e) {
+  if (undoing) { undoing = false; return; } // the browser putting back a refused move
+  const page = e.state?.page || location.hash.slice(1);
+  const n = Number.isInteger(e.state?.n) ? e.state.n : shownN;
+  // Undo the move (all its steps) and stay where you are.
+  const refuse = () => {
+    if (n === shownN) return;
+    undoing = true;
+    history.go(shownN - n);
+  };
+  if (!isPage(page) || navigating || document.querySelector("dialog[open]")) { refuse(); return; }
+  navigating = true;
+  try {
+    if (shownPage === "editor" && page === "showlist") {
+      if (!(await confirmDiscard())) { refuse(); return; }
+      app.chosen = false;
+    }
+    if (shownPage === "music" && page === "songlist") {
+      if (music.dirty && !confirm("Go back to your songs? Your unsaved edits in the Music editor will be lost.")) { refuse(); return; }
+      music.dirty = false;
+      app.songChosen = false;
+    }
+    // Forward again to the show or song that was open.
+    if (page === "editor" && !app.chosen && app.showId) app.chosen = true;
+    if (page === "music" && !app.songChosen && music.base) app.songChosen = true;
+    shownN = n;
+    showView(page, { push: false }); // also puts the page that actually showed in the address
+    if (shownPage === "showlist") renderShowLists();
+  } finally {
+    navigating = false;
+  }
 }
 
 function wire() {
@@ -5986,7 +6038,11 @@ async function init() {
     house.load().then(renderHouseLights);
     const shows = await api("api/shows");
     await openShow(null, { chosen: false });
+    // Reloaded or bookmarked on a page: open that page (an editor opens on its list).
+    const wanted = location.hash.slice(1);
     showView("editor");
+    if (isPage(wanted) && wanted !== shownPage) showView(wanted, { push: false });
+    window.addEventListener("popstate", pageFromHistory);
     // A fresh install opens the setup guide, once.
     if (!app.deviceList.length && !shows.length && !prefs.get("wizard.done", false)) openWizard();
   } catch (e) {
