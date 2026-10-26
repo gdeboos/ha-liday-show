@@ -25,3 +25,21 @@ export function queueText(view) {
   if (!parts.length) return view.on ? "No visitors' shows waiting." : "";
   return parts.join(" ");
 }
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const md = (s) => `${Number(s.slice(3))} ${MONTHS[Number(s.slice(0, 2)) - 1]}`;
+
+// Whether a "MM-DD" range (coming round every year, over New Year if need be) includes a day.
+export function inDates(item, todayIso) {
+  if (!item.from) return true;
+  const day = todayIso.slice(5, 10);
+  return item.from <= item.to ? item.from <= day && day <= item.to : day >= item.from || day <= item.to;
+}
+
+// One line about when visitors can pick a show or playlist.
+export function itemText(item, todayIso) {
+  const kind = item.kind === "playlist" ? "Playlist" : "Show";
+  if (!item.from) return `${kind} · all year`;
+  const range = `${md(item.from)} to ${md(item.to)} every year`;
+  return `${kind} · ${range} · ${inDates(item, todayIso) ? "visitors can pick it now" : `coming soon until ${md(item.from)}`}`;
+}

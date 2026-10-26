@@ -1045,7 +1045,9 @@ async def test_upload_parts_one_at_a_time_and_capped(client, tmp_path, monkeypat
 async def test_public_page_settings_are_checked(client):
     assert (await client.put("/api/public", data="nope")).status == 400
     assert (await client.put("/api/public", json=[1, 2])).status == 400
-    resp = await client.put("/api/public", json={"on": True, "shows": ["party", "Not An Id"], "per_phone": 0,
-                                                 "queue": 500})
+    resp = await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"},
+                                                                       {"kind": "show", "id": "Not An Id"}],
+                                                 "per_phone": 0, "queue": 500})
     view = await resp.json()
-    assert view["on"] is True and view["shows"] == ["party"] and view["per_phone"] == 1 and view["queue"] == 20
+    assert view["on"] is True and view["per_phone"] == 1 and view["queue"] == 20
+    assert view["items"] == [{"kind": "show", "id": "party", "from": "", "to": ""}]

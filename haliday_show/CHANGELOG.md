@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.156
+
+- The public page has its own **Public page** tab along the top. It appears once you tick **Let
+  visitors start shows** under **Setup → Settings**. The shows and playlists you'd already ticked are
+  on it, available all year.
+- Add shows and playlists with **+ Add**, and take them off with **Remove**.
+- Each can have dates: tick **Only from** and pick the first and last day (say 1 Dec until 6 Jan).
+  They come round every year. Outside them, visitors see it greyed out under **Coming soon** with the
+  day it starts, and when nothing can be picked yet, the page says "Coming soon on 1 December".
+- Archived shows are never offered to visitors, on their own or inside a playlist.
+- The queue, **Requests per phone** and **Queue length** have moved to the new tab.
+
 ## 0.2.155
 
 - In the **Music editor** you can now add, name, recolour and move **marks** straight after a cut, without

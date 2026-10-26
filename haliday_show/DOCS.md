@@ -21,7 +21,7 @@ the Home Assistant sidebar.
 
 ## Finding your way
 
-Four tabs run along the top:
+Four tabs run along the top, and a fifth, **Public page**, once you've turned it on:
 
 | Tab | What's there |
 | --- | --- |
@@ -29,6 +29,7 @@ Four tabs run along the top:
 | **Music editor** | Where songs are cut, shortened, joined and detected. |
 | **Library** | **Shows** and **Songs** (all of yours), **Palettes** and **Presets** (the colours and effect settings you reuse) and **Playlists** (shows back to back, by hand or on a schedule). |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
+| **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](#the-public-page)). |
 
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
 page you last had open. Below, "the House tab" and so on mean that page.
@@ -1028,11 +1029,21 @@ Home Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to you
 The public page lets people passing by start a show from their phone. They see the shows and
 playlists you've picked, each with a **▶ Start** button, and nothing else of HA-liday Show.
 
-1. Open **Setup → Settings → Public page**.
-2. Tick **Let visitors start shows**.
-3. Tick the shows and playlists visitors can pick. Only saved shows are listed.
-4. To try it, open the address the card shows on your phone, connected to your home Wi-Fi. It's
+1. Open **Setup → Settings** and tick **Let visitors start shows** under **Public page**. A **Public
+   page** tab appears along the top.
+2. On the **Public page** tab, pick a show or playlist next to **+ Add** and press it. Add as many as
+   you like. Only saved shows are offered; archived ones aren't, and never show to visitors.
+3. To try it, open the address the tab shows on your phone, connected to your home Wi-Fi. It's
    HA-liday Show's address with `:18099` on the end, such as `http://192.168.1.20:18099`.
+
+**Dates.** Each show or playlist is available all year until you tick **Only from** and pick the
+first and last day, such as 1 Dec until 6 Jan. The dates come round every year, and can run over New
+Year. Outside them, visitors see it greyed out under **Coming soon** with the day it starts ("From 1
+December"). When nothing can be picked yet, the page says when the first one starts: "Coming soon on
+1 December". **Remove** takes something off the public page; the show or playlist itself stays.
+
+A show you archive disappears from the public page straight away, and from inside any playlist
+visitors pick. The tab still lists it, marked as archived, so it comes back if you restore it.
 
 What visitors get:
 
@@ -1057,16 +1068,16 @@ Keeping it fair:
 
 You stay in charge. Playing a show from the editor or an automation goes on straight away, and the
 visitors' queue carries on afterwards. **■ Stop** (or stopping the song on the speaker) stops
-everything and empties the queue, and so does **Clear the queue** on the card. Turning off **Let
+everything and empties the queue, and so does **Clear the queue** on the **Public page** tab. Turning off **Let
 visitors start shows** empties the queue too, and visitors see "No shows right now".
 
 The public page has its own port, **18099**, so nothing of the editor can be reached through it. The
-port opens the first time you change a setting on the card. If another app already uses 18099, pick
+port opens the first time you turn on **Let visitors start shows**. If another app already uses 18099, pick
 another under **Public page port** on the app's **Configuration** tab in Home Assistant, then restart
 the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
 
-> **Coming next:** reaching the page from outside your home (for a QR code on a sign), opening hours
-> and dates, and a printable sign.
+> **Coming next:** opening hours, reaching the page from outside your home (for a QR code on a sign),
+> and a printable sign.
 
 ## 6. Automations
 
@@ -1153,7 +1164,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 
 | Section | What's there |
 | --- | --- |
-| Public page | Lets people passing by start a show from their phone (see [The public page](#the-public-page)). |
+| Public page | **Let visitors start shows**, which adds the **Public page** tab (see [The public page](#the-public-page)). |
 | AI | Which AI **Describe it** uses, or how to set one up (below). |
 | Layout | Where every editor panel sits, including hidden ones, and **Reset layout**. |
 | Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |

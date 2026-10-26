@@ -37,7 +37,7 @@ HA_LOCATION_RETRY_S = 60  # Home Assistant may still be starting
 Where = tuple[float, float] | None  # latitude and longitude, for sunset
 
 
-def _in_dates(s: dict, d: date) -> bool:
+def in_dates(s: dict, d: date) -> bool:
     if not s["from"]:
         return True
     md = f"{d.month:02d}-{d.day:02d}"
@@ -59,7 +59,7 @@ def start_on(s: dict, d: date, where: Where) -> datetime | None:
 
 def _window(s: dict, d: date, where: Where = None) -> tuple[datetime, datetime] | None:
     """The window that starts on day d, if the schedule plays that day."""
-    if d.weekday() not in s["days"] or not _in_dates(s, d):
+    if d.weekday() not in s["days"] or not in_dates(s, d):
         return None
     if (start := start_on(s, d, where)) is None:
         return None
