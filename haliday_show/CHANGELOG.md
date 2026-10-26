@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.162
+
+- The public page has more room around its headings, so **Coming soon** no longer sits right on top of
+  the shows under it.
+
 ## 0.2.161
 
 - The public page now needs a code. Visitors open a link with your code in it (the one your QR code
