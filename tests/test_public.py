@@ -203,7 +203,8 @@ async def test_visitors_need_the_code_from_the_sign(client):
     code = public.load(client.app[server.STORAGE])["code"]
     assert len(code) == 8 and code != "mine123"  # made by the app, not taken from the editor
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", code=False)
-    assert st["locked"] and set(st) == {"open", "locked", "look"} and "title" not in st["look"]
+    assert st["locked"] and set(st) == {"open", "locked", "look"}
+    assert set(st["look"]) == {"theme", "mode", "spacing", "corners", "size", "borders", "colours"}  # no words or picture
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party", "code": "nope1234"},
                                      code=False)
     assert status == 403 and "Scan the code" in text
