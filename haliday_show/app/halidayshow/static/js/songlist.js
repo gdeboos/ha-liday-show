@@ -49,7 +49,7 @@ export function songFamilies(rows, drafts) {
   const byKey = new Map(rows.map((r) => [r.key, r]));
   const draftOf = new Map(); // a made file's key -> the draft that made it (the latest, if several)
   for (const d of drafts) {
-    if (!d.made || !d.base) continue;
+    if (!d.made || !d.base || songKey(d.made) === songKey(d.base)) continue;
     const k = songKey(d.made), seen = draftOf.get(k);
     if (!seen || (d.modified || 0) > (seen.modified || 0)) draftOf.set(k, d);
   }
@@ -77,6 +77,7 @@ export function songFamilies(rows, drafts) {
   for (const d of drafts) {
     if (!d.base || !byKey.has(songKey(d.base))) continue;
     if (d.made && byKey.has(songKey(d.made)) && draftOf.get(songKey(d.made)) === d) continue; // shown with its file
+    if (d.made && songKey(d.made) === songKey(d.base)) { /* made over its own song: just a draft */ }
     family(rootOf(byKey.get(songKey(d.base)))).drafts.push(d);
   }
   const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: "base" });
