@@ -13,6 +13,7 @@ smart plug.
 - 💬 **Describe it** in words and an AI adds the effects (Claude, or any AI set up in Home Assistant)
 - 🏠 Watch the show on a photo of your house, bulb by bulb, before it runs for real
 - 📦 Plan shows for lights that haven't arrived yet
+- 📅 Playlists play your shows back to back every evening, at set times or from sunset
 - ⏯️ Play the song on any Home Assistant speaker and start shows from automations (MQTT or
   `hassio.app_stdin`)
 

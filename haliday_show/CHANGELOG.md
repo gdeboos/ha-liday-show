@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.151
+
+- The user guide, and the app's page in Home Assistant's app store, now cover everything added
+  lately. The **Library** tab's pages (Shows, Songs, Palettes, Presets, Playlists), playlists and
+  schedules in the quick start, the Show player when you have no speaker, and how **Generate** builds
+  up. Nothing in HA-liday Show itself has changed.
+
 ## 0.2.150
 
 - **Suggest cuts** in the **Music editor** now opens in its own window, so you don't have to go back and

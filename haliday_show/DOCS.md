@@ -26,7 +26,7 @@ Four tabs run along the top:
 | --- | --- |
 | **Show editor** | Where shows are made: the timeline, previews and effect settings. |
 | **Music editor** | Where songs are cut, joined and detected. |
-| **Library** | **Palettes** and **Presets**, the colours and effect settings you reuse across shows. |
+| **Library** | **Shows** and **Songs** (all of yours), **Palettes** and **Presets** (the colours and effect settings you reuse) and **Playlists** (shows back to back, by hand or on a schedule). |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
@@ -36,8 +36,8 @@ Your browser's **Back** and **Forward** buttons (or swiping back on a phone) mov
 pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Your shows**, as
 **← All shows** does; from a song in the Music editor, it goes to **Your songs**. Both ask first if
 you'd lose changes. Going back to **Your shows** stops the show if it's playing. **Back** does nothing
-while a window is open: close it first. Without Home
-Assistant (Docker or Python), reloading the page keeps you on the same tab or page.
+while a window is open: close it first. Without Home Assistant (Docker or Python), reloading the
+page keeps you on the same tab or page.
 
 ## Requirements
 
@@ -54,7 +54,8 @@ Assistant (Docker or Python), reloading the page keeps you on the same tab or pa
   - Any **Home Assistant** light or switch, such as Zigbee or Hue bulbs, or a smart plug for a prop.
   - **Twinkly** lights (experimental).
 - Optional: a Home Assistant media player for the music. Without one, songs play in your browser
-  while you edit, and shows started from automations play the lights only.
+  while you edit, and shows started by a playlist or an automation play their music in the
+  [Show player](#music-with-no-speaker-the-show-player) (or the lights only).
 - Optional: the Mosquitto broker app and MQTT integration, for show entities in automations.
 
 ## Quick start
@@ -72,7 +73,9 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
 4. **Show editor**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, choose **Start empty**, drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Run it from an automation with the MQTT **Play** button or the `hassio.app_stdin` action.
+5. Play it by itself: put it in a [playlist](#playlists) under **Library → Playlists** and tick
+   **Play on a schedule** (at set times or from sunset), or start it from an automation with the MQTT
+   **Play** button or the `hassio.app_stdin` action.
 
 > **Just want to see it working?** On a fresh install, press **Try the demo** under **Setup → Devices**
 > (or **Setup → Settings → Demo**). See [The demo](#the-demo).
@@ -642,7 +645,7 @@ the lot. It needs an AI to be set up first; see [Setting up the AI](#setting-up-
 ### Generate
 
 **✨ Generate** in the Show panel makes a first draft of the whole show from the song.
-Pick the **Colours** (any palette) and a **Style** (Calm, Balanced or Lively), and it fills every light
+Pick the **Colours** (any palette) and a **Style** (Calm, Balanced or Lively), and it fills your lights
 with effects that follow the song: soft, slow looks in quiet parts, faster ones that move on the beat
 as it gets louder, every light moving together in the chorus, the same looks each time a section comes
 back, and a change every few bars. Quiet starts and ends fade in and out, and with lights traced on the
@@ -658,11 +661,12 @@ pieces, each in the next colours of your palette, so the look keeps changing.
 
 **Build up** (ticked to start with) lights the house the way you would by hand rather than lighting
 everything all the time. Quiet parts use only a few lights and leave the rest dark. Middling parts
-start with about half and bring in another every few bars, starting afresh in each part of the song. Only the loudest parts and the chorus use
-every light at once (in a song with neither, its loudest part does), so every light gets its moment.
-A song that hasn't been analysed into parts fills every light, as before. A part of the song that comes back uses the same lights each time, and the parts
-of a split light (like **Pillars · Left** and **Pillars · Right**) go on and off together. Untick it to
-fill every light all the way through, as before. It works for the **AI** too.
+start with about half and bring in another every few bars, starting afresh in each part of the song.
+Only the loudest parts and the chorus use every light at once (in a song with neither, its loudest
+part does), so every light gets its moment. A part of the song that comes back uses the same lights
+each time, and the parts of a split light (like **Pillars · Left** and **Pillars · Right**) go on and
+off together. A song that hasn't been analysed into parts fills every light. Untick it to fill every
+light all the way through. It works for the **AI** too.
 
 Lights on **Per bulb**, **App segments** or **Whole light only** can only change a few times a second,
 so Generate gives them looks that suit that: colour changes, fades and pulses of the whole light, still
@@ -1210,10 +1214,11 @@ snapshots or DIYs) for as long as the clip lasts, then the show takes the light 
 
 ## Where things are stored
 
-Shows, devices, palettes, your presets, the house photo and settings live in the app's config folder
+Shows, devices, palettes, your presets, playlists and their schedules, each song's beats, parts and
+notes, the house photo and settings live in the app's config folder
 (`/addon_configs/<slug>_haliday_show/`), so they are included in Home Assistant backups. Uploaded songs
-go to `/media/haliday_show/` so media players can play them. The editor layout, the editing speaker
-and the experimental switch are kept in each browser.
+go to `/media/haliday_show/` so media players can play them. The editor layout, the editing speaker,
+the Show player's light offset and the experimental switch are kept in each browser.
 
 ## Running without Home Assistant
 
@@ -1229,7 +1234,10 @@ It works the same as the Home Assistant app, with a few differences:
   Or set `HALIDAY_SHOW_ALLOW_ALL=1` to let anyone on your home network in without one.
 - It must be on the same network as your lights, with full network access (for Docker, host
   networking), as the app is.
-- There's no `hassio.app_stdin` action. Use the MQTT entities in automations instead.
+- There's no `hassio.app_stdin` action. Use the MQTT entities in automations instead, or a playlist
+  with [a schedule](#playing-on-a-schedule).
+- There's no Home Assistant speaker unless you connect one (below). For music with scheduled shows,
+  leave the [Show player](#music-with-no-speaker-the-show-player) open on a computer with speakers.
 
 You set everything with these settings (environment variables). All are optional.
 

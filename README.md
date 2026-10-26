@@ -30,8 +30,9 @@ its own with Docker or Python.
 
 - 🎵 **Hears the song for you.** Tempo, beats, bars and sections (intro, verse, chorus…) are detected
   in your browser as soon as you add a song, and every effect snaps to them.
-- 🪄 **A first draft in one click.** **Generate** fills every light with effects that follow the
-  music, in the palette and style you pick, ready for you to tweak. A new show can start that way.
+- 🪄 **A first draft in one click.** **Generate** fills your lights with effects that follow the
+  music, in the palette and style you pick, building up the way you would by hand: a few lights in
+  quiet parts, every light in the chorus. Ready for you to tweak.
 - 💬 **Or just describe it.** "Red and green chase on the roof in every chorus" and an AI adds it,
   using Claude or any AI you've set up in Home Assistant, local models included.
 - 🏠 **See it on your house.** Trace your lights on a photo and the editor plays the show there,
@@ -39,8 +40,9 @@ its own with Docker or Python.
 - 🔌 **Works with the lights you have.** Govee, WLED, pixel controllers over DDP or E1.31, Twinkly, and
   any Home Assistant light or smart plug, all in one show.
 - 📦 **Plan before you buy.** Add lights that haven't arrived yet and link them to the real ones later.
-- ⏯️ **Runs itself.** Shows play on any Home Assistant speaker and start from automations through MQTT
-  entities or the `hassio.app_stdin` action.
+- ⏯️ **Runs itself.** Put shows in a playlist that plays every evening, at set times or from sunset.
+  The music plays on any Home Assistant speaker, or in a browser left open on a computer with
+  speakers. Automations can start shows too, through MQTT entities or `hassio.app_stdin`.
 - 🐳 **Runs where you want.** A Home Assistant app, or on its own with Docker or Python.
 
 ## 📸 A closer look
@@ -157,7 +159,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Detect the song's tempo, beats, bars and sections automatically, in the browser, with a note on
   each section saying what it sounds like and how to light it (written by the AI, if you have one)
 - Generate a first draft of a whole show from the song in one click, in a palette and style you pick,
-  building up like a person would: a few lights in quiet parts, all of them in the chorus
+  building up like a person would (a few lights in quiet parts, all of them in the chorus), with a
+  limit on how long one effect runs; with an AI, a window shows it working and Cancel stops it
 - Describe effects in words and an AI adds them, using Claude with your API key or any AI set up in
   Home Assistant, including local ones
 - Effect suggestions for the selected part of the song, timed to its tempo
