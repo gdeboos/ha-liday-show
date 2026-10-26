@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.148
+## 0.2.149
 
 - Going back to **Your shows** (with **← All shows** or your browser's **Back**) now stops the show if
   it was playing. The song used to carry on in the background with nothing on screen to stop it.
