@@ -3297,7 +3297,7 @@ function scheduleEditor(pl) {
       times.append(warn);
     }
     const days = document.createElement("div");
-    days.className = "day-chips days";
+    days.className = "day-chips";
     DAYS.forEach((name, d) => {
       const c = document.createElement("input");
       c.type = "checkbox";
