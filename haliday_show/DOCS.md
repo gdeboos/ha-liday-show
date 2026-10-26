@@ -465,6 +465,11 @@ The Song panel shows the show's song with its length, tempo and sections. Press
 M4A, AAC, OGG, Opus, WAV, FLAC or WebM). Uploads go to `/media/haliday_show/` so media players can play
 them. For a lights-only show, choose **No song** and set its **Length**.
 
+**Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
+tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
+list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Upload a song…**
+adds one.
+
 ### Editing a song
 
 The **Music editor** cuts, shortens and splices songs before you build a show. Pick a

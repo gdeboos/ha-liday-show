@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.132
+
+- New **Library → Songs**: every song in your media folder, with its length, what **Detect** found (or
+  "not detected yet") and which shows use it. **Find** narrows the list by name, folder or show.
+  **Edit** opens a song in the **Music editor**, and **Upload a song…** adds one.
+
 ## 0.2.131
 
 - The **Show editor** now opens on **Your shows**, a list of every show with its song, its length and

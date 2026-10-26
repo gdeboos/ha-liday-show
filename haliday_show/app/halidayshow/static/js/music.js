@@ -332,8 +332,9 @@ export class MusicEditor {
     return key;
   }
 
-  async open(ref) {
-    if (this.dirty && !confirm("Start again with this song? Your unsaved edits will be lost.")) {
+  // asked: the caller already checked about unsaved edits.
+  async open(ref, { asked = false } = {}) {
+    if (this.dirty && !asked && !confirm("Start again with this song? Your unsaved edits will be lost.")) {
       this.fillSongLists();
       return;
     }

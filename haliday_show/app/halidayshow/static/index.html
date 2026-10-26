@@ -317,6 +317,7 @@
 <div id="section-library" class="section" hidden>
   <nav class="subnav" aria-label="Library">
     <button class="subtab" data-view="shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><b>Shows</b><span>All your shows</span></button>
+    <button class="subtab" data-view="songs"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><b>Songs</b><span>Your songs folder</span></button>
     <button class="subtab" data-view="palettes"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg><b>Palettes</b><span>Colour sets</span></button>
     <button class="subtab" data-view="presets"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg><b>Presets</b><span>Ready-made effect settings</span></button>
     <button class="subtab" data-view="playlists"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Playlists</b><span>Shows back to back</span></button>
@@ -327,6 +328,17 @@
   <p class="hint">Open a show to change it. Nothing in a show changes until you open it.</p>
   <div class="show-list" data-show-list></div>
   <p><button type="button" class="primary" data-show-new>+ New show</button></p>
+</main>
+<main id="view-songs" class="view showlist" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Songs</h2>
+  <p class="hint">Every song in your songs folder, and which shows use it. <b>Edit</b> opens a song in the
+    Music editor.</p>
+  <div class="group song-tools">
+    <label>Find <input id="song-filter" type="search" placeholder="Name, folder or show" autocomplete="off"></label>
+    <label class="button" title="Upload a song to your songs folder">Upload a song…<input id="songs-upload" type="file" accept="audio/*" hidden></label>
+    <span id="song-count" class="hint" aria-live="polite"></span>
+  </div>
+  <div id="song-list" class="show-list"></div>
 </main>
 <main id="view-palettes" class="view" hidden>
   <p class="hint">Use a palette from an effect's settings: click a colour to drop it into a colour field, or

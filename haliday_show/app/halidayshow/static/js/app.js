@@ -24,6 +24,7 @@ import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./sc
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { copyName, showRows } from "./showlist.js";
+import { filterRows, songRows } from "./songlist.js";
 import { Timeline, fmtTime } from "./timeline.js";
 
 const $ = (id) => document.getElementById(id);
@@ -3824,6 +3825,135 @@ function showRow(r) {
   return row;
 }
 
+// Library → Songs --------------------------------------------------------------
+let songRowsCache = [], songsMore = false, songsAsked = 0;
+async function renderSongsPage() {
+  const mine = ++songsAsked; // only the latest answer is drawn
+  try {
+    const [list, shows] = await Promise.all([api("api/songs"), api("api/shows")]);
+    if (mine !== songsAsked) return;
+    songRowsCache = songRows(list.songs, shows);
+    songsMore = list.more;
+  } catch (e) { status(`Couldn't list your songs: ${e.message}`, true, "songs"); return; }
+  status("", "info", "songs");
+  drawSongRows();
+}
+
+function drawSongRows() {
+  const rows = filterRows(songRowsCache, $("song-filter").value);
+  const box = $("song-list");
+  songSeen?.disconnect();
+  const all = `${songRowsCache.length}${songsMore ? "+" : ""}`;
+  $("song-count").textContent = !songRowsCache.length ? ""
+    : (rows.length === songRowsCache.length ? `${all} song${rows.length === 1 && !songsMore ? "" : "s"}` : `${rows.length} of ${all}`)
+      + (songsMore ? ". Only the first 2000 songs in your media folder are listed." : "");
+  if (!rows.length) {
+    box.removeAttribute("role");
+    box.innerHTML = songRowsCache.length
+      ? `<p class="hint">No songs match that.</p>`
+      : `<p class="hint">No songs yet. Press <b>Upload a song…</b> to add one.</p>`;
+    return;
+  }
+  box.setAttribute("role", "list");
+  box.setAttribute("aria-label", "Your songs");
+  box.replaceChildren(...rows.map(songRow));
+}
+
+function songRow(r) {
+  const row = document.createElement("div");
+  row.className = "show-row";
+  row.setAttribute("role", "listitem");
+  const main = document.createElement("div");
+  main.className = "show-main";
+  const head = document.createElement("div");
+  const name = document.createElement("b");
+  name.className = "show-name";
+  name.textContent = r.name;
+  head.append(name);
+  if (r.folder) {
+    const where = document.createElement("span");
+    where.className = "hint";
+    where.textContent = `in ${r.folder}`;
+    head.append(where);
+  }
+  const details = document.createElement("div");
+  details.className = "hint";
+  // "Length" is there for screen readers; on screen the time speaks for itself.
+  const label = document.createElement("span");
+  label.className = "sr-only";
+  label.textContent = "Length ";
+  const len = document.createElement("span");
+  len.textContent = "…";
+  details.append(label, len, ` · ${r.found}`);
+  const uses = document.createElement("div");
+  uses.className = "hint";
+  uses.textContent = r.uses;
+  main.append(head, details, uses);
+  const actions = document.createElement("div");
+  actions.className = "group show-actions";
+  const edit = button("Edit", () => editSong(r.ref), "primary");
+  edit.setAttribute("aria-label", `Edit ${r.name} in the Music editor`);
+  actions.append(edit);
+  row.append(main, actions);
+  // The length is read once the row is on screen; a redraw starts over with new rows.
+  row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
+  songSeen ? songSeen.observe(row) : row._songLength();
+  return row;
+}
+
+async function editSong(ref) {
+  // Ask before switching tabs, rather than after.
+  if (music.dirty && !confirm("Start again with this song? Your unsaved edits in the Music editor will be lost.")) return;
+  showView("music");
+  await refreshAudio().catch(() => {});
+  music.open(ref, { asked: true });
+}
+
+// Song lengths, read from each file's header by the browser, a few at a time. Kept for the visit,
+// by file size and time too, so a song saved over or uploaded again is read afresh.
+const songLengths = new Map(), songLengthQueue = [];
+let songLengthsRunning = 0;
+const songSeen = typeof IntersectionObserver === "function"
+  ? new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { songSeen.unobserve(e.target); e.target._songLength?.(); }
+  }) : null;
+function songLength(r) {
+  const key = `${r.key}|${r.size}|${r.modified}`;
+  if (!songLengths.has(key)) {
+    songLengths.set(key, new Promise((resolve) => {
+      songLengthQueue.push(() => readSongLength(r.ref).then(resolve));
+      pumpSongLengths();
+    }));
+  }
+  return songLengths.get(key);
+}
+function pumpSongLengths() {
+  while (songLengthsRunning < 3 && songLengthQueue.length) {
+    songLengthsRunning++;
+    songLengthQueue.shift()().finally(() => { songLengthsRunning--; pumpSongLengths(); });
+  }
+}
+function readSongLength(ref) {
+  return new Promise((resolve) => {
+    const a = new Audio();
+    a.preload = "metadata";
+    let settled = false;
+    const done = (text) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      a.removeAttribute("src");
+      a.load();
+      resolve(text);
+    };
+    // A file that never answers mustn't hold up the rest.
+    const timer = setTimeout(() => done("?:??"), 10000);
+    a.addEventListener("loadedmetadata", () => done(Number.isFinite(a.duration) ? fmtTime(a.duration, false) : "?:??"), { once: true });
+    a.addEventListener("error", () => done("can't play here"), { once: true });
+    a.src = audioUrl(ref);
+  });
+}
+
 // After the list is redrawn, puts keyboard focus back on a row's button in the list you're looking at.
 function focusRow(id, act) {
   const box = [...document.querySelectorAll("[data-show-list]")].find((b) => b.offsetParent);
@@ -4919,7 +5049,7 @@ function frame() {
 
 // wiring ----------------------------------------------------------------------
 // Library and Setup each hold several pages; each remembers the page last open in it.
-const SECTIONS = { library: ["shows", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
+const SECTIONS = { library: ["shows", "songs", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
 const sectionPage = { library: "shows", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
@@ -4939,6 +5069,7 @@ function showView(view) {
   for (const k of Object.keys(SECTIONS)) $(`section-${k}`).hidden = k !== top;
   for (const v of ["showlist", "editor", "music", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
   if (page === "showlist" || page === "shows") renderShowLists();
+  if (page === "songs") renderSongsPage();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
@@ -4964,6 +5095,14 @@ function wire() {
     app.changed();
   });
   $("btn-save").addEventListener("click", saveClicked);
+  $("song-filter").addEventListener("input", drawSongRows);
+  $("songs-upload").addEventListener("change", async (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    const ref = await music.upload(f);
+    if (ref) { status(`Uploaded ${ref.path.split("/").pop()}`, "saved", "songs"); await refreshAudio().catch(() => {}); renderSongsPage(); }
+  });
   $("btn-all-shows").addEventListener("click", async () => {
     if (!(await confirmDiscard())) return;
     const id = app.showId;

@@ -640,6 +640,12 @@ async def list_audio(request):
     return web.json_response(request.app[STORAGE].list_audio())
 
 
+async def list_songs(request):
+    # The media folder can be big (it's all of Home Assistant's media), so walk it off the event loop,
+    # which also streams the lights.
+    return web.json_response(await asyncio.to_thread(request.app[STORAGE].list_songs))
+
+
 async def get_audio(request):
     p = request.app[STORAGE].audio_path(request.query.get("source", ""),
                                         request.query.get("path", ""))
@@ -1328,6 +1334,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/audio", list_audio)
     r.add_post("/api/audio", upload_audio)
     r.add_get("/api/audio/file", get_audio)
+    r.add_get("/api/songs", list_songs)
     r.add_get("/api/audio/info", get_song_info)
     r.add_put("/api/audio/info", put_song_info)
     r.add_get("/api/speakers", list_speakers)
