@@ -219,7 +219,9 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .music .toolbar + .toolbar { margin-top: 8px; }
 .music-head { justify-content: space-between; margin-bottom: 4px; }
 .music-head .save-state { min-width: 0; }
-.music-cuts { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.cuts-dialog { width: min(640px, calc(100vw - 32px)); }
+.cuts-dialog .dialog-note { margin: 0; }
+.music-cuts { display: flex; flex-direction: column; gap: 6px; }
 .cut-option { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 6px 8px;
   border: 1px solid var(--line); border-radius: 6px; }
 .cut-option.shown { border-color: var(--danger); }

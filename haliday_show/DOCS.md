@@ -563,17 +563,17 @@ saved, you're asked first.
 
 #### Suggest cuts
 
-To make the song (or one part of it) shorter without hearing the join, use **Suggest cuts** in the
-**Edit** card. Pick **the whole song** or a section under **Shorten**, type how long you'd like it **to
-about** (as 1:30 or 90; it starts at half a section or three quarters of the song), and press **✂ Find
-cuts**. You get up to three options. Each takes out whole bars, in 4- and 8-bar phrases where it can,
+To make the song (or one part of it) shorter without hearing the join, press **✂ Suggest cuts…** in
+the **Edit** card, or **✂ Shorten…** on a section you've picked in the lane. A window opens. Pick **the
+whole song** or a section under **Shorten**, type how long you'd like it **To about** (as 1:30 or 90; it
+starts at half a section or three quarters of the song), and press **Find cuts →**. You get up to three
+options. Each takes out whole bars, in 4- and 8-bar phrases where it can,
 where the music either side of the join matches: a loop that repeats, or a verse and chorus that come
 round again. For the whole song an option can be several cuts, chosen from parts that are heard again
 elsewhere. Each says how much shorter it makes things and how well its joins match (**smooth join**,
 **good join** or **join may be heard**). Press a cut's **▶** to hear a few seconds either side of its
-join (what it takes out is shown in red), then **Use** to make the cut; **Undo** takes it back. A section
-you've picked in the lane has a **✂ Shorten…** button that sets this up for that section. Suggestions
-follow the song's bars, so press **Detect** first.
+join (what it takes out is shown in red), then **Use** to make the cut and close the window; **Undo** takes
+it back. **← Back** tries another length. Suggestions follow the song's bars, so press **Detect** first.
 
 ### Detecting in the Music editor
 
