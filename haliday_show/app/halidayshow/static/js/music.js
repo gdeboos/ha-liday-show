@@ -685,7 +685,7 @@ export class MusicEditor {
       this.fillSongLists();
       $("music-src").value = JSON.stringify(ref);
       $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path));
-      this.host.status(`Saved ${ref.path}. Pick it under Song in the editor.`);
+      this.host.status(`Saved ${ref.path}. Pick it under Song in the editor.`, "saved");
       if (carry) {
         await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
         this.info = carry;

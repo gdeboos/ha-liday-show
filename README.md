@@ -316,6 +316,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/music.js                         Music tab: cutting, trimming and splicing songs
     js/volume.js                        The song volume slider shared by the Editor and Music tabs
     js/songload.js                      Fetching a song, and saying plainly why one did not load
+    js/statusline.js                    The message spot in the top bar: saved, settled and error states
     js/analysis.js                      Song analysis: tempo, beats, bars and sections
     js/analysis-worker.js               Runs the analysis off the main thread
     js/autogen.js                       Generates a draft show from the analysis

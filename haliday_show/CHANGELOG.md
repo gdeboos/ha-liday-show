@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.127
+
+- Saving is easier to notice. When a show, your lights, palettes, presets, playlists or the house
+  photo save, the top right lights up green with a ✓ for a few seconds, then settles to a small
+  **✓ Saved · 08:14**, so you can always check when something last saved.
+- When a save fails, or something else goes wrong, the message now shows in red with a ⚠ and stays
+  until you press it, instead of being easy to miss.
+
 ## 0.2.126
 
 - New volume slider (🔊) next to the clock in the **Playback** panel and on the **Music** tab. It sets
