@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.159
+## 0.2.160
 
 - **Make song file** again: the window that asks whether to **Replace it** now also lists any other
   drafts that splice that file in, since they'll play the new version too.
@@ -8,6 +8,12 @@
   and it's tried again with your next change. Closing the page asks first while one is still waiting.
 - **Rename…** on a draft in **Your songs** changes only its name, so it can't undo an edit made in
   another tab meanwhile.
+
+## 0.2.159
+
+- The **Library** side menu is grouped: **Shows** (your shows and **Playlists**, now next to each
+  other) and **Building blocks** (**Songs**, **Palettes** and **Presets**). On a phone a thin line
+  separates the groups.
 
 ## 0.2.158
 
