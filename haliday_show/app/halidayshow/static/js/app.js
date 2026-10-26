@@ -4359,7 +4359,7 @@ async function importSongInfo({ quiet = true } = {}) {
   const info = await songInfo(ref);
   if (ref !== app.show.audio) return;
   if (!info) {
-    if (!quiet) status("No beats saved for this song yet. Use Detect here or on the Music tab", "hint");
+    if (!quiet) status("No beats saved for this song yet. Use Detect here or in the Music editor", "hint");
     return;
   }
   const has = app.show.beats.length || app.show.sections?.length;
@@ -4442,8 +4442,8 @@ function generateDialog() {
   const noted = (app.show.sections || []).filter((x) => x.notes).length;
   const notesHint = document.createElement("p");
   notesHint.className = "hint";
-  notesHint.textContent = noted ? `${noted} section${noted === 1 ? " has" : "s have"} notes from the Music tab; the AI follows them.`
-    : "Add notes to the song's sections on the Music tab to tell the AI what happens in each part.";
+  notesHint.textContent = noted ? `${noted} section${noted === 1 ? " has" : "s have"} notes from the Music editor; the AI follows them.`
+    : "Add notes to the song's sections in the Music editor to tell the AI what happens in each part.";
   const showNotes = () => { notesHint.hidden = maker.value !== "ai"; };
   maker.addEventListener("change", showNotes);
   showNotes();

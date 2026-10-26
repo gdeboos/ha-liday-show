@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.129
+
+- The **Editor** and **Music** tabs are now called **Show editor** and **Music editor**, so it's clear
+  which one makes shows and which one edits songs. Nothing else about them has changed.
+
 ## 0.2.128
 
 - Nudges such as "Choose a song first" or "Give each palette its own name" now show in orange and fade
