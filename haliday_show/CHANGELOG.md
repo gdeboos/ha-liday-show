@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.155
+
+- In the **Music editor** you can now add, name, recolour and move **marks** straight after a cut, without
+  saving first. **⚑ Add mark** no longer greys out. Marks you add while editing are also kept on the song
+  you opened, and carried over when you **Save as new file**. A part spliced in from another song is the
+  one place you can't mark until you've saved.
+
 ## 0.2.154
 
 - New: **marks**. In the **Music editor**, press **⚑ Add mark** (or **M**, even while the song plays) to

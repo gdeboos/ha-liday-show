@@ -615,9 +615,11 @@ through every light, and clips snap to them (when **Snap** is ticked) so you can
 the moment. They're read from the song each time you open the Show editor, so marks you add in the
 Music editor show straight away. To change them, go back to the Music editor.
 
-Marks follow your cuts, so a mark in a part you cut out goes with it, and they're kept when you **Save
-as new file**. While you have an unsaved edit they show where they'll land but can't be changed: save
-the edit first.
+Marks follow your cuts: a mark in a part you cut out disappears from the edit, and the rest move with
+the music and are kept when you **Save as new file**. You can add, change and move marks while you're
+editing too. They're saved on the song you opened as well, at the same moment in it, and that song keeps
+all its marks, even ones in parts you cut out of the edit. The one place you can't mark until you've
+saved is a part spliced in from another song.
 
 ### Detecting in the Music editor
 
