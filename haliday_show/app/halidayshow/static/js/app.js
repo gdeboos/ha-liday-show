@@ -5238,7 +5238,7 @@ function nsStep(step) {
   $("ns-back").hidden = step !== 2;
   $("ns-upload-wrap").hidden = step !== 1;
   if (step === 1) {
-    $("ns-next").textContent = "Next →";
+    $("ns-next").textContent = aiVia ? "Next →" : "Create show";
     $("ns-name").focus();
   } else {
     nsStarts();
@@ -5268,8 +5268,9 @@ async function nsSubmit(e) {
       $("ns-name").select();
       return;
     }
-    nsStep(2);
-    return;
+    // With no AI there's only Start empty, so there's nothing to choose in step 2.
+    if (aiVia) { nsStep(2); return; }
+    newShow.start = "empty";
   }
   const show = { name: $("ns-name").value.trim(), audio: newShow.song ? JSON.parse(newShow.song) : null,
     length: Math.max(1, Number($("ns-length").value) || 60), start: newShow.start,
@@ -5299,7 +5300,6 @@ async function createShow({ name, audio: ref, length, start, gen }) {
   }
   renderSaveState();
   if (start === "ai") await generateWithAI(gen);
-  else if (start === "rules") await generate(gen);
 }
 
 async function generate({ colors, style, house, build }) {

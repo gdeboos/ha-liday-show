@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.144
+
+- **+ New show** no longer offers **Generate a first draft**. It's now **Start empty** or, with an AI set
+  up, **Generate with AI**. Without an AI, the show is made straight after step 1, so there's no
+  second step with only one choice. The quick draft made by rules is still **✨ Generate** in the
+  editor's **Show** panel.
+
 ## 0.2.143
 
 - Your browser's **Back** and **Forward** buttons (and swiping back on a phone) now move between
