@@ -155,7 +155,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 <summary><b>🎬 Building a show</b></summary>
 
 - Detect the song's tempo, beats, bars and sections automatically, in the browser
-- Generate a first draft of a whole show from the song in one click, in a palette and style you pick
+- Generate a first draft of a whole show from the song in one click, in a palette and style you pick,
+  building up like a person would: a few lights in quiet parts, all of them in the chorus
 - Describe effects in words and an AI adds them, using Claude with your API key or any AI set up in
   Home Assistant, including local ones
 - Effect suggestions for the selected part of the song, timed to its tempo

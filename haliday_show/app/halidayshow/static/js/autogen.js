@@ -1,6 +1,8 @@
 // Generates a first draft of a show from the song's analysis (beats, bars, sections), a colour
 // palette and a style. Rule-based: quiet sections get slow, soft looks, loud ones fast looks that
 // move on the beat, sections that repeat get the same looks, and looks change every few bars.
+// With build, it lights the house the way a person would: a few lights in quiet parts, more as the
+// music builds, and every light together only for the loudest parts and the chorus.
 
 import { HOUSE, newClip } from "./effects.js";
 import { applyPalette } from "./palettes.js";
@@ -105,8 +107,9 @@ function clipFor(look, start, end, bps, n, colors, offset) {
 // analysis: {beats, bars, sections, tempo, duration}; lights: [{id, segments, slow, fits}], slow for lights
 // that can only change a few times a second (they get SLOW_LOOKS), fits(clip) false for a clip the light
 // can't show (another of the section's looks is used instead);
+// group: the light a part belongs to (parts of one light go dark or light up together; default its id);
 // colors: the palette's colours. Returns {clips: {deviceId: [clip]}, house: [clip]}.
-export function generateShow(analysis, lights, colors, { style = "balanced", seed = 1, house = false } = {}) {
+export function generateShow(analysis, lights, colors, { style = "balanced", seed = 1, house = false, build = false } = {}) {
   const duration = analysis.duration;
   const bps = beatsPerSecond(analysis);
   const grid = barGrid(analysis);
@@ -115,6 +118,13 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
   const clips = Object.fromEntries(lights.map((l) => [l.id, []]));
   const houseClips = [];
   let prevTier = null;
+  const groups = [...new Set(lights.map((l) => l.group ?? l.id))];
+  // Building up needs the song's sections; without them every light plays, as before.
+  if (!analysis.sections?.length) build = false;
+  // Every light gets its moment: if no section is loud or a chorus, the loudest one uses them all.
+  const together = (sec, t) => t === "high" || sec.label === "Chorus";
+  const peak = sections.some((sec) => together(sec, tier(sec.energy ?? 0.5, style))) ? null
+    : Math.max(...sections.map((sec) => sec.energy ?? 0.5));
 
   sections.forEach((sec, si) => {
     const t = tier(sec.energy ?? 0.5, style);
@@ -127,14 +137,26 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
     };
     const fast = pick(LOOKS[t]), slow = pick(SLOW_LOOKS[t]);
     // Loud sections and the chorus move together on every light; the rest alternate across lights.
-    const unison = t === "high" || sec.label === "Chorus";
+    const unison = together(sec, t);
+    // Which lights play: by the section's name, so a repeated verse uses the same ones, and in an
+    // order that holds for the whole section, so lights join rather than swap as it builds.
+    const order = [...groups].sort((a, b) => hash(key, seed, textHash(String(a))) - hash(key, seed, textHash(String(b))));
+    const lit = (phrase) => {
+      if (!build || unison || (sec.energy ?? 0.5) === peak) return new Set(groups);
+      const n = groups.length;
+      if (t === "low") return new Set(order.slice(0, Math.max(1, Math.round(n / 3))));
+      const target = Math.max(1, Math.ceil((n * 2) / 3));
+      return new Set(order.slice(0, Math.min(target, Math.max(1, Math.ceil(target / 2)) + phrase)));
+    };
     const bars = grid.filter((g) => g >= sec.start - 0.05 && g <= sec.end + 0.05);
     if (bars[0] > sec.start + 0.05) bars.unshift(sec.start);
     if (bars[bars.length - 1] < sec.end - 0.05) bars.push(sec.end);
     const step = t === "low" ? phraseBars * 2 : phraseBars;
     for (let k = 0, phrase = 0; k < bars.length - 1; k += step, phrase++) {
       const start = bars[k], end = bars[Math.min(k + step, bars.length - 1)];
+      const on = lit(phrase);
       lights.forEach((light, li) => {
+        if (!on.has(light.group ?? light.id)) return;
         const look = (light.slow ? slow : fast)[(phrase + (unison ? 0 : li)) % 2];
         const make = (l) => clipFor(l, start, end, bps, light.segments, colors, unison ? li : phrase);
         let clip = make(look);
@@ -148,8 +170,8 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
       });
     }
     // A sweep across the house as the music lifts into a louder section.
-    const order = { low: 0, mid: 1, high: 2 };
-    if (house && si > 0 && order[t] > order[prevTier] && bars.length >= 2) {
+    const rank = { low: 0, mid: 1, high: 2 };
+    if (house && si > 0 && rank[t] > rank[prevTier] && bars.length >= 2) {
       const sweep = newClip("sweep", round(sec.start), round(bars[1]));
       Object.assign(sweep, {
         color: colors[si % colors.length], outside: "lights' own effects", width: 0.3,
@@ -165,13 +187,14 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
   const keep = (list) => list.filter((c) => c.end - c.start >= 0.05);
   for (const light of lights) {
     let list = clips[light.id];
-    if (list.length && tier(first.energy ?? 0.5, style) === "low") {
+    // Only a light that's on at the very start fades in, and one on at the very end fades out.
+    if (list.length && list[0].start <= first.start + 0.05 && tier(first.energy ?? 0.5, style) === "low") {
       // Up to the first bar line at least a second and a half in, past any pickup.
       const to = round(grid.find((g) => g >= 1.5) ?? duration);
       for (const c of list) c.start = round(Math.min(Math.max(c.start, to), c.end));
       list = [Object.assign(newClip("fade", 0, to), { from: "#000000", to: colors[0] }), ...keep(list)];
     }
-    if (list.length && tier(last.energy ?? 0.5, style) === "low") {
+    if (list.length && list[list.length - 1].end >= duration - 0.05 && tier(last.energy ?? 0.5, style) === "low") {
       const from = round(grid[Math.max(0, grid.length - 3)]);
       for (const c of list) if (c.end > from) c.end = round(Math.max(c.start, from));
       list = [...keep(list), Object.assign(newClip("fade", from, round(duration)), { from: colors[0], to: "#000000" })];
