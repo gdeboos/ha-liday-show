@@ -5,6 +5,8 @@
 - The user guide now explains, step by step, how to reach the public page from the street (under
   **The public page → Reaching the page from outside your home**): **Cloudflare Tunnel**, **Tailscale
   Funnel**, your own reverse proxy, or Wi-Fi only, and why Home Assistant Cloud can't be used.
+- **Keeping it safe** now explains why a plain port forward on your router isn't enough: phones only
+  share their location with secure (https) pages, which a tunnel or proxy gives you.
 
 ## 0.2.178
 

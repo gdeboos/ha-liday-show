@@ -1266,11 +1266,12 @@ internet can reach. Whichever way you choose:
   (in Home Assistant: **Settings → System → Network**). It works however Home Assistant is set up.
 
 **Cloudflare Tunnel** (recommended). Free, and nothing changes on your router. You need a free
-Cloudflare account and a domain using Cloudflare for its DNS (a domain costs around £8 a year).
+Cloudflare account and a domain using Cloudflare for its DNS (a domain costs a few pounds a year).
 
 1. Add the **Cloudflared** app to Home Assistant (see its own instructions for adding it to the
    **App store**).
-2. On its **Configuration** tab, under **additional_hosts**, add one with **hostname** set to the
+2. On its **Configuration** tab, under **additional_hosts** (the names here are the app's own, at the
+   time of writing; its instructions have the details), add one with **hostname** set to the
    address you want, such as `lights.yourdomain.com`, and **service** set to your Home Assistant's
    home network address on port 18099, such as `http://192.168.1.20:18099`.
 3. Leave **external_hostname** empty, unless you also want to reach Home Assistant itself that way.
@@ -1286,8 +1287,9 @@ switched on for your tailnet.
 
 1. Add the **Tailscale** app and log it in.
 2. Funnel can only use ports 443, 8443 and 10000. Pick one Home Assistant doesn't already use (8443,
-   say), and in the app's terminal turn Funnel on for it, sending it to `http://localhost:18099`. The
-   Tailscale app's own instructions show the command; the setting stays after restarts.
+   say), and turn Funnel on for it, sending it to `http://localhost:18099`. How to do that depends on
+   the Tailscale app you use, so follow its own instructions for sharing another app's port with
+   Funnel.
 3. Put the `https://…ts.net:8443` address in **Public address**.
 
 **Your own reverse proxy** (NGINX Proxy Manager, Caddy, Traefik and similar, often with DuckDNS). If
@@ -1306,6 +1308,30 @@ behind your login, so it can't show a public page.
 
 With Docker or Python, it's the same: point the tunnel or proxy at port 18099 on the machine
 HA-liday Show runs on.
+
+#### Keeping it safe
+
+- **Only the visitors' page is on the public port.** Nothing there can reach the editor, your lights'
+  settings or Home Assistant.
+- **Without your code, visitors see only the page's colours**: not your title, words, picture or
+  shows. If the link gets shared somewhere it shouldn't be, press **New code…**; the old link and any
+  printed sign stop working at once.
+- **Your picture is shared without its hidden details.** Phone photos carry where they were taken (to
+  the metre), the phone and the time, and some phones hide an extra picture or a short video in it.
+  Visitors get a copy without any of that; for a phone photo, which way up it goes is kept. Your own
+  copy, in your backups, is as you uploaded it.  A picture that can't be read well enough to be sure isn't shown at all; the
+  preview leaves it out too, so try saving it again from your phone or computer.
+- **Each visitor's phone has its own limit** on how often it can ask, so one person (or a script)
+  can't slow your lights down or crowd everyone else out. Wrong guesses at the code don't count
+  against real visitors.
+- **Nearby only** keeps out casual visitors far away, but a phone reports its own location, so
+  someone determined at a computer could get round it. **Clear the queue** and **New code…** deal with
+  anyone who does.
+- **Use a tunnel or proxy with https, not a plain port forward.** Phones only share their location
+  with secure (https) pages, so through a plain port forward on your router visitors couldn't start
+  shows with **Nearby only** on. Visitors on your home Wi-Fi skip the location check; HA-liday Show
+  only counts phones on your home network as at home, never a tunnel or proxy, even one running on
+  the Home Assistant machine itself.
 
 ## 6. Automations
 
