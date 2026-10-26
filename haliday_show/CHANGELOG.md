@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.175
+
+- The public page now fits phones properly. With **Falling snow** on, the page was shrunk to a small
+  column with tiny text on many phones; it now fills the screen at a normal size.
+
 ## 0.2.174
 
 - New **Print sign…** on the **Public page** tab, under **Who can start shows**. It opens an A4 sign
