@@ -677,3 +677,5 @@ a.button { text-decoration: none; }
 /* Add a song: the file button and what was picked beside it. */
 .as-file { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .as-file .hint { overflow-wrap: anywhere; }
+/* The open show's or song's name, beside ← All shows and ← All songs. */
+.editor-title { max-width: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; }

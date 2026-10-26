@@ -462,8 +462,8 @@ one you were last editing has a **Last edited** badge.
 - **← All shows**, at the start of the Show panel, takes you back to the list. Switching between tabs
   keeps your show open until you go back to the list or close the page.
 
-The same list is under **Library → Shows**. You can also switch shows with the drop-down in the Show
-panel. **⚙ Show settings…** beside it opens the show's settings: its **Name**, its **Show speaker**
+The same list is under **Library → Shows**. The Show panel shows the open show's name beside **← All
+shows**; to switch to another show, go back to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Show speaker**
 (below), **Auto save**, and **Remove show…** to archive or delete it.
 
 ### Songs
@@ -516,8 +516,8 @@ puts it back and gives it back to the shows that were left without a song.
 
 The **Music editor** cuts, shortens and splices songs before you build a show. It opens on **Your
 songs** each visit, the same list as **Library → Songs** (with **+ Add a song**), so nothing is touched
-until you press **Edit** on one; **← All songs** goes back, and switching tabs keeps your song open.
-Pick another song in **Song** (or **Upload** one), drag across the waveform to select, then **Cut selection** to remove it or
+until you press **Edit** on one. The open song's name sits beside **← All songs**, which goes back to
+the list to open another; switching tabs keeps your song open. Drag across the waveform to select, then **Cut selection** to remove it or
 **Keep only selection** to shorten the song to it. **Insert at playhead** and **Add to end** splice in
 another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
 time (a few hundredths of a second hides the click, a few seconds blends one song into the next), and
