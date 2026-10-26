@@ -1,0 +1,145 @@
+<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+
+# Play it and playlists
+
+[← Effects](effects.md) · [Contents](README.md) · [The public page →](public-page.md)
+
+## 5. Play it
+
+### Saving
+
+**Save** stores the show and bakes every frame for playback (Play saves first if
+needed). With **Auto save** ticked in the show's settings (the default), the show also saves itself a couple of seconds
+after each change and when you switch shows; the note next to it says whether everything is saved.
+A new show is saved once it has its first effect. Auto save waits while a show is playing.
+
+Whenever something saves (a show, your lights, palettes, presets, playlists or the house photo), the
+top right of the page lights up green for a few seconds, then settles to a small **✓ Saved** with the
+time, so you can always see when something last saved. If a save fails, or something else goes wrong,
+the message shows in red and stays until you press it, or until the same thing works again. A nudge
+such as "Choose a song first" shows in orange and fades by itself.
+
+### While you edit
+
+The Playback panel chooses where the song plays. This is kept in your browser
+and never changes where the real show plays:
+
+- **Song in this browser**: the song plays in your browser and HA-liday Show streams the lights in
+  sync. Untick **Lights** to preview in the browser only. If the lights lead or lag, adjust
+  **Light offset** under **Setup → Speakers**. The 🔊 slider next to the clock sets how loud the song
+  plays in your browser. The **Music editor** shares the same level, and your browser remembers it.
+- **Speaker: …**: HA-liday Show starts the song on that speaker and the lights with it, and the
+  playhead follows along. Line the lights up with the speaker's **Delay ms** under **Setup →
+  Speakers** (also shown under Timing there while that speaker is picked).
+
+### The real show
+
+**Show speaker** in **⚙ Show settings…** (Show panel) is where the song plays when the show is
+started from an automation or the MQTT Play button. Leave it on **Default** to use the default show
+speaker from the Speakers tab, or pick a speaker for this show only. So you can design on a speaker
+indoors and the real show still plays outside. With no show speaker and no default, the lights play
+on their own.
+
+### Playlists
+
+To play several shows back to back, open the **Playlist** tab (the **Playlist editor**). It starts
+on **Your playlists**, the same list as **Library → Playlists**: each says how many shows it has, how
+long it takes to play through once and when it plays, with **Open**, **▶ Play** and **Delete**. Press
+**+ New playlist**, or **Open** one, to edit it:
+
+- **Building blocks**, at the top left, go between your shows (see below). Drag one in like a show.
+- **Your shows**, below them, lists every show. Drag one by its card into **Running order** and let
+  go where it should play; a blue line shows where it will land. Or press **+** to add it at the end.
+  **Find a show** narrows the list. The same show can go in more than once.
+- In **Running order**, drag a show or block up or down to change when it plays, or drag it out of
+  **Running order** (back to **Your shows**, say) to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
+  by the dots (⠿) at the left of a card, so the page still scrolls; there, **Running order** comes
+  first.
+- The coloured bar above the order shows one time through, each show and block as long as it plays,
+  and next to **Running order** it says how long that takes.
+- Type over the name at the top to rename the playlist. **Delete playlist** removes it but keeps its
+  shows. **← All playlists** (or your browser's **Back**) goes back to **Your playlists**.
+
+Changes save as you make them. A playlist holds up to 100 shows and 200 things in all, and you can
+have up to 50 playlists.
+
+**Building blocks** fill the time between shows. Each has its own length in **seconds** (up to an
+hour), set on its card in **Running order**:
+
+- **Pause**: your lights go back to how they normally look.
+- **Colour**: every light shows one colour. Click the colour box on its card to pick it.
+- **Off**: every light goes dark.
+- **Effect**: an effect plays on every light, such as **Twinkle** or **Rainbow**. Pick the effect, then
+  a **Style** (the same ready-made settings as in the Show editor, your own presets too) and, for
+  effects with colours, **Colours** from your palettes. An effect longer than a minute repeats every
+  minute or so, at a point where the join doesn't show.
+
+Put a block wherever you like: between every show, only before the first, or several in a row (a
+colour, then off for a moment, say). Colour, Off and Effect blocks are got ready in your browser, like a show
+when you save it: whenever HA-liday Show is open, and straight after you change a block or your
+lights. A block that isn't ready yet (if you add lights and don't open HA-liday Show before the
+playlist plays, say) is skipped. Playlists made before blocks have a **Pause** after each show,
+as long as their old **Pause between shows**.
+
+Press **▶ Play** and HA-liday Show plays the shows in order, then starts again from the top, until
+you press **■ Stop**. It carries on with the page closed. A line at the top of **Your playlists**
+and the Playlist editor says what's playing (a show or a block), which is also outlined in **Running order**. Each show plays on its own **Show speaker**, just as when an automation starts it.
+Only saved shows play: a show you haven't saved yet, or have deleted, says so in the list and is
+skipped. Playing a show from the editor, or stopping it, stops the playlist, and so does pausing or
+stopping the song on the speaker.
+
+#### Music with no speaker: the Show player
+
+A show with no **Show speaker** (and no default one under **Setup → Speakers**) plays its lights only
+when a playlist, its schedule or an automation starts it. Without Home Assistant, that's every show.
+To hear the music too, use the **Show player**:
+
+1. On a computer or tablet connected to your speakers, open the **Show player** link under
+   **When it plays** in the Playlist editor. Without Home Assistant, the address is `http://<HA-liday Show's address>:8099/player`.
+2. Press **▶ Start the Show player** (browsers only play sound after a press on the page).
+3. Leave it open. Each song plays there from the right point, and your lights follow it.
+
+Keep that computer from going to sleep while your shows run. If the lights are ahead of the music,
+make **Light offset** bigger; if they're behind, make it smaller. Shows you play from the editor, or
+on a speaker, don't play in the Show player, so you never hear a song twice.
+
+#### Playing on a schedule
+
+Tick **Play on a schedule** under **When it plays**, in the Playlist editor, to have a playlist start
+and stop by itself:
+
+- **From** and **to** set the times, such as 17:00 to 22:00. An end time earlier than the start runs
+  past midnight: 20:00 to 01:00 on a Saturday plays until 1 in the morning on Sunday.
+- To start when it gets dark, change **From** to **sunset**. You can start up to 3 hours before or
+  after it, such as 15 **minutes after**. Sunset moves through the year, so the playlist does too.
+  An end time in the morning (before 12:00), such as 01:00, is the next morning. On an evening the sun
+  sets after the end time (21:00 in midsummer, say), it doesn't play.
+- Untick the days it shouldn't play.
+- Tick **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
+  every year, and can run over New Year (1 Dec and 6 Jan).
+
+Under the schedule it says when the playlist next starts. At the start time it starts, even if
+something else is playing. At the end time the show that's on finishes, then it stops (a building block that's on stops
+straight away). If you press
+**■ Stop**, pause the song on the speaker or play something else in between, it stays off until its
+next start time. If HA-liday Show restarts during the scheduled time (after an update, say), the
+playlist starts again, and so does one whose schedule you turn on during its time. Changing the
+times while it plays just moves when it stops.
+
+Sunset times are worked out for Home Assistant's location (**Settings → System → General** in Home
+Assistant). Without Home Assistant, or to use another place, type your latitude and longitude in the
+boxes that appear under the schedule once a playlist starts at sunset, and press **Save**. **Use Home
+Assistant's** goes back to Home Assistant's location. On Google Maps, right-click your
+house and click the numbers at the top to copy them, then paste them into the first box. Sunset is
+worked out to within a couple of minutes. The page shows today's sunset next to the clock.
+
+Only one playlist plays at a time. If two playlists' times overlap, the one higher up **Your playlists** plays
+first, and the other starts once it's finished.
+
+Schedules go by HA-liday Show's own clock, which the Playlist editor shows under the schedule. The app uses
+Home Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
+`Europe/London`); with Python, it uses your computer's clock.
+
+---
+
+[← Effects](effects.md) · [Contents](README.md) · [The public page →](public-page.md)

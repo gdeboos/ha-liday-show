@@ -19,6 +19,8 @@ jobs:
       - run: pip install -r haliday_show/requirements.txt pytest pytest-aiohttp
       - run: python -m pytest -q
       - run: node --test tests/js/*.mjs
+      - name: Guide pages match DOCS.md
+        run: python tools/split_guide.py --check
       - name: Installs and runs with pipx
         run: |
           pipx install .

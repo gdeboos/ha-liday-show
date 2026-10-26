@@ -19,7 +19,7 @@ its own with Docker or Python.
 
 [![Open HA-liday Show in your Home Assistant](https://my.home-assistant.io/badges/supervisor_app.svg)](https://my.home-assistant.io/redirect/supervisor_app/?app=5aa48a95_haliday_show&repository_url=https%3A%2F%2Fgithub.com%2Fgdeboos%2Fha-liday-show)
 
-[Install](#-installation) · [Features](#-features) · [User guide](haliday_show/DOCS.md) ·
+[Install](#-installation) · [Features](#-features) · [User guide](docs/guide/README.md) ·
 [Changelog](haliday_show/CHANGELOG.md) · [Development](#-development)
 
 ![The editor: a generated show on five lights, playing on the house preview](docs/images/editor.webp)
@@ -89,7 +89,7 @@ Apps were called add-ons before Home Assistant 2026.2. You need Home Assistant O
    </details>
 2. Press **Install**, turn on **Show in sidebar**, and start it.
 3. Open **HA-liday Show** from the sidebar and follow the
-   [quick start](haliday_show/DOCS.md#quick-start).
+   [quick start](docs/guide/getting-started.md#quick-start).
 
 Home Assistant builds the app on your machine the first time, which takes a few minutes. For show
 entities in automations, also set up the Mosquitto broker app and the MQTT integration (optional).
@@ -99,14 +99,14 @@ entities in automations, also set up the Mosquitto broker app and the MQTT integ
 If your Home Assistant can't install apps (a "Container" or "Core" install), or you don't use Home
 Assistant at all, run it on any always-on machine on your network instead:
 
-- **[With Docker](haliday_show/DOCS.md#with-docker)** on a NAS, Raspberry Pi or Linux PC, with the
+- **[With Docker](docs/guide/without-home-assistant.md#with-docker)** on a NAS, Raspberry Pi or Linux PC, with the
   ready-made [`docker-compose.yml`](standalone/docker-compose.yml).
-- **[With Python](haliday_show/DOCS.md#with-python)** on a Mac, Linux or a Raspberry Pi:
+- **[With Python](docs/guide/without-home-assistant.md#with-python)** on a Mac, Linux or a Raspberry Pi:
   `pipx install git+https://github.com/gdeboos/ha-liday-show`
 
 It's the same app with the same saved files, so shows copy across. You open it in a browser with a
 password, and it can still use your Home Assistant speakers, AI and MQTT if you point it at them. See
-[Running without Home Assistant](haliday_show/DOCS.md#running-without-home-assistant).
+[Running without Home Assistant](docs/guide/without-home-assistant.md).
 
 ## 🧰 Features
 
@@ -223,8 +223,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 
 </details>
 
-The full walkthrough is in the **[user guide](haliday_show/DOCS.md)**, which is also on the app's
-**Documentation** tab in Home Assistant.
+The full walkthrough is in the **[user guide](docs/guide/README.md)**, a page per chapter. The same guide
+is on the app's **Documentation** tab in Home Assistant, all on [one page](haliday_show/DOCS.md).
 
 ## ⚙️ How it works
 
@@ -306,7 +306,7 @@ docs/images/                            Screenshots for the README
 docs/brand/                             Logo, icon and favicon (SVG originals; the app's PNGs are made from them)
 haliday_show/                             The app (config, Dockerfile, docs, changelog)
   README.md                             Intro shown on the app's Info tab
-  DOCS.md                               User guide (shown on the app's Documentation tab)
+  DOCS.md                               User guide (shown on the app's Documentation tab); the one to edit
   CHANGELOG.md                          What changed in each version
   icon.png, logo.png                    Pictures shown in the App store (from docs/brand)
   app/halidayshow/__main__.py             Entry points (app and haliday-show) and environment settings
@@ -380,7 +380,9 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     models.json                         Our list of Govee lights: tested status and default settings
 tools/build_models.py                   Adds new lights from Govee's LAN Control list to models.json
 tools/make_sample_song.py               Renders the demo's music-box Jingle Bells (static/sample-song.mp3)
+tools/split_guide.py                    Makes docs/guide/ (the guide a page per chapter) from DOCS.md
 tools/govee_btsnoop.py                  Decrypts the Govee app's Bluetooth traffic from an Android log
+docs/guide/                             The user guide on GitHub, a page per chapter (made from DOCS.md)
 docs/README.md                          Index of the notes below, one per kind of light
 docs/govee-protocols.md                 How Govee lights are driven: findings, measurements, open questions
 docs/capture-help.md                    Capturing the Govee app's traffic, for working out new commands

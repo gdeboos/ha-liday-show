@@ -59,6 +59,9 @@ user gets (code or docs) carries its own release:
    user (what they'll notice and where), not for developers.
 3. Update `haliday_show/DOCS.md` (the user guide, shown on the app's Documentation tab and linked
    for Docker and pipx installs) for any behaviour, button or setting that changed. Update README.md's feature list for new features.
+   Then run `python tools/split_guide.py`: it remakes the guide's pages on GitHub (`docs/guide/`, one
+   per chapter) from DOCS.md, and CI fails if you forget. Never edit `docs/guide/` by hand; a new
+   chapter in DOCS.md gets a line in the tool's `PAGES` list.
 4. Title the PR and commit `What changed (0.2.N)`, e.g. `Collapse editor panels to their title (0.2.65)`.
 
 If `main` moved on while you worked, take the next free version number when you merge it in.
