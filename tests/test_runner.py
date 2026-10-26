@@ -442,3 +442,38 @@ async def test_stop_or_your_own_show_in_a_visitors_pause_wins(runner):
     await runner.play("party")  # from the editor, in the pause
     await asyncio.sleep(0.8)
     assert runner.player.show_id == "party" and runner.public_now is None
+
+
+async def test_playlist_blocks_play_between_shows(runner, monkeypatch):
+    _short_show(runner.storage, "one")
+    # An "off" block: its frames go round and round for its length.
+    runner.storage.save_block("dark", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\x00\x00"] * 4))
+    started = []
+    real_play = runner.player.play
+
+    async def play(show_id, *a, **kw):
+        started.append((show_id, kw.get("length")))
+        await real_play(show_id, *a, **kw)
+    monkeypatch.setattr(runner.player, "play", play)
+    items = [{"type": "show", "id": "one"}, {"type": "off", "id": "dark", "seconds": 0.5},
+             {"type": "colour", "id": "unbaked", "seconds": 5, "colour": "#ff0000"},
+             {"type": "pause", "id": "p1", "seconds": 0.1}]
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one"], "gap": 0, "items": items})
+    await _until(lambda: len(started) >= 2)
+    assert started[:2] == [("one", None), (None, 0.5)]  # the unbaked block is skipped
+    await asyncio.sleep(0.2)
+    assert runner.player.playing  # 4 frames last 0.1 s, but the block loops them for 0.5 s
+    assert runner.status()["block"] == {"type": "off", "id": "dark", "seconds": 0.5}
+    await _until(lambda: len(started) >= 3)
+    assert started[2] == ("one", None)
+    assert runner.status()["block"] is None
+
+
+async def test_the_end_time_stops_a_block_straight_away(runner):
+    _short_show(runner.storage, "one")
+    runner.storage.save_block("glow", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\x00\xff"] * 4))
+    items = [{"type": "colour", "id": "glow", "seconds": 600, "colour": "#0000ff"}, {"type": "show", "id": "one"}]
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one"], "gap": 0, "items": items})
+    await _until(lambda: runner.status()["block"] is not None)
+    await runner.finish_playlist()
+    assert runner.status()["playlist"] is None and not runner.player.playing

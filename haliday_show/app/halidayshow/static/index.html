@@ -290,19 +290,25 @@
   </section>
   <p class="playlist-now" data-playlist-now></p>
   <div class="pl-columns">
-    <section class="card pl-bin">
-      <h3>Your shows</h3>
-      <p class="hint">Drag a show into the running order, or press <b>+</b> to add it at the end.</p>
-      <input id="pl-filter" type="search" placeholder="Find a show" aria-label="Find a show" autocomplete="off">
-      <ul id="pl-bin" class="pl-cards" aria-label="Your shows"></ul>
-    </section>
+    <div class="pl-side">
+      <section class="card">
+        <h3>Building blocks</h3>
+        <p class="hint">Drag one between shows, or press <b>+</b> to add it at the end. Each has its own length.</p>
+        <ul id="pl-blocks" class="pl-cards pl-block-list" aria-label="Building blocks"></ul>
+      </section>
+      <section class="card pl-bin">
+        <h3>Your shows</h3>
+        <p class="hint">Drag a show into the running order, or press <b>+</b> to add it at the end.</p>
+        <input id="pl-filter" type="search" placeholder="Find a show" aria-label="Find a show" autocomplete="off">
+        <ul id="pl-bin" class="pl-cards" aria-label="Your shows"></ul>
+      </section>
+    </div>
     <section class="card pl-order" id="pl-order-box">
       <div class="pl-order-head"><h3>Running order</h3><span id="pl-summary" class="hint"></span></div>
       <div id="pl-strip" class="pl-strip"></div>
       <ol id="pl-order" class="pl-cards" aria-label="Running order"></ol>
-      <p class="hint pl-order-hint">Drag the shows into the order to play them in. Drag one back to <b>Your shows</b>,
-        or press <b>✕</b>, to take it out.</p>
-      <label class="pl-gap">Pause between shows <input id="pl-gap" type="number" min="0" max="600" step="1"> seconds</label>
+      <p class="hint pl-order-hint">Drag shows and blocks into the order to play them in. Drag one out of the running
+        order, or press <b>✕</b>, to take it out.</p>
     </section>
   </div>
   <section class="card pl-when">

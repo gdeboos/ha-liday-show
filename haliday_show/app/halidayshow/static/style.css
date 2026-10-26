@@ -328,7 +328,8 @@ button.swatch:hover { border-color: var(--text); }
 .playlist-editor #pl-name { font-weight: 600; font-size: 15px; width: 18em; max-width: 60vw; }
 .pl-columns { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(300px, 1.6fr); gap: 12px; align-items: start; }
 /* On a phone the running order comes first, so a show from the long list below is dragged up to it. */
-@media (max-width: 760px) { .pl-columns { grid-template-columns: 1fr; } .pl-order { order: -1; } }
+@media (max-width: 760px) { .pl-columns { grid-template-columns: minmax(0, 1fr); } .pl-order { order: -1; } }
+.pl-columns > * { min-width: 0; }
 .pl-columns h3, .pl-when h3 { margin: 0 0 6px; font-size: 15px; }
 .pl-bin input[type=search] { width: 100%; margin-bottom: 8px; }
 .pl-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
@@ -361,7 +362,24 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
   line-height: 26px; padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   border-right: 1px solid var(--panel); }
 .pl-order-hint { margin: 8px 0; }
-.pl-gap input { width: 5em; margin: 0 4px; }
+.pl-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pl-block-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.pl-swatch { flex: none; width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--line); }
+.pl-swatch-pause { border-style: dashed; background: transparent; }
+.pl-swatch-off { background: #111; }
+.pl-swatch-colour { background: linear-gradient(135deg, #e53935, #fdd835, #43a047, #1e88e5); }
+.pl-swatch-effect { background: repeating-linear-gradient(90deg, #1e88e5 0 4px, #fff 4px 6px, #8e24aa 6px 10px); }
+#pl-order .pl-block-card { border-left: 6px solid var(--line); background: var(--track); }
+#pl-order .pl-block-card.pl-off { border-left-color: #111; }
+.pl-block-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; font-size: 13px; }
+.pl-block-edit input[type=number] { width: 5em; }
+.pl-block-edit input[type=color] { width: 3em; height: 28px; padding: 0 2px; }
+.pl-block-edit select { width: auto; max-width: 12em; }
+.pl-colours { display: inline-flex; gap: 2px; }
+.pl-colours span { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); }
+.pl-block.pl-block-pause { background: transparent; }
+.pl-block.pl-block-off { background: #111; }
+.pl-block.pl-block-effect { background: repeating-linear-gradient(90deg, #1e88e5 0 4px, #8e24aa 4px 8px); }
 .pl-when { margin-top: 12px; }
 .playlist-schedule { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px dashed var(--line);
   border-radius: 6px; }
