@@ -685,3 +685,4 @@ a.button { text-decoration: none; }
 .dialog-note.error { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent);
   border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); }
 .dialog-note.hint { background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid var(--line); }
+.music-save { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-left: auto; }

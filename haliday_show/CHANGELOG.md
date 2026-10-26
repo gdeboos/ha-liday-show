@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.143
+
+- The **Music editor** is tidier. **File name** and **Save as new file** now sit at the top beside the
+  song's name, as **Save** does in the Show editor, so you don't have to scroll down to save.
+- Its two **How to…** lists are now one, at the top, and the line of text repeating what **Your songs**
+  already says has gone.
+- **From** and **to** show a dash when nothing is selected, rather than looking like empty boxes to fill.
+
 ## 0.2.142
 
 - Songs over 16 MB can be added now. Through Home Assistant they used to fail with "Maximum request
