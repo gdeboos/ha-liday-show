@@ -416,13 +416,13 @@ only** narrows the chooser to them.
 
 ### The Presets tab
 
-The **Presets** tab is the preset editor. Your presets are listed by effect on the left, each with a
-small preview; pick one to edit it on the right, where a large preview plays it (choose which light's
-segments with **Preview on**). Rename it, change its **Effect** (or start again from one of that
-effect's presets), tick or untick **Include colours**, and change its colours (palettes work here
-too), settings and brightness; the previews follow every change and it saves by itself.
-**Duplicate** makes a copy to try variations, and **Delete preset** removes it. **New preset**
-starts one from scratch: pick an effect, or any built-in preset, to start from. Or describe a look in
+**Library → Presets** lists your presets by effect, each with a live preview, and **Edit…**,
+**Duplicate** and **Delete…**. **Edit…** opens the preset in a window with a larger preview (choose
+which light's segments with **Preview on**). Rename it, change its **Effect** (or start again from one
+of that effect's presets), tick or untick **Include colours**, and change its colours (palettes work
+here too), settings and brightness; the preview follows every change. **Save** keeps the changes and
+**Cancel** leaves the preset as it was. **+ New preset** starts one from scratch: pick an effect, or
+any built-in preset, to start from, then **Add preset** in the window. Or describe a look in
 the box above, such as "slow icy shimmer" or "warm fire flicker", and press **✨ Make presets**: the AI
 suggests up to three, each with a live preview, and **Keep** adds one to your presets (it needs an AI
 set up, as for **Describe it**). Changing or deleting
@@ -447,8 +447,10 @@ An effect's settings include a **Palette** picker. Click a colour to put it in
 the colour field you last clicked, or press **Apply palette** to fill them all in order. Click a
 light's name to **Recolour this light** or **Recolour all lights**: each light steps through the
 palette effect by effect, so the lights stay matched (backgrounds are left alone). **Library →
-Palettes** lists the built-in palettes and your own: press **New palette**, or **Copy** on a built-in one,
-then rename it and change its colours (up to 12). Or describe some colours in the box above, such as
+Palettes** lists your palettes, each with **Edit…**, **Duplicate** and **Delete…**, then the built-in
+ones. **Edit…** opens a window to rename the palette and change its colours: pick each colour, move it
+up with **↑**, take it out with **✕**, or **+ Add a colour** (up to 12). **Save** keeps the changes.
+**+ New palette**, or **Copy…** on a built-in one, opens the same window for a new palette. Or describe some colours in the box above, such as
 "frosty winter night" or "tropical sunset", and press **✨ Make palettes**: the AI suggests up to three, each
 shown as a colour bar, and **Keep** adds one to your palettes (it needs an AI set up, as for
 **Describe it**). Your palettes are available in every show.

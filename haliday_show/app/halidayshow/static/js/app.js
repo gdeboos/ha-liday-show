@@ -2138,7 +2138,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
 }
 
 function drawPickerPreviews() {
-  for (const set of [pickerPreview, presetTabPreview]) {
+  for (const set of [pickerPreview, presetTabPreview, presetDialogPreview]) {
     const items = set.items;
     // offsetParent is null while the strips' panel or tab is hidden.
     if (!items.length || !items[0].canvas.isConnected || !items[0].canvas.offsetParent) continue;
@@ -2554,10 +2554,55 @@ function savePresetFrom(clip) {
   name.select();
 }
 
-// The Presets tab: a list of your presets by effect on one side, and an editor for the one picked
-// on the other, with a live preview and the same grouped settings as a clip. Changes apply as you
-// make them and save a moment later.
-let presetEditing = null;
+// A window for editing one thing: its title, a body, and a foot of buttons. Escape or ✕ is Cancel.
+function editWindow(title) {
+  const dlg = document.createElement("dialog");
+  dlg.className = "effect-dialog form-dialog edit-dialog";
+  const head = document.createElement("div");
+  head.className = "effect-dialog-head";
+  const h = document.createElement("h3");
+  h.textContent = title;
+  const x = button("✕", () => dlg.close(), "ghost");
+  x.setAttribute("aria-label", "Close");
+  head.append(h, x);
+  const body = document.createElement("div");
+  body.className = "form-dialog-body";
+  const foot = document.createElement("div");
+  foot.className = "form-dialog-foot";
+  dlg.append(head, body, foot);
+  dlg.addEventListener("close", () => dlg.remove());
+  document.body.append(dlg);
+  return { dlg, h, body, foot };
+}
+
+// A row in the Palettes and Presets lists, like Your shows: a picture, the name and a line of detail,
+// then Edit and the rest.
+function itemRow({ picture, name, detail, edit, extra = [], label }) {
+  const row = document.createElement("div");
+  row.className = "show-row item-row";
+  row.setAttribute("role", "listitem");
+  const main = document.createElement("div");
+  main.className = "show-main";
+  const b = document.createElement("b");
+  b.className = "show-name";
+  b.textContent = name;
+  const d = document.createElement("div");
+  d.className = "hint";
+  d.textContent = detail;
+  main.append(b, d);
+  const actions = document.createElement("div");
+  actions.className = "group show-actions";
+  const e = button("Edit…", edit, "primary");
+  e.setAttribute("aria-label", `Edit ${label} ${name}`);
+  actions.append(e, ...extra);
+  row.append(picture, main, actions);
+  return row;
+}
+
+// The Presets tab: your presets as a list by effect, each with a live preview. Edit… opens the preset
+// in a window with a bigger preview and the same grouped settings as a clip; Save keeps the changes.
+let presetEditing = null; // the preset whose row to bring into view after the list is drawn
+const presetDialogPreview = { items: [], started: 0 };
 const presetPreviewDev = () => app.devices[prefs.get("presetPreviewLight", "")] || null;
 const presetClip = (p) => ({ effect: p.effect, start: 0, end: 4, ...chosenParams(p.effect, p) });
 const hasColours = (effect) => EFFECTS[effect].params.some((q) => q.type === "color");
@@ -2573,67 +2618,109 @@ function newPreset() {
     onPick: (key, preset) => {
       const fx = EFFECTS[key];
       const name = freePresetName(key, preset ? `My ${preset.label.toLowerCase()}` : `My ${fx.label.toLowerCase()}`);
-      const params = chosenParams(key, preset);
-      const created = asPreset({ name, effect: key, params });
-      app.myPresets.push(created);
-      presetEditing = created;
-      savePresets();
-      renderPresetsTab();
+      openPresetWindow(null, asPreset({ name, effect: key, params: chosenParams(key, preset) }));
     },
   });
 }
 
 function renderPresetsTab() {
-  const list = $("my-presets"), editor = $("preset-editor");
+  const list = $("my-presets");
   if (!list) return;
   presetTabPreview.items = [];
   presetTabPreview.started = performance.now();
-  if (!app.myPresets.includes(presetEditing)) presetEditing = app.myPresets[0] || null;
   renderAiPresetIdeas();
   list.replaceChildren();
   if (!app.myPresets.length) {
-    list.innerHTML = `<p class="hint">None yet. Press <b>New preset</b>, or select a clip in the editor and press
+    list.innerHTML = `<p class="hint">None yet. Press <b>+ New preset</b>, or select a clip in the editor and press
       <b>Save as preset…</b>.</p>`;
+    return;
   }
   const dev = presetPreviewDev();
   for (const [key, fx] of Object.entries(EFFECTS)) {
     const mine = app.myPresets.filter((p) => p.effect === key);
     if (!mine.length) continue;
-    const g = document.createElement("fieldset");
-    g.className = "preset-group";
-    const legend = document.createElement("legend");
-    legend.textContent = fx.label;
-    g.append(legend);
+    const h = document.createElement("h3");
+    h.className = "item-group";
+    h.textContent = fx.label;
+    const rows = document.createElement("div");
+    rows.className = "show-list";
+    rows.setAttribute("role", "list");
+    rows.setAttribute("aria-label", `${fx.label} presets`);
     for (const preset of mine) {
-      const item = button("", () => { presetEditing = preset; renderPresetsTab(); },
-        `preset-list-item${preset === presetEditing ? " active" : ""}`);
       const strip = document.createElement("canvas");
-      strip.className = "fx-strip";
-      const name = document.createElement("span");
-      name.textContent = preset.name;
-      item.append(strip, name);
+      strip.className = "fx-strip item-strip";
       presetTabPreview.items.push({ canvas: strip, clip: presetClip(preset), dev, preset });
-      g.append(item);
+      const shown = Object.keys(preset.params).length;
+      const row = itemRow({
+        picture: strip, name: preset.name, label: "preset",
+        detail: `${fx.label} · ${keepsColours(preset) ? "with its colours" : "keeps a clip's colours"}`
+          + (shown ? "" : " · its settings as they come"),
+        edit: () => openPresetWindow(preset),
+        extra: [
+          button("Duplicate", () => {
+            const copy = asPreset({ name: freePresetName(preset.effect, `${preset.name} copy`), effect: preset.effect,
+              params: structuredClone(preset.params) });
+            app.myPresets.splice(app.myPresets.indexOf(preset) + 1, 0, copy);
+            presetEditing = copy;
+            savePresets();
+            renderPresetsTab();
+          }, "ghost"),
+          button("Delete…", () => deletePreset(preset), "ghost danger"),
+        ],
+      });
+      if (preset === presetEditing) row.classList.add("just-changed");
+      rows.append(row);
     }
-    list.append(g);
+    list.append(h, rows);
   }
-  renderPresetEditor(editor, dev);
+  list.querySelector(".just-changed")?.scrollIntoView({ block: "nearest" });
+  presetEditing = null;
 }
 
-// Keeps the previews in step with a preset while its settings change.
-function refreshPresetPreviews(preset) {
-  for (const item of presetTabPreview.items) if (item.preset === preset) item.clip = presetClip(preset);
+function deletePreset(preset) {
+  if (!confirm(`Delete the preset ${preset.name}? Clips using its settings keep them.`)) return false;
+  app.myPresets.splice(app.myPresets.indexOf(preset), 1);
+  savePresets();
+  renderPresetsTab();
+  return true;
 }
 
-function renderPresetEditor(box, dev) {
+// Edit a preset (or make the new one, `draft`) in a window. The changes are made to a copy, and only
+// kept when you press Save.
+function openPresetWindow(preset, draft = null) {
+  const work = draft || asPreset({ name: preset.name, effect: preset.effect, params: structuredClone(preset.params) });
+  const w = editWindow(preset ? `Edit preset: ${preset.name}` : "New preset");
+  w.dlg.classList.add("preset-dialog");
+  const draw = () => {
+    presetDialogPreview.items = [];
+    presetDialogPreview.started = performance.now();
+    renderPresetEditor(w.body, presetPreviewDev(), work, { redraw: draw,
+      changed: () => { for (const item of presetDialogPreview.items) item.clip = presetClip(work); } });
+  };
+  draw();
+  const save = button(preset ? "Save" : "Add preset", () => {
+    const name = w.body.querySelector(".preset-name").value.trim();
+    if (!name) { status("Give the preset a name", "hint"); w.body.querySelector(".preset-name").focus(); return; }
+    work.name = work.label = freePresetName(work.effect, name, preset);
+    if (preset) Object.assign(preset, { name: work.name, label: work.name, effect: work.effect, params: work.params });
+    else app.myPresets.push(work);
+    presetEditing = preset || work;
+    savePresets();
+    w.dlg.close();
+    renderPresetsTab();
+  }, "primary");
+  const spacer = document.createElement("span");
+  spacer.className = "spacer";
+  if (preset) w.foot.append(button("Delete…", () => { if (deletePreset(preset)) w.dlg.close(); }, "ghost danger"));
+  w.foot.append(spacer, button("Cancel", () => w.dlg.close()), save);
+  w.dlg.addEventListener("close", () => { presetDialogPreview.items = []; });
+  w.dlg.showModal();
+  w.body.querySelector(".preset-name").focus();
+}
+
+function renderPresetEditor(box, dev, preset, { changed, redraw }) {
   box.replaceChildren();
-  const preset = presetEditing;
-  if (!preset) {
-    box.innerHTML = `<p class="hint">Pick a preset to edit it here.</p>`;
-    return;
-  }
   const fx = EFFECTS[preset.effect];
-  const changed = () => { refreshPresetPreviews(preset); savePresets(); };
 
   const head = document.createElement("div");
   head.className = "preset-editor-head";
@@ -2642,13 +2729,8 @@ function renderPresetEditor(box, dev) {
   name.value = preset.name;
   name.maxLength = 60;
   name.title = "The preset's name";
-  name.addEventListener("change", () => {
-    const v = name.value.trim();
-    if (!v) { name.value = preset.name; return; }
-    preset.name = preset.label = freePresetName(preset.effect, v, preset);
-    savePresets();
-    renderPresetsTab();
-  });
+  name.setAttribute("aria-label", "Name");
+  name.addEventListener("input", () => { preset.name = preset.label = name.value; });
   const effect = button(`${fx.label} ▾`, () => chooseEffect({
     title: `Change the effect of ${preset.name}`,
     groups: PRESET_EFFECT_GROUPS, dev, length: 4, from: { ...preset.params }, current: preset.effect,
@@ -2658,9 +2740,7 @@ function renderPresetEditor(box, dev) {
       if (!keep) for (const q of EFFECTS[key].params) if (q.type === "color") delete params[q.key];
       preset.effect = key;
       preset.params = params;
-      preset.name = preset.label = freePresetName(key, preset.name, preset);
-      savePresets();
-      renderPresetsTab();
+      redraw();
     },
   }), "ghost effect-change");
   effect.title = "Change the effect, or start again from one of its presets";
@@ -2673,11 +2753,11 @@ function renderPresetEditor(box, dev) {
   previewRow.className = "preset-preview";
   const strip = document.createElement("canvas");
   strip.className = "fx-strip preset-preview-strip";
-  presetTabPreview.items.push({ canvas: strip, clip: presetClip(preset), dev, preset });
+  presetDialogPreview.items.push({ canvas: strip, clip: presetClip(preset), dev, preset });
   const on = document.createElement("select");
   on.add(new Option("15 segments", ""));
   for (const d of app.deviceList) on.add(new Option(`${d.name} (${d.segments})`, d.id, false, d === dev));
-  on.addEventListener("change", () => { prefs.set("presetPreviewLight", on.value); renderPresetsTab(); });
+  on.addEventListener("change", () => { prefs.set("presetPreviewLight", on.value); redraw(); renderPresetsTab(); });
   const ol = document.createElement("label");
   ol.append("Preview on", on);
   previewRow.append(strip, ol);
@@ -2705,7 +2785,7 @@ function renderPresetEditor(box, dev) {
         else delete preset.params[q.key];
       }
       changed();
-      renderPresetsTab();
+      redraw();
     });
     const il = document.createElement("label");
     il.append(include, "Include colours");
@@ -2766,26 +2846,7 @@ function renderPresetEditor(box, dev) {
     }, "ghost")));
   }
 
-  const actions = document.createElement("div");
-  actions.className = "insp-actions";
-  actions.append(
-    button("Duplicate", () => {
-      const copy = asPreset({ name: freePresetName(preset.effect, `${preset.name} copy`), effect: preset.effect,
-        params: { ...preset.params } });
-      app.myPresets.splice(app.myPresets.indexOf(preset) + 1, 0, copy);
-      presetEditing = copy;
-      savePresets();
-      renderPresetsTab();
-    }, "ghost"),
-    button("Delete preset", () => {
-      if (!confirm(`Delete the preset ${preset.name}? Clips using its settings keep them.`)) return;
-      app.myPresets.splice(app.myPresets.indexOf(preset), 1);
-      presetEditing = null;
-      savePresets();
-      renderPresetsTab();
-    }, "ghost danger"),
-  );
-  box.append(head, previewRow, ...Object.values(groups).filter((g) => g.children.length > 1), actions);
+  box.append(head, previewRow, ...Object.values(groups).filter((g) => g.children.length > 1));
 }
 
 // colour palettes ---------------------------------------------------------------
@@ -2872,11 +2933,7 @@ function uniqueName(base) {
 function renderPalettes() {
   const mine = $("my-palettes"), presets = $("preset-palettes");
   renderAiPaletteIdeas();
-  const addMine = (p) => {
-    app.palettes.push(p);
-    savePalettes();
-    renderPalettes();
-  };
+
   presets.replaceChildren(...PRESET_PALETTES.map((p) => {
     // A card per built-in palette: its colours as one bar, then its name and Copy.
     const card = document.createElement("div");
@@ -2891,7 +2948,7 @@ function renderPalettes() {
     const name = document.createElement("span");
     name.className = "palette-name";
     name.textContent = p.name;
-    const copy = button("Copy", () => addMine({ name: uniqueName(`My ${p.name}`), colors: [...p.colors] }), "ghost");
+    const copy = button("Copy…", () => openPaletteWindow(null, { name: uniqueName(`My ${p.name}`), colors: [...p.colors] }), "ghost");
     copy.title = "Copy to your palettes, to change it";
     const foot = document.createElement("div");
     foot.className = "palette-foot";
@@ -2900,51 +2957,122 @@ function renderPalettes() {
     return card;
   }));
   if (!app.palettes.length) {
-    mine.innerHTML = `<p class="hint">None yet. Press New palette, or copy a built-in one and change it.</p>`;
+    mine.innerHTML = `<p class="hint">None yet. Press <b>+ New palette</b>, or copy a built-in one and change it.</p>`;
     return;
   }
-  mine.replaceChildren(...app.palettes.map((p, i) => {
-    const row = document.createElement("div");
-    row.className = "palette-item";
-    const name = document.createElement("input");
-    name.value = p.name;
-    name.maxLength = 60;
-    name.setAttribute("aria-label", "Palette name");
-    name.addEventListener("change", () => {
-      const v = name.value.trim();
-      if (!v || allPalettes().some((q) => q !== p && q.name === v)) {
-        status("Give each palette its own name", "hint");
-        name.value = p.name;
-        return;
-      }
-      if (app.colourPalette === p.name) app.colourPalette = v;
-      p.name = v;
-      savePalettes();
-    });
-    const sw = document.createElement("span");
-    sw.className = "swatches";
-    p.colors.forEach((c, k) => {
+  mine.setAttribute("role", "list");
+  mine.setAttribute("aria-label", "Your palettes");
+  mine.replaceChildren(...app.palettes.map((p, i) => itemRow({
+    picture: paletteBar(p.colors), name: p.name, label: "palette",
+    detail: `${p.colors.length} colour${p.colors.length === 1 ? "" : "s"}${p.name === app.colourPalette ? " · in use in the editor" : ""}`,
+    edit: () => openPaletteWindow(p),
+    extra: [
+      button("Duplicate", () => {
+        app.palettes.splice(i + 1, 0, { name: uniqueName(`${p.name} copy`), colors: [...p.colors] });
+        savePalettes();
+        renderPalettes();
+      }, "ghost"),
+      button("Delete…", () => deletePalette(p), "ghost danger"),
+    ],
+  })));
+}
+
+// A palette's colours as one bar.
+function paletteBar(colors) {
+  const bar = document.createElement("div");
+  bar.className = "palette-bar";
+  for (const c of colors) {
+    const el = document.createElement("span");
+    el.style.background = c;
+    bar.append(el);
+  }
+  return bar;
+}
+
+function deletePalette(p) {
+  if (!confirm(`Delete the palette ${p.name}? Effects already coloured with it keep their colours.`)) return false;
+  app.palettes.splice(app.palettes.indexOf(p), 1);
+  savePalettes();
+  renderPalettes();
+  return true;
+}
+
+// Edit a palette (or make a new one from `draft`) in a window: its name and colours, kept on Save.
+function openPaletteWindow(palette, draft = null) {
+  const work = draft || { name: palette.name, colors: [...palette.colors] };
+  const w = editWindow(palette ? `Edit palette: ${palette.name}` : "New palette");
+  w.dlg.classList.add("palette-dialog");
+  const name = document.createElement("input");
+  name.value = work.name;
+  name.maxLength = 60;
+  const nl = document.createElement("label");
+  nl.className = "field";
+  nl.append("Name", name);
+  const preview = document.createElement("div");
+  const colours = document.createElement("div");
+  colours.className = "palette-edit-colours";
+  colours.setAttribute("role", "group");
+  colours.setAttribute("aria-label", "Colours");
+  const ch = document.createElement("span");
+  ch.className = "field-label";
+  ch.textContent = "Colours";
+  const add = button("+ Add a colour", () => { work.colors.push(work.colors.at(-1)); draw(); colours.querySelector("li:last-child input")?.focus(); }, "ghost");
+  const hint = document.createElement("p");
+  hint.className = "hint";
+  hint.textContent = "Generate and Recolour use them in this order. Up to 12.";
+  const draw = () => {
+    preview.replaceChildren(paletteBar(work.colors));
+    const list = document.createElement("ol");
+    work.colors.forEach((c, k) => {
+      const li = document.createElement("li");
       const el = document.createElement("input");
       el.type = "color";
       el.value = c;
-      el.setAttribute("aria-label", `${p.name}: colour ${k + 1}`);
-      el.addEventListener("change", () => { p.colors[k] = el.value; savePalettes(); });
-      sw.append(el);
+      el.setAttribute("aria-label", `Colour ${k + 1}`);
+      el.addEventListener("input", () => { work.colors[k] = el.value; preview.replaceChildren(paletteBar(work.colors)); });
+      const hex = document.createElement("code");
+      hex.textContent = c;
+      el.addEventListener("input", () => { hex.textContent = el.value; });
+      const up = button("↑", () => { [work.colors[k - 1], work.colors[k]] = [work.colors[k], work.colors[k - 1]]; draw(); }, "ghost");
+      up.setAttribute("aria-label", `Move colour ${k + 1} up`);
+      up.disabled = k === 0;
+      const rm = button("✕", () => { work.colors.splice(k, 1); draw(); }, "ghost");
+      rm.setAttribute("aria-label", `Remove colour ${k + 1}`);
+      rm.disabled = work.colors.length <= 1;
+      if (rm.disabled) rm.title = "A palette needs at least one colour";
+      li.append(el, hex, up, rm);
+      list.append(li);
     });
-    const add = button("+", () => { p.colors.push(p.colors.at(-1)); savePalettes(); renderPalettes(); }, "ghost");
-    add.title = "Add a colour";
-    add.disabled = p.colors.length >= 12;
-    const remove = button("−", () => { p.colors.pop(); savePalettes(); renderPalettes(); }, "ghost");
-    remove.title = "Remove the last colour";
-    remove.disabled = p.colors.length <= 1;
-    const del = button("Delete", () => {
-      app.palettes.splice(i, 1);
-      savePalettes();
-      renderPalettes();
-    }, "ghost danger");
-    row.append(name, sw, add, remove, del);
-    return row;
-  }));
+    colours.replaceChildren(list);
+    add.disabled = work.colors.length >= 12;
+    add.title = add.disabled ? "A palette holds up to 12 colours" : "";
+  };
+  draw();
+  w.body.append(nl, preview, ch, colours, add, hint);
+  const save = button(palette ? "Save" : "Add palette", () => {
+    const v = name.value.trim();
+    if (!v) { status("Give the palette a name", "hint"); name.focus(); return; }
+    if (allPalettes().some((q) => q !== palette && q.name.toLowerCase() === v.toLowerCase())) {
+      status("Give each palette its own name", "hint");
+      name.select();
+      return;
+    }
+    if (palette) {
+      if (app.colourPalette === palette.name) { app.colourPalette = v; prefs.set("colourPalette", v); }
+      Object.assign(palette, { name: v, colors: work.colors });
+    } else {
+      app.palettes.push({ name: v, colors: work.colors });
+    }
+    savePalettes();
+    w.dlg.close();
+    renderPalettes();
+  }, "primary");
+  const spacer = document.createElement("span");
+  spacer.className = "spacer";
+  if (palette) w.foot.append(button("Delete…", () => { if (deletePalette(palette)) w.dlg.close(); }, "ghost danger"));
+  w.foot.append(spacer, button("Cancel", () => w.dlg.close()), save);
+  w.dlg.showModal();
+  name.focus();
 }
 
 // playlists ---------------------------------------------------------------------------
@@ -6885,9 +7013,7 @@ function wire() {
     refreshPlaylistStatus();
   });
   $("btn-new-palette").addEventListener("click", () => {
-    app.palettes.push({ name: uniqueName("My palette"), colors: ["#ff0000", "#00ff00", "#0000ff"] });
-    savePalettes();
-    renderPalettes();
+    openPaletteWindow(null, { name: uniqueName("My palette"), colors: ["#ff0000", "#00ff00", "#0000ff"] });
   });
   $("plan-model").addEventListener("change", planModelChanged);
 

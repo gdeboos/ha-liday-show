@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.182
+
+- **Library → Palettes** and **Library → Presets** are now lists like **Your shows**, with **Edit…**,
+  **Duplicate** and **Delete…** on each.
+- **Edit…** opens a window. For a palette: its name and colours, which you can reorder with **↑**. For a
+  preset: the same settings and live preview as before. **Save** keeps the changes, and **Cancel**
+  leaves things as they were, so nothing changes by accident.
+- **+ New palette**, **Copy…** on a built-in palette, and **+ New preset** open the same window, and
+  nothing is added until you press **Add palette** or **Add preset**.
+
 ## 0.2.181
 
 - In the **Library** side menu, the group holding **Songs**, **Palettes** and **Presets** is now called
