@@ -77,7 +77,6 @@ export function songFamilies(rows, drafts) {
   for (const d of drafts) {
     if (!d.base || !byKey.has(songKey(d.base))) continue;
     if (d.made && byKey.has(songKey(d.made)) && draftOf.get(songKey(d.made)) === d) continue; // shown with its file
-    if (d.made && songKey(d.made) === songKey(d.base)) { /* made over its own song: just a draft */ }
     family(rootOf(byKey.get(songKey(d.base)))).drafts.push(d);
   }
   const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: "base" });
