@@ -29,11 +29,11 @@ function setup() {
 test("a save lights up, then settles to the time it saved", () => {
   const { el, line, run, timers } = setup();
   line.show("Playlists saved", "saved");
-  assert.equal(el.className, "status saved");
+  assert.equal(el.className, "status is-saved");
   assert.match(el.textContent, /✓ Playlists saved just now/);
   assert.equal(timers[0].ms, LIT_MS);
   run();
-  assert.equal(el.className, "status settled");
+  assert.equal(el.className, "status is-settled");
   assert.match(el.textContent, /Saved · 08:14/);
 });
 
@@ -44,11 +44,11 @@ test("a failure stays until pressed, and nothing else covers it", () => {
   line.show("Choose a song first", "hint");
   line.show("Presets saved", "saved", "presets");
   run();
-  assert.equal(el.className, "status error");
+  assert.equal(el.className, "status is-error");
   assert.match(el.textContent, /Couldn't save playlists/);
   assert.equal(button().getAttribute("aria-label"), "Couldn't save playlists: offline. Press to dismiss.");
   button().click();
-  assert.equal(el.className, "status settled", "the save meanwhile still counts");
+  assert.equal(el.className, "status is-settled", "the save meanwhile still counts");
   assert.equal(button(), null);
 });
 
@@ -62,10 +62,10 @@ test("a failure goes once the same thing works again", () => {
   const { el, line } = setup();
   line.show("Couldn't save palettes: offline", "error", "palettes");
   line.show("Palettes saved", "saved", "palettes");
-  assert.equal(el.className, "status saved");
+  assert.equal(el.className, "status is-saved");
   line.show("Couldn't load the song: the file has gone", "error", "song");
   line.show("", "info", "song");
-  assert.equal(el.className, "status settled");
+  assert.equal(el.className, "status is-settled");
 });
 
 test("clearing without the failure's topic leaves it showing", () => {
@@ -73,13 +73,13 @@ test("clearing without the failure's topic leaves it showing", () => {
   line.show("Couldn't save palettes: offline", "error", "palettes");
   line.show("");
   line.show("", "info", "song");
-  assert.equal(el.className, "status error");
+  assert.equal(el.className, "status is-error");
 });
 
 test("hints show in their own style, then fade", () => {
   const { el, line, run, timers } = setup();
   line.show("Give each palette its own name", "hint");
-  assert.equal(el.className, "status hint");
+  assert.equal(el.className, "status is-hint");
   assert.equal(timers.at(-1).ms, HINT_MS);
   run();
   assert.equal(el.className, "status");

@@ -314,8 +314,9 @@ export class House {
     this.saveTimer = setTimeout(async () => {
       try {
         await this.api("api/house", { method: "PUT", json: { paths: this.paths, styles: this.styles, pins: this.pins, dim: this.dim } });
+        this.status("", "info", "house-view");
       } catch (e) {
-        this.status(`Couldn't save the house view: ${e.message}`, true, "house");
+        this.status(`Couldn't save the house view: ${e.message}`, true, "house-view");
       }
     }, 400);
   }

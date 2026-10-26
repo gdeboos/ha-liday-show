@@ -70,18 +70,17 @@ body {
 .status:not(:has(.msg)) { padding: 0; min-height: 0; border: 0; }
 .status .mark { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
   font-size: 12px; font-weight: 700; flex: none; }
-.status.saved { color: var(--text); font-weight: 600; background: color-mix(in srgb, var(--ok) 22%, var(--panel));
+.status.is-saved { color: var(--text); font-weight: 600; background: color-mix(in srgb, var(--ok) 22%, var(--panel));
   border-color: color-mix(in srgb, var(--ok) 50%, var(--panel)); }
-.status.saved .mark { background: var(--ok); color: var(--panel); }
-.status.saved .when { color: var(--muted); font-weight: 400; }
-.status.settled .mark { width: auto; height: auto; color: var(--ok); }
+.status.is-saved .mark { background: var(--ok); color: var(--panel); }
+.status.is-saved .when { color: var(--muted); font-weight: 400; }
+.status.is-settled .mark { width: auto; height: auto; color: var(--ok); }
 .status .live, .status .alert { display: contents; }
-.status.hint { color: var(--text); background: color-mix(in srgb, var(--warn) 14%, var(--panel));
+.status.is-hint { color: var(--text); background: color-mix(in srgb, var(--warn) 14%, var(--panel));
   border-color: color-mix(in srgb, var(--warn) 45%, var(--panel)); }
-.status.hint .mark { color: var(--warn); }
-.status.hint .mark { width: auto; height: auto; }
+.status.is-hint .mark { width: auto; height: auto; color: var(--warn); }
 /* A failure: a real button, so it can be pressed (and says so to screen readers). */
-.status.error { color: var(--text); font-weight: 600; padding: 0; border: 0; }
+.status.is-error { color: var(--text); font-weight: 600; padding: 0; border: 0; }
 .status-dismiss { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; min-height: 30px;
   border-radius: 8px; font: inherit; font-weight: 600; color: var(--text); cursor: pointer;
   background: color-mix(in srgb, var(--danger) 20%, var(--panel)); border: 1px solid var(--danger); }

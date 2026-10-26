@@ -60,6 +60,10 @@ document.addEventListener("toggle", (e) => {
 // A message in the top bar. Pass error = true for a failure (it stays until pressed), "saved" when
 // something has just been saved (it lights up, then settles to the time), or "hint".
 let statusLine;
+// Thrown for something to put right rather than a failure ("… is already on the list"), so it
+// shows as a hint where it's caught.
+class Nudge extends Error {}
+const errorKind = (e) => (e instanceof Nudge ? "hint" : true);
 // "hint" is a nudge such as "Choose a song first", which fades. `topic` names what a failure was
 // about, so a later save of it, or status("", "info", topic), takes the failure away.
 function status(msg, error = false, topic = null) {
@@ -901,7 +905,7 @@ async function loadHaEntities() {
 function addHaLight(entity) {
   const found = (haEntities || []).find((e) => e.entity === entity);
   if (!found) throw new Error("Pick a light or switch first");
-  if (app.deviceList.some((d) => d.entity === entity)) throw new Error(`${found.name} is already on the list`);
+  if (app.deviceList.some((d) => d.entity === entity)) throw new Nudge(`${found.name} is already on the list`);
   app.deviceList.push({ id: `ha-${entity}`, kind: "ha", name: found.name, ip: "", entity, sku: "",
     protocol: entity.startsWith("switch.") ? "ha_switch" : "ha_light", segments: 1, bulbs: 1,
     reverse: false, gradient: false, brightness: 100 });
@@ -925,7 +929,7 @@ const isPixels = (d) => ["wled", "ddp", "e131", "twinkly"].includes(d?.kind); //
 
 // Twinkly (experimental): asks the light for its name and LED count, like WLED.
 async function addTwinkly(ip) {
-  if (app.deviceList.some((d) => d.ip === ip)) throw new Error(`${ip} is already on the list`);
+  if (app.deviceList.some((d) => d.ip === ip)) throw new Nudge(`${ip} is already on the list`);
   {
     const t = await api("api/twinkly/info", { method: "POST", json: { ip } })
       .catch((e) => { throw new Error(`Couldn't reach a Twinkly light there: ${e.message}`); });
@@ -968,7 +972,7 @@ async function wledInfo(ip) {
 }
 
 async function addWled(ip) {
-  if (app.deviceList.some((d) => d.ip === ip)) throw new Error(`${ip} is already on the list`);
+  if (app.deviceList.some((d) => d.ip === ip)) throw new Nudge(`${ip} is already on the list`);
   {
     const w = await wledInfo(ip).catch((e) => { throw new Error(`Couldn't reach a WLED light there: ${e.message}`); });
     app.deviceList.push({ id: `wled-${ip}`, kind: "wled", name: w.name, ip, sku: "", protocol: "ddp",
@@ -1156,7 +1160,7 @@ function button(label, onclick, cls = "") {
 }
 
 function addDevice(found) {
-  if (app.devices[found.id] || app.deviceList.some((d) => d.ip && d.ip === found.ip)) throw new Error(`${found.ip} is already on the list`);
+  if (app.devices[found.id] || app.deviceList.some((d) => d.ip && d.ip === found.ip)) throw new Nudge(`${found.ip} is already on the list`);
   const name = `${found.sku || "Govee"} ${found.ip.split(".").pop()}`;
   app.deviceList.push(newLight(app.models[skuOf(found.sku)], { id: found.id, name, ip: found.ip, sku: found.sku || "" }));
   saveDevices();
@@ -1181,7 +1185,7 @@ async function scan() {
       const known = app.devices[f.id] || app.deviceList.find((d) => d.ip === f.ip);
       if (known) { row.append(` (${known.name})`); box.append(row); continue; }
       row.append(button("Add", () => {
-        try { addDevice(f); row.replaceChildren(`${f.sku || "Govee"} at ${f.ip} (added)`); } catch (e) { status(e.message, true); }
+        try { addDevice(f); row.replaceChildren(`${f.sku || "Govee"} at ${f.ip} (added)`); } catch (e) { status(e.message, errorKind(e)); }
       }));
       const planned = app.deviceList.filter((d) => !d.ip && (d.kind || "govee") === "govee");
       if (planned.length) {
@@ -1219,7 +1223,7 @@ async function scanWled() {
       const known = app.deviceList.find((d) => d.ip === f.ip);
       if (known) { row.append(` (${known.name})`); box.append(row); continue; }
       row.append(button("Add", async () => {
-        try { await addWled(f.ip); row.replaceChildren(`${label} (added)`); } catch (e) { status(e.message, true); }
+        try { await addWled(f.ip); row.replaceChildren(`${label} (added)`); } catch (e) { status(e.message, errorKind(e)); }
       }));
       box.append(row);
     }
@@ -2979,10 +2983,10 @@ async function saveSunPlace(e) {
   const both = $("sun-lon").value.trim() ? [] : $("sun-lat").value.trim().split(/\s*,\s+|\s+/);
   const [lat, lon] = both.length === 2 ? both : [$("sun-lat").value, $("sun-lon").value];
   try {
-    if (!lat.trim() || !String(lon).trim()) throw new Error("Type both a latitude and a longitude");
+    if (!lat.trim() || !String(lon).trim()) throw new Nudge("Type both a latitude and a longitude");
     scheduleState = await api("api/location", { method: "PUT", json: { lat: lat.trim(), lon: String(lon).trim() } });
-    status("Saved where you are, for sunset times", "saved");
-  } catch (err) { status(err.message, true); }
+    status("Saved where you are, for sunset times", "saved", "location");
+  } catch (err) { status(err.message, errorKind(err), "location"); }
   document.activeElement?.blur();
   refreshPlaylistStatus();
 }
@@ -4273,9 +4277,10 @@ async function startPlaying() {
       const st = await api("api/player/play", {
         method: "POST", json: { show: app.showId, position: app.time, media_player: speaker() },
       });
-      status(r || app.loop ? "Play region and Loop only work with the song in this browser" : "");
+      if (r || app.loop) status("Play region and Loop only work with the song in this browser", "hint");
+      else status("", "info", "play");
       app.clockStart = performance.now() - st.position * 1000;
-    } catch (e) { status(`Couldn't play: ${e.message}`, true); return; }
+    } catch (e) { status(`Couldn't play: ${e.message}`, true, "play"); return; }
     app.remote = true;
     app.playing = true;
     $("btn-play").textContent = "⏸ Stop";

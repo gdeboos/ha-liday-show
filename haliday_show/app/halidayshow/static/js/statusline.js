@@ -66,7 +66,8 @@ export class StatusLine {
   get text() { return this.el.textContent; }
 
   render(kind, msg) {
-    this.el.className = `status${kind ? ` ${kind}` : ""}`;
+    // Prefixed, so page-wide rules such as .hint and .error don't reach the status line.
+    this.el.className = `status${kind ? ` is-${kind}` : ""}`;
     const mark = { saved: "✓", settled: "✓", hint: "⚠", error: "⚠" }[kind];
     if (kind === "error") {
       const b = this.doc.createElement("button");
