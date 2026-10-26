@@ -3841,7 +3841,7 @@ async function renderSongsPage() {
 
 function drawSongRows() {
   const rows = filterRows(songRowsCache, $("song-filter").value);
-  const box = $("song-list");
+  const box = $("songs-page-list");
   songSeen?.disconnect();
   const all = `${songRowsCache.length}${songsMore ? "+" : ""}`;
   $("song-count").textContent = !songRowsCache.length ? ""
