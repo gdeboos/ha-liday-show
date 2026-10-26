@@ -4888,12 +4888,14 @@ async function imLength() {
 }
 
 function imStep(step) {
+  imPreviewStop();
   imp.step = step;
   $("im-step-1").hidden = step !== 1;
   $("im-step-2").hidden = step !== 2;
   $("im-back").hidden = step !== 2;
   $("im-add-song").hidden = step !== 1;
   $("im-next").textContent = step === 1 ? "Next →" : "Import show";
+  $("im-play").hidden = step !== 2;
   if (step === 1) {
     $("im-count").textContent = "";
     $("im-name").focus();
@@ -4906,6 +4908,7 @@ function imStep(step) {
   else if (imp.length && !imp.length.ok) notice(note, "warn", `${songLabel(ref)}: ${imp.length.text}.`);
   else notice(note, "ok", `Song: your copy of ${songLabel(ref)}${imp.length ? `, ${imp.length.text}` : ""}.`);
   imLights();
+  imPreviewButton();
   $("im-lights").querySelector("select")?.focus();
 }
 
@@ -4995,6 +4998,7 @@ function imLights() {
     pick.addEventListener("change", () => {
       const to = byId.get(pick.value) || null;
       plan[t.key] = { light: to?.id || null, why: "", parts: partPlan(t, to) };
+      imPrev.tracks = null;
       imLights();
     });
     const why = document.createElement("span");
@@ -5045,10 +5049,72 @@ function imParts(t, m, p) {
     for (const mp of m.parts) pick.add(new Option(mp.name, mp.id, false, mp.id === at));
     pick.add(new Option(m.whole ? "Whole light" : "All its parts", "whole", false, at === "whole"));
     pick.add(new Option("Leave it out", "", false, !at));
-    pick.addEventListener("change", () => { p.parts[part.key] = pick.value || null; });
+    pick.addEventListener("change", () => { p.parts[part.key] = pick.value || null; imPrev.tracks = null; });
     box.append(name, pick);
   }
   return box;
+}
+
+// ▶ Preview on your house: the show as it would import, with the pairings as they are now, on the
+// house photo, with the song in this browser. Nothing is saved and no lights are sent anything.
+const imPrev = { on: false, audio: null, start: 0, raf: 0, tracks: null };
+
+function imPreviewReady() {
+  housePositionsAll(); // brings house.devices up to date
+  return !!house.photo && house.devices.some((d) => house.paths[d.id]?.length);
+}
+
+function imPreviewButton() {
+  const b = $("im-play");
+  b.hidden = imp.step !== 2;
+  const ready = imPreviewReady();
+  b.disabled = !ready;
+  b.title = ready ? "Play it on your house photo with these pairings. Your lights aren't sent anything"
+    : "Put your lights on the house photo under Setup → House to preview shows there";
+  b.textContent = imPrev.on ? "■ Stop preview" : "▶ Preview on your house";
+}
+
+function imPreviewStart() {
+  imPrev.on = true;
+  imPrev.tracks = null;
+  $("im-preview").hidden = false;
+  const ref = imp.song ? JSON.parse(imp.song) : null;
+  imPrev.audio = ref ? new Audio(audioUrl(ref)) : null;
+  imPrev.start = performance.now();
+  imPrev.audio?.play().catch(() => { imPrev.audio = null; imPrev.start = performance.now(); });
+  imPreviewButton();
+  imPreviewFrame();
+}
+
+function imPreviewStop() {
+  if (!imPrev.on) return;
+  imPrev.on = false;
+  cancelAnimationFrame(imPrev.raf);
+  imPrev.audio?.pause();
+  imPrev.audio = null;
+  $("im-preview").hidden = true;
+  imPreviewButton();
+}
+
+function imPreviewFrame() {
+  if (!imPrev.on) return;
+  const end = imp.share.duration;
+  const t = imPrev.audio ? imPrev.audio.currentTime : (performance.now() - imPrev.start) / 1000;
+  if (t >= end || imPrev.audio?.ended) { imPreviewStop(); return; }
+  imPrev.tracks ||= buildTracks(imp.share, imp.plan, imp.mine).tracks;
+  const byId = new Map(imPrev.tracks.map((tr) => [tr.device, tr]));
+  const pos = housePositionsAll(), houseFx = byId.get(HOUSE)?.clips || [];
+  const frames = new Map();
+  const full = (light) => {
+    if (!frames.has(light.id)) frames.set(light.id, asShown(light, t, (at) => composeLight(light, (id) => byId.get(id), at, pos, houseFx)));
+    return frames.get(light.id);
+  };
+  house.paint($("im-canvas"), Math.min(window.innerHeight * 0.35, 320), (dev) => {
+    if (!dev.parent) return full(app.lights[dev.id] || dev);
+    return full(app.lights[dev.parent]).slice((dev.from - 1) * 3, dev.to * 3);
+  });
+  $("im-preview-time").textContent = `${fmtTime(t, false)} of ${fmtTime(end, false)} · nothing is sent to your lights`;
+  imPrev.raf = requestAnimationFrame(imPreviewFrame);
 }
 
 async function imSubmit(e) {
@@ -7186,6 +7252,8 @@ function wire() {
   $("im-file").addEventListener("change", (e) => { if (e.target.files[0]) importFile(e.target.files[0]); });
   $("im-form").addEventListener("submit", imSubmit);
   $("im-back").addEventListener("click", () => imStep(1));
+  $("im-play").addEventListener("click", () => (imPrev.on ? imPreviewStop() : imPreviewStart()));
+  $("import-dialog").addEventListener("close", imPreviewStop);
   for (const b of document.querySelectorAll("[data-im=cancel]")) b.addEventListener("click", () => $("import-dialog").close());
   $("im-add-song").addEventListener("click", () => openAddSong({ onAdded: (v) => { if (v) imp.song = v; imSongs(); } }));
   $("ns-form").addEventListener("submit", nsSubmit);
