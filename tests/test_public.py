@@ -17,6 +17,7 @@ def _free_port():
 async def client(aiohttp_client, tmp_path, monkeypatch):
     port = _free_port()
     monkeypatch.setenv("HALIDAY_SHOW_PUBLIC_PORT", str(port))
+    monkeypatch.setattr(public, "LOOPBACK_IS_LOCAL", True)  # the test's "phone" is this machine
     monkeypatch.setattr(public.ai, "OPTIONS", tmp_path / "options.json")
     app = server.make_app(tmp_path / "config", tmp_path / "media", allow_all=True)
     c = await aiohttp_client(app)
@@ -509,3 +510,25 @@ def test_ipv4_visitors_written_the_ipv6_way_are_still_told_apart():
             self.remote, self.headers = remote, headers
     a = public.client(R("172.30.32.1", {"X-Forwarded-For": "::ffff:81.2.69.1"}))
     assert a == "81.2.69.1" != public.client(R("172.30.32.1", {"X-Forwarded-For": "::ffff:81.2.69.2"}))
+
+
+
+def test_tunnels_and_proxies_never_count_as_your_home_wifi(monkeypatch):
+    from unittest import mock
+
+    def req(peer, headers=None):
+        r = mock.Mock()
+        r.remote, r.headers = peer, headers or {}
+        return r
+
+    assert public.is_local(req("192.168.1.30"))  # a phone on your Wi-Fi
+    assert public.is_local(req("::ffff:192.168.1.30"))
+    assert not public.is_local(req("127.0.0.1"))  # Tailscale Funnel, or anything else on this machine
+    assert not public.is_local(req("::1"))
+    assert not public.is_local(req("172.30.33.5"))  # another Home Assistant app, such as a proxy
+    assert not public.is_local(req("192.168.1.30", {"CF-Connecting-IP": "203.0.113.9"}))
+    assert not public.is_local(req("203.0.113.9"))
+    assert not public.is_local(req("8.8.8.8"))
+    assert public.is_local(req("10.0.0.7")) and public.is_local(req("fd00::7"))
+    monkeypatch.setattr(public, "LOOPBACK_IS_LOCAL", True)
+    assert public.is_local(req("127.0.0.1"))

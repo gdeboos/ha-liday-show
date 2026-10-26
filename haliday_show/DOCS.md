@@ -1142,7 +1142,8 @@ without the code just says "Scan the code on the sign to start a show".
     start a show", with the shows listed but no buttons. The page keeps checking while it's open, so
     walking up brings the buttons.
   - A phone that won't share its location is told how to allow it, with **Try again**.
-  - Phones on your home Wi-Fi aren't asked.
+  - Phones on your home Wi-Fi aren't asked. Anyone coming through a tunnel or proxy always is, even
+    one set up on the Home Assistant machine itself.
   - Your house is your home location in Home Assistant (**Settings → System → General**), or the one
     you typed in for sunset under **When it plays** in the Playlist editor. Without either, visitors
     through the internet can't start shows at all until you set one, and the tab says so.

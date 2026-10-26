@@ -213,15 +213,31 @@ def metres(a: tuple[float, float], b: tuple[float, float]) -> float:
     return 2 * 6371000 * math.asin(min(1.0, math.sqrt(h)))
 
 
+# Home Assistant's own network for apps: a phone is never on it, only another app (a tunnel or proxy).
+_APPS_NET = ipaddress.ip_network("172.30.32.0/23")
+# Home networks: the private ranges routers hand out (not "private" in Python's wider sense, which
+# includes documentation and other reserved ranges).
+_HOME_NETS = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+                                                "fc00::/7", "fe80::/10")]
+LOOPBACK_IS_LOCAL = False  # tests turn this on, as their visitor is this machine
+
+
 def is_local(request: web.Request) -> bool:
-    """Straight from your own network, not through a tunnel or proxy (those add their own headers)."""
-    if any(h in request.headers for h in ("CF-Connecting-IP", "X-Forwarded-For", "Forwarded", "X-Real-IP")):
+    """A phone on your home network, straight to the page. Tunnels and proxies don't count, so their
+    visitors get the nearby check: some say so with headers, and others (Tailscale Funnel) don't, but
+    they connect from this machine or from Home Assistant's apps network rather than another device."""
+    if any(h in request.headers for h in ("CF-Connecting-IP", "X-Forwarded-For", "Forwarded", "X-Real-IP",
+                                          "Tailscale-User-Login", "Tailscale-Funnel-Request")):
         return False
     try:
         ip = ipaddress.ip_address(request.remote or "")
     except ValueError:
         return False
-    return ip.is_private or ip.is_loopback
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+        ip = ip.ipv4_mapped
+    if ip.is_loopback:
+        return LOOPBACK_IS_LOCAL
+    return ip not in _APPS_NET and any(ip in net for net in _HOME_NETS if net.version == ip.version)
 
 
 _LOADED: dict = {}  # config folder -> (the settings file's identity, cleaned settings)

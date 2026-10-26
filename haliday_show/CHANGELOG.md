@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.178
+
+- **Nearby only** is now stricter about who counts as being on your home Wi-Fi (and so isn't asked
+  where they are). Only phones on your home network count. Visitors reaching the page through any
+  tunnel or proxy are always checked, including ones like Tailscale Funnel that don't say where a
+  visitor came from. Cloudflare Tunnel was already covered.
+
 ## 0.2.177
 
 - The public page is harder to misuse. From a security review:
