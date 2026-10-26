@@ -3368,7 +3368,7 @@ function renderPlaylistBin() {
   const full = pl.shows.length >= PLAYLIST_MAX;
   $("pl-bin").replaceChildren(...shows.map((s) => {
     const li = showCard(s, s.id);
-    const add = button("+", () => changeOrder(inserted(openPlaylist().shows, s.id)), "ghost pl-add");
+    const add = button("+", () => changeOrder(inserted(openPlaylist().shows, s.id), true), "ghost pl-add");
     add.title = full ? `A playlist holds up to ${PLAYLIST_MAX} shows` : "Add at the end";
     add.setAttribute("aria-label", `Add ${s.name} at the end`);
     add.disabled = full;
@@ -3431,11 +3431,11 @@ function renderPlaylistOrder() {
   markPlaylistPlaying();
 }
 
-function changeOrder(shows) {
+function changeOrder(shows, adding = false) {
   const pl = openPlaylist();
   if (!pl) return;
   if (shows.length === pl.shows.length && shows.every((x, k) => x === pl.shows[k])) {
-    if (shows.length >= PLAYLIST_MAX) status(`A playlist holds up to ${PLAYLIST_MAX} shows`, "hint");
+    if (adding) status(`A playlist holds up to ${PLAYLIST_MAX} shows`, "hint");
     return;
   }
   pl.shows = shows;
@@ -3502,7 +3502,7 @@ function dragCard(e, card, id, from) {
     document.body.classList.remove("pl-drag-on");
     const pl = openPlaylist();
     if (!drop || !pl) return;
-    if (at !== null) changeOrder(from === null ? inserted(pl.shows, id, at) : moved(pl.shows, from, at));
+    if (at !== null) changeOrder(from === null ? inserted(pl.shows, id, at) : moved(pl.shows, from, at), from === null);
     else if (from !== null) changeOrder(pl.shows.filter((_, k) => k !== from));
   };
   const up = (ev) => end(ev, true);

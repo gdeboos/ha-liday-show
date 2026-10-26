@@ -996,8 +996,8 @@ long it takes to play through once and when it plays, with **Open**, **▶ Play*
 - **Your shows**, on the left, lists every show. Drag one by its card into **Running order** and let
   go where it should play; a blue line shows where it will land. Or press **+** to add it at the end.
   **Find a show** narrows the list. The same show can go in more than once.
-- In **Running order**, drag a show up or down to change when it plays, or drag it back to **Your
-  shows** to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
+- In **Running order**, drag a show up or down to change when it plays, or drag it out of **Running
+  order** (back to **Your shows**, say) to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
   by the dots (⠿) at the left of a card, so the page still scrolls; there, **Running order** comes
   first.
 - The coloured bar above the order shows one time through, each show as long as it plays, with the
@@ -1093,7 +1093,7 @@ the **Public page** tab, under **Who can start shows**:
   must be that close to your house to start a show. When a visitor presses **▶ Start**, their phone
   asks to share its location; it's only used for that check and isn't kept. Phones on your home
   Wi-Fi aren't asked. Your house is your home location in Home Assistant (**Settings → System →
-  General**), or the one you typed in for sunset under **Library → Playlists**. Without either,
+  General**), or the one you typed in for sunset under **When it plays** in the Playlist editor. Without either,
   visitors through the internet can't start shows at all until you set one, and the tab says so.
   The check stops casual use from afar, but a determined person could fake where their phone is, so
   keep **Queue length** small. The distance is measured generously: a phone that isn't sure where it
