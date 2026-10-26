@@ -318,8 +318,6 @@ h2 { font-size: 15px; margin: 6px 0 0; }
   border: 1px solid var(--line); }
 button.swatch:hover { border-color: var(--text); }
 .palette-list { display: flex; flex-direction: column; gap: 6px; }
-.palette-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel);
-  border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
 .palette-name { min-width: 11em; }
 /* The Playlist editor */
 .playlist-now:empty, #playlist-clock:empty { display: none; }
@@ -527,18 +525,13 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .preset-group.current { border-color: var(--accent); }
 .add-actions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 4px; }
 /* Your own presets: the Presets tab (a list beside an editor) and the save dialog. */
-.preset-layout { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 14px; align-items: start; }
 .preset-list { display: flex; flex-direction: column; gap: 10px; }
 .preset-list .preset-group { display: flex; flex-direction: column; gap: 4px; }
-.preset-list-item { display: flex; align-items: center; gap: 8px; text-align: left; }
-.preset-list-item .fx-strip { width: 80px; min-width: 80px; flex: none; }
-.preset-list-item.active { border-color: var(--accent); }
 .preset-editor { display: flex; flex-direction: column; gap: 12px; }
 .preset-editor-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
 .preset-name { font-size: 16px; font-weight: 600; flex: 1; min-width: 180px; }
 .preset-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .preset-preview-strip { flex: 1; min-width: 200px; height: 28px; }
-@media (max-width: 800px) { .preset-layout { grid-template-columns: minmax(0, 1fr); } }
 .ai-presets { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .ai-presets .hint:empty { display: none; }
 .ai-preset-ideas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
@@ -866,3 +859,19 @@ a.button { text-decoration: none; }
   .pub-seg label + label { border-left: 0; border-top: 1px solid var(--line); }
 }
 .pub-seg label:has(input:disabled) { opacity: .5; cursor: default; }
+/* Library → Palettes and Presets: rows like Your shows, with the colours or a live preview first. */
+.item-row > .palette-bar, .item-row > .item-strip { flex: none; width: 120px; height: 28px; border-radius: 4px; }
+.item-group { margin: 14px 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); }
+.preset-list .item-group:first-child { margin-top: 4px; }
+.show-row.just-changed { border-color: var(--accent); }
+@media (max-width: 720px) { .item-row > .palette-bar, .item-row > .item-strip { width: 100%; } }
+/* The windows that edit a palette or a preset. */
+.preset-dialog { width: min(680px, calc(100vw - 32px)); }
+.preset-dialog .form-dialog-body { max-height: min(70vh, 640px); overflow-y: auto; }
+.palette-dialog .palette-bar { height: 32px; border-radius: 6px; }
+.palette-edit-colours ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.palette-edit-colours li { display: flex; align-items: center; gap: 8px; }
+.palette-edit-colours code { font-size: 13px; color: var(--muted); min-width: 5.5em; }
+.palette-edit-colours li button { padding: 2px 10px; }
+.edit-dialog .field-label { font-weight: 600; margin-bottom: -8px; }

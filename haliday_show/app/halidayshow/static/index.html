@@ -586,11 +586,9 @@
 </main>
 <main id="view-palettes" class="view" hidden>
   <p class="hint">Use a palette from an effect's settings: click a colour to drop it into a colour field, or
-    <b>Apply palette</b> to fill them all. Click a light's name to <b>Recolour</b> every effect on it, or on every light.</p>
-  <section class="toolbar">
-    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg>Your palettes</h2>
-    <button id="btn-new-palette" class="primary">New palette</button>
-  </section>
+    <b>Apply palette</b> to fill them all. Click a light's name to <b>Recolour</b> every effect on it, or on every light.
+    <b>Edit…</b> opens a palette to change its name and colours.</p>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg>Your palettes</h2>
   <section class="card ai-presets">
     <form id="ai-palette-form" class="group ai-form">
       <input id="ai-palette-request" maxlength="2000" autocomplete="off"
@@ -600,18 +598,16 @@
     <p id="ai-palette-hint" class="hint"></p>
     <div id="ai-palette-ideas" class="ai-preset-ideas"></div>
   </section>
-  <div id="my-palettes" class="palette-list"></div>
+  <div id="my-palettes" class="show-list"></div>
+  <p><button id="btn-new-palette" class="primary">+ New palette</button></p>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-swatches"/></svg>Built in</h2>
   <div id="preset-palettes" class="palette-list"></div>
 </main>
 <main id="view-presets" class="view" hidden>
-  <p class="hint">Presets are ready-made settings for an effect. Make your own here with <b>New preset</b>, or
+  <p class="hint">Presets are ready-made settings for an effect. Make your own here with <b>+ New preset</b>, or
     save one from any clip with <b>Save as preset…</b>. They show in the effect chooser with a ★ when <b>Show
-    presets</b> is ticked. Changes here save as you make them and don't alter clips already using a preset.</p>
-  <section class="toolbar">
-    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg>Your presets</h2>
-    <button id="btn-new-preset" class="primary">New preset</button>
-  </section>
+    presets</b> is ticked. <b>Edit…</b> opens one in a window; changing it doesn't alter clips already using it.</p>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg>Your presets</h2>
   <section class="card ai-presets">
     <form id="ai-preset-form" class="group ai-form">
       <input id="ai-preset-request" maxlength="2000" autocomplete="off"
@@ -621,10 +617,8 @@
     <p id="ai-preset-hint" class="hint"></p>
     <div id="ai-preset-ideas" class="ai-preset-ideas"></div>
   </section>
-  <div class="preset-layout">
-    <div id="my-presets" class="preset-list"></div>
-    <section id="preset-editor" class="card preset-editor"></section>
-  </div>
+  <div id="my-presets" class="preset-list"></div>
+  <p><button id="btn-new-preset" class="primary">+ New preset</button></p>
 </main>
 <main id="view-playlists" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Playlists</h2>
