@@ -493,6 +493,17 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .song-row > span { display: flex; flex-direction: column; min-width: 0; }
 .song-row .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .song-row.picked { border-color: var(--accent); background: var(--track); }
+.song-row.disabled { opacity: .5; cursor: default; }
+.song-row .hint.why { white-space: normal; color: var(--warn); }
+/* New show: which step you're on, and Generate's settings under the start choices. */
+.ns-step { margin: 0; }
+#ns-songs { max-height: min(36vh, 300px); }
+.ns-gen { display: flex; flex-direction: column; align-items: stretch; gap: 10px; text-align: left; }
+.ns-gen > label:not(:has(input[type=checkbox])) { display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+  font-weight: 600; }
+.ns-gen > label:has(input[type=checkbox]) { display: flex; align-items: flex-start; gap: 8px; }
+.ns-gen select { font-weight: 400; }
+#ns-starts .hint { white-space: normal; }
 /* The Song panel's one line. */
 .song-summary { display: flex; align-items: center; gap: 8px; }
 .song-summary-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }

@@ -31,7 +31,7 @@ its own with Docker or Python.
 - 🎵 **Hears the song for you.** Tempo, beats, bars and sections (intro, verse, chorus…) are detected
   in your browser, and every effect snaps to them.
 - 🪄 **A first draft in one click.** **Generate** fills every light with effects that follow the
-  music, in the palette and style you pick, ready for you to tweak.
+  music, in the palette and style you pick, ready for you to tweak. A new show can start that way.
 - 💬 **Or just describe it.** "Red and green chase on the roof in every chorus" and an AI adds it,
   using Claude or any AI you've set up in Home Assistant, local models included.
 - 🏠 **See it on your house.** Trace your lights on a photo and the editor plays the show there,
@@ -327,6 +327,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/analysis.js                      Song analysis: tempo, beats, bars and sections
     js/analysis-worker.js               Runs the analysis off the main thread
     js/autogen.js                       Generates a draft show from the analysis
+    js/newshow.js                       The New show window's name and start choices
     js/lightspeed.js                    How fast each protocol can change a light, and previews at that pace
     js/compat.js                        Whether a clip's effect can show on its light, for marking and blocking
     js/controllers.js                   Pixel controllers (DDP, E1.31): where a new light starts, overlaps

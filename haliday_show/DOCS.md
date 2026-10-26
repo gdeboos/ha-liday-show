@@ -63,7 +63,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Show editor**: press **+ New show** (or **Open** one of yours), pick or upload a song, drag across a light's track, press **＋ Add effect…** and pick one. Press
+4. **Show editor**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, choose **Start empty**, drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
 5. Run it from an automation with the MQTT **Play** button or the `hassio.app_stdin` action.
 
@@ -447,7 +447,14 @@ The **Show editor** opens on **Your shows** each time, so nothing changes in a s
 it. Each show is listed with its song, its length and when it last changed, newest first, and the
 one you were last editing has a **Last edited** badge.
 
-- **Open** a show to edit it, or press **+ New show** to start one.
+- **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
+  1. a **Name** and a **Song** (or **Upload a song…**, or **No song, lights only** with its length). The
+     name fills in from the song until you type your own, and each show needs its own name.
+  2. how it starts: **Start empty**, **Generate a first draft** (see [Generate](#generate)), or
+     **Generate with AI** when an AI is set up. Generating needs a song and at least one light, and
+     shows the same **Colours**, **Style** and **Build up** choices as **✨ Generate**.
+
+  **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
   Each show needs its own name. An automation that starts the show by its name needs the new name.

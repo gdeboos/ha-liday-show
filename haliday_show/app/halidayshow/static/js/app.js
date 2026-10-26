@@ -23,6 +23,7 @@ import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./p
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
+import { freeName, startChoices } from "./newshow.js";
 import { copyName, showRows } from "./showlist.js";
 import { filterRows, songRows } from "./songlist.js";
 import { Timeline, fmtTime } from "./timeline.js";
@@ -4898,18 +4899,10 @@ async function analyseSong() {
 
 // Generate: a first draft of the whole show from the song, a palette and a style.
 let generateSeed = 0;
-function generateDialog() {
-  const dlg = document.createElement("dialog");
-  dlg.className = "effect-dialog save-preset-dialog";
-  const form = document.createElement("form");
-  form.method = "dialog";
-  const h = document.createElement("h3");
-  h.textContent = "Generate a show";
-  const hint = document.createElement("p");
-  hint.className = "hint";
-  hint.textContent = "Fills every light with effects that follow the song's beats and sections: soft looks in quiet "
-    + "parts, fast ones on the beat when it gets loud, and the same looks each time a chorus comes back. It replaces "
-    + "the lights' effects; Ctrl+Z brings them back. Generate again for a different take.";
+
+// The settings Generate asks for, shared by its own window and step 2 of New show. `nodes` go in a
+// form; read() gives what to generate with (and remembers the choices for next time).
+function generateControls() {
   const palette = document.createElement("select");
   const preferred = seasonalPalette() || currentPalette();
   for (const p of allPalettes()) {
@@ -4922,6 +4915,40 @@ function generateDialog() {
   for (const [key, st] of Object.entries(STYLES)) style.add(new Option(st.label, key, false, key === prefs.get("genStyle", "balanced")));
   const sl = document.createElement("label");
   sl.append("Style", style);
+  const house = document.createElement("input");
+  house.type = "checkbox";
+  house.checked = true;
+  const hl = document.createElement("label");
+  hl.append(house, "Sweep across the house as the music lifts");
+  hl.hidden = !Object.keys(housePositionsAll()).length;
+  const build = document.createElement("input");
+  build.type = "checkbox";
+  build.checked = prefs.get("genBuild", true);
+  const bl = document.createElement("label");
+  bl.append(build, "Build up: a few lights in quiet parts, more as the music builds, all of them in the loudest");
+  const read = () => {
+    prefs.set("genStyle", style.value);
+    prefs.set("genBuild", build.checked);
+    const chosen = allPalettes().find((p) => p.name === palette.value) || currentPalette();
+    return { colors: chosen.colors, paletteName: chosen.name, style: style.value, house: !hl.hidden && house.checked,
+      build: build.checked };
+  };
+  return { nodes: [pl, sl, bl, hl], read };
+}
+
+function generateDialog() {
+  const dlg = document.createElement("dialog");
+  dlg.className = "effect-dialog save-preset-dialog";
+  const form = document.createElement("form");
+  form.method = "dialog";
+  const h = document.createElement("h3");
+  h.textContent = "Generate a show";
+  const hint = document.createElement("p");
+  hint.className = "hint";
+  hint.textContent = "Fills every light with effects that follow the song's beats and sections: soft looks in quiet "
+    + "parts, fast ones on the beat when it gets loud, and the same looks each time a chorus comes back. It replaces "
+    + "the lights' effects; Ctrl+Z brings them back. Generate again for a different take.";
+  const controls = generateControls();
   // Made by the rules (instant, the same looks every time) or by the AI, which also reads your section notes.
   const maker = document.createElement("select");
   maker.add(new Option("Rules (instant)", "rules"));
@@ -4938,17 +4965,6 @@ function generateDialog() {
   const showNotes = () => { notesHint.hidden = maker.value !== "ai"; };
   maker.addEventListener("change", showNotes);
   showNotes();
-  const house = document.createElement("input");
-  house.type = "checkbox";
-  house.checked = true;
-  const hl = document.createElement("label");
-  hl.append(house, "Sweep across the house as the music lifts");
-  hl.hidden = !Object.keys(housePositionsAll()).length;
-  const build = document.createElement("input");
-  build.type = "checkbox";
-  build.checked = prefs.get("genBuild", true);
-  const bl = document.createElement("label");
-  bl.append(build, "Build up: a few lights in quiet parts, more as the music builds, all of them in the loudest");
   const actions = document.createElement("div");
   actions.className = "insp-actions";
   const go = button("Generate", () => {}, "primary");
@@ -4956,20 +4972,150 @@ function generateDialog() {
   const cancel = button("Cancel", () => dlg.close(), "ghost");
   cancel.type = "button";
   actions.append(go, cancel);
-  form.append(h, hint, ml, notesHint, pl, sl, bl, hl, actions);
+  form.append(h, hint, ml, notesHint, ...controls.nodes, actions);
   dlg.append(form);
   form.addEventListener("submit", () => {
-    prefs.set("genStyle", style.value);
-    prefs.set("genBuild", build.checked);
     if (!ml.hidden) prefs.set("genMaker", maker.value);
-    const chosen = allPalettes().find((p) => p.name === palette.value) || currentPalette();
-    const opts = { colors: chosen.colors, style: style.value, house: !hl.hidden && house.checked, build: build.checked };
-    if (maker.value === "ai") generateWithAI({ ...opts, paletteName: chosen.name });
+    const opts = controls.read();
+    if (maker.value === "ai") generateWithAI(opts);
     else generate(opts);
   });
   dlg.addEventListener("close", () => dlg.remove());
   document.body.append(dlg);
   dlg.showModal();
+}
+
+// New show: step 1 is its name and song, step 2 how it starts (empty, or generated by the rules or the
+// AI). Nothing is made until Create show, so Cancel leaves everything as it was.
+const newShow = { step: 1, song: "", start: "empty", named: false, taken: [], gen: null };
+
+function nsRadioRows(box, name, rows, picked, onPick) {
+  const hadFocus = box.contains(document.activeElement);
+  box.replaceChildren(...rows.map((r) => {
+    const row = document.createElement("label");
+    row.className = `song-row${r.value === picked ? " picked" : ""}${r.disabled ? " disabled" : ""}`;
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = name;
+    radio.checked = r.value === picked;
+    radio.disabled = Boolean(r.disabled);
+    radio.addEventListener("change", () => onPick(r.value));
+    const text = document.createElement("span");
+    const b = document.createElement("b");
+    b.textContent = r.label;
+    const detail = document.createElement("span");
+    detail.className = "hint";
+    detail.textContent = r.detail;
+    text.append(b, detail);
+    if (r.why) {
+      const why = document.createElement("span");
+      why.className = "hint why";
+      why.textContent = r.why;
+      text.append(why);
+    }
+    row.append(radio, text);
+    return row;
+  }));
+  // Redrawing would drop the keyboard focus of someone arrowing through the list.
+  if (hadFocus) box.querySelector("input:checked")?.focus();
+}
+
+function nsSongs() {
+  const rows = [...$("audio-select").options].map((o) => {
+    const ref = o.value ? JSON.parse(o.value) : null;
+    return { value: o.value, label: ref ? songLabel(ref) : "No song, lights only",
+      detail: ref ? `${ref.source === "media" ? "Media" : "Uploaded"}: ${ref.path}` : "Set how long the show runs" };
+  });
+  nsRadioRows($("ns-songs"), "ns-song", rows, newShow.song, (v) => { newShow.song = v; nsSongPicked(); });
+  $("ns-length-wrap").hidden = newShow.song !== "";
+}
+
+// Until you type a name of your own, the show is named after its song.
+function nsSongPicked() {
+  if (!newShow.named) {
+    const ref = newShow.song ? JSON.parse(newShow.song) : null;
+    $("ns-name").value = freeName(ref ? songLabel(ref) : "Untitled show", newShow.taken);
+  }
+  nsSongs();
+}
+
+function nsStarts() {
+  const choices = startChoices({ song: newShow.song !== "", lights: app.deviceList.some((d) => !d.light), ai: Boolean(aiVia) });
+  if (choices.find((c) => c.value === newShow.start)?.disabled) newShow.start = "empty";
+  nsRadioRows($("ns-starts"), "ns-start", choices, newShow.start, (v) => { newShow.start = v; nsStarts(); });
+  $("ns-gen").hidden = newShow.start === "empty";
+  $("ns-next").textContent = newShow.start === "empty" ? "Create show" : "Create and generate";
+}
+
+function nsStep(step) {
+  newShow.step = step;
+  $("ns-step-1").hidden = step !== 1;
+  $("ns-step-2").hidden = step !== 2;
+  $("ns-back").hidden = step !== 2;
+  $("ns-upload-wrap").hidden = step !== 1;
+  if (step === 1) {
+    $("ns-next").textContent = "Next →";
+    $("ns-name").focus();
+  } else {
+    nsStarts();
+    $("ns-starts").querySelector("input:checked")?.focus();
+  }
+}
+
+async function openNewShow() {
+  if (!(await confirmDiscard())) { await refreshShows(); return; }
+  await refreshAudio().catch(() => {});
+  newShow.taken = (await api("api/shows").catch(() => [])).map((s) => s.name);
+  Object.assign(newShow, { song: "", start: "empty", named: false, gen: generateControls() });
+  $("ns-gen").replaceChildren(...newShow.gen.nodes);
+  nsSongPicked();
+  $("ns-length").value = 60;
+  $("new-show-dialog").showModal();
+  nsStep(1);
+}
+
+async function nsSubmit(e) {
+  e.preventDefault();
+  if (newShow.step === 1) {
+    const name = $("ns-name").value.trim();
+    if (!name) { $("ns-name").focus(); return; }
+    if (newShow.taken.some((n) => n.toLowerCase() === name.toLowerCase())) {
+      status(`There's already a show called ${name}. Give this one its own name`, "hint");
+      $("ns-name").select();
+      return;
+    }
+    nsStep(2);
+    return;
+  }
+  const show = { name: $("ns-name").value.trim(), audio: newShow.song ? JSON.parse(newShow.song) : null,
+    length: Math.max(1, Number($("ns-length").value) || 60), start: newShow.start,
+    gen: newShow.start === "empty" ? null : newShow.gen.read() };
+  $("new-show-dialog").close();
+  await createShow(show);
+}
+
+async function createShow({ name, audio: ref, length, start, gen }) {
+  await openShow(null);
+  app.show.name = name;
+  $("show-name").value = name;
+  app.show.audio = ref;
+  if (!ref) {
+    app.show.duration = length;
+    $("duration").value = length;
+  }
+  showView("editor");
+  try {
+    await loadAudio(ref);
+    if (ref) await importSongInfo();
+    app.changed();
+    await save();
+    status(`${name} saved`, "saved", "show");
+  } catch (err) {
+    status(`Couldn't save ${name}: ${err.message}`, true, "show");
+  }
+  renderSaveState();
+  if (start === "ai") await generateWithAI(gen);
+  else if (start === "rules") await generate(gen);
 }
 
 async function generate({ colors, style, house, build }) {
@@ -5308,9 +5454,9 @@ function wire() {
 
   $("show-select").addEventListener("change", async (e) => {
     const v = e.target.value;
+    if (v === "__new__") { await openNewShow(); return; }
     if (!(await confirmDiscard())) { await refreshShows(); return; }
-    if (v === "__new__") await openShow(null);
-    else if (v) await openShow(v);
+    if (v) await openShow(v);
   });
   $("show-name").addEventListener("change", (e) => {
     app.show.name = e.target.value.trim() || "Untitled show";
@@ -5334,12 +5480,24 @@ function wire() {
     if (id) focusRow(id, "open");
   });
   for (const b of document.querySelectorAll("[data-show-new]")) {
-    b.addEventListener("click", async () => {
-      if (!(await confirmDiscard())) return;
-      await openShow(null);
-      showView("editor");
-    });
+    b.addEventListener("click", openNewShow);
   }
+  $("ns-form").addEventListener("submit", nsSubmit);
+  $("ns-back").addEventListener("click", () => nsStep(1));
+  // Picked from the show drop-down and then cancelled: put the drop-down back on the open show.
+  $("new-show-dialog").addEventListener("close", () => { $("show-select").value = app.showId || ""; });
+  $("ns-name").addEventListener("input", () => { newShow.named = true; });
+  for (const b of document.querySelectorAll("[data-ns=cancel]")) b.addEventListener("click", () => $("new-show-dialog").close());
+  $("ns-upload").addEventListener("change", async (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    const ref = await music.upload(f);
+    if (!ref) return;
+    await refreshAudio().catch(() => {});
+    newShow.song = [...$("audio-select").options].find((o) => o.value && JSON.parse(o.value).path === ref.path)?.value || "";
+    nsSongPicked();
+  });
   $("autosave").checked = prefs.get("autosave", true);
   $("autosave").addEventListener("change", (e) => { prefs.set("autosave", e.target.checked); scheduleAutoSave(); });
   $("btn-delete").addEventListener("click", () => {
