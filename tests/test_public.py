@@ -512,7 +512,6 @@ def test_ipv4_visitors_written_the_ipv6_way_are_still_told_apart():
     assert a == "81.2.69.1" != public.client(R("172.30.32.1", {"X-Forwarded-For": "::ffff:81.2.69.2"}))
 
 
-
 def test_tunnels_and_proxies_never_count_as_your_home_wifi(monkeypatch):
     from unittest import mock
 
