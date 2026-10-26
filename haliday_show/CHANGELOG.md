@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.158
+## 0.2.159
 
 - **Make song file** again: the window that asks whether to **Replace it** now also lists any other
   drafts that splice that file in, since they'll play the new version too.
@@ -8,6 +8,14 @@
   and it's tried again with your next change. Closing the page asks first while one is still waiting.
 - **Rename…** on a draft in **Your songs** changes only its name, so it can't undo an edit made in
   another tab meanwhile.
+
+## 0.2.158
+
+- HA-liday Show now opens on **Library**, with your shows, rather than the Show editor (which opened on
+  the same list anyway).
+- The tabs along the top are reordered and grouped: **Library**, then the two editors together under
+  **Editors** (now labelled **Show** and **Music**), then **Setup**, with a thin line between the
+  groups.
 
 ## 0.2.157
 
