@@ -1,11 +1,17 @@
 # Changelog
 
+## 0.2.152
+
+- The user guide, the app's page in the app store and the README now cover everything added lately:
+  the **Library** tab's pages (Shows, Songs, Palettes, Presets, Playlists), playlists with schedules
+  and sunset starts, the Show player for shows with no speaker, how **Generate** builds up, what an
+  export includes, and the on-screen names of a few settings. Nothing in the app itself has changed.
+
 ## 0.2.151
 
-- The user guide, and the app's page in Home Assistant's app store, now cover everything added
-  lately. The **Library** tab's pages (Shows, Songs, Palettes, Presets, Playlists), playlists and
-  schedules in the quick start, the Show player when you have no speaker, and how **Generate** builds
-  up. Nothing in HA-liday Show itself has changed.
+- The user guide's **Suggest cuts** section is rewritten as step-by-step instructions, with what the
+  options mean and how it picks them. It's now in the **4. Build a show** contents, and **Editing a
+  song** points to it.
 
 ## 0.2.150
 
