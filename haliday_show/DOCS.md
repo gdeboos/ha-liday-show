@@ -475,8 +475,16 @@ them. For a lights-only show, choose **No song** and set its **Length**.
 
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
 tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
-list by name, folder or show. **Edit** opens a song in the **Music editor**, **Upload a song…**
-adds one, and **Remove…** archives or deletes one.
+list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Remove…** archives
+or deletes one. The song you last opened in the Music editor has a **Last edited** badge.
+
+**+ Add a song**, under the list, opens a short window:
+
+1. **Choose a file…** and give it a **Name**. It's saved under that name in `/media/haliday_show/`; if
+   a song there already has it, the window asks for another, so nothing is replaced by mistake.
+2. **Detect beats and parts now** (picked to start with) finds its tempo, beats and parts before it's
+   added, so any show that picks it gets them straight away. **Add it as it is** leaves that for later
+   (**Detect** in the Music editor). Press **Add song**.
 
 ### Archiving and deleting
 
@@ -506,8 +514,10 @@ puts it back and gives it back to the shows that were left without a song.
 
 ### Editing a song
 
-The **Music editor** cuts, shortens and splices songs before you build a show. Pick a
-song (or **Upload** one), drag across the waveform to select, then **Cut selection** to remove it or
+The **Music editor** cuts, shortens and splices songs before you build a show. It opens on **Your
+songs** each visit, the same list as **Library → Songs** (with **+ Add a song**), so nothing is touched
+until you press **Edit** on one; **← All songs** goes back, and switching tabs keeps your song open.
+Pick another song in **Song** (or **Upload** one), drag across the waveform to select, then **Cut selection** to remove it or
 **Keep only selection** to shorten the song to it. **Insert at playhead** and **Add to end** splice in
 another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
 time (a few hundredths of a second hides the click, a few seconds blends one song into the next), and

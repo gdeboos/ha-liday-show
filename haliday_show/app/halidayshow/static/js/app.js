@@ -26,7 +26,8 @@ import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, showRows } from "./showlist.js";
-import { filterRows, songRows } from "./songlist.js";
+import { filterRows, songKey, songRows } from "./songlist.js";
+import { addedMessage, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
 
 const $ = (id) => document.getElementById(id);
@@ -163,7 +164,8 @@ const audio = $("audio");
 const volume = createVolume();
 volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
-const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio() });
+const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
+  opened: (ref) => prefs.set("lastSong", songKey(ref)) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
 // history -----------------------------------------------------------------
@@ -3860,7 +3862,7 @@ function drawSongRows() {
     box.removeAttribute("role");
     box.innerHTML = songRowsCache.length
       ? `<p class="hint">No songs match that.</p>`
-      : `<p class="hint">No songs yet. Press <b>Upload a song…</b> to add one.</p>`;
+      : `<p class="hint">No songs yet. Press <b>+ Add a song</b> to add one.</p>`;
     return;
   }
   box.setAttribute("role", "list");
@@ -3879,6 +3881,12 @@ function songRow(r) {
   name.className = "show-name";
   name.textContent = r.name;
   head.append(name);
+  if (r.key === prefs.get("lastSong", "")) {
+    const badge = document.createElement("span");
+    badge.className = "show-last";
+    badge.textContent = "Last edited";
+    head.append(badge);
+  }
   if (r.folder) {
     const where = document.createElement("span");
     where.className = "hint";
@@ -3920,9 +3928,110 @@ function songRow(r) {
 async function editSong(ref) {
   // Ask before switching tabs, rather than after.
   if (music.dirty && !confirm("Start again with this song? Your unsaved edits in the Music editor will be lost.")) return;
+  app.songChosen = true;
   showView("music");
   await refreshAudio().catch(() => {});
   music.open(ref, { asked: true });
+}
+
+// Add a song: step 1 picks the file and its name, step 2 whether to detect it straight away (the
+// default, so shows that use it get its beats and parts at once). Nothing is uploaded until Add song.
+const addSong = { step: 1, file: null, named: false, detect: true, busy: false };
+
+function asStarts() {
+  const rows = [
+    { value: "detect", label: "Detect beats and parts now (recommended)",
+      detail: "Finds the tempo, beats and parts (intro, verse, chorus…), so effects snap to them. Takes a few seconds." },
+    { value: "later", label: "Add it as it is", detail: "You can press Detect later in the Music editor." },
+  ];
+  nsRadioRows($("as-starts"), "as-start", rows, addSong.detect ? "detect" : "later", (v) => { addSong.detect = v === "detect"; asStarts(); });
+}
+
+function asStep(step) {
+  addSong.step = step;
+  $("as-step-1").hidden = step !== 1;
+  $("as-step-2").hidden = step !== 2;
+  $("as-back").hidden = step !== 2;
+  $("as-next").textContent = step === 1 ? "Next →" : "Add song";
+  if (step === 2) { asStarts(); $("as-starts").querySelector("input:checked")?.focus(); }
+}
+
+function asBusy(on, text = "") {
+  addSong.busy = on;
+  $("as-progress").textContent = text;
+  for (const b of $("add-song-dialog").querySelectorAll("button, input")) b.disabled = on;
+}
+
+function openAddSong() {
+  Object.assign(addSong, { file: null, named: false, detect: true, busy: false });
+  $("as-file-name").textContent = "No file chosen yet";
+  $("as-name").value = "";
+  asBusy(false);
+  $("add-song-dialog").showModal();
+  asStep(1);
+}
+
+function asFilePicked(f) {
+  if (!f) return;
+  if (!isAudioName(f.name)) { status("Pick a song file: MP3, M4A, WAV, FLAC, OGG, Opus or WebM", "hint"); return; }
+  addSong.file = f;
+  $("as-file-name").textContent = `${f.name} · ${(f.size / 1048576).toFixed(1)} MB`;
+  if (!addSong.named) $("as-name").value = nameFromFile(f.name);
+}
+
+async function asSubmit(e) {
+  e.preventDefault();
+  if (addSong.busy) return;
+  const f = addSong.file, name = $("as-name").value.trim();
+  if (addSong.step === 1) {
+    if (!f) { status("Choose a song file first", "hint"); return; }
+    if (!name) { $("as-name").focus(); return; }
+    let paths;
+    try { paths = (await api("api/songs")).songs.map((s) => s.path); } catch (err) {
+      status(`Couldn't check your songs: ${err.message}`, true, "songs");
+      return;
+    }
+    if (nameTaken(savedName(name, f.name), paths)) {
+      status(`There's already a song called ${name}. Give this one its own name`, "hint");
+      $("as-name").select();
+      return;
+    }
+    asStep(2);
+    return;
+  }
+  asBusy(true, `Uploading ${name}…`);
+  const form = new FormData();
+  form.append("file", f, savedName(name, f.name));
+  let ref;
+  try {
+    ref = await api("api/audio", { method: "POST", body: form });
+  } catch (err) {
+    asBusy(false);
+    status(`Couldn't add ${name}: ${err.message}`, true, "songs");
+    return;
+  }
+  let info = null, failed = null;
+  if (addSong.detect) {
+    asBusy(true, `Listening to ${name}…`);
+    try {
+      audioCtx ||= new AudioContext();
+      const song = await audioCtx.decodeAudioData(await f.arrayBuffer());
+      const channels = Array.from({ length: song.numberOfChannels }, (_, c) => song.getChannelData(c));
+      const { samples, rate } = toMono(channels, song.sampleRate);
+      const r = await analyseInWorker(samples, rate);
+      info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: describeSections(r.sections, r.traits) };
+      await api(songInfoUrl(ref), { method: "PUT", json: info });
+    } catch (err) {
+      failed = songLoadMessage(err);
+      info = null;
+    }
+  }
+  asBusy(false);
+  $("add-song-dialog").close();
+  await refreshAudio().catch(() => {});
+  renderSongsPage();
+  if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
+  else status(addedMessage(name, info), "saved", "songs");
 }
 
 // Song lengths, read from each file's header by the browser, a few at a time. Kept for the visit,
@@ -5434,16 +5543,20 @@ function showView(view) {
   let page = SECTIONS[view] ? sectionPage[view] : view;
   // Each visit the Show editor starts on Your shows, so nothing changes until you open one.
   if (page === "editor" && !app.chosen) page = "showlist";
+  // And the Music editor on Your songs.
+  if (page === "music" && !app.songChosen) page = "songlist";
   const top = section || view;
   for (const t of document.querySelectorAll(".tab")) {
-    t.classList.toggle("active", t.dataset.view === (top === "showlist" ? "editor" : top));
+    t.classList.toggle("active", t.dataset.view === ({ showlist: "editor", songlist: "music" }[top] || top));
     if (t.dataset.view === top) t.scrollIntoView({ block: "nearest", inline: "nearest" }); // on a phone the tab row scrolls
   }
   for (const t of document.querySelectorAll(".subtab")) t.classList.toggle("active", t.dataset.view === page);
   for (const k of Object.keys(SECTIONS)) $(`section-${k}`).hidden = k !== top;
-  for (const v of ["showlist", "editor", "music", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
+  for (const v of ["showlist", "editor", "songlist", "music", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
+  if (page === "songlist") document.querySelector("[data-songs-slot]").append($("songs-block"));
+  if (page === "songs") $("view-songs").append($("songs-block"));
   if (page === "showlist" || page === "shows") renderShowLists();
-  if (page === "songs") renderSongsPage();
+  if (page === "songs" || page === "songlist") renderSongsPage();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
@@ -5470,12 +5583,19 @@ function wire() {
   });
   $("btn-save").addEventListener("click", saveClicked);
   $("song-filter").addEventListener("input", drawSongRows);
-  $("songs-upload").addEventListener("change", async (e) => {
-    const f = e.target.files[0];
-    e.target.value = "";
-    if (!f) return;
-    const ref = await music.upload(f);
-    if (ref) { status(`Uploaded ${ref.path.split("/").pop()}`, "saved", "songs"); await refreshAudio().catch(() => {}); renderSongsPage(); }
+  $("btn-add-song").addEventListener("click", openAddSong);
+  $("as-form").addEventListener("submit", asSubmit);
+  $("as-back").addEventListener("click", () => asStep(1));
+  $("as-name").addEventListener("input", () => { addSong.named = true; });
+  $("as-file").addEventListener("change", (e) => { asFilePicked(e.target.files[0]); e.target.value = ""; });
+  for (const b of document.querySelectorAll("[data-as=cancel]")) b.addEventListener("click", () => $("add-song-dialog").close());
+  // Not while it's uploading or listening: the song would be half added.
+  $("add-song-dialog").addEventListener("cancel", (e) => { if (addSong.busy) e.preventDefault(); });
+  $("btn-all-songs").addEventListener("click", () => {
+    if (music.dirty && !confirm("Go back to your songs? Your unsaved edits in the Music editor will be lost.")) return;
+    music.dirty = false;
+    app.songChosen = false;
+    showView("music");
   });
   $("btn-all-shows").addEventListener("click", async () => {
     if (!(await confirmDiscard())) return;
@@ -5526,7 +5646,12 @@ function wire() {
     sel.value = songPick;
     sel.dispatchEvent(new Event("change"));
   });
-  $("btn-song-music").addEventListener("click", () => { $("song-dialog").close(""); showView("music"); });
+  // Opens the picked song in the Music editor, or Your songs when it's lights only.
+  $("btn-song-music").addEventListener("click", () => {
+    $("song-dialog").close("");
+    if (songPick) editSong(JSON.parse(songPick));
+    else showView("music");
+  });
 
   $("audio-select").addEventListener("change", async (e) => {
     app.show.audio = e.target.value ? JSON.parse(e.target.value) : null;

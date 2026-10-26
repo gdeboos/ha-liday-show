@@ -261,6 +261,13 @@
   <audio id="audio" preload="auto"></audio>
 </main>
 
+<!-- Your songs: where the Music editor starts each visit; the same list is under Library → Songs. -->
+<main id="view-songlist" class="view showlist" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Your songs</h2>
+  <p class="hint">Open a song to cut, shorten or join it. The file you open isn't changed: edits are saved as a new file.</p>
+  <div data-songs-slot></div>
+</main>
+
 <main id="view-music" class="view music" hidden>
   <p class="hint">Cut, shorten and splice songs here, then <b>Save as new file</b> and pick it under <b>Song</b> in the
     editor. The original file isn't changed.</p>
@@ -276,6 +283,7 @@
     </ul>
   </details>
   <section class="toolbar">
+    <button type="button" id="btn-all-songs" class="ghost" title="Back to Your songs">← All songs</button>
     <label>Song <select id="music-src"></select></label>
     <label class="button ghost" title="Upload a song to HA-liday Show and start editing it">Upload<input id="music-upload" type="file" accept="audio/*" hidden></label>
     <span id="music-info" class="hint"></span>
@@ -393,18 +401,47 @@
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Songs</h2>
   <p class="hint">Every song in your songs folder, and which shows use it. <b>Edit</b> opens a song in the
     Music editor.</p>
-  <div class="group song-tools">
-    <label>Find <input id="song-filter" type="search" placeholder="Name, folder or show" autocomplete="off"></label>
-    <label class="button" title="Upload a song to your songs folder">Upload a song…<input id="songs-upload" type="file" accept="audio/*" hidden></label>
-    <span id="song-count" class="hint" aria-live="polite"></span>
+  <!-- One list of songs, moved between here and Your songs in the Music editor, whichever is showing. -->
+  <div id="songs-block">
+    <div class="group song-tools">
+      <label>Find <input id="song-filter" type="search" placeholder="Name, folder or show" autocomplete="off"></label>
+      <span id="song-count" class="hint" aria-live="polite"></span>
+    </div>
+    <div id="songs-page-list" class="show-list"></div>
+    <p><button type="button" class="primary" id="btn-add-song">+ Add a song</button></p>
+    <details id="songs-archived" class="archived" hidden>
+      <summary>Archived songs</summary>
+      <p class="hint">In the <b>Archived</b> folder of HA-liday Show's songs folder, out of its song lists.
+        <b>Restore</b> puts a song back, and gives it back to any shows that were left without it.</p>
+      <div class="show-list"></div>
+    </details>
   </div>
-  <div id="songs-page-list" class="show-list"></div>
-  <details id="songs-archived" class="archived" hidden>
-    <summary>Archived songs</summary>
-    <p class="hint">In the <b>Archived</b> folder of HA-liday Show's songs folder, out of its song lists.
-      <b>Restore</b> puts a song back, and gives it back to any shows that were left without it.</p>
-    <div class="show-list"></div>
-  </details>
+  <dialog id="add-song-dialog" class="effect-dialog form-dialog" aria-labelledby="as-title">
+    <form id="as-form" method="dialog">
+      <div class="effect-dialog-head"><h3 id="as-title">Add a song</h3>
+        <button type="button" class="ghost" data-as="cancel" aria-label="Close">✕</button></div>
+      <div class="form-dialog-body" id="as-step-1">
+        <p class="hint ns-step">Step 1 of 2: pick the song</p>
+        <div class="as-file">
+          <label class="button">Choose a file…<input id="as-file" type="file" accept="audio/*" hidden></label>
+          <span id="as-file-name" class="hint">No file chosen yet</span>
+        </div>
+        <label class="field">Name <input id="as-name" type="text" maxlength="120" autocomplete="off">
+          <span class="hint">It's saved under this name in HA-liday Show's songs folder, so every speaker can play it.</span></label>
+      </div>
+      <div class="form-dialog-body" id="as-step-2" hidden>
+        <p class="hint ns-step">Step 2 of 2: get it ready</p>
+        <div id="as-starts" class="song-list" role="radiogroup" aria-label="Detect the song"></div>
+        <p id="as-progress" class="hint" aria-live="polite"></p>
+      </div>
+      <div class="form-dialog-foot">
+        <button type="button" class="ghost" id="as-back" hidden>← Back</button>
+        <span class="spacer"></span>
+        <button type="button" data-as="cancel">Cancel</button>
+        <button type="submit" class="primary" id="as-next">Next →</button>
+      </div>
+    </form>
+  </dialog>
 </main>
 <main id="view-palettes" class="view" hidden>
   <p class="hint">Use a palette from an effect's settings: click a colour to drop it into a colour field, or
