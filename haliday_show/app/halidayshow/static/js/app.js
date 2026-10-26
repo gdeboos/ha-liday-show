@@ -22,7 +22,7 @@ import { MusicEditor } from "./music.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
-import { addressText, itemText, nearbyText, queueText, visitorLink } from "./publicsettings.js";
+import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLink } from "./publicsettings.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
@@ -3596,7 +3596,7 @@ function wireData() {
 // The Public page: switched on under Setup → Settings, set up on its own tab. What visitors can pick
 // (shows and playlists, each with optional dates every year) and the queue they're waiting in.
 let publicView = null;
-let publicNames = { show: {}, playlist: {}, archived: {} };
+let publicNames = { show: {}, playlist: {}, archived: {}, empty: new Set() };
 
 function showPublicTab(on) {
   $("tab-public").hidden = !on;
@@ -3657,11 +3657,13 @@ function renderPublicItems() {
     name.className = "pub-item-name";
     const archived = it.kind === "show" && !(it.id in publicNames.show) && it.id in publicNames.archived;
     const missing = !archived && !(it.id in publicNames[it.kind]);
+    const empty = it.kind === "playlist" && publicNames.empty.has(it.id);
     name.textContent = publicNames[it.kind][it.id] ?? publicNames.archived[it.id] ?? it.id;
     const hint = document.createElement("div");
     hint.className = "hint";
     hint.textContent = archived ? "Archived, so visitors don't see it. Restore it under Library → Shows to show it again."
       : missing ? `Not found or not saved yet, so visitors don't see it.`
+        : empty ? "Its shows are all archived or not saved yet, so visitors don't see it."
         : itemText(it, view.today);
     const dates = document.createElement("div");
     dates.className = "row";
@@ -3701,7 +3703,9 @@ function renderPublicItems() {
     const group = document.createElement("optgroup");
     group.label = kind === "show" ? "Shows" : "Playlists";
     for (const [id, name] of Object.entries(publicNames[kind]).sort((a, b) => a[1].localeCompare(b[1]))) {
-      if (!added.has(`${kind}:${id}`)) group.append(new Option(name, `${kind}:${id}`));
+      if (!added.has(`${kind}:${id}`) && !(kind === "playlist" && publicNames.empty.has(id))) {
+        group.append(new Option(name, `${kind}:${id}`));
+      }
     }
     if (group.children.length) pick.append(group);
   }
@@ -3726,6 +3730,8 @@ async function loadPublic({ items = false } = {}) {
       playlist: Object.fromEntries(lists.map((p) => [p.id, p.name])),
       archived: Object.fromEntries(archived.map((s) => [s.id, s.name])),
     };
+    // Playlists with nothing visitors could play: every show archived, deleted or not saved yet.
+    publicNames.empty = emptyPlaylists(lists, new Set(Object.keys(publicNames.show)));
     renderPublicItems();
   } catch (e) {
     status(`Couldn't load the public page settings: ${e.message}`, true, "public");

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.163
+
+- On the **Public page** tab, **+ Add** no longer offers a playlist whose shows are all archived (or
+  not saved yet), since visitors would never see it. One that's already on the list says so.
+
 ## 0.2.162
 
 - The public page has more room around its headings, so **Coming soon** no longer sits right on top of

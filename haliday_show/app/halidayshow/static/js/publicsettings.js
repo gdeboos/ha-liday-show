@@ -61,3 +61,8 @@ export function nearbyText(view) {
   if (!from) return "⚠ There's no home location to measure from, so visitors reaching the page through the internet can't start shows until you set one in Home Assistant (Settings → System → General). Your home Wi-Fi still works.";
   return `Phones reaching the page through the internet must be within ${view.distance} m of ${from}. On your home Wi-Fi they're not asked. Visitors' phones ask them to share their location once they press Start.`;
 }
+
+// Ids of playlists with no show visitors could play (all archived, deleted or not saved yet).
+export function emptyPlaylists(lists, liveShows) {
+  return new Set(lists.filter((p) => !p.shows.some((s) => liveShows.has(s))).map((p) => p.id));
+}
