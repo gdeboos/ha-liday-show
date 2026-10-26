@@ -1127,7 +1127,9 @@ playlists you've picked, each with a **▶ Start** button, and nothing else of H
   motion.
 - **Link at the bottom**, with **Its words**: a charity, donation or social page, if you like.
 
-**Open the page** opens your visitors' link so you can see it. The title, words and picture only show
+The **Preview** beside the settings (below them on a narrower screen) shows the page as visitors
+with your code see it, and catches up as soon as you change something. Its buttons don't start
+anything. **Open the page** opens your real visitors' link. The title, words and picture only show
 to people with your code.
 
 **Who can start shows.** Visitors need the link with your code in it; the QR code on your sign will

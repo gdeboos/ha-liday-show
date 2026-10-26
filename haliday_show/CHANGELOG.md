@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.169
+## 0.2.170
 
 - Playlists have **Building blocks** to go between shows, in place of the one **Pause between shows**
   setting. In the Playlist editor, drag them into **Running order** like a show, as many as you like,
@@ -12,6 +12,14 @@
     **Colours** from your palettes.
 - Your playlists keep playing as before: each one's pause is now a **Pause** block after each show.
 - The coloured bar shows the blocks too, and the line at the top says which block is playing.
+
+## 0.2.169
+
+- The **Public page** tab now has a **Preview** beside the settings, phone-sized, showing the page as
+  visitors with your code see it. It catches up as soon as you change something, so you can try
+  colours, words and pictures and see them straight away. Its buttons don't start anything. On a
+  narrower screen it sits below the settings.
+- The **Nearby only** hint now says phones are asked for their location when the page opens.
 
 ## 0.2.168
 
