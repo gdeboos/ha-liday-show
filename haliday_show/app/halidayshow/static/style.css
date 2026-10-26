@@ -679,3 +679,9 @@ a.button { text-decoration: none; }
 .as-file .hint { overflow-wrap: anywhere; }
 /* The open show's or song's name, beside ← All shows and ← All songs. */
 .editor-title { max-width: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; }
+
+/* A problem or tip shown inside an open window, which would otherwise hide it behind the window. */
+.dialog-note { margin: 8px 16px 0; padding: 8px 10px; border-radius: 6px; font-size: 0.92em; }
+.dialog-note.error { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); }
+.dialog-note.hint { background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid var(--line); }

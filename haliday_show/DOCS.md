@@ -494,6 +494,11 @@ or deletes one. The song you last opened in the Music editor has a **Last edited
 The same window opens from **+ Add a song…** in the **New show** window and in a show's **Choose a
 song** window, and the song comes back picked.
 
+Songs of any size up to 200 MB can be added. Home Assistant won't pass on more than 16 MB at once, so
+a bigger song goes up in pieces, with the window showing how far it's got. Long shows on lots of
+bulbs are saved in pieces the same way. If something goes wrong
+while a window is open, the message shows inside the window as well as at the top.
+
 ### Archiving and deleting
 
 **Remove…**, on a show or a song, opens a window that says where it's used and offers two ways to

@@ -968,3 +968,56 @@ async def test_song_info_keeps_section_marks(client, tmp_path):
     assert got[0]["autoNotes"] is True and "named" not in got[0]
     assert got[1]["named"] is True and "autoNotes" not in got[1]
     assert "autoNotes" not in got[2] and "named" not in got[2]  # no notes to mark; "yes" isn't true
+
+
+async def test_songs_upload_in_parts(client, tmp_path):
+    song = bytes(range(256)) * 4096 * 3  # 3 MB
+    url = "/api/audio/part?upload=0123456789abcdef"
+    assert (await client.post(f"{url}&offset=0", data=song[:1_000_000])).status == 200
+    # A repeated or missing part is refused rather than spliced in the wrong place.
+    assert (await client.post(f"{url}&offset=5", data=b"x")).status == 409
+    assert (await client.post(f"{url}&offset=1000000", data=song[1_000_000:2_000_000])).status == 200
+    listed = await (await client.get("/api/audio")).json()
+    assert not any(".part" in a["path"] for a in listed)  # not a song until it's whole
+    resp = await client.post(f"{url}&offset=2000000&done=1&name=Big%20Song.wav", data=song[2_000_000:])
+    ref = await resp.json()
+    assert resp.status == 200 and ref == {"source": "media", "path": "haliday_show/Big Song.wav"}
+    assert (tmp_path / "media" / "haliday_show" / "Big Song.wav").read_bytes() == song
+    assert not list((tmp_path / "media" / "haliday_show").glob(".upload-*"))
+    assert (await client.post("/api/audio/part?upload=../x&offset=0", data=b"x")).status == 400
+    assert (await client.post(f"{url}&offset=zero", data=b"x")).status == 400
+    await client.post(f"{url}&offset=0", data=b"x")
+    assert (await client.post(f"{url}&offset=1&done=1&name=notes.txt", data=b"y")).status == 400
+    assert (await client.post(f"{url}&offset=0", data=b"z" * (server.MAX_PART + 1))).status == 413
+
+
+async def test_baked_show_in_parts(client):
+    show_id = (await (await client.post("/api/shows", json={"name": "Long"})).json())["id"]
+    await client.put(f"/api/shows/{show_id}", json={"name": "Long", "fps": 40, "duration": 10, "tracks": []})
+    blob = baked.encode(40, [{"device": "a", "segments": 100}], [bytes(300)] * 400)
+    url = f"/api/shows/{show_id}/baked/part?upload=00112233445566778899aabb"
+    half = len(blob) // 2
+    assert (await client.post(f"{url}&offset=0", data=blob[:half])).status == 200
+    resp = await client.post(f"{url}&offset={half}&done=1", data=blob[half:])
+    assert resp.status == 200 and (await resp.json())["bytes"] == len(blob)
+    assert (await (await client.get("/api/shows")).json())[0]["baked"] is True
+    await client.post(f"{url}&offset=0", data=b"junk")
+    assert (await client.post(f"{url}&offset=4&done=1", data=b"more")).status == 400  # not a baked show
+
+
+async def test_upload_parts_one_at_a_time_and_capped(client, tmp_path, monkeypatch):
+    app = client.server.app
+    url = "/api/audio/part?upload=aaaaaaaaaaaaaaaa"
+    app[server.UPLOADING].add("aaaaaaaaaaaaaaaa")  # a part of it is still arriving
+    assert (await client.post(f"{url}&offset=0", data=b"x")).status == 409
+    app[server.UPLOADING].clear()
+    assert (await client.post("/api/audio/part?upload=aaaa%0Aaaaaaaaaaaaa&offset=0", data=b"x")).status == 400
+    monkeypatch.setattr(server, "MAX_OPEN_UPLOADS", 2)
+    for i in range(2):
+        assert (await client.post(f"/api/audio/part?upload={i:016x}&offset=0", data=b"x")).status == 200
+    assert (await client.post(f"/api/audio/part?upload={9:016x}&offset=0", data=b"x")).status == 503
+    # Finishing one makes room, and replaces a song of the same name.
+    (tmp_path / "media" / "haliday_show" / "Same.mp3").write_bytes(b"old")
+    assert (await client.post(f"/api/audio/part?upload={0:016x}&offset=1&done=1&name=Same.mp3", data=b"y")).status == 200
+    assert (tmp_path / "media" / "haliday_show" / "Same.mp3").read_bytes() == b"xy"
+    assert (await client.post(f"/api/audio/part?upload={9:016x}&offset=0", data=b"x")).status == 200

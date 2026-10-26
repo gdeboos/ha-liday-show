@@ -29,6 +29,7 @@ import { copyName, showRows } from "./showlist.js";
 import { filterRows, songKey, songRows } from "./songlist.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
+import { PART, sendParts, uploadSong } from "./upload.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -75,6 +76,29 @@ function status(msg, error = false, topic = null) {
   statusLine ||= new StatusLine($("status"));
   const kind = error === true ? "error" : error || "info";
   statusLine.show(msg, kind, topic);
+  noteInDialog(msg, kind);
+}
+
+// An open window covers the status bar, so problems and tips show inside it too, above its buttons.
+function noteInDialog(msg, kind) {
+  // The window on top is the one you're in (a modal window keeps focus inside itself).
+  const dlg = document.activeElement?.closest?.("dialog[open]") || [...document.querySelectorAll("dialog[open]")].pop();
+  if (!dlg) return;
+  let note = dlg.querySelector(".dialog-note");
+  if (kind !== "error" && kind !== "hint") { if (note) note.hidden = true; return; }
+  if (!note) {
+    note = document.createElement("p");
+    note.className = "dialog-note";
+    note.setAttribute("role", "alert");
+    const foot = dlg.querySelector(".form-dialog-foot, .insp-actions");
+    if (foot) foot.before(note); else (dlg.querySelector("form") || dlg).append(note);
+    dlg.addEventListener("close", () => note.remove(), { once: true });
+    // Once you change something in the window, the message has done its job.
+    dlg.addEventListener("input", () => { note.hidden = true; });
+  }
+  note.hidden = false;
+  note.className = `dialog-note ${kind}`;
+  note.textContent = msg;
 }
 
 // bars and sections come from Detect: bar start times, and [{start, end, label, energy}].
@@ -3478,9 +3502,7 @@ async function sampleSong() {
 // listened to, generated in `colors` (or left blank without them) and saved.
 async function makeShow(name, file, colors) {
   status(`Adding ${file.name}…`);
-  const form = new FormData();
-  form.append("file", file);
-  const ref = await api("api/audio", { method: "POST", body: form });
+  const ref = await uploadSong(api, file);
   await openShow(null);
   app.show.name = name;
   $("show-name").value = name;
@@ -3947,6 +3969,8 @@ function asStarts() {
 }
 
 function asStep(step) {
+  const note = $("add-song-dialog").querySelector(".dialog-note");
+  if (note) note.hidden = true;
   addSong.step = step;
   $("as-step-1").hidden = step !== 1;
   $("as-step-2").hidden = step !== 2;
@@ -3999,11 +4023,11 @@ async function asSubmit(e) {
     return;
   }
   asBusy(true, `Uploading ${name}…`);
-  const form = new FormData();
-  form.append("file", f, savedName(name, f.name));
   let ref;
   try {
-    ref = await api("api/audio", { method: "POST", body: form });
+    ref = await uploadSong(api, f, savedName(name, f.name), (done) => {
+      if (done < 1) $("as-progress").textContent = `Uploading ${name}… ${Math.round(done * 100)}%`;
+    });
   } catch (err) {
     asBusy(false);
     status(`Couldn't add ${name}: ${err.message}`, true, "songs");
@@ -4497,9 +4521,13 @@ async function save() {
   }
   if (app.bakedKey !== key) {
     const blob = bake(app.show, app.devices, FPS, pos);
-    await api(`api/shows/${app.showId}/baked`, {
-      method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" },
-    });
+    // A long show on many bulbs is more than Home Assistant passes on in one go, so it goes in pieces.
+    if (blob.byteLength > PART) await sendParts(api, `api/shows/${app.showId}/baked/part`, new Blob([blob]));
+    else {
+      await api(`api/shows/${app.showId}/baked`, {
+        method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" },
+      });
+    }
     app.bakedKey = key;
   }
   await refreshShows();

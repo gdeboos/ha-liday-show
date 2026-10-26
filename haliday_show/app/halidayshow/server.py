@@ -774,6 +774,98 @@ async def upload_audio(request):
     return web.json_response({"source": "media", "path": str(dest.relative_to(storage.media_dir))})
 
 
+# Big uploads in pieces: Home Assistant's ingress proxy refuses any request over 16 MB, so the editor
+# sends a big song, or a long show's baked frames, in parts. Each part says where it goes (offset), so
+# a lost or repeated part is caught, and one upload is written by one request at a time. Nothing
+# appears until the last part arrives.
+MAX_PART = 12 * 1024 * 1024
+MAX_OPEN_UPLOADS = 8  # unfinished uploads at once, so they can't fill the disk
+_UPLOAD_ID = re.compile(r"[0-9a-f]{16,64}")
+UPLOADING = web.AppKey("uploading", set)
+
+
+async def _receive_part(request, folder: Path) -> tuple[Path, int, bool]:
+    """Appends this part to its upload in `folder`: (the file so far, its size, whether it's whole)."""
+    q = request.query
+    upload_id = q.get("upload", "")
+    if not _UPLOAD_ID.fullmatch(upload_id):
+        raise web.HTTPBadRequest(text="bad upload id")
+    try:
+        offset = int(q.get("offset", ""))
+    except ValueError:
+        raise web.HTTPBadRequest(text="offset must be a number")
+    busy = request.app[UPLOADING]
+    if upload_id in busy:
+        raise web.HTTPConflict(text="that upload is already sending a part; start it again")
+    folder.mkdir(parents=True, exist_ok=True)
+    part = folder / f".upload-{upload_id}.part"
+    busy.add(upload_id)
+    try:
+        if offset == 0:
+            _clear_old_parts(folder)
+            if len(list(folder.glob(".upload-*.part"))) >= MAX_OPEN_UPLOADS:
+                raise web.HTTPServiceUnavailable(text="too many uploads at once; try again in a minute")
+            part.write_bytes(b"")
+        elif not part.exists() or part.stat().st_size != offset:
+            raise web.HTTPConflict(text="that part doesn't follow on from the last one; start the upload again")
+        size = offset
+        with part.open("ab") as f:
+            got = 0
+            while chunk := await request.content.read(1 << 16):
+                got += len(chunk)
+                size += len(chunk)
+                if got > MAX_PART or size > MAX_UPLOAD:
+                    f.close()
+                    part.unlink(missing_ok=True)
+                    raise web.HTTPRequestEntityTooLarge(max_size=MAX_UPLOAD, actual_size=size)
+                f.write(chunk)
+    finally:
+        busy.discard(upload_id)
+    return part, size, q.get("done") == "1"
+
+
+async def upload_audio_part(request):
+    storage = request.app[STORAGE]
+    part, size, done = await _receive_part(request, storage.upload_dir)
+    if not done:
+        return web.json_response({"received": size})
+    dest = storage.upload_path(request.query.get("name", ""))
+    if dest is None:
+        part.unlink(missing_ok=True)
+        raise web.HTTPBadRequest(text="not an audio file")
+    os.replace(part, dest)
+    return web.json_response({"source": "media", "path": str(dest.relative_to(storage.media_dir))})
+
+
+async def put_baked_part(request):
+    """A show's baked frames in parts, for long shows (see _receive_part)."""
+    show_id = _show_id(request)
+    _not_archived(request, show_id)
+    storage = request.app[STORAGE]
+    part, size, done = await _receive_part(request, storage.shows_dir)
+    if not done:
+        return web.json_response({"received": size})
+    blob = part.read_bytes()
+    part.unlink(missing_ok=True)
+    try:
+        decode(blob)
+    except BakedError as e:
+        raise web.HTTPBadRequest(text=str(e))
+    storage.save_baked(show_id, blob)
+    request.app[MQTT].refresh()
+    return web.json_response({"ok": True, "bytes": len(blob)})
+
+
+def _clear_old_parts(folder: Path, older_than_s: float = 3600):
+    """Pieces of uploads that never finished (the page closed part-way), after an hour."""
+    for p in folder.glob(".upload-*.part"):
+        try:
+            if time.time() - p.stat().st_mtime > older_than_s:
+                p.unlink()
+        except OSError:
+            pass
+
+
 MAX_MARKS = 50000
 MAX_SECTIONS = 500
 MAX_NOTES = 300  # a section's notes, for the AI
@@ -1380,6 +1472,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     except OSError as e:
         logging.getLogger(__name__).error("couldn't mark saved lights as Govee: %s", e)
     app[TESTS] = {}
+    app[UPLOADING] = set()
     app[PREVIEWS] = {}
     app[LISTENING] = {"listener": None, "options": {}}
     app[LAB] = Lab()
@@ -1437,12 +1530,14 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/shows/{id}", put_show)
     r.add_delete("/api/shows/{id}", delete_show)
     r.add_put("/api/shows/{id}/baked", put_baked)
+    r.add_post("/api/shows/{id}/baked/part", put_baked_part)
     r.add_post("/api/shows/{id}/duplicate", duplicate_show)
     r.add_post("/api/shows/{id}/rename", rename_show)
     r.add_post("/api/shows/{id}/archive", archive_show)
     r.add_post("/api/shows/{id}/restore", restore_show)
     r.add_get("/api/audio", list_audio)
     r.add_post("/api/audio", upload_audio)
+    r.add_post("/api/audio/part", upload_audio_part)
     r.add_get("/api/audio/file", get_audio)
     r.add_get("/api/songs", list_songs)
     r.add_get("/api/songs/archived", list_archived_songs)
