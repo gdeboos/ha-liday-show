@@ -414,3 +414,31 @@ async def test_the_scheduler_lets_a_visitors_show_finish(runner):
     sched = Scheduler(runner.storage, runner)
     await sched.tick(datetime(2026, 12, 1, 18, 0))
     assert runner.status()["playlist"] is None and runner.player.show_id == "vis"
+
+
+async def test_stop_ends_a_visitors_playlist_part_way(runner):
+    for s in ("a1", "a2"):
+        _short_show(runner.storage, s, frames=40)  # 1 s each
+    runner.add_request(_request("r1", ["a1", "a2"], gap=0))
+    assert await _until(lambda: runner.player.show_id == "a1")
+    await runner.stop()
+    await asyncio.sleep(1.3)
+    assert runner.player.show_id == "a1" and not runner.player.playing and runner.public_now is None
+
+
+async def test_stop_or_your_own_show_in_a_visitors_pause_wins(runner):
+    for s in ("a1", "a2"):
+        _short_show(runner.storage, s, frames=4)
+    runner.add_request(_request("r1", ["a1", "a2"], gap=0.6))
+    assert await _until(lambda: runner.player.show_id == "a1")
+    await asyncio.sleep(0.3)  # a1 is over; the visitor's pause before a2
+    await runner.stop()
+    await asyncio.sleep(0.8)
+    assert runner.player.show_id == "a1" and runner.public_now is None
+
+    runner.add_request(_request("r2", ["a1", "a2"], gap=0.6))
+    assert await _until(lambda: runner.public_now is not None)
+    await asyncio.sleep(0.3)
+    await runner.play("party")  # from the editor, in the pause
+    await asyncio.sleep(0.8)
+    assert runner.player.show_id == "party" and runner.public_now is None

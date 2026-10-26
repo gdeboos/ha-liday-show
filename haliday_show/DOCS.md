@@ -998,7 +998,8 @@ What visitors get:
 Keeping it fair:
 
 - **Requests per phone** is how many shows one phone can have waiting (1 to start with). Once a
-  visitor's show starts, they can pick another.
+  visitor's show starts, they can pick another. It's a courtesy limit that someone determined could
+  get round; **Queue length** is the one that holds.
 - **Queue length** is how many shows can wait in all (5 to start with). When it's full, visitors are
   asked to try again in a few minutes.
 - Visitors can't stop or skip anyone else's show.

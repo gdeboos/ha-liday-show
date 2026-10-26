@@ -70,20 +70,43 @@ def load(storage: Storage) -> dict | None:
     return clean(p) if isinstance(p, dict) else None
 
 
+def _baked(storage: Storage, show_id: str) -> bool:
+    return (storage.shows_dir / f"{show_id}.gshow").is_file()
+
+
+_CHOICES: dict = {}  # config folder -> (when, settings file's mtime, choices): every phone polls
+CHOICES_FOR_S = 2.0
+
+
 def choices(storage: Storage) -> list[dict]:
+    """What visitors can pick, worked out at most every couple of seconds (or when settings change)."""
+    try:
+        changed = storage.settings_file.stat().st_mtime_ns
+    except OSError:
+        changed = 0
+    now = time.monotonic()
+    known = _CHOICES.get(storage.config_dir)
+    if known and known[1] == changed and now - known[0] < CHOICES_FOR_S:
+        return known[2]
+    out = _choices(storage)
+    _CHOICES[storage.config_dir] = (now, changed, out)
+    return out
+
+
+def _choices(storage: Storage) -> list[dict]:
     """What visitors can pick: the ticked shows that are saved and playable, then ticked playlists."""
     p = load(storage) or clean(None)
     out = []
     for show_id in p["shows"]:
         show = storage.load_show(show_id)
-        if show is not None and storage.load_baked(show_id) is not None:
+        if show is not None and _baked(storage, show_id):
             out.append({"kind": "show", "id": show_id, "name": show.get("name") or show_id, "shows": [show_id]})
     by_id = {pl["id"]: pl for pl in playlists.load(storage)}
     for pid in p["playlists"]:
         pl = by_id.get(pid)
         if not pl:
             continue
-        shows = [s for s in pl["shows"] if storage.load_baked(s) is not None]
+        shows = [s for s in pl["shows"] if _baked(storage, s)]
         if shows:
             out.append({"kind": "playlist", "id": pid, "name": pl["name"], "shows": shows, "gap": pl["gap"]})
     return out
@@ -231,7 +254,7 @@ class PublicSite:
 
     async def apply(self):
         p = load(self.storage)
-        if p is not None and not p["on"]:
+        if p is None or not p["on"]:
             self.runner.clear_requests()
         if p is None or self._runner is not None:
             return

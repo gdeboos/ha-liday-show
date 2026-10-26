@@ -61,6 +61,8 @@ class Runner:
         self.requests: list[dict] = []  # visitors' requests waiting: {id, ticket, kind, ref, name, shows, gap}
         self.public_now: dict | None = None  # the visitor's request playing
         self._public: asyncio.Task | None = None
+        # Goes up whenever you play or stop something yourself, which ends a visitor's request part-way.
+        self._yours = 0
         self._durations: dict[str, tuple[float, float]] = {}  # show id -> (baked file's mtime, seconds)
 
     def status(self) -> dict:
@@ -82,6 +84,7 @@ class Runner:
         Settings, is used when none is given.
         Without a speaker only the lights run (the browser plays the song itself).
         """
+        self._yours += 1
         async with self._control:
             await self._end_playlist()
             async with self._lock:
@@ -197,6 +200,7 @@ class Runner:
 
     async def stop(self):
         self.requests.clear()
+        self._yours += 1
         async with self._control:
             await self._end_playlist()
             async with self._lock:
@@ -207,6 +211,7 @@ class Runner:
         shows = [s for s in playlist.get("shows", []) if self.storage.load_baked(s) is not None]
         if not shows:
             raise RunnerError("this playlist has no saved shows to play")
+        self._yours += 1
         async with self._control:
             await self._end_playlist()
             async with self._lock:
@@ -312,6 +317,16 @@ class Runner:
     def clear_requests(self):
         self.requests.clear()
 
+    async def close(self):
+        """On shutdown: stop everything, visitors' requests included."""
+        await self.stop()
+        if self._public and not self._public.done():
+            self._public.cancel()
+            try:
+                await self._public
+            except asyncio.CancelledError:
+                pass
+
     async def _run_requests(self):
         """Play visitors' requests whenever nothing else is on. A playlist plays them itself."""
         try:
@@ -328,10 +343,13 @@ class Runner:
     async def _play_request(self, request: dict):
         """Play a request's shows once each. Anything else started meanwhile ends it."""
         self.public_now = request
+        yours = self._yours
         try:
             for k, show_id in enumerate(request["shows"]):
                 if k:
                     await asyncio.sleep(max(float(request.get("gap", 0)), 0.1))
+                if self._yours != yours:  # you played or stopped something meanwhile
+                    return
                 try:
                     async with self._lock:
                         await self._play(show_id, use_show_speaker=True)
@@ -343,7 +361,7 @@ class Runner:
                 mine = self.started
                 while self.player.playing and self.started == mine:
                     await asyncio.sleep(0.25)
-                if self.started != mine or self.speaker_stopped:
+                if self.started != mine or self.speaker_stopped or self._yours != yours:
                     return
         finally:
             self.public_now = None

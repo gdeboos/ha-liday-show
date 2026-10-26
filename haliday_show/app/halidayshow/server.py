@@ -1536,7 +1536,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
             task.cancel()
         await app[PUBLIC].close()
         await stop_tests(app)
-        await app[RUNNER].stop()
+        await app[RUNNER].close()
         await app[OUTPUT].close()
         await app[HA].close()
 
