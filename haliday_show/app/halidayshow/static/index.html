@@ -269,7 +269,8 @@
 <!-- Your songs: where the Music editor starts each visit; the same list is under Library → Songs. -->
 <main id="view-songlist" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Your songs</h2>
-  <p class="hint">Open a song to cut, shorten or join it. The file you open isn't changed: edits are saved as a new file.</p>
+  <p class="hint">Open a song to cut, shorten or join it. The song you open isn't changed: your edit is kept as a
+    draft as you go, listed under the song, and you make a new song file from it when you're happy.</p>
   <div data-songs-slot></div>
 </main>
 
@@ -281,16 +282,18 @@
       <span id="music-info" class="hint"></span>
     </div>
     <div class="group music-save">
-      <label>File name <input id="music-name" size="24" placeholder="song (edit).wav"></label>
-      <button id="music-save" class="primary" title="Save the result as a new WAV in your songs folder, so it plays on every speaker. The original isn't changed (Ctrl+S)">Save as new file</button>
+      <label title="The draft's name, and the song file's when you make it">Draft <input id="music-name" size="22" placeholder="song (edit)" autocomplete="off"></label>
+      <button id="music-save" class="primary" title="Write the draft as a WAV in your songs folder, so shows and every speaker can play it. The song you opened isn't changed (Ctrl+S)">Make song file</button>
       <span id="music-save-state" class="save-state"></span>
     </div>
   </section>
   <details class="howto" data-howto="music"><summary>How to…</summary>
     <ul>
-      <li>Cut, shorten and splice the song, then <b>Save as new file</b> and pick it under <b>Song</b> in a show.
-        It's saved as a WAV in your songs folder, so it plays on every speaker, and the original isn't changed.
-        Saving a song unchanged gives you a WAV copy of it.</li>
+      <li>Cut, shorten and splice the song. Your first change starts a draft (name it under <b>Draft</b>), kept as
+        you go, so you can leave and carry on later from <b>Your songs</b>. The song you opened isn't changed.</li>
+      <li><b>Make song file</b> writes the draft as a WAV in your songs folder, to pick under <b>Song</b> in a show.
+        The draft stays, so you can change it and make the file again. Making a song unchanged gives you a WAV
+        copy of it.</li>
       <li><b>Detect</b> finds the beats and sections and keeps them with the song, so a show that picks it gets
         them straight away.</li>
       <li>Drag across the waveform to select. The edges snap to bars once the song is detected; hold Shift to place
@@ -417,6 +420,21 @@
         <button type="submit" class="primary" id="music-cuts-find">Find cuts →</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="make-dialog" class="effect-dialog form-dialog" aria-labelledby="make-title">
+    <div class="effect-dialog-head"><h3 id="make-title">Make the song file again</h3>
+      <button type="button" class="ghost" data-make="cancel" aria-label="Close">✕</button></div>
+    <div class="form-dialog-body">
+      <p>This draft already made <b id="make-file"></b>. Replace it with this version, or keep it and make a new
+        file?</p>
+      <p id="make-users" class="hint"></p>
+    </div>
+    <div class="form-dialog-foot">
+      <button type="button" data-make="cancel">Cancel</button>
+      <span class="spacer"></span>
+      <button type="button" id="make-new">Make a new file</button>
+      <button type="button" class="primary" id="make-replace">Replace it</button>
+    </div>
   </dialog>
 </main>
 

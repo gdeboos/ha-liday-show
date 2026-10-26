@@ -187,7 +187,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Archive or delete** shows and songs, with a way back: archived ones can be restored, and shows using a song can take another one
 - Add a song in one window (name it, upload it, detect it); big songs go up in pieces, so files over
   Home Assistant's 16 MB limit upload fine
-- Cut, trim and splice songs in the **Music editor**, with crossfades
+- Cut, trim and splice songs in the **Music editor**, with crossfades, as named **drafts** kept as you go that you can come back to and tweak, then make into a song file
 - **Suggest cuts**: shorten the song or one section to a length you pick, by whole bars where the join isn't heard
 - **Marks**: flag and name moments in a song (a big hit, the bells coming in); every show using the song sees them and clips snap to them
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
@@ -338,6 +338,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music editor: cutting, trimming and splicing songs
     js/cutfinder.js                     Suggest cuts: where whole bars can go without the join being heard
+    js/drafts.js                        Keeps the Music editor's drafts on the server as you edit
     js/volume.js                        The song volume slider shared by the Show editor and Music editor
     js/songload.js                      Fetching a song, and saying plainly why one did not load
     js/statusline.js                    The message spot in the top bar: saved, settled and error states

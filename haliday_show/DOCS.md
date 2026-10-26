@@ -75,7 +75,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Show editor**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
+4. **Show** tab (the Show editor), or **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
 5. Play it by itself: put it in a [playlist](#playlists) under **Library → Playlists** and tick
@@ -447,7 +447,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Songs](#songs) · [Editing a song](#editing-a-song) · [Suggest cuts](#suggest-cuts) ·
+- **The song:** [Shows](#shows) · [Songs](#songs) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Suggest cuts](#suggest-cuts) ·
   [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
@@ -494,7 +494,7 @@ players can play them. For a lights-only show, choose **No song, lights only** a
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
 tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
 list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Remove…** archives
-or deletes one. The song you last opened in the Music editor has a **Last edited** badge.
+or deletes one. A song's [drafts](#drafts) are listed under it. The song you last opened in the Music editor has a **Last edited** badge.
 
 **+ Add a song**, under the list, opens a short window:
 
@@ -548,18 +548,18 @@ puts it back and gives it back to the shows that were left without a song.
 The **Music editor** cuts, shortens and splices songs before you build a show. It opens on **Your
 songs** each visit, the same list as **Library → Songs** (with **+ Add a song**), so nothing is touched
 until you press **Edit** on one. The open song's name sits beside **← All songs**, which goes back to
-the list to open another; switching tabs keeps your song open. **File name** and **Save as new file** are
-at the top too, with **Unsaved edits** beside them until you save. Drag across the waveform to select, then **Cut selection** to remove it or
+the list to open another; switching tabs keeps your song open. The song you open is never changed: your
+first change starts a [draft](#drafts), kept as you go, which you make into a new song file when you're
+happy. Drag across the waveform to select, then **Cut selection** to remove it or
 **Keep only selection** to shorten the song to it, or let **✂ Suggest cuts…** find the cuts for you (see
 [Suggest cuts](#suggest-cuts)). **Insert at playhead** and **Add to end** splice in
 another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
 time (a few hundredths of a second hides the click, a few seconds blends one song into the next), and
 **Fade in** and **Fade out** soften the ends. Zoom with the wheel, or type the selection's times for
-precision. The 🔊 slider by the clock sets how loud it plays in your browser. **Save as new file** writes a WAV to `/media/haliday_show/` and leaves the original alone, so
-pick the new file under **Song** in the Show editor. Once the song is detected, selection edges snap to bars
+precision. The 🔊 slider by the clock sets how loud it plays in your browser. Once the song is detected, selection edges snap to bars
 (hold Shift to place them freely), clicking a section in the lane selects exactly its stretch (Shift-click
 adds the next), and **Preview cut** plays the join before you cut, with the playhead jumping over the selection as the cut would. Beats and sections follow your edits
-and are kept when you save. Edit the song before placing clips, because cutting it
+and are kept when you make the song file. Edit the song before placing clips, because cutting it
 afterwards won't move them.
 
 Each join shows as a dashed line with a **✂** at the top. Click the **✂** to hear a few seconds either
@@ -568,9 +568,31 @@ the music stays visible; zoom in to see every beat.
 
 You can also use the keyboard: press Tab until the waveform is outlined, then **←** and **→** move the
 playhead a beat at a time (a second at a time before **Detect**), and holding Shift selects as you go.
-Space plays, Delete cuts the selection, M adds a [mark](#marks) and Ctrl+Z undoes. Saving a song without changing it is a quick
-way to get a WAV copy of it that plays on every speaker. If you close the page with an edit you haven't
-saved, you're asked first.
+Space plays, Delete cuts the selection, M adds a [mark](#marks), Ctrl+Z undoes and Ctrl+S makes the song
+file.
+
+#### Drafts
+
+An edit is kept as a **draft**: a note of which parts of which songs it uses, with its crossfade and
+fades, but no audio of its own. Your first change to a song (a cut, a splice, a crossfade or a fade)
+starts one, named after the song, such as "sample-song (edit)"; type a better name under **Draft** at
+the top. **Draft kept** beside it says it's saved, which happens a moment after every change, so you
+can close the page or carry on from another device. A song can have several drafts, such as a "Short
+version" and a "Party mix": press **Edit** on the song again to start another.
+
+**Your songs** lists each song's drafts under it, with a **Draft** badge until a song file has been
+made from it. **Open** carries on where you left off (**Undo** starts afresh each visit), **Rename…**
+renames it, and **Delete…** deletes the draft (not the song, or any file it made).
+
+**Make song file** (Ctrl+S) writes the draft as a WAV in `/media/haliday_show/`, named after the draft,
+so every speaker can play it; pick it under **Song** in a show. Its beats, sections and marks go with it.
+The draft stays open, so you can keep changing it. Making it again asks whether to **Replace it** (the
+same file, so shows and playlists using it get the new version; the window lists those shows, since
+their effects don't move with the music) or **Make a new file** (such as "Short version 2.wav"). Making a
+song file without changing anything is a quick way to get a WAV copy of a song.
+
+Songs you edited before drafts existed are ordinary songs: press **Edit** on one to start a draft from
+it. A draft can't be opened if a song it uses has been archived or deleted; restore the song first.
 
 #### Suggest cuts
 
@@ -596,8 +618,8 @@ cuts off the ending (use **Fade out** for that). Each option says how many bars 
 makes things, and how well its join matches: **smooth join**, **good join** or **join may be heard**.
 If nothing fits, it says so; try a length a little longer or shorter.
 
-Nothing changes until you press **Use**, and the song file you opened is never changed: keep the result
-with **Save as new file**.
+Nothing changes until you press **Use**, and the song you opened is never changed: a cut you use goes
+into your [draft](#drafts), and **Make song file** turns it into a new song file.
 
 ### Marks
 
@@ -619,10 +641,10 @@ the moment. They're read from the song each time you open the Show editor, so ma
 Music editor show straight away. To change them, go back to the Music editor.
 
 Marks follow your cuts: a mark in a part you cut out disappears from the edit, and the rest move with
-the music and are kept when you **Save as new file**. You can add, change and move marks while you're
+the music and go with the song file when you **Make song file**. You can add, change and move marks while you're
 editing too. They're saved on the song you opened as well, at the same moment in it, and that song keeps
 all its marks, even ones in parts you cut out of the edit. The one place you can't mark until you've
-saved is a part spliced in from another song.
+made the song file is a part spliced in from another song.
 
 ### Detecting in the Music editor
 
@@ -1321,8 +1343,8 @@ snapshots or DIYs) for as long as the clip lasts, then the show takes the light 
 
 ## Where things are stored
 
-Shows, devices, palettes, your presets, playlists and their schedules, each song's beats, parts and
-notes, the house photo and settings live in the app's config folder
+Shows, devices, palettes, your presets, playlists and their schedules, each song's beats, parts, notes and
+marks, the Music editor's drafts, the house photo and settings live in the app's config folder
 (`/addon_configs/<slug>_haliday_show/`), so they are included in Home Assistant backups. Uploaded songs
 go to `/media/haliday_show/` so media players can play them. The editor layout, the editing speaker,
 the Show player's light offset and the experimental switch are kept in each browser.

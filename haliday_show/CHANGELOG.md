@@ -1,12 +1,26 @@
 # Changelog
 
-## 0.2.157
+## 0.2.158
 
 - HA-liday Show now opens on **Library**, with your shows, rather than the Show editor (which opened on
   the same list anyway).
 - The tabs along the top are reordered and grouped: **Library**, then the two editors together under
   **Editors** (now labelled **Show** and **Music**), then **Setup**, with a thin line between the
   groups.
+
+## 0.2.157
+
+- The **Music editor** keeps your edits as **drafts**, so you can stop and come back to them, or tweak a
+  cut later. Your first change to a song starts a draft (name it under **Draft** at the top), and it's
+  kept a moment after every change, even if you close the page or switch to your phone.
+- **Your songs** lists each song's drafts under it, with **Open**, **Rename…** and **Delete…**, and a
+  **Draft** badge until you've made a song file from it. A song can have several, such as a "Short
+  version" and a "Party mix".
+- **Save as new file** is now **Make song file**. It writes the draft as a new song file, as before, but
+  the draft stays open to keep changing. Making it again asks whether to **Replace it** (and lists the
+  shows that use it) or **Make a new file**.
+- The song you opened is never changed. Songs you edited before this are ordinary songs: **Edit** starts
+  a draft from them.
 
 ## 0.2.156
 
