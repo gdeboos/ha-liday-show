@@ -880,12 +880,11 @@ export class MusicEditor {
       if (this.cutOpts !== opts) return;
       const { options, used } = rankCuts(opts.options, reply);
       if (!used) { $("cuts-ai").textContent = "The AI's answer couldn't be used, so they're in the editor's order."; return; }
-      const shown = opts.options[this.cutShown];
       opts.options = options;
-      this.cutShown = shown ? options.indexOf(options.find((o) => o.cuts === shown.cuts)) : -1;
-      $("cuts-ai").textContent = reply.summary ? `✨ ${reply.summary}` : "✨ Put in order by the AI.";
+      const pick = options.findIndex((o) => o.aiRank === 1) + 1;
+      const summary = String(reply.summary || "").trim().slice(0, 200);
+      $("cuts-ai").textContent = `✨ The AI's pick is option ${pick}${summary ? `: ${summary}` : "."}`;
       this.renderCuts();
-      this.draw();
     } catch (e) {
       if (this.cutOpts === opts) $("cuts-ai").textContent = `The AI couldn't compare them (${e.message}), so they're in the editor's order.`;
     }
@@ -928,7 +927,7 @@ export class MusicEditor {
       use.title = n > 1 ? "Make all these cuts (Ctrl+Z undoes)" : "Make this cut (Ctrl+Z undoes)";
       use.addEventListener("click", () => { $("cuts-dialog").close(); this.useCuts(o); });
       row.append(el("b", "", `Option ${k + 1}`));
-      if (o.aiRank === 1) row.append(el("span", "show-last", "AI's pick"));
+      if (o.aiRank === 1) row.append(el("span", "ai-pick", "AI's pick"));
       row.append(what, chips, el("span", "spacer"), use);
       if (o.reason) row.append(el("span", "hint cut-reason", `✨ ${o.reason}`));
       return row;

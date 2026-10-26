@@ -181,19 +181,19 @@ export function cutsRequest(options, { song, total, scope, sections = [], marks 
   };
 }
 
-// The options in the AI's order, each with its reason, from its reply ({choices: [{index, reason}]}).
-// Anything it left out or got wrong keeps its place after the ones it ranked. used: whether it
+// The options with the AI's view added from its reply ({choices: [{index, reason}]}, best first):
+// aiRank (1 = its pick) and a reason. They stay in their order, so nothing moves under your finger
+// when the answer arrives. Anything it left out or got wrong is left as it was. used: whether it
 // ranked any.
 export function rankCuts(options, reply) {
-  const seen = new Set(), out = [];
+  const out = [...options];
+  let rank = 0;
   for (const c of reply?.choices || []) {
     const i = Number.isInteger(c?.index) ? c.index : -1;
-    if (i < 0 || i >= options.length || seen.has(i)) continue;
-    seen.add(i);
-    const reason = typeof c.reason === "string" ? c.reason.trim().slice(0, 160) : "";
-    out.push({ ...options[i], ...(reason ? { reason } : {}), aiRank: out.length + 1 });
+    if (i < 0 || i >= options.length || out[i].aiRank) continue;
+    let reason = typeof c.reason === "string" ? c.reason.trim() : "";
+    if (reason.length > 160) reason = `${reason.slice(0, 159).trimEnd()}…`;
+    out[i] = { ...options[i], ...(reason ? { reason } : {}), aiRank: ++rank };
   }
-  const used = out.length > 0;
-  options.forEach((o, i) => { if (!seen.has(i)) out.push(o); });
-  return { options: out, used };
+  return { options: rank ? out : options, used: rank > 0 };
 }

@@ -140,13 +140,15 @@ test("the AI is told about the options, sections, marks and what's being shorten
     shorter_by: 8, length_after: 22 });
 });
 
-test("the AI's ranking reorders the options, and a bad reply leaves them as they were", () => {
+test("the AI's ranking is added to the options in place, and a bad reply leaves them as they were", () => {
   const options = [{ removed: 1 }, { removed: 2 }, { removed: 3 }];
-  const got = rankCuts(options, { choices: [{ index: 2, reason: " Drops the repeat " }, { index: 0, reason: "" },
+  const got = rankCuts(options, { choices: [{ index: 2, reason: " Drops the repeat " }, { index: 0, reason: "x".repeat(200) },
     { index: 2, reason: "again" }, { index: 9, reason: "no such" }] });
   assert.ok(got.used);
-  assert.deepEqual(got.options.map((o) => [o.removed, o.reason, o.aiRank]),
-    [[3, "Drops the repeat", 1], [1, undefined, 2], [2, undefined, undefined]]);
+  assert.deepEqual(got.options.map((o) => [o.removed, o.aiRank]), [[1, 2], [2, undefined], [3, 1]]);
+  assert.equal(got.options[2].reason, "Drops the repeat");
+  assert.equal(got.options[0].reason.length, 160);
+  assert.ok(got.options[0].reason.endsWith("…"));
   assert.deepEqual(rankCuts(options, { choices: "nope" }), { options, used: false });
   assert.deepEqual(rankCuts(options, null).options, options);
 });

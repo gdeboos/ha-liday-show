@@ -239,6 +239,8 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .cut-option .cut-chips button { padding: 2px 8px; font-variant-numeric: tabular-nums; }
 .cut-option .spacer { flex: 1; }
 .cut-option .cut-reason { flex-basis: 100%; }
+.cut-option .ai-pick { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+  color: var(--text); background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .music-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .music-sec-notes { flex-basis: 100%; }
 .music-sec-notes input { flex: 1; }

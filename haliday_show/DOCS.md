@@ -622,12 +622,14 @@ makes things, and how well its join matches: **smooth join**, **good join** or *
 If nothing fits, it says so; try a length a little longer or shorter.
 
 With an [AI set up](#setting-up-the-ai), it's also asked which option works best musically. The
-options show straight away, so you can listen while it thinks; then they're put in its order, the
-first marked **AI's pick**, each with a short reason under it (such as "Drops the repeated second verse;
-keeps the 1:12 crash"). It goes by the song's name (it may know the song), your section names and notes
+options show straight away, so you can listen while it thinks. When it answers, the one it thinks
+works best is marked **AI's pick** and each gets a short reason under it (such as "Drops the repeated
+second verse; keeps the 1:12 crash"); they stay where they are, so nothing moves as you reach for
+**Use**. It asks once each time you press **Find cuts →** (and only when there's more than one option),
+which counts as one AI request. It goes by the song's name (it may know the song), your section names and notes
 (the ones you wrote count most) and your [marks](#marks), so it steers away from cutting a moment you've
-marked. It can't hear the song, so listen to the joins yourself. If it can't answer, the options stay
-in the editor's order.
+marked. It can't hear the song, so listen to the joins yourself. If it can't answer, the options are
+still there, without its pick.
 
 Nothing changes until you press **Use**, and the song you opened is never changed: a cut you use goes
 into your [draft](#drafts), and **Make song file** turns it into a new song file.

@@ -221,7 +221,7 @@ intro still sounds like an intro); and favour smoother joins and lengths closest
 
 Return every option by its "index", best first, each with a reason under 120 characters in plain words (times as \
 m:ss), such as "Drops the repeated second verse; keeps the 1:12 crash". Give a one-sentence summary of what \
-your pick does, without option numbers or indexes (the options are renumbered in your order)."""
+your pick does, without option numbers or indexes (the editor says which option it is)."""
 
 CUT_SCHEMA = {
     "type": "object",
