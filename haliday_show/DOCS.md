@@ -21,13 +21,15 @@ the Home Assistant sidebar.
 
 ## Finding your way
 
-Four tabs run along the top, and a fifth, **Public page**, once you've turned it on:
+Four tabs run along the top, and a fifth, **Public page**, once you've turned it on. HA-liday Show
+opens on **Library**; the two editors sit together after it, under **Editors**, as **Show** and
+**Music**:
 
 | Tab | What's there |
 | --- | --- |
-| **Show editor** | Where shows are made: the timeline, previews and effect settings. |
-| **Music editor** | Where songs are cut, shortened, joined and detected. |
 | **Library** | **Shows** and **Songs** (all of yours), **Palettes** and **Presets** (the colours and effect settings you reuse) and **Playlists** (shows back to back, by hand or on a schedule). |
+| **Show** (the **Show editor**) | Where shows are made: the timeline, previews and effect settings. |
+| **Music** (the **Music editor**) | Where songs are cut, shortened, joined and detected. |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 | **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](#the-public-page)). |
 

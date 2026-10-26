@@ -50,11 +50,14 @@
 <header class="topbar">
   <h1><img class="brand" src="static/favicon.svg" alt="" width="26" height="26">HA-liday Show</h1>
   <nav>
-    <!-- Making shows, then what they're made from, then setting up the house. Library and Setup hold
-         several pages each, picked from the side menu under them. -->
-    <button class="tab active" data-view="editor"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><span>Show editor</span></button>
-    <button class="tab" data-view="music"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><span>Music editor</span></button>
-    <button class="tab" data-view="library"><svg class="ico" aria-hidden="true"><use href="#i-library"/></svg><span>Library</span></button>
+    <!-- Your things first (where the app opens), then the two editors, then setting up the house.
+         Library and Setup hold several pages each, picked from the side menu under them. -->
+    <button class="tab active" data-view="library"><svg class="ico" aria-hidden="true"><use href="#i-library"/></svg><span>Library</span></button>
+    <span class="tab-sep" aria-hidden="true"></span>
+    <span class="tab-group" id="tab-editors-label">Editors</span>
+    <button class="tab" data-view="editor" aria-label="Show editor"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><span>Show</span></button>
+    <button class="tab" data-view="music" aria-label="Music editor"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><span>Music</span></button>
+    <span class="tab-sep" aria-hidden="true"></span>
     <button class="tab" data-view="setup"><svg class="ico" aria-hidden="true"><use href="#i-setup"/></svg><span>Setup</span></button>
     <button class="tab" data-view="public" id="tab-public" hidden><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><span>Public page</span></button>
   </nav>

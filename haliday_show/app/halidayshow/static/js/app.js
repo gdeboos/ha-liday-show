@@ -6336,7 +6336,8 @@ async function init() {
     await openShow(null, { chosen: false });
     // Reloaded or bookmarked on a page: open that page (an editor opens on its list).
     const wanted = location.hash.slice(1);
-    showView("editor");
+    // It opens on the Library: your shows and songs, with the editors a tab away.
+    showView("library");
     if (isPage(wanted) && wanted !== shownPage) showView(wanted, { push: false });
     window.addEventListener("popstate", pageFromHistory);
     // A fresh install opens the setup guide, once.
