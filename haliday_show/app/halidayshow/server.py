@@ -573,12 +573,40 @@ async def get_show(request):
 
 async def create_show(request):
     body = await request.json()
-    storage = request.app[STORAGE]
-    base = slugify(str(body.get("name", "show")))
-    show_id, n = base, 2
-    while storage.load_show(show_id) is not None:
-        show_id, n = f"{base}-{n}", n + 1
-    return web.json_response({"id": show_id})
+    return web.json_response({"id": request.app[STORAGE].new_show_id(str(body.get("name", "show")))})
+
+
+def _clean_show_name(body) -> str:
+    name = body.get("name") if isinstance(body, dict) else None
+    if not isinstance(name, str) or not name.strip():
+        raise web.HTTPBadRequest(text="give the show a name")
+    return " ".join(name.split())[:80]
+
+
+def _name_taken(storage, name: str, but: str | None = None) -> bool:
+    return any(s["name"].lower() == name.lower() and s["id"] != but for s in storage.list_shows())
+
+
+async def duplicate_show(request):
+    name = _clean_show_name(await request.json())
+    if _name_taken(request.app[STORAGE], name):
+        raise web.HTTPConflict(text=f"there's already a show called {name}")
+    new_id = request.app[STORAGE].duplicate_show(_show_id(request), name)
+    if new_id is None:
+        raise web.HTTPNotFound()
+    request.app[MQTT].refresh()
+    return web.json_response({"id": new_id})
+
+
+async def rename_show(request):
+    name = _clean_show_name(await request.json())
+    # Automations can start a show by its name, so two shows mustn't share one.
+    if _name_taken(request.app[STORAGE], name, but=_show_id(request)):
+        raise web.HTTPConflict(text=f"there's already a show called {name}")
+    if not request.app[STORAGE].rename_show(_show_id(request), name):
+        raise web.HTTPNotFound()
+    request.app[MQTT].refresh()
+    return web.json_response({"ok": True, "name": name})
 
 
 async def put_show(request):
@@ -1295,6 +1323,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/shows/{id}", put_show)
     r.add_delete("/api/shows/{id}", delete_show)
     r.add_put("/api/shows/{id}/baked", put_baked)
+    r.add_post("/api/shows/{id}/duplicate", duplicate_show)
+    r.add_post("/api/shows/{id}/rename", rename_show)
     r.add_get("/api/audio", list_audio)
     r.add_post("/api/audio", upload_audio)
     r.add_get("/api/audio/file", get_audio)

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.131
+
+- The **Show editor** now opens on **Your shows**, a list of every show with its song, its length and
+  when it last changed. Nothing changes in a show until you press **Open**, so a stray click or key
+  can't alter it. The show you were last editing has a **Last edited** badge.
+- From the list you can **Duplicate** a show (the copy plays straight away) or **Rename** it in place.
+  Each show needs its own name, as automations can start a show by its name. **+ New show** starts a
+  fresh one.
+- **← All shows**, at the start of the Show panel, takes you back to the list. Switching tabs keeps
+  your show open.
+- The same list is under **Library → Shows**.
+
 ## 0.2.130
 
 - **✨ Generate** now builds a show up the way you would by hand, instead of lighting every light all

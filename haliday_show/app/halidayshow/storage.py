@@ -125,8 +125,10 @@ class Storage:
                 show = json.loads(p.read_text())
             except ValueError:
                 continue
+            audio = show.get("audio")
             out.append({"id": p.stem, "name": show.get("name", p.stem),
                         "duration": show.get("duration", 0),
+                        "song": audio.get("path") if isinstance(audio, dict) else None,
                         "baked": (self.shows_dir / f"{p.stem}.gshow").exists(),
                         "modified": int(p.stat().st_mtime)})
         return out
@@ -150,6 +152,35 @@ class Storage:
             return (self.shows_dir / f"{show_id}.gshow").read_bytes()
         except FileNotFoundError:
             return None
+
+    def new_show_id(self, name: str) -> str:
+        base = slugify(name)
+        show_id, n = base, 2
+        while (self.shows_dir / f"{show_id}.json").exists():
+            show_id, n = f"{base}-{n}", n + 1
+        return show_id
+
+    def duplicate_show(self, show_id: str, name: str) -> str | None:
+        """A copy of the show under a new name, with its bake, so it plays straight away."""
+        show = self.load_show(show_id)
+        if show is None:
+            return None
+        new_id = self.new_show_id(name)
+        show["name"] = name
+        _write_atomic(self.shows_dir / f"{new_id}.json", json.dumps(show, indent=1).encode())
+        baked = self.load_baked(show_id)
+        if baked is not None:
+            self.save_baked(new_id, baked)
+        return new_id
+
+    def rename_show(self, show_id: str, name: str) -> bool:
+        """Changes only the name, so the bake stays (the name isn't in it)."""
+        show = self.load_show(show_id)
+        if show is None:
+            return False
+        show["name"] = name
+        _write_atomic(self.shows_dir / f"{show_id}.json", json.dumps(show, indent=1).encode())
+        return True
 
     def delete_show(self, show_id: str):
         for ext in ("json", "gshow"):

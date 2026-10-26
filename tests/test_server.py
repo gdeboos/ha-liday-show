@@ -176,6 +176,37 @@ async def test_show_lifecycle(client):
     assert (await client.get("/api/shows/..%2Fdevices")).status in (400, 404)
 
 
+async def test_shows_can_be_duplicated_and_renamed_keeping_their_bake(client):
+    show_id = (await (await client.post("/api/shows", json={"name": "Xmas"})).json())["id"]
+    show = {"name": "Xmas", "duration": 1, "audio": {"source": "media", "path": "carols/bells.mp3"},
+            "tracks": [{"device": "a", "clips": []}]}
+    await client.put(f"/api/shows/{show_id}", json=show)
+    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"] * 40)
+    await client.put(f"/api/shows/{show_id}/baked", data=blob)
+
+    r = await client.post(f"/api/shows/{show_id}/duplicate", json={"name": "  Xmas   copy "})
+    copy_id = (await r.json())["id"]
+    assert copy_id == "xmas-copy"
+    listed = {s["id"]: s for s in await (await client.get("/api/shows")).json()}
+    assert listed[copy_id]["name"] == "Xmas copy" and listed[copy_id]["baked"] is True
+    assert listed[copy_id]["song"] == "carols/bells.mp3"
+    assert (await (await client.get(f"/api/shows/{copy_id}")).json())["tracks"] == show["tracks"]
+
+    assert (await client.post(f"/api/shows/{show_id}/rename", json={"name": "Christmas Eve"})).status == 200
+    listed = {s["id"]: s for s in await (await client.get("/api/shows")).json()}
+    assert listed[show_id]["name"] == "Christmas Eve" and listed[show_id]["baked"] is True
+
+    assert (await client.post(f"/api/shows/{show_id}/rename", json={"name": "  "})).status == 400
+    # Two shows can't share a name, as automations can start a show by its name.
+    assert (await client.post(f"/api/shows/{show_id}/rename", json={"name": "xmas COPY"})).status == 409
+    assert (await client.post(f"/api/shows/{show_id}/duplicate", json={"name": "Xmas copy"})).status == 409
+    assert (await client.post(f"/api/shows/{show_id}/rename", json={"name": "Christmas eve"})).status == 200
+    assert (await client.post("/api/shows/nope/rename", json={"name": "A"})).status == 404
+    assert (await client.post("/api/shows/nope/duplicate", json={"name": "A"})).status == 404
+    assert (await client.post("/api/shows/Bad%20Id/rename", json={"name": "A"})).status == 400
+
+
+
 async def test_song_info_is_kept_per_file_until_the_file_changes(client, tmp_path):
     q = {"source": "media", "path": "songs/tune.mp3"}
     assert await (await client.get("/api/audio/info", params=q)).json() is None

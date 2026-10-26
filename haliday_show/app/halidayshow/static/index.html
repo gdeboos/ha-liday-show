@@ -59,12 +59,21 @@
   <span id="status" class="status"></span>
 </header>
 
+<!-- Your shows: where the Show editor starts each visit (showlist.js); the same list is under Library → Shows. -->
+<main id="view-showlist" class="view showlist" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg>Your shows</h2>
+  <p class="hint">Open a show to change it. Nothing in a show changes until you open it.</p>
+  <div class="show-list" data-show-list></div>
+  <p><button type="button" class="primary" data-show-new>+ New show</button></p>
+</main>
+
 <main id="view-editor" class="view editor">
   <!-- Panels live in five docks (top, left, middle, right, bottom); layout.js moves or hides them per viewer. -->
   <div class="dock" data-dock="top">
     <section class="panel" data-panel="show">
       <div class="panel-head"><span class="section-label">Show</span></div>
       <div class="group">
+        <button id="btn-all-shows" type="button" class="ghost" title="Back to the list of your shows">← All shows</button>
         <select id="show-select" title="Open a show"></select>
         <button id="btn-save" class="primary" title="Save and bake (Ctrl+S)">Save</button>
         <button id="btn-show-settings" title="Name, show speaker, auto save, delete">⚙ Show settings…</button>
@@ -307,11 +316,18 @@
 
 <div id="section-library" class="section" hidden>
   <nav class="subnav" aria-label="Library">
+    <button class="subtab" data-view="shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><b>Shows</b><span>All your shows</span></button>
     <button class="subtab" data-view="palettes"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg><b>Palettes</b><span>Colour sets</span></button>
     <button class="subtab" data-view="presets"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg><b>Presets</b><span>Ready-made effect settings</span></button>
     <button class="subtab" data-view="playlists"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Playlists</b><span>Shows back to back</span></button>
   </nav>
   <div class="section-body">
+<main id="view-shows" class="view" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg>Shows</h2>
+  <p class="hint">Open a show to change it. Nothing in a show changes until you open it.</p>
+  <div class="show-list" data-show-list></div>
+  <p><button type="button" class="primary" data-show-new>+ New show</button></p>
+</main>
 <main id="view-palettes" class="view" hidden>
   <p class="hint">Use a palette from an effect's settings: click a colour to drop it into a colour field, or
     <b>Apply palette</b> to fill them all. Click a light's name to <b>Recolour</b> every effect on it, or on every light.</p>

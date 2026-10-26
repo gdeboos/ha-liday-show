@@ -175,6 +175,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
+- **Your shows**: the Show editor starts on a list of your shows (also under Library → Shows), to open, duplicate or rename
 - Cut, trim and splice songs in the **Music editor**, with crossfades
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
 - Arrange the editor your way: pick a page layout, then drag, collapse or hide any panel
@@ -318,6 +319,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/volume.js                        The song volume slider shared by the Show editor and Music editor
     js/songload.js                      Fetching a song, and saying plainly why one did not load
     js/statusline.js                    The message spot in the top bar: saved, settled and error states
+    js/showlist.js                      Your shows: the rows of the show list (sorting, details, copy names)
     js/analysis.js                      Song analysis: tempo, beats, bars and sections
     js/analysis-worker.js               Runs the analysis off the main thread
     js/autogen.js                       Generates a draft show from the analysis
