@@ -12,8 +12,9 @@ export const nameFromFile = (fileName) => fileName.replace(/\.[^.]+$/, "").trim(
 // The file name it's saved as, cleaned the way the server cleans it (storage.upload_path), so we can
 // tell beforehand whether it would replace a song that's already there.
 export function savedName(name, fileName) {
-  // Python's \w takes letters and digits in any alphabet, so "Noël" stays as it is.
-  return `${name.trim()}${extOf(fileName)}`.replace(/[^\p{L}\p{N}\p{M}_ .()-]+/gu, "_").replace(/^[ .]+|[ .]+$/g, "");
+  // Python's \w takes letters and digits in any alphabet, so "Noël" stays as it is (but not a separate
+  // accent mark, which it replaces).
+  return `${name.trim()}${extOf(fileName)}`.replace(/[^\p{L}\p{N}_ .()-]+/gu, "_").replace(/^[ .]+|[ .]+$/g, "");
 }
 
 // Uploads go in the haliday_show folder; `paths` are the songs listed, as "haliday_show/Song.mp3".

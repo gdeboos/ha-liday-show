@@ -3861,7 +3861,7 @@ function drawSongRows() {
     box.removeAttribute("role");
     box.innerHTML = songRowsCache.length
       ? `<p class="hint">No songs match that.</p>`
-      : `<p class="hint">No songs yet. Press <b>Upload a song…</b> to add one.</p>`;
+      : `<p class="hint">No songs yet. Press <b>+ Add a song</b> to add one.</p>`;
     return;
   }
   box.setAttribute("role", "list");
@@ -3985,7 +3985,11 @@ async function asSubmit(e) {
   if (addSong.step === 1) {
     if (!f) { status("Choose a song file first", "hint"); return; }
     if (!name) { $("as-name").focus(); return; }
-    const paths = (await api("api/songs").catch(() => ({ songs: [] }))).songs.map((s) => s.path);
+    let paths;
+    try { paths = (await api("api/songs")).songs.map((s) => s.path); } catch (err) {
+      status(`Couldn't check your songs: ${err.message}`, true, "songs");
+      return;
+    }
     if (nameTaken(savedName(name, f.name), paths)) {
       status(`There's already a song called ${name}. Give this one its own name`, "hint");
       $("as-name").select();

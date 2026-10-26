@@ -29,7 +29,7 @@ its own with Docker or Python.
 ## ✨ Highlights
 
 - 🎵 **Hears the song for you.** Tempo, beats, bars and sections (intro, verse, chorus…) are detected
-  in your browser, and every effect snaps to them.
+  in your browser as soon as you add a song, and every effect snaps to them.
 - 🪄 **A first draft in one click.** **Generate** fills every light with effects that follow the
   music, in the palette and style you pick, ready for you to tweak. A new show can start that way.
 - 💬 **Or just describe it.** "Red and green chase on the roof in every chorus" and an AI adds it,

@@ -8,6 +8,7 @@ test("names come from the file and are saved with its extension, cleaned like th
   assert.equal(savedName("Rock/Roll: live", "a.wav"), "Rock_Roll_ live.wav");
   assert.equal(savedName(" .Intro ", "a.ogg"), "Intro.ogg");
   assert.equal(savedName("Noël", "a.mp3"), "Noël.mp3");
+  assert.equal(savedName("Noe\u0308l", "a.mp3"), "Noe_l.mp3");
   assert.ok(isAudioName("song.flac"));
   assert.ok(!isAudioName("notes.txt"));
 });
