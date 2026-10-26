@@ -4094,7 +4094,8 @@ function renderPublicHours() {
   const hint = !h.on ? "Open all the time." : now.open ? "✓ Open now."
     : now.next ? `Closed now. Opens ${whenNext(now.next, now.now)}.`
       : sunset && !publicView.home ? "⚠ There's no home location to work out sunset from, so the page won't open. Set it in Home Assistant (Settings → System → General)."
-        : "⚠ These hours never come round. Pick at least one day.";
+        : !h.days.length ? "⚠ No days are ticked, so the page never opens."
+          : "⚠ These hours don't come round: the sun doesn't set before they end. Pick a later closing time.";
   $("pub-hours-hint").textContent = hint;
   $("pub-hours-hint").classList.toggle("warn", hint.startsWith("⚠"));
 }
@@ -4253,8 +4254,9 @@ function savePublic() {
       from: "", to: "",
     };
     if (sunset) hours.offset = Math.max(-180, Math.min(180, Math.round(Number($("pub-hours-offset").value) || 0)));
-    // Start and end can't be the same time; keep the saved hours rather than send ones that won't save.
+    // Start and end can't be the same time: say so, and keep the saved hours (everything else saves).
     if (hours.start !== hours.end) publicView.hours = hours;
+    else status("Opening and closing can't be the same time. Pick a different time for one of them.", "hint");
     const picked = document.querySelector("input[name=pub-picture]:checked");
     publicView.look = {
       ...publicView.look,
@@ -4354,7 +4356,12 @@ function wirePublic() {
   // Keep the queue up to date while you're looking at it.
   setInterval(async () => {
     if (document.hidden || shownPage !== "public") return;
-    try { renderPublicQueue(await api("api/public")); } catch { /* offline for a moment */ }
+    try {
+      const view = await api("api/public");
+      renderPublicQueue(view);
+      // Open or closed changes by the clock, so the Opening hours line follows it.
+      if (publicView && !pubPending) { publicView.hours_now = view.hours_now; renderPublicHours(); }
+    } catch { /* offline for a moment */ }
   }, 5000);
 }
 

@@ -35,7 +35,7 @@ export function clockText(hhmm) {
 // When the page opens again, from HA-liday Show's clock ("YYYY-MM-DDTHH:MM", no time zone).
 export function comeBackText(hours) {
   if (!hours || hours.open) return "";
-  if (!hours.next) return "There are no shows right now. Come back another time!";
+  if (!hours.next) return "We're not open at the moment. Come back another time!";
   const day = (iso) => Date.UTC(...iso.slice(0, 10).split("-").map((v, i) => Number(v) - (i === 1 ? 1 : 0))) / 86400000;
   const ahead = day(hours.next) - day(hours.now);
   const at = clockText(hours.next.slice(11, 16));

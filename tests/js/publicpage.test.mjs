@@ -92,5 +92,5 @@ test("outside opening hours visitors are told when to come back", async () => {
   assert.equal(comeBackText({ open: false, now, next: "2026-10-27T16:32" }), "Shows start tomorrow at 4:32pm. Come back then!");
   assert.equal(comeBackText({ open: false, now, next: "2026-10-31T17:00" }), "Shows start on Saturday at 5pm. Come back then!");
   assert.equal(comeBackText({ open: false, now, next: "2026-12-01T17:00" }), "Shows start on 1 December at 5pm. Come back then!");
-  assert.match(comeBackText({ open: false, now, next: null }), /another time/);
+  assert.match(comeBackText({ open: false, now, next: null }), /not open at the moment/);
 });

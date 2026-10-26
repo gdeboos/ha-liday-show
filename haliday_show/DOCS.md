@@ -1150,7 +1150,10 @@ when:
 
 - **From** a time, or **sunset** with a number of minutes after it (or before, if less than 0), so the
   opening time moves with the sunset through the year.
-- **until** a time. A time before the start means after midnight, such as 17:00 until 01:00.
+- **until** a time. With a set start, a time before it means after midnight, such as 17:00 until
+  01:00. With a sunset start, a closing time before midday is the next morning, and any other is
+  that evening; on a day the sun sets after it, the page doesn't open (in summer, say, with a 22:00
+  close).
 - The days of the week it opens.
 
 The line underneath says whether the page is open now, or when it next opens. Sunset is worked out
