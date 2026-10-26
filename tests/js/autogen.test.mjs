@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { generateShow, barGrid, suggestLooks, tier } from "../../haliday_show/app/halidayshow/static/js/autogen.js";
 import { EFFECTS, HOUSE } from "../../haliday_show/app/halidayshow/static/js/effects.js";
-import { applyGenerated } from "../../haliday_show/app/halidayshow/static/js/autogen.js";
+import { applyGenerated, splitLong } from "../../haliday_show/app/halidayshow/static/js/autogen.js";
 
 // A 120 BPM song: quiet intro, verse, loud chorus, verse, chorus, quiet outro, 8 bars each.
 const bar = 2;
@@ -198,4 +198,40 @@ test("building up works with one or two lights", () => {
     for (const l of few) assert.ok(clips[l.id].length);
     assert.ok(Object.values(clips).some((list) => list.some((c) => c.start <= 4 && 4 < c.end))); // something in the intro
   }
+});
+
+test("the longest effect setting caps how long one look runs", () => {
+  for (const [maxBars, style] of [[2, "balanced"], [4, "calm"], [8, "calm"]]) {
+    const { clips } = generateShow(analysis, lights, colors, { maxBars, style });
+    for (const list of Object.values(clips)) {
+      for (const c of list) assert.ok(c.end - c.start <= maxBars * bar + 1e-6, `${c.effect} ${c.end - c.start}s over ${maxBars} bars (${style})`);
+    }
+  }
+  // Without a cap, calm looks run a whole 8-bar section here.
+  const { clips } = generateShow(analysis, lights, colors, { style: "calm" });
+  assert.ok(Object.values(clips).flat().some((c) => c.end - c.start > 4 * bar));
+});
+
+test("long clips are cut at bar lines, each later piece in the next palette colours", () => {
+  const bars = Array.from({ length: 20 }, (_, i) => i * 2); // a bar every 2 s
+  const clip = { effect: "solid", start: 0, end: 20, color: "#123456" };
+  const out = splitLong([clip, { ...clip, start: 20, end: 26 }], { maxBars: 4, bars, colors: ["#ff0000", "#00ff00"] });
+  assert.deepEqual(out.map((c) => [c.start, c.end]), [[0, 8], [8, 16], [16, 20], [20, 26]]);
+  assert.equal(out[0].color, "#123456"); // the AI's own colours first
+  assert.notEqual(out[1].color, out[2].color);
+  assert.equal(clip.end, 20); // the original isn't changed
+  // No bars detected: four beats make a bar.
+  const loose = splitLong([{ ...clip, end: 10 }], { maxBars: 2, bps: 2 });
+  assert.deepEqual(loose.map((c) => [c.start, c.end]), [[0, 4], [4, 8], [8, 10]]);
+  assert.equal(splitLong([clip], { maxBars: 0, bars }).length, 1); // Any length
+});
+
+test("the cap holds with building up, and every light still gets used", () => {
+  const { clips } = generateShow(analysis, house6, colors, { build: true, maxBars: 2 });
+  for (const [id, list] of Object.entries(clips)) {
+    assert.ok(list.length, `${id} left dark`);
+    for (const c of list) assert.ok(c.end - c.start <= 2 * bar + 1e-6, `${id} ${c.effect} ${c.end - c.start}s`);
+  }
+  const loose = generateShow({ ...analysis, bars: [], beats: [] }, lights, colors, { maxBars: 2 });
+  for (const c of Object.values(loose.clips).flat()) assert.ok(c.end - c.start <= 4 + 1e-6, `${c.end - c.start}s with 2 s blocks`);
 });

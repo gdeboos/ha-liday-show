@@ -3,7 +3,7 @@
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
 import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
-import { STYLES, applyGenerated, generateShow, suggestLooks } from "./autogen.js";
+import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, FPS, HOUSE, PRESETS, applyHouse, bake, composeLight, defaultParams, matchesPreset, presetParams,
@@ -5110,14 +5110,24 @@ function generateControls() {
   build.checked = prefs.get("genBuild", true);
   const bl = document.createElement("label");
   bl.append(build, "Build up: a few lights in quiet parts, more as the music builds, all of them in the loudest");
+  // How long one effect may run before the look changes, in bars (a bar is four beats).
+  const longest = document.createElement("select");
+  for (const [v, label] of [[2, "2 bars"], [4, "4 bars"], [8, "8 bars"], [0, "Any length"]]) {
+    longest.add(new Option(label, String(v), false, v === prefs.get("genMaxBars", 4)));
+  }
+  const ll = document.createElement("label");
+  ll.append("Longest effect", longest);
+  ll.title = "How long one effect may run before the look changes. A bar is four beats: 4 bars is about 8 seconds at 120 BPM. "
+    + "An effect from the AI that runs longer is cut into pieces in the next colours of the palette.";
   const read = () => {
     prefs.set("genStyle", style.value);
     prefs.set("genBuild", build.checked);
+    prefs.set("genMaxBars", Number(longest.value));
     const chosen = allPalettes().find((p) => p.name === palette.value) || currentPalette();
     return { colors: chosen.colors, paletteName: chosen.name, style: style.value, house: !hl.hidden && house.checked,
-      build: build.checked };
+      build: build.checked, maxBars: Number(longest.value) };
   };
-  return { nodes: [pl, sl, bl, hl], read };
+  return { nodes: [pl, sl, ll, bl, hl], read };
 }
 
 function generateDialog() {
@@ -5129,7 +5139,7 @@ function generateDialog() {
   h.textContent = "Generate a show";
   const hint = document.createElement("p");
   hint.className = "hint";
-  hint.textContent = "Fills every light with effects that follow the song's beats and sections: soft looks in quiet "
+  hint.textContent = "Fills your lights with effects that follow the song's beats and sections: soft looks in quiet "
     + "parts, fast ones on the beat when it gets loud, and the same looks each time a chorus comes back. It replaces "
     + "the lights' effects; Ctrl+Z brings them back. Generate again for a different take.";
   const controls = generateControls();
@@ -5303,7 +5313,7 @@ async function createShow({ name, audio: ref, length, start, gen }) {
   if (start === "ai") await generateWithAI(gen);
 }
 
-async function generate({ colors, style, house, build }) {
+async function generate({ colors, style, house, build, maxBars = prefs.get("genMaxBars", 4) }) {
   // A split light gets effects on its parts; its own track (all the parts at once) is left for you.
   // Its parts light up and go dark together when building up.
   const lights = app.show.tracks.filter((tr) => tr.device !== HOUSE && playingDev(tr) && !playingDev(tr).light)
@@ -5316,7 +5326,7 @@ async function generate({ colors, style, house, build }) {
   // Listen to the song first if that hasn't been done yet.
   if (songBuffer && !app.show.beats.length && !app.show.sections?.length && !(await analyseSong())) return;
   const show = app.show;
-  const result = generateShow({ ...show, duration: app.duration() }, lights, colors, { style, house, build, seed: ++generateSeed });
+  const result = generateShow({ ...show, duration: app.duration() }, lights, colors, { style, house, build, maxBars, seed: ++generateSeed });
   applyGenerated(show, result);
   app.select(null);
   app.changed();
@@ -5324,7 +5334,7 @@ async function generate({ colors, style, house, build }) {
 }
 
 // Generate with the AI: the whole show from the song, its sections and their notes, in one request.
-async function generateWithAI({ colors, paletteName, style, house, build }) {
+async function generateWithAI({ colors, paletteName, style, house, build, maxBars = prefs.get("genMaxBars", 4) }) {
   // A window over the editor while the AI works, so it's plain it's busy and nothing is changed
   // underneath it; Cancel (or Esc) stops waiting and leaves the show as it was.
   if (!aiLights().some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
@@ -5343,8 +5353,13 @@ async function generateWithAI({ colors, paletteName, style, house, build }) {
       + "dark; bring more lights in as the music builds, adding them on bar lines; use every light together only "
       + "in the loudest sections and the chorus. Keep the parts of one light (named Light · Part) on or off together." : "")
     + (house ? " Add sweeps across the house as the music lifts into louder sections." : "");
+  // Clips longer than Longest effect are cut at bar lines here, rather than asking the AI for more,
+  // shorter clips, which could run past how much it may write in one reply.
+  const tidy = (placed) => placed.flatMap(({ trackIndex, clip }) => splitLong([clip], {
+    maxBars, colors, bars: app.show.bars || [], bps: (app.show.tempo || 120) / 60,
+  }).map((c) => ({ trackIndex, clip: c })));
   try {
-    await describe(request, null, { replaceAll: true, what: "the show", busy });
+    await describe(request, null, { replaceAll: true, what: "the show", busy, tidy });
   } finally {
     busy.close();
   }
@@ -5580,7 +5595,7 @@ async function describeIt(e) {
 
 // Sends a request to the AI with the show's context and puts the clips it makes on the show.
 // selectionFor(lights) gives the selection to send; replaceAll clears the lights first, as Generate does.
-async function describe(request, selectionFor, { replaceAll = false, what = "your effects", busy = null } = {}) {
+async function describe(request, selectionFor, { replaceAll = false, what = "your effects", busy = null, tidy = (p) => p } = {}) {
   const lights = aiLights();
   if (!lights.some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
   const selection = selectionFor ? selectionFor(lights) : null;
@@ -5601,11 +5616,11 @@ async function describe(request, selectionFor, { replaceAll = false, what = "you
   if (show !== app.show || busy?.cancelled) { done(""); return; } // another show was opened, or Cancel
   const checked = checkClips(reply, lights, duration), skipped = checked.skipped;
   // The AI can't see what each light can show, so clips that won't work on theirs are left out.
-  const placed = checked.placed.filter(({ trackIndex, clip }) => {
+  const placed = tidy(checked.placed.filter(({ trackIndex, clip }) => {
     if (clipFitOn(clip, trackIndex).level !== "no") return true;
     skipped.push(`${EFFECTS[clip.effect].label} won't work on ${trackName(trackIndex)}`);
     return false;
-  });
+  }));
   if (placed.length) {
     if (replaceAll) for (const l of lights) show.tracks[l.trackIndex].clips = [];
     placeClips(show, placed);

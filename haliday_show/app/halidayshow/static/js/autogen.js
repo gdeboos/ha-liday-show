@@ -109,7 +109,8 @@ function clipFor(look, start, end, bps, n, colors, offset) {
 // can't show (another of the section's looks is used instead);
 // group: the light a part belongs to (parts of one light go dark or light up together; default its id);
 // colors: the palette's colours. Returns {clips: {deviceId: [clip]}, house: [clip]}.
-export function generateShow(analysis, lights, colors, { style = "balanced", seed = 1, house = false, build = false } = {}) {
+// maxBars caps how long one look runs (0: as long as the style likes, up to 16 bars in quiet parts).
+export function generateShow(analysis, lights, colors, { style = "balanced", seed = 1, house = false, build = false, maxBars = 0 } = {}) {
   const duration = analysis.duration;
   const bps = beatsPerSecond(analysis);
   const grid = barGrid(analysis);
@@ -151,7 +152,7 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
     const bars = grid.filter((g) => g >= sec.start - 0.05 && g <= sec.end + 0.05);
     if (bars[0] > sec.start + 0.05) bars.unshift(sec.start);
     if (bars[bars.length - 1] < sec.end - 0.05) bars.push(sec.end);
-    const step = t === "low" ? phraseBars * 2 : phraseBars;
+    const step = Math.min(t === "low" ? phraseBars * 2 : phraseBars, maxBars > 0 ? maxBars : Infinity);
     for (let k = 0, phrase = 0; k < bars.length - 1; k += step, phrase++) {
       const start = bars[k], end = bars[Math.min(k + step, bars.length - 1)];
       const on = lit(phrase);
@@ -223,4 +224,31 @@ export function applyGenerated(show, result) {
     if (tr.device === HOUSE) { if (result.house.length) tr.clips = result.house; }
     else if (result.clips[tr.device]) tr.clips = result.clips[tr.device];
   }
+}
+
+// Cuts any clip longer than maxBars bars into pieces at bar lines, each later piece taking the next
+// colours of the palette, so the look keeps changing (for the AI's clips: asking it for many short
+// clips instead could run past how much it may write at once). bars: bar start times; without them,
+// four beats of `bps` (beats a second) make a bar. Returns new clips; short ones are left as they are.
+export function splitLong(clips, { maxBars, bars = [], bps = 2, colors = [] }) {
+  if (!(maxBars > 0)) return clips;
+  const out = [];
+  for (const clip of clips) {
+    // Where each piece may end: every maxBars-th bar line from the clip's start.
+    let cuts;
+    const inside = bars.filter((t) => t > clip.start + 0.05 && t < clip.end - 0.05);
+    if (bars.length >= 2) cuts = inside.filter((_, i) => (i + 1) % maxBars === 0);
+    else {
+      const span = (maxBars * 4) / bps;
+      cuts = [];
+      for (let t = clip.start + span; t < clip.end - 0.05; t += span) cuts.push(t);
+    }
+    if (!cuts.length) { out.push(clip); continue; }
+    [clip.start, ...cuts].forEach((start, k, all) => {
+      const piece = { ...clip, start: round(start), end: round(all[k + 1] ?? clip.end) };
+      if (k > 0 && colors.length) applyPalette(piece, colors, k);
+      out.push(piece);
+    });
+  }
+  return out;
 }

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.147
+## 0.2.148
 
 - New in the **Music editor**: **Suggest cuts**, in the **Edit** card. Pick **the whole song** or one
   section under **Shorten**, type how long you'd like it **to about** (such as 1:30 or 20), and press
@@ -10,6 +10,14 @@
 - A section you've picked has a **✂ Shorten…** button that sets this up for that section, for when the
   intro, say, goes on too long.
 - Suggestions need the song detected first (**Detect**), since they follow its bars.
+
+## 0.2.147
+
+- **✨ Generate**, and **Generate with AI** in **+ New show**, have a new **Longest effect** setting: how
+  long one effect may run before the look changes. Pick **2 bars**, **4 bars**, **8 bars** or **Any
+  length**; it starts on **4 bars** (about 8 seconds at 120 BPM). Quiet parts used to hold one look
+  for 8 bars (16 with **Calm**). **Rules** keep to it, and an effect from the AI that runs longer is cut
+  at bar lines into pieces, each in the next colours of your palette.
 
 ## 0.2.146
 
