@@ -25,7 +25,7 @@ Four tabs run along the top:
 | Tab | What's there |
 | --- | --- |
 | **Show editor** | Where shows are made: the timeline, previews and effect settings. |
-| **Music editor** | Where songs are cut, joined and detected. |
+| **Music editor** | Where songs are cut, shortened, joined and detected. |
 | **Library** | **Palettes** and **Presets**, the colours and effect settings you reuse across shows. |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 
@@ -439,7 +439,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Songs](#songs) · [Editing a song](#editing-a-song) ·
+- **The song:** [Shows](#shows) · [Songs](#songs) · [Editing a song](#editing-a-song) · [Suggest cuts](#suggest-cuts) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
 - **By hand:** [The timeline](#the-timeline) · [Adding effects](#adding-effects) ·
@@ -540,7 +540,8 @@ songs** each visit, the same list as **Library → Songs** (with **+ Add a song*
 until you press **Edit** on one. The open song's name sits beside **← All songs**, which goes back to
 the list to open another; switching tabs keeps your song open. **File name** and **Save as new file** are
 at the top too, with **Unsaved edits** beside them until you save. Drag across the waveform to select, then **Cut selection** to remove it or
-**Keep only selection** to shorten the song to it. **Insert at playhead** and **Add to end** splice in
+**Keep only selection** to shorten the song to it, or let **✂ Suggest cuts…** find the cuts for you (see
+[Suggest cuts](#suggest-cuts)). **Insert at playhead** and **Add to end** splice in
 another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
 time (a few hundredths of a second hides the click, a few seconds blends one song into the next), and
 **Fade in** and **Fade out** soften the ends. Zoom with the wheel, or type the selection's times for
@@ -563,17 +564,30 @@ saved, you're asked first.
 
 #### Suggest cuts
 
-To make the song (or one part of it) shorter without hearing the join, press **✂ Suggest cuts…** in
-the **Edit** card, or **✂ Shorten…** on a section you've picked in the lane. A window opens. Pick **the
-whole song** or a section under **Shorten**, type how long you'd like it **To about** (as 1:30 or 90; it
-starts at half a section or three quarters of the song), and press **Find cuts →**. You get up to three
-options. Each takes out whole bars, in 4- and 8-bar phrases where it can,
-where the music either side of the join matches: a loop that repeats, or a verse and chorus that come
-round again. For the whole song an option can be several cuts, chosen from parts that are heard again
-elsewhere. Each says how much shorter it makes things and how well its joins match (**smooth join**,
-**good join** or **join may be heard**). Press a cut's **▶** to hear a few seconds either side of its
-join (what it takes out is shown in red), then **Use** to make the cut and close the window; **Undo** in the
-**Edit** card (or Ctrl+Z) takes it back. **✂ Suggest cuts…** opens on the section you've picked, if any. **← Back** tries another length. Suggestions follow the song's bars, so press **Detect** first.
+**Suggest cuts** finds places to make the song, or one section of it, shorter without the join being
+heard: for when the intro goes on too long, say, or the song is longer than your show needs. It works
+in whole bars, so the song needs to be detected first (**Detect**).
+
+1. Press **✂ Suggest cuts…** in the **Edit** card, or pick a section in the lane and press **✂ Shorten…**.
+   A window opens, set to the section you've picked (or **the whole song** if you haven't picked one).
+2. Under **Shorten**, choose **the whole song** or a section. Under **To about**, type how long you'd
+   like it, as 1:30 or 90. It starts at half the section, or three quarters of the song, and shows how
+   long it is now.
+3. Press **Find cuts →** (or Enter). You get up to three options.
+4. Press a cut's **▶** to hear a few seconds either side of its join. What it would take out shows in
+   red on the waveform.
+5. Press **Use** on the one you like. The cut is made and the window closes. **Undo** in the **Edit**
+   card (or Ctrl+Z) takes it back. To try another length instead, press **← Back**.
+
+It only takes out whole bars, in 4- or 8-bar phrases where it can, and only where the music either side
+of the join matches, such as a loop that repeats or a verse and chorus that come round again. For the
+whole song, an option can be several cuts, taken from parts that are heard again elsewhere, and it never
+cuts off the ending (use **Fade out** for that). Each option says how many bars go, how much shorter it
+makes things, and how well its join matches: **smooth join**, **good join** or **join may be heard**.
+If nothing fits, it says so; try a length a little longer or shorter.
+
+Nothing changes until you press **Use**, and the song file you opened is never changed: keep the result
+with **Save as new file**.
 
 ### Detecting in the Music editor
 
