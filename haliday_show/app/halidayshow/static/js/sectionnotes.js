@@ -104,7 +104,10 @@ export function aiRequest(sections, traits, song) {
 export function fromAI(reply, sections) {
   const notes = {}, names = {};
   for (const r of Array.isArray(reply?.sections) ? reply.sections : []) {
-    const i = Number(r?.index), sec = sections[i];
+    // A real index only: Number(null), Number("") and Number(false) are all 0.
+    const raw = r?.index;
+    if (!(typeof raw === "number" || (typeof raw === "string" && /^\d+$/.test(raw)))) continue;
+    const i = Number(raw), sec = sections[i];
     if (!Number.isInteger(i) || !sec) continue;
     const note = String(r.notes ?? "").trim().slice(0, 300);
     const name = String(r.name ?? "").trim().slice(0, 40);
@@ -114,10 +117,12 @@ export function fromAI(reply, sections) {
   return { notes, names };
 }
 
-// Sections described with the AI's notes and names, and the rules for any section it skipped.
+// Sections described with the AI's notes and names, and the rules for any section it skipped:
+// {sections, used}, used counting the AI's notes and names kept (0: its reply was no use).
 export function describeWithAI(sections, traits, reply) {
   const { notes, names } = fromAI(reply, sections);
-  return describeSections(sections, traits, {
+  const used = Object.keys(notes).length + Object.keys(names).length;
+  return { used, sections: describeSections(sections, traits, {
     names, write: (t, sec, all, i) => notes[i] ?? ruleNote(t, sec, all),
-  });
+  }) };
 }

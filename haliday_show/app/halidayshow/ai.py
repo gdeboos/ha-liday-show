@@ -267,7 +267,7 @@ async def ask_claude(key: str, text: str, instructions: str = INSTRUCTIONS, sche
     if response.stop_reason == "refusal":
         raise AIError("Claude declined that request")
     if response.stop_reason == "max_tokens":
-        raise AIError("that request needs too many clips at once; try a smaller part of the show")
+        raise AIError(f"that request needs too many {field} at once; try asking for less")
     return parse_reply(next((b.text for b in response.content if b.type == "text"), ""), field)
 
 

@@ -132,13 +132,19 @@ test("the AI's notes and names are checked, and the rules fill any it skipped", 
     { index: 2, name: "", notes: "x".repeat(400) },
     { index: 9, name: "Nope", notes: "out of range" },
     { index: "1", name: 5, notes: null },
+    { index: null, name: "Nulled", notes: "lands on 0?" },
+    { index: false, name: "False", notes: "lands on 0?" },
   ] };
-  const out = describeWithAI(secs, secs.map(() => trait), reply);
+  const got = describeWithAI(secs, secs.map(() => trait), reply);
+  assert.equal(got.used, 3); // notes for 0 and 2, the name for 0
+  const out = got.sections;
   assert.deepEqual(out.map((s) => s.label), ["Verse", "Mine", "Part B", "Part A"]);
   assert.equal(out[0].notes, "Gentle bells; a soft glow.");
   assert.equal(out[1].notes, "my words");
   assert.equal(out[2].notes.length, 300);
   assert.match(out[3].notes, /^Loud/); // skipped by the AI: the rule note
   assert.ok(out.filter((s) => s.autoNotes).length === 3);
-  assert.deepEqual(describeWithAI(secs, secs.map(() => trait), null).map((s) => s.label), secs.map((s) => s.label));
+  const none = describeWithAI(secs, secs.map(() => trait), null);
+  assert.equal(none.used, 0);
+  assert.deepEqual(none.sections.map((s) => s.label), secs.map((s) => s.label));
 });

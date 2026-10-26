@@ -6,7 +6,7 @@
 // a song's beats and sections and keeps them with the file, for any show that uses it.
 
 import { analyseInWorker, toMono } from "./analysis.js";
-import { describeSections, keepYours } from "./sectionnotes.js";
+import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { SECTION_ALPHA, fmtTime, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 
@@ -378,8 +378,9 @@ export class MusicEditor {
       await this.host.api(infoUrl(ref), { method: "PUT", json: info });
       if (this.base === ref) { this.info = info; this.secSel = -1; }
       const parts = `${info.sections.length} section${info.sections.length === 1 ? "" : "s"}`;
-      this.host.status(info.tempo ? `Found ${info.beats.length} beats at ${info.tempo} BPM, and ${parts}` : `No steady beat found; found ${parts}`);
-      this.askAI(ref, info.sections, r.traits, info.tempo);
+      this.host.status((info.tempo ? `Found ${info.beats.length} beats at ${info.tempo} BPM, and ${parts}` : `No steady beat found; found ${parts}`)
+        + (this.host.hasAI?.() && this.base === ref ? ". The AI is writing notes for them; carry on meanwhile" : ""));
+      if (this.base === ref) this.askAI(ref, info.sections, r.traits, info.tempo, { quiet: true });
     } catch (e) {
       this.host.status(`Couldn't analyse the song: ${e.message}`, true);
     }
@@ -404,10 +405,17 @@ export class MusicEditor {
       }
       const out = describeSections(sections, traits);
       const written = out.filter((s, i) => s !== sections[i]).length;
-      this.editSections(out);
-      if (written && this.host.hasAI?.()) this.askAI(ref, out, traits, this.info.tempo);
-      else this.host.status(written ? `Wrote notes for ${written} section${written === 1 ? "" : "s"}; edit any you like`
-        : "Every section already has notes you wrote, so nothing was changed", written ? false : "hint");
+      if (!written) return this.host.status("Every section already has notes you wrote, so nothing was changed", "hint");
+      // With an AI, its notes replace the ones there; until then (or if it fails) they stay, and
+      // only sections with no notes at all get the simple ones meanwhile.
+      if (this.host.hasAI?.()) {
+        const blanks = describeSections(sections, traits, { write: (t, sec, all) => (sec.notes ? sec.notes : undefined) || ruleNote(t, sec, all) });
+        if (blanks.some((s, i) => s.notes !== sections[i].notes)) this.editSections(blanks);
+        this.askAI(ref, this.info.sections, traits, this.info.tempo);
+      } else {
+        this.editSections(out);
+        this.host.status(`Wrote notes for ${written} section${written === 1 ? "" : "s"}; edit any you like`);
+      }
     } catch (e) {
       this.host.status(`Couldn't describe the sections: ${e.message}`, true);
     } finally {
@@ -417,21 +425,23 @@ export class MusicEditor {
 
   // Has the AI rewrite the notes (and automatic names) just written, and puts them in if the
   // sections haven't been edited meanwhile. The rule-written ones stay if there's no AI.
-  async askAI(ref, sections, traits, tempo) {
-    if (!this.host.hasAI?.()) return;
-    this.host.status(`Asking the AI to describe each part of ${nameOf(ref)}… (usually 10 to 60 seconds; carry on meanwhile)`);
+  async askAI(ref, sections, traits, tempo, { quiet = false } = {}) {
+    if (!this.host.hasAI?.() || this.base !== ref) return;
+    const ask = (this.aiAsk = (this.aiAsk || 0) + 1); // only the latest request reports back
+    if (!quiet) this.host.status(`Asking the AI to describe each part of ${nameOf(ref)}… (usually under a minute; carry on meanwhile)`);
     const duration = sections[sections.length - 1]?.end || 0;
-    const out = await this.host.aiSectionNotes(sections, traits, { name: nameOf(ref).replace(/\.[^.]+$/, ""), duration, tempo });
-    if (!out) return;
-    if (this.base === ref && this.info?.sections === sections) {
-      this.editSections(out);
+    const got = await this.host.aiSectionNotes(sections, traits, { name: nameOf(ref).replace(/\.[^.]+$/, ""), duration, tempo });
+    if (ask !== this.aiAsk || this.base !== ref || !got?.used) return;
+    const typing = ["music-sec-notes", "music-sec-name"].includes(document.activeElement?.id);
+    if (this.info?.sections === sections && !typing) {
+      this.editSections(got.sections);
       this.host.status("The AI wrote the section notes; edit any you like");
-    } else this.host.status("The sections changed while the AI was writing, so its notes weren't used", "hint");
+    } else this.host.status("You changed the sections while the AI was writing, so its notes weren't used. Press Describe sections to ask again", "hint");
   }
 
   // Reloads a song's saved sections if it's the one open (after something else saved them).
   async reloadInfo(ref) {
-    if (this.base !== ref || this.dirty) return;
+    if (this.base !== ref || this.dirty || Date.now() - (this.editedAt || 0) < 2000) return; // an edit still saving
     const info = await this.host.api(infoUrl(ref)).catch(() => null);
     if (info && this.base === ref) { this.info = info; this.updateControls(); this.draw(); }
   }
@@ -566,6 +576,7 @@ export class MusicEditor {
   // Applies a change to the base song's sections and saves it with the song shortly after.
   editSections(sections, select = this.secSel) {
     if (!sections) return;
+    this.editedAt = Date.now();
     this.info = { ...this.info, sections };
     this.secSel = select;
     clearTimeout(this.saveTimer);
