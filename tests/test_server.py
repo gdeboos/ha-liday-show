@@ -1125,3 +1125,22 @@ async def test_public_page_settings_keep_what_isnt_sent(client):
     resp = await client.put("/api/public", json={"on": True, "hours": {**hours, "end": "17:00"}})
     assert resp.status == 400
     assert (await (await client.get("/api/public")).json())["hours"]["end"] == "22:00"
+
+
+async def test_song_folders_round_trip_and_validation(client):
+    assert await (await client.get("/api/song-folders")).json() == []
+    song = {"source": "media", "path": "haliday_show/carol.mp3"}
+    mine = [{"id": "xmas", "name": "  Christmas  songs ", "songs": [song, song]},
+            {"id": "party", "name": "Party", "songs": [song, {"source": "media", "path": "haliday_show/dance.mp3"}]}]
+    resp = await client.put("/api/song-folders", json=mine)
+    assert resp.status == 200
+    saved = await (await client.get("/api/song-folders")).json()
+    # Names are tidied, and a song is in one folder at most (the first).
+    assert saved == [{"id": "xmas", "name": "Christmas songs", "songs": [song]},
+                     {"id": "party", "name": "Party", "songs": [{"source": "media", "path": "haliday_show/dance.mp3"}]}]
+    for bad in ({"id": "x"}, [{"id": "Bad Id", "name": "A", "songs": []}],
+                [{"id": "a", "name": "A", "songs": []}, {"id": "b", "name": "a", "songs": []}],
+                [{"id": "a", "name": "A", "songs": []}, {"id": "a", "name": "B", "songs": []}],
+                [{"id": "a", "name": "", "songs": []}], [{"id": "a", "name": "A", "songs": [{"path": "x"}]}],
+                [{"id": f"f{k}", "name": f"F{k}", "songs": []} for k in range(101)]):
+        assert (await client.put("/api/song-folders", json=bad)).status == 400
