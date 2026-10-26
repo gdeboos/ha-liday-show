@@ -184,6 +184,7 @@ function restore(step) {
   app.dirty = true;
   app.edits++;
   app.selected = null;
+  $("show-name").value = app.show.name; // undo can take back a rename
   renderInspector();
   timeline.layout();
   scheduleAutoSave();

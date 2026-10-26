@@ -302,12 +302,10 @@ export class MusicEditor {
   // songs ---------------------------------------------------------------------
   fillSongLists() {
     const songs = this.host.songs();
-    for (const id of ["music-insert-src"]) {
-      const sel = $(id), cur = sel.value;
-      sel.replaceChildren(new Option("Another song…", ""));
-      for (const r of songs) sel.append(new Option(r.path, JSON.stringify(r)));
-      sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "";
-    }
+    const sel = $("music-insert-src"), cur = sel.value;
+    sel.replaceChildren(new Option("Another song…", ""));
+    for (const r of songs) sel.append(new Option(r.path, JSON.stringify(r)));
+    sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "";
   }
 
   // Everything played here goes through one gain node so the volume slider covers previews too.
@@ -718,7 +716,7 @@ export class MusicEditor {
       await this.host.songsChanged();
       this.fillSongLists();
       $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path));
-      this.host.status(`Saved ${ref.path}. Pick it under Song in the editor.`, "saved", "music-save");
+      this.host.status(`Saved ${ref.path}. Pick it under Song in the Show editor.`, "saved", "music-save");
       if (carry) {
         await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
         this.info = carry;
@@ -784,7 +782,7 @@ export class MusicEditor {
     if (!this.rendered) {
       ctx.fillStyle = col("--muted");
       ctx.font = "13px system-ui, sans-serif";
-      ctx.fillText("Choose a song or upload one to start", 12, RULER_H + 30);
+      ctx.fillText("Open a song from Your songs to start", 12, RULER_H + 30);
       return;
     }
     const rate = this.audio.sampleRate;
