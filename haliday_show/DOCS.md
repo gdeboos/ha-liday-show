@@ -24,8 +24,8 @@ Four tabs run along the top:
 
 | Tab | What's there |
 | --- | --- |
-| **Editor** | Where shows are made: the timeline, previews and effect settings. |
-| **Music** | Where songs are cut, joined and detected. |
+| **Show editor** | Where shows are made: the timeline, previews and effect settings. |
+| **Music editor** | Where songs are cut, joined and detected. |
 | **Library** | **Palettes** and **Presets**, the colours and effect settings you reuse across shows. |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 
@@ -63,7 +63,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Editor** tab: pick or upload a song, drag across a light's track, press **＋ Add effect…** and pick one. Press
+4. **Show editor**: pick or upload a song, drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
 5. Run it from an automation with the MQTT **Play** button or the `hassio.app_stdin` action.
 
@@ -433,7 +433,7 @@ beats and sections, then **Generate** a draft or **Describe it**, and fine-tune 
 timeline.
 
 - **The song:** [Shows](#shows) · [Songs](#songs) · [Editing a song](#editing-a-song) ·
-  [Detecting](#detecting-on-the-music-tab) · [Sections](#editing-sections) · [Beats](#beats)
+  [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
 - **By hand:** [The timeline](#the-timeline) · [Adding effects](#adding-effects) ·
   [Editing a clip](#editing-a-clip) · [Presets](#presets) · [Your own presets](#your-own-presets) ·
@@ -456,7 +456,7 @@ them. For a lights-only show, choose **No song** and set its **Length**.
 
 ### Editing a song
 
-The **Music** tab cuts, shortens and splices songs before you build a show. Pick a
+The **Music editor** cuts, shortens and splices songs before you build a show. Pick a
 song (or **Upload** one), drag across the waveform to select, then **Cut selection** to remove it or
 **Keep only selection** to shorten the song to it. **Insert at playhead** and **Add to end** splice in
 another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
@@ -479,9 +479,9 @@ Space plays, Delete cuts the selection, and Ctrl+Z undoes. Saving a song without
 way to get a WAV copy of it that plays on every speaker. If you close the page with an edit you haven't
 saved, you're asked first.
 
-### Detecting on the Music tab
+### Detecting in the Music editor
 
-**Detect on the Music tab** finds a song's beats, bars and sections and keeps them with the song file,
+**Detect** in the Music editor finds a song's beats, bars and sections and keeps them with the song file,
 drawn over its waveform; a saved edit is detected straight after saving. When a show picks that song
 under **Song**, it takes them automatically (asking first if the show already has beats), and **From
 song** in the Beats panel brings them back later. Detect in the editor also saves its results with the
@@ -489,7 +489,7 @@ song. Each show keeps its own copy, so moving beats in one show doesn't change t
 
 ### Editing sections
 
-On the Music tab, the lane above the waveform shows each section in its colour.
+In the Music editor, the lane above the waveform shows each section in its colour.
 Click one to rename it or pick its colour (every section with the same name changes colour together),
 **Split at playhead**, **Merge with next** or **Delete** it, and drag the line between two sections to
 move it. Changes save with the song; a show that already uses the song picks them up with **From song**.
@@ -543,7 +543,7 @@ in the **Selection** panel follow suit for those lights.
 
 With an AI set up (see [Setting up the AI](#setting-up-the-ai)), **Made by** picks who makes it:
 **Rules** is instant, as above; **AI** sends the whole song to the AI with the same colours and style,
-and it follows the **notes** you've written on the song's sections on the **Music** tab ("the guitar
+and it follows the **notes** you've written on the song's sections in the **Music editor** ("the guitar
 solo, make it flash", "keep this bit dark"). It takes 10 to 60 seconds, shown in the Describe it panel.
 
 ### The timeline
@@ -766,7 +766,7 @@ and never changes where the real show plays:
 - **Song in this browser**: the song plays in your browser and HA-liday Show streams the lights in
   sync. Untick **Lights** to preview in the browser only. If the lights lead or lag, adjust
   **Light offset** under **Setup → Speakers**. The 🔊 slider next to the clock sets how loud the song
-  plays in your browser. The **Music** tab shares the same level, and your browser remembers it.
+  plays in your browser. The **Music editor** shares the same level, and your browser remembers it.
 - **Speaker: …**: HA-liday Show starts the song on that speaker and the lights with it, and the
   playhead follows along. Line the lights up with the speaker's **Delay ms** under **Setup →
   Speakers** (also shown under Timing there while that speaker is picked).

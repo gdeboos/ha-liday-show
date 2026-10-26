@@ -1,4 +1,4 @@
-// Music tab: cut, shorten and splice songs, then save the result as a new file.
+// Music editor: cut, shorten and splice songs, then save the result as a new file.
 //
 // An edit is a list of pieces of source songs played one after another, overlapping by a short
 // crossfade at each join, plus a fade in and out. The source files are never changed: Save renders

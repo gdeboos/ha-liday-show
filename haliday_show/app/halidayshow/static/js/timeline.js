@@ -17,7 +17,7 @@ const SNAP_PX = 8;
 const MIN_LEN = 0.05;
 const WARN = "#d97706";
 
-// One tint per section name unless a colour was picked on the Music tab, shared with that tab so
+// One tint per section name unless a colour was picked in the Music editor, shared with it so
 // a song looks the same in both.
 export const SECTION_ALPHA = 0.16;
 export const sectionHue = (names, label) => (names.indexOf(label) * 137) % 360;
