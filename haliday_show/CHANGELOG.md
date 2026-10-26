@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.159
+
+- The **Library** side menu is grouped: **Shows** (your shows and **Playlists**, now next to each
+  other) and **Building blocks** (**Songs**, **Palettes** and **Presets**). On a phone a thin line
+  separates the groups.
+
 ## 0.2.158
 
 - HA-liday Show now opens on **Library**, with your shows, rather than the Show editor (which opened on
