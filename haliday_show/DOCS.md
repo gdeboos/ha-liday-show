@@ -564,7 +564,11 @@ and are kept when you make the song file. Edit the song before placing clips, be
 afterwards won't move them.
 
 Each join shows as a dashed line with a **✂** at the top. Click the **✂** to hear a few seconds either
-side of the join. When you zoom out, the beat lines thin out to every bar, then every 2nd or 4th bar, so
+side of the join; a panel under the waveform says what was cut there (how much, and from where in the
+song). To change that cut, press **Adjust cut**: the part comes back and is selected, so drag its edges
+(or type the times) and press **Cut selection** again. **Put back** undoes just that cut, leaving the
+others as they are. Both are one step for **Undo**. A join where another song was spliced in only has
+**▶ Hear join**. When you zoom out, the beat lines thin out to every bar, then every 2nd or 4th bar, so
 the music stays visible; zoom in to see every beat.
 
 You can also use the keyboard: press Tab until the waveform is outlined, then **←** and **→** move the

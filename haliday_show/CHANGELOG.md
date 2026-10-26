@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.167
+
+- In the **Music editor** you can now change one cut without undoing the rest. Click a cut's **✂**: as
+  well as playing the join, a panel under the waveform says what was cut there. **Adjust cut** brings
+  that part back and selects it, so you can drag its edges and press **Cut selection** again. **Put
+  back** undoes just that cut. Handy when you open a draft and want to tweak an earlier cut.
+
 ## 0.2.166
 
 - With **Nearby only** on, the public page now checks where the phone is as soon as it opens.
