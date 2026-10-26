@@ -184,6 +184,7 @@ function restore(step) {
   app.dirty = true;
   app.edits++;
   app.selected = null;
+  $("show-name").value = app.show.name; // undo can take back a rename
   renderInspector();
   timeline.layout();
   scheduleAutoSave();
@@ -4364,11 +4365,7 @@ function renameInPlace(row, head, r) {
 async function refreshShows() {
   const shows = await api("api/shows");
   renderShowLists(shows);
-  const sel = $("show-select");
-  sel.replaceChildren();
-  if (!app.showId) sel.add(new Option("Unsaved show", "", false, true));
-  for (const s of shows) sel.add(new Option(s.name, s.id, false, s.id === app.showId));
-  sel.add(new Option("＋ New show", "__new__"));
+  renderSaveState();
 }
 
 async function confirmDiscard() {
@@ -4388,6 +4385,7 @@ const autoSaveOn = () => $("autosave").checked;
 const worthSaving = () => !!app.showId || app.show.tracks.some((t) => t.clips.length);
 
 function renderSaveState(text) {
+  $("show-title").textContent = app.show.name;
   $("save-state").textContent = text ?? (app.dirty ? (autoSaveOn() && worthSaving() ? "Unsaved changes…" : "Unsaved changes") : app.showId ? "All changes saved" : "");
 }
 
@@ -5178,7 +5176,7 @@ function nsStep(step) {
 }
 
 async function openNewShow() {
-  if (!(await confirmDiscard())) { await refreshShows(); return; }
+  if (!(await confirmDiscard())) return;
   await refreshAudio().catch(() => {});
   newShow.taken = (await api("api/shows").catch(() => [])).map((s) => s.name);
   Object.assign(newShow, { song: "", start: "empty", named: false, gen: generateControls() });
@@ -5571,15 +5569,10 @@ function wire() {
   for (const d of document.querySelectorAll(".view dialog")) document.body.append(d);
   for (const tab of document.querySelectorAll(".tab, .subtab")) tab.addEventListener("click", () => showView(tab.dataset.view));
 
-  $("show-select").addEventListener("change", async (e) => {
-    const v = e.target.value;
-    if (v === "__new__") { await openNewShow(); return; }
-    if (!(await confirmDiscard())) { await refreshShows(); return; }
-    if (v) await openShow(v);
-  });
   $("show-name").addEventListener("change", (e) => {
     app.show.name = e.target.value.trim() || "Untitled show";
     app.changed();
+    renderSaveState();
   });
   $("btn-save").addEventListener("click", saveClicked);
   $("song-filter").addEventListener("input", drawSongRows);
@@ -5610,8 +5603,6 @@ function wire() {
   }
   $("ns-form").addEventListener("submit", nsSubmit);
   $("ns-back").addEventListener("click", () => nsStep(1));
-  // Picked from the show drop-down and then cancelled: put the drop-down back on the open show.
-  $("new-show-dialog").addEventListener("close", () => { $("show-select").value = app.showId || ""; });
   $("ns-name").addEventListener("input", () => { newShow.named = true; });
   for (const b of document.querySelectorAll("[data-ns=cancel]")) b.addEventListener("click", () => $("new-show-dialog").close());
   $("ns-upload").addEventListener("change", async (e) => {

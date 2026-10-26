@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.139
+
+- The editors no longer have drop-downs to switch: the **Show editor** shows the open show's name
+  beside **← All shows**, and the **Music editor** the open song's name beside **← All songs**. To
+  change show or song, go back to the list, so nothing changes by a slip of the mouse.
+- The Music editor's **Upload** button has gone; use **+ Add a song** on **Your songs**, which also
+  detects the song. **Another song…** for inserting is still there, with its own **Upload**.
+
 ## 0.2.138
 
 - Song sections now get **Notes** written for you. **Detect** writes them for every section, and the
