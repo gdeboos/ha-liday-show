@@ -6,7 +6,7 @@
 // a song's beats and sections and keeps them with the file, for any show that uses it.
 
 import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
-import { joinLabel, parseTime, sectionCuts, similarity, songPlans } from "./cutfinder.js";
+import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
@@ -855,6 +855,11 @@ export class MusicEditor {
         this.cutNote("");
         $("cuts-step-2-title").textContent = `Step 2 of 2: pick a cut to shorten ${sec ? `"${sec.label}"` : "the song"} to about ${fmtTime(target, false)}`;
         this.cutStep(2);
+        $("cuts-ai").hidden = true;
+        if (options.length > 1 && this.host.hasAI?.()) {
+          this.askAIAboutCuts(this.cutOpts, { song: { name: nameOf(this.base).replace(/\.[^.]+$/, ""), tempo: info.tempo },
+            total, scope: { label: sec?.label || null, now: to - from, target }, sections: info.sections, marks: info.marks || [] });
+        }
       } else this.cutNote(`No good places to cut ${sec ? `"${sec.label}"` : "the song"} by that much. Try a different length.`);
     } catch (e) {
       this.cutNote(`Couldn't find cuts: ${e.message}`);
@@ -862,6 +867,26 @@ export class MusicEditor {
       $("music-cuts-find").disabled = false;
       this.updateControls();
       this.draw();
+    }
+  }
+
+  // With an AI set up: it puts the options in the order it thinks works best, each with a reason.
+  // They can be heard and used meanwhile; its order arrives if they're still the ones showing.
+  async askAIAboutCuts(opts, about) {
+    $("cuts-ai").textContent = "✨ Asking the AI which works best musically… (you can listen meanwhile)";
+    $("cuts-ai").hidden = false;
+    try {
+      const reply = await this.host.api("api/ai/cuts", { method: "POST", json: cutsRequest(opts.options, about) });
+      if (this.cutOpts !== opts) return;
+      const { options, used } = rankCuts(opts.options, reply);
+      if (!used) { $("cuts-ai").textContent = "The AI's answer couldn't be used, so they're in the editor's order."; return; }
+      opts.options = options;
+      const pick = options.findIndex((o) => o.aiRank === 1) + 1;
+      const summary = String(reply.summary || "").trim().slice(0, 200);
+      $("cuts-ai").textContent = `✨ The AI's pick is option ${pick}${summary ? `: ${summary}` : "."}`;
+      this.renderCuts();
+    } catch (e) {
+      if (this.cutOpts === opts) $("cuts-ai").textContent = `The AI couldn't compare them (${e.message}), so they're in the editor's order.`;
     }
   }
 
@@ -901,7 +926,10 @@ export class MusicEditor {
       use.type = "button";
       use.title = n > 1 ? "Make all these cuts (Ctrl+Z undoes)" : "Make this cut (Ctrl+Z undoes)";
       use.addEventListener("click", () => { $("cuts-dialog").close(); this.useCuts(o); });
-      row.append(el("b", "", `Option ${k + 1}`), what, chips, el("span", "spacer"), use);
+      row.append(el("b", "", `Option ${k + 1}`));
+      if (o.aiRank === 1) row.append(el("span", "ai-pick", "AI's pick"));
+      row.append(what, chips, el("span", "spacer"), use);
+      if (o.reason) row.append(el("span", "hint cut-reason", `✨ ${o.reason}`));
       return row;
     }));
   }

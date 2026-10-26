@@ -201,6 +201,46 @@ same name. Leave "name" empty to keep the current one.
 
 Return every section you wrote for by its "index". Give a one-sentence summary of what you did."""
 
+CUT_INSTRUCTIONS = """You help someone shorten a song for a Christmas or Halloween light show on their house. The \
+editor has already found a few ways to cut it, each taking out whole bars where the music either side of the join \
+matches. Your job is to say which works best musically, and why, in a short phrase each.
+
+You can't hear the song. Use the context below:
+- "song": its name (often its title and artist), length and tempo. If you know the song, use what you know of it: \
+which part is the verse, chorus, bridge or solo, and which moments people wait for. Don't guess at lyrics.
+- "shorten": what's being shortened (the whole song or one section), how long it is now and how long they'd like it.
+- "sections": the song's sections in order, with start and end in seconds, names, and any notes (some written by the \
+person: take those seriously, as they say what matters to them).
+- "marks": moments the person flagged by name, such as a big hit. Cutting one out is usually a bad idea.
+- "options": each a list of cuts (from and to, in seconds, how many bars, and how well the join matches), how much \
+shorter it makes things and the length after.
+
+Prefer options that take out repeated material (a second verse, a repeat of a chorus, a long intro loop) over \
+unique moments; keep marked moments, the song's best-known parts and its ending; keep the sections' shape (an \
+intro still sounds like an intro); and favour smoother joins and lengths closest to what was asked.
+
+Return every option by its "index", best first, each with a reason under 120 characters in plain words (times as \
+m:ss), such as "Drops the repeated second verse; keeps the 1:12 crash". Give a one-sentence summary of what \
+your pick does, without option numbers or indexes (the editor says which option it is)."""
+
+CUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "summary": {"type": "string"},
+        "choices": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"index": {"type": "integer"}, "reason": {"type": "string"}},
+                "required": ["index", "reason"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["summary", "choices"],
+    "additionalProperties": False,
+}
+
 SECTION_SCHEMA = {
     "type": "object",
     "properties": {
@@ -332,6 +372,10 @@ async def create_presets(ha: HomeAssistant, request: str, context: dict) -> dict
 
 async def create_section_notes(ha: HomeAssistant, request: str, context: dict) -> dict:
     return await _create(ha, request, context, SECTION_INSTRUCTIONS, SECTION_SCHEMA, "sections")
+
+
+async def rank_cuts(ha: HomeAssistant, request: str, context: dict) -> dict:
+    return await _create(ha, request, context, CUT_INSTRUCTIONS, CUT_SCHEMA, "choices")
 
 
 async def create_palettes(ha: HomeAssistant, request: str, context: dict) -> dict:

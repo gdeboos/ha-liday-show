@@ -40,3 +40,9 @@ test("the visitors' link and the nearby check in words", async () => {
   assert.match(nearbyText({ ...v, home: null }), /can't start shows until/);
   assert.match(nearbyText({ ...v, nearby: false }), /wherever they are/);
 });
+
+test("playlists whose shows are all archived aren't offered", async () => {
+  const { emptyPlaylists } = await import("../../haliday_show/app/halidayshow/static/js/publicsettings.js");
+  const lists = [{ id: "test", shows: ["old"] }, { id: "eve", shows: ["old", "xmas"] }, { id: "none", shows: [] }];
+  assert.deepEqual([...emptyPlaylists(lists, new Set(["xmas"]))], ["test", "none"]);
+});

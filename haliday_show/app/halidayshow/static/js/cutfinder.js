@@ -156,3 +156,44 @@ export function songPlans({ bars, total, sim, sections = [], remove, count = 3 }
   plans.sort((a, b) => b.score - a.score);
   return plans.map(({ cuts, removed, join }) => ({ cuts, removed, join }));
 }
+
+// With an AI: which option works best musically, and why ---------------------------------------
+const r1 = (t) => Math.round(t * 10) / 10;
+
+// The request for /api/ai/cuts. song: {name, tempo}; scope: {label (a section's name, or null for
+// the whole song), now, target} in seconds; sections and marks as they fall in the result now.
+export function cutsRequest(options, { song, total, scope, sections = [], marks = [] }) {
+  return {
+    request: "Which of these ways to shorten it works best musically, and why?",
+    context: {
+      song: { name: song.name, length: r1(total), ...(song.tempo ? { tempo: song.tempo } : {}) },
+      shorten: { what: scope.label ? `the section "${scope.label}"` : "the whole song", now: r1(scope.now), want: r1(scope.target) },
+      sections: sections.map((s) => ({ start: r1(s.start), end: r1(s.end), name: s.label,
+        ...(s.notes ? { notes: String(s.notes).slice(0, 200), ...(s.autoNotes ? {} : { notes_by_person: true }) } : {}) })),
+      marks: marks.map((m) => ({ at: r1(m.t), name: m.label || "(unnamed)" })),
+      options: options.map((o, index) => ({
+        index,
+        cuts: o.cuts.map((c) => ({ from: r1(c.start), to: r1(c.end), bars: c.bars, join: joinLabel(c.join) })),
+        shorter_by: r1(o.removed),
+        length_after: r1((scope.label ? scope.now : total) - o.removed),
+      })),
+    },
+  };
+}
+
+// The options with the AI's view added from its reply ({choices: [{index, reason}]}, best first):
+// aiRank (1 = its pick) and a reason. They stay in their order, so nothing moves under your finger
+// when the answer arrives. Anything it left out or got wrong is left as it was. used: whether it
+// ranked any.
+export function rankCuts(options, reply) {
+  const out = [...options];
+  let rank = 0;
+  for (const c of reply?.choices || []) {
+    const i = Number.isInteger(c?.index) ? c.index : -1;
+    if (i < 0 || i >= options.length || out[i].aiRank) continue;
+    let reason = typeof c.reason === "string" ? c.reason.trim() : "";
+    if (reason.length > 160) reason = `${reason.slice(0, 159).trimEnd()}…`;
+    out[i] = { ...options[i], ...(reason ? { reason } : {}), aiRank: ++rank };
+  }
+  return { options: rank ? out : options, used: rank > 0 };
+}

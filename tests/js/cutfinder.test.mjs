@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  barRange, joinScore, parseTime, phraseScore, sectionCuts, similarity, songPlans,
+  barRange, cutsRequest, joinScore, parseTime, phraseScore, rankCuts, sectionCuts, similarity, songPlans,
 } from "../../haliday_show/app/halidayshow/static/js/cutfinder.js";
 
 // Unit vectors that are near-orthogonal to each other, one per name.
@@ -117,4 +117,38 @@ test("bars of audio that repeat come out alike, and different music doesn't", as
     assert.ok(sim[k][k + 4] > 0.9, `bar ${k} vs ${k + 4}: ${sim[k][k + 4]}`);
     assert.ok(sim[k][k + 4] > sim[k][k + 8] + 0.3, `bar ${k} vs ${k + 8}: ${sim[k][k + 8]}`);
   }
+});
+
+test("the AI is told about the options, sections, marks and what's being shortened", () => {
+  const options = [
+    { cuts: [{ start: 10, end: 26, bars: 8, join: 0.9 }], removed: 16, join: 0.9 },
+    { cuts: [{ start: 40, end: 48.04, bars: 4, join: 0.5 }], removed: 8.04, join: 0.5 },
+  ];
+  const { request, context } = cutsRequest(options, {
+    song: { name: "Jingle Bells", tempo: 120 }, total: 104.2,
+    scope: { label: "Chorus", now: 30, target: 15 },
+    sections: [{ start: 0, end: 30, label: "Chorus", notes: "Keep the bells", autoNotes: false },
+      { start: 30, end: 60, label: "Verse", notes: "Quiet.", autoNotes: true }],
+    marks: [{ t: 12.345, label: "Big hit" }, { t: 50, label: "" }],
+  });
+  assert.match(request, /works best/);
+  assert.deepEqual(context.shorten, { what: 'the section "Chorus"', now: 30, want: 15 });
+  assert.equal(context.sections[0].notes_by_person, true);
+  assert.equal(context.sections[1].notes_by_person, undefined);
+  assert.deepEqual(context.marks, [{ at: 12.3, name: "Big hit" }, { at: 50, name: "(unnamed)" }]);
+  assert.deepEqual(context.options[1], { index: 1, cuts: [{ from: 40, to: 48, bars: 4, join: "join may be heard" }],
+    shorter_by: 8, length_after: 22 });
+});
+
+test("the AI's ranking is added to the options in place, and a bad reply leaves them as they were", () => {
+  const options = [{ removed: 1 }, { removed: 2 }, { removed: 3 }];
+  const got = rankCuts(options, { choices: [{ index: 2, reason: " Drops the repeat " }, { index: 0, reason: "x".repeat(200) },
+    { index: 2, reason: "again" }, { index: 9, reason: "no such" }] });
+  assert.ok(got.used);
+  assert.deepEqual(got.options.map((o) => [o.removed, o.aiRank]), [[1, 2], [2, undefined], [3, 1]]);
+  assert.equal(got.options[2].reason, "Drops the repeat");
+  assert.equal(got.options[0].reason.length, 160);
+  assert.ok(got.options[0].reason.endsWith("…"));
+  assert.deepEqual(rankCuts(options, { choices: "nope" }), { options, used: false });
+  assert.deepEqual(rankCuts(options, null).options, options);
 });
