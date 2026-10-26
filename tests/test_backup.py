@@ -84,3 +84,6 @@ def test_automatic_copies_keep_the_newest_few(tmp_path):
     assert not any(n.startswith("backups/") for n in names_in)
     backup.clear(config)
     assert backup.keep_copy(config, "1.0", "fresh-start") is None
+from halidayshow import backup
+def test_the_public_pages_picture_is_backed_up():
+    assert backup._allowed("public-picture.png") and not backup._allowed("public-picture.exe")

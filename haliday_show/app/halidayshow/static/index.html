@@ -956,6 +956,37 @@
       <label>within <input id="pub-distance" type="number" min="25" max="2000" step="25"> m</label></p>
     <p class="hint" id="pub-nearby-hint"></p>
   </section>
+  <section class="card" id="pub-look">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg>How the page looks</h2>
+    <p class="hint">What visitors see at the top and bottom of the page, and its colours.
+      <a id="pub-open-page" target="_blank" rel="noopener">Open the page</a> to see it.</p>
+    <p><label>Title <input id="pub-title" type="text" maxlength="60" size="34" placeholder="🎄 Light show"></label></p>
+    <p><label for="pub-welcome">Welcome</label><br>
+      <textarea id="pub-welcome" rows="3" maxlength="300" class="pub-welcome"
+        placeholder="Shows run every evening. Please be kind to the neighbours."></textarea></p>
+    <fieldset class="pub-picture">
+      <legend>Picture at the top</legend>
+      <label><input type="radio" name="pub-picture" value="none"> None</label>
+      <label><input type="radio" name="pub-picture" value="house"> Your house photo</label>
+      <label><input type="radio" name="pub-picture" value="upload"> Your own picture</label>
+      <label class="button">Choose picture…<input id="pub-picture-file" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+      <p class="hint" id="pub-picture-hint"></p>
+      <img id="pub-picture-preview" class="pub-picture-preview" alt="The picture at the top of the page" hidden>
+    </fieldset>
+    <p class="row"><label>Colours <select id="pub-theme">
+        <option value="plain">Plain</option><option value="christmas">Classic Christmas</option>
+        <option value="frosty">Frosty</option><option value="halloween">Halloween</option></select></label>
+      <label>Light or dark <select id="pub-mode">
+        <option value="auto">Follow the phone</option><option value="light">Light</option>
+        <option value="dark">Dark</option></select></label></p>
+    <p><label><input id="pub-snow" type="checkbox"> Falling snow</label></p>
+    <p class="hint">Snow is left out for anyone whose phone is set to reduce motion.</p>
+    <p><label>Link at the bottom <input id="pub-link-url" type="url" size="34"
+      placeholder="https://www.justgiving.com/…"></label></p>
+    <p><label>Its words <input id="pub-link-text" type="text" maxlength="80" size="34"
+      placeholder="Enjoying the lights? Donate to …"></label></p>
+    <p class="hint">A charity, donation or social page, if you like. Leave it empty for none.</p>
+  </section>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>What visitors can pick</h2>
     <p class="hint">People passing by pick one of these on their phone, and it plays on your lights and the show's

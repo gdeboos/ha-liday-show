@@ -1091,6 +1091,21 @@ playlists you've picked, each with a **▶ Start** button, and nothing else of H
    It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
 
+**How the page looks.** On the **Public page** tab, under **How the page looks**:
+
+- **Title** replaces "🎄 Light show" at the top, and **Welcome** adds a line or two under it.
+- **Picture at the top**: **None**, **Your house photo** (from **Setup → House**), or **Your own
+  picture**, which you choose with **Choose picture…** (JPEG, PNG or WebP). Your own picture is kept
+  with your other settings and is in **Export…**.
+- **Colours**: **Plain**, **Classic Christmas**, **Frosty** or **Halloween**, and **Light or dark**:
+  **Follow the phone**, **Light** or **Dark**. Every combination is easy to read.
+- **Falling snow** drifts behind the page. It's left out for anyone whose phone is set to reduce
+  motion.
+- **Link at the bottom**, with **Its words**: a charity, donation or social page, if you like.
+
+**Open the page** opens your visitors' link so you can see it. The title, words and picture only show
+to people with your code.
+
 **Who can start shows.** Visitors need the link with your code in it; the QR code on your sign will
 hold it. Opening the page without the code just says "Scan the code on the sign to start a show". On
 the **Public page** tab, under **Who can start shows**:
