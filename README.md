@@ -218,6 +218,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     keeping it to your Wi-Fi
   - Your own title, welcome, picture, colour theme or your own colours (with a readability check),
     spacing, corners, text size, falling snow and a link, with a live preview beside the settings
+  - Kept safe: only the visitors' page is on its port, each phone has its own request limit, and
+    photos are shared without where they were taken
 
 </details>
 
@@ -333,7 +335,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/mqtt.py                 MQTT discovery entities
   app/halidayshow/server.py               HTTP API for the editor; who may connect (ingress or password)
   app/halidayshow/migrate.py              One-time copy of saved data from the old Govee Light Show add-on
-  app/halidayshow/ai.py                   Describe it, AI presets, palettes and section notes: asks Claude or HA's AI Task
+  app/halidayshow/ai.py                   Describe it, AI presets, palettes, section notes and the pick of suggested cuts: asks Claude or HA's AI Task
   app/halidayshow/static/                 The editor (plain ES modules, no build step)
     index.html, style.css               Page and styles
     player.html                         The Show player page
@@ -387,6 +389,7 @@ docs/ddp.md                             Pixel controllers over DDP: several ligh
 docs/e131.md                            E1.31 (sACN) controllers: universes, shared universes, stopping
 docs/ha-lights.md                       Home Assistant lights and switches: pace, switching, putting back
 docs/twinkly.md                         Twinkly (experimental): login, realtime packets, putting back
+docs/public-page-security.md            Security review of the public page: what faces the internet, what was fixed
 tests/                                  pytest and node tests (tests/js)
 ```
 
