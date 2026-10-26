@@ -370,11 +370,11 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "hours": hours_now(p, where, now),
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
                                          "corners", "size", "borders", "colours")},
-                 "picture": _picture_version(storage, look)},
+                 "picture": picture_version(storage, look)},
     }
 
 
-def _picture_version(storage: Storage, look: dict) -> int:
+def picture_version(storage: Storage, look: dict) -> int:
     """0 for no picture, else a number that changes with the picture, so open pages pick up a new one."""
     path = picture_path(storage, look)
     try:
