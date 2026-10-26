@@ -943,3 +943,15 @@ async def test_archive_restore_and_delete_through_the_server(client, tmp_path):
 
     assert (await client.delete(f"/api/shows/{show_id}")).status == 200
     assert (await client.delete(f"/api/shows/{show_id}")).status == 404
+
+
+async def test_an_archived_show_cant_be_saved_back_to_life(client):
+    show_id = (await (await client.post("/api/shows", json={"name": "Xmas"})).json())["id"]
+    await client.put(f"/api/shows/{show_id}", json={"name": "Xmas", "tracks": []})
+    await client.post(f"/api/shows/{show_id}/archive")
+    # Another browser that still has it open saves it.
+    assert (await client.put(f"/api/shows/{show_id}", json={"name": "Xmas", "tracks": []})).status == 409
+    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"] * 40)
+    assert (await client.put(f"/api/shows/{show_id}/baked", data=blob)).status == 409
+    assert await (await client.get("/api/shows")).json() == []
+    assert (await client.post(f"/api/shows/{show_id}/restore")).status == 200

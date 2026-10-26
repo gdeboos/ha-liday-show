@@ -16,7 +16,7 @@ import json
 import os
 from pathlib import Path
 
-from .storage import Storage, _write_atomic, safe_join, valid_id
+from .storage import AUDIO_EXT, Storage, _write_atomic, valid_id
 
 ARCHIVED_SONGS = "archived-songs.json"
 SONG_ARCHIVE = "Archived"
@@ -106,24 +106,58 @@ def delete_show(st: Storage, show_id: str, archived: bool = False):
 
 
 # songs -------------------------------------------------------------------
-def _own_prefix(st: Storage) -> str:
-    return st.upload_dir.relative_to(st.media_dir).as_posix() + "/"
+# Every song path from a request or from archived-songs.json goes through _song_file, which only
+# accepts a plain path (no "..", ".", empty parts or backslashes) to a real audio file, reached
+# without following a link, inside HA-liday Show's own folder: outside its Archived folder, or
+# inside it for archived songs. So nothing here can move or delete a file anywhere else.
+def _plain(rel) -> bool:
+    if not isinstance(rel, str) or not rel or rel.startswith("/") or "\\" in rel:
+        return False
+    return all(part not in ("", ".", "..") for part in rel.split("/"))
 
 
-def own_song(st: Storage, rel: str) -> bool:
+def _inside(p: Path, folder: Path) -> bool:
+    return p == folder or folder in p.parents
+
+
+def _song_file(st: Storage, rel, archived: bool = False) -> Path | None:
+    if not _plain(rel) or Path(rel).suffix.lower() not in AUDIO_EXT:
+        return None
+    p = st.media_dir / rel
+    try:
+        real = p.resolve(strict=True)
+    except OSError:
+        return None
+    own = st.upload_dir.resolve()
+    shelf = (st.upload_dir / SONG_ARCHIVE).resolve()
+    # No links anywhere on the way: the real file must be exactly where the path says.
+    if real != st.media_dir.resolve() / rel or not real.is_file() or not _inside(real, own):
+        return None
+    return p if _inside(real, shelf) == archived else None
+
+
+def own_song(st: Storage, rel) -> bool:
     """Whether a song (a path under the media folder) is in HA-liday Show's own folder and not
     already archived, so it may be archived or deleted here."""
-    prefix = _own_prefix(st)
-    return rel.startswith(prefix) and not rel.startswith(prefix + SONG_ARCHIVE + "/") \
-        and st.audio_path("media", rel) is not None
+    return _song_file(st, rel) is not None
 
 
 def _records(st: Storage) -> dict:
+    """archived-songs.json, keeping only records whose archived file and original place are both
+    within HA-liday Show's folder (it comes back in imports, so it's checked like a request)."""
     try:
         data = json.loads((st.config_dir / ARCHIVED_SONGS).read_text())
     except (FileNotFoundError, ValueError):
         return {}
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        return {}
+    out = {}
+    for archived, rec in data.items():
+        if isinstance(rec, dict) and _plain(rec.get("path")) and Path(rec["path"]).suffix.lower() in AUDIO_EXT \
+                and _inside((st.media_dir / rec["path"]).resolve(), st.upload_dir.resolve()) \
+                and not _inside((st.media_dir / rec["path"]).resolve(), (st.upload_dir / SONG_ARCHIVE).resolve()):
+            out[archived] = {"path": rec["path"], "songless": [i for i in rec.get("songless", []) if valid_id(i)]}
+    return out
 
 
 def _save_records(st: Storage, records: dict):
@@ -158,13 +192,14 @@ def _set_audio(st: Storage, show_id: str, ref: dict | None):
 
 
 def check_replacement(st: Storage, rel: str, replacement) -> dict | None:
+    """The song a song's shows move to: any song in the media folder that isn't this one or archived."""
     if replacement is None:
         return None
-    if not isinstance(replacement, dict) or replacement.get("source") != "media" \
-            or not isinstance(replacement.get("path"), str):
+    if not isinstance(replacement, dict) or replacement.get("source") != "media":
         raise ArchiveError("that isn't a song")
-    path = replacement["path"]
-    if path == rel or path.startswith(_own_prefix(st) + SONG_ARCHIVE + "/") or st.audio_path("media", path) is None:
+    path = replacement.get("path")
+    if not _plain(path) or path == rel or st.audio_path("media", path) is None \
+            or _inside((st.media_dir / path).resolve(), (st.upload_dir / SONG_ARCHIVE).resolve()):
         raise ArchiveError("pick another song that's in your songs folder")
     return {"source": "media", "path": path}
 
@@ -185,7 +220,7 @@ def _tidy(st: Storage, folder: Path):
     """Removes empty folders left in the archive, up to and including Archived itself."""
     top = (st.upload_dir / SONG_ARCHIVE).resolve()
     folder = folder.resolve()
-    while folder == top or top in folder.parents:
+    while _inside(folder, top):
         try:
             folder.rmdir()  # only if empty
         except OSError:
@@ -207,15 +242,15 @@ def _free_name(path: Path) -> Path:
 
 
 def archive_song(st: Storage, rel: str, replacement=None) -> dict:
-    if not own_song(st, rel):
+    src = _song_file(st, rel)
+    if src is None:
         raise ArchiveError("only songs in HA-liday Show's own folder can be archived")
     replacement = check_replacement(st, rel, replacement)
-    src = st.audio_path("media", rel)
-    inner = rel[len(_own_prefix(st)):]
-    dest = _free_name(safe_join(st.upload_dir / SONG_ARCHIVE, inner) or st.upload_dir / SONG_ARCHIVE / Path(inner).name)
-    changed, songless = _rehome(st, rel, replacement)
+    inner = src.resolve().relative_to(st.upload_dir.resolve())
+    dest = _free_name(st.upload_dir / SONG_ARCHIVE / inner)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(src, dest)
+    os.replace(src, dest)  # the file moves first, so a failure leaves every show as it was
+    changed, songless = _rehome(st, rel, replacement)
     archived = dest.relative_to(st.media_dir).as_posix()
     records = _records(st)
     records[archived] = {"path": rel, "songless": songless}
@@ -224,15 +259,19 @@ def archive_song(st: Storage, rel: str, replacement=None) -> dict:
 
 
 def list_archived_songs(st: Storage) -> list[dict]:
-    """Archived songs whose files are still there: [{path, from, size, songless: [names]}]."""
-    records, out = _records(st), []
+    """Archived songs whose files are still there: [{path, from, size, songless: [names]}]. Records
+    of files that have gone (removed by hand, say) are dropped."""
+    records, out, keep = _records(st), [], {}
     names = {s["id"]: s["name"] for s in st.list_shows()}
     for archived, rec in sorted(records.items()):
-        p = st.audio_path("media", archived)
-        if p is None or not isinstance(rec, dict):
+        p = _song_file(st, archived, archived=True)
+        if p is None:
             continue
-        out.append({"path": archived, "from": rec.get("path", archived), "size": p.stat().st_size,
-                    "songless": [names[i] for i in rec.get("songless", []) if i in names]})
+        keep[archived] = rec
+        out.append({"path": archived, "from": rec["path"], "size": p.stat().st_size,
+                    "songless": [names[i] for i in rec["songless"] if i in names]})
+    if keep.keys() != records.keys():
+        _save_records(st, keep)
     return out
 
 
@@ -241,20 +280,17 @@ def restore_song(st: Storage, archived: str) -> dict:
     it back to the shows that were left without a song and still have none."""
     records = _records(st)
     rec = records.get(archived)
-    src = st.audio_path("media", archived)
-    if not isinstance(rec, dict) or src is None:
+    src = _song_file(st, archived, archived=True)
+    if rec is None or src is None:
         raise ArchiveError("that song isn't in the archive")
-    target = safe_join(st.media_dir, rec.get("path", ""))
-    if target is None or not own_song_path(st, target):
-        target = st.upload_dir / src.name
-    target = _free_name(target)
+    target = _free_name(st.media_dir / rec["path"])
     target.parent.mkdir(parents=True, exist_ok=True)
     os.replace(src, target)
     _tidy(st, src.parent)
     rel = target.relative_to(st.media_dir).as_posix()
     ref = {"source": "media", "path": rel}
     back = []
-    for show_id in rec.get("songless", []):
+    for show_id in rec["songless"]:
         show = st.load_show(show_id)
         if show is not None and not show.get("audio"):
             _set_audio(st, show_id, ref)
@@ -264,30 +300,30 @@ def restore_song(st: Storage, archived: str) -> dict:
     return {"path": rel, "shows": back}
 
 
-def own_song_path(st: Storage, p: Path) -> bool:
-    try:
-        rel = p.resolve().relative_to(st.upload_dir.resolve()).as_posix()
-    except ValueError:
-        return False
-    return not rel.startswith(SONG_ARCHIVE + "/")
+def song_deletable(st: Storage, rel: str, archived: bool = False) -> bool:
+    if archived:
+        return rel in _records(st) and _song_file(st, rel, archived=True) is not None
+    return own_song(st, rel)
 
 
 def delete_song(st: Storage, rel: str, archived: bool = False, replacement=None) -> dict:
     """Removes a song file for good. A song still in use gives its shows the replacement, or no song."""
     if archived:
         records = _records(st)
-        p = st.audio_path("media", rel)
+        p = _song_file(st, rel, archived=True)
         if rel not in records or p is None:
             raise ArchiveError("that song isn't in the archive")
         p.unlink()
         _tidy(st, p.parent)
+        st._song_info_file("media", records[rel]["path"]).unlink(missing_ok=True)
         del records[rel]
         _save_records(st, records)
         return {"shows": []}
-    if not own_song(st, rel):
+    p = _song_file(st, rel)
+    if p is None:
         raise ArchiveError("only songs in HA-liday Show's own folder can be deleted")
     replacement = check_replacement(st, rel, replacement)
-    changed, _ = _rehome(st, rel, replacement)
-    st.audio_path("media", rel).unlink()
+    p.unlink()
     st._song_info_file("media", rel).unlink(missing_ok=True)
+    changed, _ = _rehome(st, rel, replacement)
     return {"shows": changed}

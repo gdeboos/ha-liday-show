@@ -609,7 +609,14 @@ async def rename_show(request):
     return web.json_response({"ok": True, "name": name})
 
 
+def _not_archived(request, show_id: str):
+    # A second browser still editing a show that's been archived mustn't bring a copy back to life.
+    if archive.show_exists(request.app[STORAGE], show_id, archived=True):
+        raise web.HTTPConflict(text="that show has been archived; restore it under Library → Shows to edit it")
+
+
 async def put_show(request):
+    _not_archived(request, _show_id(request))
     show = await request.json()
     if not isinstance(show, dict) or not isinstance(show.get("tracks", []), list):
         raise web.HTTPBadRequest(text="bad show")
@@ -619,6 +626,7 @@ async def put_show(request):
 
 async def put_baked(request):
     show_id = _show_id(request)
+    _not_archived(request, show_id)
     blob = await request.read()
     try:
         decode(blob)
@@ -638,7 +646,8 @@ async def delete_show(request):
     if not archive.show_exists(st, show_id, archived):
         raise web.HTTPNotFound(text="that show isn't there")
     try:
-        backup.keep_copy(st.config_dir, __version__, "delete")
+        # The copy zips the whole config folder, so it's made off the event loop that streams the lights.
+        await asyncio.to_thread(backup.keep_copy, st.config_dir, __version__, "delete")
         archive.delete_show(st, show_id, archived=archived)
     except archive.ArchiveError as e:
         raise web.HTTPNotFound(text=str(e))
@@ -710,7 +719,7 @@ async def delete_song(request):
         if not archive.song_deletable(st, path, archived):
             raise archive.ArchiveError("only songs in HA-liday Show's own folder can be deleted")
         archive.check_replacement(st, path, replacement)
-        backup.keep_copy(st.config_dir, __version__, "delete")
+        await asyncio.to_thread(backup.keep_copy, st.config_dir, __version__, "delete")
         return web.json_response(archive.delete_song(st, path, archived=archived, replacement=replacement))
     except archive.ArchiveError as e:
         raise web.HTTPBadRequest(text=str(e))

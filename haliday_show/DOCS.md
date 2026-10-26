@@ -485,7 +485,9 @@ take it away:
 **Shows.** An archived show is skipped by playlists (they show it as *archived*) and can't be started
 by an automation, and comes back to the same places in its playlists when you restore it. If another
 show has taken its name meanwhile, it comes back as "… (restored)". Deleting a show for good also
-takes it out of its playlists. Archived shows are included in **Export…**.
+takes it out of its playlists. Archived shows are included in **Export…**. A show that's playing when
+you archive or delete it plays to the end; a playlist skips it from then on. An archived show can't be
+edited from another browser that still has it open until you restore it.
 
 **Songs.** Only songs in HA-liday Show's own folder (`haliday_show` in your media folder, where uploads
 and the Music editor's saves go) can be archived or deleted here, as the rest of your media folder

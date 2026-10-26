@@ -4018,10 +4018,11 @@ async function doRemove(forGood) {
   try {
     if (r.kind === "show") {
       if (r.id === app.showId) {
-        // Its unsaved changes are saved first, and nothing saves it again afterwards.
-        if (!(await confirmDiscard())) return;
+        // An archived show keeps your latest changes; a deleted one doesn't need them. Either way
+        // nothing saves it again afterwards.
         clearTimeout(autoSaveTimer);
         if (saving) await saving;
+        if (!forGood && app.dirty && worthSaving()) await save();
       }
       if (forGood) await api(`api/shows/${encodeURIComponent(r.id)}`, { method: "DELETE" });
       else await api(`api/shows/${encodeURIComponent(r.id)}/archive`, { method: "POST" });
@@ -4034,6 +4035,16 @@ async function doRemove(forGood) {
         showView("editor");
       } else await refreshShows();
     } else {
+      // The server changes the shows' songs on disk, so the open show must be on disk first, or a
+      // later save would put the old song back.
+      if (app.showId) {
+        clearTimeout(autoSaveTimer);
+        if (saving) await saving;
+        if (app.dirty && worthSaving()) {
+          if (!autoSaveOn()) { status(`Save ${app.show.name} first, then remove the song`, "hint"); return; }
+          await save();
+        }
+      }
       const keep = !$("rm-shows").hidden && document.querySelector("input[name=rm-instead][value=song]").checked;
       const replacement = keep ? JSON.parse($("rm-replacement").value) : null;
       const res = await api(`api/songs/${forGood ? "delete" : "archive"}`, { method: "POST", json: { path: r.path, replacement } });

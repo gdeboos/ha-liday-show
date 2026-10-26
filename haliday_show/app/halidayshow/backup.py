@@ -125,7 +125,8 @@ def keep_copy(config_dir: Path, version: str, reason: str) -> str | None:
     tmp = folder / f".{name}.tmp"
     tmp.write_bytes(export(config_dir, version))
     tmp.replace(folder / name)
-    for old in copies(config_dir)[KEEP_COPIES:]:
+    # The newest few of each kind, so deleting things can't push out the copy from before an import.
+    for old in [c for c in copies(config_dir) if c["reason"] == reason][KEEP_COPIES:]:
         (folder / old["name"]).unlink(missing_ok=True)
     return name
 
