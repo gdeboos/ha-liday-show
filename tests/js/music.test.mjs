@@ -196,3 +196,20 @@ test("marks changed after a cut go back onto the song, and cut-out ones stay", (
   assert.equal(marksToBase(base, shown, [...shown, { t: 3, label: "" }], nowhere).marks.length, 3);
   assert.deepEqual(marksToBase(base, shown, [{ ...shown[0], t: 99 }, shown[1]], nowhere).marks.map((m) => m.t), [5, 15, 30]);
 });
+
+test("a song spliced into itself shows its marks twice, but they stay one mark", () => {
+  const base = [{ t: 5, label: "hit" }];
+  const p = insert(song, 0, 60, [{ src: "a", start: 0, end: 60 }]); // the song, then itself again
+  const shown = mapInfo({ beats: [], bars: [], sections: [], marks: base }, p, 0, "a").marks;
+  assert.deepEqual(shown.map((m) => [m.t, m.k]), [[5, 0], [65, 0]]);
+  const back = (t) => toBase(p, 0, "a", t);
+  // Renaming the second copy renames the mark, once.
+  const renamed = marksToBase(base, shown, [shown[0], { ...shown[1], label: "HIT" }], back, 1);
+  assert.deepEqual(renamed.marks, [{ t: 5, label: "HIT" }]);
+  assert.equal(renamed.index, 0);
+  // Deleting either copy deletes the mark.
+  assert.deepEqual(marksToBase(base, shown, [shown[0]], back).marks, []);
+  assert.deepEqual(marksToBase(base, shown, [shown[1]], back).marks, []);
+  // Unchanged, nothing changes.
+  assert.deepEqual(marksToBase(base, shown, shown, back).marks, base);
+});

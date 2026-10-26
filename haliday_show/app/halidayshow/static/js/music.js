@@ -198,10 +198,23 @@ export function toBase(pieces, crossfade, src, t) {
 // spliced-in part keeps its old time, or isn't added if it's new. Returns the new base list and
 // where edited[pick] went in it (-1 if nowhere).
 export function marksToBase(base, shown, edited, toBaseT, pick = -1) {
-  const visible = new Set(shown.map((m, i) => m.k ?? i));
+  const keyOf = (m, i) => m.k ?? i;
+  const visible = new Set(shown.map(keyOf));
   const out = base.filter((_, i) => !visible.has(i));
+  // A song spliced into itself shows its marks more than once; the copies are one mark. It's
+  // deleted if any copy is, and a changed copy (not one of the shown objects) wins.
+  const before = new Set(shown), count = (list, k) => list.filter((m) => m.k === k).length;
+  const done = new Map();
   let picked = null;
   edited.forEach((m, i) => {
+    if (m.k !== undefined) {
+      if (count(edited, m.k) < count(shown, m.k)) return;
+      const copies = edited.filter((x) => x.k === m.k);
+      if ((copies.find((x) => !before.has(x)) || copies[0]) !== m) {
+        if (i === pick) pick = edited.indexOf(copies.find((x) => !before.has(x)) || copies[0]);
+        return;
+      }
+    }
     let t = toBaseT(m.t);
     if (t === null) {
       if (m.k === undefined || !base[m.k]) return;
@@ -210,8 +223,9 @@ export function marksToBase(base, shown, edited, toBaseT, pick = -1) {
     const { k: _, ...rest } = m;
     const b = { ...rest, t };
     out.push(b);
-    if (i === pick) picked = b;
+    done.set(i, b);
   });
+  picked = done.get(pick) || null;
   out.sort((a, b) => a.t - b.t);
   return { marks: out, index: picked ? out.indexOf(picked) : -1 };
 }
@@ -522,10 +536,12 @@ export class MusicEditor {
   // editing -------------------------------------------------------------------
   edit(pieces, fit = false) {
     this.stop();
+    const mark = this.pickedMark();
     this.history.push(this.pieces);
     this.future = [];
     this.pieces = pieces;
     this.dirty = true;
+    this.markSel = this.shownMark(mark);
     this.changed(fit);
   }
 
@@ -533,9 +549,11 @@ export class MusicEditor {
     const [from, to] = dir < 0 ? [this.history, this.future] : [this.future, this.history];
     if (!from.length) return;
     this.stop();
+    const mark = this.pickedMark();
     to.push(this.pieces);
     this.pieces = from.pop();
     this.dirty = true;
+    this.markSel = this.shownMark(mark);
     this.changed();
   }
 
@@ -817,6 +835,12 @@ export class MusicEditor {
     return marksToBase(base, shown, edited, (t) => toBase(this.pieces, this.crossfade, src, t), pick);
   }
 
+  // The base index of the picked mark (-1 if none), so it stays picked when the edit changes.
+  pickedMark() {
+    const m = this.marks?.[this.markSel];
+    return m ? m.k ?? this.markSel : -1;
+  }
+
   // The shown mark that is base mark k, or -1 (cut out).
   shownMark(k) {
     return k < 0 ? -1 : (this.shown?.marks || []).findIndex((m, i) => (m.k ?? i) === k);
@@ -838,7 +862,8 @@ export class MusicEditor {
       return this.host.status("This part was spliced in from another song. Save the edit as a new file to mark it", "hint");
     }
     const { marks, index } = addMark(this.marks, this.time, this.markColour || MARK_COLOUR);
-    this.editMarks(marks, open ? index : -1);
+    // While playing (M), the mark you had picked stays picked.
+    this.editMarks(marks, open ? index : marks.indexOf(this.marks[this.markSel]));
     if (open) $("music-mark-name").focus();
     else this.host.status(`Marked ${fmtTime(this.time)}`);
   }
