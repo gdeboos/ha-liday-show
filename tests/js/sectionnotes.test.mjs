@@ -67,3 +67,33 @@ test("describing keeps notes and names you wrote, and rewrites its own", () => {
   const mine = { start: 0, end: 10, label: "Opening", named: true, notes: "my note" };
   assert.equal(describeSections([mine], [trait], { names: { 0: "Intro" } })[0], mine); // left exactly as it was
 });
+
+test("sections past the song's end, tiny ones and a lone section don't upset the measurements", async () => {
+  const { s, rate } = song();
+  const f = features(s, rate);
+  const out = measureSections(f, [{ start: 0, end: 15 }, { start: 15, end: 29.99 }, { start: 29.99, end: 30 }, { start: 40, end: 50 }]);
+  assert.ok(out[0].level < out[1].level); // the quiet part is still quieter than the loud one
+  assert.equal(out[2].shape, "steady"); // one frame long: nothing to build or fade
+  for (const t of out) for (const v of [t.level]) assert.ok(Number.isFinite(v));
+  assert.equal(out[3].alone, true);
+  const [only] = measureSections(f, [{ start: 0, end: 30 }]);
+  assert.equal(only.alone, true);
+  assert.doesNotMatch(ruleNote(only, { start: 0, end: 30, label: "Song" }, []), /Medium|Quiet|Loud/);
+});
+
+test("Detect again keeps the names and notes you wrote", async () => {
+  const { keepYours } = await import("../../haliday_show/app/halidayshow/static/js/sectionnotes.js");
+  const old = [
+    { start: 0, end: 10, label: "Opening bells", named: true, notes: "bells only" },
+    { start: 10, end: 20, label: "Part B", notes: "auto words", autoNotes: true },
+    { start: 20, end: 31, label: "Verse", notes: "everything flashes at the end" },
+  ];
+  const fresh = [{ start: 0, end: 9.5, label: "Intro" }, { start: 9.5, end: 21, label: "Part A" }, { start: 21, end: 30, label: "Part B" }];
+  const out = keepYours(fresh, old);
+  assert.deepEqual(out.map((x) => x.label), ["Opening bells", "Part A", "Part B"]);
+  assert.equal(out[0].named, true);
+  assert.deepEqual(out.map((x) => x.notes), ["bells only", undefined, "everything flashes at the end"]);
+  assert.equal(fresh[0].label, "Intro"); // the fresh sections themselves aren't changed
+  const described = describeSections(out, out.map(() => trait), { write: () => "new" });
+  assert.deepEqual(described.map((x) => x.notes), ["bells only", "new", "everything flashes at the end"]);
+});

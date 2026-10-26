@@ -553,7 +553,8 @@ busy or sparse, bass-heavy or bright, any big hits or moments it goes quiet (wit
 which earlier section it's like. It then suggests how to light it, for example: "Loud, busy, lots of
 hits; builds up through it; big hit at 0:42. Everything on, moving and flashing on the beat; flash
 everything on the hit." Notes you've typed or changed are never replaced, and nor are names you've
-given sections. Edit anything it writes; once you do, it's yours.
+given sections: pressing **Detect** again carries them over to the new section that covers the same
+stretch of the song. Edit anything it writes; once you do, it's yours.
 
 ### Beats
 

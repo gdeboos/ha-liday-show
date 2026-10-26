@@ -8,7 +8,8 @@
   "Quiet, sparse, bass-heavy. Keep it gentle: slow fades or a soft glow on a few lights", or "Loud;
   goes quiet at 1:43. Everything on…; go dark or very dim when it drops".
 - These notes steer **Generate** with **AI**, and **Describe it**, as your own notes do. Notes you've
-  typed or changed, and names you've given sections, are never replaced.
+  typed or changed, and names you've given sections, are never replaced. Pressing **Detect** again
+  now keeps them too: it used to start the sections afresh.
 
 ## 0.2.136
 

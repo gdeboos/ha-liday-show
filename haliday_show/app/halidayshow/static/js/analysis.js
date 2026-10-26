@@ -338,17 +338,22 @@ export function measureSections(f, sections) {
   const third = Math.floor(BANDS / 3);
   const balance = f.timbre.map((b) => mean(b, 0, third) - mean(b, BANDS - third, BANDS));
   const songOnset = mean(f.onset, 0, n), songBalance = mean(balance, 0, n);
-  const louds = sections.map((s) => mean(f.loud, frame(s.start), frame(s.end)));
-  const lo = Math.min(...louds), hi = Math.max(...louds);
+  // A section past the song's end (its file replaced by a shorter one) has nothing to measure.
+  const inSong = (s) => frame(s.start) < n;
+  const louds = sections.map((s) => (inSong(s) ? mean(f.loud, frame(s.start), frame(s.end)) : NaN));
+  const known = louds.filter((x) => Number.isFinite(x));
+  const lo = Math.min(...known), hi = Math.max(...known);
   const w = (s) => Math.max(1, Math.round(s * fps));
   return sections.map((s, i) => {
-    const a = frame(s.start), b = frame(s.end), len = b - a;
+    if (!inSong(s)) return { level: 0.5, shape: "steady", busy: "steady", tone: "even", hits: [], drops: [], alone: true };
+    const a = frame(s.start), b = Math.max(frame(s.end), a + 1), len = b - a;
     // Medians, so a moment of silence (a drop) doesn't read as the whole section fading.
     const median = (from, to) => {
       const xs = Array.from(f.loud.subarray(from, Math.max(from + 1, to))).sort((x, y) => x - y);
       return xs[Math.floor(xs.length / 2)] ?? 0;
     };
-    const first = median(a, a + Math.floor(len / 3)), last = median(b - Math.floor(len / 3), b);
+    const part = Math.max(1, Math.floor(len / 3));
+    const first = median(a, a + part), last = median(b - part, b);
     const busy = mean(f.onset, a, b) / (songOnset || 1);
     const tone = mean(balance, a, b) - songBalance;
     // A hit: the next second is 6 dB louder than the two before and louder than the section usually
@@ -377,6 +382,8 @@ export function measureSections(f, sections) {
     const r2 = (x) => Math.round(x * 100) / 100;
     return {
       level: hi - lo > 1 ? r2((louds[i] - lo) / (hi - lo)) : 0.5,
+      // With nothing to compare it to (one section, or all as loud as each other), its level means nothing.
+      ...(hi - lo > 1 ? {} : { alone: true }),
       shape: last - first > 3 ? "builds" : first - last > 3 ? "fades" : "steady",
       busy: busy > 1.25 ? "busy" : busy < 0.7 ? "sparse" : "steady",
       tone: tone > 0.3 ? "bass" : tone < -0.3 ? "bright" : "even",

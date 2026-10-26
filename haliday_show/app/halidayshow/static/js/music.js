@@ -6,7 +6,7 @@
 // a song's beats and sections and keeps them with the file, for any show that uses it.
 
 import { analyseInWorker, toMono } from "./analysis.js";
-import { describeSections } from "./sectionnotes.js";
+import { describeSections, keepYours } from "./sectionnotes.js";
 import { SECTION_ALPHA, fmtTime, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 
@@ -370,7 +370,10 @@ export class MusicEditor {
     $("music-detect").disabled = true;
     try {
       const r = await analyseInWorker(samples, rate);
-      const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: describeSections(r.sections, r.traits) };
+      // Names and notes you wrote on the old sections carry over to the new ones.
+      const old = this.base === ref ? this.info?.sections : null;
+      const sections = describeSections(keepYours(r.sections, old || []), r.traits);
+      const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections };
       await this.host.api(infoUrl(ref), { method: "PUT", json: info });
       if (this.base === ref) { this.info = info; this.secSel = -1; }
       const parts = `${info.sections.length} section${info.sections.length === 1 ? "" : "s"}`;
@@ -382,8 +385,8 @@ export class MusicEditor {
     this.draw();
   }
 
-  // Writes notes for the base song's sections from what each sounds like (and with the AI, better
-  // names), keeping any notes and names you wrote.
+  // Writes notes for the base song's sections from what each sounds like, keeping any notes and
+  // names you wrote.
   async describe() {
     if (!this.base || this.dirty || !this.info?.sections?.length) return;
     const ref = this.base, channels = this.sources[keyOf(ref)];
@@ -393,7 +396,10 @@ export class MusicEditor {
     $("music-describe").disabled = true;
     try {
       const traits = await analyseInWorker(samples, rate, sections.map(({ start, end }) => ({ start, end })));
-      if (this.base !== ref || this.info?.sections !== sections) return;
+      if (this.base !== ref || this.info?.sections !== sections) {
+        this.host.status("The sections changed while listening; press Describe sections again", "hint");
+        return;
+      }
       const out = describeSections(sections, traits);
       const written = out.filter((s, i) => s !== sections[i]).length;
       this.editSections(out);
