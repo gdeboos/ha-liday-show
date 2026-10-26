@@ -503,7 +503,7 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
   font-weight: 600; }
 .ns-gen > label:has(input[type=checkbox]) { display: flex; align-items: flex-start; gap: 8px; }
 .ns-gen select { font-weight: 400; }
-#ns-starts .hint { white-space: normal; }
+#ns-starts .hint, #as-starts .hint { white-space: normal; }
 /* The Song panel's one line. */
 .song-summary { display: flex; align-items: center; gap: 8px; }
 .song-summary-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -674,3 +674,6 @@ h2.with-ico .ico { color: var(--muted); }
 @media (max-width: 560px) { .wz-pick { grid-template-columns: 1fr; } }
 
 a.button { text-decoration: none; }
+/* Add a song: the file button and what was picked beside it. */
+.as-file { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.as-file .hint { overflow-wrap: anywhere; }

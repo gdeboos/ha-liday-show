@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.137
+
+- The **Music editor** now opens on **Your songs** each visit, the same list as **Library → Songs**,
+  laid out like **Your shows**. Press **Edit** on a song to open it; **← All songs** goes back. The song
+  you last opened has a **Last edited** badge.
+- **+ Add a song** (under either list, in place of **Upload a song…**) opens a short window:
+  - **Step 1:** choose the file and give it a name. It tells you if a song already has that name, so
+    an upload can't replace one by mistake.
+  - **Step 2:** **Detect beats and parts now** (picked to start with), or **Add it as it is**. Detected
+    songs are ready to use: a show that picks one gets its beats and parts straight away.
+- **Open in the Music editor**, in a show's **Choose a song** window, now opens the song you picked.
+
 ## 0.2.136
 
 - **+ New show** now opens a short window instead of an empty show straight away:

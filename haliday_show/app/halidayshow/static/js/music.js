@@ -343,6 +343,7 @@ export class MusicEditor {
       const key = await this.source(ref);
       this.pieces = [{ src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate }];
       this.base = ref;
+      this.host.opened?.(ref);
       this.info = null;
       this.history = [];
       this.future = [];
