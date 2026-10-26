@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.126
+
+- New volume slider (🔊) next to the clock in the **Playback** panel and on the **Music** tab. It sets
+  how loud the song plays in your browser while you edit, and both tabs share the same level. Your
+  browser remembers it. Speakers, the lights and your shows aren't affected. The slider is hidden
+  while the song plays on a speaker.
+
 ## 0.2.125
 
 - New **Show player**, for music without a speaker. When a playlist, its schedule or an automation

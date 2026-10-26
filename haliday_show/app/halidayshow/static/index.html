@@ -85,6 +85,7 @@
         <button id="btn-home" title="Back to start (Home)">⏮</button>
         <button id="btn-play" class="primary" title="Play / pause (Space)">▶ Play</button>
         <span id="clock" class="clock">0:00.00</span>
+        <label id="volume-wrap" class="volume" title="How loud the song plays in this browser while you edit. Speakers and the lights aren't affected.">🔊 <input id="volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label>
         <select id="output-select" title="Where the song plays while you edit, in this browser. Automations use the show speaker in Show settings instead.">
           <option value="">Song in this browser</option>
         </select>
@@ -224,6 +225,7 @@
         <button id="music-play" class="primary" title="Play from the playhead (Space)">▶ Play</button>
         <button id="music-play-sel" title="Play just the selection">Play selection</button>
         <span id="music-clock" class="clock">0:00.00 / 0:00.00</span>
+        <label class="volume" title="How loud the song plays in this browser. The same level as on the Editor tab.">🔊 <input id="music-volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label>
       </div>
       <div class="group">
         <label title="Selection start in seconds">From <input id="music-sel-start" type="number" min="0" step="0.01"> s</label>

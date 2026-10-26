@@ -18,6 +18,7 @@ import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDem
 import { Layout } from "./layout.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor } from "./music.js";
+import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
@@ -146,8 +147,10 @@ const app = {
 };
 
 const audio = $("audio");
+const volume = createVolume();
+volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
-const music = new MusicEditor({ api, status, songs: () => app.songs || [], songsChanged: () => refreshAudio() });
+const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio() });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
 // history -----------------------------------------------------------------
@@ -4182,6 +4185,7 @@ function renderOutput() {
   speakerOptions($("default-speaker"), "None (lights only)", app.defaultSpeaker);
   const sp = app.speakers.find((s) => s.entity_id === current);
   $("lights-wrap").hidden = !!current;
+  $("volume-wrap").hidden = !!current;
   $("offset-label").textContent = current ? "Speaker delay" : "Light offset";
   $("offset-hint").textContent = current
     ? "How late this speaker plays after it reports starting. Raise it if the lights lead the music."
