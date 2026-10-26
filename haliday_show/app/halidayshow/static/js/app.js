@@ -5605,7 +5605,7 @@ const SECTIONS = { library: ["shows", "songs", "palettes", "presets", "playlists
 const sectionPage = { library: "shows", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
-function showView(view) {
+function showView(view, { push = true } = {}) {
   if (view === "labs" && !labsOn()) view = "settings";
   const section = Object.keys(SECTIONS).find((k) => SECTIONS[k].includes(view));
   if (section) sectionPage[section] = view;
@@ -5632,6 +5632,46 @@ function showView(view) {
   if (page === "settings") renderCopies();
   if (page === "playlists") loadPlaylists(); else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); }
+  rememberPage(page, push);
+}
+
+// The browser's Back and Forward move between pages of HA-liday Show (inside Home Assistant too:
+// the app's frame shares the tab's history), instead of leaving it. Each page visited is an entry,
+// named in the address after # so a page can be reloaded or bookmarked.
+let shownPage = null;
+const isPage = (p) => typeof p === "string" && /^[a-z]+$/.test(p) && !!$(`view-${p}`);
+
+function rememberPage(page, push) {
+  if (page === shownPage) return;
+  const first = shownPage === null;
+  shownPage = page;
+  try {
+    if (push && !first) history.pushState({ page }, "", `#${page}`);
+    else history.replaceState({ page }, "", `#${page}`);
+  } catch { /* a sandboxed frame may refuse; the pages still work */ }
+}
+
+// Back or Forward: go to that page as the app's own buttons would, asking first where they would.
+async function pageFromHistory(e) {
+  const page = e.state?.page || location.hash.slice(1);
+  if (!isPage(page) || page === shownPage) return;
+  const stay = () => { try { history.pushState({ page: shownPage }, "", `#${shownPage}`); } catch { /* as above */ } };
+  if (shownPage === "editor" && page !== "editor") {
+    if (page === "showlist") {
+      if (!(await confirmDiscard())) { stay(); return; }
+      app.chosen = false;
+    }
+  }
+  if (shownPage === "music" && page === "songlist") {
+    if (music.dirty && !confirm("Go back to your songs? Your unsaved edits in the Music editor will be lost.")) { stay(); return; }
+    music.dirty = false;
+    app.songChosen = false;
+  }
+  // Forward again to the show or song that was open.
+  if (page === "editor" && !app.chosen && app.showId) app.chosen = true;
+  if (page === "music" && !app.songChosen && music.base) app.songChosen = true;
+  showView(page, { push: false });
+  if (page === "showlist") renderShowLists();
 }
 
 function wire() {
@@ -5986,7 +6026,11 @@ async function init() {
     house.load().then(renderHouseLights);
     const shows = await api("api/shows");
     await openShow(null, { chosen: false });
+    // Reloaded or bookmarked on a page: open that page (an editor opens on its list).
+    const wanted = location.hash.slice(1);
     showView("editor");
+    if (isPage(wanted) && wanted !== shownPage) showView(wanted, { push: false });
+    window.addEventListener("popstate", pageFromHistory);
     // A fresh install opens the setup guide, once.
     if (!app.deviceList.length && !shows.length && !prefs.get("wizard.done", false)) openWizard();
   } catch (e) {
