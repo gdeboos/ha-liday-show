@@ -1044,6 +1044,17 @@ async def put_draft(request):
     return web.json_response({"ok": True})
 
 
+async def rename_draft(request):
+    draft_id = _draft_id(request)
+    body = await request.json()
+    name = body.get("name") if isinstance(body, dict) else None
+    if not isinstance(name, str) or not name.strip():
+        raise web.HTTPBadRequest(text="give the draft a name")
+    if not request.app[STORAGE].rename_draft(draft_id, " ".join(name.split())[:80]):
+        raise web.HTTPNotFound()
+    return web.json_response({"ok": True})
+
+
 async def delete_draft(request):
     if not request.app[STORAGE].delete_draft(_draft_id(request)):
         raise web.HTTPNotFound()
@@ -1724,6 +1735,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/drafts/{id}", get_draft)
     r.add_put("/api/drafts/{id}", put_draft)
     r.add_delete("/api/drafts/{id}", delete_draft)
+    r.add_post("/api/drafts/{id}/rename", rename_draft)
     r.add_get("/api/speakers", list_speakers)
     r.add_put("/api/speakers/delay", put_speaker_delay)
     r.add_put("/api/speakers/show", put_show_speaker)
