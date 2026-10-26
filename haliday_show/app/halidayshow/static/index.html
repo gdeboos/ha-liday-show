@@ -958,60 +958,81 @@
 </div>
 <main id="view-public" class="view pub-view" hidden>
   <div class="pub-settings">
-  <section class="card">
+  <section class="card pub-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Who can start shows</h2>
     <p class="hint">Visitors need the link with your code in it, the one the QR code on your sign will hold. Opening
       the page without it just says to scan the sign.</p>
-    <p><label>Public address <input id="pub-address-input" type="url" placeholder="https://lights.yourdomain.com"
-      size="34"></label></p>
-    <p class="hint">The web address your tunnel or proxy gives the public page. Leave it empty if visitors only use
-      your home Wi-Fi.</p>
-    <p class="row"><span>Visitors' link:</span> <code id="pub-link" class="pub-link"></code>
-      <button id="pub-copy">Copy</button> <button id="pub-new-code" class="ghost">New code…</button></p>
-    <p><label><input id="pub-nearby" type="checkbox"> Nearby only</label>
-      <label>within <input id="pub-distance" type="number" min="25" max="2000" step="25"> m</label></p>
-    <p class="hint" id="pub-nearby-hint"></p>
+    <label class="field">Public address
+      <input id="pub-address-input" type="url" placeholder="https://lights.yourdomain.com">
+      <span class="hint">The web address your tunnel or proxy gives the public page. Leave it empty if visitors only
+        use your home Wi-Fi.</span></label>
+    <div class="field"><span id="pub-link-label">Visitors' link</span>
+      <div class="pub-linkbox" role="group" aria-labelledby="pub-link-label">
+        <code id="pub-link" class="pub-link"></code>
+        <button id="pub-copy">Copy</button>
+        <button id="pub-new-code" class="ghost">New code…</button>
+      </div></div>
+    <div class="field">
+      <div class="pub-inline"><label class="check"><input id="pub-nearby" type="checkbox"> Nearby only</label>
+        <label class="pub-inline">within <input id="pub-distance" type="number" min="25" max="2000" step="25"> m</label></div>
+      <p class="hint pub-note" id="pub-nearby-hint"></p></div>
   </section>
-  <section class="card" id="pub-hours-card">
+  <section class="card pub-card" id="pub-hours-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-timing"/></svg>Opening hours</h2>
     <p class="hint">When visitors can start shows. Outside these hours the page says when to come back, and
       shows aren't offered. Anyone already waiting still gets their show.</p>
-    <p><label><input id="pub-hours-on" type="checkbox"> Only open at set times</label></p>
+    <label class="check"><input id="pub-hours-on" type="checkbox"> Only open at set times</label>
     <div id="pub-hours" class="pub-hours" hidden>
-      <p class="row"><label>From <select id="pub-hours-start-kind">
-          <option value="time">a time</option><option value="sunset">sunset</option></select></label>
-        <input id="pub-hours-start" type="time" aria-label="Opening time">
-        <span id="pub-hours-offset-wrap" hidden><input id="pub-hours-offset" type="number" min="-180" max="180"
-          step="5" aria-label="Minutes after sunset"> minutes after (or before, if less than 0)</span>
-        <label>until <input id="pub-hours-end" type="time" aria-label="Closing time"></label></p>
-      <p class="row pub-days" id="pub-hours-days"></p>
+      <div class="pub-grid">
+        <div class="field"><span id="pub-opens-label">Opens</span>
+          <div class="pub-inline" role="group" aria-labelledby="pub-opens-label">
+            <select id="pub-hours-start-kind" aria-label="Opens at">
+              <option value="time">at a time</option><option value="sunset">at sunset</option></select>
+            <input id="pub-hours-start" type="time" aria-label="Opening time">
+            <span id="pub-hours-offset-wrap" class="pub-inline" hidden><input id="pub-hours-offset" type="number"
+              min="-180" max="180" step="5" aria-label="Minutes after sunset"> minutes after</span>
+          </div>
+          <span class="hint" id="pub-offset-hint">Less than 0 opens before sunset.</span></div>
+        <label class="field">Closes <input id="pub-hours-end" type="time" aria-label="Closing time"></label>
+      </div>
+      <div class="field"><span id="pub-days-label">On these days</span>
+        <div class="pub-days" id="pub-hours-days" role="group" aria-labelledby="pub-days-label"></div></div>
     </div>
-    <p class="hint" id="pub-hours-hint" aria-live="polite"></p>
+    <p class="hint pub-note" id="pub-hours-hint" aria-live="polite"></p>
   </section>
-  <section class="card" id="pub-look">
+  <section class="card pub-card" id="pub-look">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg>How the page looks</h2>
-    <p class="hint">What visitors see at the top and bottom of the page, and its colours.
-      <a id="pub-open-page" target="_blank" rel="noopener">Open the page</a> to see it.</p>
-    <p><label>Title <input id="pub-title" type="text" maxlength="60" size="34" placeholder="🎄 Light show"></label></p>
-    <p><label for="pub-welcome">Welcome</label><br>
+    <p class="hint">What visitors see at the top and bottom of the page, and its colours. The preview shows it as you
+      go, or <a id="pub-open-page" target="_blank" rel="noopener">open the page</a>.</p>
+
+    <h3 class="pub-sub">Words</h3>
+    <label class="field">Title <input id="pub-title" type="text" maxlength="60" placeholder="🎄 Light show"></label>
+    <label class="field">Welcome
       <textarea id="pub-welcome" rows="3" maxlength="300" class="pub-welcome"
-        placeholder="Shows run every evening. Please be kind to the neighbours."></textarea></p>
-    <fieldset class="pub-picture">
-      <legend>Picture at the top</legend>
-      <label><input type="radio" name="pub-picture" value="none"> None</label>
-      <label><input type="radio" name="pub-picture" value="house"> Your house photo</label>
-      <label><input type="radio" name="pub-picture" value="upload"> Your own picture</label>
+        placeholder="Shows run every evening. Please be kind to the neighbours."></textarea></label>
+
+    <h3 class="pub-sub" id="pub-picture-label">Picture at the top</h3>
+    <div class="pub-picture" role="radiogroup" aria-labelledby="pub-picture-label">
+      <div class="pub-seg">
+        <label><input type="radio" name="pub-picture" value="none"> None</label>
+        <label><input type="radio" name="pub-picture" value="house"> Your house photo</label>
+        <label><input type="radio" name="pub-picture" value="upload"> Your own picture</label>
+      </div>
       <label class="button">Choose picture…<input id="pub-picture-file" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
       <p class="hint" id="pub-picture-hint"></p>
       <img id="pub-picture-preview" class="pub-picture-preview" alt="The picture at the top of the page" hidden>
-    </fieldset>
-    <p class="row"><label>Colours <select id="pub-theme">
+    </div>
+
+    <h3 class="pub-sub">Colours and style</h3>
+    <div class="pub-grid">
+      <label class="field">Colours <select id="pub-theme">
         <option value="plain">Plain</option><option value="christmas">Classic Christmas</option>
         <option value="frosty">Frosty</option><option value="halloween">Halloween</option>
         <option value="custom">Your own colours</option></select></label>
-      <label id="pub-mode-label">Light or dark <select id="pub-mode">
+      <label class="field" id="pub-mode-label">Light or dark <select id="pub-mode">
         <option value="auto">Follow the phone</option><option value="light">Light</option>
-        <option value="dark">Dark</option></select></label></p>
+        <option value="dark">Dark</option></select></label>
+    </div>
     <div id="pub-colours" class="pub-colours" hidden>
       <label><input type="color" data-colour="bg"> Background</label>
       <label><input type="color" data-colour="panel"> Cards</label>
@@ -1020,46 +1041,57 @@
       <label><input type="color" data-colour="accent"> Buttons</label>
       <p class="hint pub-colours-hint">Small print and borders are mixed from your text and background, and the
         words on buttons are black or white, whichever reads better.</p>
-      <p class="hint" id="pub-readability" aria-live="polite"></p>
+      <p class="hint pub-note" id="pub-readability" aria-live="polite"></p>
     </div>
-    <p class="row"><label>Spacing <select id="pub-spacing">
+    <div class="pub-grid pub-grid-3">
+      <label class="field">Spacing <select id="pub-spacing">
         <option value="compact">Compact</option><option value="normal">Normal</option>
         <option value="roomy">Roomy</option></select></label>
-      <label>Corners <select id="pub-corners">
+      <label class="field">Corners <select id="pub-corners">
         <option value="square">Square</option><option value="soft">Soft</option>
         <option value="round">Round</option></select></label>
-      <label>Text size <select id="pub-size">
+      <label class="field">Text size <select id="pub-size">
         <option value="small">Small</option><option value="normal">Normal</option>
-        <option value="large">Large</option></select></label></p>
-    <p><label><input id="pub-borders" type="checkbox"> Card borders</label></p>
-    <p><label><input id="pub-snow" type="checkbox"> Falling snow</label></p>
+        <option value="large">Large</option></select></label>
+    </div>
+    <div class="pub-checks">
+      <label class="check"><input id="pub-borders" type="checkbox"> Card borders</label>
+      <label class="check"><input id="pub-snow" type="checkbox"> Falling snow</label>
+    </div>
     <p class="hint">Snow is left out for anyone whose phone is set to reduce motion.</p>
-    <p><label>Link at the bottom <input id="pub-link-url" type="url" size="34"
-      placeholder="https://www.justgiving.com/…"></label></p>
-    <p><label>Its words <input id="pub-link-text" type="text" maxlength="80" size="34"
-      placeholder="Enjoying the lights? Donate to …"></label></p>
+
+    <h3 class="pub-sub">Link at the bottom</h3>
     <p class="hint">A charity, donation or social page, if you like. Leave it empty for none.</p>
+    <div class="pub-grid">
+      <label class="field">Web address <input id="pub-link-url" type="url"
+        placeholder="https://www.justgiving.com/…"></label>
+      <label class="field">Its words <input id="pub-link-text" type="text" maxlength="80"
+        placeholder="Enjoying the lights? Donate to …"></label>
+    </div>
   </section>
-  <section class="card">
+  <section class="card pub-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>What visitors can pick</h2>
     <p class="hint">People passing by pick one of these on their phone, and it plays on your lights and the show's
       speaker. Give one dates to have it show as coming soon until then.</p>
-    <p class="hint" id="pub-address"></p>
+    <p class="hint pub-note" id="pub-address"></p>
     <div id="pub-items" class="pub-items"></div>
-    <p class="row" id="pub-add-row"><select id="pub-add-pick" aria-label="Show or playlist to add"></select>
-      <button id="pub-add">+ Add</button></p>
+    <div class="pub-inline" id="pub-add-row"><select id="pub-add-pick" aria-label="Show or playlist to add"></select>
+      <button id="pub-add" class="primary">+ Add</button></div>
     <p class="hint" id="pub-all-added" hidden>Every saved show and playlist is on the list. Archived shows, and
       playlists made only of them, aren't offered.</p>
   </section>
-  <section class="card">
+  <section class="card pub-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Visitors' queue</h2>
     <p class="hint">If something's already on, a visitor's pick plays after the show that's on, then your playlist
       carries on. A playlist picked by a visitor plays through once.</p>
-    <p class="hint" id="pub-now" aria-live="polite"></p>
-    <p><button id="pub-clear" class="ghost" hidden>Clear the queue</button></p>
-    <p class="row"><label>Requests per phone <input id="pub-per-phone" type="number" min="1" max="5" step="1"></label>
-      <label>Queue length <input id="pub-queue" type="number" min="1" max="20" step="1"></label></p>
-    <p class="hint">How many shows one phone can have waiting, and how many can wait in all.</p>
+    <div class="pub-inline"><p class="hint pub-now" id="pub-now" aria-live="polite"></p>
+      <button id="pub-clear" class="ghost" hidden>Clear the queue</button></div>
+    <div class="pub-grid">
+      <label class="field">Requests per phone <input id="pub-per-phone" type="number" min="1" max="5" step="1">
+        <span class="hint">How many shows one phone can have waiting.</span></label>
+      <label class="field">Queue length <input id="pub-queue" type="number" min="1" max="20" step="1">
+        <span class="hint">How many can wait in all.</span></label>
+    </div>
   </section>
   </div>
   <aside class="pub-preview" aria-label="Preview of the visitors' page">

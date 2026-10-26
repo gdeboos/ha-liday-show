@@ -1148,13 +1148,13 @@ without the code just says "Scan the code on the sign to start a show".
 Off to start with, so visitors can start shows at any time. Tick **Only open at set times** to choose
 when:
 
-- **From** a time, or **sunset** with a number of minutes after it (or before, if less than 0), so the
-  opening time moves with the sunset through the year.
-- **until** a time. With a set start, a time before it means after midnight, such as 17:00 until
+- **Opens** **at a time**, or **at sunset** with a number of minutes after it (or before, if less than
+  0), so the opening time moves with the sunset through the year.
+- **Closes** at a time. With a set start, a time before it means after midnight, such as 17:00 until
   01:00. With a sunset start, a closing time before midday is the next morning, and any other is
   that evening; on a day the sun sets after it, the page doesn't open (in summer, say, with a 22:00
   close).
-- The days of the week it opens.
+- **On these days**: press a day to turn it on or off.
 
 The line underneath says whether the page is open now, or when it next opens. Sunset is worked out
 for your home location, as for playlists; without one, a sunset start never opens, and it says so.
@@ -1166,6 +1166,9 @@ queue at closing time still gets their show. Each show's own dates (below) still
 hours.
 
 #### How the page looks
+
+The settings come in four groups: **Words**, **Picture at the top**, **Colours and style** and **Link at
+the bottom**. The preview beside them shows each change as you make it.
 
 - **Title** replaces "🎄 Light show" at the top, and **Welcome** adds a line or two under it.
 - **Picture at the top**: **None**, **Your house photo** (from **Setup → House**), or **Your own
@@ -1183,9 +1186,10 @@ hours.
   layout, and always fit a phone.
 - **Falling snow** drifts behind the page. It's left out for anyone whose phone is set to reduce
   motion.
-- **Link at the bottom**, with **Its words**: a charity, donation or social page, if you like.
+- **Link at the bottom**: its **Web address** and **Its words**, for a charity, donation or social page, if
+  you like.
 
-**Open the page** opens your real visitors' link. The title, words and picture only show to people
+**open the page**, in the line under the heading, opens your real visitors' link. The title, words and picture only show to people
 with your code.
 
 #### What visitors can pick

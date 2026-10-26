@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.174
+
+- The **Public page** settings are tidier and easier to scan:
+  - Every setting has its name above it and its explanation under it, and short ones sit side by
+    side.
+  - **How the page looks** is split into **Words**, **Picture at the top**, **Colours and style** and
+    **Link at the bottom**.
+  - **Opening hours** now reads **Opens** and **Closes**, and the days are buttons you press on and off.
+  - The visitors' link sits in a box with **Copy** and **New code…**, and warnings (such as no home
+    location) stand out on an orange tint.
+  - The picture choice is one row of three, and a choice you can't pick yet (no house photo) is faded.
+
 ## 0.2.173
 
 - New **Opening hours** card on the **Public page** tab. Tick **Only open at set times**, then pick
