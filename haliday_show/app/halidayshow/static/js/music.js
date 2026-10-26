@@ -302,12 +302,10 @@ export class MusicEditor {
   // songs ---------------------------------------------------------------------
   fillSongLists() {
     const songs = this.host.songs();
-    for (const id of ["music-src", "music-insert-src"]) {
-      const sel = $(id), cur = sel.value;
-      sel.replaceChildren(new Option(id === "music-src" ? "Choose a song…" : "Another song…", ""));
-      for (const r of songs) sel.append(new Option(r.path, JSON.stringify(r)));
-      sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "";
-    }
+    const sel = $("music-insert-src"), cur = sel.value;
+    sel.replaceChildren(new Option("Another song…", ""));
+    for (const r of songs) sel.append(new Option(r.path, JSON.stringify(r)));
+    sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "";
   }
 
   // Everything played here goes through one gain node so the volume slider covers previews too.
@@ -351,7 +349,6 @@ export class MusicEditor {
       this.dirty = false;
       this.time = 0;
       this.sel = null;
-      $("music-src").value = JSON.stringify(ref);
       $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path));
       this.changed(true);
       const info = await this.host.api(infoUrl(ref)).catch(() => null);
@@ -680,6 +677,7 @@ export class MusicEditor {
     $("music-sel-end").value = sel ? sel.end.toFixed(2) : "";
     $("music-sel-len").textContent = sel ? `${(sel.end - sel.start).toFixed(2)} s selected` : "";
     const n = this.pieces.length;
+    $("music-title").textContent = this.base ? nameOf(this.base).replace(/\.[^.]+$/, "") : "No song open";
     $("music-info").textContent = has
       ? `${fmtTime(this.total)} long${this.base ? `, from ${nameOf(this.base)}` : ""}${n > 1 ? `, ${n} pieces` : ""}`
       : "";
@@ -751,9 +749,8 @@ export class MusicEditor {
       this.changed();
       await this.host.songsChanged();
       this.fillSongLists();
-      $("music-src").value = JSON.stringify(ref);
       $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path));
-      this.host.status(`Saved ${ref.path}. Pick it under Song in the editor.`, "saved", "music-save");
+      this.host.status(`Saved ${ref.path}. Pick it under Song in the Show editor.`, "saved", "music-save");
       if (carry) {
         await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
         this.info = carry;
@@ -819,7 +816,7 @@ export class MusicEditor {
     if (!this.rendered) {
       ctx.fillStyle = col("--muted");
       ctx.font = "13px system-ui, sans-serif";
-      ctx.fillText("Choose a song or upload one to start", 12, RULER_H + 30);
+      ctx.fillText("Open a song from Your songs to start", 12, RULER_H + 30);
       return;
     }
     const rate = this.audio.sampleRate;
@@ -1136,13 +1133,6 @@ export class MusicEditor {
     c.addEventListener("pointermove", (e) => this.move(e));
     c.addEventListener("pointerup", (e) => this.up(e));
     c.addEventListener("wheel", (e) => this.wheel(e), { passive: false });
-    $("music-src").addEventListener("change", (e) => { if (e.target.value) this.open(JSON.parse(e.target.value)); });
-    $("music-upload").addEventListener("change", async (e) => {
-      const f = e.target.files[0];
-      e.target.value = "";
-      const ref = f && await this.upload(f);
-      if (ref) this.open(ref);
-    });
     $("music-insert-upload").addEventListener("change", async (e) => {
       const f = e.target.files[0];
       e.target.value = "";

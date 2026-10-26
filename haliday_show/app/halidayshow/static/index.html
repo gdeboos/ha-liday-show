@@ -80,7 +80,7 @@
       <div class="panel-head"><span class="section-label">Show</span></div>
       <div class="group">
         <button id="btn-all-shows" type="button" class="ghost" title="Back to the list of your shows">← All shows</button>
-        <select id="show-select" title="Open a show"></select>
+        <b id="show-title" class="editor-title"></b>
         <button id="btn-save" class="primary" title="Save and bake (Ctrl+S)">Save</button>
         <button id="btn-show-settings" title="Name, show speaker, auto save, delete">⚙ Show settings…</button>
         <button id="btn-generate" title="Fill every light with effects that follow the song">✨ Generate</button>
@@ -284,8 +284,7 @@
   </details>
   <section class="toolbar">
     <button type="button" id="btn-all-songs" class="ghost" title="Back to Your songs">← All songs</button>
-    <label>Song <select id="music-src"></select></label>
-    <label class="button ghost" title="Upload a song to HA-liday Show and start editing it">Upload<input id="music-upload" type="file" accept="audio/*" hidden></label>
+    <b id="music-title" class="editor-title"></b>
     <span id="music-info" class="hint"></span>
   </section>
   <section class="card music-card">
