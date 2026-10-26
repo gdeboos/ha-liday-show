@@ -2575,6 +2575,12 @@ function editWindow(title) {
   return { dlg, h, body, foot };
 }
 
+// After a window closes, back to the Edit… button of the row it was about.
+function focusEdit(listId, name) {
+  [...$(listId).querySelectorAll(".show-row")].find((r) => r.querySelector(".show-name")?.textContent === name)
+    ?.querySelector("button")?.focus();
+}
+
 // A row in the Palettes and Presets lists, like Your shows: a picture, the name and a line of detail,
 // then Edit and the rest.
 function itemRow({ picture, name, detail, edit, extra = [], label }) {
@@ -2694,7 +2700,7 @@ function openPresetWindow(preset, draft = null) {
   const draw = () => {
     presetDialogPreview.items = [];
     presetDialogPreview.started = performance.now();
-    renderPresetEditor(w.body, presetPreviewDev(), work, { redraw: draw,
+    renderPresetEditor(w.body, presetPreviewDev(), work, { redraw: () => { draw(); w.body.querySelector(".effect-change")?.focus(); },
       changed: () => { for (const item of presetDialogPreview.items) item.clip = presetClip(work); } });
   };
   draw();
@@ -2708,12 +2714,15 @@ function openPresetWindow(preset, draft = null) {
     savePresets();
     w.dlg.close();
     renderPresetsTab();
+    if (work.name !== name) status(`Another ${EFFECTS[work.effect].label} preset is called ${name}, so it's saved as ${work.name}`, "hint");
+    focusEdit("my-presets", work.name);
   }, "primary");
   const spacer = document.createElement("span");
   spacer.className = "spacer";
   if (preset) w.foot.append(button("Delete…", () => { if (deletePreset(preset)) w.dlg.close(); }, "ghost danger"));
   w.foot.append(spacer, button("Cancel", () => w.dlg.close()), save);
   w.dlg.addEventListener("close", () => { presetDialogPreview.items = []; });
+  w.body.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.classList.contains("preset-name")) save.click(); });
   w.dlg.showModal();
   w.body.querySelector(".preset-name").focus();
 }
@@ -2757,7 +2766,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
   const on = document.createElement("select");
   on.add(new Option("15 segments", ""));
   for (const d of app.deviceList) on.add(new Option(`${d.name} (${d.segments})`, d.id, false, d === dev));
-  on.addEventListener("change", () => { prefs.set("presetPreviewLight", on.value); redraw(); renderPresetsTab(); });
+  on.addEventListener("change", () => { prefs.set("presetPreviewLight", on.value); redraw(); });
   const ol = document.createElement("label");
   ol.append("Preview on", on);
   previewRow.append(strip, ol);
@@ -3033,10 +3042,18 @@ function openPaletteWindow(palette, draft = null) {
       const hex = document.createElement("code");
       hex.textContent = c;
       el.addEventListener("input", () => { hex.textContent = el.value; });
-      const up = button("↑", () => { [work.colors[k - 1], work.colors[k]] = [work.colors[k], work.colors[k - 1]]; draw(); }, "ghost");
+      const up = button("↑", () => {
+        [work.colors[k - 1], work.colors[k]] = [work.colors[k], work.colors[k - 1]];
+        draw();
+        colours.querySelectorAll("li")[k - 1]?.querySelector(k - 1 ? "button" : "input")?.focus();
+      }, "ghost");
       up.setAttribute("aria-label", `Move colour ${k + 1} up`);
       up.disabled = k === 0;
-      const rm = button("✕", () => { work.colors.splice(k, 1); draw(); }, "ghost");
+      const rm = button("✕", () => {
+        work.colors.splice(k, 1);
+        draw();
+        colours.querySelectorAll("li")[Math.min(k, work.colors.length - 1)]?.querySelector("input")?.focus();
+      }, "ghost");
       rm.setAttribute("aria-label", `Remove colour ${k + 1}`);
       rm.disabled = work.colors.length <= 1;
       if (rm.disabled) rm.title = "A palette needs at least one colour";
@@ -3066,7 +3083,9 @@ function openPaletteWindow(palette, draft = null) {
     savePalettes();
     w.dlg.close();
     renderPalettes();
+    focusEdit("my-palettes", v);
   }, "primary");
+  name.addEventListener("keydown", (e) => { if (e.key === "Enter") save.click(); });
   const spacer = document.createElement("span");
   spacer.className = "spacer";
   if (palette) w.foot.append(button("Delete…", () => { if (deletePalette(palette)) w.dlg.close(); }, "ghost danger"));

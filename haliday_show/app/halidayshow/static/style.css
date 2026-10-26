@@ -318,8 +318,6 @@ h2 { font-size: 15px; margin: 6px 0 0; }
   border: 1px solid var(--line); }
 button.swatch:hover { border-color: var(--text); }
 .palette-list { display: flex; flex-direction: column; gap: 6px; }
-.palette-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel);
-  border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
 .palette-name { min-width: 11em; }
 /* The Playlist editor */
 .playlist-now:empty, #playlist-clock:empty { display: none; }
@@ -527,18 +525,13 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .preset-group.current { border-color: var(--accent); }
 .add-actions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 4px; }
 /* Your own presets: the Presets tab (a list beside an editor) and the save dialog. */
-.preset-layout { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 14px; align-items: start; }
 .preset-list { display: flex; flex-direction: column; gap: 10px; }
 .preset-list .preset-group { display: flex; flex-direction: column; gap: 4px; }
-.preset-list-item { display: flex; align-items: center; gap: 8px; text-align: left; }
-.preset-list-item .fx-strip { width: 80px; min-width: 80px; flex: none; }
-.preset-list-item.active { border-color: var(--accent); }
 .preset-editor { display: flex; flex-direction: column; gap: 12px; }
 .preset-editor-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
 .preset-name { font-size: 16px; font-weight: 600; flex: 1; min-width: 180px; }
 .preset-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .preset-preview-strip { flex: 1; min-width: 200px; height: 28px; }
-@media (max-width: 800px) { .preset-layout { grid-template-columns: minmax(0, 1fr); } }
 .ai-presets { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .ai-presets .hint:empty { display: none; }
 .ai-preset-ideas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
