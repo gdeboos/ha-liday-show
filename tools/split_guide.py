@@ -51,13 +51,15 @@ def split(source: str):
     lines = source.splitlines(keepends=True)
     starts = {title: name for name, _, title in PAGES}
     intro, chunks, current, fence = [], {name: [] for name, _, _ in PAGES}, None, False
-    anchors = {}
+    anchors, started = {}, set()
     for line in lines:
         if line.startswith("```"):
             fence = not fence
         m = None if fence else HEADING.match(line)
-        if m and m.group(2) in starts and (current is None or starts[m.group(2)] != current):
+        # Each page starts once, so a later sub-heading with the same words stays where it is.
+        if m and m.group(2) in starts and starts[m.group(2)] not in started:
             current = starts[m.group(2)]
+            started.add(current)
         if m:
             anchors[slug(m.group(2))] = current
         (chunks[current] if current else intro).append(line)
