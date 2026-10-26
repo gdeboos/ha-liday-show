@@ -5,7 +5,7 @@
 - The user guide is checked against everything released lately. It now counts the tabs along the top
   correctly (five, and **Public page** once it's on), says where drafts of a song you've archived or
   deleted are listed (at the end of **Your songs**), explains which beats a song file made from a draft
-  keeps, and lists everything kept in each browser.
+  keeps, and lists more of what each browser remembers.
 - The **Claude API key** setting on the **Configuration** tab now says it's used for all the AI
   features, not just **Describe it**.
 
