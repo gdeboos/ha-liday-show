@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.141
+## 0.2.142
 
 - Songs over 16 MB can be added now. Through Home Assistant they used to fail with "Maximum request
   body size 16777216 exceeded", because Home Assistant won't pass on more than 16 MB at once. A bigger
@@ -11,6 +11,15 @@
   go in pieces too.
 - When a window is open, problems and tips now show inside it, just above its buttons, as well as at
   the top. They used to be hidden behind the window.
+
+## 0.2.141
+
+- **+ Add a song** now asks, in step 2, whether the AI should name the parts: **Detect, then let the AI
+  name the parts** is picked to start with when an AI is set up, or choose **Detect only** or **Add it
+  as it is**. The top bar tells you when the AI's names and notes have arrived.
+- **+ Add a song…** in the **New show** window and in a show's **Choose a song** window (in place of
+  **Upload a song…**) opens the same window, so every song you add is detected, and it comes back
+  picked.
 
 ## 0.2.140
 

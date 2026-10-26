@@ -27,7 +27,7 @@ import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, showRows } from "./showlist.js";
 import { filterRows, songKey, songRows } from "./songlist.js";
-import { addedMessage, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
+import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
 import { PART, sendParts, uploadSong } from "./upload.js";
 
@@ -3959,15 +3959,13 @@ async function editSong(ref) {
 
 // Add a song: step 1 picks the file and its name, step 2 whether to detect it straight away (the
 // default, so shows that use it get its beats and parts at once). Nothing is uploaded until Add song.
-const addSong = { step: 1, file: null, named: false, detect: true, busy: false };
+// `onAdded` is for the windows that open this one to pick the new song (New show, Choose a song).
+const addSong = { step: 1, file: null, named: false, mode: "detect", busy: false, onAdded: null };
 
 function asStarts() {
-  const rows = [
-    { value: "detect", label: "Detect beats and parts now (recommended)",
-      detail: "Finds the tempo, beats and parts (intro, verse, chorus…), so effects snap to them. Takes a few seconds." },
-    { value: "later", label: "Add it as it is", detail: "You can press Detect later in the Music editor." },
-  ];
-  nsRadioRows($("as-starts"), "as-start", rows, addSong.detect ? "detect" : "later", (v) => { addSong.detect = v === "detect"; asStarts(); });
+  const rows = detectChoices(Boolean(aiVia));
+  if (!rows.some((r) => r.value === addSong.mode)) addSong.mode = rows[0].value;
+  nsRadioRows($("as-starts"), "as-start", rows, addSong.mode, (v) => { addSong.mode = v; asStarts(); });
 }
 
 function asStep(step) {
@@ -3987,8 +3985,8 @@ function asBusy(on, text = "") {
   for (const b of $("add-song-dialog").querySelectorAll("button, input")) b.disabled = on;
 }
 
-function openAddSong() {
-  Object.assign(addSong, { file: null, named: false, detect: true, busy: false });
+function openAddSong({ onAdded = null } = {}) {
+  Object.assign(addSong, { file: null, named: false, mode: aiVia ? "ai" : "detect", busy: false, onAdded });
   $("as-file-name").textContent = "No file chosen yet";
   $("as-name").value = "";
   asBusy(false);
@@ -4036,7 +4034,8 @@ async function asSubmit(e) {
     return;
   }
   let info = null, failed = null;
-  if (addSong.detect) {
+  const withAI = addSong.mode === "ai" && Boolean(aiVia);
+  if (addSong.mode !== "later") {
     asBusy(true, `Listening to ${name}…`);
     try {
       audioCtx ||= new AudioContext();
@@ -4046,13 +4045,16 @@ async function asSubmit(e) {
       const r = await analyseInWorker(samples, rate);
       info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: describeSections(r.sections, r.traits) };
       await api(songInfoUrl(ref), { method: "PUT", json: info });
-      // The AI's notes follow when they come, unless the song's sections were edited meanwhile.
+      // The AI's names and notes follow when they come, unless the song's sections were edited meanwhile.
       const first = info;
-      aiSectionNotes(info.sections, r.traits, { name, duration: song.duration, tempo: info.tempo }).then(async (got) => {
-        if (!got?.used || !sameSections((await songInfo(ref))?.sections, first.sections)) return;
-        await api(songInfoUrl(ref), { method: "PUT", json: { ...first, sections: got.sections } });
-        music.reloadInfo?.(ref);
-      }).catch(() => {});
+      if (withAI) {
+        aiSectionNotes(info.sections, r.traits, { name, duration: song.duration, tempo: info.tempo }).then(async (got) => {
+          if (!got?.used || !sameSections((await songInfo(ref))?.sections, first.sections)) return;
+          await api(songInfoUrl(ref), { method: "PUT", json: { ...first, sections: got.sections } });
+          music.reloadInfo?.(ref);
+          status(`${name}: the AI named the parts and wrote their notes`, "saved", "songs");
+        }).catch(() => {});
+      }
     } catch (err) {
       failed = songLoadMessage(err);
       info = null;
@@ -4063,7 +4065,8 @@ async function asSubmit(e) {
   await refreshAudio().catch(() => {});
   renderSongsPage();
   if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
-  else status(addedMessage(name, info), "saved", "songs");
+  else status(addedMessage(name, info, { ai: withAI && info?.sections.length > 0 }), "saved", "songs");
+  addSong.onAdded?.([...$("audio-select").options].find((o) => o.value && JSON.parse(o.value).path === ref.path)?.value || "");
 }
 
 // Song lengths, read from each file's header by the browser, a few at a time. Kept for the visit,
@@ -4656,17 +4659,6 @@ function computePeaks(buffer, rate = 100) {
   for (const v of data) if (v > max) max = v;
   if (max > 0) for (let i = 0; i < n; i++) data[i] /= max;
   return { rate, data };
-}
-
-async function upload(file) {
-  status(`Uploading ${file.name}…`);
-  try {
-    const ref = await uploadSong(api, file);
-    app.show.audio = ref;
-    app.changed();
-    await loadAudio(ref);
-    status("Uploaded");
-  } catch (e) { status(`Upload failed: ${e.message}`, true); }
 }
 
 // speakers --------------------------------------------------------------------
@@ -5684,16 +5676,7 @@ function wire() {
   $("ns-back").addEventListener("click", () => nsStep(1));
   $("ns-name").addEventListener("input", () => { newShow.named = true; });
   for (const b of document.querySelectorAll("[data-ns=cancel]")) b.addEventListener("click", () => $("new-show-dialog").close());
-  $("ns-upload").addEventListener("change", async (e) => {
-    const f = e.target.files[0];
-    e.target.value = "";
-    if (!f) return;
-    const ref = await music.upload(f);
-    if (!ref) return;
-    await refreshAudio().catch(() => {});
-    newShow.song = [...$("audio-select").options].find((o) => o.value && JSON.parse(o.value).path === ref.path)?.value || "";
-    nsSongPicked();
-  });
+  $("ns-upload-wrap").addEventListener("click", () => openAddSong({ onAdded: (v) => { if (v) newShow.song = v; nsSongPicked(); } }));
   $("autosave").checked = prefs.get("autosave", true);
   $("autosave").addEventListener("change", (e) => { prefs.set("autosave", e.target.checked); scheduleAutoSave(); });
   $("btn-delete").addEventListener("click", () => {
@@ -5730,11 +5713,8 @@ function wire() {
     await loadAudio(app.show.audio);
     await importSongInfo();
   });
-  $("audio-upload").addEventListener("change", (e) => {
-    if (!e.target.files[0]) return;
-    $("song-dialog").close("");
-    upload(e.target.files[0]);
-  });
+  // A song added from Choose a song comes back picked, ready for Use this song.
+  $("btn-song-add").addEventListener("click", () => openAddSong({ onAdded: (v) => { if (v) songPick = v; renderSongList(); } }));
   $("duration").addEventListener("change", (e) => {
     app.show.duration = Math.max(1, Number(e.target.value) || 60);
     app.changed();
