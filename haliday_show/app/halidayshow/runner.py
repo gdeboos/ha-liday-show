@@ -71,13 +71,13 @@ class Runner:
         st = self.player.status()
         show = self.storage.load_show(st["show"]) if st["show"] else None
         playlist = self.playlist if self._playlist and not self._playlist.done() else None
+        block = self.block if st["playing"] else None
         return {**st, "media_player": self.media_player if st["playing"] else None,
-                "name": show.get("name") if show else None,
+                "name": show.get("name") if show else f"{block['type'].title()} block" if block else None,
                 "playlist": {"id": playlist["id"], "name": playlist["name"], "finishing": self.finishing}
                 if playlist else None,
                 "song": self.song if st["playing"] else None, "started": self.started,
-                "block": {k: self.block[k] for k in ("type", "id", "seconds", "effect") if k in self.block}
-                if st["playing"] and self.block else None}
+                "block": {k: block[k] for k in ("type", "id", "seconds", "effect") if k in block} if block else None}
 
     async def play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
                    position: float = 0.0, offset: float = 0.0):
@@ -257,14 +257,33 @@ class Runner:
             await asyncio.sleep(0.1)
         return True
 
+    async def _visitors(self, playlist: dict) -> bool:
+        """Play visitors' requests waiting, each followed by the playlist's pause. True if the playlist
+        should end now."""
+        while self.requests and not self.finishing:
+            await self._play_request(self.requests.pop(0))
+            if self.speaker_stopped:
+                self.requests.clear()
+                return True
+            if self.finishing:  # its end time came during a visitor's show
+                return True
+            await asyncio.sleep(max(float(playlist.get("gap", 0)), 0.1))
+        return False
+
     async def _run_playlist(self, playlist: dict):
         items = playlist.get("items") or playlists.from_shows(playlist.get("shows", []), float(playlist.get("gap", 0)))
+        # Visitors' requests slot in after a show, or after the pause that follows it (as they did
+        # before blocks, when every show had its pause); the playlist then carries on.
+        visitors_due = False
         try:
             while True:
                 played = False
-                for item in items:
+                for k, item in enumerate(items):
                     if item["type"] != "show":
                         played = await self._play_block(item) or played
+                        if visitors_due and await self._visitors(playlist):
+                            return
+                        visitors_due = False
                         continue
                     show_id = item["id"]
                     try:
@@ -286,15 +305,10 @@ class Runner:
                         log.info("playlist %s finished its last show", playlist.get("name"))
                         return
                     await asyncio.sleep(0.1)
-                    # Visitors' requests slot in after each show; the playlist then carries on.
-                    while self.requests and not self.finishing:
-                        await self._play_request(self.requests.pop(0))
-                        if self.speaker_stopped:
-                            self.requests.clear()
-                            return
-                        if self.finishing:  # its end time came during a visitor's show
-                            return
-                        await asyncio.sleep(max(float(playlist.get("gap", 0)), 0.1))
+                    if items[(k + 1) % len(items)]["type"] == "pause":
+                        visitors_due = True
+                    elif await self._visitors(playlist):
+                        return
                 if not played:  # every show failed; don't spin
                     log.error("playlist %s has nothing it can play; stopping", playlist.get("name"))
                     return
@@ -421,7 +435,9 @@ class Runner:
     def queue_waits(self) -> list[float]:
         """Roughly how many seconds until each waiting request starts."""
         now_left = 0.0
-        if self.player.playing and self.player.baked:
+        if self.player.playing and self.block:
+            now_left = max(self.block["seconds"] - self.player.position(), 0)
+        elif self.player.playing and self.player.baked:
             now_left = max(self.player.baked.duration - self.player.position(), 0)
         if self.public_now:  # the rest of a visitor's playlist still to come
             shows = self.public_now["shows"]

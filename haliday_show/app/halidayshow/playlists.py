@@ -137,9 +137,15 @@ def clean(p, strict: bool = True) -> dict | None:
             if strict:
                 return None
             items = [x for x in items if x]
-        blocks = [x["id"] for x in items if x["type"] != "show"]
-        if len(set(blocks)) != len(blocks):
-            return None
+        seen: set[str] = set()
+        for k, x in enumerate(items):
+            if x["type"] != "show" and x["id"] in seen:
+                if strict:
+                    return None
+                items[k] = None  # in the file: keep the first, drop the copy
+            elif x["type"] != "show":
+                seen.add(x["id"])
+        items = [x for x in items if x]
     else:
         shows = p.get("shows")
         if not isinstance(shows, list) or not all(isinstance(s, str) and valid_id(s) for s in shows):

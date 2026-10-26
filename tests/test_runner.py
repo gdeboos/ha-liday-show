@@ -477,3 +477,26 @@ async def test_the_end_time_stops_a_block_straight_away(runner):
     await _until(lambda: runner.status()["block"] is not None)
     await runner.finish_playlist()
     assert runner.status()["playlist"] is None and not runner.player.playing
+
+
+async def test_a_visitor_waits_for_the_pause_after_a_show_as_before_blocks(runner, monkeypatch):
+    _short_show(runner.storage, "one")
+    _short_show(runner.storage, "two")
+    order = []
+    real_play = runner._play
+
+    async def play(show_id, **kw):
+        order.append((show_id, round(asyncio.get_running_loop().time(), 1)))
+        await real_play(show_id, **kw)
+    monkeypatch.setattr(runner, "_play", play)
+    runner.add_request(_request("r1", ["two"]))
+    await asyncio.sleep(0.3)  # it plays straight away, as nothing's on
+    order.clear()
+    runner.add_request(_request("r2", ["two"]))
+    # An old playlist: each show, then a 0.5 s pause. The visitor's show comes after that pause, once.
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one"], "gap": 0.5})
+    assert await _until(lambda: len(order) >= 3)
+    (a, t1), (b, t2), (c, t3) = order[:3]
+    assert (a, b, c) == ("one", "two", "one")
+    assert 0.5 <= t2 - t1 < 0.9  # one 0.1 s show, then the pause
+    assert 0.5 <= t3 - t2 < 0.9  # the visitor's show, then one pause (not two)

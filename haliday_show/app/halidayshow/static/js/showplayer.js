@@ -82,6 +82,7 @@ export function start() {
       if (current && !audio.paused) {
         say(`♪ Playing ${st.name || current.show}${st.playlist ? ` (playlist: ${st.playlist.name})` : ""}`);
       } else if (current && st.song) say(`${st.name || current.show}: the song has finished; the lights are finishing too.`);
+      else if (st.playing && st.block) say(`${st.playlist?.name || "A playlist"} is on a building block, which has no music.`);
       else say(st.playing && !st.song ? `${st.name || st.show} is playing on a speaker or from the editor, so there's nothing to play here.`
         : "Waiting for a show. Leave this page open.");
       $("sp-error").textContent = "";

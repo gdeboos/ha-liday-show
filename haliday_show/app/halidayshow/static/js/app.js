@@ -327,6 +327,7 @@ async function saveDevices() {
   try {
     app.deviceList = await api("api/devices", { method: "PUT", json: app.deviceList });
     indexDevices();
+    keepBlocksReady();
     status("Lights saved", "saved", "lights");
   } catch (e) { status(`Couldn't save your lights: ${e.message}`, true, "lights"); return; }
   for (const d of app.deviceList) retestLight(d);
@@ -3278,6 +3279,18 @@ async function bakeBlocksOnce() {
   const ids = new Set(playlists.flatMap((p) => itemsOf(p)).map((x) => x.id));
   for (const id of Object.keys(made)) if (!ids.has(id)) delete made[id];
   prefs.set("blockBakes", made);
+}
+
+// Whenever HA-liday Show opens in a browser, and when your lights change, so blocks a schedule
+// starts are ready even if the Playlist editor hasn't been opened since.
+async function keepBlocksReady() {
+  try {
+    if (!playlistsLoaded) {
+      const found = await api("api/playlists");
+      if (!playlistsLoaded) { playlists = found; playlistsLoaded = true; }
+    }
+    await bakeBlocks();
+  } catch { /* the Playlist editor tries again */ }
 }
 
 let openPlaylistId = null; // the playlist open in the Playlist editor
@@ -6963,6 +6976,7 @@ async function init() {
   });
   try {
     await loadDevices();
+    keepBlocksReady();
     loadSpeakers();
     loadModels();
     loadPalettes();

@@ -326,6 +326,8 @@ def test_playlist_items_and_what_older_versions_read():
         # In the file, a broken block is dropped rather than the playlist.
         assert playlists.clean({"id": "p", "name": "P", "items": [bad, items[0]]}, strict=False)["shows"] == ["one"]
     assert playlists.clean({"id": "p", "name": "P", "items": [items[2], items[2]]}) is None  # same block twice
+    kept = playlists.clean({"id": "p", "name": "P", "items": [items[2], items[0], items[2]]}, strict=False)
+    assert [x["id"] for x in kept["items"]] == ["b2", "one"]  # in the file, the copy goes, not the playlist
 
 
 def test_taking_a_deleted_show_out_keeps_the_pauses_tidy():
