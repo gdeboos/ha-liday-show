@@ -628,9 +628,10 @@ export class MusicEditor {
     $("music-cuts-find").disabled = true;
     try {
       // Bar vectors of the result as it is now, kept until it changes.
-      if (this.barVecs?.pieces !== pieces || this.barVecs.xf !== xf) {
+      const barsKey = bars.join(",");
+      if (this.barVecs?.pieces !== pieces || this.barVecs.xf !== xf || this.barVecs.bars !== barsKey) {
         const { samples, rate } = toMono(this.rendered, this.audio.sampleRate);
-        this.barVecs = { pieces, xf, vecs: await barVectorsInWorker(samples, rate, bars) };
+        this.barVecs = { pieces, xf, bars: barsKey, vecs: await barVectorsInWorker(samples, rate, bars) };
       }
       if (this.pieces !== pieces) return;
       const sim = similarity(this.barVecs.vecs);

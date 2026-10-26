@@ -586,7 +586,8 @@ song. Each show keeps its own copy, so moving beats in one show doesn't change t
 
 In the Music editor, the lane above the waveform shows each section in its colour.
 Click one to rename it or pick its colour (every section with the same name changes colour together),
-**✂ Shorten…** it (see [Suggest cuts](#suggest-cuts)), **Split at playhead**, **Merge with next** or **Delete** it, and drag the line between two sections to
+**✂ Shorten…** it (see [Suggest cuts](#suggest-cuts)),
+**Split at playhead**, **Merge with next** or **Delete** it, and drag the line between two sections to
 move it. Changes save with the song; a show that already uses the song picks them up with **From song**.
 Give a section **Notes** to tell **Describe it** what happens there or how you'd like it lit, such as
 "bells only, very gentle" or "big drop at the end, everything flashes"; the AI follows them.
