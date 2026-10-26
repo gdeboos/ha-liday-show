@@ -214,6 +214,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     near your house; **Start** only appears once they're close enough
   - Opening hours (set times or from sunset, chosen days), telling visitors when to come back; each
     show or playlist can also have dates every year, and shows as coming soon until then
+  - Guides for putting it online with Cloudflare Tunnel, Tailscale Funnel or your own proxy, or
+    keeping it to your Wi-Fi
   - Your own title, welcome, picture, colour theme or your own colours (with a readability check),
     spacing, corners, text size, falling snow and a link, with a live preview beside the settings
 

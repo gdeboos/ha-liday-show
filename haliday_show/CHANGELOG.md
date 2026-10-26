@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.179
+
+- The user guide now explains, step by step, how to reach the public page from the street (under
+  **The public page → Reaching the page from outside your home**): **Cloudflare Tunnel**, **Tailscale
+  Funnel**, your own reverse proxy, or Wi-Fi only, and why Home Assistant Cloud can't be used.
+
 ## 0.2.178
 
 - **Nearby only** is now stricter about who counts as being on your home Wi-Fi (and so isn't asked
