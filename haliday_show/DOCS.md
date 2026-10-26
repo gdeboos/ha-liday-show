@@ -536,6 +536,13 @@ hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them bac
 different take, then edit whatever you like. The colours start on the palette for the time of year
 (Halloween in October, Christmas in December…) when there is one.
 
+**Build up** (ticked to start with) lights the house the way you would by hand rather than lighting
+everything all the time. Quiet parts use only a few lights and leave the rest dark. Middling parts
+start with about half and bring in another every few bars. Only the loudest parts and the chorus use
+every light at once. A part of the song that comes back uses the same lights each time, and the parts
+of a split light (like **Pillars · Left** and **Pillars · Right**) go on and off together. Untick it to
+fill every light all the way through, as before. It works for the **AI** too.
+
 Lights on **Per bulb**, **App segments** or **Whole light only** can only change a few times a second,
 so Generate gives them looks that suit that: colour changes, fades and pulses of the whole light, still
 blocks and slow gradients, never faster than once a beat. The AI is told the same, and the effect ideas
