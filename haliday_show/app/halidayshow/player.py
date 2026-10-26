@@ -28,6 +28,7 @@ class Player:
         self.devices: dict = {}
         self.start = 0.0  # monotonic time of position 0
         self.offset = 0.0  # seconds to shift lights against audio (+ = lights later)
+        self.length: float | None = None  # loop the frames for this long (a playlist's block)
         self._task: asyncio.Task | None = None
 
     @property
@@ -40,17 +41,19 @@ class Player:
     def status(self) -> dict:
         return {"playing": self.playing, "show": self.show_id,
                 "position": round(self.position(), 3),
-                "duration": self.baked.duration if self.baked else 0}
+                "duration": self.length or (self.baked.duration if self.baked else 0)}
 
-    async def play(self, show_id: str, baked: Baked, devices: dict, position: float = 0.0,
-                   offset: float = 0.0):
+    async def play(self, show_id: str | None, baked: Baked, devices: dict, position: float = 0.0,
+                   offset: float = 0.0, length: float | None = None):
         """devices maps a track's device id to its stored config (ip, reverse, gradient, protocol, brightness).
 
-        Planned devices (no IP yet) are skipped.
+        Planned devices (no IP yet) are skipped. With `length`, the frames play round and round
+        for that many seconds (a playlist's building block) rather than once.
         """
         devices = {k: d for k, d in devices.items() if linked(d)}
         await self.stop(release=False)
         self.baked, self.show_id, self.devices, self.offset = baked, show_id, devices, offset
+        self.length = length
         claimed = set()
         for t in baked.tracks:
             d = devices.get(t.device)
@@ -92,8 +95,13 @@ class Player:
         frame_s = 1.0 / b.fps
         last = -1
         while True:
-            idx = int((time.monotonic() - self.start - self.offset) * b.fps)
-            if idx >= b.frames:
+            elapsed = time.monotonic() - self.start - self.offset
+            idx = int(elapsed * b.fps)
+            if self.length is not None:
+                if elapsed >= self.length:
+                    break
+                idx %= max(b.frames, 1)
+            elif idx >= b.frames:
                 break
             if idx >= 0 and idx != last:
                 for k, t in enumerate(b.tracks):
@@ -109,5 +117,5 @@ class Player:
                             dev.update(b.track_frame(t, idx))
                 last = idx
             await asyncio.sleep(frame_s / 4)
-        log.info("show %s finished", self.show_id)
+        log.info("%s finished", f"show {self.show_id}" if self.show_id else "block")
         self.output.release_all()

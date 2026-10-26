@@ -70,6 +70,7 @@ class Storage:
         self.shows_dir = config_dir / "shows"
         self.songs_dir = config_dir / "songs"
         self.drafts_dir = config_dir / "drafts"
+        self.blocks_dir = config_dir / "blocks"  # playlists' building blocks, baked (playlists.py)
         self.upload_dir = media_dir / "haliday_show"
         self.devices_file = config_dir / "devices.json"
         self.settings_file = config_dir / "settings.json"
@@ -169,6 +170,25 @@ class Storage:
             return (self.shows_dir / f"{show_id}.gshow").read_bytes()
         except FileNotFoundError:
             return None
+
+    def save_block(self, block_id: str, blob: bytes):
+        self.blocks_dir.mkdir(parents=True, exist_ok=True)
+        _write_atomic(self.blocks_dir / f"{block_id}.gshow", blob)
+
+    def load_block(self, block_id: str) -> bytes | None:
+        try:
+            return (self.blocks_dir / f"{block_id}.gshow").read_bytes()
+        except FileNotFoundError:
+            return None
+
+    def baked_blocks(self) -> list[str]:
+        return sorted(p.stem for p in self.blocks_dir.glob("*.gshow")) if self.blocks_dir.exists() else []
+
+    def prune_blocks(self, keep: set[str]):
+        """Deletes the frames of blocks no playlist has any more."""
+        for block_id in self.baked_blocks():
+            if block_id not in keep:
+                (self.blocks_dir / f"{block_id}.gshow").unlink(missing_ok=True)
 
     def new_show_id(self, name: str) -> str:
         base = slugify(name)

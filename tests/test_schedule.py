@@ -194,7 +194,8 @@ async def test_a_playlist_put_on_by_hand_before_its_start_carries_on(setup):
 def test_a_broken_schedule_in_the_file_keeps_the_playlist(tmp_path):
     storage = Storage(tmp_path / "c", tmp_path / "m")
     save(storage, {"id": "p", "name": "P", "shows": ["one"], "gap": 5, "schedule": {"on": True}})
-    assert playlists.load(storage) == [{"id": "p", "name": "P", "shows": ["one"], "gap": 5.0}]
+    assert playlists.load(storage) == [{"id": "p", "name": "P", "shows": ["one"], "gap": 5.0, "items": [
+        {"type": "show", "id": "one"}, {"type": "pause", "id": "pause-1", "seconds": 5.0}]}]
 
 
 SUNSET = {**EVENINGS, "start": "sunset", "offset": -15}
@@ -298,3 +299,41 @@ async def test_home_assistant_location_retried_soon_after_a_failure(setup):
     sched._ha_checked -= 61
     await sched.refresh_ha_location()
     assert sched.ha_where == (51.5, -0.13)
+
+
+def test_playlist_items_and_what_older_versions_read():
+    items = [{"type": "show", "id": "one"}, {"type": "pause", "id": "b1", "seconds": 8},
+             {"type": "colour", "id": "b2", "seconds": 10, "colour": "#FF8800"},
+             {"type": "off", "id": "b3", "seconds": 2.25},
+             {"type": "effect", "id": "b4", "seconds": 30, "effect": "twinkle",
+              "params": {"color": "#ffffff", "density": 30, "direction": "forward"}},
+             {"type": "show", "id": "two"}]
+    p = playlists.clean({"id": "p", "name": "P", "items": items})
+    assert p["shows"] == ["one", "two"] and p["gap"] == 8  # the pause after the first show
+    assert p["items"][2]["colour"] == "#ff8800" and p["items"][3]["seconds"] == 2.2
+    assert playlists.block_ids([p]) == {"b2", "b3", "b4"}  # a pause has nothing to bake
+    assert playlists.clean({"id": "p", "name": "P", "items": [{"type": "show", "id": "one"},
+                                                              {"type": "off", "id": "b", "seconds": 1}]})["gap"] == 0
+    for bad in ({"type": "colour", "id": "b", "seconds": 5, "colour": "red"},
+                {"type": "off", "id": "b", "seconds": 0},
+                {"type": "off", "id": "b", "seconds": 3601},
+                {"type": "off", "id": "Bad Id", "seconds": 1},
+                {"type": "disco", "id": "b", "seconds": 1},
+                {"type": "effect", "id": "b", "seconds": 1, "effect": "../x", "params": {}},
+                {"type": "effect", "id": "b", "seconds": 1, "effect": "twinkle", "params": {"x": [1]}},
+                {"type": "effect", "id": "b", "seconds": 1, "effect": "twinkle", "params": {"on": True}}):
+        assert playlists.clean({"id": "p", "name": "P", "items": [bad]}) is None, bad
+        # In the file, a broken block is dropped rather than the playlist.
+        assert playlists.clean({"id": "p", "name": "P", "items": [bad, items[0]]}, strict=False)["shows"] == ["one"]
+    assert playlists.clean({"id": "p", "name": "P", "items": [items[2], items[2]]}) is None  # same block twice
+    kept = playlists.clean({"id": "p", "name": "P", "items": [items[2], items[0], items[2]]}, strict=False)
+    assert [x["id"] for x in kept["items"]] == ["b2", "one"]  # in the file, the copy goes, not the playlist
+
+
+def test_taking_a_deleted_show_out_keeps_the_pauses_tidy():
+    legacy = playlists.from_shows(["a", "b", "c"], 5)
+    assert [x.get("id") for x in playlists.without_show(legacy, "b")] == ["a", "pause-1", "c", "pause-3"]
+    assert [x.get("id") for x in playlists.without_show(legacy, "a")] == ["b", "pause-2", "c", "pause-3"]
+    blocks = [{"type": "show", "id": "a"}, {"type": "off", "id": "x", "seconds": 1},
+              {"type": "show", "id": "b"}, {"type": "pause", "id": "p", "seconds": 1}]
+    assert [x["id"] for x in playlists.without_show(blocks, "b")] == ["a", "x", "p"]

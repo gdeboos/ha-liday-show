@@ -851,7 +851,9 @@ async def test_playlists_round_trip_validation_and_play(client):
     assert await (await client.get("/api/playlists")).json() == []
     good = [{"id": "night", "name": " Halloween night ", "shows": ["spooky", "gone"], "gap": 1000}]
     saved = await (await client.put("/api/playlists", json=good)).json()
-    assert saved == [{"id": "night", "name": "Halloween night", "shows": ["spooky", "gone"], "gap": 600}]
+    assert saved == [{"id": "night", "name": "Halloween night", "shows": ["spooky", "gone"], "gap": 600, "items": [
+        {"type": "show", "id": "spooky"}, {"type": "pause", "id": "pause-1", "seconds": 600},
+        {"type": "show", "id": "gone"}, {"type": "pause", "id": "pause-2", "seconds": 600}]}]
     assert await (await client.get("/api/playlists")).json() == saved
     for bad in ([{"id": "Bad Id", "name": "x", "shows": []}],
                 [{"id": "a", "name": "", "shows": []}],
@@ -1095,3 +1097,19 @@ async def test_public_page_settings_are_checked(client):
     view = await resp.json()
     assert view["on"] is True and view["per_phone"] == 1 and view["queue"] == 20
     assert view["items"] == [{"kind": "show", "id": "party", "from": "", "to": ""}]
+
+
+async def test_playlist_blocks_are_baked_kept_and_tidied_away(client):
+    items = [{"type": "show", "id": "spooky"}, {"type": "colour", "id": "glow-1", "seconds": 10, "colour": "#ff0000"}]
+    await client.put("/api/playlists", json=[{"id": "night", "name": "Night", "items": items}])
+    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 40)
+    assert (await client.put("/api/blocks/other/baked", data=blob)).status == 404  # not in a playlist
+    assert (await client.put("/api/blocks/glow-1/baked", data=b"junk")).status == 400
+    assert (await client.put("/api/blocks/glow-1/baked", data=blob)).status == 200
+    assert await (await client.get("/api/blocks")).json() == {"baked": ["glow-1"]}
+    # The same block can't be in two playlists: each has its own frames.
+    twice = [{"id": "a", "name": "A", "items": items}, {"id": "b", "name": "B", "items": items}]
+    assert (await client.put("/api/playlists", json=twice)).status == 400
+    # Taken out of the playlist, its frames go too.
+    await client.put("/api/playlists", json=[{"id": "night", "name": "Night", "items": items[:1]}])
+    assert await (await client.get("/api/blocks")).json() == {"baked": []}

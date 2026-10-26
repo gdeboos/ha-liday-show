@@ -16,6 +16,7 @@ import json
 import os
 from pathlib import Path
 
+from . import playlists
 from .storage import AUDIO_EXT, Storage, _write_atomic, valid_id
 
 ARCHIVED_SONGS = "archived-songs.json"
@@ -101,6 +102,10 @@ def delete_show(st: Storage, show_id: str, archived: bool = False):
         if isinstance(p, dict) and isinstance(p.get("shows"), list) and show_id in p["shows"]:
             p["shows"] = [s for s in p["shows"] if s != show_id]
             changed = True
+        if isinstance(p, dict) and isinstance(p.get("items"), list):
+            items = playlists.without_show(p["items"], show_id)
+            changed = changed or items != p["items"]
+            p["items"] = items
     if changed:
         st.save_settings(settings)
 

@@ -27,7 +27,11 @@ import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, length as fmtLength, showRows, songName } from "./showlist.js";
-import { MAX_SHOWS as PLAYLIST_MAX, dropIndex, inserted, moved, playlistRows, strip as playlistStrip, summary as playlistSummary } from "./playlisteditor.js";
+import {
+  BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
+  MAX_SHOWS as PLAYLIST_MAX, bakeKey, blockLabel as playlistBlockLabel, blockShow, dropIndex, fits as fitsPlaylist, inserted,
+  itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
+} from "./playlisteditor.js";
 import { filterRows, songKey, songRows } from "./songlist.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
@@ -323,6 +327,7 @@ async function saveDevices() {
   try {
     app.deviceList = await api("api/devices", { method: "PUT", json: app.deviceList });
     indexDevices();
+    keepBlocksReady();
     status("Lights saved", "saved", "lights");
   } catch (e) { status(`Couldn't save your lights: ${e.message}`, true, "lights"); return; }
   for (const d of app.deviceList) retestLight(d);
@@ -2976,10 +2981,11 @@ async function refreshPlaylistStatus() {
       + (scheduleState.sunset ? ` Sunset today is at ${scheduleState.sunset}.` : "");
   }
   renderSunPlace();
-  const now = st.playlist ? { ...st.playlist, show: st.playing ? st.show : null, name: st.playlist.name } : null;
+  const now = st.playlist ? { ...st.playlist, show: st.playing ? st.show : null, block: st.block || null, name: st.playlist.name } : null;
   playlistPlaying = now;
   const nowText = !now ? ""
-    : `▶ Playing ${now.name}: ${now.show ? (playlistShows.find((x) => x.id === now.show)?.name || now.show) : "pausing before the next show"}`
+    : `▶ Playing ${now.name}: ${now.show ? (playlistShows.find((x) => x.id === now.show)?.name || now.show)
+      : now.block ? playlistBlockLabel(now.block) : "a pause"}`
       + (st.playlist?.finishing ? ". Its time is up, so it stops when this show ends." : "");
   for (const p of document.querySelectorAll("[data-playlist-now]")) p.textContent = nowText;
   markPlaylistPlaying();
@@ -3002,7 +3008,8 @@ function markPlaylistPlaying() {
   if (!pl || $("view-playlist").hidden) return;
   const playing = playlistPlaying?.id === pl.id;
   for (const li of document.querySelectorAll("#pl-order > li[data-k]")) {
-    li.classList.toggle("current", playing && playlistPlaying.show === li.dataset.show);
+    li.classList.toggle("current", playing && (li.dataset.show ? playlistPlaying.show === li.dataset.show
+      : !!li.dataset.blockId && playlistPlaying.block?.id === li.dataset.blockId));
   }
   const play = $("pl-play");
   const empty = !pl.shows.some((id) => byId[id]?.baked);
@@ -3211,6 +3218,7 @@ function savePlaylists() {
       await api("api/playlists", { method: "PUT", json: playlists });
       savePlaylistsTimer = null;
       status("Playlists saved", "saved", "playlists");
+      bakeBlocks();
     } catch (e) { status(`Couldn't save playlists: ${e.message}`, true, "playlists"); }
   }, 300);
 }
@@ -3220,6 +3228,69 @@ async function flushPlaylists() {
   clearTimeout(savePlaylistsTimer);
   savePlaylistsTimer = null;
   await api("api/playlists", { method: "PUT", json: playlists });
+  await bakeBlocks();
+}
+
+// A playlist's colour, off and effect blocks play baked frames, as shows do, made here from
+// effects.js. They're made again whenever a block or your lights change, or when HA-liday Show has
+// none for a block (after an import, say). Which settings each was made with is kept in this
+// browser; another browser makes them again once.
+let blocksBaking = null, blocksAgain = false;
+const lightsKey = () => JSON.stringify((app.deviceList || []).map((d) => [d.id, d.segments, d.parts, d.whole]));
+
+function bakeBlocks() {
+  if (blocksBaking) { blocksAgain = true; return blocksBaking; }
+  blocksBaking = (async () => {
+    do {
+      blocksAgain = false;
+      try { await bakeBlocksOnce(); } catch (e) { status(`Couldn't get a playlist's blocks ready: ${e.message}`, true, "playlists"); }
+    } while (blocksAgain);
+    blocksBaking = null;
+  })();
+  return blocksBaking;
+}
+
+async function bakeBlocksOnce() {
+  if (!playlistsLoaded || !app.deviceList?.length) return;
+  const { baked } = await api("api/blocks");
+  const have = new Set(baked);
+  const made = prefs.get("blockBakes", {});
+  const lk = lightsKey();
+  const todo = playlists.flatMap((p) => itemsOf(p)).filter((x) => ["off", "colour", "effect"].includes(x.type)
+    && (!have.has(x.id) || made[x.id] !== bakeKey(x, lk)));
+  for (const block of todo) {
+    const lights = app.deviceList;
+    const probe = blockShow(block, lights, PLAYLIST_MAX_BLOCK_S);
+    const trackOf = (id) => probe.tracks.find((tr) => tr.device === id);
+    const look = (t) => lights.flatMap((l) => [...composeLight(l, trackOf, t)]);
+    const loop = loopLength(block, FPS, look);
+    const blob = bake(blockShow(block, lights, loop), app.devices, FPS);
+    const path = `api/blocks/${encodeURIComponent(block.id)}/baked`;
+    try {
+      if (blob.byteLength > PART) await sendParts(api, `${path}/part`, new Blob([blob]));
+      else await api(path, { method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" } });
+    } catch (e) {
+      if (/no such building block/.test(e.message)) continue; // taken out meanwhile
+      throw e;
+    }
+    made[block.id] = bakeKey(block, lk);
+  }
+  // Forget blocks that have gone.
+  const ids = new Set(playlists.flatMap((p) => itemsOf(p)).map((x) => x.id));
+  for (const id of Object.keys(made)) if (!ids.has(id)) delete made[id];
+  prefs.set("blockBakes", made);
+}
+
+// Whenever HA-liday Show opens in a browser, and when your lights change, so blocks a schedule
+// starts are ready even if the Playlist editor hasn't been opened since.
+async function keepBlocksReady() {
+  try {
+    if (!playlistsLoaded) {
+      const found = await api("api/playlists");
+      if (!playlistsLoaded) { playlists = found; playlistsLoaded = true; }
+    }
+    await bakeBlocks();
+  } catch { /* the Playlist editor tries again */ }
 }
 
 let openPlaylistId = null; // the playlist open in the Playlist editor
@@ -3292,6 +3363,7 @@ async function togglePlaylist(pl) {
     if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" });
     else {
       await flushPlaylists();
+      await bakeBlocks();
       await api(`api/playlists/${encodeURIComponent(pl.id)}/play`, { method: "POST" });
       status(`Playing ${pl.name}. It carries on until you press Stop, even with this page closed.`);
     }
@@ -3312,7 +3384,7 @@ function newPlaylist() {
   const taken = new Set(playlists.map((p) => p.name.toLowerCase()));
   let name = "My playlist";
   for (let k = 2; taken.has(name.toLowerCase()); k++) name = `My playlist ${k}`;
-  const pl = { id: `pl-${Date.now().toString(36)}`, name, shows: [], gap: 5 };
+  const pl = { id: `pl-${Date.now().toString(36)}`, name, shows: [], gap: 0, items: [] };
   playlists.push(pl);
   savePlaylists();
   openPlaylistEditor(pl.id);
@@ -3325,8 +3397,9 @@ function renderPlaylistEditor() {
     if (playlistsLoaded) { app.playlistChosen = false; showView("playlist", { push: false }); }
     return;
   }
+  pl.items = itemsOf(pl);
   if (document.activeElement !== $("pl-name")) $("pl-name").value = pl.name;
-  if (document.activeElement !== $("pl-gap")) $("pl-gap").value = pl.gap;
+  renderBlockPalette();
   renderPlaylistBin();
   renderPlaylistOrder();
   $("pl-schedule").replaceChildren(scheduleEditor(pl)); // the list was just read again, so a new pl
@@ -3334,10 +3407,9 @@ function renderPlaylistEditor() {
 
 const showHue = (k) => (k * 67 + 200) % 360; // each place in the order has its own colour, on the strip too
 
-function showCard(show, id) {
+function cardShell(cls) {
   const li = document.createElement("li");
-  li.className = "pl-card";
-  li.dataset.show = id;
+  li.className = `pl-card ${cls}`;
   const grip = document.createElement("span");
   grip.className = "pl-grip";
   grip.textContent = "⠿";
@@ -3345,6 +3417,13 @@ function showCard(show, id) {
   grip.setAttribute("aria-hidden", "true");
   const text = document.createElement("div");
   text.className = "pl-card-text";
+  li.append(grip, text);
+  return [li, text];
+}
+
+function showCard(show, id) {
+  const [li, text] = cardShell("pl-show");
+  li.dataset.show = id;
   const name = document.createElement("b");
   const shelved = !show && playlistArchived.find((x) => x.id === id);
   name.textContent = show ? show.name : shelved ? shelved.name : "Deleted show";
@@ -3355,8 +3434,37 @@ function showCard(show, id) {
       : [songName(show.song) || "No song", fmtLength(show.duration), show.baked ? "" : "not saved yet, so skipped"].filter(Boolean).join(" · ");
   li.classList.toggle("unplayable", !show?.baked);
   text.append(name, details);
-  li.append(grip, text);
   return li;
+}
+
+// The swatch at the left of a block's card, as on the strip.
+function blockSwatch(type, colour) {
+  const s = document.createElement("span");
+  s.className = `pl-swatch pl-swatch-${type}`;
+  if (type === "colour") s.style.background = colour;
+  s.setAttribute("aria-hidden", "true");
+  return s;
+}
+
+// Building blocks, to drag into the running order like a show.
+function renderBlockPalette() {
+  $("pl-blocks").replaceChildren(...Object.entries(PLAYLIST_BLOCKS).map(([type, b]) => {
+    const [li, text] = cardShell("pl-block-card");
+    li.dataset.block = type;
+    text.before(blockSwatch(type, "#ff0000"));
+    const name = document.createElement("b");
+    name.textContent = b.label;
+    const hint = document.createElement("span");
+    hint.className = "hint";
+    hint.textContent = b.hint;
+    text.append(name, hint);
+    const add = button("+", () => changeOrder(inserted(openPlaylist().items, newBlock(type)), true), "ghost pl-add");
+    add.title = "Add at the end";
+    add.setAttribute("aria-label", `Add ${b.label} at the end`);
+    li.append(add);
+    li.addEventListener("pointerdown", (e) => dragCard(e, li, () => newBlock(type), null));
+    return li;
+  }));
 }
 
 function renderPlaylistBin() {
@@ -3365,89 +3473,205 @@ function renderPlaylistBin() {
   const q = $("pl-filter").value.trim().toLowerCase();
   const shows = [...playlistShows].sort((a, b) => a.name.localeCompare(b.name))
     .filter((s) => !q || s.name.toLowerCase().includes(q));
-  const full = pl.shows.length >= PLAYLIST_MAX;
   $("pl-bin").replaceChildren(...shows.map((s) => {
     const li = showCard(s, s.id);
-    const add = button("+", () => changeOrder(inserted(openPlaylist().shows, s.id), true), "ghost pl-add");
-    add.title = full ? `A playlist holds up to ${PLAYLIST_MAX} shows` : "Add at the end";
+    const add = button("+", () => changeOrder(inserted(openPlaylist().items, { type: "show", id: s.id }), true), "ghost pl-add");
+    add.title = "Add at the end";
     add.setAttribute("aria-label", `Add ${s.name} at the end`);
-    add.disabled = full;
     li.append(add);
-    li.addEventListener("pointerdown", (e) => dragCard(e, li, s.id, null));
+    li.addEventListener("pointerdown", (e) => dragCard(e, li, () => ({ type: "show", id: s.id }), null));
     return li;
   }));
   if (!shows.length) {
     $("pl-bin").innerHTML = `<li class="hint pl-empty">${playlistShows.length ? "No shows match that." : "No shows yet. Make one in the Show editor first."}</li>`;
   }
+  markFull();
+}
+
+// + is greyed out once a playlist is full.
+function markFull() {
+  const pl = openPlaylist();
+  if (!pl) return;
+  for (const b of document.querySelectorAll("#pl-bin .pl-add, #pl-blocks .pl-add")) {
+    const show = !!b.closest("#pl-bin");
+    b.disabled = !fitsPlaylist(pl.items, { type: show ? "show" : "pause" });
+    b.title = b.disabled ? (show ? `A playlist holds up to ${PLAYLIST_MAX} shows` : "This playlist is full") : "Add at the end";
+  }
+}
+
+// A block's own settings, on its card in the running order.
+function blockEditor(block) {
+  const box = document.createElement("div");
+  box.className = "pl-block-edit";
+  const changed = (redraw = false) => {
+    savePlaylists();
+    if (redraw) renderPlaylistOrder();
+    else drawPlaylistStrip();
+  };
+  const secs = document.createElement("input");
+  secs.type = "number";
+  secs.min = 0.5;
+  secs.max = PLAYLIST_MAX_BLOCK_S;
+  secs.step = 0.5;
+  secs.value = block.seconds;
+  secs.setAttribute("aria-label", "Seconds");
+  secs.addEventListener("change", () => {
+    const v = Math.min(Math.max(Math.round(Number(secs.value) * 10) / 10 || 0, 0.5), PLAYLIST_MAX_BLOCK_S);
+    block.seconds = v;
+    secs.value = v;
+    changed(true);
+  });
+  const sl = document.createElement("label");
+  sl.append(secs, " seconds");
+  box.append(sl);
+  if (block.type === "colour") {
+    const c = document.createElement("input");
+    c.type = "color";
+    c.value = block.colour;
+    c.setAttribute("aria-label", "Colour");
+    c.addEventListener("change", () => { block.colour = c.value; changed(true); });
+    box.append(c);
+  }
+  if (block.type === "effect") {
+    const eff = document.createElement("select");
+    eff.setAttribute("aria-label", "Effect");
+    for (const k of PLAYLIST_BLOCK_EFFECTS) eff.add(new Option(EFFECTS[k].label, k, false, k === block.effect));
+    eff.addEventListener("change", () => {
+      block.effect = eff.value;
+      block.params = defaultParams(eff.value);
+      changed(true);
+    });
+    const style = document.createElement("select");
+    style.setAttribute("aria-label", "Style");
+    const presets = presetsFor(block.effect);
+    const clip = { effect: block.effect, ...defaultParams(block.effect), ...block.params };
+    style.add(new Option("Style…", ""));
+    presets.forEach((p, k) => style.add(new Option(p.label || p.name, String(k), false, matchesPreset(p, clip))));
+    style.hidden = !presets.length;
+    style.addEventListener("change", () => {
+      const p = presets[Number(style.value)];
+      if (!p) return;
+      block.params = { ...block.params, ...presetParams(p, clip) };
+      changed();
+    });
+    const colours = document.createElement("select");
+    colours.setAttribute("aria-label", "Colours");
+    colours.add(new Option("Colours…", ""));
+    allPalettes().forEach((p, k) => colours.add(new Option(p.name, String(k))));
+    colours.hidden = !paletteKeys(block.effect).length;
+    colours.addEventListener("change", () => {
+      const p = allPalettes()[Number(colours.value)];
+      if (!p) return;
+      const c = { effect: block.effect, ...block.params };
+      applyPalette(c, p.colors);
+      for (const k of paletteKeys(block.effect)) block.params[k] = c[k];
+      changed(true);
+    });
+    const sw = document.createElement("span");
+    sw.className = "pl-colours";
+    for (const k of paletteKeys(block.effect)) {
+      const s = document.createElement("span");
+      s.style.background = clip[k];
+      sw.append(s);
+    }
+    box.append(eff, style, colours, sw);
+  }
+  return box;
+}
+
+function drawPlaylistStrip() {
+  const pl = openPlaylist();
+  if (!pl) return;
+  const byId = playlistShowById();
+  $("pl-summary").textContent = playlistSummary(pl.items, byId);
+  const s = playlistStrip(pl.items, byId);
+  $("pl-strip").hidden = !s.blocks.length;
+  $("pl-strip").replaceChildren(...s.blocks.map((b) => {
+    const el = document.createElement("span");
+    el.className = `pl-block pl-block-${b.type}`;
+    el.style.left = `${b.start * 100}%`;
+    el.style.width = `${b.width * 100}%`;
+    if (b.type === "show") el.style.setProperty("--hue", showHue(b.k));
+    if (b.type === "colour") el.style.background = b.colour;
+    el.title = `${b.k + 1}. ${b.name}${b.type === "show" ? `, ${fmtLength(b.seconds)}` : ""}`;
+    if (b.width > 0.08 && b.type === "show") el.textContent = b.name;
+    return el;
+  }));
+  $("pl-strip").setAttribute("aria-label", `What plays each time round: ${s.blocks.map((b) => b.name).join(", ")}`);
 }
 
 function renderPlaylistOrder() {
   const pl = openPlaylist();
   if (!pl) return;
   const byId = playlistShowById();
-  $("pl-summary").textContent = playlistSummary(pl.shows, byId, pl.gap);
-  const s = playlistStrip(pl.shows, byId, pl.gap);
-  $("pl-strip").hidden = !s.blocks.length;
-  $("pl-strip").replaceChildren(...s.blocks.map((b) => {
-    const el = document.createElement("span");
-    el.className = "pl-block";
-    el.style.left = `${b.start * 100}%`;
-    el.style.width = `${b.width * 100}%`;
-    el.style.setProperty("--hue", showHue(b.k));
-    el.title = `${b.k + 1}. ${b.name}, ${fmtLength(byId[b.id].duration)}`;
-    if (b.width > 0.08) el.textContent = b.name;
-    return el;
-  }));
-  $("pl-strip").setAttribute("aria-label", `What plays each time round: ${s.blocks.map((b) => b.name).join(", ")}`);
+  drawPlaylistStrip();
   const order = $("pl-order");
-  order.replaceChildren(...pl.shows.map((id, k) => {
-    const li = showCard(byId[id], id);
+  const items = pl.items;
+  order.replaceChildren(...items.map((item, k) => {
+    let li;
+    if (item.type === "show") {
+      li = showCard(byId[item.id], item.id);
+      li.style.setProperty("--hue", showHue(k));
+    } else {
+      const [card, text] = cardShell(`pl-block-card pl-in-order pl-${item.type}`);
+      li = card;
+      li.dataset.blockId = item.id;
+      text.before(blockSwatch(item.type, item.colour));
+      const name = document.createElement("b");
+      name.textContent = playlistBlockLabel(item);
+      const hint = document.createElement("span");
+      hint.className = "hint";
+      hint.textContent = PLAYLIST_BLOCKS[item.type]?.hint || "";
+      text.append(name, hint, blockEditor(item));
+    }
     li.dataset.k = k;
-    li.style.setProperty("--hue", showHue(k));
+    const what = li.querySelector("b").textContent;
     const n = document.createElement("span");
     n.className = "pl-number";
     n.textContent = k + 1;
     li.querySelector(".pl-grip").after(n);
-    const up = button("↑", () => changeOrder(moved(openPlaylist().shows, k, k - 1)), "ghost");
+    const up = button("↑", () => changeOrder(moved(openPlaylist().items, k, k - 1)), "ghost");
     up.title = "Play earlier";
-    up.setAttribute("aria-label", `Play ${li.querySelector("b").textContent} earlier`);
+    up.setAttribute("aria-label", `Play ${what} earlier`);
     up.disabled = k === 0;
-    const down = button("↓", () => changeOrder(moved(openPlaylist().shows, k, k + 2)), "ghost");
+    const down = button("↓", () => changeOrder(moved(openPlaylist().items, k, k + 2)), "ghost");
     down.title = "Play later";
-    down.setAttribute("aria-label", `Play ${li.querySelector("b").textContent} later`);
-    down.disabled = k === pl.shows.length - 1;
-    const rm = button("✕", () => changeOrder(openPlaylist().shows.filter((_, j) => j !== k)), "ghost");
+    down.setAttribute("aria-label", `Play ${what} later`);
+    down.disabled = k === items.length - 1;
+    const rm = button("✕", () => changeOrder(openPlaylist().items.filter((_, j) => j !== k)), "ghost");
     rm.title = "Take out of the playlist";
-    rm.setAttribute("aria-label", `Take ${li.querySelector("b").textContent} out`);
+    rm.setAttribute("aria-label", `Take ${what} out`);
     const tools = document.createElement("span");
     tools.className = "pl-tools";
     tools.append(up, down, rm);
     li.append(tools);
-    li.addEventListener("pointerdown", (e) => dragCard(e, li, id, k));
+    li.addEventListener("pointerdown", (e) => dragCard(e, li, null, k));
     return li;
   }));
-  if (!pl.shows.length) order.innerHTML = `<li class="pl-empty">Drag shows here</li>`;
-  for (const b of document.querySelectorAll("#pl-bin .pl-add")) b.disabled = pl.shows.length >= PLAYLIST_MAX;
+  if (!items.length) order.innerHTML = `<li class="pl-empty">Drag shows and blocks here</li>`;
+  markFull();
   markPlaylistPlaying();
 }
 
-function changeOrder(shows, adding = false) {
+function changeOrder(items, adding = false) {
   const pl = openPlaylist();
   if (!pl) return;
-  if (shows.length === pl.shows.length && shows.every((x, k) => x === pl.shows[k])) {
-    if (adding) status(`A playlist holds up to ${PLAYLIST_MAX} shows`, "hint");
+  if (items.length === pl.items.length && items.every((x, k) => x === pl.items[k])) {
+    if (adding) status(`A playlist holds up to ${PLAYLIST_MAX} shows and ${PLAYLIST_MAX_ITEMS} things in all`, "hint");
     return;
   }
-  pl.shows = shows;
+  pl.items = items;
+  pl.shows = items.filter((x) => x.type === "show").map((x) => x.id);
   savePlaylists();
   renderPlaylistOrder();
 }
 
-// Dragging a show card: from Your shows into the running order, within it, or back out of it.
+// Dragging a card: a show or block into the running order, within it, or back out of it. `make`
+// gives what a card from Your shows or Building blocks adds; `from` is a running-order card's place.
 // Pointer events rather than the browser's own dragging, so it works with a finger too; a finger
 // drags by the grip, so the lists still scroll.
-function dragCard(e, card, id, from) {
-  if (e.button !== 0 || e.target.closest("button, input")) return;
+function dragCard(e, card, make, from) {
+  if (e.button !== 0 || e.target.closest("button, input, select, label")) return;
   if (e.pointerType !== "mouse" && !e.target.closest(".pl-grip")) return;
   e.preventDefault();
   const x0 = e.clientX, y0 = e.clientY;
@@ -3502,8 +3726,8 @@ function dragCard(e, card, id, from) {
     document.body.classList.remove("pl-drag-on");
     const pl = openPlaylist();
     if (!drop || !pl) return;
-    if (at !== null) changeOrder(from === null ? inserted(pl.shows, id, at) : moved(pl.shows, from, at), from === null);
-    else if (from !== null) changeOrder(pl.shows.filter((_, k) => k !== from));
+    if (at !== null) changeOrder(from === null ? inserted(pl.items, make(), at) : moved(pl.items, from, at), from === null);
+    else if (from !== null) changeOrder(pl.items.filter((_, k) => k !== from));
   };
   const up = (ev) => end(ev, true);
   const cancel = (ev) => end(ev, false);
@@ -6570,14 +6794,6 @@ function wire() {
     pl.name = v;
     savePlaylists();
   });
-  $("pl-gap").addEventListener("change", () => {
-    const pl = openPlaylist();
-    if (!pl) return;
-    pl.gap = Math.min(Math.max(Math.round(Number($("pl-gap").value)) || 0, 0), 600);
-    $("pl-gap").value = pl.gap;
-    savePlaylists();
-    renderPlaylistOrder();
-  });
   $("pl-filter").addEventListener("input", renderPlaylistBin);
   $("pl-play").addEventListener("click", () => { const pl = openPlaylist(); if (pl) togglePlaylist(pl); });
   $("pl-delete").addEventListener("click", async () => {
@@ -6771,6 +6987,7 @@ async function init() {
   });
   try {
     await loadDevices();
+    keepBlocksReady();
     loadSpeakers();
     loadModels();
     loadPalettes();

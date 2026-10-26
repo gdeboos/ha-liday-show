@@ -16,6 +16,8 @@ def _fill(config):
     (config / "shows" / "carol.json").write_text(json.dumps({"name": "Carol"}))
     (config / "shows" / "carol.gshow").write_bytes(b"baked")
     (config / "songs" / ("a" * 20 + ".json")).write_text("{}")
+    (config / "blocks").mkdir()
+    (config / "blocks" / "glow-1.gshow").write_bytes(b"baked")  # a playlist's building block
     (config / ".imported.json").write_text("{}")  # the old-name import marker
 
 
@@ -35,11 +37,11 @@ def test_export_then_restore_gives_everything_back(tmp_path):
     data = backup.export(config, "1.0")
     names = set(zipfile.ZipFile(io.BytesIO(data)).namelist())
     assert names == {backup.MANIFEST, "devices.json", "settings.json", "house.jpg", "shows/carol.json",
-                     "shows/carol.gshow", f"songs/{'a' * 20}.json"}
+                     "shows/carol.gshow", f"songs/{'a' * 20}.json", "blocks/glow-1.gshow"}
     backup.clear(config)
     assert not backup.has_data(config)
     assert (config / ".imported.json").exists(), "the import marker must survive a fresh start"
-    assert backup.restore(config, data) == 6
+    assert backup.restore(config, data) == 7
     assert json.loads((config / "devices.json").read_text())[0]["name"] == "Roof"
     assert (config / "shows" / "carol.gshow").read_bytes() == b"baked"
     assert (config / "house.jpg").read_bytes() == b"\xff\xd8photo"

@@ -1226,11 +1226,52 @@ async def put_playlists(request):
                                       "shows and a pause in seconds")
     if len({p["id"] for p in clean}) != len(clean):
         raise web.HTTPBadRequest(text="each playlist needs its own id")
+    blocks = [x["id"] for p in clean for x in p["items"] if x["type"] != "pause" and x["type"] != "show"]
+    if len(set(blocks)) != len(blocks):
+        raise web.HTTPBadRequest(text="each building block needs its own id")
     storage = request.app[STORAGE]
     settings = storage.load_settings()
     settings["playlists"] = clean
     storage.save_settings(settings)
+    storage.prune_blocks(set(blocks))
     return web.json_response(clean)
+
+
+# A playlist's building blocks (playlists.py): the editor bakes their frames, as it does a show's.
+def _block_id(request) -> str:
+    block_id = request.match_info["id"]
+    if not valid_id(block_id) or block_id not in playlists.block_ids(playlists.load(request.app[STORAGE])):
+        raise web.HTTPNotFound(text="no such building block; save the playlist first")
+    return block_id
+
+
+async def get_blocks(request):
+    return web.json_response({"baked": request.app[STORAGE].baked_blocks()})
+
+
+def _save_block(request, block_id: str, blob: bytes):
+    try:
+        decode(blob)
+    except BakedError as e:
+        raise web.HTTPBadRequest(text=str(e))
+    request.app[STORAGE].save_block(block_id, blob)
+    return web.json_response({"ok": True, "bytes": len(blob)})
+
+
+async def put_block(request):
+    block_id = _block_id(request)
+    return _save_block(request, block_id, await request.read())
+
+
+async def put_block_part(request):
+    block_id = _block_id(request)
+    storage = request.app[STORAGE]
+    part, size, done = await _receive_part(request, storage.blocks_dir)
+    if not done:
+        return web.json_response({"received": size})
+    blob = part.read_bytes()
+    part.unlink(missing_ok=True)
+    return _save_block(request, block_id, blob)
 
 
 async def get_schedule(request):
@@ -1823,6 +1864,9 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/playlists", get_playlists)
     r.add_put("/api/playlists", put_playlists)
     r.add_post("/api/playlists/{id}/play", play_playlist)
+    r.add_get("/api/blocks", get_blocks)
+    r.add_put("/api/blocks/{id}/baked", put_block)
+    r.add_post("/api/blocks/{id}/baked/part", put_block_part)
     r.add_get("/api/schedule", get_schedule)
     r.add_get("/api/public", get_public)
     r.add_put("/api/public", put_public)

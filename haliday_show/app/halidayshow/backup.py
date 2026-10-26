@@ -48,6 +48,9 @@ def _allowed(name: str) -> bool:
         return p.suffix in (".json", ".gshow") and valid_id(p.stem)
     if len(parts) == 2 and parts[0] == "songs":
         return bool(_SONG_INFO.match(parts[1]))
+    if len(parts) == 2 and parts[0] == "blocks":  # playlists' building blocks, baked
+        p = Path(parts[1])
+        return p.suffix == ".gshow" and valid_id(p.stem)
     if len(parts) == 2 and parts[0] == "drafts":  # Music editor drafts
         p = Path(parts[1])
         return p.suffix == ".json" and valid_id(p.stem)
