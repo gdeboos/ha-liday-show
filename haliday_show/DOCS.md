@@ -486,6 +486,10 @@ or deletes one. The song you last opened in the Music editor has a **Last edited
    added, so any show that picks it gets them straight away. **Add it as it is** leaves that for later
    (**Detect** in the Music editor). Press **Add song**.
 
+Songs of any size up to 200 MB can be added. Home Assistant won't pass on more than 16 MB at once, so
+a bigger song goes up in pieces, with the window showing how far it's got. If something goes wrong
+while a window is open, the message shows inside the window as well as at the top.
+
 ### Archiving and deleting
 
 **Remove…**, on a show or a song, opens a window that says where it's used and offers two ways to

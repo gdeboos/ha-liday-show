@@ -968,3 +968,24 @@ async def test_song_info_keeps_section_marks(client, tmp_path):
     assert got[0]["autoNotes"] is True and "named" not in got[0]
     assert got[1]["named"] is True and "autoNotes" not in got[1]
     assert "autoNotes" not in got[2] and "named" not in got[2]  # no notes to mark; "yes" isn't true
+
+
+async def test_songs_upload_in_parts(client, tmp_path):
+    song = bytes(range(256)) * 4096 * 3  # 3 MB
+    url = "/api/audio/part?upload=0123456789abcdef"
+    assert (await client.post(f"{url}&offset=0", data=song[:1_000_000])).status == 200
+    # A repeated or missing part is refused rather than spliced in the wrong place.
+    assert (await client.post(f"{url}&offset=5", data=b"x")).status == 409
+    assert (await client.post(f"{url}&offset=1000000", data=song[1_000_000:2_000_000])).status == 200
+    listed = await (await client.get("/api/audio")).json()
+    assert not any(".part" in a["path"] for a in listed)  # not a song until it's whole
+    resp = await client.post(f"{url}&offset=2000000&done=1&name=Big%20Song.wav", data=song[2_000_000:])
+    ref = await resp.json()
+    assert resp.status == 200 and ref == {"source": "media", "path": "haliday_show/Big Song.wav"}
+    assert (tmp_path / "media" / "haliday_show" / "Big Song.wav").read_bytes() == song
+    assert not list((tmp_path / "media" / "haliday_show").glob(".upload-*"))
+    assert (await client.post("/api/audio/part?upload=../x&offset=0", data=b"x")).status == 400
+    assert (await client.post(f"{url}&offset=zero", data=b"x")).status == 400
+    await client.post(f"{url}&offset=0", data=b"x")
+    assert (await client.post(f"{url}&offset=1&done=1&name=notes.txt", data=b"y")).status == 400
+    assert (await client.post(f"{url}&offset=0", data=b"z" * (server.MAX_PART + 1))).status == 413

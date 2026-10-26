@@ -774,6 +774,61 @@ async def upload_audio(request):
     return web.json_response({"source": "media", "path": str(dest.relative_to(storage.media_dir))})
 
 
+# Songs in pieces: Home Assistant's ingress proxy refuses any request over 16 MB, so the editor sends
+# a bigger song in parts. Each part says where it goes (offset) so a lost or repeated part is caught;
+# the last one names the file, which only then appears in the songs folder.
+MAX_PART = 12 * 1024 * 1024
+_UPLOAD_ID = re.compile(r"^[0-9a-f]{16,64}$")
+
+
+async def upload_audio_part(request):
+    q = request.query
+    upload_id = q.get("upload", "")
+    if not _UPLOAD_ID.match(upload_id):
+        raise web.HTTPBadRequest(text="bad upload id")
+    try:
+        offset = int(q.get("offset", ""))
+    except ValueError:
+        raise web.HTTPBadRequest(text="offset must be a number")
+    storage = request.app[STORAGE]
+    storage.upload_dir.mkdir(parents=True, exist_ok=True)
+    part = storage.upload_dir / f".upload-{upload_id}.part"
+    if offset == 0:
+        _clear_old_parts(storage.upload_dir)
+        part.write_bytes(b"")
+    elif not part.exists() or part.stat().st_size != offset:
+        raise web.HTTPConflict(text="that part doesn't follow on from the last one; start the upload again")
+    size = offset
+    with part.open("ab") as f:
+        got = 0
+        while chunk := await request.content.read(1 << 16):
+            got += len(chunk)
+            size += len(chunk)
+            if got > MAX_PART or size > MAX_UPLOAD:
+                f.close()
+                part.unlink(missing_ok=True)
+                raise web.HTTPRequestEntityTooLarge(max_size=MAX_UPLOAD, actual_size=size)
+            f.write(chunk)
+    if q.get("done") != "1":
+        return web.json_response({"received": size})
+    dest = storage.upload_path(q.get("name", ""))
+    if dest is None:
+        part.unlink(missing_ok=True)
+        raise web.HTTPBadRequest(text="not an audio file")
+    os.replace(part, dest)
+    return web.json_response({"source": "media", "path": str(dest.relative_to(storage.media_dir))})
+
+
+def _clear_old_parts(folder: Path, older_than_s: float = 86400):
+    """Pieces of uploads that never finished (the page closed part-way), after a day."""
+    for p in folder.glob(".upload-*.part"):
+        try:
+            if time.time() - p.stat().st_mtime > older_than_s:
+                p.unlink()
+        except OSError:
+            pass
+
+
 MAX_MARKS = 50000
 MAX_SECTIONS = 500
 MAX_NOTES = 300  # a section's notes, for the AI
@@ -1443,6 +1498,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/shows/{id}/restore", restore_show)
     r.add_get("/api/audio", list_audio)
     r.add_post("/api/audio", upload_audio)
+    r.add_post("/api/audio/part", upload_audio_part)
     r.add_get("/api/audio/file", get_audio)
     r.add_get("/api/songs", list_songs)
     r.add_get("/api/songs/archived", list_archived_songs)

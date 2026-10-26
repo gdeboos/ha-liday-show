@@ -7,6 +7,7 @@
 
 import { analyseInWorker, toMono } from "./analysis.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
+import { uploadSong } from "./upload.js";
 import { SECTION_ALPHA, fmtTime, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 
@@ -444,11 +445,9 @@ export class MusicEditor {
   }
 
   async upload(file) {
-    const form = new FormData();
-    form.append("file", file);
     this.host.status(`Uploading ${file.name}…`);
     try {
-      const ref = await this.host.api("api/audio", { method: "POST", body: form });
+      const ref = await uploadSong(this.host.api, file);
       await this.host.songsChanged();
       this.fillSongLists();
       return ref;
@@ -729,14 +728,14 @@ export class MusicEditor {
     this.stop();
     this.host.status(`Saving ${name}…`);
     const blob = new Blob([encodeWav(this.rendered, this.audio.sampleRate)], { type: "audio/wav" });
-    const form = new FormData();
-    form.append("file", blob, name);
     // Beats and sections that followed the edit carry over, with their names, colours and notes, as
     // long as the result is all from the base song; anything spliced in is detected afresh.
     const baseKey = this.base && keyOf(this.base);
     const carry = this.shown && this.pieces.every((p) => p.src === baseKey) ? this.shown : null;
     try {
-      const ref = await this.host.api("api/audio", { method: "POST", body: form });
+      const ref = await uploadSong(this.host.api, blob, name, (done) => {
+        if (done < 1) this.host.status(`Saving ${name}… ${Math.round(done * 100)}%`);
+      });
       // Carry on from the saved file, so Detect and further edits work on it.
       const key = keyOf(ref);
       this.sources[key] = this.rendered;
