@@ -72,3 +72,10 @@ test("Start only shows to phones by the lights, and the page says why not", asyn
   assert.match(whereText({ state: "checking" }).text, /may ask to share your location/);
   assert.equal(whereText({ state: "near" }).text, "");
 });
+
+test("the footer link says your words, or the site's name", async () => {
+  const { linkText } = await import("../../haliday_show/app/halidayshow/static/public/public.js");
+  assert.equal(linkText({ link: "" }), "");
+  assert.equal(linkText({ link: "https://www.justgiving.com/page/x", link_text: "" }), "justgiving.com");
+  assert.equal(linkText({ link: "https://example.org", link_text: "Donate to the hospice" }), "Donate to the hospice");
+});

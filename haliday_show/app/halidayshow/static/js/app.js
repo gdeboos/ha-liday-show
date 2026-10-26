@@ -3800,6 +3800,34 @@ function renderPublicQueue(view) {
   $("pub-address").hidden = !$("pub-address").textContent;
 }
 
+function renderPublicLook() {
+  const view = publicView, look = view.look;
+  const keep = (id, value) => { if (document.activeElement !== $(id)) $(id).value = value; };
+  keep("pub-title", look.title);
+  keep("pub-welcome", look.welcome);
+  keep("pub-link-url", look.link);
+  keep("pub-link-text", look.link_text);
+  $("pub-theme").value = look.theme;
+  $("pub-mode").value = look.mode;
+  $("pub-snow").checked = look.snow;
+  for (const r of document.querySelectorAll("input[name=pub-picture]")) {
+    r.checked = r.value === look.picture;
+    if (r.value === "house") r.disabled = !view.has_house_photo;
+    if (r.value === "upload") r.disabled = !view.has_picture;
+  }
+  $("pub-picture-hint").textContent = !view.has_house_photo && !view.has_picture
+    ? "Add a photo under Setup → House, or choose a picture of your own."
+    : !view.has_house_photo ? "There's no house photo yet (Setup → House)." : "";
+  const src = look.picture === "house" ? "api/house/photo" : look.picture === "upload" ? "api/public/picture" : "";
+  const preview = $("pub-picture-preview");
+  if (src && preview.dataset.src !== `${src}#${view.has_picture}`) {
+    preview.dataset.src = `${src}#${view.has_picture}`;
+    preview.src = `${src}?t=${Date.now()}`;
+  }
+  preview.hidden = !src;
+  $("pub-open-page").href = visitorLink(view, location.hostname);
+}
+
 function renderPublicGuard() {
   const view = publicView;
   const keep = (id, value) => { if (document.activeElement !== $(id)) $(id).value = value; };
@@ -3815,6 +3843,7 @@ function renderPublicGuard() {
 function renderPublicItems() {
   const view = publicView;
   renderPublicGuard();
+  renderPublicLook();
   const dayPick = (k, key, label) => {
     const it = view.items[k];
     const day = document.createElement("select"), month = document.createElement("select");
@@ -3936,14 +3965,25 @@ function savePublic() {
   publicView.address = $("pub-address-input").value.trim().replace(/\/+$/, "");
   publicView.nearby = $("pub-nearby").checked;
   if (Number($("pub-distance").value)) publicView.distance = Number($("pub-distance").value);
+  if (shownPage === "public") {
+    const picked = document.querySelector("input[name=pub-picture]:checked");
+    publicView.look = {
+      ...publicView.look,
+      title: $("pub-title").value, welcome: $("pub-welcome").value, theme: $("pub-theme").value,
+      mode: $("pub-mode").value, snow: $("pub-snow").checked, picture: picked ? picked.value : publicView.look.picture,
+      link: $("pub-link-url").value.trim(), link_text: $("pub-link-text").value,
+    };
+  }
   if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);
   if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue, address, nearby, distance } = publicView;
+    const { on, items, per_phone, queue, address, nearby, distance, look } = publicView;
     try {
-      const view = await api("api/public", { method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance } });
+      const view = await api("api/public", {
+        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look },
+      });
       if (pubPending === 1) {
         publicView = view;
         if (shownPage === "public") renderPublicItems();
@@ -3964,6 +4004,22 @@ function wirePublic() {
   $("pub-open").addEventListener("click", () => showView("public"));
   $("pub-per-phone").addEventListener("change", savePublic);
   for (const id of ["pub-address-input", "pub-nearby", "pub-distance"]) $(id).addEventListener("change", savePublic);
+  $("pub-look").addEventListener("change", (e) => { if (e.target.id !== "pub-picture-file") savePublic(); });
+  $("pub-picture-file").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      await pubSaving;
+      status("Uploading the picture…");
+      const view = await api("api/public/picture", { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      publicView = { ...view, items: publicView.items };
+      renderPublicItems();
+      status("Public page picture saved", "saved", "public");
+    } catch (e2) {
+      status(`Couldn't save the picture: ${e2.message}`, true, "public");
+    }
+  });
   $("pub-copy").addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText($("pub-link").textContent);

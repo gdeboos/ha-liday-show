@@ -42,6 +42,7 @@ _CODE = re.compile(r"^[A-Za-z0-9]{6,16}$")
 CODE_CHARS = "abcdefghjkmnpqrstuvwxyz23456789"  # no 0/o, 1/l/i, so it can be typed from a sign
 MIN_DISTANCE_M, MAX_DISTANCE_M = 25, 2000
 MAX_LEEWAY_M = 150  # a phone's own guess at how far out it might be, up to this much, counts in its favour
+_LINK = re.compile(r"^https?://[A-Za-z0-9.-]+(:\d{1,5})?(/[^\s]*)?$")
 _ADDRESS = re.compile(r"^https?://[A-Za-z0-9.-]+(:\d{1,5})?(/[^\s?#]*)?$")
 WHERE = web.AppKey("where", object)  # () -> (lat, lon) of the house, or None
 
@@ -111,7 +112,27 @@ def clean(p) -> dict:
             "code": code if _CODE.match(code) else "",
             "nearby": p.get("nearby") is not False,
             "distance": min(max(distance, MIN_DISTANCE_M), MAX_DISTANCE_M),
-            "address": address if len(address) <= 200 and _ADDRESS.match(address) else ""}
+            "address": address if len(address) <= 200 and _ADDRESS.match(address) else "",
+            "look": clean_look(p.get("look"))}
+
+
+THEMES = ("plain", "christmas", "frosty", "halloween")
+MODES = ("auto", "light", "dark")
+PICTURES = ("none", "house", "upload")
+
+
+def clean_look(x) -> dict:
+    """How the visitors' page looks. Text is shown as typed (never as HTML)."""
+    x = x if isinstance(x, dict) else {}
+    text = lambda key, top: " ".join(str(x.get(key) or "").split())[:top] if key != "welcome" else \
+        "\n".join(line.strip() for line in str(x.get(key) or "").strip().splitlines())[:top]
+    link = str(x.get("link") or "").strip()
+    pick = lambda key, allowed: x.get(key) if x.get(key) in allowed else allowed[0]
+    return {"title": text("title", 60), "welcome": text("welcome", 300),
+            "picture": pick("picture", PICTURES), "theme": pick("theme", THEMES), "mode": pick("mode", MODES),
+            "snow": x.get("snow") is True,
+            "link": link if len(link) <= 300 and _LINK.match(link) else "",
+            "link_text": text("link_text", 80)}
 
 
 def new_code() -> str:
@@ -224,8 +245,10 @@ def _ticket(value) -> str:
 def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None = None,
           needs_location: bool = False) -> dict:
     p = load(storage) or clean(None)
+    look = p["look"]
     if p["on"] and not _code_ok(p, code):
-        return {"open": True, "locked": True}
+        # Only the colours without the code: the title, words and picture are for visitors.
+        return {"open": True, "locked": True, "look": {"theme": look["theme"], "mode": look["mode"]}}
     picks = choices(storage) if p["on"] else []
     st = runner.status()
     waits = runner.queue_waits()
@@ -250,7 +273,26 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "per_phone": p["per_phone"],
         "mine": mine,
         "needs_location": needs_location,
+        "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text")},
+                 "picture": _picture_version(storage, look)},
     }
+
+
+def _picture_version(storage: Storage, look: dict) -> int:
+    """0 for no picture, else a number that changes with the picture, so open pages pick up a new one."""
+    path = _picture(storage, look)
+    try:
+        return int(path.stat().st_mtime) if path else 0
+    except OSError:
+        return 0
+
+
+def _picture(storage: Storage, look: dict) -> Path | None:
+    if look["picture"] == "house":
+        return storage.house_photo()
+    if look["picture"] == "upload":
+        return storage.public_picture()
+    return None
 
 
 def _code_ok(p: dict, code) -> bool:
@@ -304,6 +346,16 @@ async def page(request):
 def _state(request, ticket, code):
     p = load(request.app[STORAGE]) or clean(None)
     return state(request.app[STORAGE], request.app[RUNNER], ticket, code, _needs_location(request, p))
+
+
+async def get_picture(request):
+    p = load(request.app[STORAGE]) or clean(None)
+    path = _picture(request.app[STORAGE], p["look"]) if p["on"] and _code_ok(p, request.query.get("code")) else None
+    if path is None:
+        raise web.HTTPNotFound()
+    resp = web.FileResponse(path)
+    resp.headers["Cache-Control"] = "private, max-age=86400"  # the page asks with ?v=, which changes with it
+    return resp
 
 
 async def get_state(request):
@@ -399,6 +451,7 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None) -> web
     r.add_get("/", page)
     r.add_get("/{name:(public\\.js|public\\.css)}", page)
     r.add_get("/api/state", get_state)
+    r.add_get("/picture", get_picture)
     r.add_post("/api/request", post_request)
     r.add_post("/api/cancel", post_cancel)
     r.add_post("/api/near", post_near)

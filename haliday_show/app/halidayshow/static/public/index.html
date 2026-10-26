@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="plain" data-mode="auto">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,11 @@
 </head>
 <body>
 <main class="pp">
-  <h1>🎄 Light show</h1>
+  <header class="pp-header">
+    <img id="pp-picture" class="pp-picture" alt="" hidden>
+    <h1 id="pp-title">🎄 Light show</h1>
+    <p id="pp-welcome" class="pp-welcome" hidden></p>
+  </header>
   <section id="pp-locked" class="pp-card" hidden>
     <p class="pp-big">Scan the code on the sign to start a show.</p>
     <p class="pp-hint">This page only works from the link in the code.</p>
@@ -37,6 +41,8 @@
     <h2 id="pp-soon-head" hidden>Coming soon</h2>
     <div id="pp-soon" class="pp-list"></div>
   </div>
+  <p id="pp-footer" class="pp-footer" hidden><a id="pp-link" rel="noopener noreferrer" target="_blank"></a></p>
 </main>
+<canvas id="pp-snow" class="pp-snow" aria-hidden="true" hidden></canvas>
 </body>
 </html>
