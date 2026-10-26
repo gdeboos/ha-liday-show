@@ -298,7 +298,7 @@ export class House {
       const blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.85));
       await this.api("api/house/photo", { method: "PUT", body: blob, headers: { "Content-Type": "image/jpeg" } });
       await this.loadPhoto();
-      this.status("House photo saved");
+      this.status("House photo saved", "saved");
     } catch (e) {
       this.status(`Couldn't use that photo: ${e.message}`, true);
     }

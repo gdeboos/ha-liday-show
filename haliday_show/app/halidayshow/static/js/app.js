@@ -22,6 +22,7 @@ import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
+import { StatusLine } from "./statusline.js";
 import { Timeline, fmtTime } from "./timeline.js";
 
 const $ = (id) => document.getElementById(id);
@@ -56,11 +57,12 @@ document.addEventListener("toggle", (e) => {
   if (d instanceof HTMLDetailsElement && d.matches(".howto[data-howto]")) prefs.set(`howto.${d.dataset.howto}`, d.open);
 }, true);
 
+// A message in the top bar. Pass error = true for something that went wrong (it stays until pressed),
+// or "saved" when something has just been saved (it lights up, then settles to the time).
+let statusLine;
 function status(msg, error = false) {
-  const el = $("status");
-  el.textContent = msg;
-  el.classList.toggle("error", error);
-  if (!error && msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 4000);
+  statusLine ||= new StatusLine($("status"));
+  statusLine.show(msg, error === "saved" ? "saved" : error ? "error" : "info");
 }
 
 // bars and sections come from Detect: bar start times, and [{start, end, label, energy}].
@@ -275,6 +277,7 @@ async function saveDevices() {
   try {
     app.deviceList = await api("api/devices", { method: "PUT", json: app.deviceList });
     indexDevices();
+    status("Lights saved", "saved");
   } catch (e) { status(`Couldn't save devices: ${e.message}`, true); return; }
   for (const d of app.deviceList) retestLight(d);
 }
@@ -2433,7 +2436,7 @@ function savePresets() {
     try {
       await api("api/presets", { method: "PUT",
         json: app.myPresets.map(({ name, effect, params }) => ({ name, effect, params })) });
-      status("Presets saved");
+      status("Presets saved", "saved");
     } catch (e) { status(`Couldn't save presets: ${e.message}`, true); }
   }, 400);
 }
@@ -2489,7 +2492,7 @@ function savePresetFrom(clip) {
     app.myPresets.push(asPreset({ name: finalName, effect: clip.effect, params }));
     savePresets();
     renderPresetsTab();
-    status(`Saved ★ ${finalName} as a ${fx.label} preset`);
+    status(`Saved ★ ${finalName} as a ${fx.label} preset`, "saved");
     renderInspector();
   });
   dlg.addEventListener("close", () => dlg.remove());
@@ -2800,7 +2803,7 @@ function savePalettes() {
   savePalettesTimer = setTimeout(async () => {
     try {
       await api("api/palettes", { method: "PUT", json: app.palettes });
-      status("Palettes saved");
+      status("Palettes saved", "saved");
       renderInspector();
     } catch (e) { status(`Couldn't save palettes: ${e.message}`, true); }
   }, 300);
@@ -2975,7 +2978,7 @@ async function saveSunPlace(e) {
   try {
     if (!lat.trim() || !String(lon).trim()) throw new Error("Type both a latitude and a longitude");
     scheduleState = await api("api/location", { method: "PUT", json: { lat: lat.trim(), lon: String(lon).trim() } });
-    status("Saved where you are, for sunset times");
+    status("Saved where you are, for sunset times", "saved");
   } catch (err) { status(err.message, true); }
   document.activeElement?.blur();
   refreshPlaylistStatus();
@@ -3147,7 +3150,7 @@ function savePlaylists() {
     try {
       await api("api/playlists", { method: "PUT", json: playlists });
       savePlaylistsTimer = null;
-      status("Playlists saved");
+      status("Playlists saved", "saved");
     } catch (e) { status(`Couldn't save playlists: ${e.message}`, true); }
   }, 300);
 }
@@ -3801,7 +3804,7 @@ async function autoSave() {
   if (!app.dirty) return;
   renderSaveState("Saving…");
   saving = save().finally(() => { saving = null; });
-  try { await saving; } finally {
+  try { await saving; status("Show saved", "saved"); } finally {
     renderSaveState();
     if (app.dirty) scheduleAutoSave(); // edited while saving
   }
@@ -3892,7 +3895,7 @@ async function saveClicked() {
     status("Saving…");
     if (saving) await saving;
     await save();
-    status("Saved");
+    status("Show saved", "saved");
   } catch (e) { status(`Save failed: ${e.message}`, true); }
   renderSaveState();
 }

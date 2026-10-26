@@ -62,8 +62,23 @@ body {
   /* Wide tables (lights, speakers) scroll sideways inside the page instead of widening it. */
   table.devices { display: block; overflow-x: auto; max-width: 100%; }
 }
-.status { margin-left: auto; color: var(--muted); font-size: 13px; }
-.status.error { color: var(--danger); }
+/* The message spot in the top bar (statusline.js): lit green just after a save, then a quiet
+   "✓ Saved · 08:14"; red and pressable for an error, which stays until pressed. */
+.status { margin-left: auto; color: var(--muted); font-size: 13px; display: inline-flex; align-items: center;
+  gap: 6px; padding: 4px 10px; border-radius: 8px; border: 1px solid transparent; min-height: 30px;
+  transition: background-color .6s ease, color .6s ease, border-color .6s ease; }
+.status:empty { padding: 0; min-height: 0; }
+.status .mark { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  font-size: 12px; font-weight: 700; flex: none; }
+.status.saved { color: var(--text); font-weight: 600; background: color-mix(in srgb, var(--ok) 22%, var(--panel));
+  border-color: color-mix(in srgb, var(--ok) 50%, var(--panel)); }
+.status.saved .mark { background: var(--ok); color: var(--panel); }
+.status.saved .when { color: var(--muted); font-weight: 400; }
+.status.settled .mark { width: auto; height: auto; color: var(--ok); }
+.status.error { color: var(--text); font-weight: 600; cursor: pointer;
+  background: color-mix(in srgb, var(--danger) 20%, var(--panel)); border-color: var(--danger); }
+.status.error .mark { background: var(--danger); color: var(--panel); }
+.status.error:hover { border-color: var(--text); }
 .hint.error { color: var(--danger); }
 
 .view { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }

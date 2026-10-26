@@ -752,6 +752,11 @@ needed). With **Auto save** ticked in the show's settings (the default), the sho
 after each change and when you switch shows; the note next to it says whether everything is saved.
 A new show is saved once it has its first effect. Auto save waits while a show is playing.
 
+Whenever something saves (a show, your lights, palettes, presets, playlists or the house photo), the
+top right of the page lights up green for a few seconds, then settles to a small **✓ Saved** with the
+time, so you can always see when something last saved. If a save fails, or anything else goes wrong,
+the message shows in red and stays until you press it.
+
 ### While you edit
 
 The Playback panel chooses where the song plays. This is kept in your browser
