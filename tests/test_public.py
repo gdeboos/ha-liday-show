@@ -425,3 +425,68 @@ def test_qr_code_reads_back():
     import segno
     qr = segno.make("https://lights.example.com/?c=abc23456", error="m", micro=False)
     assert qr.error == "M" and qr.designator  # a real QR code, not a micro one phones can't read
+
+
+async def test_guessing_the_code_cant_lock_visitors_out(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "queue": 5,
+                                          "nearby": False})
+    # Wrong codes from many addresses (as if through a tunnel) don't use up everyone's limit.
+    for k in range(public.MAX_POSTS_PER_MIN + 5):
+        status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party",
+                                                                "code": "wrongcode"},
+                                      code=False, headers={"X-Forwarded-For": f"203.0.113.{k % 250}, 10.0.0.{k % 7}"})
+        assert status in (403, 429)
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"},
+                                  headers={"X-Forwarded-For": "198.51.100.7"})
+    assert status == 200
+
+
+async def test_each_visitor_has_their_own_share(client, monkeypatch):
+    monkeypatch.setattr(public, "MAX_POSTS_PER_CLIENT_MIN", 3)
+    monkeypatch.setattr(public, "MAX_STATE_PER_CLIENT_MIN", 4)
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}]})
+    one, other = {"CF-Connecting-IP": "198.51.100.1"}, {"CF-Connecting-IP": "198.51.100.2"}
+    for _ in range(3):
+        await _visitor(client, "/api/cancel", {"ticket": T1, "id": "x"}, headers=one)
+    status, _, _ = await _visitor(client, "/api/cancel", {"ticket": T1, "id": "x"}, headers=one)
+    assert status == 429
+    status, _, _ = await _visitor(client, "/api/cancel", {"ticket": T2, "id": "x"}, headers=other)
+    assert status == 200
+    for _ in range(4):
+        assert (await _visitor(client, "/api/state", headers=one))[0] == 200
+    assert (await _visitor(client, "/api/state", headers=one))[0] == 429
+    assert (await _visitor(client, "/api/state", headers=other))[0] == 200
+
+
+def test_who_is_asking():
+    class R:
+        def __init__(self, remote, headers):
+            self.remote, self.headers = remote, headers
+    assert public.client(R("192.168.1.5", {"X-Forwarded-For": "1.2.3.4, 5.6.7.8"})) == "5.6.7.8"
+    assert public.client(R("172.30.32.1", {"CF-Connecting-IP": "9.9.9.9"})) == "9.9.9.9"
+    # Straight from the internet, a visitor's own headers aren't believed.
+    assert public.client(R("81.2.69.160", {"X-Forwarded-For": "1.1.1.1"})) == "81.2.69.160"
+
+
+async def test_visitors_get_the_picture_without_its_hidden_details(client):
+    st = client.app[server.STORAGE]
+    exif = b"Exif\0\0MM\0*\0\0\0\x08\0\x01\x01\x12\0\x03\0\0\0\x01\0\x06\0\0\0\0\0\0GPS 52.24N"
+    photo = (b"\xff\xd8" + b"\xff\xe1" + (len(exif) + 2).to_bytes(2, "big") + exif
+             + b"\xff\xda\0\x08\x01\x01\0\0\x3f\0\x12\x34\xff\xd9")
+    st.save_house_photo(photo, ".jpg")
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
+                                          "look": {"picture": "house"}})
+    status, body, headers = await _visitor(client, "/picture")
+    assert status == 200 and headers["Content-Type"] == "image/jpeg"
+    assert b"GPS" not in body and b"\x01\x12" in body  # which way up stays
+    assert st.house_photo().read_bytes() == photo  # your own copy is kept as it was
+
+
+async def test_settings_are_read_again_when_they_change(client):
+    st = client.app[server.STORAGE]
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "look": {"title": "One"}})
+    assert public.load(st)["look"]["title"] == "One"
+    public.load(st)["look"]["title"] = "changed by mistake"
+    assert public.load(st)["look"]["title"] == "One"  # each caller gets its own copy
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "look": {"title": "Two"}})
+    assert public.load(st)["look"]["title"] == "Two"

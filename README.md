@@ -321,6 +321,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/sun.py                  Sunset times, for playlists that start at sunset
   app/halidayshow/runner.py               Starts shows on a speaker or for the browser, plays playlists and visitors' requests
   app/halidayshow/public.py               The public page on its own port: visitors' choices and their queue
+  app/halidayshow/imagemeta.py            Takes the GPS location and other hidden details out of photos visitors see
   app/halidayshow/scenes.py               Govee scene library lookup (experimental scenes)
   app/halidayshow/storage.py              Shows, settings, songs and the house photo on disk
   app/halidayshow/backup.py               Export, import and start afresh, with copies kept first

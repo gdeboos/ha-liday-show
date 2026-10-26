@@ -13,6 +13,7 @@ network must be within "distance" metres of the house (settings' location, else 
 phone sends a random ticket it keeps, which is how "one request per phone" is counted: mobile
 networks put many phones behind one internet address.
 """
+import copy
 import io
 import ipaddress
 import logging
@@ -26,7 +27,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import ai, playlists, schedule
+from . import ai, imagemeta, playlists, schedule
 from .runner import Runner
 from .storage import Storage, valid_id
 
@@ -38,6 +39,11 @@ MAX_PER_PHONE = 5
 MAX_QUEUE = 20
 MAX_ITEMS = 200
 MAX_POSTS_PER_MIN = 120  # for everyone together: a script can't flood the queue faster than people
+# Each visitor's own share, counted by internet address: a phone sends one request now and then, and
+# polls its state every 3 s, so these leave room for a few phones on one mobile network address.
+MAX_POSTS_PER_CLIENT_MIN = 20
+MAX_STATE_PER_CLIENT_MIN = 120
+MAX_CLIENTS = 5000  # addresses remembered at once, so a flood of them can't use up the memory
 _TICKET = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 _CODE = re.compile(r"^[A-Za-z0-9]{6,16}$")
 CODE_CHARS = "abcdefghjkmnpqrstuvwxyz23456789"  # no 0/o, 1/l/i, so it can be typed from a sign
@@ -51,6 +57,7 @@ RUNNER = web.AppKey("runner", Runner)
 STORAGE = web.AppKey("storage", Storage)
 POSTS = web.AppKey("posts", list)
 NEAR = web.AppKey("near", list)
+CLIENTS = web.AppKey("clients", dict)
 MAX_NEAR_PER_MIN = 3000  # each open page checks its location every 10 s or so while it's on screen
 
 
@@ -217,10 +224,26 @@ def is_local(request: web.Request) -> bool:
     return ip.is_private or ip.is_loopback
 
 
+_LOADED: dict = {}  # config folder -> (the settings file's identity, cleaned settings)
+
+
 def load(storage: Storage) -> dict | None:
-    """The public settings, or None if they've never been saved (the port stays closed)."""
+    """The public settings, or None if they've never been saved (the port stays closed).
+
+    Every phone asks every few seconds, so they're read again only when the settings file changes."""
+    try:
+        st = storage.settings_file.stat()
+        key = (st.st_mtime_ns, st.st_size, st.st_ino)
+    except OSError:
+        key = None
+    known = _LOADED.get(storage.config_dir)
+    if key is not None and known and known[0] == key:
+        return copy.deepcopy(known[1])
     p = storage.load_settings().get("public")
-    return clean(p) if isinstance(p, dict) else None
+    out = clean(p) if isinstance(p, dict) else None
+    if key is not None:
+        _LOADED[storage.config_dir] = (key, out)
+    return copy.deepcopy(out)
 
 
 def _baked(storage: Storage, show_id: str) -> bool:
@@ -406,21 +429,78 @@ def _state(request, ticket, code):
                  request.app[WHERE]())
 
 
+_PICTURE_TYPES = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+_STRIPPED: dict = {}  # picture's path -> (its identity, the copy without its hidden details)
+
+
+def stripped_picture(path: Path) -> bytes:
+    """The picture without its GPS location and other hidden details, worked out once per picture."""
+    st = path.stat()
+    key = (st.st_mtime_ns, st.st_size)
+    known = _STRIPPED.get(path)
+    if known and known[0] == key:
+        return known[1]
+    data = imagemeta.strip(path.read_bytes(), path.suffix.lower())
+    _STRIPPED.clear()  # one picture at a time is all the page shows
+    _STRIPPED[path] = (key, data)
+    return data
+
+
 async def get_picture(request):
+    _limit_client(request, "state", MAX_STATE_PER_CLIENT_MIN)
     p = load(request.app[STORAGE]) or clean(None)
     path = picture_path(request.app[STORAGE], p["look"]) if p["on"] and _code_ok(p, request.query.get("code")) else None
-    if path is None:
+    if path is None or path.suffix.lower() not in _PICTURE_TYPES:
         raise web.HTTPNotFound()
-    resp = web.FileResponse(path)
-    resp.headers["Cache-Control"] = "private, max-age=86400"  # the page asks with ?v=, which changes with it
-    return resp
+    try:
+        data = stripped_picture(path)
+    except OSError:
+        raise web.HTTPNotFound()
+    # The page asks with ?v=, which changes with the picture.
+    return web.Response(body=data, content_type=_PICTURE_TYPES[path.suffix.lower()],
+                        headers={"Cache-Control": "private, max-age=86400"})
 
 
 async def get_state(request):
+    _limit_client(request, "state", MAX_STATE_PER_CLIENT_MIN)
     ticket = request.query.get("ticket")
     if ticket is not None:
         ticket = _ticket(ticket)
     return _no_store(web.json_response(_state(request, ticket, request.query.get("code"))))
+
+
+def client(request) -> str:
+    """Who's asking, by internet address. Behind your tunnel or proxy (which reaches the app from your
+    own network) that's the address it passes on; otherwise the connection's own, as a visitor could
+    write any address into those headers themselves."""
+    remote = request.remote or ""
+    try:
+        proxied = ipaddress.ip_address(remote).is_private or ipaddress.ip_address(remote).is_loopback
+    except ValueError:
+        proxied = False
+    if proxied:
+        # A forwarded list's last entry is the one your own proxy added; the first could be anything.
+        for h in ("CF-Connecting-IP", "X-Real-IP", "X-Forwarded-For"):
+            if (value := request.headers.get(h, "").split(",")[-1].strip()):
+                return value[:64]
+    return remote
+
+
+def _limit_client(request, kind: str, limit: int):
+    """Each visitor's own share of requests a minute, so one can't crowd out everyone else."""
+    now, seen = time.monotonic(), request.app[CLIENTS]
+    key = (kind, client(request))
+    times = [t for t in seen.get(key, ()) if now - t < 60]
+    if len(times) >= limit:
+        seen[key] = times
+        raise web.HTTPTooManyRequests(text="That's a lot of asking. Wait a minute and try again.")
+    if key not in seen and len(seen) >= MAX_CLIENTS:
+        for k in [k for k, ts in seen.items() if not ts or now - ts[-1] >= 60]:
+            del seen[k]
+        if len(seen) >= MAX_CLIENTS:
+            seen.clear()
+    times.append(now)
+    seen[key] = times
 
 
 def _throttle(app, key=POSTS, limit=MAX_POSTS_PER_MIN):
@@ -442,7 +522,7 @@ async def _body(request) -> dict:
 
 
 async def post_request(request):
-    _throttle(request.app)
+    _limit_client(request, "post", MAX_POSTS_PER_CLIENT_MIN)
     body = await _body(request)
     ticket = _ticket(body.get("ticket"))
     storage, runner = request.app[STORAGE], request.app[RUNNER]
@@ -451,6 +531,8 @@ async def post_request(request):
         raise web.HTTPConflict(text="There are no shows right now.")
     if not _code_ok(p, body.get("code")):
         raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
+    # Only requests with the code count towards everyone's limit, so guessing can't lock visitors out.
+    _throttle(request.app)
     if not hours_now(p, request.app[WHERE]())["open"]:
         raise web.HTTPConflict(text="Shows can't be started right now. Come back when we're open.")
     if _needs_location(request, p):
@@ -475,6 +557,7 @@ async def post_request(request):
 async def post_near(request):
     """Whether this phone is by the lights, asked when the page opens so the Start buttons only show
     for people who could use them. Requests are checked again when they're made."""
+    _limit_client(request, "state", MAX_STATE_PER_CLIENT_MIN)
     body = await _body(request)
     p = load(request.app[STORAGE]) or clean(None)
     if not _code_ok(p, body.get("code")):
@@ -491,11 +574,12 @@ async def post_near(request):
 
 
 async def post_cancel(request):
-    _throttle(request.app)
+    _limit_client(request, "post", MAX_POSTS_PER_CLIENT_MIN)
     body = await _body(request)
     ticket = _ticket(body.get("ticket"))
     if not _code_ok(load(request.app[STORAGE]) or clean(None), body.get("code")):
         raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
+    _throttle(request.app)
     request.app[RUNNER].cancel_request(str(body.get("id", "")), ticket)
     return _no_store(web.json_response(_state(request, ticket, body.get("code"))))
 
@@ -507,6 +591,7 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None) -> web
     app[WHERE] = where
     app[POSTS] = []
     app[NEAR] = []
+    app[CLIENTS] = {}
     r = app.router
     r.add_get("/", page)
     r.add_get("/{name:(public\\.js|public\\.css|colours\\.js)}", page)
