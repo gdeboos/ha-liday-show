@@ -875,3 +875,37 @@ a.button { text-decoration: none; }
 .palette-edit-colours code { font-size: 13px; color: var(--muted); min-width: 5.5em; }
 .palette-edit-colours li button { padding: 2px 10px; }
 .edit-dialog .field-label { font-weight: 600; margin-bottom: -8px; }
+
+/* Import show: their lights on the left, a picker for yours on the right (sharing.js). */
+.import-dialog { width: min(860px, calc(100vw - 32px)); }
+.im-lights { display: flex; flex-direction: column; gap: 10px; }
+.im-head, .im-row { display: grid; grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr); gap: 8px 12px; align-items: start; }
+.im-head { padding: 0 12px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.im-row { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.im-light, .im-pick { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.im-light > div, .im-pick > div { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.im-light b { font-size: 15px; }
+.im-pick select { width: 100%; }
+.im-arrow { color: var(--muted); padding-top: 10px; text-align: center; }
+.im-on { display: none; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.im-why { font-size: 12px; }
+.im-why.ok { color: var(--ok); }
+.im-why.warn { color: var(--warn); }
+.im-map { width: 72px; height: 46px; flex: none; }
+.im-map .frame { fill: none; stroke: var(--line); stroke-width: 1.2; }
+.im-map.empty .frame { stroke-dasharray: 3 3; }
+.im-map .other { fill: none; stroke: var(--muted); stroke-width: 1; opacity: .45; }
+.im-map .this { fill: var(--accent); stroke: var(--accent); stroke-width: 1.5; }
+.im-parts { grid-column: 3; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 8px; align-items: center;
+  padding: 8px 10px; background: var(--track); border-radius: 6px; font-size: 13px; }
+.im-parts-head { grid-column: 1 / -1; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.im-count { margin-right: 4px; }
+@media (max-width: 720px) {
+  .im-head, .im-arrow { display: none; }
+  .im-row { grid-template-columns: minmax(0, 1fr); }
+  .im-parts { grid-column: 1; }
+  .im-on { display: block; }
+  .im-pick > .im-map { display: none; }
+  .import-dialog .form-dialog-foot { flex-wrap: wrap; }
+  .im-count { flex-basis: 100%; text-align: center; order: -1; }
+}

@@ -70,7 +70,8 @@
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg>Your shows</h2>
   <p class="hint">Open a show to change it. Nothing in a show changes until you open it.</p>
   <div class="show-list" data-show-list></div>
-  <p><button type="button" class="primary" data-show-new>+ New show</button></p>
+  <p class="group"><button type="button" class="primary" data-show-new>+ New show</button>
+    <button type="button" data-show-import title="Add a show someone shared with you, from its .halidayshow file">Import show…</button></p>
   <details class="archived" data-show-archived hidden>
     <summary>Archived shows</summary>
     <p class="hint">Out of the way, but kept: playlists skip them and automations can't start them until
@@ -264,6 +265,36 @@
       </div>
     </form>
   </dialog>
+  <!-- Import show (sharing.js): step 1 its name and song, step 2 which of your lights plays each of theirs. -->
+  <dialog id="import-dialog" class="effect-dialog form-dialog import-dialog" aria-labelledby="im-title">
+    <form id="im-form" method="dialog">
+      <div class="effect-dialog-head"><h3 id="im-title">Import show</h3>
+        <button type="button" class="ghost" data-im="cancel" aria-label="Close">✕</button></div>
+      <div class="form-dialog-body" id="im-step-1">
+        <p class="hint ns-step">Step 1 of 2: name and song</p>
+        <label class="field">Name <input id="im-name" type="text" maxlength="80" autocomplete="off"></label>
+        <div class="field"><span id="im-song-label">Song</span>
+          <p class="hint" id="im-song-hint"></p>
+          <div id="im-songs" class="song-list" role="radiogroup" aria-labelledby="im-song-label"></div></div>
+        <p id="im-length" hidden></p>
+      </div>
+      <div class="form-dialog-body" id="im-step-2" hidden>
+        <p class="hint ns-step">Step 2 of 2: match your lights</p>
+        <p id="im-song-note" hidden></p>
+        <p class="hint" id="im-lights-hint"></p>
+        <div id="im-lights" class="im-lights"></div>
+      </div>
+      <div class="form-dialog-foot">
+        <button type="button" class="ghost" id="im-add-song" title="Add a song to HA-liday Show, detected as it's added">+ Add a song…</button>
+        <button type="button" class="ghost" id="im-back" hidden>← Back</button>
+        <span class="spacer"></span>
+        <span class="hint im-count" id="im-count" role="status"></span>
+        <button type="button" data-im="cancel">Cancel</button>
+        <button type="submit" class="primary" id="im-next">Next →</button>
+      </div>
+    </form>
+  </dialog>
+  <input type="file" id="im-file" accept=".halidayshow,application/json" hidden>
   <audio id="audio" preload="auto"></audio>
 </main>
 
@@ -530,7 +561,8 @@
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg>Shows</h2>
   <p class="hint">Open a show to change it. Nothing in a show changes until you open it.</p>
   <div class="show-list" data-show-list></div>
-  <p><button type="button" class="primary" data-show-new>+ New show</button></p>
+  <p class="group"><button type="button" class="primary" data-show-new>+ New show</button>
+    <button type="button" data-show-import title="Add a show someone shared with you, from its .halidayshow file">Import show…</button></p>
   <details class="archived" data-show-archived hidden>
     <summary>Archived shows</summary>
     <p class="hint">Out of the way, but kept: playlists skip them and automations can't start them until

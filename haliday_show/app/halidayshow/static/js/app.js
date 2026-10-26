@@ -29,6 +29,9 @@ import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, length as fmtLength, showRows, songName } from "./showlist.js";
 import {
+  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, suggest, suggestSong,
+} from "./sharing.js";
+import {
   BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
   MAX_SHOWS as PLAYLIST_MAX, bakeKey, blockLabel as playlistBlockLabel, blockShow, dropIndex, fits as fitsPlaylist, inserted,
   itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
@@ -4782,12 +4785,310 @@ function showRow(r) {
   open.dataset.act = "open";
   ren.dataset.act = "rename";
   ren.setAttribute("aria-label", `Rename ${r.name}`);
+  const share = button("Share", () => shareShow(r), "ghost");
+  share.setAttribute("aria-label", `Share ${r.name}`);
+  share.title = "Download this show as a file you can send to anyone with HA-liday Show";
   const rm = button("Remove…", () => openRemoveShow(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   rm.dataset.act = "remove";
-  actions.append(open, dup, ren, rm);
+  actions.append(open, dup, ren, share, rm);
   row.append(main, actions);
   return row;
+}
+
+// Sharing shows (sharing.js) ------------------------------------------------------
+// Share downloads a .halidayshow file; Import show reads one into a new show, in two steps: its
+// name and song, then which of your lights plays each of theirs.
+const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll() });
+
+function downloadText(name, text) {
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+async function shareShow(r) {
+  try {
+    // The open show with changes not yet saved is shared as you see it.
+    const show = r.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(r.id)}`);
+    const share = makeShare(show, app.deviceList, shareContext());
+    if (!share.tracks.length) { status(`${r.name} has no effects yet, so there's nothing to share`, "hint"); return; }
+    const file = shareFileName(share.name);
+    downloadText(file, JSON.stringify(share));
+    status(`Downloaded ${file}. Send it to anyone with HA-liday Show. The song isn't in it, so they use their own copy`);
+  } catch (err) {
+    status(`Couldn't share ${r.name}: ${err.message}`, true);
+  }
+}
+
+const imp = { step: 1, share: null, song: "", taken: [], mine: [], plan: {}, suggested: {}, length: null, asked: 0 };
+
+async function importFile(file) {
+  let share;
+  try {
+    share = readShare(await file.text());
+  } catch (err) {
+    status(`Couldn't import ${file.name}: ${err.message}`, true);
+    return;
+  }
+  if (!(await confirmDiscard())) return;
+  await refreshAudio().catch(() => {});
+  imp.taken = (await api("api/shows").catch(() => [])).map((s) => s.name);
+  imp.share = share;
+  imp.mine = myLights(app.deviceList.filter((d) => !isDemoId(d.id)), shareContext());
+  imp.plan = suggest(share.lights, imp.mine);
+  imp.suggested = Object.fromEntries(Object.entries(imp.plan).map(([k, p]) => [k, p.light]));
+  const guess = share.song ? suggestSong(share.song.name, app.songs || []) : null;
+  imp.song = guess ? JSON.stringify(guess) : "";
+  imp.length = null;
+  $("im-name").value = freeName(share.name, imp.taken);
+  $("im-title").textContent = `Import show: ${share.name}`;
+  $("import-dialog").showModal();
+  imSongs();
+  imStep(1);
+}
+
+function imSongs() {
+  const s = imp.share.song;
+  $("im-song-hint").textContent = s
+    ? `It was made to ${s.name} (${fmtLength(s.length)}). Songs aren't shared, so pick your copy.`
+    : "It was made with no song.";
+  const rows = [...$("audio-select").options].map((o) => {
+    const ref = o.value ? JSON.parse(o.value) : null;
+    return { value: o.value, label: ref ? songLabel(ref) : "No song for now",
+      detail: ref ? `${ref.source === "media" ? "Media" : "Uploaded"}: ${ref.path}` : "Add it later in the editor, under ⚙ Show settings…" };
+  });
+  nsRadioRows($("im-songs"), "im-song", rows, imp.song, (v) => { imp.song = v; imSongs(); });
+  imLength();
+}
+
+// The picked song's length against theirs, read from the file's own details (nothing is decoded).
+function songSeconds(ref) {
+  return new Promise((done) => {
+    const a = new Audio();
+    a.preload = "metadata";
+    a.addEventListener("loadedmetadata", () => done(Number.isFinite(a.duration) ? a.duration : null));
+    a.addEventListener("error", () => done(null));
+    setTimeout(() => done(null), 8000);
+    a.src = audioUrl(ref);
+  });
+}
+
+async function imLength() {
+  const mine = ++imp.asked, el = $("im-length"), theirs = imp.share.song?.length;
+  if (!imp.song || !theirs) { imp.length = null; el.hidden = true; return; }
+  const secs = await songSeconds(JSON.parse(imp.song));
+  if (mine !== imp.asked) return;
+  imp.length = lengthNote(theirs, secs);
+  el.hidden = !imp.length;
+  if (imp.length) notice(el, imp.length.ok ? "ok" : "warn", imp.length.ok ? `Your copy is ${imp.length.text}.` : `${imp.length.text}.`);
+}
+
+function imStep(step) {
+  imp.step = step;
+  $("im-step-1").hidden = step !== 1;
+  $("im-step-2").hidden = step !== 2;
+  $("im-back").hidden = step !== 2;
+  $("im-add-song").hidden = step !== 1;
+  $("im-next").textContent = step === 1 ? "Next →" : "Import show";
+  if (step === 1) {
+    $("im-count").textContent = "";
+    $("im-name").focus();
+    return;
+  }
+  const note = $("im-song-note");
+  const ref = imp.song ? JSON.parse(imp.song) : null;
+  note.hidden = false;
+  if (!ref) notice(note, "warn", "No song yet. Add it later in the editor, under ⚙ Show settings….");
+  else if (imp.length && !imp.length.ok) notice(note, "warn", `${songLabel(ref)}: ${imp.length.text}.`);
+  else notice(note, "ok", `Song: your copy of ${songLabel(ref)}${imp.length ? `, ${imp.length.text}` : ""}.`);
+  imLights();
+  $("im-lights").querySelector("select")?.focus();
+}
+
+const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+// A small map of a house: every light as a faint box, the one that matters filled in.
+function miniMap(all, current, label) {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 72 46");
+  svg.setAttribute("class", "im-map");
+  const el = (tag, attrs) => {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    svg.append(e);
+  };
+  el("rect", { x: 1, y: 1, width: 70, height: 44, rx: 4, class: "frame" });
+  if (!current?.where) {
+    svg.setAttribute("aria-hidden", "true");
+    svg.classList.add("empty");
+    return svg;
+  }
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", label);
+  const box = (w, cls) => el("rect", { x: 5 + w.x * 62, y: 5 + w.y * 36, width: Math.max(w.w * 62, 2.5),
+    height: Math.max(w.h * 36, 2.5), rx: 1, class: cls });
+  for (const l of all) if (l !== current && l.where) box(l.where, "other");
+  box(current.where, "this");
+  return svg;
+}
+
+function imLights() {
+  const { share, mine, plan } = imp;
+  const box = $("im-lights");
+  const focused = document.activeElement?.id;
+  const byId = new Map(mine.map((m) => [m.id, m]));
+  let hint = share.lights.length
+    ? `It was made for ${plural(share.lights.length, "light")}. Pick which of your lights plays each one. Effects stretch to fit your light, however many bulbs it has.`
+    : "It only has effects across the whole house, so there are no lights to match.";
+  if (share.lights.length && !mine.length) hint += " You haven't any lights yet: add them under Setup → Devices first.";
+  $("im-lights-hint").textContent = hint;
+  const usedBy = (id, but) => share.lights.filter((l) => l.key !== but && plan[l.key]?.light === id).map((l) => l.name);
+  const rows = [];
+  if (share.lights.length && mine.length) {
+    const head = document.createElement("div");
+    head.className = "im-head";
+    head.setAttribute("aria-hidden", "true");
+    head.innerHTML = "<span>In the show</span><span></span><span>Plays on your light</span>";
+    rows.push(head);
+  }
+  for (const t of share.lights) {
+    const p = plan[t.key];
+    const m = p.light ? byId.get(p.light) : null;
+    const row = document.createElement("div");
+    row.className = "im-row";
+    const theirs = document.createElement("div");
+    theirs.className = "im-light";
+    const text = document.createElement("div");
+    const name = document.createElement("b");
+    name.textContent = t.name;
+    const detail = document.createElement("span");
+    detail.className = "hint";
+    detail.textContent = [t.type.label, t.segments === 1 ? "one colour" : plural(t.segments, "segment"),
+      t.parts.length ? plural(t.parts.length, "part") : ""]
+      .filter(Boolean).join(" · ");
+    text.append(name, detail);
+    theirs.append(miniMap(share.lights, t, `Where ${t.name} is on their house`), text);
+    const arrow = document.createElement("span");
+    arrow.className = "im-arrow";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = "→";
+    const yours = document.createElement("div");
+    yours.className = "im-pick";
+    const col = document.createElement("div");
+    const label = document.createElement("label");
+    label.className = "im-on";
+    label.htmlFor = `im-l-${t.key}`;
+    label.textContent = "Plays on your light";
+    const pick = document.createElement("select");
+    pick.id = `im-l-${t.key}`;
+    pick.setAttribute("aria-label", `Your light for ${t.name}`);
+    for (const l of mine) {
+      const others = usedBy(l.id, t.key);
+      pick.add(new Option(others.length ? `${l.name} (also playing ${listOf(others)})` : l.name, l.id, false, l.id === p.light));
+    }
+    pick.add(new Option("Leave it out", "", false, !p.light));
+    pick.addEventListener("change", () => {
+      const to = byId.get(pick.value) || null;
+      plan[t.key] = { light: to?.id || null, why: "", parts: partPlan(t, to) };
+      imLights();
+    });
+    const why = document.createElement("span");
+    why.className = "im-why";
+    const shared = m ? usedBy(m.id, t.key) : [];
+    if (m && shared.length) {
+      why.classList.add("hint");
+      why.textContent = `Shares this light with ${listOf(shared)}. Where both play at once, the later effect shows.`;
+    } else if (m && p.why && imp.suggested[t.key] === m.id) {
+      why.classList.add("ok");
+      why.textContent = `✓ Suggested: ${p.why}`;
+    } else if (!m && !imp.suggested[t.key] && mine.length) {
+      why.classList.add("warn");
+      why.textContent = "⚠ None of your lights is much like it. Its effects won't come across unless you pick one.";
+    } else if (!m) {
+      why.classList.add("hint");
+      why.textContent = "Left out: its effects won't come across.";
+    }
+    col.append(label, pick, why);
+    // Your own map only once your lights are on the house photo.
+    if (mine.some((l) => l.where)) yours.append(miniMap(mine, m, `Where ${m?.name} is on your house`));
+    yours.append(col);
+    row.append(theirs, arrow, yours);
+    if (m && t.parts.length) row.append(imParts(t, m, p));
+    rows.push(row);
+  }
+  box.replaceChildren(...rows);
+  if (focused?.startsWith("im-")) $(focused)?.focus();
+  const { matched, left, total } = matchCount(share, plan);
+  $("im-count").textContent = total ? `${matched} of ${plural(total, "light")} matched${left ? ` · ${left} left out` : ""}` : "";
+}
+
+// Their light's parts, each onto one of your parts, your whole light, or nowhere.
+function imParts(t, m, p) {
+  const box = document.createElement("div");
+  box.className = "im-parts";
+  const head = document.createElement("span");
+  head.className = "im-parts-head";
+  head.textContent = "Parts";
+  box.append(head);
+  for (const part of t.parts) {
+    const name = document.createElement("label");
+    name.htmlFor = `im-p-${t.key}-${part.key}`;
+    name.textContent = part.name;
+    const pick = document.createElement("select");
+    pick.id = `im-p-${t.key}-${part.key}`;
+    const at = p.parts[part.key] ?? null;
+    for (const mp of m.parts) pick.add(new Option(mp.name, mp.id, false, mp.id === at));
+    pick.add(new Option(m.whole ? "Whole light" : "All its parts", "whole", false, at === "whole"));
+    pick.add(new Option("Leave it out", "", false, !at));
+    pick.addEventListener("change", () => { p.parts[part.key] = pick.value || null; });
+    box.append(name, pick);
+  }
+  return box;
+}
+
+async function imSubmit(e) {
+  e.preventDefault();
+  const name = $("im-name").value.trim();
+  if (imp.step === 1) {
+    if (!name) { $("im-name").focus(); return; }
+    if (imp.taken.some((n) => n.toLowerCase() === name.toLowerCase())) {
+      status(`There's already a show called ${name}. Give this one its own name`, "hint");
+      $("im-name").select();
+      return;
+    }
+    imStep(2);
+    return;
+  }
+  const share = imp.share;
+  $("import-dialog").close();
+  await openShow(null);
+  const { tracks, dropped } = buildTracks(share, imp.plan, imp.mine, (fx, house) => !!EFFECTS[fx] && !!EFFECTS[fx].house === house);
+  Object.assign(app.show, { name, audio: imp.song ? JSON.parse(imp.song) : null, duration: share.duration,
+    beats: share.beats, bars: share.bars, sections: share.sections, tracks });
+  if (share.tempo !== null) app.show.tempo = share.tempo;
+  ensureTracks();
+  $("show-name").value = name;
+  $("duration").value = Math.round(share.duration);
+  showView("editor");
+  try {
+    await loadAudio(app.show.audio);
+    app.changed();
+    await save();
+    status(`${name} imported`, "saved", "show");
+    // Effects from a newer HA-liday Show than this one.
+    if (dropped) status(`${plural(dropped, "effect")} in ${name} need a newer HA-liday Show, so they were left out. Update, then import it again to get them`, "hint");
+  } catch (err) {
+    status(`Couldn't save ${name}: ${err.message}`, true, "show");
+  }
+  renderSaveState();
+  layoutPreview();
+  timeline.layout();
+  reportUnfit();
 }
 
 // Library → Songs --------------------------------------------------------------
@@ -6879,6 +7180,14 @@ function wire() {
   for (const b of document.querySelectorAll("[data-show-new]")) {
     b.addEventListener("click", openNewShow);
   }
+  for (const b of document.querySelectorAll("[data-show-import]")) {
+    b.addEventListener("click", () => { $("im-file").value = ""; $("im-file").click(); });
+  }
+  $("im-file").addEventListener("change", (e) => { if (e.target.files[0]) importFile(e.target.files[0]); });
+  $("im-form").addEventListener("submit", imSubmit);
+  $("im-back").addEventListener("click", () => imStep(1));
+  for (const b of document.querySelectorAll("[data-im=cancel]")) b.addEventListener("click", () => $("import-dialog").close());
+  $("im-add-song").addEventListener("click", () => openAddSong({ onAdded: (v) => { if (v) imp.song = v; imSongs(); } }));
   $("ns-form").addEventListener("submit", nsSubmit);
   $("ns-back").addEventListener("click", () => nsStep(1));
   $("ns-name").addEventListener("input", () => { newShow.named = true; });
