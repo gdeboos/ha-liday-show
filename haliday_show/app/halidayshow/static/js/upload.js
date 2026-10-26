@@ -1,5 +1,6 @@
-// Uploading a song. Home Assistant's ingress proxy turns away any request over 16 MB, so a bigger
-// song goes up in pieces that HA-liday Show joins back together (server.py upload_audio_part).
+// Big uploads. Home Assistant's ingress proxy turns away any request over 16 MB, so a bigger song,
+// or a long show's baked frames, goes up in pieces that HA-liday Show joins back together
+// (server.py _receive_part).
 
 export const PART = 8 * 1024 * 1024;
 
@@ -23,15 +24,21 @@ export async function uploadSong(api, file, name = file.name, progress = () => {
     progress(1);
     return ref;
   }
+  return sendParts(api, "api/audio/part", file, { name }, progress);
+}
+
+// Sends `blob` to `url` in pieces; `last` is added to the last piece's query (a song's name, say).
+// Returns what the last piece's answer says.
+export async function sendParts(api, url, blob, last = {}, progress = () => {}) {
   const id = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, "0")).join("");
-  let ref = null;
-  for (const p of parts(file.size)) {
+  let reply = null;
+  for (const p of parts(blob.size)) {
     const q = new URLSearchParams({ upload: id, offset: String(p.start) });
-    if (p.done) { q.set("done", "1"); q.set("name", name); }
-    ref = await api(`api/audio/part?${q}`, {
-      method: "POST", body: file.slice(p.start, p.end), headers: { "Content-Type": "application/octet-stream" },
+    if (p.done) { q.set("done", "1"); for (const [k, v] of Object.entries(last)) q.set(k, v); }
+    reply = await api(`${url}?${q}`, {
+      method: "POST", body: blob.slice(p.start, p.end), headers: { "Content-Type": "application/octet-stream" },
     });
-    progress(p.end / file.size);
+    progress(p.end / blob.size);
   }
-  return ref;
+  return reply;
 }

@@ -989,3 +989,35 @@ async def test_songs_upload_in_parts(client, tmp_path):
     await client.post(f"{url}&offset=0", data=b"x")
     assert (await client.post(f"{url}&offset=1&done=1&name=notes.txt", data=b"y")).status == 400
     assert (await client.post(f"{url}&offset=0", data=b"z" * (server.MAX_PART + 1))).status == 413
+
+
+async def test_baked_show_in_parts(client):
+    show_id = (await (await client.post("/api/shows", json={"name": "Long"})).json())["id"]
+    await client.put(f"/api/shows/{show_id}", json={"name": "Long", "fps": 40, "duration": 10, "tracks": []})
+    blob = baked.encode(40, [{"device": "a", "segments": 100}], [bytes(300)] * 400)
+    url = f"/api/shows/{show_id}/baked/part?upload=00112233445566778899aabb"
+    half = len(blob) // 2
+    assert (await client.post(f"{url}&offset=0", data=blob[:half])).status == 200
+    resp = await client.post(f"{url}&offset={half}&done=1", data=blob[half:])
+    assert resp.status == 200 and (await resp.json())["bytes"] == len(blob)
+    assert (await (await client.get("/api/shows")).json())[0]["baked"] is True
+    await client.post(f"{url}&offset=0", data=b"junk")
+    assert (await client.post(f"{url}&offset=4&done=1", data=b"more")).status == 400  # not a baked show
+
+
+async def test_upload_parts_one_at_a_time_and_capped(client, tmp_path, monkeypatch):
+    app = client.server.app
+    url = "/api/audio/part?upload=aaaaaaaaaaaaaaaa"
+    app[server.UPLOADING].add("aaaaaaaaaaaaaaaa")  # a part of it is still arriving
+    assert (await client.post(f"{url}&offset=0", data=b"x")).status == 409
+    app[server.UPLOADING].clear()
+    assert (await client.post("/api/audio/part?upload=aaaa%0Aaaaaaaaaaaaa&offset=0", data=b"x")).status == 400
+    monkeypatch.setattr(server, "MAX_OPEN_UPLOADS", 2)
+    for i in range(2):
+        assert (await client.post(f"/api/audio/part?upload={i:016x}&offset=0", data=b"x")).status == 200
+    assert (await client.post(f"/api/audio/part?upload={9:016x}&offset=0", data=b"x")).status == 503
+    # Finishing one makes room, and replaces a song of the same name.
+    (tmp_path / "media" / "haliday_show" / "Same.mp3").write_bytes(b"old")
+    assert (await client.post(f"/api/audio/part?upload={0:016x}&offset=1&done=1&name=Same.mp3", data=b"y")).status == 200
+    assert (tmp_path / "media" / "haliday_show" / "Same.mp3").read_bytes() == b"xy"
+    assert (await client.post(f"/api/audio/part?upload={9:016x}&offset=0", data=b"x")).status == 200

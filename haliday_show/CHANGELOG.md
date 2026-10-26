@@ -6,6 +6,9 @@
   body size 16777216 exceeded", because Home Assistant won't pass on more than 16 MB at once. A bigger
   song now goes up in pieces, and **Add a song** shows how far it's got. This also fixes saving a long
   edit in the **Music editor**, and choosing or uploading a big song for a show.
+- The same limit could stop a long show on lots of bulbs from saving or playing, because its prepared
+  light frames passed 16 MB (for example a song over about three minutes across 700 bulbs). Those now
+  go in pieces too.
 - When a window is open, problems and tips now show inside it, just above its buttons, as well as at
   the top. They used to be hidden behind the window.
 

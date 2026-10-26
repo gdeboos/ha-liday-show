@@ -29,7 +29,7 @@ import { copyName, showRows } from "./showlist.js";
 import { filterRows, songKey, songRows } from "./songlist.js";
 import { addedMessage, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
-import { uploadSong } from "./upload.js";
+import { PART, sendParts, uploadSong } from "./upload.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -81,7 +81,8 @@ function status(msg, error = false, topic = null) {
 
 // An open window covers the status bar, so problems and tips show inside it too, above its buttons.
 function noteInDialog(msg, kind) {
-  const dlg = [...document.querySelectorAll("dialog[open]")].pop();
+  // The window on top is the one you're in (a modal window keeps focus inside itself).
+  const dlg = document.activeElement?.closest?.("dialog[open]") || [...document.querySelectorAll("dialog[open]")].pop();
   if (!dlg) return;
   let note = dlg.querySelector(".dialog-note");
   if (kind !== "error" && kind !== "hint") { if (note) note.hidden = true; return; }
@@ -92,6 +93,8 @@ function noteInDialog(msg, kind) {
     const foot = dlg.querySelector(".form-dialog-foot, .insp-actions");
     if (foot) foot.before(note); else (dlg.querySelector("form") || dlg).append(note);
     dlg.addEventListener("close", () => note.remove(), { once: true });
+    // Once you change something in the window, the message has done its job.
+    dlg.addEventListener("input", () => { note.hidden = true; });
   }
   note.hidden = false;
   note.className = `dialog-note ${kind}`;
@@ -3968,6 +3971,8 @@ function asStarts() {
 }
 
 function asStep(step) {
+  const note = $("add-song-dialog").querySelector(".dialog-note");
+  if (note) note.hidden = true;
   addSong.step = step;
   $("as-step-1").hidden = step !== 1;
   $("as-step-2").hidden = step !== 2;
@@ -4513,9 +4518,13 @@ async function save() {
   }
   if (app.bakedKey !== key) {
     const blob = bake(app.show, app.devices, FPS, pos);
-    await api(`api/shows/${app.showId}/baked`, {
-      method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" },
-    });
+    // A long show on many bulbs is more than Home Assistant passes on in one go, so it goes in pieces.
+    if (blob.byteLength > PART) await sendParts(api, `api/shows/${app.showId}/baked/part`, new Blob([blob]));
+    else {
+      await api(`api/shows/${app.showId}/baked`, {
+        method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" },
+      });
+    }
     app.bakedKey = key;
   }
   await refreshShows();
