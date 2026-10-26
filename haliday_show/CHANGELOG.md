@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.187
+
+- **Your songs** (in **Library → Songs** and the **Music editor**) groups each song with what was made
+  from it. Each song you added is one card marked **Original**; inside it, under **Edits of this song**:
+  - **✂ Edit · song file** (purple): a song file made in the Music editor, with **Edit draft** to reopen
+    the draft it came from. Edits made before drafts (named "… (edit)") are found by their name.
+  - **✎ Draft · no file yet** (amber): a draft that hasn't made a song file, so shows can't use it yet.
+- An edit is no longer listed twice (once as a song, once under its draft).
+- **All**, **Originals**, **Edits** and **Drafts** beside **Find** show just those.
+
 ## 0.2.186
 
 - On the **Public page** tab, the small picture under **Picture at the top** now changes when you choose

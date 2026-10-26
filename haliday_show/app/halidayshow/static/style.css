@@ -10,6 +10,7 @@
   --danger: #c62828;
   --ok: #13733a;
   --warn: #a84d08;
+  --edit: #6a3cb8;  /* songs made in the Music editor */
   --track: #eef0f3;
   --track-alt: #e6e9ed;
   --wave: #8aa4c0;
@@ -31,6 +32,7 @@
     --danger: #f2786d;
     --ok: #4ade80;
     --warn: #fbbf24;
+    --edit: #c4a3ff;
     color-scheme: dark;
   }
 }
@@ -783,7 +785,6 @@ a.button { text-decoration: none; }
 .busy-dialog .busy-row .spinner { flex: none; width: 1.4em; height: 1.4em; border-width: 3px; color: var(--accent); }
 .busy-dialog .insp-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 
-@media (min-width: 721px) { .has-drafts-row { flex-wrap: wrap; } }
 .song-drafts { flex-basis: 100%; display: flex; flex-direction: column; gap: 4px; padding-top: 6px;
   border-top: 1px dashed var(--line); }
 .song-draft { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
@@ -929,3 +930,31 @@ a.button { text-decoration: none; }
 .im-preview { display: flex; flex-direction: column; gap: 4px; }
 .im-preview-frame { width: 100%; }
 .im-preview-frame canvas { display: block; margin: 0 auto; border-radius: 6px; }
+
+/* Library → Songs: each original song as one card, its edits (✂, purple) and drafts (✎, amber, dashed) inside. */
+.song-family { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.song-family > .show-row { border: 0; border-radius: 0; }
+.song-kids { border-top: 1px solid var(--line); background: color-mix(in srgb, var(--track) 60%, var(--panel));
+  padding: 4px 0 6px; }
+.song-kids-head { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+  padding: 6px 12px 2px 46px; }
+.song-kid { display: flex; align-items: center; gap: 12px; padding: 7px 12px 7px 14px; margin-left: 14px;
+  border-left: 2px solid var(--edit); }
+.song-kid.draft { border-left: 2px dashed color-mix(in srgb, var(--warn) 70%, var(--line)); }
+.song-kid + .song-kid { margin-top: 2px; }
+.song-kid-mark { flex: none; width: 18px; text-align: center; color: var(--edit); }
+.song-kid.draft .song-kid-mark { color: var(--warn); }
+.song-kid .show-name { font-size: 14px; }
+.song-badge { font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.song-badge.original { color: var(--muted); border-color: var(--line); background: var(--track); }
+.song-badge.edit { color: var(--edit); border-color: color-mix(in srgb, var(--edit) 50%, var(--line));
+  background: color-mix(in srgb, var(--edit) 12%, var(--panel)); }
+.song-badge.draft { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+  background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
+@media (max-width: 720px) { .song-kid { flex-wrap: wrap; } .song-kid .show-actions { width: 100%; } }
+/* All / Originals / Edits / Drafts beside Find. */
+.seg-buttons { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg-buttons button { border: 0; border-radius: 0; background: var(--panel); }
+.seg-buttons button + button { border-left: 1px solid var(--line); }
+.seg-buttons button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 20%, var(--panel)); font-weight: 600;
+  box-shadow: inset 0 -2px var(--accent); }
