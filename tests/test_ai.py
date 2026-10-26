@@ -175,3 +175,18 @@ async def test_section_notes_use_their_own_instructions_and_schema(aiohttp_clien
     resp = await client.post("/api/ai/sections", json={"request": "Write notes", "context": {"sections": []}})
     assert resp.status == 200 and (await resp.json())["sections"] == reply["sections"]
     assert (await client.post("/api/ai/sections", json={"request": "x"})).status == 400
+
+
+async def test_cut_choices_use_their_own_instructions_and_schema(aiohttp_client, tmp_path, monkeypatch):
+    reply = {"summary": "Ranked 2", "choices": [{"index": 1, "reason": "Drops the repeat"}, {"index": 0, "reason": "Cuts the solo"}]}
+    ha = FakeHA(reply=json.dumps(reply))
+    out = await ai.rank_cuts(ha, "Which cut works best?", {"song": {"name": "Jingle Bells"}, "options": []})
+    assert out["via"] == "ha" and out["choices"] == reply["choices"]
+    instructions = ha.calls[0][2]["instructions"]
+    assert "shorten a song" in instructions and '"choices"' in instructions and "Jingle Bells" in instructions
+    monkeypatch.setattr(server, "HomeAssistant", lambda: FakeHA(reply=json.dumps(reply)))
+    app = server.make_app(tmp_path / "config", tmp_path / "media", allow_all=True)
+    client = await aiohttp_client(app)
+    resp = await client.post("/api/ai/cuts", json={"request": "Which?", "context": {"options": []}})
+    assert resp.status == 200 and (await resp.json())["choices"] == reply["choices"]
+    assert (await client.post("/api/ai/cuts", json={"request": "x"})).status == 400

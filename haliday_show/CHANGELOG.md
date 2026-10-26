@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.161
+
+- **Suggest cuts** in the **Music editor** asks the AI (if you've set one up) which option works best
+  musically. The options appear straight away so you can listen meanwhile, then they're put in its
+  order: the first is marked **AI's pick**, and each has a short reason, such as "Drops the repeated
+  second verse; keeps the 1:12 crash". It uses the song's name, your section names and notes and your
+  marks, so it avoids cutting moments you've marked. Without an AI, nothing changes.
+
 ## 0.2.160
 
 - **Make song file** again: the window that asks whether to **Replace it** now also lists any other
