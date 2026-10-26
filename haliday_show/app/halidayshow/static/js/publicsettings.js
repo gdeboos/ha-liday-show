@@ -66,3 +66,20 @@ export function nearbyText(view) {
 export function emptyPlaylists(lists, liveShows) {
   return new Set(lists.filter((p) => !p.shows.some((s) => liveShows.has(s))).map((p) => p.id));
 }
+
+const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const clock = (hhmm) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, "0")}` : ""}${h < 12 ? "am" : "pm"}`;
+};
+
+// Opening hours for the sign, in a few words: "Shows from 5pm to 10pm, every day".
+export function signHours(h) {
+  if (!h?.on || !h.days?.length) return "";
+  const from = h.start === "sunset" ? "dusk" : clock(h.start);
+  const days = h.days.length === 7 ? "every day"
+    : h.days.length === 5 && [0, 1, 2, 3, 4].every((d) => h.days.includes(d)) ? "weekdays"
+      : h.days.length === 2 && h.days.includes(5) && h.days.includes(6) ? "weekends"
+        : h.days.map((d) => DAY_SHORT[d]).join(", ").replace(/, ([^,]*)$/, " and $1");
+  return `Shows from ${from} to ${clock(h.end)}, ${days}`;
+}
