@@ -17,6 +17,7 @@ const RULER_H = 22;
 const BEAT_H = 16; // the beat lane above the waveform, as in the editor
 const SEC_H = 20; // the section lane under it, where sections are picked and their edges dragged
 const MIN_SECTION = 0.5;
+const MAX_MARKS = 200; // as the server allows
 const EDGE_PX = 6;
 const BLOCK = 256; // samples per waveform peak
 
@@ -781,6 +782,7 @@ export class MusicEditor {
   addMarkHere({ open = true } = {}) {
     if (!this.rendered) return;
     if (!this.marks) return this.host.status("Save the edit as a new file first, then add marks to it", "hint");
+    if (this.marks.length >= MAX_MARKS) return this.host.status(`A song can have up to ${MAX_MARKS} marks; delete one first`, "hint");
     const { marks, index } = addMark(this.marks, this.time, this.markColour || MARK_COLOUR);
     this.editMarks(marks, open ? index : this.markSel);
     if (open) $("music-mark-name").focus();
@@ -981,7 +983,9 @@ export class MusicEditor {
     // Beats and sections that followed the edit carry over, with their names, colours and notes, as
     // long as the result is all from the base song; anything spliced in is detected afresh.
     const baseKey = this.base && keyOf(this.base);
-    const carry = this.shown && this.pieces.every((p) => p.src === baseKey) ? this.shown : null;
+    // Only marks (no Detect yet) is nothing to carry: the new file is detected, then gets the marks.
+    const found = this.shown?.beats?.length || this.shown?.sections?.length;
+    const carry = found && this.pieces.every((p) => p.src === baseKey) ? this.shown : null;
     const marks = this.shown?.marks || [];
     try {
       const ref = await uploadSong(this.host.api, blob, name, (done) => {
@@ -1417,7 +1421,7 @@ export class MusicEditor {
     else if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); this.undo(1); }
     else if (e.key === " ") { e.preventDefault(); this.playing ? this.stop() : this.play(); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); this.cutSelection(); }
-    else if (e.key === "m" || e.key === "M") { e.preventDefault(); this.addMarkHere({ open: !this.playing }); }
+    else if (!mod && (e.key === "m" || e.key === "M")) { e.preventDefault(); this.addMarkHere({ open: !this.playing }); }
     else if (e.key === "Home") { this.time = 0; this.follow(); this.draw(); }
     else if (e.key === "+" || e.key === "=") this.zoom(0.66);
     else if (e.key === "-") this.zoom(1.5);
