@@ -1007,25 +1007,40 @@ on **Your playlists**, the same list as **Library → Playlists**: each says how
 long it takes to play through once and when it plays, with **Open**, **▶ Play** and **Delete**. Press
 **+ New playlist**, or **Open** one, to edit it:
 
-- **Your shows**, on the left, lists every show. Drag one by its card into **Running order** and let
+- **Building blocks**, at the top left, go between your shows (see below). Drag one in like a show.
+- **Your shows**, below them, lists every show. Drag one by its card into **Running order** and let
   go where it should play; a blue line shows where it will land. Or press **+** to add it at the end.
   **Find a show** narrows the list. The same show can go in more than once.
-- In **Running order**, drag a show up or down to change when it plays, or drag it out of **Running
-  order** (back to **Your shows**, say) to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
+- In **Running order**, drag a show or block up or down to change when it plays, or drag it out of
+  **Running order** (back to **Your shows**, say) to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
   by the dots (⠿) at the left of a card, so the page still scrolls; there, **Running order** comes
   first.
-- The coloured bar above the order shows one time through, each show as long as it plays, with the
-  pauses between them, and next to **Running order** it says how long that takes.
-- **Pause between shows** sets how many seconds to wait before the next one; it starts at 5. During
-  the pause your lights go back to how they normally look.
+- The coloured bar above the order shows one time through, each show and block as long as it plays,
+  and next to **Running order** it says how long that takes.
 - Type over the name at the top to rename the playlist. **Delete playlist** removes it but keeps its
   shows. **← All playlists** (or your browser's **Back**) goes back to **Your playlists**.
 
-Changes save as you make them. A playlist holds up to 100 shows, and you can have up to 50 playlists.
+Changes save as you make them. A playlist holds up to 100 shows and 200 things in all, and you can
+have up to 50 playlists.
+
+**Building blocks** fill the time between shows. Each has its own length in **seconds** (up to an
+hour), set on its card in **Running order**:
+
+- **Pause**: your lights go back to how they normally look.
+- **Colour**: every light shows one colour. Click the colour box on its card to pick it.
+- **Off**: every light goes dark.
+- **Effect**: an effect plays on every light, such as **Twinkle** or **Rainbow**. Pick the effect, then
+  a **Style** (the same ready-made settings as in the Show editor, your own presets too) and, for
+  effects with colours, **Colours** from your palettes. An effect longer than a minute repeats every
+  minute or so, at a point where the join doesn't show.
+
+Put a block wherever you like: between every show, only before the first, or several in a row (a
+colour, then off for a moment, say). Playlists made before blocks have a **Pause** after each show,
+as long as their old **Pause between shows**.
 
 Press **▶ Play** and HA-liday Show plays the shows in order, then starts again from the top, until
 you press **■ Stop**. It carries on with the page closed. A line at the top of **Your playlists**
-and the Playlist editor says what's playing, which is also outlined in **Running order**. Each show plays on its own **Show speaker**, just as when an automation starts it.
+and the Playlist editor says what's playing (a show or a block), which is also outlined in **Running order**. Each show plays on its own **Show speaker**, just as when an automation starts it.
 Only saved shows play: a show you haven't saved yet, or have deleted, says so in the list and is
 skipped. Playing a show from the editor, or stopping it, stops the playlist, and so does pausing or
 stopping the song on the speaker.
@@ -1061,7 +1076,8 @@ and stop by itself:
   every year, and can run over New Year (1 Dec and 6 Jan).
 
 Under the schedule it says when the playlist next starts. At the start time it starts, even if
-something else is playing. At the end time the show that's on finishes, then it stops. If you press
+something else is playing. At the end time the show that's on finishes, then it stops (a building block that's on stops
+straight away). If you press
 **■ Stop**, pause the song on the speaker or play something else in between, it stays off until its
 next start time. If HA-liday Show restarts during the scheduled time (after an update, say), the
 playlist starts again, and so does one whose schedule you turn on during its time. Changing the
@@ -1150,7 +1166,8 @@ What visitors get:
 - **During one of your playlists**, a visitor's pick plays after the show that's on, then your
   playlist carries on with its next show. A scheduled playlist that's due to start waits until a
   visitor's show has finished.
-- **A playlist** a visitor picks plays through once, not round and round.
+- **A playlist** a visitor picks plays its shows through once, not round and round, without its
+  building blocks.
 - **The music** plays on the show's **Show speaker** (or your default one), as it does for playlists.
   A show with no speaker plays its lights only, unless the [Show player](#music-with-no-speaker-the-show-player) is open.
 
@@ -1417,7 +1434,7 @@ snapshots or DIYs) for as long as the clip lasts, then the show takes the light 
 
 ## Where things are stored
 
-Shows, devices, palettes, your presets, playlists and their schedules, each song's beats, parts, notes and
+Shows, devices, palettes, your presets, playlists with their schedules and building blocks, each song's beats, parts, notes and
 marks, the Music editor's drafts, the house photo and settings live in the app's config folder
 (`/addon_configs/<slug>_haliday_show/`), so they are included in Home Assistant backups. Uploaded songs
 go to `/media/haliday_show/` so media players can play them. The editor layout, the editing speaker,

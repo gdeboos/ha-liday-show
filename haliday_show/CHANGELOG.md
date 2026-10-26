@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.169
+
+- Playlists have **Building blocks** to go between shows, in place of the one **Pause between shows**
+  setting. In the Playlist editor, drag them into **Running order** like a show, as many as you like,
+  each with its own length:
+  - **Pause**: your lights as they normally are.
+  - **Colour**: every light one colour, which you pick.
+  - **Off**: every light dark.
+  - **Effect**: an effect such as **Twinkle** or **Rainbow** on every light, with a **Style** and
+    **Colours** from your palettes.
+- Your playlists keep playing as before: each one's pause is now a **Pause** block after each show.
+- The coloured bar shows the blocks too, and the line at the top says which block is playing.
+
 ## 0.2.168
 
 - New **How the page looks** card on the **Public page** tab, so the visitors' page can be yours:
