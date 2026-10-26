@@ -4990,6 +4990,7 @@ function generateDialog() {
 const newShow = { step: 1, song: "", start: "empty", named: false, taken: [], gen: null };
 
 function nsRadioRows(box, name, rows, picked, onPick) {
+  const hadFocus = box.contains(document.activeElement);
   box.replaceChildren(...rows.map((r) => {
     const row = document.createElement("label");
     row.className = `song-row${r.value === picked ? " picked" : ""}${r.disabled ? " disabled" : ""}`;
@@ -5015,6 +5016,8 @@ function nsRadioRows(box, name, rows, picked, onPick) {
     row.append(radio, text);
     return row;
   }));
+  // Redrawing would drop the keyboard focus of someone arrowing through the list.
+  if (hadFocus) box.querySelector("input:checked")?.focus();
 }
 
 function nsSongs() {
@@ -5054,8 +5057,6 @@ function nsStep(step) {
     $("ns-next").textContent = "Next →";
     $("ns-name").focus();
   } else {
-    newShow.gen = generateControls();
-    $("ns-gen").replaceChildren(...newShow.gen.nodes);
     nsStarts();
     $("ns-starts").querySelector("input:checked")?.focus();
   }
@@ -5065,7 +5066,8 @@ async function openNewShow() {
   if (!(await confirmDiscard())) { await refreshShows(); return; }
   await refreshAudio().catch(() => {});
   newShow.taken = (await api("api/shows").catch(() => [])).map((s) => s.name);
-  Object.assign(newShow, { song: "", start: "empty", named: false });
+  Object.assign(newShow, { song: "", start: "empty", named: false, gen: generateControls() });
+  $("ns-gen").replaceChildren(...newShow.gen.nodes);
   nsSongPicked();
   $("ns-length").value = 60;
   $("new-show-dialog").showModal();
