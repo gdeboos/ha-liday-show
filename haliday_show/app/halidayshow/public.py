@@ -7,8 +7,9 @@ and stays open after visitors are switched off, so they see "no shows right now"
 
 Settings, under "public": {"on", "items": [{"kind": "show" or "playlist", "id", "from", "to"}],
 "per_phone", "queue"}. "from" and "to" ("MM-DD", or both empty for all year) come round every year,
-like a playlist schedule's dates; an item outside them is listed for visitors as coming soon. Each phone sends a random ticket it keeps, which is how "one request per phone" is
-counted: mobile networks put many phones behind one internet address.
+like a playlist schedule's dates; an item outside them is listed for visitors as coming soon. Each
+phone sends a random ticket it keeps, which is how "one request per phone" is counted: mobile
+networks put many phones behind one internet address.
 """
 import logging
 import os

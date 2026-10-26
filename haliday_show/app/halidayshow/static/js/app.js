@@ -3597,9 +3597,11 @@ function showPublicTab(on) {
   $("pub-open").hidden = !on;
 }
 
+// The queue and address from the server. It never touches publicView.items: those are yours, and an
+// answer that left before your latest edit would undo it.
 function renderPublicQueue(view) {
-  publicView = view;
   showPublicTab(view.on);
+  if (!view.on && shownPage === "public") showView("settings", { push: false });
   $("pub-now").textContent = queueText(view);
   $("pub-clear").hidden = !view.waiting.length;
   $("pub-address").textContent = addressText(view, location.hostname);
@@ -3633,11 +3635,13 @@ function renderPublicItems() {
     const name = document.createElement("div");
     name.className = "pub-item-name";
     const archived = it.kind === "show" && !(it.id in publicNames.show) && it.id in publicNames.archived;
-    name.textContent = publicNames[it.kind][it.id] ?? publicNames.archived[it.id] ?? `${it.id} (not found)`;
+    const missing = !archived && !(it.id in publicNames[it.kind]);
+    name.textContent = publicNames[it.kind][it.id] ?? publicNames.archived[it.id] ?? it.id;
     const hint = document.createElement("div");
     hint.className = "hint";
     hint.textContent = archived ? "Archived, so visitors don't see it. Restore it under Library → Shows to show it again."
-      : itemText(it, view.today);
+      : missing ? `Not found or not saved yet, so visitors don't see it.`
+        : itemText(it, view.today);
     const dates = document.createElement("div");
     dates.className = "row";
     const dated = document.createElement("input");
@@ -3689,6 +3693,7 @@ function renderPublicItems() {
 async function loadPublic({ items = false } = {}) {
   try {
     const view = await api("api/public");
+    if (!pubPending) publicView = view;
     renderPublicQueue(view);
     $("pub-on").checked = view.on;
     if (!items) return;
@@ -3706,29 +3711,41 @@ async function loadPublic({ items = false } = {}) {
   }
 }
 
-async function savePublic() {
-  if (!publicView) return;
-  const body = {
-    on: $("pub-on").checked,
-    items: publicView.items,
-    per_phone: Number($("pub-per-phone").value) || publicView.per_phone,
-    queue: Number($("pub-queue").value) || publicView.queue,
-  };
-  try {
-    const view = await api("api/public", { method: "PUT", json: body });
-    renderPublicQueue(view);
-    if (shownPage === "public") renderPublicItems();
-    status("Public page saved", "saved", "public");
-  } catch (e) {
-    status(`Couldn't save the public page settings: ${e.message}`, true, "public");
+// Saves go one at a time, each sending your latest settings; only the last answer is drawn.
+let pubSaving = Promise.resolve();
+let pubPending = 0;
+
+function savePublic() {
+  if (!publicView) {
+    status("Couldn't save the public page settings: they haven't loaded. Reload the page and try again.", true, "public");
+    return pubSaving;
   }
+  publicView.on = $("pub-on").checked;
+  if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);
+  if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
+  if (shownPage === "public") renderPublicItems();
+  pubPending++;
+  pubSaving = pubSaving.then(async () => {
+    const { on, items, per_phone, queue } = publicView;
+    try {
+      const view = await api("api/public", { method: "PUT", json: { on, items, per_phone, queue } });
+      if (pubPending === 1) {
+        publicView = view;
+        if (shownPage === "public") renderPublicItems();
+      }
+      renderPublicQueue(view);
+      status("Public page saved", "saved", "public");
+    } catch (e) {
+      status(`Couldn't save the public page settings: ${e.message}`, true, "public");
+    } finally {
+      pubPending--;
+    }
+  });
+  return pubSaving;
 }
 
 function wirePublic() {
-  $("pub-on").addEventListener("change", async () => {
-    await savePublic();
-    if (!$("pub-on").checked && shownPage === "public") showView("settings");
-  });
+  $("pub-on").addEventListener("change", () => savePublic());
   $("pub-open").addEventListener("click", () => showView("public"));
   $("pub-per-phone").addEventListener("change", savePublic);
   $("pub-queue").addEventListener("change", savePublic);
