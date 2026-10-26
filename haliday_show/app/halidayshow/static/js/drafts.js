@@ -38,6 +38,9 @@ export class DraftKeeper {
   // Starts working on a draft ({id, made}) or a song with none yet (null). The last one's waiting
   // change is sent to it straight away.
   start(draft) {
+    // Reopening a draft whose last change is still waiting: what's opened (from the server) is what
+    // you'll edit, so the waiting change mustn't land on top of it later.
+    if (draft?.id) this.drop(draft.id);
     this.flush();
     if (this.session.failed) this.stalled.add(this.session);
     this.session = this.newSession(draft);
@@ -67,6 +70,23 @@ export class DraftKeeper {
     if (s.latest) this.send(s, { keepalive }); // also retries one that failed
     this.retryStalled({ keepalive });
     return Promise.all([s.chain, ...[...this.stalled].map((x) => x.chain)]).then(() => {});
+  }
+
+  // A draft deleted from Your songs, open or not: nothing more is sent to it.
+  forgetId(id) {
+    if (this.session.id === id) this.forget();
+    this.drop(id);
+  }
+
+  // A draft renamed from Your songs: a change still waiting for it keeps the new name.
+  renamed(id, name) {
+    for (const s of [this.session, ...this.stalled]) if (s.id === id && s.latest) s.latest = { ...s.latest, name };
+  }
+
+  drop(id) {
+    for (const s of this.stalled) {
+      if (s.id === id) { s.gone = true; this.stalled.delete(s); }
+    }
   }
 
   retryStalled(opts) {

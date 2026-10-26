@@ -4168,6 +4168,7 @@ async function renameDraft(d) {
   }
   try {
     await api(`api/drafts/${encodeURIComponent(d.id)}/rename`, { method: "POST", json: { name } });
+    music.keeper.renamed(d.id, name);
     renderSongsPage();
   } catch (e) { status(`Couldn't rename the draft: ${e.message}`, true, "songs"); }
 }
@@ -4175,8 +4176,8 @@ async function renameDraft(d) {
 async function deleteDraft(d) {
   const made = d.made ? ` The song file it made (${d.made.path.split("/").pop()}) stays.` : "";
   if (!confirm(`Delete the draft "${d.name}"? The song it started from isn't changed.${made}`)) return;
-  // Forgotten first, so a save on its way can't make it again.
-  if (music.draft?.id === d.id) music.forgetDraft();
+  // Forgotten first, so a save on its way (or waiting to be tried again) can't make it again.
+  music.keeper.forgetId(d.id);
   try {
     await api(`api/drafts/${encodeURIComponent(d.id)}`, { method: "DELETE" }).catch((e) => {
       if (e.status !== 404) throw e; // already gone (deleted in another tab) is fine

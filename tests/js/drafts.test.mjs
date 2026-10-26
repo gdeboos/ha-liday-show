@@ -187,3 +187,29 @@ test("a draft you've left whose last change failed is reported, kept and sent wi
   assert.deepEqual(calls.map((c) => c.slice(0, 3)).filter((c) => c[2] !== "B"),
     [["PUT", "api/drafts/d9", "A changed"], ["PUT", "api/drafts/d9", "A changed"]]);
 });
+
+test("a stalled draft that's deleted, renamed or reopened from Your songs stays as you left it", async () => {
+  const { keeper, drafts, failOnce } = setup();
+  const leaveFailing = async (id, name) => {
+    drafts.set(id, body(name));
+    keeper.start({ id, made: null });
+    await keeper.flush(); // let any retries finish first, so the failure is this draft's
+    failOnce();
+    keeper.changed(body(`${name} changed`));
+    keeper.start(null);
+    await new Promise((r) => setTimeout(r, 0));
+  };
+  await leaveFailing("d7", "Deleted");
+  keeper.forgetId("d7");
+  drafts.delete("d7");
+  await leaveFailing("d8", "Renamed");
+  drafts.set("d8", body("New name"));
+  keeper.renamed("d8", "New name");
+  await leaveFailing("d6", "Reopened");
+  keeper.start({ id: "d6", made: null }); // opened again, as the server has it
+  await keeper.flush();
+  assert.ok(!drafts.has("d7") && [...drafts.values()].every((d) => !d.name.startsWith("Deleted")), "not made again");
+  assert.equal(drafts.get("d8").name, "New name");
+  assert.equal(drafts.get("d6").name, "Reopened", "the stale change didn't land on the reopened draft");
+  assert.ok(!keeper.anyFailed);
+});
