@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Light show</title>
+<link rel="stylesheet" href="public.css">
+<script type="module" src="public.js"></script>
+</head>
+<body>
+<main class="pp">
+  <h1>🎄 Light show</h1>
+  <section id="pp-closed" class="pp-card" hidden>
+    <p class="pp-big">No shows right now.</p>
+    <p class="pp-hint">Come back later to start one.</p>
+  </section>
+  <div id="pp-open" hidden>
+    <p id="pp-now" class="pp-now"></p>
+    <div id="pp-mine" class="pp-list" hidden></div>
+    <p id="pp-message" class="pp-message" role="status" aria-live="polite" hidden></p>
+    <h2>Pick a show</h2>
+    <p class="pp-hint">It plays on the lights and speaker here. If something's on, yours plays next.</p>
+    <p id="pp-block" class="pp-block" hidden></p>
+    <div id="pp-choices" class="pp-list"></div>
+    <p id="pp-none" class="pp-hint" hidden>There aren't any shows to pick yet.</p>
+  </div>
+</main>
+</body>
+</html>

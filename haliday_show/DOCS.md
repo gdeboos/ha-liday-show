@@ -11,7 +11,7 @@ the Home Assistant sidebar.
 **Setting up:** [1. Devices](#1-devices) · [2. Speakers](#2-speakers) · [3. Your house](#3-your-house)
 
 **Making shows:** [4. Build a show](#4-build-a-show) · [Effects](#effects) · [5. Play it](#5-play-it) ·
-[Playlists](#playlists) · [6. Automations](#6-automations)
+[Playlists](#playlists) · [The public page](#the-public-page) · [6. Automations](#6-automations)
 
 **Reference:** [Arrange the editor](#arrange-the-editor) · [Settings](#settings) ·
 [Your data](#your-data) · [Setting up the AI](#setting-up-the-ai) · [Packet lab](#packet-lab) ·
@@ -997,6 +997,51 @@ Schedules go by HA-liday Show's own clock, which the page shows above your playl
 Home Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
 `Europe/London`); with Python, it uses your computer's clock.
 
+### The public page
+
+The public page lets people passing by start a show from their phone. They see the shows and
+playlists you've picked, each with a **▶ Start** button, and nothing else of HA-liday Show.
+
+1. Open **Setup → Settings → Public page**.
+2. Tick **Let visitors start shows**.
+3. Tick the shows and playlists visitors can pick. Only saved shows are listed.
+4. To try it, open the address the card shows on your phone, connected to your home Wi-Fi. It's
+   HA-liday Show's address with `:18099` on the end, such as `http://192.168.1.20:18099`.
+
+What visitors get:
+
+- **If nothing's on**, their pick starts straight away.
+- **If something's on**, they're told where they are in the queue and roughly how long it'll be, such
+  as "You're next, starting in about 2 minutes". They can **Cancel** while they wait.
+- **During one of your playlists**, a visitor's pick plays after the show that's on, then your
+  playlist carries on with its next show. A scheduled playlist that's due to start waits until a
+  visitor's show has finished.
+- **A playlist** a visitor picks plays through once, not round and round.
+- **The music** plays on the show's **Show speaker** (or your default one), as it does for playlists.
+  A show with no speaker plays its lights only, unless the [Show player](#music-with-no-speaker-the-show-player) is open.
+
+Keeping it fair:
+
+- **Requests per phone** is how many shows one phone can have waiting (1 to start with). Once a
+  visitor's show starts, they can pick another. It's a courtesy limit that someone determined could
+  get round; **Queue length** is the one that holds.
+- **Queue length** is how many shows can wait in all (5 to start with). When it's full, visitors are
+  asked to try again in a few minutes.
+- Visitors can't stop or skip anyone else's show.
+
+You stay in charge. Playing a show from the editor or an automation goes on straight away, and the
+visitors' queue carries on afterwards. **■ Stop** (or stopping the song on the speaker) stops
+everything and empties the queue, and so does **Clear the queue** on the card. Turning off **Let
+visitors start shows** empties the queue too, and visitors see "No shows right now".
+
+The public page has its own port, **18099**, so nothing of the editor can be reached through it. The
+port opens the first time you change a setting on the card. If another app already uses 18099, pick
+another under **Public page port** on the app's **Configuration** tab in Home Assistant, then restart
+the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
+
+> **Coming next:** reaching the page from outside your home (for a QR code on a sign), opening hours
+> and dates, and a printable sign.
+
 ## 6. Automations
 
 ### With MQTT
@@ -1082,6 +1127,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 
 | Section | What's there |
 | --- | --- |
+| Public page | Lets people passing by start a show from their phone (see [The public page](#the-public-page)). |
 | AI | Which AI **Describe it** uses, or how to set one up (below). |
 | Layout | Where every editor panel sits, including hidden ones, and **Reset layout**. |
 | Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
@@ -1270,6 +1316,7 @@ You set everything with these settings (environment variables). All are optional
 | `HALIDAY_SHOW_CONFIG` | The folder your shows, lights and settings are kept in. It holds the same files as the app's, so you can copy shows across. |
 | `HALIDAY_SHOW_MEDIA` | The folder your songs are kept in. |
 | `HALIDAY_SHOW_PORT` | The web port, `8099` unless you change it. |
+| `HALIDAY_SHOW_PUBLIC_PORT` | The [public page](#the-public-page)'s port, `18099` unless you change it. It only opens once you've set up the public page. |
 | `TZ` | Your time zone, such as `Europe/London`, for playlist schedules. Docker only; with Python it uses your computer's. |
 | `HA_URL`, `HA_TOKEN` | Your Home Assistant address (e.g. `http://homeassistant.local:8123`) and a long-lived access token (your profile in Home Assistant → **Security**). Needed for speakers, Home Assistant's AI, and Home Assistant lights and switches in shows. |
 | `ANTHROPIC_API_KEY` | A Claude API key for the AI, instead of Home Assistant's. |

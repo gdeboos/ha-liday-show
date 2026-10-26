@@ -19,7 +19,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, scenes, schedule, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, public, scenes, schedule, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -58,6 +58,7 @@ PASSWORD = web.AppKey("password", str)
 # {"listener": the latest Listener or None, "options": Listener options (tests use spare ports)}
 LISTENING = web.AppKey("listening", dict)
 LAB = web.AppKey("lab", Lab)
+PUBLIC = web.AppKey("public", public.PublicSite)
 
 
 @web.middleware
@@ -1130,6 +1131,40 @@ async def play_playlist(request):
     return web.json_response(request.app[RUNNER].status())
 
 
+# the public page ---------------------------------------------------------------
+def _public_view(app) -> dict:
+    site, runner = app[PUBLIC], app[RUNNER]
+    waits = runner.queue_waits()
+    return {**(public.load(app[STORAGE]) or public.clean(None)),
+            "port": site.port, "listening": site.listening, "error": site.error,
+            "now": runner.public_now["name"] if runner.public_now else None,
+            "waiting": [{"name": r["name"], "wait": w} for r, w in zip(runner.requests, waits)]}
+
+
+async def get_public(request):
+    return web.json_response(_public_view(request.app))
+
+
+async def put_public(request):
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text="expected the public page settings")
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    settings["public"] = public.clean(body)
+    storage.save_settings(settings)
+    await request.app[PUBLIC].apply()
+    return web.json_response(_public_view(request.app))
+
+
+async def clear_public_queue(request):
+    request.app[RUNNER].clear_requests()
+    return web.json_response(_public_view(request.app))
+
+
 # effect presets -------------------------------------------------------------
 # Built-in presets ship in effects.js; only the user's own are stored here. Each is a named set of
 # settings for one effect, so values are short strings, numbers or booleans.
@@ -1415,6 +1450,7 @@ async def _replace_data(app, reason: str, data: bytes | None) -> dict:
         restored = backup.restore(config, data)
         migrate.fill_device_kinds(app[STORAGE])  # an export from before lights had a kind
     app[MQTT].refresh()
+    await app[PUBLIC].apply()
     return {"ok": True, "kept": kept, "restored": restored}
 
 
@@ -1487,6 +1523,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[MQTT] = MqttBridge(app[RUNNER])
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
         app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run())]
+        app[PUBLIC] = public.PublicSite(app[STORAGE], app[RUNNER])
+        await app[PUBLIC].apply()
         if read_stdin:
             app[BACKGROUND].append(asyncio.create_task(commands.read_stdin(app[RUNNER])))
         if (broker := await app[HA].mqtt_service()):
@@ -1496,8 +1534,9 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         yield
         for task in app[BACKGROUND]:
             task.cancel()
+        await app[PUBLIC].close()
         await stop_tests(app)
-        await app[RUNNER].stop()
+        await app[RUNNER].close()
         await app[OUTPUT].close()
         await app[HA].close()
 
@@ -1561,6 +1600,9 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/playlists", put_playlists)
     r.add_post("/api/playlists/{id}/play", play_playlist)
     r.add_get("/api/schedule", get_schedule)
+    r.add_get("/api/public", get_public)
+    r.add_put("/api/public", put_public)
+    r.add_post("/api/public/clear", clear_public_queue)
     r.add_put("/api/location", put_location)
     r.add_get("/api/house", get_house)
     r.add_put("/api/house", put_house)

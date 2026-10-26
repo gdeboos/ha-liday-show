@@ -1,5 +1,5 @@
 name: HA-liday Show
-version: "0.2.152"
+version: "0.2.153"
 slug: haliday_show
 description: Music-synchronised light shows for Govee, WLED, pixel controllers, Twinkly and Home Assistant lights (formerly Govee Light Show).
 url: https://github.com/gdeboos/ha-liday-show
@@ -24,12 +24,16 @@ stdin: true
 services:
   - mqtt:want
 # Optional AI: a Claude API key, or else Home Assistant's AI Task (pick an entity if there are several).
+# The public page (Setup → Settings → Public page) has its own port, separate from the editor's, so
+# only that page can be reached through it. It opens once the public page has been set up.
 options:
   claude_api_key: ""
   ai_task_entity: ""
+  public_port: 18099
 schema:
   claude_api_key: password?
   ai_task_entity: str?
+  public_port: port
 map:
   - media:rw        # songs; uploads go to /media/haliday_show so media players can play them
   - addon_config:rw # shows, devices and settings (included in backups)
