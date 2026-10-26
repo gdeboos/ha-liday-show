@@ -5711,6 +5711,8 @@ function showView(view, { push = true } = {}) {
   if (page === "songlist") document.querySelector("[data-songs-slot]").append($("songs-block"));
   if (page === "songs") $("view-songs").append($("songs-block"));
   if (page === "showlist" || page === "shows") renderShowLists();
+  // Going back to Your shows (← All shows, or the browser's Back) puts the show away, so it stops too.
+  if (page === "showlist" && app.playing) stop();
   if (page === "songs" || page === "songlist") renderSongsPage();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
