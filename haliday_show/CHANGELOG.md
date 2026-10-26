@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.135
+
+- In the **Remove…** window, the line saying where a show or song is used now has the same look as
+  the messages at the top right: a green ✓ when nothing uses it ("It isn't in any playlist."), and an
+  orange ⚠ when something does ("It's in the playlist Christmas Eve."), so it catches your eye before
+  you choose.
+
 ## 0.2.134
 
 - Shows and songs can now be archived or deleted. Press **Remove…** on a show (in **Your shows**,

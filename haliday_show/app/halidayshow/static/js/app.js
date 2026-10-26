@@ -3971,6 +3971,18 @@ function readSongLength(ref) {
 // Archive or delete -------------------------------------------------------------
 // One window for both: a show (from its row or Show settings) or a song (from Library → Songs).
 let removing = null;
+// A note in a window, in the same style as the top bar's messages: ✓ when all's well, ⚠ when it
+// needs your attention before you go on.
+function notice(el, kind, text) {
+  el.className = `notice is-${kind}`;
+  const mark = document.createElement("span");
+  mark.className = "mark";
+  mark.setAttribute("aria-hidden", "true");
+  mark.textContent = kind === "ok" ? "✓" : "⚠";
+  const msg = document.createElement("span");
+  msg.textContent = text;
+  el.replaceChildren(mark, msg);
+}
 const listOf = (names) => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -3979,8 +3991,8 @@ async function openRemoveShow(r) {
   try { lists = (await api("api/playlists")).filter((p) => p.shows.includes(r.id)).map((p) => p.name); } catch { /* still removable */ }
   removing = { kind: "show", id: r.id, name: r.name };
   $("rm-title").textContent = `Remove ${r.name}`;
-  $("rm-what").textContent = lists.length ? `It's in ${lists.length === 1 ? "the playlist" : "the playlists"} ${listOf(lists)}.`
-    : "It isn't in any playlist.";
+  notice($("rm-what"), lists.length ? "warn" : "ok",
+    lists.length ? `It's in ${lists.length === 1 ? "the playlist" : "the playlists"} ${listOf(lists)}.` : "It isn't in any playlist.");
   $("rm-shows").hidden = true;
   $("rm-archive-note").innerHTML = `<b>Archive</b> keeps it, out of the way, under <b>Archived shows</b> at the foot of
     your shows, where <b>Restore</b> brings it back.${lists.length ? " Its playlists skip it until then." : ""}
@@ -3995,7 +4007,7 @@ async function openRemoveSong(r) {
   try { users = (await api(`api/songs/users?path=${encodeURIComponent(r.ref.path)}`)).shows; } catch { /* asked below */ }
   removing = { kind: "song", path: r.ref.path, name: r.name, users };
   $("rm-title").textContent = `Remove ${r.name}`;
-  $("rm-what").textContent = users.length ? `Used by ${listOf(users.map((s) => s.name))}.` : "No show uses it.";
+  notice($("rm-what"), users.length ? "warn" : "ok", users.length ? `Used by ${listOf(users.map((s) => s.name))}.` : "No show uses it.");
   $("rm-shows").hidden = !users.length;
   const sel = $("rm-replacement");
   sel.replaceChildren(...(app.songs || []).filter((x) => x.source === "media" && x.path !== r.ref.path)

@@ -68,7 +68,7 @@ body {
   gap: 6px; padding: 4px 10px; border-radius: 8px; border: 1px solid transparent; min-height: 30px;
   transition: background-color .6s ease, color .6s ease, border-color .6s ease; }
 .status:not(:has(.msg)) { padding: 0; min-height: 0; border: 0; }
-.status .mark { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+.status .mark, .notice .mark { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
   font-size: 12px; font-weight: 700; flex: none; }
 .status.is-saved { color: var(--text); font-weight: 600; background: color-mix(in srgb, var(--ok) 22%, var(--panel));
   border-color: color-mix(in srgb, var(--ok) 50%, var(--panel)); }
@@ -255,6 +255,13 @@ table.devices td input[type="number"] { width: 5em; }
 .show-rename { font-size: 15px; font-weight: 600; width: min(100%, 360px); }
 .show-actions { flex: none; }
 .song-tools { margin: 4px 0 6px; }
+/* A note inside a window, in the top bar's message style (✓ all's well, ⚠ look first). */
+.notice { display: flex; align-items: center; gap: 8px; width: fit-content; max-width: 100%; margin: 0 0 12px;
+  padding: 6px 12px 6px 8px; border-radius: 8px; border: 1px solid transparent; font-weight: 600; color: var(--text); }
+.notice.is-ok { background: color-mix(in srgb, var(--ok) 22%, var(--panel)); border-color: color-mix(in srgb, var(--ok) 50%, var(--panel)); }
+.notice.is-ok .mark { background: var(--ok); color: var(--panel); }
+.notice.is-warn { background: color-mix(in srgb, var(--warn) 14%, var(--panel)); border-color: color-mix(in srgb, var(--warn) 45%, var(--panel)); }
+.notice.is-warn .mark { color: var(--warn); width: auto; height: auto; }
 details.archived { margin-top: 18px; }
 details.archived > summary { cursor: pointer; font-weight: 600; width: fit-content; }
 details.archived > .hint { margin: 6px 0; }
