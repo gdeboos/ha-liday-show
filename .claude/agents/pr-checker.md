@@ -22,7 +22,8 @@ read `git diff origin/main...<branch>` and `git log origin/main..<branch>`. Read
      `haliday_show/app/halidayshow/__init__.py`, and higher than on `main`.
    - A new `## 0.2.N` section at the top of `haliday_show/CHANGELOG.md`, written for the owner
      (what they'll notice and where), not for developers.
-   - `haliday_show/DOCS.md` updated for any changed behaviour, button or setting; README.md's
+   - `haliday_show/DOCS.md` updated for any changed behaviour, button or setting, and `docs/guide/`
+     remade from it (`python tools/split_guide.py --check` passes); README.md's
      feature list for new features.
    - PR and commit titled `What changed (0.2.N)` or `<summary> (0.2.N)`.
 2. **Light protocols.** If the diff touches `protocol.py`, `output.py`, `player.py`, `wled.py`,
