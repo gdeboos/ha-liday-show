@@ -564,7 +564,11 @@ and are kept when you make the song file. Edit the song before placing clips, be
 afterwards won't move them.
 
 Each join shows as a dashed line with a **✂** at the top. Click the **✂** to hear a few seconds either
-side of the join. When you zoom out, the beat lines thin out to every bar, then every 2nd or 4th bar, so
+side of the join; a panel under the waveform says what was cut there (how much, and from where in the
+song). To change that cut, press **Adjust cut**: the part comes back and is selected, so drag its edges
+(or type the times) and press **Cut selection** again. **Put back** undoes just that cut, leaving the
+others as they are. Both are one step for **Undo**. A join where another song was spliced in only has
+**▶ Hear join**. When you zoom out, the beat lines thin out to every bar, then every 2nd or 4th bar, so
 the music stays visible; zoom in to see every beat.
 
 You can also use the keyboard: press Tab until the waveform is outlined, then **←** and **→** move the
@@ -1090,6 +1094,22 @@ playlists you've picked, each with a **▶ Start** button, and nothing else of H
 3. To try it, open the **Visitors' link** the tab shows on your phone, connected to your home Wi-Fi.
    It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
+
+**How the page looks.** On the **Public page** tab, under **How the page looks**:
+
+- **Title** replaces "🎄 Light show" at the top, and **Welcome** adds a line or two under it.
+- **Picture at the top**: **None**, **Your house photo** (from **Setup → House**), or **Your own
+  picture**, which you choose with **Choose picture…** (JPEG, PNG or WebP). Your own picture is kept
+  with your other settings, and in **Export…**, even while another is picked, so you can switch back.
+  Visitors with the page open see a new picture within a few seconds.
+- **Colours**: **Plain**, **Classic Christmas**, **Frosty** or **Halloween**, and **Light or dark**:
+  **Follow the phone**, **Light** or **Dark**. Every combination is easy to read.
+- **Falling snow** drifts behind the page. It's left out for anyone whose phone is set to reduce
+  motion.
+- **Link at the bottom**, with **Its words**: a charity, donation or social page, if you like.
+
+**Open the page** opens your visitors' link so you can see it. The title, words and picture only show
+to people with your code.
 
 **Who can start shows.** Visitors need the link with your code in it; the QR code on your sign will
 hold it. Opening the page without the code just says "Scan the code on the sign to start a show". On

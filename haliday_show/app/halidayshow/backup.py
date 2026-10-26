@@ -39,7 +39,7 @@ def _allowed(name: str) -> bool:
     if len(parts) == 1:
         p = Path(name)
         return name in ("devices.json", "settings.json", "archived-songs.json") \
-            or (p.stem == "house" and p.suffix in PHOTO_EXT)
+            or (p.stem in ("house", "public-picture") and p.suffix in PHOTO_EXT)
     if len(parts) == 2 and parts[0] == "shows":
         p = Path(parts[1])
         return p.suffix in (".json", ".gshow") and valid_id(p.stem)

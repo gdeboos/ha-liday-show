@@ -63,6 +63,62 @@ export function describe(st) {
   };
 }
 
+// The words for the footer link: yours, or else the site's name.
+export function linkText(look) {
+  if (!look?.link) return "";
+  if (look.link_text) return look.link_text;
+  try { return new URL(look.link).hostname.replace(/^www\./, ""); } catch { return look.link; }
+}
+
+// Gentle falling snow behind the page. Never moves for people whose phone asks for less motion.
+function makeSnow(canvas) {
+  const ctx = canvas.getContext("2d");
+  let flakes = [], frame = null, on = false;
+  const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const size = () => {
+    const r = devicePixelRatio || 1;
+    canvas.width = innerWidth * r;
+    canvas.height = innerHeight * r;
+    ctx.setTransform(r, 0, 0, r, 0, 0);
+    const n = Math.min(70, Math.round(innerWidth / 10));
+    flakes = Array.from({ length: n }, () => ({
+      x: Math.random() * innerWidth, y: Math.random() * innerHeight,
+      r: 1 + Math.random() * 2.5, v: 0.3 + Math.random() * 0.8, d: Math.random() * Math.PI * 2,
+    }));
+  };
+  let colour = "";
+  const draw = () => {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    ctx.fillStyle = colour;
+    for (const f of flakes) {
+      f.y += f.v;
+      f.d += 0.01;
+      f.x += Math.sin(f.d) * 0.4;
+      if (f.y > innerHeight + 5) { f.y = -5; f.x = Math.random() * innerWidth; }
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    frame = requestAnimationFrame(draw);
+  };
+  const run = () => {
+    cancelAnimationFrame(frame);
+    frame = null;
+    const go = on && !still() && !document.hidden;
+    canvas.hidden = !go;
+    if (go) {
+      if (!flakes.length) size();
+      colour = getComputedStyle(document.documentElement).colorScheme === "dark"
+        ? "rgba(255,255,255,.75)" : "rgba(150,170,195,.55)";
+      draw();
+    }
+  };
+  matchMedia("(prefers-reduced-motion: reduce)").addEventListener?.("change", run);
+  addEventListener("resize", () => { if (on) size(); });
+  document.addEventListener("visibilitychange", run);
+  return (want) => { on = want; run(); }; // run again too when the colours change
+}
+
 const TICKET_KEY = "halidayshow.publicTicket";
 const CODE_KEY = "halidayshow.publicCode";
 
@@ -125,6 +181,29 @@ export function start() {
   const key = code();
   let busy = false;
   let needsLocation = false;
+  const snow = makeSnow($("pp-snow"));
+  let pictureShown = 0;
+
+  function applyLook(look) {
+    if (!look) return;
+    document.documentElement.dataset.theme = look.theme || "plain";
+    document.documentElement.dataset.mode = look.mode || "auto";
+    if (!("title" in look)) return; // locked: colours only
+    const title = look.title || "🎄 Light show";
+    $("pp-title").textContent = title;
+    document.title = look.title || "Light show";
+    $("pp-welcome").textContent = look.welcome || "";
+    $("pp-welcome").hidden = !look.welcome;
+    if (look.picture && look.picture !== pictureShown) {
+      $("pp-picture").src = `picture?code=${encodeURIComponent(key)}&v=${look.picture}`;
+    }
+    pictureShown = look.picture || 0;
+    $("pp-picture").hidden = !look.picture;
+    $("pp-link").textContent = linkText(look);
+    if (look.link) $("pp-link").href = look.link;
+    $("pp-footer").hidden = !look.link;
+    snow(!!look.snow);
+  }
   let last = null; // the latest state from the server
   // Where the phone is: {state: "idle" | "checking" | "near" | "far" | "closed" | "denied" | "slow" |
   // "unknown", text, pos}. Watched while the page is open, so walking up to the lights brings the
@@ -216,6 +295,7 @@ export function start() {
   };
 
   function render(st) {
+    applyLook(st.look);
     $("pp-locked").hidden = !st.locked;
     if (st.locked) {
       $("pp-closed").hidden = $("pp-open").hidden = true;

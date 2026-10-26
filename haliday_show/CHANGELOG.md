@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.168
+
+- New **How the page looks** card on the **Public page** tab, so the visitors' page can be yours:
+  - **Title** and **Welcome**: your own name for the page and a line or two underneath.
+  - **Picture at the top**: none, your house photo, or a picture of your own (**Choose picture…**).
+  - **Colours**: **Plain**, **Classic Christmas**, **Frosty** or **Halloween**, each with
+    **Light**, **Dark** or **Follow the phone**. Every one is easy to read.
+  - **Falling snow**, left out for anyone whose phone is set to reduce motion.
+  - **Link at the bottom**, such as a charity or donation page, with your own words.
+- **Open the page** on the card opens your visitors' page to see how it looks.
+- The title, words and picture only show to people with your code. Without it, visitors just see
+  your colours and "Scan the code on the sign".
+
+## 0.2.167
+
+- In the **Music editor** you can now change one cut without undoing the rest. Click a cut's **✂**: as
+  well as playing the join, a panel under the waveform says what was cut there. **Adjust cut** brings
+  that part back and selects it, so you can drag its edges and press **Cut selection** again. **Put
+  back** undoes just that cut. Handy when you open a draft and want to tweak an earlier cut.
+
 ## 0.2.166
 
 - With **Nearby only** on, the public page now checks where the phone is as soon as it opens.

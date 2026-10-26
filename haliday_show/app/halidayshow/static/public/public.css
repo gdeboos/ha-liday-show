@@ -42,3 +42,32 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pp-where { margin: 0 0 8px; }
 .pp-where p { margin: 0; }
 .pp-where button { margin-top: 12px; }
+
+/* Themes (Public page tab → How the page looks). Every text colour reads at 4.5:1 or more. */
+:root[data-theme="christmas"][data-mode="light"], :root[data-theme="christmas"][data-mode="auto"] { --bg: #fbf6f1; --panel: #ffffff; --text: #1f1a17; --muted: #5c524b; --line: #e6dbd1; --accent: #b3261e; --head: #1b6b3a; color-scheme: light; }
+:root[data-theme="christmas"][data-mode="dark"] { --bg: #0e1913; --panel: #15241b; --text: #eef4ef; --muted: #a9b9ad; --line: #284035; --accent: #c62828; --head: #7fd39b; color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root[data-theme="christmas"][data-mode="auto"] { --bg: #0e1913; --panel: #15241b; --text: #eef4ef; --muted: #a9b9ad; --line: #284035; --accent: #c62828; --head: #7fd39b; color-scheme: dark; } }
+:root[data-theme="frosty"][data-mode="light"], :root[data-theme="frosty"][data-mode="auto"] { --bg: #f0f6fb; --panel: #ffffff; --text: #13202d; --muted: #4e5f6f; --line: #d4e1ec; --accent: #1565c0; --head: #0d47a1; color-scheme: light; }
+:root[data-theme="frosty"][data-mode="dark"] { --bg: #0a1520; --panel: #11202e; --text: #e8f1f9; --muted: #a2b5c7; --line: #21364a; --accent: #1565c0; --head: #90caf9; color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root[data-theme="frosty"][data-mode="auto"] { --bg: #0a1520; --panel: #11202e; --text: #e8f1f9; --muted: #a2b5c7; --line: #21364a; --accent: #1565c0; --head: #90caf9; color-scheme: dark; } }
+:root[data-theme="halloween"][data-mode="light"], :root[data-theme="halloween"][data-mode="auto"] { --bg: #fbf5ee; --panel: #ffffff; --text: #1d1610; --muted: #5e5146; --line: #e9dccb; --accent: #b93d0b; --head: #6a1b9a; color-scheme: light; }
+:root[data-theme="halloween"][data-mode="dark"] { --bg: #130e16; --panel: #1e1622; --text: #f2ebf4; --muted: #b5a7ba; --line: #36293b; --accent: #c2410c; --head: #f0a35e; color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root[data-theme="halloween"][data-mode="auto"] { --bg: #130e16; --panel: #1e1622; --text: #f2ebf4; --muted: #b5a7ba; --line: #36293b; --accent: #c2410c; --head: #f0a35e; color-scheme: dark; } }
+/* Plain, forced light or dark whatever the phone says. */
+:root[data-theme="plain"][data-mode="light"] { --bg: #f5f6f8; --panel: #ffffff; --text: #1c1f24; --muted: #5f6672;
+  --line: #d9dce1; --accent: #0277bd; color-scheme: light; }
+:root[data-theme="plain"][data-mode="dark"] { --bg: #111418; --panel: #1b1f25; --text: #e6e8eb; --muted: #9aa3ad;
+  --line: #2f353d; --accent: #0277bd; color-scheme: dark; }
+:root[data-mode="light"] { --danger: #c62828; --ok: #13733a; --warn: #a84d08; }
+:root[data-mode="dark"] { --danger: #f2786d; --ok: #4ade80; --warn: #fbbf24; }
+h1, h2 { color: var(--head, var(--text)); }
+
+.pp-header { margin: 0 0 12px; }
+.pp-header h1 { margin: 0; overflow-wrap: anywhere; }
+.pp-picture { display: block; width: 100%; max-height: 260px; object-fit: cover; border-radius: 10px;
+  border: 1px solid var(--line); margin: 0 0 14px; }
+.pp-welcome { margin: 6px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+.pp-footer { margin: 32px 0 0; text-align: center; }
+.pp-footer a { color: var(--head, var(--text)); font-weight: 600; overflow-wrap: anywhere; }
+.pp-snow { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.pp { position: relative; z-index: 1; }

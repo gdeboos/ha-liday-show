@@ -1324,6 +1324,8 @@ def _public_view(app) -> dict:
             "today": datetime.date.today().isoformat(),
             # Where the nearby check measures from: "you" (typed in for sunset), "ha", or None.
             "home": app[SCHEDULER].where()[1],
+            "has_house_photo": app[STORAGE].house_photo() is not None,
+            "has_picture": app[STORAGE].public_picture() is not None,
             "now": runner.public_now["name"] if runner.public_now else None,
             "waiting": [{"name": r["name"], "wait": w} for r, w in zip(runner.requests, waits)]}
 
@@ -1346,6 +1348,35 @@ async def put_public(request):
     storage.save_settings(settings)
     await request.app[PUBLIC].apply()
     return web.json_response(_public_view(request.app))
+
+
+async def put_public_picture(request):
+    """The public page's own picture, instead of the house photo."""
+    ext = PHOTO_TYPES.get(request.content_type)
+    if ext is None:
+        raise web.HTTPUnsupportedMediaType(text="send a JPEG, PNG or WebP picture")
+    data = bytearray()
+    while chunk := await request.content.read(1 << 16):
+        data += chunk
+        if len(data) > MAX_PHOTO:
+            raise web.HTTPRequestEntityTooLarge(max_size=MAX_PHOTO, actual_size=len(data))
+    if not data:
+        raise web.HTTPBadRequest(text="no picture")
+    storage = request.app[STORAGE]
+    storage.save_public_picture(bytes(data), ext)
+    settings = storage.load_settings()
+    p = public.load(storage) or public.clean(None)
+    settings["public"] = {**p, "look": {**p["look"], "picture": "upload"}}
+    storage.save_settings(settings)
+    await request.app[PUBLIC].apply()
+    return web.json_response(_public_view(request.app))
+
+
+async def get_public_picture(request):
+    p = request.app[STORAGE].public_picture()
+    if p is None:
+        raise web.HTTPNotFound()
+    return web.FileResponse(p, headers={"Cache-Control": "no-cache"})
 
 
 async def new_public_code(request):
@@ -1816,6 +1847,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/public", put_public)
     r.add_post("/api/public/clear", clear_public_queue)
     r.add_post("/api/public/code", new_public_code)
+    r.add_get("/api/public/picture", get_public_picture)
+    r.add_put("/api/public/picture", put_public_picture)
     r.add_put("/api/location", put_location)
     r.add_get("/api/house", get_house)
     r.add_put("/api/house", put_house)

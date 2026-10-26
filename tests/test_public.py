@@ -44,7 +44,9 @@ async def _visitor(client, path, json=None, code=True, headers=None):
         url = f"http://127.0.0.1:{client.public_port}{path}"
         req = s.get(url, headers=headers) if json is None else s.post(url, json=json, headers=headers)
         async with req as r:
-            return r.status, (await r.json() if r.content_type == "application/json" else await r.text()), r.headers
+            body = await r.json() if r.content_type == "application/json" else \
+                await r.text() if r.content_type.startswith("text/") else await r.read()
+            return r.status, body, r.headers
 
 
 T1, T2 = "a" * 20, "b" * 20
@@ -129,6 +131,7 @@ def test_settings_are_cleaned():
                                                 {"kind": "show", "id": "c", "from": "02-30", "to": "03-01"}],
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
+        "look": public.clean_look(None),
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -200,7 +203,7 @@ async def test_visitors_need_the_code_from_the_sign(client):
     code = public.load(client.app[server.STORAGE])["code"]
     assert len(code) == 8 and code != "mine123"  # made by the app, not taken from the editor
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", code=False)
-    assert st == {"open": True, "locked": True}
+    assert st == {"open": True, "locked": True, "look": {"theme": "plain", "mode": "auto"}}
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party", "code": "nope1234"},
                                      code=False)
     assert status == 403 and "Scan the code" in text
@@ -310,3 +313,39 @@ async def test_the_page_asks_whether_its_near_before_offering_start(client):
     assert st == {"near": True}
     status, _, _ = await _visitor(client, "/api/near", {"lat": 51.5008, "lon": -0.1246}, code=False, headers=FAR)
     assert status == 403
+
+
+
+def test_the_look_is_cleaned():
+    look = public.clean_look({"title": "  The   Deboos  Lights ", "welcome": " Hello!\n  Be kind \n", "theme": "halloween",
+                              "mode": "neon", "snow": "yes", "picture": "upload", "link": "javascript:alert(1)",
+                              "link_text": "x" * 200})
+    assert look == {"title": "The Deboos Lights", "welcome": "Hello!\nBe kind", "picture": "upload",
+                    "theme": "halloween", "mode": "auto", "snow": False, "link": "", "link_text": "x" * 80}
+    assert public.clean_look({"link": "https://justgiving.com/x?y=1"})["link"] == "https://justgiving.com/x?y=1"
+    assert public.clean_look(None)["theme"] == "plain"
+
+
+async def test_visitors_get_the_look_and_picture_only_with_the_code(client):
+    st = client.app[server.STORAGE]
+    look = {"title": "The Deboos Lights", "welcome": "Hello", "theme": "christmas", "mode": "dark", "snow": True,
+            "picture": "house", "link": "https://example.org/give", "link_text": "Give"}
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "look": look})
+    _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert state["look"] == {**look, "picture": 0}  # no house photo yet
+    st.save_house_photo(b"\xff\xd8\xffphoto", ".jpg")
+    _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert state["look"]["picture"] > 0
+    status, body, _ = await _visitor(client, "/picture")
+    assert status == 200
+    status, _, _ = await _visitor(client, "/picture", code=False)
+    assert status == 404
+    _, locked, _ = await _visitor(client, f"/api/state?ticket={T1}", code=False)
+    assert locked["look"] == {"theme": "christmas", "mode": "dark"}
+    # An uploaded picture instead; choosing another keeps it, in case you change your mind.
+    resp = await client.put("/api/public/picture", data=b"\x89PNGpic", headers={"Content-Type": "image/png"})
+    assert (await resp.json())["look"]["picture"] == "upload" and st.public_picture() is not None
+    assert (await client.put("/api/public/picture", data=b"x", headers={"Content-Type": "text/html"})).status == 415
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
+                                          "look": {**look, "picture": "house"}})
+    assert st.public_picture() is not None

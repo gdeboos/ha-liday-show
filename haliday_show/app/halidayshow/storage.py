@@ -119,6 +119,22 @@ class Storage:
         while (p := self.house_photo()):
             p.unlink()
 
+    # the public page's own picture (Public page tab → How the page looks) ----------------
+    def public_picture(self) -> Path | None:
+        for ext in PHOTO_EXT:
+            p = self.config_dir / f"public-picture{ext}"
+            if p.exists():
+                return p
+        return None
+
+    def save_public_picture(self, data: bytes, ext: str):
+        self.delete_public_picture()
+        _write_atomic(self.config_dir / f"public-picture{ext}", data)
+
+    def delete_public_picture(self):
+        while (p := self.public_picture()):
+            p.unlink()
+
     # shows ---------------------------------------------------------------
     def list_shows(self) -> list[dict]:
         out = []

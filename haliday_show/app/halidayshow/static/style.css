@@ -784,3 +784,8 @@ a.button { text-decoration: none; }
 .song-draft { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .song-draft .spacer { flex: 1; }
 .song-draft button { padding: 2px 10px; }
+.pub-welcome { width: 100%; max-width: 36em; font: inherit; }
+.pub-picture { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
+.pub-picture label { margin-right: 12px; }
+.pub-picture-preview { display: block; max-width: 100%; max-height: 160px; border-radius: 8px; margin-top: 8px;
+  border: 1px solid var(--line); }
