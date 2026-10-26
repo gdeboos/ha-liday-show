@@ -181,7 +181,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Public page: people passing by pick a show on their phone and it joins a queue, slotting in between
   your playlist's shows, with one request per phone; each show or playlist can have dates every year,
   showing as coming soon until then; a code in the link and a nearby-only check keep it to people
-  near your house; your own title, welcome, picture, colour theme, falling snow and a link
+  near your house; your own title, welcome, picture, colour theme or your own colours (with a
+  readability check), spacing, corners, text size, falling snow and a link
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
@@ -324,7 +325,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/static/                 The editor (plain ES modules, no build step)
     index.html, style.css               Page and styles
     player.html                         The Show player page
-    public/                             The public page visitors see (only file served on its port)
+    public/                             The public page visitors see (the only files served on its port);
+                                        colours.js: readability sums shared with the editor
     js/app.js                           Editor state, panels, inspector and playback
     js/effects.js                       Effect definitions, House lane effects and the baker
     js/timeline.js                      Timeline canvas: waveform, clips, selection, zoom

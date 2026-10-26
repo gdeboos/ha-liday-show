@@ -1,3 +1,5 @@
+import { bestOn } from "./colours.js";
+
 // The public page: people passing by pick a show and queue it up. It only talks to the three calls
 // on the public port (api/state, api/request, api/cancel), never to the editor.
 
@@ -188,8 +190,22 @@ export function start() {
 
   function applyLook(look) {
     if (!look) return;
-    document.documentElement.dataset.theme = look.theme || "plain";
-    document.documentElement.dataset.mode = look.mode || "auto";
+    const root = document.documentElement;
+    root.dataset.theme = look.theme || "plain";
+    root.dataset.mode = look.mode || "auto";
+    root.dataset.spacing = look.spacing || "normal";
+    root.dataset.corners = look.corners || "soft";
+    root.dataset.size = look.size || "normal";
+    root.dataset.borders = look.borders === false ? "off" : "on";
+    // Your own colours go straight onto the page; hints and borders are mixed from them in the CSS.
+    for (const key of ["bg", "panel", "text", "head", "accent", "accent-text"]) root.style.removeProperty(`--${key}`);
+    if (look.theme === "custom" && look.colours) {
+      for (const [key, value] of Object.entries(look.colours)) root.style.setProperty(`--${key}`, value);
+      root.style.setProperty("--accent-text", bestOn(look.colours.accent));
+      // A dark or light background picks the matching warning colours (and snow).
+      root.dataset.mode = bestOn(look.colours.bg) === "#ffffff" ? "dark" : "light";
+      root.style.colorScheme = root.dataset.mode;
+    } else root.style.removeProperty("color-scheme");
     if (!("title" in look)) return; // locked: colours only
     const title = look.title || "🎄 Light show";
     $("pp-title").textContent = title;

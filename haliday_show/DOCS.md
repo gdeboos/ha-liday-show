@@ -1123,6 +1123,13 @@ playlists you've picked, each with a **▶ Start** button, and nothing else of H
   Visitors with the page open see a new picture within a few seconds.
 - **Colours**: **Plain**, **Classic Christmas**, **Frosty** or **Halloween**, and **Light or dark**:
   **Follow the phone**, **Light** or **Dark**. Every combination is easy to read.
+- **Your own colours** (the last choice under **Colours**) gives you pickers for **Background**,
+  **Cards**, **Text**, **Headings** and **Buttons**. Small print and borders are mixed from your text
+  and background, and the words on buttons are black or white, whichever reads better. Underneath,
+  it says whether everything is easy to read, and which pairs aren't if not.
+- **Spacing** (**Compact**, **Normal** or **Roomy**), **Corners** (**Square**, **Soft** or **Round**),
+  **Text size** (**Small**, **Normal** or **Large**) and **Card borders** (on or off) change the
+  layout, and always fit a phone.
 - **Falling snow** drifts behind the page. It's left out for anyone whose phone is set to reduce
   motion.
 - **Link at the bottom**, with **Its words**: a charity, donation or social page, if you like.

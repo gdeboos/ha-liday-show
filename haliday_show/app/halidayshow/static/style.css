@@ -801,3 +801,7 @@ a.button { text-decoration: none; }
   .pub-preview { position: static; }
   .pub-preview-frame { width: min(392px, 100%); height: 640px; }
 }
+.pub-colours { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin: 6px 0; }
+.pub-colours label { display: flex; align-items: center; gap: 6px; }
+.pub-colours input[type=color] { width: 36px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; }
+.pub-colours .hint { flex-basis: 100%; margin: 2px 0; }

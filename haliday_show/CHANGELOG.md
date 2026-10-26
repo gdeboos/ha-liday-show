@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.171
+
+- More ways to style the public page, under **How the page looks** on the **Public page** tab:
+  - **Your own colours** (under **Colours**): pick **Background**, **Cards**, **Text**, **Headings** and
+    **Buttons**. Small print and borders are mixed from your text and background, and button words
+    are black or white, whichever reads better. A check under the colours tells you if anything is
+    hard to read.
+  - **Spacing**: **Compact**, **Normal** or **Roomy**.
+  - **Corners**: **Square**, **Soft** or **Round**.
+  - **Text size**: **Small**, **Normal** or **Large**.
+  - **Card borders**: on or off.
+- The preview shows each change straight away.
+
 ## 0.2.170
 
 - Playlists have **Building blocks** to go between shows, in place of the one **Pause between shows**

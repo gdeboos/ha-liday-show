@@ -12,26 +12,36 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+/* Spacing, corners, text size and borders (How the page looks): --s scales the gaps, --r the corners. */
+:root { --s: 1; --r: 10px; --fs: 16px; --bw: 1px; }
+:root[data-spacing="compact"] { --s: .7; }
+:root[data-spacing="roomy"] { --s: 1.4; }
+:root[data-corners="square"] { --r: 0px; }
+:root[data-corners="round"] { --r: 22px; }
+:root[data-size="small"] { --fs: 15px; }
+:root[data-size="large"] { --fs: 18px; }
+:root[data-borders="off"] { --bw: 0px; }
 body { margin: 0; background: var(--bg); color: var(--text);
-  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-.pp { max-width: 32em; margin: 0 auto; padding: 20px 16px 40px; }
-h1 { font-size: 24px; margin: 0 0 12px; }
-h2 { font-size: 18px; margin: 28px 0 10px; }
-h2 + .pp-hint { margin-top: -6px; }
-.pp-hint { color: var(--muted); margin: 2px 0 10px; font-size: 14px; }
-.pp-now { font-weight: 600; margin: 0 0 12px; }
-.pp-big { font-size: 20px; font-weight: 600; margin: 0; }
-.pp-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
-.pp-list { display: flex; flex-direction: column; gap: 8px; }
+  font: var(--fs)/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.pp { max-width: 32em; margin: 0 auto; padding: calc(20px * var(--s)) 16px calc(40px * var(--s)); }
+h1 { font-size: 1.5em; margin: 0 0 calc(12px * var(--s)); }
+h2 { font-size: 1.125em; margin: calc(28px * var(--s)) 0 calc(10px * var(--s)); }
+h2 + .pp-hint { margin-top: calc(-6px * var(--s)); }
+.pp-hint { color: var(--muted); margin: 2px 0 calc(10px * var(--s)); font-size: .875em; }
+.pp-now { font-weight: 600; margin: 0 0 calc(12px * var(--s)); }
+.pp-big { font-size: 1.25em; font-weight: 600; margin: 0; }
+.pp-card { background: var(--panel); border: var(--bw) solid var(--line); border-radius: var(--r);
+  padding: calc(16px * var(--s)); }
+.pp-list { display: flex; flex-direction: column; gap: calc(8px * var(--s)); }
 .pp-row { display: flex; align-items: center; gap: 12px; background: var(--panel);
-  border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
-.pp-yours { border-color: var(--accent); }
+  border: var(--bw) solid var(--line); border-radius: var(--r); padding: calc(12px * var(--s)); }
+.pp-yours { border: max(var(--bw), 2px) solid var(--accent); }
 .pp-text { flex: 1; min-width: 0; }
 .pp-name { font-weight: 600; overflow-wrap: anywhere; }
 .pp-row .pp-hint { margin: 0; }
-.pp-block { color: var(--warn); font-weight: 600; margin: 6px 0 10px; }
-.pp-message { color: var(--danger); font-weight: 600; margin: 10px 0; }
-button { font: inherit; min-height: 44px; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+.pp-block { color: var(--warn); font-weight: 600; margin: 6px 0 calc(10px * var(--s)); }
+.pp-message { color: var(--danger); font-weight: 600; margin: calc(10px * var(--s)) 0; }
+button { font: inherit; min-height: 44px; padding: 8px 16px; border-radius: calc(var(--r) * .8); cursor: pointer;
   background: var(--panel); color: var(--text); border: 1px solid var(--line); flex: none; }
 button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 button:disabled { opacity: .5; cursor: not-allowed; }
@@ -64,10 +74,14 @@ h1, h2 { color: var(--head, var(--text)); }
 
 .pp-header { margin: 0 0 12px; }
 .pp-header h1 { margin: 0; overflow-wrap: anywhere; }
-.pp-picture { display: block; width: 100%; max-height: 260px; object-fit: cover; border-radius: 10px;
-  border: 1px solid var(--line); margin: 0 0 14px; }
+.pp-picture { display: block; width: 100%; max-height: 260px; object-fit: cover; border-radius: var(--r);
+  border: var(--bw) solid var(--line); margin: 0 0 calc(14px * var(--s)); }
 .pp-welcome { margin: 6px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
-.pp-footer { margin: 32px 0 0; text-align: center; }
+.pp-footer { margin: calc(32px * var(--s)) 0 0; text-align: center; }
 .pp-footer a { color: var(--head, var(--text)); font-weight: 600; overflow-wrap: anywhere; }
 .pp-snow { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 .pp { position: relative; z-index: 1; }
+
+/* Your own colours: hints and borders are worked out from the text and background. */
+:root[data-theme="custom"] { --muted: color-mix(in srgb, var(--text) 72%, var(--bg));
+  --line: color-mix(in srgb, var(--text) 18%, var(--bg)); }

@@ -203,7 +203,8 @@ async def test_visitors_need_the_code_from_the_sign(client):
     code = public.load(client.app[server.STORAGE])["code"]
     assert len(code) == 8 and code != "mine123"  # made by the app, not taken from the editor
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", code=False)
-    assert st == {"open": True, "locked": True, "look": {"theme": "plain", "mode": "auto"}}
+    assert st["locked"] and set(st) == {"open", "locked", "look"}
+    assert set(st["look"]) == {"theme", "mode", "spacing", "corners", "size", "borders", "colours"}  # no words or picture
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party", "code": "nope1234"},
                                      code=False)
     assert status == 403 and "Scan the code" in text
@@ -320,8 +321,15 @@ def test_the_look_is_cleaned():
     look = public.clean_look({"title": "  The   Deboos  Lights ", "welcome": " Hello!\n  Be kind \n", "theme": "halloween",
                               "mode": "neon", "snow": "yes", "picture": "upload", "link": "javascript:alert(1)",
                               "link_text": "x" * 200})
-    assert look == {"title": "The Deboos Lights", "welcome": "Hello!\nBe kind", "picture": "upload",
-                    "theme": "halloween", "mode": "auto", "snow": False, "link": "", "link_text": "x" * 80}
+    assert {k: look[k] for k in ("title", "welcome", "picture", "theme", "mode", "snow", "link", "link_text")} == {
+        "title": "The Deboos Lights", "welcome": "Hello!\nBe kind", "picture": "upload",
+        "theme": "halloween", "mode": "auto", "snow": False, "link": "", "link_text": "x" * 80}
+    assert (look["spacing"], look["corners"], look["size"], look["borders"]) == ("normal", "soft", "normal", True)
+    own = public.clean_look({"theme": "custom", "spacing": "roomy", "corners": "round", "size": "huge", "borders": False,
+                             "colours": {"bg": "#FFFFFF", "text": "red", "panel": 7}})
+    assert (own["theme"], own["spacing"], own["corners"], own["size"], own["borders"]) == ("custom", "roomy", "round",
+                                                                                          "normal", False)
+    assert own["colours"]["bg"] == "#ffffff" and own["colours"]["text"] == public.DEFAULT_COLOURS["text"]
     assert public.clean_look({"link": "https://justgiving.com/x?y=1"})["link"] == "https://justgiving.com/x?y=1"
     assert public.clean_look(None)["theme"] == "plain"
 
@@ -332,7 +340,7 @@ async def test_visitors_get_the_look_and_picture_only_with_the_code(client):
             "picture": "house", "link": "https://example.org/give", "link_text": "Give"}
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "look": look})
     _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
-    assert state["look"] == {**look, "picture": 0}  # no house photo yet
+    assert {k: state["look"][k] for k in look} == {**look, "picture": 0}  # no house photo yet
     st.save_house_photo(b"\xff\xd8\xffphoto", ".jpg")
     _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert state["look"]["picture"] > 0
@@ -341,7 +349,7 @@ async def test_visitors_get_the_look_and_picture_only_with_the_code(client):
     status, _, _ = await _visitor(client, "/picture", code=False)
     assert status == 404
     _, locked, _ = await _visitor(client, f"/api/state?ticket={T1}", code=False)
-    assert locked["look"] == {"theme": "christmas", "mode": "dark"}
+    assert locked["look"]["theme"] == "christmas" and "title" not in locked["look"]
     # An uploaded picture instead; choosing another keeps it, in case you change your mind.
     resp = await client.put("/api/public/picture", data=b"\x89PNGpic", headers={"Content-Type": "image/png"})
     assert (await resp.json())["look"]["picture"] == "upload" and st.public_picture() is not None

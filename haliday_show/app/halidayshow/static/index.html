@@ -991,10 +991,31 @@
     </fieldset>
     <p class="row"><label>Colours <select id="pub-theme">
         <option value="plain">Plain</option><option value="christmas">Classic Christmas</option>
-        <option value="frosty">Frosty</option><option value="halloween">Halloween</option></select></label>
-      <label>Light or dark <select id="pub-mode">
+        <option value="frosty">Frosty</option><option value="halloween">Halloween</option>
+        <option value="custom">Your own colours</option></select></label>
+      <label id="pub-mode-label">Light or dark <select id="pub-mode">
         <option value="auto">Follow the phone</option><option value="light">Light</option>
         <option value="dark">Dark</option></select></label></p>
+    <div id="pub-colours" class="pub-colours" hidden>
+      <label><input type="color" data-colour="bg"> Background</label>
+      <label><input type="color" data-colour="panel"> Cards</label>
+      <label><input type="color" data-colour="text"> Text</label>
+      <label><input type="color" data-colour="head"> Headings</label>
+      <label><input type="color" data-colour="accent"> Buttons</label>
+      <p class="hint pub-colours-hint">Small print and borders are mixed from your text and background, and the
+        words on buttons are black or white, whichever reads better.</p>
+      <p class="hint" id="pub-readability" aria-live="polite"></p>
+    </div>
+    <p class="row"><label>Spacing <select id="pub-spacing">
+        <option value="compact">Compact</option><option value="normal">Normal</option>
+        <option value="roomy">Roomy</option></select></label>
+      <label>Corners <select id="pub-corners">
+        <option value="square">Square</option><option value="soft">Soft</option>
+        <option value="round">Round</option></select></label>
+      <label>Text size <select id="pub-size">
+        <option value="small">Small</option><option value="normal">Normal</option>
+        <option value="large">Large</option></select></label></p>
+    <p><label><input id="pub-borders" type="checkbox"> Card borders</label></p>
     <p><label><input id="pub-snow" type="checkbox"> Falling snow</label></p>
     <p class="hint">Snow is left out for anyone whose phone is set to reduce motion.</p>
     <p><label>Link at the bottom <input id="pub-link-url" type="url" size="34"
