@@ -5010,7 +5010,7 @@ async function detectBeats() {
 // Analyses the loaded song and puts its beats, bars, sections and tempo on the show (without
 // committing the change). Returns the result, or null if it failed or the song changed meanwhile.
 // With ai (the Detect button only), the AI then rewrites the section notes in the background.
-async function analyseSong({ ai = false } = {}) {
+async function analyseSong({ ai = false, cancelled = () => false } = {}) {
   const song = songBuffer;
   const channels = Array.from({ length: song.numberOfChannels }, (_, c) => song.getChannelData(c));
   const { samples, rate } = toMono(channels, song.sampleRate);
@@ -5025,10 +5025,10 @@ async function analyseSong({ ai = false } = {}) {
   } finally {
     $("btn-detect").disabled = false;
   }
-  if (song !== songBuffer) return null;
+  if (song !== songBuffer || cancelled()) return null;
   // Names and notes you wrote on the song's sections (in either editor) carry over to the new ones.
   const saved = app.show.audio ? await songInfo(app.show.audio) : null;
-  if (song !== songBuffer) return null;
+  if (song !== songBuffer || cancelled()) return null;
   const old = [...(saved?.sections || []), ...(app.show.sections || [])];
   const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars,
     sections: describeSections(keepYours(r.sections, old), r.traits) };
@@ -5327,10 +5327,11 @@ async function generate({ colors, style, house, build }) {
 async function generateWithAI({ colors, paletteName, style, house, build }) {
   // A window over the editor while the AI works, so it's plain it's busy and nothing is changed
   // underneath it; Cancel (or Esc) stops waiting and leaves the show as it was.
+  if (!aiLights().some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
   const busy = busyWindow(`Generating ${app.show.name || "your show"}`);
   if (songBuffer && !app.show.beats.length && !app.show.sections?.length) {
     busy.say("Listening to the song first…");
-    const heard = await analyseSong();
+    const heard = await analyseSong({ cancelled: () => busy.cancelled });
     if (!heard || busy.cancelled) { busy.close(); return; }
   }
   const feel = { calm: "calm and gentle, with slow movement", balanced: "balanced, building with the music",
@@ -5367,7 +5368,7 @@ function busyWindow(title) {
   row.append(spin, text);
   const hint = document.createElement("p");
   hint.className = "hint";
-  hint.textContent = "The editor is paused until it's done. You can leave this page open and come back.";
+  hint.textContent = "Nothing in the show changes until it's done. Cancel stops waiting and keeps the show as it is.";
   const ctl = new AbortController();
   const cancel = button("Cancel", () => stop(), "ghost");
   const actions = document.createElement("div");
@@ -5395,7 +5396,7 @@ function busyWindow(title) {
     state.cancelled = true;
     ctl.abort();
     state.close();
-    status("Stopped. Your show is as it was", "hint");
+    status("Cancelled. Your show is as it was", "hint");
   }
   dlg.addEventListener("cancel", (e) => { e.preventDefault(); stop(); }); // Esc
   document.body.append(dlg);
@@ -5592,7 +5593,7 @@ async function describe(request, selectionFor, { replaceAll = false, what = "you
   try {
     reply = await api("api/ai/clips", { method: "POST", json: { request, context }, signal: busy?.signal });
   } catch (err) {
-    if (busy?.cancelled) { done("Stopped. Nothing was changed"); return; }
+    if (busy?.cancelled) { done("Cancelled. Nothing was changed"); return; }
     done(err.message, true);
     status(err.message, true);
     return;
@@ -5733,7 +5734,12 @@ async function pageFromHistory(e) {
     undoing = true;
     history.go(shownN - n);
   };
-  if (!isPage(page) || navigating || document.querySelector("dialog[open]")) { refuse(); return; }
+  if (!isPage(page) || navigating || document.querySelector("dialog[open]")) {
+    refuse();
+    // Back while the AI is generating is how you'd stop it on a phone: it's Cancel.
+    document.querySelector(".busy-dialog[open] .insp-actions button")?.click();
+    return;
+  }
   navigating = true;
   try {
     if (shownPage === "editor" && page === "showlist") {

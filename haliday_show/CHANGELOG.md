@@ -2,10 +2,10 @@
 
 ## 0.2.145
 
-- While the AI generates a show (**✨ Generate** with **AI**, or **+ New show** with **Generate with
-  AI**), a **Generating…** window now covers the editor. It shows a spinner, what's happening and
-  the time so far. The editor is paused until it's done, so nothing can change underneath it. Press
-  **Cancel** (or Esc) to stop waiting and keep the show as it was.
+- While the AI generates a show (**✨ Generate** with **Made by** set to **AI**, or **+ New show** with
+  **Generate with AI**), a **Generating…** window now covers the editor. It shows a spinner, what's
+  happening and the time so far, and nothing in the show can change underneath it. Press **Cancel**
+  (or Esc, or Back on a phone) to stop waiting and keep the show as it was.
 
 ## 0.2.144
 
