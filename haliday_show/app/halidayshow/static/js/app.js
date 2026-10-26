@@ -5170,9 +5170,12 @@ async function renderSongsPage() {
   const mine = ++songsAsked; // only the latest answer is drawn
   try {
     const [list, shows, drafts, folders] = await Promise.all([api("api/songs"), api("api/shows"), api("api/drafts").catch(() => []),
-      api("api/song-folders").catch(() => songFolders)]);
+      api("api/song-folders").catch(() => null)]);
     if (mine !== songsAsked) return;
-    songFolders = folders;
+    // A save on its way wins over what was read before it; a failed read keeps folders from being saved
+    // over (it would replace them all).
+    if (folders && !folderSaving) songFolders = folders;
+    if (!folderSaving) foldersLoaded = Boolean(folders);
     songRowsCache = songRows(list.songs, shows);
     songDrafts = drafts;
     songsMore = list.more;
@@ -5309,7 +5312,7 @@ async function deleteDraft(d) {
 }
 
 // Folders you make (songfolders.js), each folding away, then the songs in none.
-let songFolders = [];
+let songFolders = [], foldersLoaded = false, folderSaving = 0, folderChain = Promise.resolve();
 function songFolderSections(fams, filtered) {
   const list = (items, label) => {
     const box = document.createElement("div");
@@ -5319,30 +5322,45 @@ function songFolderSections(fams, filtered) {
     box.append(...items.map(songFamilyCard));
     return box;
   };
+  $("btn-new-folder").disabled = !foldersLoaded;
+  $("btn-new-folder").title = foldersLoaded ? "A folder to sort your songs into; the files stay where they are"
+    : "Couldn't load your folders just now";
   if (!songFolders.length) return [list(fams, "Your songs")];
   const { groups, loose } = inFolders(fams, songFolders);
   const out = [];
   for (const { folder, families } of groups) {
     if (filtered && !families.length) continue; // while finding, only folders with something in
-    const d = document.createElement("details");
+    // A folder: a header (a button that folds it, then Rename… and Delete…) over its songs.
+    const d = document.createElement("section");
     d.className = "song-folder";
-    d.open = filtered ? true : prefs.get(`songFolderOpen.${folder.id}`, true);
-    d.addEventListener("toggle", () => { if (!filtered) prefs.set(`songFolderOpen.${folder.id}`, d.open); });
-    const s = document.createElement("summary");
+    const open = filtered ? true : prefs.get(`songFolderOpen.${folder.id}`, true);
+    const head = document.createElement("div");
+    head.className = "song-folder-head";
+    const fold = document.createElement("button");
+    fold.type = "button";
+    fold.className = "song-folder-fold";
+    fold.setAttribute("aria-expanded", String(open));
     const name = document.createElement("b");
     name.textContent = folder.name;
     const count = document.createElement("span");
     count.className = "hint";
     count.textContent = families.length ? familyCount(families) : "empty";
-    const spacer = document.createElement("span");
-    spacer.className = "spacer";
-    const ren = button("Rename…", (e) => { e.preventDefault(); renameSongFolder(folder); }, "ghost");
+    fold.append(name, count);
+    const ren = button("Rename…", () => renameSongFolder(folder), "ghost");
     ren.setAttribute("aria-label", `Rename the folder ${folder.name}`);
-    const del = button("Delete…", (e) => { e.preventDefault(); deleteSongFolder(folder); }, "ghost danger");
+    const del = button("Delete…", () => deleteSongFolder(folder), "ghost danger");
     del.setAttribute("aria-label", `Delete the folder ${folder.name}`);
-    s.append(name, count, spacer, ren, del);
-    d.append(s, families.length ? list(families, `Songs in ${folder.name}`)
-      : Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in it yet. Pick it under Folder on a song." }));
+    head.append(fold, ren, del);
+    const body = families.length ? list(families, `Songs in ${folder.name}`)
+      : Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in it yet. Pick it under Folder on a song." });
+    body.classList.add("song-folder-body");
+    body.hidden = !open;
+    fold.addEventListener("click", () => {
+      body.hidden = !body.hidden;
+      fold.setAttribute("aria-expanded", String(!body.hidden));
+      if (!filtered) prefs.set(`songFolderOpen.${folder.id}`, !body.hidden);
+    });
+    d.append(head, body);
     out.push(d);
   }
   if (loose.length) {
@@ -5354,18 +5372,22 @@ function songFolderSections(fams, filtered) {
   return out;
 }
 
-async function saveSongFolders(next, what) {
-  const before = songFolders;
+// Saves go one after another, each showing at once; a failed one reads the folders back afresh.
+function saveSongFolders(next, what) {
+  if (!foldersLoaded) { status("Couldn't load your folders, so they can't be changed just now. Try again in a moment", true, "songs"); return; }
   songFolders = next;
+  folderSaving++;
   drawSongRows();
-  try {
-    songFolders = await api("api/song-folders", { method: "PUT", json: next });
-    status(what, "saved", "songs");
-  } catch (e) {
-    songFolders = before;
-    drawSongRows();
-    status(`Couldn't save the folders: ${e.message}`, true, "songs");
-  }
+  folderChain = folderChain.then(async () => {
+    try {
+      await api("api/song-folders", { method: "PUT", json: next });
+      status(what, "saved", "songs");
+    } catch (e) {
+      status(`Couldn't save the folders: ${e.message}`, true, "songs");
+      try { songFolders = await api("api/song-folders"); } catch { foldersLoaded = false; }
+      drawSongRows();
+    } finally { folderSaving--; }
+  });
 }
 
 function askFolderName(title, current = "", except = null) {
@@ -5536,7 +5558,7 @@ function songRow(r) {
   actions.className = "group show-actions";
   const edit = button("Edit", () => editSong(r.ref), "primary");
   edit.setAttribute("aria-label", `Edit ${r.name} in the Music editor`);
-  if (songFolders.length) actions.append(folderPicker(r));
+  if (songFolders.length && foldersLoaded) actions.append(folderPicker(r));
   actions.append(edit);
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
