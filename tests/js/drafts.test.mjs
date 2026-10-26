@@ -166,3 +166,50 @@ test("leaving the page sends with keepalive", async () => {
   await keeper.flush({ keepalive: true });
   assert.deepEqual(seen, [true]);
 });
+
+test("a draft you've left whose last change failed is reported, kept and sent with your next change", async () => {
+  const { keeper, timers, calls, drafts, failOnce } = setup();
+  const errors = [];
+  keeper.onError = (m, s, current) => errors.push([m, s.latest?.name, current]);
+  drafts.set("d9", body("A"));
+  keeper.start({ id: "d9", made: null });
+  failOnce();
+  keeper.changed(body("A changed"));
+  keeper.start(null); // leave A: its change is sent now, and fails
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(errors, [["offline", "A changed", false]]);
+  assert.ok(!keeper.failed && keeper.anyFailed, "this song is fine, but A's change is waiting");
+  keeper.changed(body("B"));
+  timers.run();
+  await keeper.flush();
+  assert.equal(drafts.get("d9").name, "A changed");
+  assert.ok(!keeper.anyFailed);
+  assert.deepEqual(calls.map((c) => c.slice(0, 3)).filter((c) => c[2] !== "B"),
+    [["PUT", "api/drafts/d9", "A changed"], ["PUT", "api/drafts/d9", "A changed"]]);
+});
+
+test("a stalled draft that's deleted, renamed or reopened from Your songs stays as you left it", async () => {
+  const { keeper, drafts, failOnce } = setup();
+  const leaveFailing = async (id, name) => {
+    drafts.set(id, body(name));
+    keeper.start({ id, made: null });
+    await keeper.flush(); // let any retries finish first, so the failure is this draft's
+    failOnce();
+    keeper.changed(body(`${name} changed`));
+    keeper.start(null);
+    await new Promise((r) => setTimeout(r, 0));
+  };
+  await leaveFailing("d7", "Deleted");
+  keeper.forgetId("d7");
+  drafts.delete("d7");
+  await leaveFailing("d8", "Renamed");
+  drafts.set("d8", body("New name"));
+  keeper.renamed("d8", "New name");
+  await leaveFailing("d6", "Reopened");
+  keeper.start({ id: "d6", made: null }); // opened again, as the server has it
+  await keeper.flush();
+  assert.ok(!drafts.has("d7") && [...drafts.values()].every((d) => !d.name.startsWith("Deleted")), "not made again");
+  assert.equal(drafts.get("d8").name, "New name");
+  assert.equal(drafts.get("d6").name, "Reopened", "the stale change didn't land on the reopened draft");
+  assert.ok(!keeper.anyFailed);
+});

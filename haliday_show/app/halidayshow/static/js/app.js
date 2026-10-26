@@ -22,7 +22,7 @@ import { MusicEditor } from "./music.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
-import { addressText, itemText, queueText } from "./publicsettings.js";
+import { addressText, itemText, nearbyText, queueText, visitorLink } from "./publicsettings.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
@@ -3795,11 +3795,26 @@ function renderPublicQueue(view) {
   if (!view.on && shownPage === "public") showView("settings", { push: false });
   $("pub-now").textContent = queueText(view);
   $("pub-clear").hidden = !view.waiting.length;
-  $("pub-address").textContent = addressText(view, location.hostname);
+  // The link with the code is on the Who can start shows card; this line is for problems with the port.
+  $("pub-address").textContent = view.error || !view.listening ? addressText(view, location.hostname) : "";
+  $("pub-address").hidden = !$("pub-address").textContent;
+}
+
+function renderPublicGuard() {
+  const view = publicView;
+  const keep = (id, value) => { if (document.activeElement !== $(id)) $(id).value = value; };
+  keep("pub-address-input", view.address);
+  keep("pub-distance", view.distance);
+  $("pub-nearby").checked = view.nearby;
+  $("pub-distance").disabled = !view.nearby;
+  $("pub-link").textContent = visitorLink(view, location.hostname);
+  $("pub-nearby-hint").textContent = nearbyText(view);
+  $("pub-nearby-hint").classList.toggle("warn", view.nearby && !view.home);
 }
 
 function renderPublicItems() {
   const view = publicView;
+  renderPublicGuard();
   const dayPick = (k, key, label) => {
     const it = view.items[k];
     const day = document.createElement("select"), month = document.createElement("select");
@@ -3912,14 +3927,17 @@ function savePublic() {
     return pubSaving;
   }
   publicView.on = $("pub-on").checked;
+  publicView.address = $("pub-address-input").value.trim().replace(/\/+$/, "");
+  publicView.nearby = $("pub-nearby").checked;
+  if (Number($("pub-distance").value)) publicView.distance = Number($("pub-distance").value);
   if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);
   if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue } = publicView;
+    const { on, items, per_phone, queue, address, nearby, distance } = publicView;
     try {
-      const view = await api("api/public", { method: "PUT", json: { on, items, per_phone, queue } });
+      const view = await api("api/public", { method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance } });
       if (pubPending === 1) {
         publicView = view;
         if (shownPage === "public") renderPublicItems();
@@ -3939,6 +3957,27 @@ function wirePublic() {
   $("pub-on").addEventListener("change", () => savePublic());
   $("pub-open").addEventListener("click", () => showView("public"));
   $("pub-per-phone").addEventListener("change", savePublic);
+  for (const id of ["pub-address-input", "pub-nearby", "pub-distance"]) $(id).addEventListener("change", savePublic);
+  $("pub-copy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("pub-link").textContent);
+      status("Visitors' link copied");
+    } catch {
+      status("Couldn't copy it here. Select the link and copy it yourself.", "hint");
+    }
+  });
+  $("pub-new-code").addEventListener("click", async () => {
+    if (!confirm("Make a new code? The old link, and any QR code you've printed, stop working.")) return;
+    try {
+      await pubSaving;
+      const view = await api("api/public/code", { method: "POST" });
+      publicView.code = view.code;
+      renderPublicGuard();
+      status("New code made. Share the new link", "saved", "public");
+    } catch (e) {
+      status(`Couldn't make a new code: ${e.message}`, true, "public");
+    }
+  });
   $("pub-queue").addEventListener("change", savePublic);
   $("pub-add").addEventListener("click", () => {
     const [kind, id] = $("pub-add-pick").value.split(":");
@@ -4352,8 +4391,8 @@ async function renameDraft(d) {
     return;
   }
   try {
-    const full = await api(`api/drafts/${encodeURIComponent(d.id)}`);
-    await api(`api/drafts/${encodeURIComponent(d.id)}`, { method: "PUT", json: { ...full, name } });
+    await api(`api/drafts/${encodeURIComponent(d.id)}/rename`, { method: "POST", json: { name } });
+    music.keeper.renamed(d.id, name);
     renderSongsPage();
   } catch (e) { status(`Couldn't rename the draft: ${e.message}`, true, "songs"); }
 }
@@ -4361,8 +4400,8 @@ async function renameDraft(d) {
 async function deleteDraft(d) {
   const made = d.made ? ` The song file it made (${d.made.path.split("/").pop()}) stays.` : "";
   if (!confirm(`Delete the draft "${d.name}"? The song it started from isn't changed.${made}`)) return;
-  // Forgotten first, so a save on its way can't make it again.
-  if (music.draft?.id === d.id) music.forgetDraft();
+  // Forgotten first, so a save on its way (or waiting to be tried again) can't make it again.
+  music.keeper.forgetId(d.id);
   try {
     await api(`api/drafts/${encodeURIComponent(d.id)}`, { method: "DELETE" }).catch((e) => {
       if (e.status !== 404) throw e; // already gone (deleted in another tab) is fine

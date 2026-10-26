@@ -1019,6 +1019,20 @@ async def test_song_drafts_are_kept_listed_and_deleted(client, tmp_path):
         assert (await client.post("/api/drafts", json=bad)).status == 400
 
 
+async def test_drafts_say_which_songs_they_use_and_rename_alone(client, tmp_path):
+    a, b = {"source": "media", "path": "haliday_show/a.mp3"}, {"source": "media", "path": "haliday_show/b.wav"}
+    draft = {"name": "Mix", "base": a, "pieces": [{"song": a, "start": 0, "end": 5}, {"song": b, "start": 0, "end": 3},
+                                                  {"song": a, "start": 9, "end": 12}]}
+    draft_id = (await (await client.post("/api/drafts", json=draft)).json())["id"]
+    listed = (await (await client.get("/api/drafts")).json())[0]
+    assert listed["uses"] == ["haliday_show/a.mp3", "haliday_show/b.wav"]
+    assert (await client.post(f"/api/drafts/{draft_id}/rename", json={"name": "  Party   mix "})).status == 200
+    got = await (await client.get(f"/api/drafts/{draft_id}")).json()
+    assert got["name"] == "Party mix" and len(got["pieces"]) == 3
+    assert (await client.post(f"/api/drafts/{draft_id}/rename", json={"name": " "})).status == 400
+    assert (await client.post("/api/drafts/nope/rename", json={"name": "x"})).status == 404
+
+
 async def test_songs_upload_in_parts(client, tmp_path):
     song = bytes(range(256)) * 4096 * 3  # 3 MB
     url = "/api/audio/part?upload=0123456789abcdef"

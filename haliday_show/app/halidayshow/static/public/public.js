@@ -64,6 +64,37 @@ export function describe(st) {
 }
 
 const TICKET_KEY = "halidayshow.publicTicket";
+const CODE_KEY = "halidayshow.publicCode";
+
+// The code from the QR code's link (?c=…), kept so the page still works when opened again later.
+export function codeFrom(search, kept) {
+  const c = new URLSearchParams(search).get("c");
+  return c && /^[A-Za-z0-9]{6,16}$/.test(c) ? c : kept || "";
+}
+
+function code() {
+  let kept = null;
+  try { kept = localStorage.getItem(CODE_KEY); } catch { /* private browsing */ }
+  const c = codeFrom(location.search, kept);
+  if (c && c !== kept) try { localStorage.setItem(CODE_KEY, c); } catch { /* kept for this visit only */ }
+  return c;
+}
+
+// Why a phone's location couldn't be had, in words.
+export function locationProblem(err) {
+  if (err?.code === 1) return "Without your location you can't start a show from here. Allow location for this page in your browser's settings, then try again.";
+  if (err?.code === 3) return "Your phone took too long to find where you are. Try again.";
+  return "Your phone couldn't tell where you are. Try again in a moment.";
+}
+
+function whereAmI() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject({ code: 2 }); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+      reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  });
+}
 
 function ticket() {
   let t = null;
@@ -79,11 +110,15 @@ function ticket() {
 export function start() {
   const $ = (id) => document.getElementById(id);
   const me = ticket();
+  const key = code();
   let busy = false;
+  let needsLocation = false;
 
-  const say = (text) => {
+  // A problem, or with info = true, a plain progress note.
+  const say = (text, info = false) => {
     $("pp-message").textContent = text;
     $("pp-message").hidden = !text;
+    $("pp-message").classList.toggle("pp-info", info);
   };
 
   const el = (tag, cls, text) => {
@@ -94,6 +129,13 @@ export function start() {
   };
 
   function render(st) {
+    $("pp-locked").hidden = !st.locked;
+    if (st.locked) {
+      $("pp-closed").hidden = $("pp-open").hidden = true;
+      return;
+    }
+    needsLocation = !!st.needs_location;
+    $("pp-location").hidden = !needsLocation;
     const view = describe(st);
     $("pp-closed").hidden = !view.closed;
     $("pp-open").hidden = view.closed;
@@ -145,7 +187,7 @@ export function start() {
 
   async function refresh() {
     try {
-      const res = await fetch(`api/state?ticket=${encodeURIComponent(me)}`, { cache: "no-store" });
+      const res = await fetch(`api/state?ticket=${encodeURIComponent(me)}&code=${encodeURIComponent(key)}`, { cache: "no-store" });
       if (!res.ok) throw new Error();
       render(await res.json());
       if ($("pp-message").dataset.kind === "offline") say("");
@@ -161,9 +203,20 @@ export function start() {
     say("");
     $("pp-message").dataset.kind = "";
     try {
+      let where = {};
+      if (needsLocation && path === "api/request") {
+        say("Checking you're by the lights…", true);
+        try {
+          where = await whereAmI();
+        } catch (err) {
+          say(locationProblem(err));
+          return;
+        }
+        say("");
+      }
       const res = await fetch(path, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...body, ticket: me }),
+        body: JSON.stringify({ ...body, ...where, ticket: me, code: key }),
       });
       if (res.ok) {
         render(await res.json());
