@@ -1251,8 +1251,63 @@ port opens the first time you turn on **Let visitors start shows**. If another a
 pick another under **Public page port** on the app's **Configuration** tab in Home Assistant, then
 restart the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
 
-To reach the page from the street on mobile data, point a tunnel or proxy at that port (only that
-port), such as Cloudflare Tunnel, and put its address in **Public address**.
+#### Reaching the page from outside your home
+
+Visitors' phones are usually on mobile data, not your Wi-Fi, so the page needs a web address the
+internet can reach. Whichever way you choose:
+
+- Point it at **port 18099 only**, never Home Assistant's own port (8123), so nothing but the public
+  page is reachable.
+- Use **https** (all the ways below give you that). Phones only share their location with secure
+  pages, so with **Nearby only** on, visitors on plain http can't start shows.
+- Put the address you end up with in **Public address** on the **Public page** tab, then press
+  **Print sign…**.
+- Aim it at your Home Assistant's **home network address**, such as `http://192.168.1.20:18099`
+  (in Home Assistant: **Settings → System → Network**). It works however Home Assistant is set up.
+
+**Cloudflare Tunnel** (recommended). Free, and nothing changes on your router. You need a free
+Cloudflare account and a domain using Cloudflare for its DNS (a domain costs a few pounds a year).
+
+1. Add the **Cloudflared** app to Home Assistant (see its own instructions for adding it to the
+   **App store**).
+2. On its **Configuration** tab, under **additional_hosts** (the names here are the app's own, at the
+   time of writing; its instructions have the details), add one with **hostname** set to the
+   address you want, such as `lights.yourdomain.com`, and **service** set to your Home Assistant's
+   home network address on port 18099, such as `http://192.168.1.20:18099`.
+3. Leave **external_hostname** empty, unless you also want to reach Home Assistant itself that way.
+4. Start the app (it logs in to Cloudflare the first time and makes the address for you), then open
+   `https://lights.yourdomain.com` and check you see "Scan the code on the sign".
+
+If you manage your tunnel in Cloudflare's own dashboard instead, add a **public hostname** there with
+the same address and service (type **HTTP**, URL `192.168.1.20:18099`).
+
+**Tailscale Funnel**. Free, with no domain needed: you get an address like
+`https://homeassistant.your-tailnet.ts.net:8443`. You need a free Tailscale account and Funnel
+switched on for your tailnet.
+
+1. Add the **Tailscale** app and log it in.
+2. Funnel can only use ports 443, 8443 and 10000. Pick one Home Assistant doesn't already use (8443,
+   say), and turn Funnel on for it, sending it to `http://localhost:18099`. How to do that depends on
+   the Tailscale app you use, so follow its own instructions for sharing another app's port with
+   Funnel.
+3. Put the `https://…ts.net:8443` address in **Public address**.
+
+**Your own reverse proxy** (NGINX Proxy Manager, Caddy, Traefik and similar, often with DuckDNS). If
+you already run one, add a host for the address you want, sent to your Home Assistant's home network
+address on port 18099, with an https certificate (Let's Encrypt). This needs ports 80 and 443 open on
+your router to the proxy, which puts your home connection on the internet: keep the proxy up to date,
+and send it nothing but this page.
+
+**Wi-Fi only**. No internet at all: leave **Public address** empty and the link, and the sign's QR
+code, use your Home Assistant's home address. Only phones on your Wi-Fi can open it, so it suits a
+guest Wi-Fi that reaches the pavement, or an event with its own network. The nearby check doesn't
+ask phones on your Wi-Fi, since being on it shows they're close.
+
+**Home Assistant Cloud (Nabu Casa)** can't be used for this. It only reaches Home Assistant itself,
+behind your login, so it can't show a public page.
+
+With Docker or Python, it's the same: point the tunnel or proxy at port 18099 on the machine
+HA-liday Show runs on.
 
 #### Keeping it safe
 
@@ -1272,13 +1327,11 @@ port), such as Cloudflare Tunnel, and put its address in **Public address**.
 - **Nearby only** keeps out casual visitors far away, but a phone reports its own location, so
   someone determined at a computer could get round it. **Clear the queue** and **New code…** deal with
   anyone who does.
-- **Use a tunnel or proxy, not a plain port forward.** Visitors on your home Wi-Fi skip the location
-  check, and HA-liday Show tells them apart by the details a tunnel or proxy adds (Cloudflare Tunnel
-  and Nginx Proxy Manager both do). Forwarding the port on your router straight through would make
-  everyone look as if they're at home.
-
-> **Coming next:** step-by-step guides for reaching the page from outside your home (Cloudflare Tunnel
-> and others).
+- **Use a tunnel or proxy with https, not a plain port forward.** Phones only share their location
+  with secure (https) pages, so through a plain port forward on your router visitors couldn't start
+  shows with **Nearby only** on. Visitors on your home Wi-Fi skip the location check; HA-liday Show
+  only counts phones on your home network as at home, never a tunnel or proxy, even one running on
+  the Home Assistant machine itself.
 
 ## 6. Automations
 
