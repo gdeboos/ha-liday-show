@@ -2,6 +2,11 @@
 
 ## 0.2.148
 
+- Going back to **Your shows** (with **← All shows** or your browser's **Back**) now stops the show if
+  it was playing. The song used to carry on in the background with nothing on screen to stop it.
+
+## 0.2.148
+
 - New in the **Music editor**: **Suggest cuts**, in the **Edit** card. Pick **the whole song** or one
   section under **Shorten**, type how long you'd like it **to about** (such as 1:30 or 20), and press
   **✂ Find cuts**. You get up to three options, each taking out whole bars where the music either side
