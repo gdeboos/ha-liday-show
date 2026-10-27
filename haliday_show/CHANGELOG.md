@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.200
+
+- Fixed: in the **Music editor**, a long clip on a layer that ran past the end of the song couldn't be
+  shortened, because its end was out of reach. Its end now sits at the song's end, ready to drag in,
+  and a new clip is trimmed to the song's end when you add it.
+
 ## 0.2.199
 
 - In the **Music editor**, layer lanes are taller and each clip shows its own waveform and, if its
