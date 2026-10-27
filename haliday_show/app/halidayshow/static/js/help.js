@@ -29,7 +29,7 @@ export const HELP = {
       { id: "show", title: "Saving and the show", guide: ["play-it.md", "saving"], tips: [
         `<b>Save</b> (${k("Ctrl", "S")}) stores the show and bakes it for playback. With <b>Auto save</b> on it saves itself a moment after each change.`,
         "<b>⚙ Show settings…</b> has the name, the show speaker, auto save and delete.",
-        "<b>✨ Generate</b> fills every light with effects that follow the song. Press it again for a different take; Ctrl+Z brings back what you had.",
+        `<b>✨ Generate</b> fills every light with effects that follow the song. Press it again for a different take; ${k("Ctrl", "Z")} brings back what you had.`,
         "<b>← All shows</b> goes back to the list.",
       ] },
       { id: "song", title: "The song", guide: ["build-a-show.md", "songs"], tips: [
@@ -50,7 +50,7 @@ export const HELP = {
       ] },
       { id: "ai", title: "Describe it", guide: ["build-a-show.md", "describe-it"], tips: [
         "Type what you'd like, such as \"red and green chase on the roof in every chorus\", and press <b>✨ Create</b>.",
-        "Select a stretch first to work on just that. Ctrl+Z undoes the lot.",
+        `Select a stretch first to work on just that. ${k("Ctrl", "Z")} undoes the lot.`,
         "It needs an AI, set up under <b>Setup → Settings → AI</b>.",
       ] },
       { id: "preview", title: "Preview and House", guide: ["house.md", "3-your-house"], tips: [
@@ -207,7 +207,7 @@ export const HELP = {
         "<b>Building blocks</b> go between shows: a <b>Pause</b>, one <b>Colour</b>, <b>Off</b> or an <b>Effect</b>, each with its own length.",
       ] },
       { id: "when", title: "When it plays", guide: ["play-it.md", "playlists"], tips: [
-        "Turn on <b>Play on a schedule</b> and pick the times and days. A time can follow sunset or sunrise.",
+        "Turn on <b>Play on a schedule</b> and pick the times and days. A start time can be at sunset.",
         "<b>Only between</b> limits it to some dates, such as December.",
         "For shows with no speaker, open the <b>Show player</b> on a computer with speakers and leave it open.",
       ] },

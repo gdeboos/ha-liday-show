@@ -167,6 +167,10 @@ export function initHelp(getView) {
   }, true);
   window.addEventListener("resize", () => closePop());
   // Keys typed in help (Space on a topic, say) are for help, not the editor behind it.
-  for (const box of [drawer(), $("help-pop")]) box.addEventListener("keydown", (e) => { if (e.key !== "Escape") e.stopPropagation(); });
+  for (const box of [drawer(), $("help-pop")]) box.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") return; // still saves
+    e.stopPropagation();
+  });
   addPanelButtons({ "view-editor": "editor", "view-music": "music", "view-playlist": "playlist" });
 }

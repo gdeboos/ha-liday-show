@@ -266,8 +266,6 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .house-card input[type="range"] { flex: 1; min-width: 80px; }
 .house-stretch { border-top: 1px solid #ffb020; padding-top: 6px; }
 .house-stretch > span:first-child { flex-basis: 100%; }
-.house-help summary { cursor: pointer; }
-.house-help p { margin: 6px 0 0; }
 @media (max-width: 720px) {
   .house-layout { grid-template-columns: 1fr; }
   .house-stage { order: -1; }
