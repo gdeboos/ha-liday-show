@@ -385,7 +385,6 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 .pl-block { position: absolute; top: 0; bottom: 0; background: hsl(var(--hue) 60% 50%); color: #fff; font-size: 11px;
   line-height: 26px; padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   border-right: 1px solid var(--panel); }
-.pl-order-hint { margin: 8px 0; }
 .pl-block-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .pl-swatch { flex: none; width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--line); }
 .pl-swatch-pause { border-style: dashed; background: transparent; }

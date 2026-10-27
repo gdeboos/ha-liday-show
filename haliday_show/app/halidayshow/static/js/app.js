@@ -7876,7 +7876,12 @@ async function init() {
   wireData();
   wirePublic();
   new Layout(() => { layoutPreview(); timeline.layout(); }, "show", $("view-editor"));
-  new Layout(null, "music", $("view-music"));
+  const musicLayout = new Layout(null, "music", $("view-music"));
+  // Clicking a section, mark, clip or join opens a folded Selection panel, so the change shows.
+  new MutationObserver(() => {
+    if (musicLayout.layout.collapsed.includes("selection") && $("view-music").querySelector(".music-selection > .music-section:not([hidden])"))
+      musicLayout.toggleCollapsed("selection");
+  }).observe($("view-music").querySelector(".music-selection"), { subtree: true, attributeFilter: ["hidden"] });
   new Layout(null, "playlist", $("view-playlist"));
   // Settings → Layout shows one editor's layout at a time.
   const pickLayout = (name) => {
