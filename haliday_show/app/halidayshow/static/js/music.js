@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { MAX_CLIPS, MAX_LAYERS, anchorAt, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
+import { MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, MAX_CHANGES, applyEq, eqAt, faderText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { stretch } from "./tempo.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
@@ -937,8 +937,8 @@ export class MusicEditor {
     this.host.status("Split it in two: move, trim or delete either part");
   }
 
-  // Puts a sample or song on a layer at the playhead, as long as it is (trim it after), at a level a
-  // little under the song's.
+  // Puts a sample or song on a layer at the playhead, as long as it is (trim it after) but no further
+  // than the song's end, at a level a little under the song's.
   async addClip(i, ref) {
     if (this.layers[i].clips.length >= MAX_CLIPS) return this.host.status(`A layer can have up to ${MAX_CLIPS} clips; use another layer`, "hint");
     const at = this.time < this.total - 0.01 && anchorAt(this.pieces, this.crossfade, this.time, this.refs);
@@ -947,7 +947,7 @@ export class MusicEditor {
     const layer = this.layers[i];
     try { key = await this.source(ref); } catch (e) { return this.host.status(songLoadMessage(e), true); }
     const rate = this.audio.sampleRate, audio = this.sources[key];
-    const end = Math.round((audio[0].length / rate) * 1000) / 1000;
+    const whole = audio[0].length / rate;
     this.songLufs ??= loudness(this.main, rate);
     const gain = matchGain(this.songLufs, loudness(audio, rate));
     // Its own tempo, for matching the song's: from its detected beats, or found now on a layer that
@@ -955,10 +955,13 @@ export class MusicEditor {
     const bpm = layer.matchTempo ? await this.tempoOf(ref) : Math.round((this.infos[key]?.tempo || 0) * 10) / 10 || null;
     i = this.layers.indexOf(layer); // the layer may have moved, or gone, while it loaded
     if (i < 0) return;
+    // Anything past the song's end wouldn't be heard, and its end couldn't be reached to trim it.
+    const speed = clipSpeed(this.layers[i], { bpm }, this.songTempo), room = (this.total - this.time) * speed;
+    const end = Math.round(Math.min(whole, room) * 1000) / 1000;
     const clip = { song: ref, start: 0, end, anchor: at, gain, fadeIn: 0, fadeOut: 0, ...(bpm ? { bpm } : {}) };
     const layers = this.layers.map((l, k) => (k === i ? { ...l, clips: [...l.clips, clip] } : l));
     this.editLayers(layers, { layer: i, clip: layers[i].clips.length - 1 });
-    this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} at ${fmtTime(this.time)}. Drag it to move it, or its ends to trim it`);
+    this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} at ${fmtTime(this.time)}${end < whole - 0.01 ? ", trimmed to the song's end" : ""}. Drag it to move it, or its ends to trim it`);
   }
 
   // The lane (layer index) at canvas y, or -1.
@@ -968,10 +971,11 @@ export class MusicEditor {
   }
 
   // The clip under (x, y) and which part: { layer, clip, at, length, part: "start" | "end" | "body" }.
+  // A clip running past the song's end has its end grip at the song's end (the rest isn't heard).
   clipAt(x, y) {
     const lane = this.laneAt(y);
     if (lane < 0) return null;
-    const hit = this.placed().filter((p) => p.layer === lane)
+    const hit = this.placed().filter((p) => p.layer === lane).map((p) => ({ ...p, length: Math.min(p.length, this.total - p.at) }))
       .find((p) => x >= this.x(p.at) - 4 && x <= this.x(p.at + p.length) + 4);
     if (!hit) return null;
     const x0 = this.x(hit.at), x1 = this.x(hit.at + hit.length);
@@ -2126,7 +2130,7 @@ export class MusicEditor {
       ctx.fillRect(0, y, w, 1);
       const hue = LAYER_HUES[i % 4];
       for (const p of placed.filter((q) => q.layer === i)) {
-        const c = l.clips[p.clip], x0 = this.x(p.at), x1 = this.x(p.at + p.length);
+        const c = l.clips[p.clip], x0 = this.x(p.at), x1 = this.x(Math.min(p.at + p.length, this.total));
         if (x1 < 0 || x0 > w) continue;
         const picked = this.clipSel?.layer === i && this.clipSel?.clip === p.clip;
         const gone = !this.sources[keyOf(c.song)];
@@ -2164,9 +2168,10 @@ export class MusicEditor {
         }
         // Fades as slopes in the corners.
         ctx.fillStyle = `hsl(${hue} 65% 30% / 0.6)`;
-        const fi = (c.fadeIn / p.length) * (x1 - x0), fo = (c.fadeOut / p.length) * (x1 - x0);
+        const xe = this.x(p.at + p.length); // its real end, past x1 if it runs over the song's end
+        const fi = this.x(p.at + c.fadeIn) - x0, fo = xe - this.x(p.at + p.length - c.fadeOut);
         if (fi > 1) { ctx.beginPath(); ctx.moveTo(x0, top); ctx.lineTo(x0 + fi, top); ctx.lineTo(x0, bot); ctx.fill(); }
-        if (fo > 1) { ctx.beginPath(); ctx.moveTo(x1, top); ctx.lineTo(x1 - fo, top); ctx.lineTo(x1, bot); ctx.fill(); }
+        if (fo > 1 && xe - fo < x1) { ctx.beginPath(); ctx.moveTo(xe, top); ctx.lineTo(xe - fo, top); ctx.lineTo(xe, bot); ctx.fill(); }
         ctx.strokeStyle = `hsl(${hue} 65% 40%)`;
         ctx.strokeRect(x0 + 0.5, top + 0.5, Math.max(2, x1 - x0) - 1, bot - top - 1);
         if (picked) { ctx.strokeStyle = col("--text"); ctx.lineWidth = 2; ctx.strokeRect(x0 + 1, top + 1, Math.max(2, x1 - x0) - 2, bot - top - 2); ctx.lineWidth = 1; }
