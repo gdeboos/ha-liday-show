@@ -8,6 +8,7 @@
 import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
+import { evenOut } from "./loudness.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
@@ -1291,7 +1292,9 @@ export class MusicEditor {
       .map((k) => this.loadInfo(this.refs[k])));
     this.stop();
     this.host.status(`Making ${file}…`);
-    const blob = new Blob([encodeWav(this.rendered, this.audio.sampleRate)], { type: "audio/wav" });
+    // Even out the volume: the same loudness as other songs made here (only the level changes).
+    const even = $("music-even").checked ? evenOut(this.rendered, this.audio.sampleRate) : { channels: this.rendered, gain: 0 };
+    const blob = new Blob([encodeWav(even.channels, this.audio.sampleRate)], { type: "audio/wav" });
     // Beats and sections that followed the edit carry over, with their names, colours and notes, as
     // long as every song in it has been detected (a spliced-in song brings its own); otherwise the
     // result is detected afresh. Marks always come along: the base song's and any spliced-in song's.
@@ -1317,7 +1320,8 @@ export class MusicEditor {
       else await session.chain;
       await this.host.songsChanged();
       this.fillSongLists();
-      this.host.status(`Made ${ref.path}. Pick it under Song in a show; the draft stays open to change`, "saved", "music-save");
+      const level = Math.abs(even.gain) >= 0.5 ? ` (turned ${even.gain > 0 ? "up" : "down"} ${Math.abs(even.gain).toFixed(1)} dB to even out the volume)` : "";
+      this.host.status(`Made ${ref.path}${level}. Pick it under Song in a show; the draft stays open to change`, "saved", "music-save");
       if (carry) await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
       else await this.detectMade(ref, rendered, rate, marks);
       this.host.songsChanged();
@@ -1895,6 +1899,11 @@ export class MusicEditor {
       });
     }
     $("music-save").addEventListener("click", () => this.save());
+    // Even out the volume is remembered in this browser (on unless you turn it off).
+    try { $("music-even").checked = localStorage.getItem("halidayshow.evenVolume") !== "false"; } catch { /* private mode */ }
+    $("music-even").addEventListener("change", (e) => {
+      try { localStorage.setItem("halidayshow.evenVolume", String(e.target.checked)); } catch { /* private mode */ }
+    });
     // Renaming a draft keeps it; before there's a draft, it's only the name it will get.
     $("music-name").addEventListener("change", () => { if (this.draft) this.draftChanged(); });
     $("music-detect").addEventListener("click", () => this.detect());
