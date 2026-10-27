@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.198
+
+- **? Help**, at the top right, opens tips for the page you're on in a drawer beside it (over it on a
+  phone). It changes as you move between pages. Topics fold open, **Search help** looks through every
+  page's tips, and **More in the guide ↗** opens that part of the full guide.
+- Each panel in the **Show**, **Music** and **Playlist** editors has a **?** beside its **⋯**. It shows a
+  few tips for that panel, and **More in Help →** opens the rest.
+- The old **How to…** lists (Music editor, the Show editor's **Selection** panel and **Settings → Layout**)
+  and the House tab's "How to trace your lights" have moved into Help, so they look the same everywhere
+  and no longer push the page down. A few long notes at the top of pages are now one line.
+
 ## 0.2.197
 
 - In the **Music editor**, **EQ** on the song's or a layer's row now opens its **Bass**, **Mid** and

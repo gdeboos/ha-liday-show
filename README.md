@@ -199,6 +199,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Suggest cuts**: shorten the song or one section to a length you pick, by whole bars where the join isn't heard; with an AI, it picks the best and says why
 - **Marks**: flag and name moments in a song (a big hit, the bells coming in); every show using the song sees them and clips snap to them
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
+- **? Help** on every page: tips for the page you're on, a ? on each editor panel, search, and links into the guide
 - Arrange the Show, Music and Playlist editors your way: pick a page layout, then drag, collapse or hide any panel
 - The browser's Back and Forward buttons move between the app's pages, inside Home Assistant too
 - Experimental: hand a Govee light to one of Govee's built-in scenes for part of the show
@@ -353,6 +354,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/app.js                           Editor state, panels, inspector and playback
     js/effects.js                       Effect definitions, House lane effects and the baker
     js/timeline.js                      Timeline canvas: waveform, clips, selection, zoom
+    js/help.js                          The Help drawer's words: tips per page and panel, search
+    js/helpui.js                        The Help drawer and the editors' ? bubbles
     js/house.js                         House photo: tracing, bulb layout, icicles, spots
     js/samplehouse.js, sample-house.svg  The sample house and its ready-made places for lights
     js/demo.js, sample-song.mp3         Try the demo: its planned lights and the music-box song

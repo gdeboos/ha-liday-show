@@ -29,6 +29,14 @@ pages you've visited, in Home Assistant too. From an open show, **Back** goes to
 while a window is open: close it first. Without Home Assistant (Docker or Python), reloading the
 page keeps you on the same tab or page.
 
+### Help
+
+**? Help**, at the top right, opens tips for the page you're on beside it (over it on a phone). It
+follows you as you change page. Each topic folds open, and **More in the guide ↗** opens that part of
+this guide on GitHub. Type in **Search help** to look through every page's tips at once. **✕**, or **Esc** while you're in it,
+closes it. In the editors, each panel's **?** shows a few tips for that panel, with **More in
+Help →** for the rest.
+
 ## Requirements
 
 - Home Assistant OS or Supervised (anything with **Settings → Apps**). Apps were called add-ons before
