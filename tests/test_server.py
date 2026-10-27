@@ -1061,6 +1061,25 @@ async def test_samples_have_their_own_folder_and_list(client, tmp_path):
     assert (tmp_path / "media" / "haliday_show" / "Song.mp3").exists()
 
 
+async def test_draft_layers_are_kept_and_checked(client, tmp_path):
+    song = {"source": "media", "path": "haliday_show/song.mp3"}
+    bells = {"source": "media", "path": "haliday_show/Samples/Bells.wav"}
+    clip = {"song": bells, "start": 0, "end": 2.5, "anchor": {"song": song, "t": 12}, "gain": -3, "fadeIn": 0.2, "fadeOut": 0}
+    draft = {"name": "Mix", "base": song, "pieces": [{"song": song, "start": 0, "end": 60}],
+             "layers": [{"name": "  Bells ", "gain": -6, "clips": [clip]}]}
+    draft_id = (await (await client.post("/api/drafts", json=draft)).json())["id"]
+    got = await (await client.get(f"/api/drafts/{draft_id}")).json()
+    assert got["layers"] == [{"name": "Bells", "gain": -6.0, "clips": [{**clip, "gain": -3.0, "fadeOut": 0.0}]}]
+    listed = next(d for d in await (await client.get("/api/drafts")).json() if d["id"] == draft_id)
+    assert "haliday_show/Samples/Bells.wav" in listed["uses"], "a layer's clips count as using their song"
+    # No layers, nothing saved for them (old drafts look the same).
+    plain = (await (await client.post("/api/drafts", json={**draft, "layers": []})).json())["id"]
+    assert "layers" not in await (await client.get(f"/api/drafts/{plain}")).json()
+    for bad in ([{"name": "x", "clips": [{**clip, "end": 0}]}], [{"name": "x", "gain": 99, "clips": []}],
+                [{"name": "x", "clips": [{**clip, "anchor": "12"}]}], [{"name": "x", "clips": []}] * 5, "x"):
+        assert (await client.post("/api/drafts", json={**draft, "layers": bad})).status == 400
+
+
 async def test_songs_upload_in_parts(client, tmp_path):
     song = bytes(range(256)) * 4096 * 3  # 3 MB
     url = "/api/audio/part?upload=0123456789abcdef"

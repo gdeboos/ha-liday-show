@@ -975,6 +975,43 @@ def _seconds(v, top: float) -> float | None:
     return round(float(v), 4)
 
 
+MAX_LAYERS, MAX_CLIPS = 4, 100
+
+
+def _gain(v) -> float | None:
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not -60 <= v <= 24:
+        return None
+    return round(float(v), 2)
+
+
+def _clean_layers(layers) -> list[dict] | None:
+    """A draft's layers: [{name, gain, clips: [{song, start, end, anchor: {song, t}, gain, fadeIn,
+    fadeOut}]}], samples or songs played over the song, each clip pinned to a moment in it."""
+    if not isinstance(layers, list) or len(layers) > MAX_LAYERS:
+        return None
+    out = []
+    for layer in layers:
+        if not isinstance(layer, dict) or not isinstance(layer.get("name", ""), str):
+            return None
+        gain, clips = _gain(layer.get("gain", 0)), layer.get("clips", [])
+        if gain is None or not isinstance(clips, list) or len(clips) > MAX_CLIPS:
+            return None
+        clean = []
+        for c in clips:
+            if not isinstance(c, dict) or not isinstance(c.get("anchor"), dict):
+                return None
+            song, anchor_song = _song_ref(c.get("song")), _song_ref(c["anchor"].get("song"))
+            start, end, t = _seconds(c.get("start"), 86400), _seconds(c.get("end"), 86400), _seconds(c["anchor"].get("t"), 86400)
+            cg = _gain(c.get("gain", 0))
+            fade_in, fade_out = _seconds(c.get("fadeIn", 0), 30), _seconds(c.get("fadeOut", 0), 30)
+            if None in (song, anchor_song, start, end, t, cg, fade_in, fade_out) or end <= start:
+                return None
+            clean.append({"song": song, "start": start, "end": end, "anchor": {"song": anchor_song, "t": t},
+                          "gain": cg, "fadeIn": fade_in, "fadeOut": fade_out})
+        out.append({"name": " ".join(layer.get("name", "").split())[:40], "gain": gain, "clips": clean})
+    return out
+
+
 def _clean_draft(body) -> dict | None:
     """A Music editor draft: {name, base, pieces: [{song, start, end}], crossfade, fadeIn, fadeOut,
     made, length}. The songs are only referred to, never copied."""
@@ -1001,8 +1038,14 @@ def _clean_draft(body) -> dict | None:
     made = None if made is None else _song_ref(made)
     if None in (crossfade, fade_in, fade_out, length) or (body.get("made") is not None and made is None):
         return None
-    return {"name": " ".join(name.split())[:80], "base": base, "pieces": clean, "crossfade": crossfade,
-            "fadeIn": fade_in, "fadeOut": fade_out, "made": made, "length": length}
+    out = {"name": " ".join(name.split())[:80], "base": base, "pieces": clean, "crossfade": crossfade,
+           "fadeIn": fade_in, "fadeOut": fade_out, "made": made, "length": length}
+    if body.get("layers"):  # sounds layered over the song (only kept when there are some)
+        layers = _clean_layers(body["layers"])
+        if layers is None:
+            return None
+        out["layers"] = layers
+    return out
 
 
 def _draft_id(request) -> str:

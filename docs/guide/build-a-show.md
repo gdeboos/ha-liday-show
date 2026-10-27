@@ -10,7 +10,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Suggest cuts](#suggest-cuts) ·
+- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Layers](#layers) · [Suggest cuts](#suggest-cuts) ·
   [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
@@ -167,11 +167,11 @@ puts it back and gives it back to the shows that were left without a song.
 Christmas", ready to layer over a song in the Music editor. There are two ways to make one:
 
 - **From a song:** in the Music editor, select the stretch you want and press **Save as sample…** (in
-  the **Edit** card), then give it a name. It's saved as it sounds in your edit.
+  the **Edit** card), then give it a name. It's saved as it sounds in your edit, layers and all.
 - **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
 
 They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Your songs** and a show's
-song list so those stay tidy. Each sample has **▶** to hear it (press **■** to stop) and **Delete…** to
+song list so those stay tidy. Use them on a [layer](#layers) in the Music editor. Each sample has **▶** to hear it (press **■** to stop) and **Delete…** to
 remove it for good.
 
 ### Editing a song
@@ -240,6 +240,29 @@ Songs you edited before drafts existed are ordinary songs: press **Edit** on one
 it. A draft can't be opened if a song it uses has been archived or deleted; restore the song first
 (under **Archived songs**). Until then, drafts whose song has gone are listed together at the end of
 **Your songs**, under **Drafts of songs that aren't here any more**, so you can still delete them.
+
+#### Layers
+
+Layers play samples or other songs on top of the song: sleigh bells over the intro, a "ho ho ho" on the
+last chorus, a voice saying "Merry Christmas", or another song fading in under the end.
+
+1. Under the waveform, press **+ Add layer** (up to four). Its row has a name, a **Volume** and
+   **Remove**, and a lane appears under the waveform for its clips.
+2. Put the playhead where you want a clip to start, then pick a sample or song from **+ Add a clip at
+   the playhead…** on the layer's row. It starts a little quieter than the song, so it sits in the mix;
+   change that with the clip's **Volume**.
+3. Drag a clip to move it (it snaps to bars, beats and marks; hold Shift to place it freely). Drag its
+   left or right end to trim it. Click a clip to pick it: its panel has **Volume**, **Fade in**, **Fade
+   out**, **▶ Hear it** and **Delete** (or press Delete).
+
+Each clip is pinned to the moment in the song it starts at, so it moves with your cuts: cut a bit
+earlier in the song and it moves earlier with the music; cut the part it sits on and it's left out
+(**Undo** or **Put back** brings it back). A clip that runs past the end of the song stops there.
+If you delete a sample a draft uses, its clips show greyed out and silent until you delete them or add
+the sample back. Layers are part of the draft and every change is one
+**Undo** step. **Make song file** mixes the layers into the new file, keeping the mix from
+distorting where they pile up. The waveform, **Detect** and **Suggest cuts** go by the song alone, and a
+sample saved with **Save as sample…** includes the layers.
 
 #### Suggest cuts
 

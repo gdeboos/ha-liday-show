@@ -236,7 +236,9 @@ class Storage:
             if not isinstance(d, dict):
                 continue
             # Every song it uses, so replacing one can say which drafts would change.
-            uses = sorted({(x.get("song") or {}).get("path") for x in d.get("pieces") or []
+            parts = [*(d.get("pieces") or []),
+                     *(c for layer in d.get("layers") or [] if isinstance(layer, dict) for c in layer.get("clips") or [])]
+            uses = sorted({(x.get("song") or {}).get("path") for x in parts
                            if isinstance(x, dict) and isinstance(x.get("song"), dict)} - {None})
             out.append({"id": p.stem, "name": d.get("name", p.stem), "base": d.get("base"),
                         "made": d.get("made"), "length": d.get("length", 0), "uses": uses,

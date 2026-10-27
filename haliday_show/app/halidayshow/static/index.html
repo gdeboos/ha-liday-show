@@ -406,6 +406,9 @@
       <li>Click to move the playhead. Use the wheel to zoom, and Shift + wheel to scroll.</li>
       <li><b>Save as sample…</b> keeps the selection (as it sounds in your edit) in <b>Library → Samples</b>, to
         layer over songs.</li>
+      <li><b>+ Add layer</b> (under the waveform) plays samples or songs over this one: pick one under the layer to
+        put a clip at the playhead, drag it to move it or its ends to trim it, and click it for its volume and
+        fades. Clips move with your cuts.</li>
       <li>Click a <b>✂</b> to hear that join. To change the cut, press <b>Adjust cut</b> (the part comes back,
         selected, to move its edges and cut again) or <b>Put back</b> to undo just that cut.</li>
       <li><b>✂ Suggest cuts…</b> finds whole bars to take out of the song or one section (or press <b>✂ Shorten…</b>
@@ -444,6 +447,16 @@
       <button id="music-join-adjust" title="Put the cut part back and select it, so you can move its edges and cut it again">Adjust cut</button>
       <button id="music-join-back" title="Put the cut part back, as if this cut was never made">Put back</button>
       <button id="music-join-close" class="ghost" title="Done">✕</button>
+    </div>
+    <div id="music-layers" class="music-layers"></div>
+    <div id="music-clip" class="group music-section" hidden>
+      <span id="music-clip-what" class="hint"></span>
+      <label title="How loud this clip is, on top of its layer's Volume">Volume <input id="music-clip-gain" type="number" min="-24" max="12" step="0.5"> dB</label>
+      <label>Fade in <input id="music-clip-fadein" type="number" min="0" max="30" step="0.1"> s</label>
+      <label>Fade out <input id="music-clip-fadeout" type="number" min="0" max="30" step="0.1"> s</label>
+      <button id="music-clip-play" type="button" title="Play from just before this clip to just after it">▶ Hear it</button>
+      <button id="music-clip-delete" type="button" class="ghost danger" title="Remove this clip (Delete)">Delete</button>
+      <button id="music-clip-close" type="button" class="ghost" title="Done">✕</button>
     </div>
   </section>
   <section class="card">
