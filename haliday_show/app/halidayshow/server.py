@@ -984,9 +984,41 @@ def _gain(v) -> float | None:
     return round(float(v), 2)
 
 
+MAX_EQ_CHANGES = 100
+EQ_BANDS = ("bass", "mid", "treble")
+
+
+def _eq_band(v) -> float | None:
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not -24 <= v <= 6:
+        return None
+    return round(float(v), 1)
+
+
+def _clean_eq(eq) -> dict | None:
+    """Bass, mid and treble faders (dB, -24 meaning off) for the song or a layer, with changes at
+    points in the song: {bass, mid, treble, changes: [{anchor: {song, t}, bass, mid, treble, glide}]}."""
+    if not isinstance(eq, dict):
+        return None
+    out = {b: _eq_band(eq.get(b, 0)) for b in EQ_BANDS}
+    changes = eq.get("changes", [])
+    if None in out.values() or not isinstance(changes, list) or len(changes) > MAX_EQ_CHANGES:
+        return None
+    out["changes"] = []
+    for c in changes:
+        if not isinstance(c, dict) or not isinstance(c.get("anchor"), dict):
+            return None
+        bands = {b: _eq_band(c.get(b, 0)) for b in EQ_BANDS}
+        song, t, glide = _song_ref(c["anchor"].get("song")), _seconds(c["anchor"].get("t"), 86400), _seconds(c.get("glide", 1), 30)
+        if None in (*bands.values(), song, t, glide):
+            return None
+        out["changes"].append({"anchor": {"song": song, "t": t}, **bands, "glide": glide})
+    return out
+
+
 def _clean_layers(layers) -> list[dict] | None:
-    """A draft's layers: [{name, gain, duck (optional), clips: [{song, start, end, anchor: {song, t}, gain, fadeIn,
-    fadeOut}]}], samples or songs played over the song, each clip pinned to a moment in it."""
+    """A draft's layers: [{name, gain, duck, matchTempo, eq (all optional), clips: [{song, start, end,
+    anchor: {song, t}, gain, fadeIn, fadeOut, bpm (optional)}]}], samples or songs played over the song,
+    each clip pinned to a moment in it."""
     if not isinstance(layers, list) or len(layers) > MAX_LAYERS:
         return None
     out = []
@@ -1004,16 +1036,27 @@ def _clean_layers(layers) -> list[dict] | None:
             start, end, t = _seconds(c.get("start"), 86400), _seconds(c.get("end"), 86400), _seconds(c["anchor"].get("t"), 86400)
             cg = _gain(c.get("gain", 0))
             fade_in, fade_out = _seconds(c.get("fadeIn", 0), 30), _seconds(c.get("fadeOut", 0), 30)
+            bpm = c.get("bpm")
+            if bpm is not None and (isinstance(bpm, bool) or not isinstance(bpm, (int, float))
+                                    or not math.isfinite(bpm) or not 20 <= bpm <= 400):
+                return None
             if None in (song, anchor_song, start, end, t, cg, fade_in, fade_out) or end <= start:
                 return None
             clean.append({"song": song, "start": start, "end": end, "anchor": {"song": anchor_song, "t": t},
                           "gain": cg, "fadeIn": fade_in, "fadeOut": fade_out})
-        duck = layer.get("duck", False)
-        if not isinstance(duck, bool):
+            if bpm is not None:  # its own tempo, for a layer that matches the song's
+                clean[-1]["bpm"] = round(float(bpm), 1)
+        duck, match = layer.get("duck", False), layer.get("matchTempo", False)
+        eq = _clean_eq(layer["eq"]) if layer.get("eq") is not None else None
+        if not isinstance(duck, bool) or not isinstance(match, bool) or (layer.get("eq") is not None and eq is None):
             return None
         out.append({"name": " ".join(layer.get("name", "").split())[:40], "gain": gain, "clips": clean})
         if duck:
             out[-1]["duck"] = True
+        if match:
+            out[-1]["matchTempo"] = True
+        if eq is not None:
+            out[-1]["eq"] = eq
     return out
 
 
@@ -1050,6 +1093,11 @@ def _clean_draft(body) -> dict | None:
         if layers is None:
             return None
         out["layers"] = layers
+    if body.get("eq") is not None:  # the song's own bass, mid and treble
+        eq = _clean_eq(body["eq"])
+        if eq is None:
+            return None
+        out["eq"] = eq
     return out
 
 

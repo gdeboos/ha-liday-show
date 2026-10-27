@@ -1,11 +1,15 @@
 // Layers in the Music editor: samples or songs played on top of the song, each clip pinned to the
 // moment in the song it starts at, so it follows cuts (music.js draws and edits them).
 //
-// A layer: {name, gain (dB), duck (optional: quieten the song while its clips play), clips: [{song, start, end, anchor: {song, t}, gain (dB), fadeIn, fadeOut}]}.
+// A layer: {name, gain (dB), duck (optional: quieten the song while its clips play), eq (optional:
+// its bass, mid and treble, mixer.js), matchTempo (optional: clips play at the song's tempo, each from
+// its own bpm), clips: [{song, start, end, anchor: {song, t}, gain (dB), fadeIn, fadeOut}]}.
 // song is the clip's audio ({source, path}); start and end are the part of it that plays; anchor is
 // where the clip starts, as a moment in one of the main track's songs (time in that song).
 
 import { arrange } from "./music.js";
+import { applyEq, isFlat, placeChanges } from "./mixer.js";
+import { speedFor } from "./tempo.js";
 
 export const MAX_LAYERS = 4;
 export const MAX_CLIPS = 100;
@@ -46,14 +50,27 @@ export function anchorAt(pieces, crossfade, t, refs) {
   return null;
 }
 
-// Every clip's place in the result: [{layer, clip, at, length}] for the clips that are heard.
-export function placeClips(layers, pieces, crossfade) {
+// How fast a clip plays: faster or slower to the song's tempo on a layer that matches it, else 1.
+export const clipSpeed = (layer, clip, tempo) => (layer.matchTempo ? speedFor(tempo, clip.bpm) : 1);
+
+// Where a clip's audio is in sources: the stretched copy when it plays at another speed.
+export const sourceKey = (clip, speed) => (speed === 1 ? keyOf(clip.song) : `${keyOf(clip.song)}@${speed}`);
+
+// Every clip's place in the result: [{layer, clip, at, length, speed}] for the clips that are heard.
+// tempo is the song's, for layers that match it.
+export function placeClips(layers, pieces, crossfade, tempo = null) {
   const out = [];
   layers.forEach((layer, li) => layer.clips.forEach((clip, ci) => {
-    const at = resultTime(pieces, crossfade, clip.anchor);
-    if (at !== null) out.push({ layer: li, clip: ci, at, length: clip.end - clip.start });
+    const at = resultTime(pieces, crossfade, clip.anchor), speed = clipSpeed(layer, clip, tempo);
+    if (at !== null) out.push({ layer: li, clip: ci, at, length: (clip.end - clip.start) / speed, speed });
   }));
   return out;
+}
+
+// Where a placed clip's audio starts and ends in its (maybe stretched) source, in samples.
+function span(c, speed, src, rate) {
+  const from = Math.round((c.start / speed) * rate), to = Math.min(src[0].length, Math.round((c.end / speed) * rate));
+  return { from, len: Math.max(0, to - from) };
 }
 
 const db = (g) => 10 ** ((g || 0) / 20);
@@ -67,10 +84,10 @@ const DUCK_DOWN = 0.15, DUCK_UP = 0.5;
 // that are heard count (a missing sample doesn't dip the song).
 export function duckEnvelope(layers, placed, sources, n, rate) {
   let depth = null;
-  for (const { layer, clip, at } of placed) {
+  for (const { layer, clip, at, speed = 1 } of placed) {
     const L = layers[layer], c = L.clips[clip], src = sources[keyOf(c.song)];
     if (!L.duck || !src) continue;
-    const len = Math.min(src[0].length, Math.round(c.end * rate)) - Math.round(c.start * rate);
+    const len = Math.round(((c.end - c.start) / speed) * rate);
     const a = Math.max(0, Math.round(at * rate)), b = Math.min(n, Math.round(at * rate) + len);
     if (b <= a) continue;
     depth ??= new Float32Array(n);
@@ -84,28 +101,39 @@ export function duckEnvelope(layers, placed, sources, n, rate) {
   return depth;
 }
 
-// The main track's channels with the layers mixed in (a new copy). sources: {key: [channels]} at rate.
-export function mixLayers(main, layers, placed, sources, rate) {
+const TAIL = 0.25; // seconds of a clip's EQ ringing kept after it ends
+
+// The main track's channels with the layers mixed in (a new copy). sources: {key: [channels]} at rate,
+// with each stretched clip's audio under sourceKey. pieces and crossfade place layers' EQ changes.
+export function mixLayers(main, layers, placed, sources, rate, { pieces = [], crossfade = 0 } = {}) {
   const out = main.map((ch) => Float32Array.from(ch));
   const n = out[0]?.length || 0;
   const env = duckEnvelope(layers, placed, sources, n, rate);
   if (env) for (const ch of out) for (let i = 0; i < n; i++) ch[i] *= env[i];
-  for (const { layer, clip, at } of placed) {
-    const L = layers[layer], c = L.clips[clip], src = sources[keyOf(c.song)];
-    if (!src) continue;
+  const changes = layers.map((L) => (isFlat(L.eq) ? null : placeChanges(L.eq, pieces, crossfade)));
+  for (const { layer, clip, at, speed = 1 } of placed) {
+    const L = layers[layer], c = L.clips[clip], src = sources[sourceKey(c, speed)];
+    if (!src || !sources[keyOf(c.song)]) continue;
     const gain = db(L.gain) * db(c.gain);
-    const from = Math.round(c.start * rate), to = Math.min(src[0].length, Math.round(c.end * rate));
-    const len = to - from, fi = Math.round((c.fadeIn || 0) * rate), fo = Math.round((c.fadeOut || 0) * rate);
-    const off = Math.round(at * rate), k1 = Math.min(len, n - off);
-    out.forEach((ch, c2) => {
-      const s = src[Math.min(c2, src.length - 1)];
-      for (let k = Math.max(0, -off); k < k1; k++) {
+    const { from, len } = span(c, speed, src, rate);
+    const fi = Math.round((c.fadeIn || 0) * rate), fo = Math.round((c.fadeOut || 0) * rate);
+    const off = Math.round(at * rate), skip = Math.max(0, -off);
+    // The clip with its volume and fades, then its layer's EQ, then into the mix.
+    const tail = changes[layer] ? Math.round(TAIL * rate) : 0;
+    const k1 = Math.min(len + tail, n - off);
+    if (k1 <= skip) continue;
+    const bits = out.map((_, c2) => {
+      const s = src[Math.min(c2, src.length - 1)], bit = new Float32Array(k1 - skip);
+      for (let k = skip; k < Math.min(k1, len); k++) {
         let g = gain;
         if (fi && k < fi) g *= k / fi;
         if (fo && k > len - fo) g *= (len - k) / fo;
-        ch[off + k] += g * s[from + k];
+        bit[k - skip] = g * s[from + k];
       }
+      return bit;
     });
+    if (changes[layer]) applyEq(bits, rate, L.eq, changes[layer], off + skip);
+    out.forEach((ch, c2) => { const bit = bits[c2]; for (let k = 0; k < bit.length; k++) ch[off + skip + k] += bit[k]; });
   }
   return out;
 }

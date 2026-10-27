@@ -1084,6 +1084,33 @@ async def test_draft_layers_are_kept_and_checked(client, tmp_path):
         assert (await client.post("/api/drafts", json={**draft, "layers": bad})).status == 400
 
 
+async def test_draft_mixer_settings_are_kept_and_checked(client, tmp_path):
+    song = {"source": "media", "path": "haliday_show/song.mp3"}
+    loop = {"source": "media", "path": "haliday_show/Samples/Loop.wav"}
+    change = {"anchor": {"song": song, "t": 30}, "bass": -24, "mid": 0, "treble": 3, "glide": 2}
+    eq = {"bass": -6, "mid": 0, "treble": 0, "changes": [change]}
+    clip = {"song": loop, "start": 0, "end": 4, "anchor": {"song": song, "t": 8}, "gain": 0, "fadeIn": 0, "fadeOut": 0, "bpm": 96.04}
+    draft = {"name": "Mash", "base": song, "pieces": [{"song": song, "start": 0, "end": 60}], "eq": eq,
+             "layers": [{"name": "Loop", "gain": 0, "matchTempo": True, "eq": {"bass": 0, "mid": 2, "treble": 0}, "clips": [clip]}]}
+    draft_id = (await (await client.post("/api/drafts", json=draft)).json())["id"]
+    got = await (await client.get(f"/api/drafts/{draft_id}")).json()
+    assert got["eq"] == {"bass": -6.0, "mid": 0.0, "treble": 0.0, "changes": [{**change, "bass": -24.0, "mid": 0.0, "treble": 3.0, "glide": 2.0}]}
+    layer = got["layers"][0]
+    assert layer["matchTempo"] is True and layer["eq"] == {"bass": 0.0, "mid": 2.0, "treble": 0.0, "changes": []}
+    assert layer["clips"][0]["bpm"] == 96.0
+    # Left out, nothing is saved for them (old drafts look the same).
+    plain_layer = {"name": "x", "clips": [{k: v for k, v in clip.items() if k != "bpm"}]}
+    plain = (await (await client.post("/api/drafts", json={**draft, "eq": None, "layers": [plain_layer]})).json())["id"]
+    got = await (await client.get(f"/api/drafts/{plain}")).json()
+    assert "eq" not in got and set(got["layers"][0]) == {"name", "gain", "clips"} and "bpm" not in got["layers"][0]["clips"][0]
+    for bad in ({**draft, "eq": {"bass": 7}}, {**draft, "eq": {"mid": "loud"}}, {**draft, "eq": "flat"},
+                {**draft, "eq": {"changes": [{**change, "glide": 99}]}}, {**draft, "eq": {"changes": [{"bass": 0}]}},
+                {**draft, "layers": [{**draft["layers"][0], "matchTempo": 1}]},
+                {**draft, "layers": [{**draft["layers"][0], "clips": [{**clip, "bpm": 5}]}]},
+                {**draft, "layers": [{**draft["layers"][0], "eq": {"treble": -30}}]}):
+        assert (await client.post("/api/drafts", json=bad)).status == 400
+
+
 async def test_songs_upload_in_parts(client, tmp_path):
     song = bytes(range(256)) * 4096 * 3  # 3 MB
     url = "/api/audio/part?upload=0123456789abcdef"

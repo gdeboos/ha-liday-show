@@ -448,7 +448,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Layers](#layers) · [Suggest cuts](#suggest-cuts) ·
+- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Layers](#layers) · [Mixer](#mixer-bass-mid-treble-and-tempo) · [Suggest cuts](#suggest-cuts) ·
   [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
@@ -685,8 +685,9 @@ it. A draft can't be opened if a song it uses has been archived or deleted; rest
 Layers play samples or other songs on top of the song: sleigh bells over the intro, a "ho ho ho" on the
 last chorus, a voice saying "Merry Christmas", or another song fading in under the end.
 
-1. Under the waveform, press **+ Add layer** (up to four). Its row has a name, a **Volume**, **Quieten
-   the song** and **Remove**, and a lane appears under the waveform for its clips.
+1. Under the waveform, in the **Mixer**, press **+ Add layer** (up to four). Its row has a name, a
+   **Volume**, **EQ** (see [Mixer](#mixer-bass-mid-treble-and-tempo)), **Quieten the song**, **Match
+   tempo** and **Remove**, and a lane appears under the waveform for its clips.
 2. Put the playhead where you want a clip to start, then pick a sample or song from **+ Add a clip at
    the playhead…** on the layer's row. It starts a little quieter than the song, so it sits in the mix;
    change that with the clip's **Volume**.
@@ -705,6 +706,31 @@ the sample back. Layers are part of the draft and every change is one
 **Undo** step. **Make song file** mixes the layers into the new file, keeping the mix from
 distorting where they pile up. The waveform, **Detect** and **Suggest cuts** go by the song alone, and a
 sample saved with **Save as sample…** includes the layers.
+
+#### Mixer: bass, mid, treble and tempo
+
+The **Mixer** under the waveform works like a DJ's, for mash-ups and for making a layer sit well with
+the song. The song has a row, and so does each layer.
+
+- **EQ** opens that row's **Bass**, **Mid** and **Treble** faders. Each goes from +6 dB down to **off**
+  at the bottom: take the bass out of the song while a layer's bass carries it, say, or the treble off a
+  layer so it sits behind. The **EQ** button is highlighted when anything is changed.
+- **Changes partway through:** put the playhead where it should change, press **+ Change here**, then
+  move the faders. From there the sound glides to the new settings over **Glide** seconds (1 by
+  default; 0 for an instant switch). The faders always show, and change, the setting at the playhead:
+  before the first change that's the row's own setting. A change shows as a small diamond: the song's
+  along the bottom of the waveform, a layer's in its lane. Click one to put the playhead on it, drag it
+  to move it, and press **Delete change** (or Delete) to remove it. Changes move with your cuts, like
+  clips.
+- **Match tempo** on a layer speeds up or slows down its clips to the song's tempo, keeping their pitch,
+  so a loop or another song stays in time. The song needs **Detect** first, for its tempo. Each clip's
+  own tempo is taken from its beats if it's been detected, or found when it's added (a clip needs a few
+  seconds of steady beat). If it's wrong or missing, click the clip and type it under **Tempo**. A clip is
+  never stretched more than about 1.4 times either way: one at half or double the song's tempo plays
+  in time at about its own speed. Line the clip's first beat up with a bar (clips snap to them).
+
+All of it is part of the draft, every change is one **Undo** step, and **Make song file** includes it.
+The waveform still shows the song as it was, without the mixer.
 
 #### Suggest cuts
 
