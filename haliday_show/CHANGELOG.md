@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.190
+
+- New: **Library → Samples**, for short sounds such as sleigh bells or a "ho ho ho". Make one from a
+  song: select part of it in the **Music editor** and press **Save as sample…**. Or press **+ Add a
+  sample** to add a file. **▶** plays one and **Delete…** removes it. They're kept in a **Samples**
+  folder of their own, out of **Your songs** and the shows' song lists. They're the first part of
+  layering sounds over a song in the **Music editor**, which comes in the next updates.
+
 ## 0.2.189
 
 - **Your songs** can be sorted into your own folders, such as **Christmas** or **Party**. Press **+ New

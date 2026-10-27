@@ -1035,6 +1035,32 @@ async def test_drafts_say_which_songs_they_use_and_rename_alone(client, tmp_path
     assert (await client.post("/api/drafts/nope/rename", json={"name": "x"})).status == 404
 
 
+async def test_samples_have_their_own_folder_and_list(client, tmp_path):
+    import aiohttp
+    form = aiohttp.FormData()
+    form.add_field("file", b"RIFF", filename="Hohoho.wav")
+    resp = await client.post("/api/audio?kind=sample", data=form)
+    assert resp.status == 200
+    ref = await resp.json()
+    assert ref == {"source": "media", "path": "haliday_show/Samples/Hohoho.wav"}
+    # In pieces too, as a big sound would go.
+    url = "/api/audio/part?upload=00112233445566778899&offset=0&done=1&name=Bells.mp3&kind=sample"
+    assert (await client.post(url, data=b"id3")).status == 200
+    form = aiohttp.FormData()
+    form.add_field("file", b"id3", filename="Song.mp3")
+    assert (await client.post("/api/audio", data=form)).status == 200
+    samples = [s["path"] for s in await (await client.get("/api/samples")).json()]
+    assert samples == ["haliday_show/Samples/Bells.mp3", "haliday_show/Samples/Hohoho.wav"]
+    songs = [s["path"] for s in await (await client.get("/api/audio")).json()]
+    assert "haliday_show/Song.mp3" in songs and not any("Samples/" in p for p in songs), "samples aren't songs"
+    # Only a sound can be deleted this way.
+    assert (await client.delete("/api/samples?path=haliday_show/Song.mp3")).status == 404
+    assert (await client.delete("/api/samples?path=haliday_show/Samples/../Song.mp3")).status == 404
+    assert (await client.delete("/api/samples?path=haliday_show/Samples/Bells.mp3")).status == 200
+    assert not (tmp_path / "media" / "haliday_show" / "Samples" / "Bells.mp3").exists()
+    assert (tmp_path / "media" / "haliday_show" / "Song.mp3").exists()
+
+
 async def test_songs_upload_in_parts(client, tmp_path):
     song = bytes(range(256)) * 4096 * 3  # 3 MB
     url = "/api/audio/part?upload=0123456789abcdef"

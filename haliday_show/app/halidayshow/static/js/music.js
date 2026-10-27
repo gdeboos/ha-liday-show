@@ -986,6 +986,29 @@ export class MusicEditor {
     }));
   }
 
+  // Saves the selection, as it sounds in the edit, as a sample (Library → Samples) to layer over songs.
+  async saveSample() {
+    if (!this.sel || !this.rendered) return;
+    const { start, end } = this.sel, xf = this.crossfade;
+    const song = nameOf(this.base || { path: "song" }).replace(/\.[^.]+$/, "");
+    const typed = prompt("Name the sample", `${song} ${fmtTime(start, false).replace(":", ".")}`)?.trim();
+    if (!typed) return;
+    const name = `${typed.replace(/\.wav$/i, "")}.wav`;
+    const have = await this.host.api("api/samples").catch(() => []);
+    if (have.some((s) => s.path.split("/").pop().toLowerCase() === name.toLowerCase())
+        && !confirm(`There's already a sample called ${name}. Replace it?`)) return;
+    const rate = this.audio.sampleRate;
+    const channels = render(slice(this.pieces, xf, start, end), this.sources, rate, { crossfade: xf });
+    this.host.status(`Saving ${name}…`);
+    try {
+      await uploadSong(this.host.api, new Blob([encodeWav(channels, rate)], { type: "audio/wav" }), name,
+        (done) => { if (done < 1) this.host.status(`Saving ${name}… ${Math.round(done * 100)}%`); }, { sample: true });
+      this.host.status(`Saved ${name} to your samples (Library → Samples)`, "saved");
+    } catch (e) {
+      this.host.status(`Couldn't save the sample: ${e.message}`, true);
+    }
+  }
+
   useCuts(option) {
     const xf = this.crossfade;
     // Latest first, so the earlier cuts' times still hold.
@@ -1176,7 +1199,7 @@ export class MusicEditor {
     const has = this.pieces.length > 0, sel = this.sel;
     for (const id of ["music-play", "music-insert", "music-append", "music-save", "music-zoom-in", "music-zoom-out", "music-fit",
       "music-xf", "music-fadein", "music-fadeout", "music-name"]) $(id).disabled = !has;
-    for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview"]) $(id).disabled = !sel;
+    for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview", "music-sample"]) $(id).disabled = !sel;
     $("music-undo").disabled = !this.history.length;
     $("music-detect").disabled = !this.base || this.dirty;
     $("music-describe").disabled = !this.base || this.dirty || !this.info?.sections?.length;
@@ -1851,6 +1874,7 @@ export class MusicEditor {
     $("music-preview").addEventListener("click", () => this.previewCut());
     $("music-cut").addEventListener("click", () => this.cutSelection());
     $("music-keep").addEventListener("click", () => this.keepSelection());
+    $("music-sample").addEventListener("click", () => this.saveSample());
     $("music-insert").addEventListener("click", () => this.addSong(false));
     $("music-append").addEventListener("click", () => this.addSong(true));
     $("music-undo").addEventListener("click", () => this.undo(-1));

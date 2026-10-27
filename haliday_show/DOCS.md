@@ -27,7 +27,7 @@ opens on **Library**; the three editors sit together after it, under **Editors**
 
 | Tab | What's there |
 | --- | --- |
-| **Library** | In two groups. **Shows**: **Shows** (all of yours) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Palettes** and **Presets** (the colours and effect settings you reuse). |
+| **Library** | In two groups. **Shows**: **Shows** (all of yours) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
 | **Show** (the **Show editor**) | Where shows are made: the timeline, previews and effect settings. |
 | **Music** (the **Music editor**) | Where songs are cut, shortened, joined and detected. |
 | **Playlist** (the **Playlist editor**) | Where you drag shows into playlists and set when they play. |
@@ -448,7 +448,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Suggest cuts](#suggest-cuts) ·
+- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Suggest cuts](#suggest-cuts) ·
   [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
@@ -598,6 +598,19 @@ they play instead: **Another song**, or **No song for now** (they keep their eff
 play the lights only). An archived song moves to an **Archived** folder inside HA-liday Show's
 folder, where it's out of HA-liday Show's song lists but still in Home Assistant's Media. Restoring it
 puts it back and gives it back to the shows that were left without a song.
+
+### Samples
+
+**Library → Samples** keeps short sounds, such as sleigh bells, a "ho ho ho" or a voice saying "Merry
+Christmas", ready to layer over a song in the Music editor. There are two ways to make one:
+
+- **From a song:** in the Music editor, select the stretch you want and press **Save as sample…** (in
+  the **Edit** card), then give it a name. It's saved as it sounds in your edit.
+- **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
+
+They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Your songs** and a show's
+song list so those stay tidy. Each sample has **▶** to hear it (press **■** to stop) and **Delete…** to
+remove it for good.
 
 ### Editing a song
 
@@ -1641,7 +1654,8 @@ snapshots or DIYs) for as long as the clip lasts, then the show takes the light 
 Shows, devices, palettes, your presets, playlists with their schedules and building blocks, each
 song's beats, parts, notes and marks, the Music editor's drafts, the house photo, the public page's
 own picture and settings live in the app's config folder (`/addon_configs/<slug>_haliday_show/`), so
-they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` so media
+they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` (samples to its
+`Samples` folder) so media
 players can play them. The editor layout, the editing speaker, the song volume, the Show player's light offset,
 **Govee scenes**, **Show the Labs tab** and a few other editor choices (such as **Snap**, zoom and **Loop**) are kept in each browser.
 

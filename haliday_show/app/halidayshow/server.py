@@ -758,7 +758,8 @@ async def upload_audio(request):
     field = await reader.next()
     if field is None or not field.filename:
         raise web.HTTPBadRequest(text="no file")
-    dest = request.app[STORAGE].upload_path(field.filename)
+    # ?kind=sample: a short sound for the Music editor's layers, into the Samples folder.
+    dest = request.app[STORAGE].upload_path(field.filename, sample=request.query.get("kind") == "sample")
     if dest is None:
         raise web.HTTPBadRequest(text="not an audio file")
     tmp = dest.with_name(dest.name + ".part")
@@ -831,7 +832,7 @@ async def upload_audio_part(request):
     part, size, done = await _receive_part(request, storage.upload_dir)
     if not done:
         return web.json_response({"received": size})
-    dest = storage.upload_path(request.query.get("name", ""))
+    dest = storage.upload_path(request.query.get("name", ""), sample=request.query.get("kind") == "sample")
     if dest is None:
         part.unlink(missing_ok=True)
         raise web.HTTPBadRequest(text="not an audio file")
@@ -1058,6 +1059,17 @@ async def rename_draft(request):
 async def delete_draft(request):
     if not request.app[STORAGE].delete_draft(_draft_id(request)):
         raise web.HTTPNotFound()
+    return web.json_response({"ok": True})
+
+
+# samples ---------------------------------------------------------------------------
+async def list_samples(request):
+    return web.json_response(await asyncio.to_thread(request.app[STORAGE].list_samples))
+
+
+async def delete_sample(request):
+    if not request.app[STORAGE].delete_sample(request.query.get("path", "")):
+        raise web.HTTPNotFound(text="no such sample")
     return web.json_response({"ok": True})
 
 
@@ -1920,6 +1932,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/audio", list_audio)
     r.add_post("/api/audio", upload_audio)
     r.add_post("/api/audio/part", upload_audio_part)
+    r.add_get("/api/samples", list_samples)
+    r.add_delete("/api/samples", delete_sample)
     r.add_get("/api/audio/file", get_audio)
     r.add_get("/api/songs", list_songs)
     r.add_get("/api/songs/archived", list_archived_songs)
