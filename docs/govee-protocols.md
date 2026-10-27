@@ -60,7 +60,14 @@ mode, tested from the packet lab:
 - `b1 00` with extra bytes (e.g. `b1 00 10 fa b0 00`) is just realtime off: the light flashes and goes
   back to its own colour.
 - The Govee app has no setting for the window, and Govee Desktop doesn't offer screen sync for it.
-- The newer icicle lights (H70D1/H70D2) behave the same way ("only part of the string").
+- The newer icicle lights (H70D1/H70D2) also light only part of the string, but differently. Owner's
+  10 m **H70D1**, packet lab, 27 Oct 2026, "Realtime: every segment one colour" / "Realtime: rainbow":
+  - 44, 128 and 129 colours all lit up to the same place, roughly halfway along the string; 255 colours
+    turned the light off. (The H70C5 goes off above 44.) Where between 129 and 255 it gives up isn't known.
+  - A 128-colour rainbow showed every colour, red to violet, within that half, and a 10-colour rainbow
+    reached the same place. So unlike the H70C5 (one colour per bulb, bulbs 1–44), the H70D1 **stretches
+    whatever it's sent across a fixed window** of about half the string; more colours only add detail.
+  - Not yet tried: the 20 m H70D2, Per bulb, or the window sweeps on the icicles.
 
 Govee's product data (SignalRGB's copy) marks **none** of the 54 Scene Stage models as
 realtime-capable, including the Permanent Outdoor Lights Pro (H706A/B/C) that do work (owner's, and
@@ -180,7 +187,7 @@ nothing useful.
 
 For the H70C5 and the icicles (H70D1/H70D2) the add-on offers three ways, each a trade-off:
 **Per bulb** (every bulb, a few pictures a second), **App segments** (about 10 bands, faster) and
-**Realtime** (smooth, first 44 bulbs only). Everything we can send from the LAN to get past bulb 44 live
+**Realtime** (smooth, first 44 bulbs only on the H70C5; about the first half, stretched, on the H70D1). Everything we can send from the LAN to get past bulb 44 live
 has been tried. The two leads left, Scene Stage and TV DreamView, both need a device the owner doesn't
 have (a sync centre such as the Curtain Lights 2, or a DreamView sync box) and might still turn out to
 be segments only or to go over Bluetooth or the cloud. Agreed with the owner to stop here unless one
@@ -204,5 +211,6 @@ All under Setup → Labs (tick **Show the Labs tab** under Setup → Settings �
 
 - What does a DreamView sync box, or a Scene Stage sync centre, send to make the H70C5 show live colour
   along the whole string? (Needs one of those devices; see "Where this stands".)
-- Is the Per bulb picture rate the same on the icicles? Do other lights with Finger sketch accept it?
+- Does Per bulb light the whole H70D1/H70D2, and at what picture rate? Does the H70D2's realtime window
+  also stop about halfway? Do other lights with Finger sketch accept it?
 - App segments after the 0.2.71 lag fix: does it keep up now?
