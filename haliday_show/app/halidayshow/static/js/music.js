@@ -8,7 +8,8 @@
 import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
-import { evenOut } from "./loudness.js";
+import { evenOut, loudness } from "./loudness.js";
+import { MAX_LAYERS, anchorAt, limit, matchGain, mixLayers, placeClips } from "./layers.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
@@ -18,6 +19,9 @@ const EPS = 1e-6;
 const RULER_H = 22;
 const BEAT_H = 16; // the beat lane above the waveform, as in the editor
 const SEC_H = 20; // the section lane under it, where sections are picked and their edges dragged
+const WAVE_B = 210; // the bottom of the waveform; layers' lanes go under it
+const LANE_H = 30; // one layer's lane
+const LAYER_HUES = [200, 30, 140, 300]; // a colour for each layer's clips
 const MIN_SECTION = 0.5;
 const MAX_MARKS = 200; // as the server allows
 const EDGE_PX = 6;
@@ -409,6 +413,9 @@ export class MusicEditor {
     this.secSel = -1; // the section picked for editing
     this.markSel = -1; // the mark picked for editing
     this.joinSel = -1; // the join (index of the piece after it) whose ✂ was clicked
+    this.layers = []; // samples or songs played over the song (layers.js), part of the draft
+    this.clipSel = null; // the picked clip: { layer, clip }
+    this.main = null; // the song alone, before the layers are mixed in (this.rendered has them)
     this.keeper = new DraftKeeper((...a) => this.host.api(...a), {
       onState: () => this.updateSaveState(),
       onError: (m, s, current) => this.host.status(current
@@ -486,6 +493,8 @@ export class MusicEditor {
       this.keeper.start(null);
       this.setFades(0, 0);
       this.pieces = [{ src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate }];
+      this.layers = [];
+      this.clipSel = null;
       this.base = ref;
       this.host.opened?.(ref);
       this.info = null;
@@ -515,7 +524,7 @@ export class MusicEditor {
     let d;
     try {
       d = await this.host.api(`api/drafts/${encodeURIComponent(id)}`);
-      const songs = [d.base, ...d.pieces.map((p) => p.song)];
+      const songs = [d.base, ...d.pieces.map((p) => p.song), ...(d.layers || []).flatMap((l) => l.clips.map((c) => c.song))];
       for (const ref of songs.filter((r, i) => songs.findIndex((x) => keyOf(x) === keyOf(r)) === i)) {
         try {
           await this.source(ref);
@@ -531,6 +540,8 @@ export class MusicEditor {
     const base = d.base, baseKey = keyOf(base);
     this.base = this.refs[baseKey];
     this.pieces = d.pieces.map((p) => ({ src: keyOf(p.song), start: p.start, end: p.end }));
+    this.layers = d.layers || [];
+    this.clipSel = null;
     this.keeper.start({ id, made: d.made || null });
     this.setFades(d.fadeIn || 0, d.fadeOut || 0, d.crossfade ?? 0.05);
     $("music-name").value = d.name;
@@ -566,6 +577,7 @@ export class MusicEditor {
       fadeIn: Number($("music-fadein").value) || 0,
       fadeOut: Number($("music-fadeout").value) || 0,
       length: Math.round(this.total * 100) / 100,
+      ...(this.layers.length ? { layers: this.layers } : {}),
     };
   }
 
@@ -691,7 +703,7 @@ export class MusicEditor {
   edit(pieces, fit = false) {
     this.stop();
     const mark = this.pickedMark();
-    this.history.push(this.pieces);
+    this.history.push(this.snapshot());
     this.future = [];
     this.pieces = pieces;
     this.dirty = true;
@@ -706,13 +718,166 @@ export class MusicEditor {
     if (!from.length) return;
     this.stop();
     const mark = this.pickedMark();
-    to.push(this.pieces);
-    this.pieces = from.pop();
+    to.push(this.snapshot());
+    const back = from.pop();
+    this.pieces = back.pieces;
+    this.layers = back.layers;
+    this.clipSel = null;
     this.dirty = true;
     this.markSel = this.shownMark(mark);
     this.joinSel = -1;
     this.changed();
     this.draftChanged();
+  }
+
+  // What Undo goes back to: the song's pieces and the layers.
+  snapshot() { return { pieces: this.pieces, layers: this.layers }; }
+
+  // layers ----------------------------------------------------------------------
+  // A change to the layers (one Undo step); the song itself isn't changed.
+  editLayers(layers, pick = this.clipSel) {
+    this.stop();
+    this.history.push(this.snapshot());
+    this.future = [];
+    this.layers = layers;
+    this.clipSel = pick;
+    this.changed();
+    this.draftChanged();
+  }
+
+  addLayer() {
+    if (this.layers.length >= MAX_LAYERS) return;
+    const n = this.layers.length + 1;
+    this.editLayers([...this.layers, { name: `Layer ${n}`, gain: 0, clips: [] }], null);
+    this.host.status(`Added Layer ${n}. Pick a sample or song under it to put a clip at the playhead`, "hint");
+  }
+
+  removeLayer(i) {
+    const n = this.layers[i].clips.length;
+    if (n && !confirm(`Remove "${this.layers[i].name}" and its ${n} clip${n === 1 ? "" : "s"}? Ctrl+Z brings it back.`)) return;
+    this.editLayers(this.layers.filter((_, k) => k !== i), null);
+  }
+
+  setLayer(i, change) {
+    this.editLayers(this.layers.map((l, k) => (k === i ? { ...l, ...change } : l)));
+  }
+
+  setClip(change) {
+    const sel = this.clipSel;
+    if (!sel) return;
+    this.editLayers(this.layers.map((l, k) => (k !== sel.layer ? l
+      : { ...l, clips: l.clips.map((c, j) => (j === sel.clip ? { ...c, ...change } : c)) })));
+  }
+
+  deleteClip() {
+    const sel = this.clipSel;
+    if (!sel) return;
+    this.editLayers(this.layers.map((l, k) => (k !== sel.layer ? l : { ...l, clips: l.clips.filter((_, j) => j !== sel.clip) })), null);
+  }
+
+  // Puts a sample or song on a layer at the playhead, as long as it is (trim it after), at a level a
+  // little under the song's.
+  async addClip(i, ref) {
+    const at = anchorAt(this.pieces, this.crossfade, this.time, this.refs);
+    if (!at) return this.host.status("Move the playhead into the song first", "hint");
+    let key;
+    try { key = await this.source(ref); } catch (e) { return this.host.status(songLoadMessage(e), true); }
+    const rate = this.audio.sampleRate, audio = this.sources[key];
+    const end = Math.round((audio[0].length / rate) * 1000) / 1000;
+    this.songLufs ??= loudness(this.main, rate);
+    const gain = matchGain(this.songLufs, loudness(audio, rate));
+    const layers = this.layers.map((l, k) => (k === i ? { ...l, clips: [...l.clips, { song: ref, start: 0, end, anchor: at, gain, fadeIn: 0, fadeOut: 0 }] } : l));
+    this.editLayers(layers, { layer: i, clip: layers[i].clips.length - 1 });
+    this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} at ${fmtTime(this.time)}. Drag it to move it, or its ends to trim it`);
+  }
+
+  // The lane (layer index) at canvas y, or -1.
+  laneAt(y) {
+    const i = Math.floor((y - WAVE_B) / LANE_H);
+    return y >= WAVE_B && i < this.layers.length ? i : -1;
+  }
+
+  // The clip under (x, y) and which part: { layer, clip, at, length, part: "start" | "end" | "body" }.
+  clipAt(x, y) {
+    const lane = this.laneAt(y);
+    if (lane < 0) return null;
+    const hit = placeClips(this.layers, this.pieces, this.crossfade).filter((p) => p.layer === lane)
+      .find((p) => x >= this.x(p.at) - 4 && x <= this.x(p.at + p.length) + 4);
+    if (!hit) return null;
+    const x0 = this.x(hit.at), x1 = this.x(hit.at + hit.length);
+    return { ...hit, part: x - x0 < 6 ? "start" : x1 - x < 6 ? "end" : "body" };
+  }
+
+  renderLayers() {
+    const box = $("music-layers");
+    const samples = this.samplesList || [], songs = this.host.songs();
+    const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, l.clips.length]), samples.length, songs.length, !!this.pieces.length]);
+    if (box.dataset.sig !== sig) {
+      box.dataset.sig = sig;
+      const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+      const rows = this.layers.map((l, i) => {
+        const name = el("input", { value: l.name, maxLength: 40, size: 14, title: "The layer's name" });
+        name.setAttribute("aria-label", `Layer ${i + 1} name`);
+        name.addEventListener("change", () => this.setLayer(i, { name: name.value.trim().slice(0, 40) || `Layer ${i + 1}` }));
+        const vol = el("input", { type: "range", min: -24, max: 12, step: 1, value: l.gain });
+        vol.setAttribute("aria-label", `${l.name} volume`);
+        const db = el("span", { className: "hint", textContent: `${l.gain > 0 ? "+" : ""}${l.gain} dB` });
+        vol.addEventListener("input", () => { db.textContent = `${vol.value > 0 ? "+" : ""}${vol.value} dB`; });
+        vol.addEventListener("change", () => this.setLayer(i, { gain: Number(vol.value) }));
+        const add = el("select", { title: "Put a sample or song on this layer at the playhead" });
+        add.setAttribute("aria-label", `Add to ${l.name}`);
+        add.append(new Option("+ Add a clip at the playhead…", ""));
+        const group = (label, refs) => {
+          if (!refs.length) return;
+          const g = el("optgroup", { label });
+          for (const r of refs) g.append(new Option(r.path.split("/").pop().replace(/\.[^.]+$/, ""), JSON.stringify({ source: r.source, path: r.path })));
+          add.append(g);
+        };
+        group("Samples", samples);
+        group("Songs", songs);
+        add.addEventListener("change", () => { const v = add.value; add.value = ""; if (v) this.addClip(i, JSON.parse(v)); });
+        const remove = el("button", { type: "button", className: "ghost", textContent: "Remove" });
+        remove.title = "Remove this layer and its clips";
+        remove.addEventListener("click", () => this.removeLayer(i));
+        const dot = el("span", { className: "layer-dot" });
+        dot.style.background = `hsl(${LAYER_HUES[i % 4]} 65% 50%)`;
+        return el("div", { className: "group layer-row" }, dot, name, el("label", {}, "Volume ", vol, " ", db), add, remove);
+      });
+      const addLayer = el("button", { type: "button", textContent: "+ Add layer", disabled: !this.pieces.length || this.layers.length >= MAX_LAYERS });
+      addLayer.title = this.layers.length >= MAX_LAYERS ? `Up to ${MAX_LAYERS} layers` : "Add a row for samples or songs to play over the song";
+      addLayer.addEventListener("click", () => this.addLayer());
+      box.replaceChildren(el("div", { className: "group" }, el("span", { className: "section-label", textContent: "Layers" }), addLayer,
+        el("span", { className: "hint", textContent: this.layers.length ? "" : "Sleigh bells, a \"ho ho ho\" or another song, played over this one." })), ...rows);
+    }
+    // The picked clip's panel.
+    const sel = this.clipSel, c = sel && this.layers[sel.layer]?.clips[sel.clip];
+    $("music-clip").hidden = !c;
+    if (!c) return;
+    const at = placeClips(this.layers, this.pieces, this.crossfade).find((p) => p.layer === sel.layer && p.clip === sel.clip);
+    $("music-clip-what").textContent = `${nameOf(c.song).replace(/\.[^.]+$/, "")} on ${this.layers[sel.layer].name}`
+      + (at ? `, at ${fmtTime(at.at)} for ${(c.end - c.start).toFixed(2)} s` : " (on a part that's cut out)");
+    for (const [id, v] of [["music-clip-fadein", c.fadeIn], ["music-clip-fadeout", c.fadeOut], ["music-clip-gain", c.gain]]) {
+      if (document.activeElement !== $(id)) $(id).value = v;
+    }
+  }
+
+  wireLayers() {
+    $("music-clip-fadein").addEventListener("change", (e) => this.setClip({ fadeIn: Math.max(0, Math.min(30, Number(e.target.value) || 0)) }));
+    $("music-clip-fadeout").addEventListener("change", (e) => this.setClip({ fadeOut: Math.max(0, Math.min(30, Number(e.target.value) || 0)) }));
+    $("music-clip-gain").addEventListener("change", (e) => this.setClip({ gain: Math.max(-24, Math.min(12, Number(e.target.value) || 0)) }));
+    $("music-clip-play").addEventListener("click", () => {
+      const sel = this.clipSel;
+      const at = sel && placeClips(this.layers, this.pieces, this.crossfade).find((p) => p.layer === sel.layer && p.clip === sel.clip);
+      if (at) { this.time = Math.max(0, at.at - 1); this.play(this.time, Math.min(this.total, at.at + at.length + 1)); }
+    });
+    $("music-clip-delete").addEventListener("click", () => this.deleteClip());
+    $("music-clip-close").addEventListener("click", () => { this.clipSel = null; this.updateControls(); this.draw(); });
+  }
+
+  // Samples for the layers' Add lists (Library → Samples), read when the editor shows.
+  async loadSamples() {
+    this.samplesList = await this.host.api("api/samples").catch(() => this.samplesList || []);
+    this.renderLayers();
   }
 
   cutSelection() {
@@ -771,7 +936,8 @@ export class MusicEditor {
   }
 
   // t pulled to the nearest bar or section edge within reach, else the nearest beat; Shift places freely.
-  snap(t, e) {
+  // reach: how far (px) a bar or section edge pulls; trimming a clip uses less, so it can be fine.
+  snap(t, e, reach = 16) {
     const info = this.shown;
     if (!info || e?.shiftKey) return t;
     const near = (list, px) => {
@@ -780,7 +946,8 @@ export class MusicEditor {
       return best;
     };
     const edges = [0, this.total, ...info.bars, ...info.sections.flatMap((x) => [x.start, x.end])];
-    return near(edges, 16) ?? near(info.beats, 6) ?? t;
+    const marks = (info.marks || []).map((m) => m.t);
+    return near(edges, reach) ?? near([...info.beats, ...marks], 6) ?? t;
   }
 
   // Plays a few seconds either side of where the selection would be cut, without cutting it.
@@ -894,7 +1061,7 @@ export class MusicEditor {
       // Bar vectors of the result as it is now, kept until it changes.
       const barsKey = bars.join(",");
       if (this.barVecs?.pieces !== pieces || this.barVecs.xf !== xf || this.barVecs.bars !== barsKey) {
-        const { samples, rate } = toMono(this.rendered, this.audio.sampleRate);
+        const { samples, rate } = toMono(this.main, this.audio.sampleRate);
         this.barVecs = { pieces, xf, bars: barsKey, vecs: await barVectorsInWorker(samples, rate, bars) };
       }
       if (this.pieces !== pieces) return;
@@ -990,7 +1157,7 @@ export class MusicEditor {
   // Saves the selection, as it sounds in the edit, as a sample (Library → Samples) to layer over songs.
   async saveSample() {
     if (!this.sel || !this.rendered) return;
-    const { start, end } = this.sel, xf = this.crossfade;
+    const { start, end } = this.sel;
     const song = nameOf(this.base || { path: "song" }).replace(/\.[^.]+$/, "");
     const typed = prompt("Name the sample", `${song} ${fmtTime(start, false).replace(":", ".")}`)?.trim();
     if (!typed) return;
@@ -998,8 +1165,9 @@ export class MusicEditor {
     const have = await this.host.api("api/samples").catch(() => []);
     if (have.some((s) => s.path.split("/").pop().toLowerCase() === name.toLowerCase())
         && !confirm(`There's already a sample called ${name}. Replace it?`)) return;
-    const rate = this.audio.sampleRate;
-    const channels = render(slice(this.pieces, xf, start, end), this.sources, rate, { crossfade: xf });
+    // As it sounds in the edit, layers and all.
+    const rate = this.audio.sampleRate, a = Math.round(start * rate), b = Math.round(end * rate);
+    const channels = this.rendered.map((ch) => ch.slice(a, b));
     this.host.status(`Saving ${name}…`);
     try {
       await uploadSong(this.host.api, new Blob([encodeWav(channels, rate)], { type: "audio/wav" }), name,
@@ -1180,14 +1348,19 @@ export class MusicEditor {
   // Re-render after any change; `fit` also zooms out to the whole result.
   changed(fit = false) {
     const rate = this.audio?.sampleRate || 44100;
-    this.rendered = this.pieces.length
+    this.main = this.pieces.length
       ? render(this.pieces, this.sources, rate, {
         crossfade: this.crossfade,
         fadeIn: Number($("music-fadein").value) || 0,
         fadeOut: Number($("music-fadeout").value) || 0,
       })
       : null;
-    this.peaks = this.rendered ? peaks(this.rendered) : null;
+    this.songLufs = null; // measured again when a clip is next added
+    // What plays and is made into a song file: the song with its layers mixed in, kept from clipping.
+    const placed = this.main ? placeClips(this.layers, this.pieces, this.crossfade) : [];
+    this.rendered = placed.length ? limit(mixLayers(this.main, this.layers, placed, this.sources, rate), rate) : this.main;
+    this.peaks = this.main ? peaks(this.main) : null;
+    if (this.h !== WAVE_B + LANE_H * this.layers.length) this.layout();
     const total = this.total;
     this.time = Math.min(this.time, total);
     if (this.sel) this.sel = { start: Math.min(this.sel.start, total), end: Math.min(this.sel.end, total) };
@@ -1219,6 +1392,7 @@ export class MusicEditor {
     this.renderSection();
     if (this.joinSel >= this.pieces.length) this.joinSel = -1;
     this.renderJoin();
+    this.renderLayers();
     if (!this.marks || this.markSel >= this.marks.length) this.markSel = -1;
     this.renderMark();
     $("music-mark-add").disabled = !has || !this.marks;
@@ -1306,7 +1480,7 @@ export class MusicEditor {
       .sort((a, b) => a.t - b.t);
     const { otherMarks: _o, ...shownInfo } = this.shown || {};
     const carry = everyDetected && this.shown ? { ...shownInfo, marks } : null;
-    const rendered = this.rendered, rate = this.audio.sampleRate;
+    const rendered = this.main, rate = this.audio.sampleRate; // Detect goes by the song, not the layers
     // The draft as it was when you pressed it, and which draft: you might open another while it's made.
     const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
     try {
@@ -1370,7 +1544,7 @@ export class MusicEditor {
   layout() {
     const wrap = this.canvas.parentElement, dpr = window.devicePixelRatio || 1;
     this.w = wrap.clientWidth;
-    this.h = 210;
+    this.h = WAVE_B + LANE_H * this.layers.length;
     this.canvas.width = Math.round(this.w * dpr);
     this.canvas.height = Math.round(this.h * dpr);
     this.canvas.style.width = `${this.w}px`;
@@ -1423,7 +1597,7 @@ export class MusicEditor {
     }
     const rate = this.audio.sampleRate;
 
-    const laneT = RULER_H + BEAT_H, waveT = laneT + SEC_H, waveB = h; // beats, sections, then the waveform
+    const laneT = RULER_H + BEAT_H, waveT = laneT + SEC_H, waveB = WAVE_B; // beats, sections, then the waveform
     const info = this.shown;
     const names = info ? [...new Set(info.sections.map((x) => x.label))] : [];
 
@@ -1453,7 +1627,7 @@ export class MusicEditor {
       if (spp >= BLOCK) {
         for (let b = Math.floor(s0 / BLOCK), e = Math.ceil(s1 / BLOCK); b < e && b < this.peaks.length; b++) m = Math.max(m, this.peaks[b]);
       } else {
-        for (const ch of this.rendered) for (let s = s0; s < s1 && s < ch.length; s++) m = Math.max(m, Math.abs(ch[s]));
+        for (const ch of this.main) for (let s = s0; s < s1 && s < ch.length; s++) m = Math.max(m, Math.abs(ch[s]));
       }
       const hgt = Math.max(1, m * amp);
       ctx.fillStyle = px >= sx0 && px < sx1 ? region : wave;
@@ -1610,6 +1784,8 @@ export class MusicEditor {
       ctx.restore();
     }
 
+    this.drawLayers(col);
+
     // selection on top of everything: dim what's outside it, band the ruler, solid edges with grips
     if (this.sel) {
       ctx.fillStyle = "#000";
@@ -1635,6 +1811,51 @@ export class MusicEditor {
     this.canvas.setAttribute("aria-valuenow", this.time.toFixed(2));
     this.canvas.setAttribute("aria-valuetext", `${fmtTime(this.time)} of ${fmtTime(this.total)}`
       + (this.sel ? `, ${(this.sel.end - this.sel.start).toFixed(2)} seconds selected` : ""));
+  }
+
+  // Each layer's lane under the waveform, its clips as blocks with their names and fades.
+  drawLayers(col) {
+    const { ctx, w } = this;
+    if (!this.layers.length) return;
+    const placed = placeClips(this.layers, this.pieces, this.crossfade);
+    ctx.save();
+    ctx.font = "11px system-ui, sans-serif";
+    this.layers.forEach((l, i) => {
+      const y = WAVE_B + i * LANE_H;
+      ctx.fillStyle = col(i % 2 ? "--track-alt" : "--track") || col("--panel");
+      ctx.fillRect(0, y, w, LANE_H);
+      ctx.fillStyle = col("--line");
+      ctx.fillRect(0, y, w, 1);
+      const hue = LAYER_HUES[i % 4];
+      for (const p of placed.filter((q) => q.layer === i)) {
+        const c = l.clips[p.clip], x0 = this.x(p.at), x1 = this.x(p.at + p.length);
+        if (x1 < 0 || x0 > w) continue;
+        const picked = this.clipSel?.layer === i && this.clipSel?.clip === p.clip;
+        ctx.fillStyle = `hsl(${hue} 65% 50% / 0.55)`;
+        ctx.fillRect(x0, y + 3, Math.max(2, x1 - x0), LANE_H - 6);
+        // Fades as slopes in the corners.
+        ctx.fillStyle = `hsl(${hue} 65% 30% / 0.6)`;
+        const fi = (c.fadeIn / p.length) * (x1 - x0), fo = (c.fadeOut / p.length) * (x1 - x0);
+        if (fi > 1) { ctx.beginPath(); ctx.moveTo(x0, y + 3); ctx.lineTo(x0 + fi, y + 3); ctx.lineTo(x0, y + LANE_H - 3); ctx.fill(); }
+        if (fo > 1) { ctx.beginPath(); ctx.moveTo(x1, y + 3); ctx.lineTo(x1 - fo, y + 3); ctx.lineTo(x1, y + LANE_H - 3); ctx.fill(); }
+        if (picked) { ctx.strokeStyle = col("--text"); ctx.lineWidth = 2; ctx.strokeRect(x0 + 1, y + 4, Math.max(2, x1 - x0) - 2, LANE_H - 8); ctx.lineWidth = 1; }
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x0, y, Math.max(0, x1 - x0 - 2), LANE_H); ctx.clip();
+        ctx.fillStyle = col("--text");
+        ctx.fillText(nameOf(c.song).replace(/\.[^.]+$/, ""), Math.max(x0, 0) + 5, y + LANE_H / 2 + 4);
+        ctx.restore();
+      }
+      // The layer's name at the left, over a faint backing so it reads over clips.
+      const label = l.name;
+      const lw = ctx.measureText(label).width + 8;
+      ctx.fillStyle = col("--panel");
+      ctx.globalAlpha = 0.8;
+      ctx.fillRect(0, y + 1, lw, 13);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = col("--muted");
+      ctx.fillText(label, 4, y + 11);
+    });
+    ctx.restore();
   }
 
   // input ---------------------------------------------------------------------
@@ -1696,6 +1917,20 @@ export class MusicEditor {
     const join = this.joinAt(x, e.offsetY);
     if (join > 0) { this.drag = null; this.hearJoin(join); return; }
     this.canvas.setPointerCapture(e.pointerId);
+    if (this.laneAt(e.offsetY) >= 0) {
+      const hit = this.clipAt(x, e.offsetY);
+      if (!hit) { // an empty bit of a lane: move the playhead, as on the waveform
+        this.clipSel = null;
+        this.drag = { anchor: t, x, moved: false };
+        return;
+      }
+      const clip = this.layers[hit.layer].clips[hit.clip];
+      this.clipSel = { layer: hit.layer, clip: hit.clip };
+      this.drag = { clip: hit, orig: clip, t0: t, x, moved: false, before: this.layers };
+      this.updateControls();
+      this.draw();
+      return;
+    }
     const mark = this.markAt(x, e.offsetY);
     if (mark >= 0) {
       this.drag = { mark, base: this.info?.marks || [], shown: this.marks, x, moved: false };
@@ -1726,6 +1961,35 @@ export class MusicEditor {
   move(e) {
     const x = e.offsetX, raw = Math.min(Math.max(this.t(x), 0), this.total), d = this.drag;
     const t = d && !d.section ? this.snap(raw, e) : raw;
+    if (d?.clip) {
+      if (!d.moved && Math.abs(x - d.x) < 3) return;
+      d.moved = true;
+      const { clip, orig } = d, rate = this.audio.sampleRate, len = this.sources[keyOf(orig.song)]?.[0].length / rate || orig.end;
+      let next = orig;
+      if (clip.part === "body") {
+        const at = this.snap(clip.at + (raw - d.t0), e);
+        const anchor = anchorAt(this.pieces, this.crossfade, Math.max(0, at), this.refs);
+        if (anchor) next = { ...orig, anchor };
+      } else if (clip.part === "start") {
+        const delta = Math.max(-orig.start, Math.min(orig.end - orig.start - 0.05, this.snap(clip.at + (raw - d.t0), e, 6) - clip.at));
+        const anchor = anchorAt(this.pieces, this.crossfade, Math.max(0, clip.at + delta), this.refs);
+        if (anchor) next = { ...orig, start: orig.start + delta, anchor };
+      } else {
+        const endAt = this.snap(clip.at + clip.length + (raw - d.t0), e, 6);
+        next = { ...orig, end: Math.max(orig.start + 0.05, Math.min(len, orig.start + (endAt - clip.at))) };
+      }
+      const r3 = (v) => Math.round(v * 1000) / 1000;
+      next = { ...next, start: r3(next.start), end: r3(next.end) };
+      this.layers = d.before.map((l, k) => (k !== clip.layer ? l : { ...l, clips: l.clips.map((c, j) => (j === clip.clip ? next : c)) }));
+      this.draw();
+      return;
+    }
+    if (!d && this.laneAt(e.offsetY) >= 0) {
+      const hit = this.clipAt(x, e.offsetY);
+      this.canvas.style.cursor = !hit ? "text" : hit.part === "body" ? "grab" : "ew-resize";
+      this.canvas.title = hit ? "Drag to move this clip, or its ends to trim it" : "";
+      return;
+    }
     if (d?.mark !== undefined) {
       if (!d.moved && Math.abs(x - d.x) < 3) return;
       d.moved = true;
@@ -1773,6 +2037,18 @@ export class MusicEditor {
     const d = this.drag;
     this.drag = null;
     if (d?.section) { this.editSections(this.info.sections); return; }
+    if (d?.clip) {
+      if (d.moved) {
+        const after = this.layers;
+        this.layers = d.before; // so Undo goes back to before the drag
+        this.editLayers(after);
+      } else {
+        this.time = d.clip.at;
+        this.updateControls();
+        this.draw();
+      }
+      return;
+    }
     if (d?.mark !== undefined) {
       if (d.moved) {
         this.markSel = this.shownMark(d.now);
@@ -1825,12 +2101,13 @@ export class MusicEditor {
     if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); this.undo(e.shiftKey ? 1 : -1); }
     else if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); this.undo(1); }
     else if (e.key === " ") { e.preventDefault(); this.playing ? this.stop() : this.play(); }
+    else if ((e.key === "Delete" || e.key === "Backspace") && this.clipSel && !this.sel) { e.preventDefault(); this.deleteClip(); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); this.cutSelection(); }
     else if (!mod && (e.key === "m" || e.key === "M")) { e.preventDefault(); this.addMarkHere({ open: !this.playing }); }
     else if (e.key === "Home") { this.time = 0; this.follow(); this.draw(); }
     else if (e.key === "+" || e.key === "=") this.zoom(0.66);
     else if (e.key === "-") this.zoom(1.5);
-    else if (e.key === "Escape") { this.sel = null; this.kbAnchor = null; this.markSel = this.joinSel = -1; this.updateControls(); this.draw(); }
+    else if (e.key === "Escape") { this.sel = null; this.kbAnchor = null; this.markSel = this.joinSel = -1; this.clipSel = null; this.updateControls(); this.draw(); }
     else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && document.activeElement === this.canvas && this.rendered) {
       e.preventDefault();
       this.arrow(e.key === "ArrowRight" ? 1 : -1, e.shiftKey);
@@ -1917,6 +2194,7 @@ export class MusicEditor {
     $("cuts-dialog").addEventListener("close", () => this.closeCuts());
     this.wireSections();
     this.wireMarks();
+    this.wireLayers();
     // Some browsers (older Safari, the Home Assistant app on iPhone) also need returnValue to ask.
     // Leaving the page sends a waiting change in a way that outlives the page; it only asks first if a
     // change is already on its way (and might be cut off) or couldn't be kept.
@@ -1933,6 +2211,7 @@ export class MusicEditor {
   show() {
     this.fillSongLists();
     this.layout();
+    this.loadSamples();
   }
 
   hide() { this.stop(); }

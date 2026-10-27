@@ -193,6 +193,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   Home Assistant's 16 MB limit upload fine
 - Cut, trim and splice songs in the **Music editor**, with crossfades, as named **drafts** kept as you go that you can come back to and tweak, then make into a song file
 - **Even out the volume** when making a song file, so songs play at about the same loudness
+- **Layers** in the Music editor: samples or songs played over a song, pinned to the music so they follow cuts, mixed into the song file
 - **Samples**: short sounds (sleigh bells, a "ho ho ho") to layer over songs, made from part of a song or added as files
 - **Suggest cuts**: shorten the song or one section to a length you pick, by whole bars where the join isn't heard; with an AI, it picks the best and says why
 - **Marks**: flag and name moments in a song (a big hit, the bells coming in); every show using the song sees them and clips snap to them
@@ -367,6 +368,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/cutfinder.js                     Suggest cuts: where whole bars can go without the join being heard
     js/drafts.js                        Keeps the Music editor's drafts on the server as you edit
     js/loudness.js                      How loud a song is, and evening it out (Make song file)
+    js/layers.js                        Layers: clips pinned to the song, mixing them in, and the limiter
     js/volume.js                        The song volume slider shared by the Show editor and Music editor
     js/songload.js                      Fetching a song, and saying plainly why one did not load
     js/statusline.js                    The message spot in the top bar: saved, settled and error states

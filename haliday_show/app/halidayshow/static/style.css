@@ -973,3 +973,7 @@ a.button { text-decoration: none; }
 .song-folder-pick { max-width: 12em; }
 @media (prefers-reduced-motion: reduce) { .song-folder-fold::before { transition: none; } }
 .song-folder-body[hidden] { display: none !important; }
+.music-layers { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.layer-row { align-items: center; }
+.layer-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.layer-row select { max-width: 16em; }

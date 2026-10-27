@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.192
+
+- New in the **Music editor**: **layers**, for playing samples or other songs on top of the song, such
+  as sleigh bells over the intro or a "ho ho ho" on the last chorus. Press **+ Add layer** under the
+  waveform (up to four), then pick a sample or song under it to put a clip at the playhead. Drag a clip
+  to move it, drag its ends to trim it, and click it for its **Volume**, **Fade in** and **Fade out**.
+- A new clip starts a little quieter than the song so it sits in the mix, and **Make song file** mixes
+  everything into one file without distorting.
+- Clips are pinned to the music, so they move with your cuts. Layers are saved in the draft, and **Undo**
+  takes back layer changes too.
+
 ## 0.2.191
 
 - **Make song file** in the **Music editor** has a new **Even out the volume** switch, on to start with.
