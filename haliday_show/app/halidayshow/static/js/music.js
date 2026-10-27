@@ -1388,7 +1388,7 @@ export class MusicEditor {
     const has = this.pieces.length > 0, sel = this.sel;
     for (const id of ["music-play", "music-insert", "music-append", "music-save", "music-zoom-in", "music-zoom-out", "music-fit",
       "music-xf", "music-fadein", "music-fadeout", "music-name"]) $(id).disabled = !has;
-    for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview", "music-sample"]) $(id).disabled = !sel;
+    for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview", "music-sample", "music-sel-clear"]) $(id).disabled = !sel;
     $("music-undo").disabled = !this.history.length;
     $("music-detect").disabled = !this.base || this.dirty;
     $("music-describe").disabled = !this.base || this.dirty || !this.info?.sections?.length;
@@ -2043,6 +2043,7 @@ export class MusicEditor {
     } else {
       if (!d.moved && Math.abs(x - d.x) < 3) return;
       d.moved = true;
+      this.clipSel = null; // Delete now means the new selection, not the clip picked before it
       this.sel = { start: Math.min(t, d.anchor), end: Math.max(t, d.anchor) };
     }
     this.updateControls();
@@ -2081,7 +2082,7 @@ export class MusicEditor {
       return;
     }
     if (!d || d.edge || d.moved) return;
-    this.sel = null;
+    // A click only moves the playhead: the selection stays, so it can still be heard or cut.
     this.time = Math.min(Math.max(this.t(e.offsetX), 0), this.total);
     if (this.playing) this.play(this.time);
     this.updateControls();
@@ -2117,7 +2118,7 @@ export class MusicEditor {
     if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); this.undo(e.shiftKey ? 1 : -1); }
     else if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); this.undo(1); }
     else if (e.key === " ") { e.preventDefault(); this.playing ? this.stop() : this.play(); }
-    else if ((e.key === "Delete" || e.key === "Backspace") && this.clipSel && !this.sel) { e.preventDefault(); this.deleteClip(); }
+    else if ((e.key === "Delete" || e.key === "Backspace") && this.clipSel) { e.preventDefault(); this.deleteClip(); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); this.cutSelection(); }
     else if (!mod && (e.key === "m" || e.key === "M")) { e.preventDefault(); this.addMarkHere({ open: !this.playing }); }
     else if (e.key === "Home") { this.time = 0; this.follow(); this.draw(); }
@@ -2181,6 +2182,7 @@ export class MusicEditor {
     $("music-zoom-out").addEventListener("click", () => this.zoom(1.5));
     $("music-fit").addEventListener("click", () => this.fit());
     $("music-zoom-sel").addEventListener("click", () => this.sel && this.zoomTo(this.sel.start, this.sel.end));
+    $("music-sel-clear").addEventListener("click", () => { this.sel = null; this.kbAnchor = null; this.updateControls(); this.draw(); });
     $("music-sel-start").addEventListener("change", (e) => this.setSelEdge("start", e.target.value));
     $("music-sel-end").addEventListener("change", (e) => this.setSelEdge("end", e.target.value));
     for (const id of ["music-xf", "music-fadein", "music-fadeout"]) {

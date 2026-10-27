@@ -619,7 +619,8 @@ songs** each visit, the same list as **Library → Songs** (with **+ Add a song*
 until you press **Edit** on one. The open song's name sits beside **← All songs**, which goes back to
 the list to open another; switching tabs keeps your song open. The song you open is never changed: your
 first change starts a [draft](#drafts), kept as you go, which you make into a new song file when you're
-happy. Drag across the waveform to select, then **Cut selection** to remove it or
+happy. Drag across the waveform to select (clicking moves the playhead and keeps the selection; press **✕**
+next to its times or Esc to clear it), then **Cut selection** to remove it or
 **Keep only selection** to shorten the song to it, or let **✂ Suggest cuts…** find the cuts for you (see
 [Suggest cuts](#suggest-cuts)). **Insert at playhead** and **Add to end** splice in
 another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
