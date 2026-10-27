@@ -38,7 +38,9 @@ export function anchorAt(pieces, crossfade, t, refs) {
     if (t < own1) {
       const p = pieces[i];
       const r3 = (x) => Math.round(x * 1000) / 1000;
-      return { song: refs[p.src], t: r3(Math.min(p.end, Math.max(p.start, p.start + (t - places[i].at)))) };
+      // Kept just inside the piece, so the moment is still in the song after rounding.
+      const last = Math.max(p.start, p.end - 0.002);
+      return { song: refs[p.src], t: r3(Math.min(last, Math.max(p.start, p.start + (t - places[i].at)))) };
     }
   }
   return null;
@@ -66,16 +68,16 @@ export function mixLayers(main, layers, placed, sources, rate) {
     const gain = db(L.gain) * db(c.gain);
     const from = Math.round(c.start * rate), to = Math.min(src[0].length, Math.round(c.end * rate));
     const len = to - from, fi = Math.round((c.fadeIn || 0) * rate), fo = Math.round((c.fadeOut || 0) * rate);
-    const off = Math.round(at * rate);
-    for (let k = 0; k < len; k++) {
-      const i = off + k;
-      if (i >= n) break;
-      if (i < 0) continue;
-      let g = gain;
-      if (fi && k < fi) g *= k / fi;
-      if (fo && k > len - fo) g *= (len - k) / fo;
-      out.forEach((ch, c2) => { ch[i] += g * src[Math.min(c2, src.length - 1)][from + k]; });
-    }
+    const off = Math.round(at * rate), k1 = Math.min(len, n - off);
+    out.forEach((ch, c2) => {
+      const s = src[Math.min(c2, src.length - 1)];
+      for (let k = Math.max(0, -off); k < k1; k++) {
+        let g = gain;
+        if (fi && k < fi) g *= k / fi;
+        if (fo && k > len - fo) g *= (len - k) / fo;
+        ch[off + k] += g * s[from + k];
+      }
+    });
   }
   return out;
 }

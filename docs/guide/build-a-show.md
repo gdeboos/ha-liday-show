@@ -257,7 +257,9 @@ last chorus, a voice saying "Merry Christmas", or another song fading in under t
 
 Each clip is pinned to the moment in the song it starts at, so it moves with your cuts: cut a bit
 earlier in the song and it moves earlier with the music; cut the part it sits on and it's left out
-(**Undo** or **Put back** brings it back). Layers are part of the draft and every change is one
+(**Undo** or **Put back** brings it back). A clip that runs past the end of the song stops there.
+If you delete a sample a draft uses, its clips show greyed out and silent until you delete them or add
+the sample back. Layers are part of the draft and every change is one
 **Undo** step. **Make song file** mixes the layers into the new file, keeping the mix from
 distorting where they pile up. The waveform, **Detect** and **Suggest cuts** go by the song alone, and a
 sample saved with **Save as sample…** includes the layers.

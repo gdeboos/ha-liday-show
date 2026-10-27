@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { MAX_LAYERS, anchorAt, limit, matchGain, mixLayers, placeClips } from "./layers.js";
+import { MAX_CLIPS, MAX_LAYERS, anchorAt, limit, matchGain, mixLayers, placeClips } from "./layers.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
@@ -524,7 +524,7 @@ export class MusicEditor {
     let d;
     try {
       d = await this.host.api(`api/drafts/${encodeURIComponent(id)}`);
-      const songs = [d.base, ...d.pieces.map((p) => p.song), ...(d.layers || []).flatMap((l) => l.clips.map((c) => c.song))];
+      const songs = [d.base, ...d.pieces.map((p) => p.song)];
       for (const ref of songs.filter((r, i) => songs.findIndex((x) => keyOf(x) === keyOf(r)) === i)) {
         try {
           await this.source(ref);
@@ -536,6 +536,15 @@ export class MusicEditor {
     } catch (e) {
       this.host.status(`Couldn't open the draft: ${e.message}`, true, "song");
       return false;
+    }
+    // A layer's sample or song that's gone (deleted, say) doesn't stop the draft opening: its clips
+    // stay, greyed out and silent, until it's back or they're deleted.
+    const missing = [];
+    for (const ref of new Map((d.layers || []).flatMap((l) => l.clips.map((c) => [keyOf(c.song), c.song]))).values()) {
+      try { await this.source(ref); } catch { missing.push(nameOf(ref).replace(/\.[^.]+$/, "")); }
+    }
+    if (missing.length) {
+      this.host.status(`"${d.name}" has layer clips of ${missing.join(", ")}, which ${missing.length === 1 ? "isn't" : "aren't"} in your samples or songs any more. They're greyed out and silent`, "hint");
     }
     const base = d.base, baseKey = keyOf(base);
     this.base = this.refs[baseKey];
@@ -558,7 +567,7 @@ export class MusicEditor {
     const ref = this.base;
     const info = await this.host.api(infoUrl(ref)).catch(() => null);
     if (this.base === ref) { this.info = info; this.updateControls(); this.draw(); }
-    this.host.status(`Opened the draft "${d.name}"`);
+    if (!missing.length) this.host.status(`Opened the draft "${d.name}"`);
     return true;
   }
 
@@ -720,10 +729,10 @@ export class MusicEditor {
     const mark = this.pickedMark();
     to.push(this.snapshot());
     const back = from.pop();
+    if (back.pieces !== this.pieces) this.dirty = true; // a layers-only step leaves the song as it was
     this.pieces = back.pieces;
     this.layers = back.layers;
     this.clipSel = null;
-    this.dirty = true;
     this.markSel = this.shownMark(mark);
     this.joinSel = -1;
     this.changed();
@@ -778,8 +787,9 @@ export class MusicEditor {
   // Puts a sample or song on a layer at the playhead, as long as it is (trim it after), at a level a
   // little under the song's.
   async addClip(i, ref) {
-    const at = anchorAt(this.pieces, this.crossfade, this.time, this.refs);
-    if (!at) return this.host.status("Move the playhead into the song first", "hint");
+    if (this.layers[i].clips.length >= MAX_CLIPS) return this.host.status(`A layer can have up to ${MAX_CLIPS} clips; use another layer`, "hint");
+    const at = this.time < this.total - 0.01 && anchorAt(this.pieces, this.crossfade, this.time, this.refs);
+    if (!at) return this.host.status("Move the playhead into the song first (not right at its end)", "hint");
     let key;
     try { key = await this.source(ref); } catch (e) { return this.host.status(songLoadMessage(e), true); }
     const rate = this.audio.sampleRate, audio = this.sources[key];
@@ -855,7 +865,8 @@ export class MusicEditor {
     if (!c) return;
     const at = placeClips(this.layers, this.pieces, this.crossfade).find((p) => p.layer === sel.layer && p.clip === sel.clip);
     $("music-clip-what").textContent = `${nameOf(c.song).replace(/\.[^.]+$/, "")} on ${this.layers[sel.layer].name}`
-      + (at ? `, at ${fmtTime(at.at)} for ${(c.end - c.start).toFixed(2)} s` : " (on a part that's cut out)");
+      + (at ? `, at ${fmtTime(at.at)} for ${(c.end - c.start).toFixed(2)} s` : " (on a part that's cut out)")
+      + (this.sources[keyOf(c.song)] ? "" : ". It's not in your samples or songs any more, so it's silent: delete it, or add it back to Library → Samples");
     for (const [id, v] of [["music-clip-fadein", c.fadeIn], ["music-clip-fadeout", c.fadeOut], ["music-clip-gain", c.gain]]) {
       if (document.activeElement !== $(id)) $(id).value = v;
     }
@@ -1348,18 +1359,19 @@ export class MusicEditor {
   // Re-render after any change; `fit` also zooms out to the whole result.
   changed(fit = false) {
     const rate = this.audio?.sampleRate || 44100;
-    this.main = this.pieces.length
-      ? render(this.pieces, this.sources, rate, {
-        crossfade: this.crossfade,
-        fadeIn: Number($("music-fadein").value) || 0,
-        fadeOut: Number($("music-fadeout").value) || 0,
-      })
-      : null;
-    this.songLufs = null; // measured again when a clip is next added
+    const fadeIn = Number($("music-fadein").value) || 0, fadeOut = Number($("music-fadeout").value) || 0;
+    // The song is only rendered again when it changed (not for a change to the layers alone).
+    const same = this.mainFor && this.mainFor.pieces === this.pieces && this.mainFor.xf === this.crossfade
+      && this.mainFor.fadeIn === fadeIn && this.mainFor.fadeOut === fadeOut && this.mainFor.rate === rate;
+    if (!same) {
+      this.main = this.pieces.length ? render(this.pieces, this.sources, rate, { crossfade: this.crossfade, fadeIn, fadeOut }) : null;
+      this.mainFor = { pieces: this.pieces, xf: this.crossfade, fadeIn, fadeOut, rate };
+      this.songLufs = null; // measured again when a clip is next added
+    }
     // What plays and is made into a song file: the song with its layers mixed in, kept from clipping.
     const placed = this.main ? placeClips(this.layers, this.pieces, this.crossfade) : [];
     this.rendered = placed.length ? limit(mixLayers(this.main, this.layers, placed, this.sources, rate), rate) : this.main;
-    this.peaks = this.main ? peaks(this.main) : null;
+    if (!same) this.peaks = this.main ? peaks(this.main) : null;
     if (this.h !== WAVE_B + LANE_H * this.layers.length) this.layout();
     const total = this.total;
     this.time = Math.min(this.time, total);
@@ -1831,7 +1843,8 @@ export class MusicEditor {
         const c = l.clips[p.clip], x0 = this.x(p.at), x1 = this.x(p.at + p.length);
         if (x1 < 0 || x0 > w) continue;
         const picked = this.clipSel?.layer === i && this.clipSel?.clip === p.clip;
-        ctx.fillStyle = `hsl(${hue} 65% 50% / 0.55)`;
+        const gone = !this.sources[keyOf(c.song)];
+        ctx.fillStyle = gone ? col("--line") : `hsl(${hue} 65% 50% / 0.55)`;
         ctx.fillRect(x0, y + 3, Math.max(2, x1 - x0), LANE_H - 6);
         // Fades as slopes in the corners.
         ctx.fillStyle = `hsl(${hue} 65% 30% / 0.6)`;
@@ -1842,7 +1855,7 @@ export class MusicEditor {
         ctx.save();
         ctx.beginPath(); ctx.rect(x0, y, Math.max(0, x1 - x0 - 2), LANE_H); ctx.clip();
         ctx.fillStyle = col("--text");
-        ctx.fillText(nameOf(c.song).replace(/\.[^.]+$/, ""), Math.max(x0, 0) + 5, y + LANE_H / 2 + 4);
+        ctx.fillText(nameOf(c.song).replace(/\.[^.]+$/, "") + (gone ? " (missing)" : ""), Math.max(x0, 0) + 5, y + LANE_H / 2 + 4);
         ctx.restore();
       }
       // The layer's name at the left, over a faint backing so it reads over clips.
@@ -1971,7 +1984,7 @@ export class MusicEditor {
         const anchor = anchorAt(this.pieces, this.crossfade, Math.max(0, at), this.refs);
         if (anchor) next = { ...orig, anchor };
       } else if (clip.part === "start") {
-        const delta = Math.max(-orig.start, Math.min(orig.end - orig.start - 0.05, this.snap(clip.at + (raw - d.t0), e, 6) - clip.at));
+        const delta = Math.max(-orig.start, -clip.at, Math.min(orig.end - orig.start - 0.05, this.snap(clip.at + (raw - d.t0), e, 6) - clip.at));
         const anchor = anchorAt(this.pieces, this.crossfade, Math.max(0, clip.at + delta), this.refs);
         if (anchor) next = { ...orig, start: orig.start + delta, anchor };
       } else {

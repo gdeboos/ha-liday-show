@@ -72,3 +72,12 @@ test("a new clip sits 6 LU under the song", () => {
   assert.equal(matchGain(-14, -60), 12, "at most 12 dB up");
   assert.equal(matchGain(-Infinity, -20), 0);
 });
+
+test("a clip placed right at the end of a piece or the song is still in the song", () => {
+  const p = cut(song, 0, 10, 20); // pieces 0–10 and 20–60
+  for (const t of [9.9996, 10, 49.9999, 50]) {
+    const a = anchorAt(p, 0, t, refs);
+    assert.ok(a, `at ${t}`);
+    assert.notEqual(resultTime(p, 0, a), null, `placed at ${t}`);
+  }
+});
