@@ -199,7 +199,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Suggest cuts**: shorten the song or one section to a length you pick, by whole bars where the join isn't heard; with an AI, it picks the best and says why
 - **Marks**: flag and name moments in a song (a big hit, the bells coming in); every show using the song sees them and clips snap to them
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
-- Arrange the editor your way: pick a page layout, then drag, collapse or hide any panel
+- Arrange the Show, Music and Playlist editors your way: pick a page layout, then drag, collapse or hide any panel
 - The browser's Back and Forward buttons move between the app's pages, inside Home Assistant too
 - Experimental: hand a Govee light to one of Govee's built-in scenes for part of the show
 

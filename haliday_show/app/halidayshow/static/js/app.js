@@ -7875,8 +7875,17 @@ async function init() {
   wireWizard();
   wireData();
   wirePublic();
-  const layout = new Layout(() => { layoutPreview(); timeline.layout(); });
-  $("btn-reset-layout").addEventListener("click", () => layout.reset());
+  new Layout(() => { layoutPreview(); timeline.layout(); }, "show", $("view-editor"));
+  new Layout(null, "music", $("view-music"));
+  new Layout(null, "playlist", $("view-playlist"));
+  // Settings → Layout shows one editor's layout at a time.
+  const pickLayout = (name) => {
+    for (const b of document.querySelectorAll("[data-layout-pick]")) b.setAttribute("aria-pressed", String(b.dataset.layoutPick === name));
+    for (const part of document.querySelectorAll("[data-layout-for]")) part.hidden = part.dataset.layoutFor !== name;
+    prefs.set("layoutEditor", name);
+  };
+  for (const b of document.querySelectorAll("[data-layout-pick]")) b.addEventListener("click", () => pickLayout(b.dataset.layoutPick));
+  pickLayout(["show", "music", "playlist"].includes(prefs.get("layoutEditor")) ? prefs.get("layoutEditor") : "show");
   $("exp-labs").checked = labsOn();
   $("tab-labs").hidden = !labsOn();
   $("exp-labs").addEventListener("change", (e) => {

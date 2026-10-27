@@ -1,11 +1,9 @@
 // Editor layout: which dock (top, left, middle, right or bottom) each panel sits in, or hidden.
-// Saved per browser, so a laptop and a phone can each have their own arrangement.
+// Saved per browser, so a laptop and a phone can each have their own arrangement. The Show, Music
+// and Playlist editors each have their own (EDITORS below).
 
 export const DOCKS = { top: "Top", left: "Left", middle: "Middle", right: "Right", bottom: "Bottom" };
 export const HIDDEN = "hidden";
-// The timeline is where a show is edited, so it can move but not hide.
-const ALWAYS_SHOWN = new Set(["timeline"]);
-const placesFor = (panel) => (ALWAYS_SHOWN.has(panel) ? DOCKS : { ...DOCKS, [HIDDEN]: "Hidden" });
 export const PANELS = {
   show: "Show", song: "Song", playback: "Playback", beats: "Beats", ai: "Describe it",
   preview: "Preview", house: "House", timeline: "Timeline", inspector: "Selection",
@@ -34,29 +32,55 @@ const OLD_DEFAULT = {
   show: "top", song: "top", playback: "top", beats: "top", ai: "top",
   preview: "top", house: "top", timeline: "middle", inspector: "bottom",
 };
-const KEY = "halidayshow.layout";
 // On a phone the panels stack, and these two would fill the screen before the timeline, so they
 // start folded there until someone folds or unfolds a panel themselves.
 export const PHONE_FOLDED = ["preview", "house"];
 export const isPhone = () => typeof matchMedia === "function" && matchMedia("(max-width: 720px)").matches;
 
+// Each editor's panels and where they start. `always` panels are where the editing happens, so
+// they can move but not hide; `phoneFolded` start folded on a phone.
+export const EDITORS = {
+  show: {
+    label: "Show editor", key: "halidayshow.layout", panels: PANELS, place: DEFAULT_LAYOUT, order: DEFAULT_ORDER,
+    always: ["timeline"], phoneFolded: PHONE_FOLDED, oldDefault: OLD_DEFAULT,
+  },
+  music: {
+    label: "Music editor", key: "halidayshow.layout.music",
+    panels: { song: "Song", playback: "Playback", wave: "Waveform", selection: "Selection", beats: "Beats and sections",
+      edit: "Edit", splice: "Splice", smoothing: "Smoothing" },
+    place: { song: "top", playback: "top", wave: "middle", selection: "right", beats: "bottom", edit: "bottom",
+      splice: "bottom", smoothing: "bottom" },
+    order: ["song", "playback", "wave", "selection", "beats", "edit", "splice", "smoothing"],
+    always: ["wave"], phoneFolded: ["splice", "smoothing"],
+  },
+  playlist: {
+    label: "Playlist editor", key: "halidayshow.layout.playlist",
+    panels: { playlist: "Playlist", blocks: "Building blocks", shows: "Your shows", order: "Running order", when: "When it plays" },
+    place: { playlist: "top", blocks: "left", shows: "left", order: "middle", when: "bottom" },
+    order: ["playlist", "blocks", "shows", "order", "when"],
+    always: ["order"], phoneFolded: ["blocks"],
+  },
+};
+
+const placesFor = (spec, panel) => (spec.always.includes(panel) ? DOCKS : { ...DOCKS, [HIDDEN]: "Hidden" });
+
 // Saved as { place: {panel: dock}, order: [panels], frame, collapsed: [panels] }; panels sit in
 // their dock in `order`, and collapsed ones show just their title.
 // Older versions saved only the place map, which still loads with the default order.
-export function loadLayout(phone = false) {
+export function loadLayout(phone = false, spec = EDITORS.show) {
   let saved = {};
-  try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { /* private mode or bad data */ }
+  try { saved = JSON.parse(localStorage.getItem(spec.key)) || {}; } catch { /* private mode or bad data */ }
   let placed = saved.place || saved;
-  const untouched = Object.entries(OLD_DEFAULT).every(([k, v]) => (placed[k] ?? v) === v)
+  const untouched = spec.oldDefault && Object.entries(spec.oldDefault).every(([k, v]) => (placed[k] ?? v) === v)
     && (saved.frame ?? DEFAULT_FRAME) === DEFAULT_FRAME;
   if (untouched) { placed = {}; saved = {}; }
-  const place = { ...DEFAULT_LAYOUT };
-  for (const [k, v] of Object.entries(placed)) if (k in PANELS && v in placesFor(k)) place[k] = v;
-  const order = (Array.isArray(saved.order) ? saved.order : []).filter((k, i, a) => k in PANELS && a.indexOf(k) === i);
-  for (const k of DEFAULT_ORDER) if (!order.includes(k)) order.push(k);
+  const place = { ...spec.place };
+  for (const [k, v] of Object.entries(placed)) if (k in spec.panels && v in placesFor(spec, k)) place[k] = v;
+  const order = (Array.isArray(saved.order) ? saved.order : []).filter((k, i, a) => k in spec.panels && a.indexOf(k) === i);
+  for (const k of spec.order) if (!order.includes(k)) order.push(k);
   const frame = saved.frame in FRAMES ? saved.frame : DEFAULT_FRAME;
-  const collapsed = (Array.isArray(saved.collapsed) ? saved.collapsed : phone ? PHONE_FOLDED : [])
-    .filter((k) => k in PANELS && !ALWAYS_SHOWN.has(k));
+  const collapsed = (Array.isArray(saved.collapsed) ? saved.collapsed : phone ? spec.phoneFolded : [])
+    .filter((k) => k in spec.panels && !spec.always.includes(k));
   return { place, order, frame, collapsed };
 }
 
@@ -78,29 +102,30 @@ export function frameMap(frame, cell) {
   return map;
 }
 
-function saveLayout(layout) {
-  try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch { /* not saved, still applied */ }
-}
-
 export class Layout {
-  // onChange runs after panels move, so the timeline and preview can resize.
-  constructor(onChange) {
+  // `root` holds this editor's docks and panels; onChange runs after panels move, so the timeline
+  // and preview can resize. `editor` is a key of EDITORS.
+  constructor(onChange, editor = "show", root = document) {
     this.onChange = onChange;
-    this.layout = loadLayout(isPhone());
+    this.name = editor;
+    this.spec = EDITORS[editor];
+    this.root = root;
+    this.layout = loadLayout(isPhone(), this.spec);
     this.menu = null;
-    this.docks = Object.fromEntries([...document.querySelectorAll(".dock[data-dock]")].map((d) => [d.dataset.dock, d]));
+    this.docks = Object.fromEntries([...root.querySelectorAll(".dock[data-dock]")].map((d) => [d.dataset.dock, d]));
     this.marker = document.createElement("div");
     this.marker.className = "drop-marker";
-    for (const panel of document.querySelectorAll(".panel[data-panel]")) {
+    const names = this.spec.panels;
+    for (const panel of root.querySelectorAll(".panel[data-panel]")) {
       const btn = document.createElement("button");
       btn.className = "panel-move ghost";
       btn.textContent = "⋯";
       btn.title = "Move this panel";
-      btn.setAttribute("aria-label", `Move the ${PANELS[panel.dataset.panel] ?? "panel"} panel`);
+      btn.setAttribute("aria-label", `Move the ${names[panel.dataset.panel] ?? "panel"} panel`);
       btn.addEventListener("click", (e) => { e.stopPropagation(); this.openMenu(panel.dataset.panel, btn); });
       const head = panel.querySelector(".panel-head");
       head.append(btn);
-      if (!ALWAYS_SHOWN.has(panel.dataset.panel)) {
+      if (!this.spec.always.includes(panel.dataset.panel)) {
         const fold = document.createElement("button");
         fold.className = "panel-fold ghost";
         fold.addEventListener("click", (e) => { e.stopPropagation(); this.toggleCollapsed(panel.dataset.panel); });
@@ -109,6 +134,7 @@ export class Layout {
       this.makeDraggable(panel, head);
     }
     for (const [name, dock] of Object.entries(this.docks)) this.makeDropZone(name, dock);
+    document.querySelector(`[data-layout-for="${editor}"] .layout-reset`)?.addEventListener("click", () => this.reset());
     document.addEventListener("click", () => this.closeMenu());
     window.addEventListener("resize", () => this.updateSticky());
     // Also when the editor tab opens or a panel in the top dock grows.
@@ -117,13 +143,17 @@ export class Layout {
     this.apply();
   }
 
+  save() {
+    try { localStorage.setItem(this.spec.key, JSON.stringify(this.layout)); } catch { /* not saved, still applied */ }
+  }
+
   // Puts `panel` in `dock`, just before `before` (another panel) or at the end of the dock.
   move(panel, dock, before = null) {
     const { place, order } = this.layout;
     place[panel] = dock;
     order.splice(order.indexOf(panel), 1);
     order.splice(before && before !== panel ? order.indexOf(before) : order.length, 0, panel);
-    saveLayout(this.layout);
+    this.save();
     this.apply();
   }
 
@@ -141,33 +171,34 @@ export class Layout {
     const { collapsed } = this.layout;
     const i = collapsed.indexOf(panel);
     if (i < 0) collapsed.push(panel); else collapsed.splice(i, 1);
-    saveLayout(this.layout);
+    this.save();
     this.apply();
   }
 
   setFrame(frame) {
     if (!(frame in FRAMES)) return;
     this.layout.frame = frame;
-    saveLayout(this.layout);
+    this.save();
     this.apply();
   }
 
   reset() {
-    this.layout = { place: { ...DEFAULT_LAYOUT }, order: [...DEFAULT_ORDER], frame: DEFAULT_FRAME,
-      collapsed: isPhone() ? [...PHONE_FOLDED] : [] };
-    saveLayout(this.layout);
+    this.layout = { place: { ...this.spec.place }, order: [...this.spec.order], frame: DEFAULT_FRAME,
+      collapsed: isPhone() ? [...this.spec.phoneFolded] : [] };
+    this.save();
     this.apply();
   }
 
   apply() {
     const { place, order, frame } = this.layout;
-    const view = this.docks.top?.closest(".view");
-    if (view) {
-      view.style.setProperty("--frame-areas", gridAreas(frame));
-      view.dataset.frame = frame;
+    const grid = this.docks.top?.closest(".panel-grid");
+    if (grid) {
+      grid.style.setProperty("--frame-areas", gridAreas(frame));
+      grid.dataset.frame = frame;
     }
+    const names = this.spec.panels;
     for (const key of order) {
-      const el = document.querySelector(`.panel[data-panel="${key}"]`);
+      const el = this.root.querySelector(`.panel[data-panel="${key}"]`);
       if (!el) continue;
       el.hidden = place[key] === HIDDEN;
       if (!el.hidden) this.docks[place[key]].append(el);
@@ -176,7 +207,7 @@ export class Layout {
       const fold = el.querySelector(".panel-fold");
       if (fold) {
         fold.textContent = folded ? "▸" : "▾";
-        fold.title = folded ? `Show ${PANELS[key]}` : `Collapse ${PANELS[key]} to its title`;
+        fold.title = folded ? `Show ${names[key]}` : `Collapse ${names[key]} to its title`;
         fold.setAttribute("aria-label", fold.title);
         fold.setAttribute("aria-expanded", String(!folded));
       }
@@ -253,18 +284,19 @@ export class Layout {
     menu.addEventListener("click", (e) => e.stopPropagation());
     const title = document.createElement("div");
     title.className = "section-label";
-    title.textContent = `Move ${PANELS[panel]} to`;
+    const names = this.spec.panels;
+    title.textContent = `Move ${names[panel]} to`;
     menu.append(title);
     // The docks as a picture of the page, so it's clear where each one is.
     const here = this.layout.place[panel];
     menu.append(frameMap(this.layout.frame, (dock, b) => {
       b.className += dock === here ? " active" : "";
-      const others = this.layout.order.filter((k) => k !== panel && this.layout.place[k] === dock).map((k) => PANELS[k]);
+      const others = this.layout.order.filter((k) => k !== panel && this.layout.place[k] === dock).map((k) => names[k]);
       b.textContent = DOCKS[dock];
       b.title = others.length ? `${DOCKS[dock]}: with ${others.join(", ")}` : `${DOCKS[dock]}: empty`;
       b.addEventListener("click", () => { this.closeMenu(); this.move(panel, dock); });
     }));
-    if (HIDDEN in placesFor(panel)) {
+    if (HIDDEN in placesFor(this.spec, panel)) {
       const b = document.createElement("button");
       b.className = here === HIDDEN ? "active" : "ghost";
       b.textContent = "Hidden";
@@ -318,15 +350,17 @@ export class Layout {
     return row;
   }
 
-  // The Layout section on the Settings tab.
+  // This editor's part of the Layout section on the Settings tab.
   renderSettings() {
-    document.getElementById("layout-frames")?.replaceChildren(this.framePicker());
-    const box = document.getElementById("layout-rows");
+    const part = document.querySelector(`[data-layout-for="${this.name}"]`);
+    if (!part) return;
+    part.querySelector(".layout-frames")?.replaceChildren(this.framePicker());
+    const box = part.querySelector(".layout-rows");
     if (!box) return;
-    box.replaceChildren(...Object.entries(PANELS).map(([key, label]) => {
+    box.replaceChildren(...Object.entries(this.spec.panels).map(([key, label]) => {
       const l = document.createElement("label");
       const sel = document.createElement("select");
-      for (const [dock, dl] of Object.entries(placesFor(key))) sel.add(new Option(dl, dock, false, dock === this.layout.place[key]));
+      for (const [dock, dl] of Object.entries(placesFor(this.spec, key))) sel.add(new Option(dl, dock, false, dock === this.layout.place[key]));
       sel.addEventListener("change", () => this.move(key, sel.value));
       const name = document.createElement("span");
       name.textContent = label;
