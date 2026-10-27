@@ -47,14 +47,14 @@ on **Your playlists**, the same list as **Library → Playlists**: each says how
 long it takes to play through once and when it plays, with **Open**, **▶ Play** and **Delete**. Press
 **+ New playlist**, or **Open** one, to edit it:
 
-- **Building blocks**, at the top left, go between your shows (see below). Drag one in like a show.
+- **Building blocks**, at the left to start with, go between your shows (see below). Drag one in like a show.
 - **Your shows**, below them, lists every show. Drag one by its card into **Running order** and let
   go where it should play; a blue line shows where it will land. Or press **+** to add it at the end.
   **Find a show** narrows the list. The same show can go in more than once.
 - In **Running order**, drag a show or block up or down to change when it plays, or drag it out of
   **Running order** (back to **Your shows**, say) to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
   by the dots (⠿) at the left of a card, so the page still scrolls; there, **Running order** comes
-  first.
+  first and **Building blocks** starts folded.
 - The coloured bar above the order shows one time through, each show and block as long as it plays,
   and next to **Running order** it says how long that takes.
 - Type over the name at the top to rename the playlist. **Delete playlist** removes it but keeps its

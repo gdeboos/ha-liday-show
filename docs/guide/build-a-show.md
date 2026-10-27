@@ -195,7 +195,7 @@ and are kept when you make the song file. Edit the song before placing clips, be
 afterwards won't move them.
 
 Each join shows as a dashed line with a **✂** at the top. Click the **✂** to hear a few seconds either
-side of the join; a panel under the waveform says what was cut there (how much, and from where in the
+side of the join; the **Selection** panel says what was cut there (how much, and from where in the
 song). To change that cut, press **Adjust cut**: the part comes back and is selected, so drag its edges
 (or type the times) and press **Cut selection** again. **Put back** undoes just that cut, leaving the
 others as they are. Both are one step for **Undo**. A join where another song was spliced in only has
@@ -338,9 +338,10 @@ note. They're kept with the song, so every show that uses it gets them, and they
 **Detect** again.
 
 - **Add one:** in the Music editor, put the playhead where you want it and press **⚑ Add mark** (in the
-  **Beats, sections and marks** card), or press **M**. **M** works while the song plays, so you can tap
+  **Beats and sections** panel), or press **M**. **M** works while the song plays, so you can tap
   it along with the music and name the marks afterwards. You don't need to **Detect** the song first.
-- **Name, colour or delete it:** click its flag in the beat lane (the playhead jumps to it). Type a
+- **Name, colour or delete it:** click its flag in the beat lane (the playhead jumps to it), and change it
+  in the **Selection** panel. Type a
   **Name**, pick a **Colour**, or press **Delete**. **Move to playhead** moves it to where the playhead is,
   and **✕** or Esc closes it. Each new mark takes the colour you picked last.
 - **Move it:** drag its flag. It snaps to beats and bars; hold Shift to place it freely.
@@ -371,7 +372,7 @@ song. Each show keeps its own copy, so moving beats in one show doesn't change t
 ### Editing sections
 
 In the Music editor, the lane above the waveform shows each section in its colour.
-Click one to rename it or pick its colour (every section with the same name changes colour together),
+Click one to change it in the **Selection** panel: rename it or pick its colour (every section with the same name changes colour together),
 **✂ Shorten…** it (see [Suggest cuts](#suggest-cuts)),
 **Split at playhead**, **Merge with next** or **Delete** it, and drag the line between two sections to
 move it. Changes save with the song; a show that already uses the song picks them up with **From song**.

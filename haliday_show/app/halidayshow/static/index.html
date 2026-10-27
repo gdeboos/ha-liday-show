@@ -80,7 +80,7 @@
   </details>
 </main>
 
-<main id="view-editor" class="view editor">
+<main id="view-editor" class="view editor panel-grid">
   <!-- Panels live in five docks (top, left, middle, right, bottom); layout.js moves or hides them per viewer. -->
   <div class="dock" data-dock="top">
     <section class="panel" data-panel="show">
@@ -138,11 +138,11 @@
       </form>
       <p id="ai-hint" class="hint"></p>
     </section>
-    <section class="panel" data-panel="preview">
+    <section class="panel" data-panel="preview" data-wide>
       <div class="panel-head"><span class="section-label">Preview</span></div>
       <div class="preview-panel"><canvas id="preview"></canvas></div>
     </section>
-    <section class="panel" data-panel="house">
+    <section class="panel" data-panel="house" data-wide>
       <div class="panel-head"><span class="section-label">House</span></div>
       <div class="house-panel"><canvas id="house"></canvas><p id="house-hint" class="hint"></p></div>
     </section>
@@ -150,7 +150,7 @@
   <div class="editor-middle">
     <div class="dock" data-dock="left"></div>
     <div class="dock" data-dock="middle">
-      <section class="panel" data-panel="timeline">
+      <section class="panel" data-panel="timeline" data-wide>
         <div class="panel-head"><span class="section-label">Timeline</span>
           <span class="panel-tools" title="Zoom the timeline">
             <button id="btn-zoom-out" class="ghost" title="Zoom out (-)">−</button>
@@ -171,7 +171,7 @@
     <div class="dock" data-dock="right"></div>
   </div>
   <div class="dock" data-dock="bottom">
-    <section class="panel" data-panel="inspector">
+    <section class="panel" data-panel="inspector" data-wide>
       <div class="panel-head"><span class="section-label">Selection</span></div>
       <div class="inspector" id="inspector">
         <p class="hint">Drag across a light, or the House lane, to select a stretch of time, then pick an effect to add it there.</p>
@@ -315,42 +315,47 @@
   <p><button type="button" class="primary" data-playlist-new>+ New playlist</button></p>
 </main>
 
-<main id="view-playlist" class="view playlist-editor" hidden>
-  <section class="toolbar music-head">
-    <div class="group">
-      <button type="button" id="btn-all-playlists" class="ghost" title="Back to Your playlists">← All playlists</button>
-      <input id="pl-name" class="playlist-name" maxlength="60" aria-label="Playlist name" autocomplete="off">
-    </div>
-    <div class="group">
-      <button type="button" id="pl-play" class="primary">▶ Play</button>
-      <button type="button" id="pl-delete" class="ghost danger">Delete playlist</button>
-    </div>
-  </section>
-  <p class="playlist-now" data-playlist-now></p>
-  <div class="pl-columns">
-    <div class="pl-side">
-      <section class="card">
-        <h3>Building blocks</h3>
-        <p class="hint">Drag one between shows, or press <b>+</b> to add it at the end. Each has its own length.</p>
-        <ul id="pl-blocks" class="pl-cards pl-block-list" aria-label="Building blocks"></ul>
-      </section>
-      <section class="card pl-bin">
-        <h3>Your shows</h3>
-        <p class="hint">Drag a show into the running order, or press <b>+</b> to add it at the end.</p>
-        <input id="pl-filter" type="search" placeholder="Find a show" aria-label="Find a show" autocomplete="off">
-        <ul id="pl-bin" class="pl-cards" aria-label="Your shows"></ul>
-      </section>
-    </div>
-    <section class="card pl-order" id="pl-order-box">
-      <div class="pl-order-head"><h3>Running order</h3><span id="pl-summary" class="hint"></span></div>
+<main id="view-playlist" class="view playlist-editor panel-grid" hidden>
+  <!-- Panels in five docks, like the Show editor's; layout.js moves, folds or hides them per viewer. -->
+  <div class="dock" data-dock="top">
+    <section class="panel" data-panel="playlist">
+      <div class="panel-head"><span class="section-label">Playlist</span></div>
+      <div class="group">
+        <button type="button" id="btn-all-playlists" class="ghost" title="Back to Your playlists">← All playlists</button>
+        <input id="pl-name" class="playlist-name" maxlength="60" aria-label="Playlist name" autocomplete="off">
+        <button type="button" id="pl-play" class="primary">▶ Play</button>
+        <button type="button" id="pl-delete" class="ghost danger">Delete playlist</button>
+        <span class="playlist-now" data-playlist-now></span>
+      </div>
+    </section>
+  </div>
+  <div class="dock" data-dock="left">
+    <section class="panel" data-panel="blocks" data-wide>
+      <div class="panel-head"><span class="section-label">Building blocks</span></div>
+      <p class="hint">Drag one between shows, or press <b>+</b> to add it at the end. Each has its own length.</p>
+      <ul id="pl-blocks" class="pl-cards pl-block-list" aria-label="Building blocks"></ul>
+    </section>
+    <section class="panel pl-bin" data-panel="shows" data-wide>
+      <div class="panel-head"><span class="section-label">Your shows</span></div>
+      <p class="hint">Drag a show into the running order, or press <b>+</b> to add it at the end.</p>
+      <input id="pl-filter" type="search" placeholder="Find a show" aria-label="Find a show" autocomplete="off">
+      <ul id="pl-bin" class="pl-cards" aria-label="Your shows"></ul>
+    </section>
+  </div>
+  <div class="dock" data-dock="middle">
+    <section class="panel pl-order" id="pl-order-box" data-panel="order" data-wide>
+      <div class="panel-head"><span class="section-label">Running order</span>
+        <span id="pl-summary" class="hint panel-tools"></span></div>
       <div id="pl-strip" class="pl-strip"></div>
       <ol id="pl-order" class="pl-cards" aria-label="Running order"></ol>
       <p class="hint pl-order-hint">Drag shows and blocks into the order to play them in. Drag one out of the running
         order, or press <b>✕</b>, to take it out.</p>
     </section>
   </div>
-  <section class="card pl-when">
-    <h3>When it plays</h3>
+  <div class="dock" data-dock="right"></div>
+  <div class="dock" data-dock="bottom">
+    <section class="panel pl-when" data-panel="when" data-wide>
+      <div class="panel-head"><span class="section-label">When it plays</span></div>
     <div id="pl-schedule"></div>
     <p id="playlist-clock" class="hint"></p>
     <form id="sun-place" class="sun-place" hidden>
@@ -364,7 +369,8 @@
     </form>
     <p class="hint">For shows with no speaker, open the <a href="player" target="_blank" rel="noopener">Show player</a>
       on a computer connected to speakers and leave it open: the songs play there.</p>
-  </section>
+    </section>
+  </div>
 </main>
 
 <!-- Your songs: where the Music editor starts each visit; the same list is under Library → Songs. -->
@@ -376,19 +382,6 @@
 </main>
 
 <main id="view-music" class="view music" hidden>
-  <section class="toolbar music-head">
-    <div class="group">
-      <button type="button" id="btn-all-songs" class="ghost" title="Back to Your songs">← All songs</button>
-      <b id="music-title" class="editor-title"></b>
-      <span id="music-info" class="hint"></span>
-    </div>
-    <div class="group music-save">
-      <label title="The draft's name, and the song file's when you make it">Draft <input id="music-name" size="22" placeholder="song (edit)" autocomplete="off"></label>
-      <button id="music-save" class="primary" title="Write the draft as a WAV in your songs folder, so shows and every speaker can play it. The song you opened isn't changed (Ctrl+S)">Make song file</button>
-      <label title="Turn the song file up or down so it plays at about the same loudness as other songs made here, without distorting"><input id="music-even" type="checkbox" checked> Even out the volume</label>
-      <span id="music-save-state" class="save-state"></span>
-    </div>
-  </section>
   <details class="howto" data-howto="music"><summary>How to…</summary>
     <ul>
       <li>Cut, shorten and splice the song. Your first change starts a draft (name it under <b>Draft</b>), kept as
@@ -423,28 +416,58 @@
       <li>Space plays, Delete cuts the selection, and Ctrl+Z undoes.</li>
     </ul>
   </details>
-  <section class="card music-card">
-    <div class="music-stage"><canvas id="music-wave"></canvas></div>
-    <div class="toolbar">
+  <!-- Panels in five docks, like the Show editor's; layout.js moves, folds or hides them per viewer. -->
+  <div class="panel-grid">
+  <div class="dock" data-dock="top">
+    <section class="panel" data-panel="song">
+      <div class="panel-head"><span class="section-label">Song</span></div>
       <div class="group">
+        <button type="button" id="btn-all-songs" class="ghost" title="Back to Your songs">← All songs</button>
+        <b id="music-title" class="editor-title"></b>
+        <span id="music-info" class="hint"></span>
+      </div>
+      <div class="group music-save">
+        <label title="The draft's name, and the song file's when you make it">Draft <input id="music-name" size="22" placeholder="song (edit)" autocomplete="off"></label>
+        <button id="music-save" class="primary" title="Write the draft as a WAV in your songs folder, so shows and every speaker can play it. The song you opened isn't changed (Ctrl+S)">Make song file</button>
+        <label title="Turn the song file up or down so it plays at about the same loudness as other songs made here, without distorting"><input id="music-even" type="checkbox" checked> Even out the volume</label>
+        <span id="music-save-state" class="save-state"></span>
+      </div>
+    </section>
+    <section class="panel" data-panel="playback">
+      <div class="panel-head"><span class="section-label">Playback</span></div>
+      <div class="group transport">
         <button id="music-play" class="primary" title="Play from the playhead (Space)">▶ Play</button>
         <button id="music-play-sel" title="Play just the selection">Play selection</button>
         <span id="music-clock" class="clock">0:00.00 / 0:00.00</span>
         <label class="volume" title="How loud the song plays in this browser. The same level as in the Show editor.">🔊 <input id="music-volume" type="range" min="0" max="100" step="1" aria-label="Volume"></label>
       </div>
+    </section>
+  </div>
+  <div class="dock" data-dock="left"></div>
+  <div class="dock" data-dock="middle">
+    <section class="panel music-card" data-panel="wave" data-wide>
+      <div class="panel-head"><span class="section-label">Waveform</span>
+        <span class="panel-tools" title="Zoom the waveform">
+          <button id="music-zoom-out" class="ghost" title="Zoom out (-)">−</button>
+          <button id="music-zoom-in" class="ghost" title="Zoom in (+)">+</button>
+          <button id="music-zoom-sel" class="ghost" title="Zoom to the selection">Zoom to selection</button>
+          <button id="music-fit" class="ghost" title="Show the whole song">Show all</button>
+        </span></div>
+      <div class="music-stage"><canvas id="music-wave"></canvas></div>
       <div class="group">
         <label title="Selection start in seconds">From <input id="music-sel-start" type="number" min="0" step="0.01" placeholder="–"> s</label>
         <label title="Selection end in seconds">to <input id="music-sel-end" type="number" min="0" step="0.01" placeholder="–"> s</label>
         <span id="music-sel-len" class="hint"></span>
         <button id="music-sel-clear" type="button" class="ghost" title="Clear the selection (Esc)" aria-label="Clear the selection">✕</button>
       </div>
-      <div class="group">
-        <button id="music-zoom-out" class="ghost" title="Zoom out (-)">−</button>
-        <button id="music-zoom-in" class="ghost" title="Zoom in (+)">+</button>
-        <button id="music-zoom-sel" class="ghost" title="Zoom to the selection">Zoom to selection</button>
-        <button id="music-fit" class="ghost" title="Show the whole song">Show all</button>
-      </div>
-    </div>
+      <div id="music-layers" class="music-layers"></div>
+    </section>
+  </div>
+  <div class="dock" data-dock="right">
+    <section class="panel music-selection" data-panel="selection" data-wide>
+      <div class="panel-head"><span class="section-label">Selection</span></div>
+      <p class="hint msel-empty">Click a section or a ⚑ mark in the lanes above the waveform, a clip on a layer, or a ✂ join, to
+        change it here.</p>
     <div id="music-join" class="group music-section" hidden>
       <span id="music-join-what" class="hint"></span>
       <button id="music-join-hear" title="Play a few seconds either side of this join">▶ Hear join</button>
@@ -452,7 +475,6 @@
       <button id="music-join-back" title="Put the cut part back, as if this cut was never made">Put back</button>
       <button id="music-join-close" class="ghost" title="Done">✕</button>
     </div>
-    <div id="music-layers" class="music-layers"></div>
     <div id="music-clip" class="group music-section" hidden>
       <span id="music-clip-what" class="hint"></span>
       <label title="How loud this clip is, on top of its layer's Volume">Volume <input id="music-clip-gain" type="number" min="-24" max="12" step="0.5"> dB</label>
@@ -462,45 +484,6 @@
       <button id="music-clip-play" type="button" title="Play from just before this clip to just after it">▶ Hear it</button>
       <button id="music-clip-delete" type="button" class="ghost danger" title="Remove this clip (Delete)">Delete</button>
       <button id="music-clip-close" type="button" class="ghost" title="Done">✕</button>
-    </div>
-  </section>
-  <section class="card">
-    <div class="toolbar">
-      <div class="group">
-        <span class="section-label">Edit</span>
-        <button id="music-preview" title="Hear the few seconds either side of the join, as if the selection were cut">Preview cut</button>
-        <button id="music-cut" title="Remove the selection and join the parts either side (Delete)">Cut selection</button>
-        <button id="music-keep" title="Keep only the selection, to shorten the song">Keep only selection</button>
-        <button id="music-sample" title="Save the selection as a sample (Library → Samples), to layer over songs">Save as sample…</button>
-        <button id="music-suggest" title="Find whole bars to cut from the song or a section, where the join won't be heard">✂ Suggest cuts…</button>
-        <button id="music-undo" class="ghost" title="Undo (Ctrl+Z)">Undo</button>
-        <button id="music-redo" class="ghost" title="Redo (Ctrl+Shift+Z)">Redo</button>
-      </div>
-      <div class="group">
-        <span class="section-label">Splice</span>
-        <select id="music-insert-src" title="A song to add"></select>
-        <label class="button ghost" title="Upload a song to add">Upload<input id="music-insert-upload" type="file" accept="audio/*" hidden></label>
-        <button id="music-insert" title="Insert the whole song at the playhead; it's selected afterwards so you can trim it">Insert at playhead</button>
-        <button id="music-append" title="Add the whole song to the end">Add to end</button>
-      </div>
-    </div>
-    <div class="toolbar">
-      <div class="group">
-        <span class="section-label">Smoothing</span>
-        <label title="How long the parts overlap and blend at each join; a few hundredths of a second hides the click, a few seconds blends one song into the next">Crossfade at joins
-          <input id="music-xf" type="number" min="0" max="10" step="0.05" value="0.05"> s</label>
-        <label title="Fade the start up from silence">Fade in <input id="music-fadein" type="number" min="0" max="30" step="0.5" value="0"> s</label>
-        <label title="Fade the end down to silence">Fade out <input id="music-fadeout" type="number" min="0" max="30" step="0.5" value="0"> s</label>
-      </div>
-    </div>
-  </section>
-  <section class="card">
-    <div class="group">
-      <span class="section-label">Beats, sections and marks</span>
-      <button id="music-detect" title="Find the tempo, beats, bars and sections (verse, chorus…) and keep them with this song. A show that picks the song uses them.">Detect</button>
-      <button id="music-describe" title="Write notes for each section from what it sounds like, for Generate's AI option and Describe it. Notes and names you wrote are kept.">✨ Describe sections</button>
-      <button id="music-mark-add" title="Put a mark at the playhead, to name a moment such as a big hit (M)">⚑ Add mark</button>
-      <span id="music-analysis" class="hint"></span>
     </div>
     <div id="music-section" class="group music-section" hidden>
       <span id="music-sec-time" class="hint"></span>
@@ -524,7 +507,50 @@
       <button id="music-mark-delete" class="ghost danger" title="Remove this mark">Delete</button>
       <button id="music-mark-close" class="ghost" title="Done">✕</button>
     </div>
-  </section>
+    </section>
+  </div>
+  <div class="dock" data-dock="bottom">
+    <section class="panel" data-panel="beats">
+      <div class="panel-head"><span class="section-label">Beats and sections</span></div>
+      <div class="group">
+        <button id="music-detect" title="Find the tempo, beats, bars and sections (verse, chorus…) and keep them with this song. A show that picks the song uses them.">Detect</button>
+        <button id="music-describe" title="Write notes for each section from what it sounds like, for Generate's AI option and Describe it. Notes and names you wrote are kept.">✨ Describe sections</button>
+        <button id="music-mark-add" title="Put a mark at the playhead, to name a moment such as a big hit (M)">⚑ Add mark</button>
+        <span id="music-analysis" class="hint"></span>
+      </div>
+    </section>
+    <section class="panel" data-panel="edit">
+      <div class="panel-head"><span class="section-label">Edit</span></div>
+      <div class="group">
+        <button id="music-preview" title="Hear the few seconds either side of the join, as if the selection were cut">Preview cut</button>
+        <button id="music-cut" title="Remove the selection and join the parts either side (Delete)">Cut selection</button>
+        <button id="music-keep" title="Keep only the selection, to shorten the song">Keep only selection</button>
+        <button id="music-sample" title="Save the selection as a sample (Library → Samples), to layer over songs">Save as sample…</button>
+        <button id="music-suggest" title="Find whole bars to cut from the song or a section, where the join won't be heard">✂ Suggest cuts…</button>
+        <button id="music-undo" class="ghost" title="Undo (Ctrl+Z)">Undo</button>
+        <button id="music-redo" class="ghost" title="Redo (Ctrl+Shift+Z)">Redo</button>
+      </div>
+    </section>
+    <section class="panel" data-panel="splice">
+      <div class="panel-head"><span class="section-label">Splice</span></div>
+      <div class="group">
+        <select id="music-insert-src" title="A song to add"></select>
+        <label class="button ghost" title="Upload a song to add">Upload<input id="music-insert-upload" type="file" accept="audio/*" hidden></label>
+        <button id="music-insert" title="Insert the whole song at the playhead; it's selected afterwards so you can trim it">Insert at playhead</button>
+        <button id="music-append" title="Add the whole song to the end">Add to end</button>
+      </div>
+    </section>
+    <section class="panel" data-panel="smoothing">
+      <div class="panel-head"><span class="section-label">Smoothing</span></div>
+      <div class="group">
+        <label title="How long the parts overlap and blend at each join; a few hundredths of a second hides the click, a few seconds blends one song into the next">Crossfade at joins
+          <input id="music-xf" type="number" min="0" max="10" step="0.05" value="0.05"> s</label>
+        <label title="Fade the start up from silence">Fade in <input id="music-fadein" type="number" min="0" max="30" step="0.5" value="0"> s</label>
+        <label title="Fade the end down to silence">Fade out <input id="music-fadeout" type="number" min="0" max="30" step="0.5" value="0"> s</label>
+      </div>
+    </section>
+  </div>
+  </div>
   <dialog id="cuts-dialog" class="effect-dialog form-dialog cuts-dialog" aria-labelledby="cuts-title">
     <form id="cuts-form" method="dialog">
       <div class="effect-dialog-head"><h3 id="cuts-title">Suggest cuts</h3>
@@ -891,7 +917,8 @@
 <main id="view-settings" class="view settings" hidden>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-layout"/></svg>Layout</h2>
-    <p class="hint">Pick a page layout, then choose where each editor panel sits. It's saved in this browser.</p>
+    <p class="hint">Each editor has its own layout. Pick one, then its page layout and where each panel sits. It's saved
+      in this browser.</p>
     <details class="howto" data-howto="layout"><summary>How to…</summary>
       <ul>
         <li>Each panel can go along the top or bottom, down the left or right, or in the middle.</li>
@@ -900,9 +927,23 @@
           button on it.</li>
       </ul>
     </details>
-    <div id="layout-frames"></div>
-    <div id="layout-rows" class="layout-rows"></div>
-    <p><button id="btn-reset-layout" class="ghost">Reset layout</button></p>
+    <span id="layout-editor" class="seg-buttons" role="group" aria-label="Editor">
+      <button type="button" data-layout-pick="show">Show</button><button type="button" data-layout-pick="music">Music</button><button type="button" data-layout-pick="playlist">Playlist</button></span>
+    <div data-layout-for="show">
+      <div class="layout-frames"></div>
+      <div class="layout-rows"></div>
+      <p><button class="ghost layout-reset">Reset the Show editor's layout</button></p>
+    </div>
+    <div data-layout-for="music" hidden>
+      <div class="layout-frames"></div>
+      <div class="layout-rows"></div>
+      <p><button class="ghost layout-reset">Reset the Music editor's layout</button></p>
+    </div>
+    <div data-layout-for="playlist" hidden>
+      <div class="layout-frames"></div>
+      <div class="layout-rows"></div>
+      <p><button class="ghost layout-reset">Reset the Playlist editor's layout</button></p>
+    </div>
   </section>
   <section class="card" id="public-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Public page</h2>

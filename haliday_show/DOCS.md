@@ -633,7 +633,7 @@ and are kept when you make the song file. Edit the song before placing clips, be
 afterwards won't move them.
 
 Each join shows as a dashed line with a **✂** at the top. Click the **✂** to hear a few seconds either
-side of the join; a panel under the waveform says what was cut there (how much, and from where in the
+side of the join; the **Selection** panel says what was cut there (how much, and from where in the
 song). To change that cut, press **Adjust cut**: the part comes back and is selected, so drag its edges
 (or type the times) and press **Cut selection** again. **Put back** undoes just that cut, leaving the
 others as they are. Both are one step for **Undo**. A join where another song was spliced in only has
@@ -776,9 +776,10 @@ note. They're kept with the song, so every show that uses it gets them, and they
 **Detect** again.
 
 - **Add one:** in the Music editor, put the playhead where you want it and press **⚑ Add mark** (in the
-  **Beats, sections and marks** card), or press **M**. **M** works while the song plays, so you can tap
+  **Beats and sections** panel), or press **M**. **M** works while the song plays, so you can tap
   it along with the music and name the marks afterwards. You don't need to **Detect** the song first.
-- **Name, colour or delete it:** click its flag in the beat lane (the playhead jumps to it). Type a
+- **Name, colour or delete it:** click its flag in the beat lane (the playhead jumps to it), and change it
+  in the **Selection** panel. Type a
   **Name**, pick a **Colour**, or press **Delete**. **Move to playhead** moves it to where the playhead is,
   and **✕** or Esc closes it. Each new mark takes the colour you picked last.
 - **Move it:** drag its flag. It snaps to beats and bars; hold Shift to place it freely.
@@ -809,7 +810,7 @@ song. Each show keeps its own copy, so moving beats in one show doesn't change t
 ### Editing sections
 
 In the Music editor, the lane above the waveform shows each section in its colour.
-Click one to rename it or pick its colour (every section with the same name changes colour together),
+Click one to change it in the **Selection** panel: rename it or pick its colour (every section with the same name changes colour together),
 **✂ Shorten…** it (see [Suggest cuts](#suggest-cuts)),
 **Split at playhead**, **Merge with next** or **Delete** it, and drag the line between two sections to
 move it. Changes save with the song; a show that already uses the song picks them up with **From song**.
@@ -1143,14 +1144,14 @@ on **Your playlists**, the same list as **Library → Playlists**: each says how
 long it takes to play through once and when it plays, with **Open**, **▶ Play** and **Delete**. Press
 **+ New playlist**, or **Open** one, to edit it:
 
-- **Building blocks**, at the top left, go between your shows (see below). Drag one in like a show.
+- **Building blocks**, at the left to start with, go between your shows (see below). Drag one in like a show.
 - **Your shows**, below them, lists every show. Drag one by its card into **Running order** and let
   go where it should play; a blue line shows where it will land. Or press **+** to add it at the end.
   **Find a show** narrows the list. The same show can go in more than once.
 - In **Running order**, drag a show or block up or down to change when it plays, or drag it out of
   **Running order** (back to **Your shows**, say) to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
   by the dots (⠿) at the left of a card, so the page still scrolls; there, **Running order** comes
-  first.
+  first and **Building blocks** starts folded.
 - The coloured bar above the order shows one time through, each show and block as long as it plays,
   and next to **Running order** it says how long that takes.
 - Type over the name at the top to rename the playlist. **Delete playlist** removes it but keeps its
@@ -1516,20 +1517,34 @@ the one to use on Home Assistant before 2026.2.
 
 ## Arrange the editor
 
-Drag any editor panel (Show, Song, Playback, Beats, Describe it, Preview, House, Timeline and Selection) by its
+The Show, Music and Playlist editors are all made of panels you can arrange, and each editor keeps its
+own arrangement:
+
+| Editor | Panels | Can't be hidden |
+| --- | --- | --- |
+| Show | Show, Song, Playback, Beats, Describe it, Preview, House, Timeline and Selection | Timeline |
+| Music | Song (with **Make song file**), Playback, Waveform (with the **Mixer**), Selection, Beats and sections, Edit, Splice and Smoothing | Waveform |
+| Playlist | Playlist (its name, **▶ Play** and **Delete playlist**), Building blocks, Your shows, Running order and When it plays | Running order |
+
+The Music editor's **Selection** panel is where you change whatever you clicked: a section, a ⚑ mark, a
+clip on a layer or a ✂ join. If it's folded, clicking one opens it.
+
+Drag any editor panel by its
 title to move it to the top, left, middle, right or bottom, or to change its order there; a blue
 bar shows where it will land. The **⋯** button in its corner does the same from a menu: it shows a
 small picture of the page, so click the area you want the panel in. **Earlier** and **Later**
 change its order, which also works on a touch screen. Any panel except the Timeline can be
 **Hidden**. To keep a panel to hand but out of the way, press the **▾** before its name to
-collapse it to its title, and **▸** to open it again. On a phone, **Preview** and **House** start collapsed, so the
-timeline is near the top; open them with **▸** whenever you want them.
+collapse it to its title, and **▸** to open it again. On a phone, some panels start collapsed so the
+main one is near the top: **Preview** and **House** in the Show editor, **Splice** and **Smoothing** in
+the Music editor, and **Building blocks** in the Playlist editor. Open them with **▸** whenever you want
+them.
 
 Longer help under a page or panel sits under **How to…**. Press it to open or close it; it stays
 the way you left it.
 
 The **page layout** sets how those five areas fit together. Pick it at the bottom of any panel's
-**⋯** menu or under **Settings → Layout**:
+**⋯** menu or under **Settings → Layout** (each editor has its own):
 
 | Page layout | Arrangement |
 | --- | --- |
@@ -1537,10 +1552,14 @@ The **page layout** sets how those five areas fit together. Pick it at the botto
 | Side columns | Left and right run the full height of the page, with top, middle and bottom stacked between them. |
 | Right column | Right runs the full height; top and bottom span the left and middle. Handy for keeping Selection beside everything. |
 
-Out of the box the Show and Playback panels run along the top, Song, Preview, House and Beats sit
+Out of the box, in the Show editor, the Show and Playback panels run along the top, Song, Preview, House and Beats sit
 down the left, Selection and Describe it down the right, and the Timeline takes the middle, so the
-timeline and the selected clip are on screen together. **Reset layout** goes back to this. While the
-top area is short enough, it stays in view as you scroll, so **Play** is always to hand.
+timeline and the selected clip are on screen together. The Music editor starts with Song and Playback
+along the top, the waveform in the middle with Selection beside it, and the other panels along the
+bottom; the Playlist editor with Building blocks and Your shows down the left, the running order in the
+middle and When it plays along the bottom. Each editor's **Reset** button under **Settings → Layout**
+goes back to these. While the top area is
+short enough, it stays in view as you scroll, so **Play** is always to hand.
 
 An area with no panels in it takes no space. On a narrow screen every area stacks in one column. With Selection hidden, clips can still be moved, resized, copied and
 deleted on the timeline, but adding or editing effects needs it back. The layout is saved in your
@@ -1554,7 +1573,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 
 | Section | What's there |
 | --- | --- |
-| Layout | Where every editor panel sits, including hidden ones, and **Reset layout**. |
+| Layout | Pick **Show**, **Music** or **Playlist**, then that editor's page layout, where every panel sits (including hidden ones) and its **Reset** button. |
 | Public page | **Let visitors start shows**, which adds the **Public page** tab (see [The public page](#the-public-page)). |
 | AI | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](#setting-up-the-ai)). |
 | Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |

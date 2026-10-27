@@ -255,9 +255,7 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .music-card { display: flex; flex-direction: column; gap: 10px; }
 .music-stage { width: 100%; border-radius: 6px; overflow: hidden; }
 .music-stage canvas { display: block; touch-action: none; cursor: text; }
-.music .toolbar + .toolbar { margin-top: 8px; }
-.music-head { justify-content: space-between; margin-bottom: 4px; }
-.music-head .save-state { min-width: 0; }
+.music .save-state { min-width: 0; }
 .cuts-dialog { width: min(640px, calc(100vw - 32px)); }
 .cuts-dialog .dialog-note { margin: 0; }
 .music-cuts { display: flex; flex-direction: column; gap: 6px; }
@@ -273,7 +271,10 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .music-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .music-sec-notes { flex-basis: 100%; }
 .music-sec-notes input { flex: 1; }
-.music .card > .hint { margin-top: 6px; }
+/* The Selection panel holds whichever of these is picked, or a hint when none is. */
+.music-selection .music-section { margin: 0; padding: 0; border: 0; }
+.music-selection:has(> .music-section:not([hidden])) .msel-empty { display: none; }
+.msel-empty { margin: 0; }
 
 .settings { max-width: 860px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
@@ -351,13 +352,10 @@ button.swatch:hover { border-color: var(--text); }
 /* The Playlist editor */
 .playlist-now:empty, #playlist-clock:empty { display: none; }
 .playlist-now { font-weight: 600; margin: 0 0 10px; }
+.playlist-editor .playlist-now { margin: 0 0 0 6px; }
 .show-row.playing { border-color: var(--accent); }
 .playlist-editor #pl-name { font-weight: 600; font-size: 15px; width: 18em; max-width: 60vw; }
-.pl-columns { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(300px, 1.6fr); gap: 12px; align-items: start; }
-/* On a phone the running order comes first, so a show from the long list below is dragged up to it. */
-@media (max-width: 760px) { .pl-columns { grid-template-columns: minmax(0, 1fr); } .pl-order { order: -1; } }
-.pl-columns > * { min-width: 0; }
-.pl-columns h3, .pl-when h3 { margin: 0 0 6px; font-size: 15px; }
+.playlist-editor .panel > p.hint { margin: 0; }
 .pl-bin input[type=search] { width: 100%; margin-bottom: 8px; }
 .pl-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
 #pl-bin { max-height: 60vh; overflow-y: auto; }
@@ -383,13 +381,10 @@ button.swatch:hover { border-color: var(--text); }
 body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 .pl-drop-line { position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--accent);
   pointer-events: none; }
-.pl-order-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .pl-strip { position: relative; height: 26px; margin: 4px 0 10px; border-radius: 6px; background: var(--track); overflow: hidden; }
 .pl-block { position: absolute; top: 0; bottom: 0; background: hsl(var(--hue) 60% 50%); color: #fff; font-size: 11px;
   line-height: 26px; padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   border-right: 1px solid var(--panel); }
-.pl-order-hint { margin: 8px 0; }
-.pl-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .pl-block-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .pl-swatch { flex: none; width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--line); }
 .pl-swatch-pause { border-style: dashed; background: transparent; }
@@ -430,13 +425,17 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 
 /* editor layout: panels in five docks, placed on a 3x3 grid by the chosen frame (layout.js sets
    --frame-areas). Docks space themselves with margins, so an empty, hidden dock leaves no gap. */
-#view-editor {
-  display: grid; gap: 0; padding: 7px 11px; align-items: start;
+/* The Show, Music and Playlist editors share it. */
+.panel-grid {
+  display: grid; gap: 0; align-items: start;
   grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto 1fr;
   grid-template-areas: var(--frame-areas, "top top top" "left middle right" "bottom bottom bottom");
 }
+#view-editor { padding: 7px 11px; }
+.music .panel-grid, .playlist-editor.panel-grid { margin: -5px; }
+.playlist-editor.panel-grid { padding: 7px 11px; margin: 0; }
 .editor-middle { display: contents; }
-#view-editor .dock { margin: 5px; }
+.panel-grid .dock { margin: 5px; }
 .dock[data-dock="top"] { grid-area: top; }
 .dock[data-dock="left"] { grid-area: left; }
 .dock[data-dock="middle"] { grid-area: middle; }
@@ -449,9 +448,9 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 .panel[hidden] { display: none; }
 /* Toolbar panels along the top or bottom are one-row bars: the title (still the drag handle) sits
    at the start of the row, and the bars stretch to fill it. */
-.dock:is([data-dock="top"], [data-dock="bottom"]) > .panel:not(:is([data-panel="preview"], [data-panel="house"], [data-panel="inspector"], [data-panel="timeline"])) {
+.dock:is([data-dock="top"], [data-dock="bottom"]) > .panel:not([data-wide]) {
   flex-direction: row; align-items: center; gap: 10px; padding: 6px 10px; flex-grow: 1; }
-.dock:is([data-dock="top"], [data-dock="bottom"]) > .panel:not(:is([data-panel="preview"], [data-panel="house"], [data-panel="inspector"], [data-panel="timeline"])) > .panel-head {
+.dock:is([data-dock="top"], [data-dock="bottom"]) > .panel:not([data-wide]) > .panel-head {
   flex: none; gap: 2px; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 20px; }
 .panel-move { padding: 0 6px; line-height: 1.2; border-color: transparent; color: var(--muted); }
@@ -473,12 +472,12 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 .dock { display: flex; gap: 8px; }
 .dock.empty { display: none; }
 /* Padding rather than margin on the top dock, so its background covers what scrolls under it. */
-#view-editor .dock[data-dock="top"] { margin: 0; padding: 5px; }
-#view-editor .dock[data-dock="top"].sticky { position: sticky; top: 0; z-index: 5; background: var(--bg); }
+.panel-grid .dock[data-dock="top"] { margin: 0; padding: 5px; }
+.panel-grid .dock[data-dock="top"].sticky { position: sticky; top: 0; z-index: 5; background: var(--bg); }
 .dock[data-dock="top"], .dock[data-dock="bottom"] { flex-wrap: wrap; align-items: stretch; }
 .dock[data-dock="top"] > .panel, .dock[data-dock="bottom"] > .panel { flex: 0 1 auto; }
-.dock[data-dock="top"] > :is([data-panel="preview"], [data-panel="house"], [data-panel="inspector"], [data-panel="timeline"]),
-.dock[data-dock="bottom"] > :is([data-panel="preview"], [data-panel="house"], [data-panel="inspector"], [data-panel="timeline"]) { flex-basis: 100%; }
+.dock[data-dock="top"] > [data-wide],
+.dock[data-dock="bottom"] > [data-wide] { flex-basis: 100%; }
 .dock[data-dock="left"], .dock[data-dock="right"], .dock[data-dock="middle"] { flex-direction: column; }
 .dock[data-dock="left"], .dock[data-dock="right"] { width: 320px; flex: none; }
 .dock[data-dock="middle"] { flex: 1; min-width: 0; }
@@ -519,12 +518,19 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .panel-menu .frame-choice .frame-map { height: 36px; }
 .frame-choice .frame-cell { border-radius: 2px; }
 .frame-choice.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-#layout-frames .frame-picker { margin: 8px 0 12px; }
+.layout-frames .frame-picker { margin: 8px 0 12px; }
 .frame-choice.active .frame-cell { border-color: var(--accent-text); }
 .panel-menu button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 @media (max-width: 800px) {
-  #view-editor { grid-template-columns: minmax(0, 1fr); grid-template-rows: none;
+  .panel-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none;
     grid-template-areas: "top" "left" "middle" "right" "bottom"; }
+  /* Bars along the top or bottom put their title above, so their buttons get the whole width. */
+  .dock:is([data-dock="top"], [data-dock="bottom"]) > .panel:not([data-wide]) { flex-direction: column; align-items: stretch;
+    flex-basis: 100%; }
+  .music-save > label:first-child { flex: 1 1 100%; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  #music-name { flex: 1; width: auto; min-width: 0; }
+  /* The running order comes before the long list of shows, so a show is dragged up to it. */
+  .playlist-editor.panel-grid { grid-template-areas: "top" "middle" "left" "right" "bottom"; }
   .dock[data-dock="left"], .dock[data-dock="right"] { width: auto; }
 }
 .effect-change { min-width: 130px; text-align: left; }

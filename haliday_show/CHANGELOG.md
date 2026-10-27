@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.196
+
+- The **Music** and **Playlist** editors are now made of panels, like the **Show editor**. Drag a panel
+  by its title to move it, press **▾** to fold it to its title, or use its **⋯** menu to move it, hide it
+  or pick a page layout (**Classic**, **Side columns** or **Right column**).
+- The **Music editor** has a **Selection** panel beside the waveform. Click a section, a ⚑ mark, a clip on
+  a layer or a ✂ join and you change it there, instead of in a row that popped up inside another box. If you've folded the panel, it opens again when you click one.
+- In both editors the top panels stay in view as you scroll while there's room for them, so **Play** and
+  **Make song file** are to hand.
+- On a phone, **Splice** and **Smoothing** (Music) and **Building blocks** (Playlist) start folded, so the
+  waveform and the running order are near the top. Panels along the top or bottom put their title above
+  their buttons on a phone, so nothing runs off the screen.
+- **Setup → Settings → Layout** has **Show**, **Music** and **Playlist** buttons. Each editor keeps its
+  own layout, with its own reset button. Your Show editor layout is kept as it was.
+
 ## 0.2.195
 
 - The **Music editor** has a **Mixer**, like a DJ's, for making mash-ups. The song and each layer have
