@@ -742,6 +742,7 @@ export class MusicEditor {
     this.layers = back.layers;
     this.eq = back.eq;
     this.clipSel = this.chgSel = null;
+    this.keepOpenRows();
     this.markSel = this.shownMark(mark);
     this.joinSel = -1;
     this.changed();
@@ -759,6 +760,8 @@ export class MusicEditor {
     this.future = [];
     this.layers = layers;
     this.clipSel = pick;
+    if (pick) this.chgSel = null;
+    this.keepOpenRows();
     this.changed();
     this.draftChanged();
   }
@@ -773,7 +776,16 @@ export class MusicEditor {
   removeLayer(i) {
     const n = this.layers[i].clips.length;
     if (n && !confirm(`Remove "${this.layers[i].name}" and its ${n} clip${n === 1 ? "" : "s"}? Ctrl+Z brings it back.`)) return;
+    // Open EQ rows and a picked change stay with their layers as the ones after it move up.
+    this.eqOpen = new Set([...this.eqOpen].filter((id) => id !== i).map((id) => (typeof id === "number" && id > i ? id - 1 : id)));
+    this.chgSel = null;
     this.editLayers(this.layers.filter((_, k) => k !== i), null);
+  }
+
+  // Forgets open EQ rows and a picked change for layers that aren't there (after Undo, say).
+  keepOpenRows() {
+    this.eqOpen = new Set([...this.eqOpen].filter((id) => typeof id !== "number" || id < this.layers.length));
+    if (this.chgSel && !this.channelEq(this.chgSel.ch)?.changes?.[this.chgSel.i]) this.chgSel = null;
   }
 
   setLayer(i, change) {
@@ -820,12 +832,15 @@ export class MusicEditor {
 
   // Match the song's tempo on a layer, finding the tempo of any clip that doesn't have one yet.
   async setMatchTempo(i, on) {
-    let layer = this.layers[i];
+    const asked = this.layers[i];
+    let layer = asked;
     if (on) {
       const missing = layer.clips.filter((c) => !c.bpm && this.sources[keyOf(c.song)]);
       if (missing.length) this.host.status("Finding the clips' tempos…");
       const found = {};
       for (const c of missing) found[keyOf(c.song)] ??= await this.tempoOf(c.song);
+      // The layer may have changed, moved or gone meanwhile: it's found again by name.
+      i = this.layers.indexOf(asked) >= 0 ? this.layers.indexOf(asked) : this.layers.findIndex((l) => l.name === asked.name);
       layer = this.layers[i];
       if (!layer) return;
       const clips = layer.clips.map((c) => (c.bpm || !found[keyOf(c.song)] ? c : { ...c, bpm: found[keyOf(c.song)] }));
@@ -849,6 +864,7 @@ export class MusicEditor {
     if (ch < 0) this.eq = eq;
     else this.layers = this.layers.map((l, k) => (k === ch ? { ...l, eq } : l));
     this.chgSel = pick;
+    if (pick) this.clipSel = null;
     this.changed();
     this.draftChanged();
   }
@@ -909,6 +925,7 @@ export class MusicEditor {
     const at = this.time < this.total - 0.01 && anchorAt(this.pieces, this.crossfade, this.time, this.refs);
     if (!at) return this.host.status("Move the playhead into the song first (not right at its end)", "hint");
     let key;
+    const layer = this.layers[i];
     try { key = await this.source(ref); } catch (e) { return this.host.status(songLoadMessage(e), true); }
     const rate = this.audio.sampleRate, audio = this.sources[key];
     const end = Math.round((audio[0].length / rate) * 1000) / 1000;
@@ -916,7 +933,9 @@ export class MusicEditor {
     const gain = matchGain(this.songLufs, loudness(audio, rate));
     // Its own tempo, for matching the song's: from its detected beats, or found now on a layer that
     // matches (it can be typed in later too).
-    const bpm = this.layers[i].matchTempo ? await this.tempoOf(ref) : Math.round((this.infos[key]?.tempo || 0) * 10) / 10 || null;
+    const bpm = layer.matchTempo ? await this.tempoOf(ref) : Math.round((this.infos[key]?.tempo || 0) * 10) / 10 || null;
+    i = this.layers.indexOf(layer); // the layer may have moved, or gone, while it loaded
+    if (i < 0) return;
     const clip = { song: ref, start: 0, end, anchor: at, gain, fadeIn: 0, fadeOut: 0, ...(bpm ? { bpm } : {}) };
     const layers = this.layers.map((l, k) => (k === i ? { ...l, clips: [...l.clips, clip] } : l));
     this.editLayers(layers, { layer: i, clip: layers[i].clips.length - 1 });
@@ -1579,6 +1598,9 @@ export class MusicEditor {
       const c = this.layers[p.layer].clips[p.clip], key = sourceKey(c, p.speed), src = this.sources[keyOf(c.song)];
       if (p.speed !== 1 && src && !this.sources[key]) this.sources[key] = stretch(src, rate, p.speed);
     }
+    // Stretched copies no clip plays at any more (a tempo typed again, say) are let go.
+    const used = new Set(placed.map((p) => sourceKey(this.layers[p.layer].clips[p.clip], p.speed)));
+    for (const key of Object.keys(this.sources)) if (key.includes("@") && !used.has(key)) delete this.sources[key];
     // What plays and is made into a song file: the song with its layers mixed in, kept from clipping.
     this.rendered = placed.length || this.mainEq !== this.main
       ? limit(mixLayers(this.mainEq, this.layers, placed, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate) : this.main;
@@ -2315,7 +2337,7 @@ export class MusicEditor {
     if (d?.section) { this.editSections(this.info.sections); return; }
     if (d?.change) {
       const ch = d.change.ch;
-      if (d.moved) {
+      if (d.moved && this.channelEq(ch) !== d.before) {
         const after = this.channelEq(ch);
         if (ch < 0) this.eq = d.before; // so Undo goes back to before the drag
         else this.layers = this.layers.map((l, k) => (k === ch ? { ...l, eq: d.before } : l));
@@ -2392,7 +2414,7 @@ export class MusicEditor {
     else if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); this.undo(1); }
     else if (e.key === " ") { e.preventDefault(); this.playing ? this.stop() : this.play(); }
     else if ((e.key === "Delete" || e.key === "Backspace") && this.clipSel) { e.preventDefault(); this.deleteClip(); }
-    else if ((e.key === "Delete" || e.key === "Backspace") && this.chgSel) { e.preventDefault(); this.deleteChange(this.chgSel.ch, this.chgSel.i); }
+    else if ((e.key === "Delete" || e.key === "Backspace") && this.chgSel && this.channelEq(this.chgSel.ch)?.changes?.[this.chgSel.i]) { e.preventDefault(); this.deleteChange(this.chgSel.ch, this.chgSel.i); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); this.cutSelection(); }
     else if (!mod && (e.key === "m" || e.key === "M")) { e.preventDefault(); this.addMarkHere({ open: !this.playing }); }
     else if (e.key === "Home") { this.time = 0; this.follow(); this.draw(); }
@@ -2419,6 +2441,7 @@ export class MusicEditor {
     if (extend) {
       if (!this.sel || this.kbAnchor == null) this.kbAnchor = this.sel ? (Math.abs(t - this.sel.end) < 1e-3 ? this.sel.start : this.sel.end) : t;
       this.sel = next === this.kbAnchor ? null : { start: Math.min(next, this.kbAnchor), end: Math.max(next, this.kbAnchor) };
+      this.clipSel = this.chgSel = null; // Delete now means this selection
     } else {
       this.kbAnchor = null;
     }

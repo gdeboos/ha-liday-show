@@ -18,7 +18,7 @@ const DECIMATE = 8;
 // The channels played speed times as fast at the same pitch (a new copy; the same channels if speed
 // is 1).
 export function stretch(channels, rate, speed) {
-  if (!channels.length || Math.abs(speed - 1) < 1e-4) return channels;
+  if (!channels.length || speed === 1) return channels;
   const len = channels[0].length, outLen = Math.round(len / speed);
   const N = 2 * Math.round(rate * 0.02), hs = N / 2, ha = hs * speed, tol = Math.round(rate * 0.008);
   const win = Float32Array.from({ length: N }, (_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N));
