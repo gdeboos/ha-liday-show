@@ -5704,6 +5704,83 @@ const songSeen = typeof IntersectionObserver === "function"
   ? new IntersectionObserver((entries) => {
     for (const e of entries) if (e.isIntersecting) { songSeen.unobserve(e.target); e.target._songLength?.(); }
   }) : null;
+// Library → Samples: short sounds for the Music editor's layers, in their own folder ---------------
+let samplePlayer = null, samplePlaying = null;
+function stopSample() {
+  samplePlayer?.pause();
+  samplePlaying = null;
+  for (const b of document.querySelectorAll("#samples-list [data-play]")) b.textContent = "▶";
+}
+
+async function renderSamplesPage() {
+  const box = $("samples-list");
+  let samples;
+  try { samples = await api("api/samples"); } catch (e) { status(`Couldn't list your samples: ${e.message}`, true, "samples"); return; }
+  if (!samples.length) {
+    box.innerHTML = `<p class="hint">No samples yet. Press <b>+ Add a sample</b>, or make one from a song in the Music editor.</p>`;
+    return;
+  }
+  box.replaceChildren(...samples.map((s) => {
+    const ref = { source: s.source, path: s.path };
+    const name = s.path.split("/").pop().replace(/\.[^.]+$/, "");
+    const row = document.createElement("div");
+    row.className = "show-row";
+    row.setAttribute("role", "listitem");
+    const main = document.createElement("div");
+    main.className = "show-main";
+    const title = document.createElement("b");
+    title.className = "show-name";
+    title.textContent = name;
+    const len = document.createElement("div");
+    len.className = "hint";
+    len.textContent = "…";
+    songLength({ key: songKey(ref), ref, size: s.size, modified: s.modified }).then((t) => { len.textContent = t; });
+    main.append(title, len);
+    const actions = document.createElement("div");
+    actions.className = "group show-actions";
+    const play = button("▶", () => {
+      const same = samplePlaying === s.path;
+      stopSample();
+      if (same) return;
+      samplePlayer ||= new Audio();
+      samplePlayer.src = audioUrl(ref);
+      samplePlayer.volume = volume.gain ?? 1;
+      samplePlayer.onended = () => stopSample();
+      samplePlayer.play().catch(() => {});
+      samplePlaying = s.path;
+      play.textContent = "■";
+    });
+    play.dataset.play = "1";
+    play.setAttribute("aria-label", `Play ${name}`);
+    const del = button("Delete…", async () => {
+      if (!confirm(`Delete the sample "${name}"? It's removed from HA-liday Show's Samples folder for good.`)) return;
+      try {
+        if (samplePlaying === s.path) stopSample();
+        await api(`api/samples?path=${encodeURIComponent(s.path)}`, { method: "DELETE" });
+        status(`Deleted ${name}`, "saved", "samples");
+        renderSamplesPage();
+      } catch (e) { status(`Couldn't delete ${name}: ${e.message}`, true, "samples"); }
+    }, "ghost danger");
+    del.setAttribute("aria-label", `Delete ${name}`);
+    actions.append(play, del);
+    row.append(main, actions);
+    return row;
+  }));
+}
+
+async function addSamples(files) {
+  const have = new Set((await api("api/samples").catch(() => [])).map((s) => s.path.split("/").pop().toLowerCase()));
+  for (const f of files) {
+    if (have.has(f.name.toLowerCase()) && !confirm(`There's already a sample called ${f.name}. Replace it?`)) continue;
+    try {
+      await uploadSong(api, f, f.name, (done) => { $("sample-progress").textContent = `Adding ${f.name}… ${Math.round(done * 100)}%`; }, { sample: true });
+      status(`Added ${f.name} to your samples`, "saved", "samples");
+    } catch (e) { status(`Couldn't add ${f.name}: ${e.message}`, true, "samples"); }
+  }
+  $("sample-progress").textContent = "";
+  renderSamplesPage();
+}
+
 function songLength(r) {
   const key = `${r.key}|${r.size}|${r.modified}`;
   if (!songLengths.has(key)) {
@@ -7328,7 +7405,7 @@ function frame() {
 
 // wiring ----------------------------------------------------------------------
 // Library and Setup each hold several pages; each remembers the page last open in it.
-const SECTIONS = { library: ["shows", "songs", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
+const SECTIONS = { library: ["shows", "songs", "samples", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
 const sectionPage = { library: "shows", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
@@ -7358,6 +7435,7 @@ function showView(view, { push = true } = {}) {
   // Going back to Your shows (← All shows, or the browser's Back) puts the show away, so it stops too.
   if (page === "showlist" && app.playing) stop();
   if (page === "songs" || page === "songlist") renderSongsPage();
+  if (page === "samples") renderSamplesPage(); else stopSample();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
@@ -7447,6 +7525,8 @@ function wire() {
     b.addEventListener("click", () => { prefs.set("songShow", b.dataset.show); drawSongRows(); });
   }
   $("btn-add-song").addEventListener("click", openAddSong);
+  $("btn-add-sample").addEventListener("click", () => $("sample-upload").click());
+  $("sample-upload").addEventListener("change", (e) => { const files = [...e.target.files]; e.target.value = ""; if (files.length) addSamples(files); });
   $("btn-new-folder").addEventListener("click", () => newSongFolder());
   $("as-form").addEventListener("submit", asSubmit);
   $("as-back").addEventListener("click", () => asStep(1));

@@ -403,6 +403,8 @@
         Shift-click adds the next one, and dragging the line between two sections moves it. Section changes save
         with the song; a show already using it picks them up with <b>From song</b>.</li>
       <li>Click to move the playhead. Use the wheel to zoom, and Shift + wheel to scroll.</li>
+      <li><b>Save as sample…</b> keeps the selection (as it sounds in your edit) in <b>Library → Samples</b>, to
+        layer over songs.</li>
       <li>Click a <b>✂</b> to hear that join. To change the cut, press <b>Adjust cut</b> (the part comes back,
         selected, to move its edges and cut again) or <b>Put back</b> to undo just that cut.</li>
       <li><b>✂ Suggest cuts…</b> finds whole bars to take out of the song or one section (or press <b>✂ Shorten…</b>
@@ -450,6 +452,7 @@
         <button id="music-preview" title="Hear the few seconds either side of the join, as if the selection were cut">Preview cut</button>
         <button id="music-cut" title="Remove the selection and join the parts either side (Delete)">Cut selection</button>
         <button id="music-keep" title="Keep only the selection, to shorten the song">Keep only selection</button>
+        <button id="music-sample" title="Save the selection as a sample (Library → Samples), to layer over songs">Save as sample…</button>
         <button id="music-suggest" title="Find whole bars to cut from the song or a section, where the join won't be heard">✂ Suggest cuts…</button>
         <button id="music-undo" class="ghost" title="Undo (Ctrl+Z)">Undo</button>
         <button id="music-redo" class="ghost" title="Redo (Ctrl+Shift+Z)">Redo</button>
@@ -560,6 +563,7 @@
     <button class="subtab" data-view="playlists"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Playlists</b><span>Shows back to back</span></button>
     <p class="subnav-group" id="lib-group-blocks">Ingredients</p>
     <button class="subtab" data-view="songs"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><b>Songs</b><span>Your songs folder</span></button>
+    <button class="subtab" data-view="samples"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><b>Samples</b><span>Short sounds to layer</span></button>
     <button class="subtab" data-view="palettes"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg><b>Palettes</b><span>Colour sets</span></button>
     <button class="subtab" data-view="presets"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg><b>Presets</b><span>Ready-made effect settings</span></button>
   </nav>
@@ -576,6 +580,15 @@
       you press <b>Restore</b>.</p>
     <div class="show-list"></div>
   </details>
+</main>
+<main id="view-samples" class="view showlist" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Samples</h2>
+  <p class="hint">Short sounds, such as sleigh bells or a "ho ho ho", to layer over a song in the Music editor.
+    Make one from part of a song in the Music editor (<b>Save as sample…</b>), or add a file. They're kept in a <b>Samples</b> folder of their own, so they don't fill up your songs or a show's song list.</p>
+  <div id="samples-list" class="show-list" role="list" aria-label="Your samples"></div>
+  <p class="group"><button type="button" class="primary" id="btn-add-sample">+ Add a sample</button>
+    <input id="sample-upload" type="file" accept="audio/*" multiple hidden>
+    <span id="sample-progress" class="hint" aria-live="polite"></span></p>
 </main>
 <main id="view-songs" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Songs</h2>

@@ -16,15 +16,16 @@ export function parts(size, part = PART) {
 
 // Uploads `file` (a File or Blob) as `name` and returns where it was saved, {source, path}.
 // api(path, opts) is the editor's fetch helper; progress(fraction) is called as pieces go up.
-export async function uploadSong(api, file, name = file.name, progress = () => {}) {
+// sample: into the Samples folder (short sounds for the Music editor's layers), not with the songs.
+export async function uploadSong(api, file, name = file.name, progress = () => {}, { sample = false } = {}) {
   if (file.size <= PART) {
     const form = new FormData();
     form.append("file", file, name);
-    const ref = await api("api/audio", { method: "POST", body: form });
+    const ref = await api(sample ? "api/audio?kind=sample" : "api/audio", { method: "POST", body: form });
     progress(1);
     return ref;
   }
-  return sendParts(api, "api/audio/part", file, { name }, progress);
+  return sendParts(api, "api/audio/part", file, sample ? { name, kind: "sample" } : { name }, progress);
 }
 
 // Sends `blob` to `url` in pieces; `last` is added to the last piece's query (a song's name, say).

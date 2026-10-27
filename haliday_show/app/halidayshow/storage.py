@@ -16,6 +16,7 @@ from pathlib import Path
 
 PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 SPEAKER_TEST = "haliday-show-speaker-test.wav"  # the chime that tests a speaker; not listed as a song
+SAMPLES = "Samples"  # short sounds for the Music editor's layers, kept out of the song lists
 AUDIO_EXT = {".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav", ".flac", ".webm"}
 _SLUG = re.compile(r"[^a-z0-9]+")
 _UNSAFE_NAME = re.compile(r"[^\w .()-]+")
@@ -284,9 +285,10 @@ class Storage:
         for source, root in self.audio_roots().items():
             if not root.is_dir():
                 continue
-            archive = self.upload_dir / "Archived"  # archive.py: archived songs stay out of the lists
+            # archive.py: archived songs stay out of the lists, and so do samples (they have their own)
+            hidden = {self.upload_dir / "Archived", self.samples_dir}
             for dirpath, dirnames, filenames in os.walk(root):
-                dirnames[:] = sorted(d for d in dirnames if not d.startswith(".") and Path(dirpath, d) != archive)
+                dirnames[:] = sorted(d for d in dirnames if not d.startswith(".") and Path(dirpath, d) not in hidden)
                 for f in sorted(filenames):
                     if Path(f).suffix.lower() in AUDIO_EXT and f != SPEAKER_TEST:
                         rel = os.path.relpath(os.path.join(dirpath, f), root)
@@ -361,9 +363,35 @@ class Storage:
         _write_atomic(self._song_info_file(source, rel), json.dumps(body).encode())
         return True
 
-    def upload_path(self, filename: str) -> Path | None:
+    def upload_path(self, filename: str, sample: bool = False) -> Path | None:
         name = _UNSAFE_NAME.sub("_", Path(filename).name).strip(" .")
         if not name or Path(name).suffix.lower() not in AUDIO_EXT:
             return None
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
-        return self.upload_dir / name
+        folder = self.samples_dir if sample else self.upload_dir
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder / name
+
+    # samples: short sounds for the Music editor's layers -------------------------------------------
+    @property
+    def samples_dir(self) -> Path:
+        return self.upload_dir / SAMPLES
+
+    def list_samples(self) -> list[dict]:
+        out = []
+        if not self.samples_dir.is_dir():
+            return out
+        for p in sorted(self.samples_dir.rglob("*"), key=lambda p: str(p).lower()):
+            if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in AUDIO_EXT:
+                st = p.stat()
+                out.append({"source": "media", "path": p.relative_to(self.media_dir).as_posix(),
+                            "size": st.st_size, "modified": int(st.st_mtime)})
+        return out
+
+    def delete_sample(self, rel: str) -> bool:
+        """Deletes a sample, only from the Samples folder."""
+        p = self.audio_path("media", rel)
+        if p is None or not p.is_file() or self.samples_dir.resolve() not in p.resolve().parents:
+            return False
+        p.unlink()
+        self._song_info_file("media", rel).unlink(missing_ok=True)
+        return True

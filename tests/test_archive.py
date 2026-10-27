@@ -162,6 +162,15 @@ def test_exports_include_song_drafts(st):
     assert st.load_draft("short")["name"] == "Short"
 
 
+def test_samples_are_not_archived_or_deleted_as_songs(st):
+    st.samples_dir.mkdir(parents=True, exist_ok=True)
+    (st.samples_dir / "Riff.wav").write_bytes(b"RIFF")
+    assert not archive.own_song(st, "haliday_show/Samples/Riff.wav")
+    with pytest.raises(archive.ArchiveError):
+        archive.archive_song(st, "haliday_show/Samples/Riff.wav")
+    assert (st.samples_dir / "Riff.wav").exists()
+
+
 def test_paths_that_escape_haliday_shows_folder_are_refused(st):
     music = st.media_dir / "Music/theirs.mp3"
     for bad in ("haliday_show/../Music/theirs.mp3", "haliday_show/./bells.mp3", "haliday_show//bells.mp3",
