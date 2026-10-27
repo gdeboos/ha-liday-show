@@ -56,6 +56,7 @@ export function loudness(channels, rate) {
   return lufs(mean(kept.length ? kept : loud));
 }
 
+// The loudest sample, in dBFS (not the true peak between samples; the -1 dBFS ceiling leaves room).
 export function peakDb(channels) {
   let peak = 0;
   for (const ch of channels) for (let i = 0; i < ch.length; i++) peak = Math.max(peak, Math.abs(ch[i]));

@@ -1292,6 +1292,7 @@ export class MusicEditor {
       .map((k) => this.loadInfo(this.refs[k])));
     this.stop();
     this.host.status(`Making ${file}…`);
+    await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))); // let that show before the work
     // Even out the volume: the same loudness as other songs made here (only the level changes).
     const even = $("music-even").checked ? evenOut(this.rendered, this.audio.sampleRate) : { channels: this.rendered, gain: 0 };
     const blob = new Blob([encodeWav(even.channels, this.audio.sampleRate)], { type: "audio/wav" });

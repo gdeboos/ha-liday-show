@@ -38,3 +38,11 @@ test("evening out turns a quiet song up and a loud one down, but never past the 
   assert.ok(Math.abs(loudness(channels, rate) - -14) < 0.2, `${loudness(channels, rate)}`);
   assert.ok(peakDb(channels) <= -1 + 1e-6);
 });
+
+test("mono and very short audio are measured too", () => {
+  const mono = loudness([tone(440, 0.5)], rate), stereo = loudness([tone(440, 0.5), tone(440, 0.5)], rate);
+  assert.ok(Math.abs(stereo - mono - 3.01) < 0.1, "two channels add their power");
+  const blip = loudness([tone(440, 0.5, 0.2)], rate); // under one 400 ms block
+  assert.ok(Math.abs(blip - mono) < 1, `${blip} vs ${mono}`);
+  assert.equal(evenOut([new Float32Array(0)], rate).gain, 0);
+});
