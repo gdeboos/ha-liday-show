@@ -246,14 +246,17 @@ it. A draft can't be opened if a song it uses has been archived or deleted; rest
 Layers play samples or other songs on top of the song: sleigh bells over the intro, a "ho ho ho" on the
 last chorus, a voice saying "Merry Christmas", or another song fading in under the end.
 
-1. Under the waveform, press **+ Add layer** (up to four). Its row has a name, a **Volume** and
-   **Remove**, and a lane appears under the waveform for its clips.
+1. Under the waveform, press **+ Add layer** (up to four). Its row has a name, a **Volume**, **Quieten
+   the song** and **Remove**, and a lane appears under the waveform for its clips.
 2. Put the playhead where you want a clip to start, then pick a sample or song from **+ Add a clip at
    the playhead…** on the layer's row. It starts a little quieter than the song, so it sits in the mix;
    change that with the clip's **Volume**.
 3. Drag a clip to move it (it snaps to bars, beats and marks; hold Shift to place it freely). Drag its
    left or right end to trim it. Click a clip to pick it: its panel has **Volume**, **Fade in**, **Fade
    out**, **▶ Hear it** and **Delete** (or press Delete).
+4. To make a layer stand out, such as a voice saying "Merry Christmas", tick **Quieten the song** on its
+   row. The song dips a little while that layer's clips play (starting just before each one) and comes
+   back up gently after. It's off for new layers.
 
 Each clip is pinned to the moment in the song it starts at, so it moves with your cuts: cut a bit
 earlier in the song and it moves earlier with the music; cut the part it sits on and it's left out

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.193
+
+- **Music editor** layers have a new **Quieten the song** switch. Turn it on and the song dips a little
+  while that layer's clips play, so a voice or a "ho ho ho" comes through clearly, then comes back up
+  gently afterwards. It's off for new layers, and the dip goes into the song file **Make song file** makes.
+
 ## 0.2.192
 
 - New in the **Music editor**: **layers**, for playing samples or other songs on top of the song, such

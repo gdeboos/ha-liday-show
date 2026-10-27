@@ -1075,7 +1075,11 @@ async def test_draft_layers_are_kept_and_checked(client, tmp_path):
     # No layers, nothing saved for them (old drafts look the same).
     plain = (await (await client.post("/api/drafts", json={**draft, "layers": []})).json())["id"]
     assert "layers" not in await (await client.get(f"/api/drafts/{plain}")).json()
-    for bad in ([{"name": "x", "clips": [{**clip, "end": 0}]}], [{"name": "x", "gain": 99, "clips": []}],
+    # Quieten the song under a layer: kept when on, left out when off.
+    ducked = (await (await client.post("/api/drafts", json={**draft, "layers": [
+        {"name": "Voice", "duck": True, "clips": []}, {"name": "Bells", "duck": False, "clips": []}]})).json())["id"]
+    assert [l.get("duck") for l in (await (await client.get(f"/api/drafts/{ducked}")).json())["layers"]] == [True, None]
+    for bad in ([{"name": "x", "duck": "yes", "clips": []}], [{"name": "x", "clips": [{**clip, "end": 0}]}], [{"name": "x", "gain": 99, "clips": []}],
                 [{"name": "x", "clips": [{**clip, "anchor": "12"}]}], [{"name": "x", "clips": []}] * 5, "x"):
         assert (await client.post("/api/drafts", json={**draft, "layers": bad})).status == 400
 
