@@ -700,8 +700,12 @@ last chorus, a voice saying "Merry Christmas", or another song fading in under t
    the playhead…** on the layer's row. It starts a little quieter than the song, so it sits in the mix;
    change that with the clip's **Volume**.
 3. Drag a clip to move it (it snaps to bars, beats and marks; hold Shift to place it freely). Drag its
-   left or right end to trim it. Click a clip to pick it: its panel has **Volume**, **Fade in**, **Fade
-   out**, **▶ Hear it** and **Delete** (or press Delete).
+   left or right end to trim it. Click a clip to pick it (the playhead goes where you clicked): its panel
+   has **Volume**, **Fade in**, **Fade out**, **▶ Hear it**, **✂ Split at playhead** (or press S) and
+   **Delete** (or press Delete). Each clip shows its own waveform and, once its song has been detected,
+   its sections in their colours, so you can see where its chorus or drop is. To use just parts of a
+   song on a layer, split it where each part starts and ends, delete what you don't want and drag the
+   rest where it goes.
 4. To make a layer stand out, such as a voice saying "Merry Christmas", tick **Quieten the song** on its
    row. The song dips a little while that layer's clips play (starting just before each one) and comes
    back up gently after. It's off for new layers.

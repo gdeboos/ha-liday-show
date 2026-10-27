@@ -116,6 +116,7 @@ export const HELP = {
         `Drag across the waveform to select. The edges snap to bars once the song is detected; hold ${k("Shift")} to place them freely.`,
         `Click to move the playhead. The wheel zooms, and ${k("Shift")} + wheel scrolls.`,
         "<b>+ Add layer</b> plays samples or songs over this one: pick one under the layer to put a clip at the playhead.",
+        `Each clip shows its own waveform and sections. <b>✂ Split at playhead</b> (or ${k("S")}) cuts a clip in two, to keep just the parts you want.`,
         "<b>EQ</b> opens a row's <b>Bass</b>, <b>Mid</b> and <b>Treble</b> in <b>Selection</b>. <b>Match tempo</b> keeps a layer in time with the song.",
       ] },
       { id: "selection", title: "Changing what you clicked", tips: [
@@ -140,7 +141,7 @@ export const HELP = {
         "<b>Fade in</b> and <b>Fade out</b> soften the ends.",
       ] },
       { id: "keys", title: "Keyboard", keys: [
-        [k("Space"), "Play or pause"], [k("Delete"), "Cut the selection"], [k("M"), "Add a mark, even while playing"],
+        [k("Space"), "Play or pause"], [k("Delete"), "Cut the selection"], [k("M"), "Add a mark, even while playing"], [k("S"), "Split the layer clip at the playhead"],
         [k("Ctrl", "Z"), "Undo"], [k("Ctrl", "S"), "Make song file"], [k("Esc"), "Clear the selection"],
         [`${k("←")} ${k("→")}`, "Move a beat at a time (with the waveform outlined)"],
       ] },
