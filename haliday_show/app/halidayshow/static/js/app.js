@@ -17,6 +17,7 @@ import { House, partRgb } from "./house.js";
 import { placeOnSample } from "./samplehouse.js";
 import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
 import { Layout } from "./layout.js";
+import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor } from "./music.js";
 import { createVolume } from "./volume.js";
@@ -70,14 +71,6 @@ const prefs = {
   },
 };
 
-// "How to…" folds keep the longer help out of the way, open or shut as you last left each one.
-function restoreHowTo(root = document) {
-  for (const d of root.querySelectorAll("details.howto[data-howto]")) d.open = prefs.get(`howto.${d.dataset.howto}`, false);
-}
-document.addEventListener("toggle", (e) => {
-  const d = e.target;
-  if (d instanceof HTMLDetailsElement && d.matches(".howto[data-howto]")) prefs.set(`howto.${d.dataset.howto}`, d.open);
-}, true);
 
 // A message in the top bar. Pass error = true for a failure (it stays until pressed), "saved" when
 // something has just been saved (it lights up, then settles to the time), or "hint".
@@ -2163,17 +2156,7 @@ function renderInspector() {
   if (!sel || !track || !track.clips.includes(sel.clip)) {
     app.selected = null;
     box.innerHTML = `<p class="hint">Drag across a light, or the House lane, to select a stretch of time, then pick
-      an effect to add it there.</p>
-      <details class="howto" data-howto="selection"><summary>How to…</summary><ul>
-        <li>Press Delete to clear the stretch. Hold Alt to start a selection on top of a clip.</li>
-        <li>Click a clip to edit it: drag it to move, or drag its edges to resize. D duplicates, Ctrl+C and Ctrl+V
-          copy and paste, and Ctrl+Z undoes.</li>
-        <li>Click a light's name to copy or recolour all its effects.</li>
-        <li>Drag along the time ruler to set a play region, and turn on Loop to repeat it.</li>
-        <li>Click the beat lane to add or remove a beat. Hold Shift to drag without snapping.</li>
-        <li>Coloured flags on the beat lane are the song's marks, made in the Music editor. Clips snap to them.</li>
-      </ul></details>`;
-    restoreHowTo(box);
+      an effect to add it there.</p>`;
     return;
   }
   const clip = sel.clip;
@@ -7448,6 +7431,7 @@ function showView(view, { push = true } = {}) {
   if (["playlists", "playlistlist", "playlist"].includes(page)) loadPlaylists(); else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); loadSongMarks(); }
   rememberPage(page, push);
+  helpPageChanged();
 }
 
 // The browser's Back and Forward move between pages of HA-liday Show (inside Home Assistant too:
@@ -7867,7 +7851,6 @@ async function listenForTraffic() {
 }
 
 async function init() {
-  restoreHowTo();
   wire();
   $("btn-listen").addEventListener("click", listenForTraffic);
   wireLab();
@@ -7883,6 +7866,7 @@ async function init() {
       musicLayout.toggleCollapsed("selection");
   }).observe($("view-music").querySelector(".music-selection"), { subtree: true, attributeFilter: ["hidden"] });
   new Layout(null, "playlist", $("view-playlist"));
+  initHelp(() => [...document.querySelectorAll("main.view")].find((v) => !v.hidden)?.id.replace(/^view-/, "") ?? null);
   // Settings → Layout shows one editor's layout at a time.
   const pickLayout = (name) => {
     for (const b of document.querySelectorAll("[data-layout-pick]")) b.setAttribute("aria-pressed", String(b.dataset.layoutPick === name));

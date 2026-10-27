@@ -112,13 +112,59 @@ body {
   text-transform: uppercase; color: var(--muted); }
 .subnav-group:first-child { margin-top: 0; }
 .table-scroll { overflow-x: auto; }
-details.help summary { cursor: pointer; }
-/* "How to…": the longer help under a one-line hint, folded until you open it. */
-details.howto { margin: -2px 0 10px; font-size: 13px; color: var(--muted); }
-details.howto summary { cursor: pointer; color: var(--text); width: fit-content; }
-details.howto summary:hover { text-decoration: underline; }
-details.howto ul { margin: 6px 0 0; padding-left: 20px; }
-details.howto li { margin: 2px 0; }
+/* Help: the drawer for the page you're on (helpui.js), and the ? bubbles on editor panels. On a wide
+   screen the page makes room for the drawer; narrower, it lies over the page. */
+kbd { font: 600 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 5px; border: 1px solid var(--line);
+  border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--text); white-space: nowrap; }
+.help-btn { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.help-btn[aria-expanded="true"] { background: color-mix(in srgb, var(--accent) 20%, var(--panel)); border-color: var(--accent); }
+.help-q { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid currentColor;
+  font-size: 11px; font-weight: 700; line-height: 1; }
+.help-drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 30; width: 380px; max-width: 100vw; display: flex;
+  flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); box-shadow: -10px 0 30px rgb(0 0 0 / .18); }
+@media (min-width: 1100px) { body.help-on { padding-right: 380px; } .help-drawer { box-shadow: none; } }
+.help-head { padding: 12px 16px 10px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.help-head-row { display: flex; align-items: flex-start; gap: 8px; }
+.help-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.help-head h2 { margin: 0; font-size: 16px; }
+.help-head input { width: 100%; }
+.help-body { flex: 1; overflow-y: auto; padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+.help-body > .hint { margin: 4px 0; }
+.help-topic { border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--track) 45%, var(--panel)); }
+.help-topic > summary { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; font-weight: 600;
+  list-style: none; border-radius: 8px; }
+.help-topic > summary::-webkit-details-marker { display: none; }
+.help-topic > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+.help-topic[open] > summary::before { transform: rotate(90deg); }
+.help-topic > summary > span:first-child { flex: 1; }
+.help-topic-tag { font-size: 11px; font-weight: 600; color: var(--accent); }
+.help-topic.focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.help-topic ul { margin: 0; padding: 0 12px 4px 30px; font-size: 13px; }
+.help-topic li { margin: 4px 0; }
+.help-keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; padding: 0 12px 4px 30px; font-size: 13px; }
+.help-more { display: block; padding: 2px 12px 10px 30px; font-size: 12.5px; color: var(--accent); text-decoration: none; }
+.help-more:hover, .help-foot a:hover { text-decoration: underline; }
+.help-foot { border-top: 1px solid var(--line); padding: 10px 16px; font-size: 13px; }
+.help-foot a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.help-q-btn { min-width: 22px; min-height: 22px; padding: 0; border-radius: 50%; font-size: 12px; font-weight: 700;
+  color: var(--muted); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; }
+.help-q-btn:hover { color: var(--text); border-color: var(--muted); }
+.help-q-btn.on { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
+@media (pointer: coarse) { .help-q-btn { min-width: 32px; min-height: 32px; } }
+.help-pop { position: absolute; z-index: 31; width: min(320px, calc(100vw - 16px)); background: var(--panel); color: var(--text);
+  border: 1px solid var(--accent); border-radius: 10px; box-shadow: 0 12px 30px rgb(0 0 0 / .3); padding: 10px 14px; font-size: 13px; }
+.help-pop::before { content: ""; position: absolute; top: -7px; left: var(--arrow, 24px); width: 12px; height: 12px;
+  background: var(--panel); border-left: 1px solid var(--accent); border-top: 1px solid var(--accent); transform: rotate(45deg); }
+.help-pop-head { display: flex; align-items: center; gap: 8px; }
+.help-pop-head b { flex: 1; font-size: 13.5px; }
+.help-pop-head button { padding: 0 6px; }
+.help-pop ul { margin: 6px 0 0; padding-left: 18px; }
+.help-pop li { margin: 5px 0; }
+.help-pop-foot { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+.help-pop-foot .hint { flex: 1; }
+.help-pop-foot button { color: var(--accent); font-weight: 600; padding: 2px 6px; }
+button.link-button { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { .help-topic > summary::before { transition: none; } }
 @media (max-width: 720px) {
   .section { flex-direction: column; align-items: stretch; }
   .subnav { position: static; width: auto; flex-direction: row; overflow-x: auto; scrollbar-width: none;

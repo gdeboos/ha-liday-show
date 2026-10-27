@@ -63,7 +63,28 @@
     <button class="tab" data-view="public" id="tab-public" hidden><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><span>Public page</span></button>
   </nav>
   <span id="status" class="status"></span>
+  <button type="button" id="btn-help" class="help-btn ghost" aria-expanded="false" aria-controls="help-drawer"
+    title="Tips for this page, and the full guide"><span class="help-q" aria-hidden="true">?</span><span>Help</span></button>
 </header>
+<!-- Help for the page you're on (helpui.js, words in help.js). It sits beside the page, which stays usable. -->
+<aside id="help-drawer" class="help-drawer" role="dialog" aria-labelledby="help-title" hidden>
+  <div class="help-head">
+    <div class="help-head-row">
+      <div class="help-head-text"><span class="section-label" id="help-crumb">Help</span><h2 id="help-title">Help</h2></div>
+      <button type="button" id="help-close" class="ghost" aria-label="Close help" title="Close (Esc)">✕</button>
+    </div>
+    <input id="help-search" type="search" placeholder="Search help, e.g. crossfade" aria-label="Search help" autocomplete="off">
+  </div>
+  <div id="help-body" class="help-body" aria-live="polite"></div>
+  <div class="help-foot"><a id="help-guide" target="_blank" rel="noopener">The full guide ↗</a></div>
+</aside>
+<div id="help-pop" class="help-pop" role="dialog" aria-labelledby="help-pop-title" hidden>
+  <div class="help-pop-head"><b id="help-pop-title"></b>
+    <button type="button" id="help-pop-close" class="ghost" aria-label="Close tips">✕</button></div>
+  <ul id="help-pop-tips"></ul>
+  <div class="help-pop-foot"><span id="help-pop-count" class="hint"></span>
+    <button type="button" id="help-pop-more" class="ghost">More in Help →</button></div>
+</div>
 
 <!-- Your shows: where the Show editor starts each visit (showlist.js); the same list is under Library → Shows. -->
 <main id="view-showlist" class="view showlist" hidden>
@@ -308,8 +329,7 @@
 <!-- Your playlists: where the Playlist editor starts each visit; the same list is under Library → Playlists. -->
 <main id="view-playlistlist" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Your playlists</h2>
-  <p class="hint">A playlist plays your shows one after another, then starts again from the top until you
-    press <b>Stop</b>, even with this page closed. Open one to put shows in it and set when it plays.</p>
+  <p class="hint">Your shows one after another, over and over until you press <b>Stop</b>, even with this page closed.</p>
   <p class="playlist-now" data-playlist-now></p>
   <div class="show-list" data-playlist-list></div>
   <p><button type="button" class="primary" data-playlist-new>+ New playlist</button></p>
@@ -376,46 +396,11 @@
 <!-- Your songs: where the Music editor starts each visit; the same list is under Library → Songs. -->
 <main id="view-songlist" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Your songs</h2>
-  <p class="hint">Open a song to cut, shorten or join it. The song you open isn't changed: your edit is kept as a
-    draft as you go, listed under the song, and you make a new song file from it when you're happy.</p>
+  <p class="hint">Open a song to cut, shorten or join it. The song itself is never changed.</p>
   <div data-songs-slot></div>
 </main>
 
 <main id="view-music" class="view music" hidden>
-  <details class="howto" data-howto="music"><summary>How to…</summary>
-    <ul>
-      <li>Cut, shorten and splice the song. Your first change starts a draft (name it under <b>Draft</b>), kept as
-        you go, so you can leave and carry on later from <b>Your songs</b>. The song you opened isn't changed.</li>
-      <li><b>Make song file</b> writes the draft as a WAV in your songs folder, to pick under <b>Song</b> in a show.
-        The draft stays, so you can change it and make the file again. Making a song unchanged gives you a WAV
-        copy of it.</li>
-      <li><b>Detect</b> finds the beats and sections and keeps them with the song, so a show that picks it gets
-        them straight away.</li>
-      <li>Drag across the waveform to select. The edges snap to bars once the song is detected; hold Shift to place
-        them freely.</li>
-      <li>Click a section in the lane to select it and edit its name, colour and notes for <b>Describe it</b>.
-        Shift-click adds the next one, and dragging the line between two sections moves it. Section changes save
-        with the song; a show already using it picks them up with <b>From song</b>.</li>
-      <li>Click to move the playhead. Use the wheel to zoom, and Shift + wheel to scroll.</li>
-      <li><b>Save as sample…</b> keeps the selection (as it sounds in your edit) in <b>Library → Samples</b>, to
-        layer over songs.</li>
-      <li><b>+ Add layer</b> (under the waveform) plays samples or songs over this one: pick one under the layer to
-        put a clip at the playhead, drag it to move it or its ends to trim it, and click it for its volume and
-        fades. Clips move with your cuts.</li>
-      <li><b>EQ</b> on the song's or a layer's row opens its <b>Bass</b>, <b>Mid</b> and <b>Treble</b> faders in <b>Selection</b> (right down is
-        off). <b>+ Change here</b> makes them glide to new settings from the playhead. <b>Match tempo</b> keeps a
-        layer in time with the song.</li>
-      <li>Click a <b>✂</b> to hear that join. To change the cut, press <b>Adjust cut</b> (the part comes back,
-        selected, to move its edges and cut again) or <b>Put back</b> to undo just that cut.</li>
-      <li><b>✂ Suggest cuts…</b> finds whole bars to take out of the song or one section (or press <b>✂ Shorten…</b>
-        on a section) where the music either side of the join matches. Press a cut's ▶ to hear its join, then
-        <b>Use</b>. It needs the song detected first.</li>
-      <li><b>⚑ Add mark</b> (or M, even while it plays) flags a moment, such as a big hit. Click a flag to name it,
-        change its colour or delete it, and drag it to move it. Marks are kept with the song and show in the Show
-        editor too, where clips snap to them.</li>
-      <li>Space plays, Delete cuts the selection, and Ctrl+Z undoes.</li>
-    </ul>
-  </details>
   <!-- Panels in five docks, like the Show editor's; layout.js moves, folds or hides them per viewer. -->
   <div class="panel-grid">
   <div class="dock" data-dock="top">
@@ -629,8 +614,7 @@
 </main>
 <main id="view-samples" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Samples</h2>
-  <p class="hint">Short sounds, such as sleigh bells or a "ho ho ho", to layer over a song in the Music editor.
-    Make one from part of a song in the Music editor (<b>Save as sample…</b>), or add a file. They're kept in a <b>Samples</b> folder of their own, so they don't fill up your songs or a show's song list.</p>
+  <p class="hint">Short sounds, such as sleigh bells or a "ho ho ho", to layer over a song in the Music editor.</p>
   <div id="samples-list" class="show-list" role="list" aria-label="Your samples"></div>
   <p class="group"><button type="button" class="primary" id="btn-add-sample">+ Add a sample</button>
     <input id="sample-upload" type="file" accept="audio/*" multiple hidden>
@@ -638,8 +622,7 @@
 </main>
 <main id="view-songs" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Songs</h2>
-  <p class="hint">Every song in your songs folder, each with the edits made from it in the Music editor (✂) and its drafts (✎),
-    and which shows use them. <b>Edit</b> opens a song in the Music editor.</p>
+  <p class="hint">Every song in your songs folder, with its edits (✂) and drafts (✎).</p>
   <!-- One list of songs, moved between here and Your songs in the Music editor, whichever is showing. -->
   <div id="songs-block">
     <div class="group song-tools">
@@ -723,8 +706,7 @@
 </main>
 <main id="view-playlists" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Playlists</h2>
-  <p class="hint">A playlist plays your shows one after another, then starts again from the top until you
-    press <b>Stop</b>, even with this page closed. Open one to put shows in it and set when it plays.</p>
+  <p class="hint">Your shows one after another, over and over until you press <b>Stop</b>, even with this page closed.</p>
   <p class="playlist-now" data-playlist-now></p>
   <div class="show-list" data-playlist-list></div>
   <p><button type="button" class="primary" data-playlist-new>+ New playlist</button></p>
@@ -862,13 +844,8 @@
         starts, and the speaker is added only if that works.</p>
       <input id="speaker-filter" type="search" placeholder="Find a speaker" autocomplete="off" aria-label="Find a speaker">
       <div id="candidate-rows" class="speaker-list"></div>
-      <details class="hint help">
-        <summary>Why can't some speakers play shows?</summary>
-        <p>Only speakers added here are offered in the editor. Adding one plays a short chime on it the same way a show
-          starts, so a speaker that can't play HA-liday Show's songs is caught here rather than when the show should start.
-          Some media players, like Echo devices through Alexa Media Player or Emby clients, can't play files from Home
-          Assistant's media folder.</p>
-      </details>
+      <p class="hint">Some media players, like Echo devices through Alexa Media Player or Emby clients, can't play files from
+        Home Assistant's media folder, so they can't be added.</p>
     </div>
     <div class="form-dialog-foot">
       <span class="spacer"></span>
@@ -899,17 +876,8 @@
     <label title="Darken the photo so the lights stand out, like at dusk">Darken
       <input id="house-dim" type="range" min="0" max="0.9" step="0.05"></label>
   </section>
-  <details class="hint house-help">
-    <summary>How to trace your lights</summary>
-    <p>Take the photo from where people will watch, ideally at dusk. Then pick a light in the list, press
-      <b>Trace</b> and click along where it runs on the photo, <b>starting at the end with the plug</b>. Click once at
-      each corner or bend. Drag a point to move it, right-click a point to remove it, and press Enter or <b>Done</b>
-      when the light is traced. Each light is shown in a rainbow from the plug (red) to the far end, so you can check
-      its direction. The editor's <b>House</b> panel then plays the show on the photo.</p>
-    <p>Part of a light out of sight, like round the back of the house, or an extension lead? Trace past it anyway (a
-      short line will do), then click that stretch and choose <b>Out of view</b> with how many bulbs are on it. Those
-      bulbs still take their share of the segments but aren't drawn.</p>
-  </details>
+  <p class="hint house-help">Pick a light, press <b>Trace</b> and click along it on the photo, starting at the end with the plug.
+    <button type="button" class="link-button" data-help="house:trace">How to trace your lights</button></p>
   <div class="house-layout">
     <aside id="house-lights" class="house-lights"></aside>
     <div class="house-stage"><canvas id="house-setup"></canvas></div>
@@ -919,15 +887,7 @@
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-layout"/></svg>Layout</h2>
     <p class="hint">Each editor has its own layout. Pick one, then its page layout and where each panel sits. It's saved
-      in this browser.</p>
-    <details class="howto" data-howto="layout"><summary>How to…</summary>
-      <ul>
-        <li>Each panel can go along the top or bottom, down the left or right, or in the middle.</li>
-        <li>Choose <b>Hidden</b> to tuck a panel away, and bring it back here.</li>
-        <li>In the editor you can also drag a panel by its title to move it or change its order, or use the ⋯
-          button on it.</li>
-      </ul>
-    </details>
+      in this browser. You can also drag a panel by its title in the editor.</p>
     <span id="layout-editor" class="seg-buttons" role="group" aria-label="Editor">
       <button type="button" data-layout-pick="show">Show</button><button type="button" data-layout-pick="music">Music</button><button type="button" data-layout-pick="playlist">Playlist</button></span>
     <div data-layout-for="show">

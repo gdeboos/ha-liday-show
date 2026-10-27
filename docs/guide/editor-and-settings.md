@@ -30,8 +30,8 @@ main one is near the top: **Preview** and **House** in the Show editor, **Splice
 the Music editor, and **Building blocks** in the Playlist editor. Open them with **▸** whenever you want
 them.
 
-Longer help under a page or panel sits under **How to…**. Press it to open or close it; it stays
-the way you left it.
+Each editor panel has a **?** beside its **⋯**: it shows a few tips for that panel, and **More in Help →**
+opens the rest in the **Help** drawer (see [Help](getting-started.md#help)).
 
 The **page layout** sets how those five areas fit together. Pick it at the bottom of any panel's
 **⋯** menu or under **Settings → Layout** (each editor has its own):

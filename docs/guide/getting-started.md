@@ -22,6 +22,14 @@ opens on **Library**; the three editors sit together after it, under **Editors**
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
 page you last had open. Below, "the House tab" and so on mean that page.
 
+### Help
+
+**? Help**, at the top right, opens tips for the page you're on beside it (over it on a phone). It
+follows you as you change page. Each topic folds open, and **More in the guide ↗** opens that part of
+this guide on GitHub. Type in **Search help** to look through every page's tips at once. **Esc** or
+**✕** closes it. In the editors, each panel's **?** shows a few tips for that panel, with **More in
+Help →** for the rest.
+
 Your browser's **Back** and **Forward** buttons (or swiping back on a phone) move between the tabs and
 pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Your shows**, as
 **← All shows** does; from a song in the Music editor, it goes to **Your songs**; from a playlist, to
