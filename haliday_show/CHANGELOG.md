@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.194
+
+- In the **Music editor**, clicking the waveform now just moves the playhead and keeps your selection, so
+  you can still **Preview cut** or **Cut selection** after listening from somewhere else. To clear the
+  selection, press **✕** next to its times or Esc.
+
 ## 0.2.193
 
 - **Music editor** layers have a new **Quieten the song** switch. Turn it on and the song dips a little
