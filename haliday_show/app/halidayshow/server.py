@@ -985,7 +985,7 @@ def _gain(v) -> float | None:
 
 
 def _clean_layers(layers) -> list[dict] | None:
-    """A draft's layers: [{name, gain, clips: [{song, start, end, anchor: {song, t}, gain, fadeIn,
+    """A draft's layers: [{name, gain, duck (optional), clips: [{song, start, end, anchor: {song, t}, gain, fadeIn,
     fadeOut}]}], samples or songs played over the song, each clip pinned to a moment in it."""
     if not isinstance(layers, list) or len(layers) > MAX_LAYERS:
         return None
@@ -1008,7 +1008,12 @@ def _clean_layers(layers) -> list[dict] | None:
                 return None
             clean.append({"song": song, "start": start, "end": end, "anchor": {"song": anchor_song, "t": t},
                           "gain": cg, "fadeIn": fade_in, "fadeOut": fade_out})
+        duck = layer.get("duck", False)
+        if not isinstance(duck, bool):
+            return None
         out.append({"name": " ".join(layer.get("name", "").split())[:40], "gain": gain, "clips": clean})
+        if duck:
+            out[-1]["duck"] = True
     return out
 
 

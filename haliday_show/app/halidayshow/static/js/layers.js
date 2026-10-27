@@ -1,7 +1,7 @@
 // Layers in the Music editor: samples or songs played on top of the song, each clip pinned to the
 // moment in the song it starts at, so it follows cuts (music.js draws and edits them).
 //
-// A layer: {name, gain (dB), clips: [{song, start, end, anchor: {song, t}, gain (dB), fadeIn, fadeOut}]}.
+// A layer: {name, gain (dB), duck (optional: quieten the song while its clips play), clips: [{song, start, end, anchor: {song, t}, gain (dB), fadeIn, fadeOut}]}.
 // song is the clip's audio ({source, path}); start and end are the part of it that plays; anchor is
 // where the clip starts, as a moment in one of the main track's songs (time in that song).
 
@@ -58,10 +58,38 @@ export function placeClips(layers, pieces, crossfade) {
 
 const db = (g) => 10 ** ((g || 0) / 20);
 
+// How far the song dips under a layer that quietens it, and how quickly: it starts going down just
+// before the clip, so the clip's first sound is already clear, and comes back up gently after it.
+export const DUCK_DB = -8;
+const DUCK_DOWN = 0.15, DUCK_UP = 0.5;
+
+// The song's gain at each sample under the layers that quieten it, or null if none do. Only clips
+// that are heard count (a missing sample doesn't dip the song).
+export function duckEnvelope(layers, placed, sources, n, rate) {
+  let depth = null;
+  for (const { layer, clip, at } of placed) {
+    const L = layers[layer], c = L.clips[clip], src = sources[keyOf(c.song)];
+    if (!L.duck || !src) continue;
+    const len = Math.min(src[0].length, Math.round(c.end * rate)) - Math.round(c.start * rate);
+    const a = Math.max(0, Math.round(at * rate)), b = Math.min(n, Math.round(at * rate) + len);
+    if (b <= a) continue;
+    depth ??= new Float32Array(n);
+    depth.fill(1, a, b);
+  }
+  if (!depth) return null;
+  const up = 1 / (rate * DUCK_UP), down = 1 / (rate * DUCK_DOWN);
+  for (let i = 1; i < n; i++) depth[i] = Math.max(depth[i], depth[i - 1] - up);
+  for (let i = n - 2; i >= 0; i--) depth[i] = Math.max(depth[i], depth[i + 1] - down);
+  for (let i = 0; i < n; i++) depth[i] = 10 ** ((DUCK_DB * depth[i]) / 20);
+  return depth;
+}
+
 // The main track's channels with the layers mixed in (a new copy). sources: {key: [channels]} at rate.
 export function mixLayers(main, layers, placed, sources, rate) {
   const out = main.map((ch) => Float32Array.from(ch));
   const n = out[0]?.length || 0;
+  const env = duckEnvelope(layers, placed, sources, n, rate);
+  if (env) for (const ch of out) for (let i = 0; i < n; i++) ch[i] *= env[i];
   for (const { layer, clip, at } of placed) {
     const L = layers[layer], c = L.clips[clip], src = sources[keyOf(c.song)];
     if (!src) continue;

@@ -821,7 +821,7 @@ export class MusicEditor {
   renderLayers() {
     const box = $("music-layers");
     const samples = this.samplesList || [], songs = this.host.songs();
-    const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, l.clips.length]), samples.length, songs.length, !!this.pieces.length]);
+    const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, !!l.duck, l.clips.length]), samples.length, songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
       box.dataset.sig = sig;
       const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
@@ -834,6 +834,9 @@ export class MusicEditor {
         const db = el("span", { className: "hint", textContent: `${l.gain > 0 ? "+" : ""}${l.gain} dB` });
         vol.addEventListener("input", () => { db.textContent = `${vol.value > 0 ? "+" : ""}${vol.value} dB`; });
         vol.addEventListener("change", () => this.setLayer(i, { gain: Number(vol.value) }));
+        const duck = el("input", { type: "checkbox", checked: !!l.duck });
+        duck.addEventListener("change", () => this.setLayer(i, { duck: duck.checked }));
+        const duckLabel = el("label", { title: "Turn the song down a little while this layer's clips play, so they're clearer: good for a voice" }, duck, " Quieten the song");
         const add = el("select", { title: "Put a sample or song on this layer at the playhead" });
         add.setAttribute("aria-label", `Add to ${l.name}`);
         add.append(new Option("+ Add a clip at the playhead…", ""));
@@ -851,7 +854,7 @@ export class MusicEditor {
         remove.addEventListener("click", () => this.removeLayer(i));
         const dot = el("span", { className: "layer-dot" });
         dot.style.background = `hsl(${LAYER_HUES[i % 4]} 65% 50%)`;
-        return el("div", { className: "group layer-row" }, dot, name, el("label", {}, "Volume ", vol, " ", db), add, remove);
+        return el("div", { className: "group layer-row" }, dot, name, el("label", {}, "Volume ", vol, " ", db), duckLabel, add, remove);
       });
       const addLayer = el("button", { type: "button", textContent: "+ Add layer", disabled: !this.pieces.length || this.layers.length >= MAX_LAYERS });
       addLayer.title = this.layers.length >= MAX_LAYERS ? `Up to ${MAX_LAYERS} layers` : "Add a row for samples or songs to play over the song";

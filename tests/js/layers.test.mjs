@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { anchorAt, limit, matchGain, mixLayers, placeClips, resultTime } from "../../haliday_show/app/halidayshow/static/js/layers.js";
+import { DUCK_DB, anchorAt, duckEnvelope, limit, matchGain, mixLayers, placeClips, resultTime } from "../../haliday_show/app/halidayshow/static/js/layers.js";
 import { cut, insert } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
 const A = { source: "media", path: "a.mp3" }, B = { source: "media", path: "b.mp3" };
@@ -80,4 +80,25 @@ test("a clip placed right at the end of a piece or the song is still in the song
     assert.ok(a, `at ${t}`);
     assert.notEqual(resultTime(p, 0, a), null, `placed at ${t}`);
   }
+});
+
+test("a layer that quietens the song dips it while its clips play, smoothly, and only then", () => {
+  const rate = 100, n = 1000;
+  const sources = { "media:b.mp3": [new Float32Array(300).fill(0.5)] };
+  const layer = (duck) => [{ name: "Voice", gain: 0, duck, clips: [{ song: B, start: 0, end: 2, anchor: { song: A, t: 4 } }] }];
+  const placed = placeClips(layer(true), song, 0);
+  assert.equal(duckEnvelope(layer(false), placed, sources, n, rate), null, "off by default");
+  assert.equal(duckEnvelope(layer(true), placed, {}, n, rate), null, "a missing sample doesn't dip the song");
+  const env = duckEnvelope(layer(true), placed, sources, n, rate);
+  const dip = 10 ** (DUCK_DB / 20);
+  near(env[100], 1, "untouched well before");
+  near(env[400], dip, "down by the clip's start");
+  near(env[599], dip, "down until its end");
+  assert.ok(env[390] < 1 && env[390] > dip, "already going down just before");
+  assert.ok(env[620] > dip && env[620] < 1, "coming back up after");
+  near(env[900], 1, "back up well after");
+  const main = [new Float32Array(n).fill(0.2)];
+  const out = mixLayers(main, layer(true), placed, sources, rate);
+  near(out[0][100], 0.2);
+  near(out[0][500], 0.2 * dip + 0.5, "the song dipped, the clip at full volume");
 });
