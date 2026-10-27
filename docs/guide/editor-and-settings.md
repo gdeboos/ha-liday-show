@@ -16,7 +16,8 @@ own arrangement:
 | Playlist | Playlist (its name, **▶ Play** and **Delete playlist**), Building blocks, Your shows, Running order and When it plays | Running order |
 
 The Music editor's **Selection** panel is where you change whatever you clicked: a section, a ⚑ mark, a
-clip on a layer or a ✂ join. If it's folded, clicking one opens it.
+clip on a layer or a ✂ join, and the **EQ** faders. If it's folded, clicking one opens it; if you've
+hidden it, bring it back to use them.
 
 Drag any editor panel by its
 title to move it to the top, left, middle, right or bottom, or to change its order there; a blue

@@ -712,7 +712,8 @@ sample saved with **Save as sample…** includes the layers.
 The **Mixer** under the waveform works like a DJ's, for mash-ups and for making a layer sit well with
 the song. The song has a row, and so does each layer.
 
-- **EQ** opens that row's **Bass**, **Mid** and **Treble** faders. Each goes from +6 dB down to **off**
+- **EQ** opens that row's **Bass**, **Mid** and **Treble** faders in the **Selection** panel (press it again,
+  or **✕**, to close them; another row's **EQ** swaps to its faders). Each goes from +6 dB down to **off**
   at the bottom: take the bass out of the song while a layer's bass carries it, say, or the treble off a
   layer so it sits behind. The **EQ** button is highlighted when anything is changed.
 - **Changes partway through:** put the playhead where it should change, press **+ Change here**, then
@@ -1527,7 +1528,8 @@ own arrangement:
 | Playlist | Playlist (its name, **▶ Play** and **Delete playlist**), Building blocks, Your shows, Running order and When it plays | Running order |
 
 The Music editor's **Selection** panel is where you change whatever you clicked: a section, a ⚑ mark, a
-clip on a layer or a ✂ join. If it's folded, clicking one opens it.
+clip on a layer or a ✂ join, and the **EQ** faders. If it's folded, clicking one opens it; if you've
+hidden it, bring it back to use them.
 
 Drag any editor panel by its
 title to move it to the top, left, middle, right or bottom, or to change its order there; a blue

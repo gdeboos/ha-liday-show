@@ -986,7 +986,11 @@ a.button { text-decoration: none; }
 .song-dot { background: var(--text); }
 .layer-name { min-width: 6em; font-weight: 600; }
 .layer-row button.on { background: color-mix(in srgb, var(--accent) 20%, var(--panel)); font-weight: 600; }
-.eq-row { margin-left: 18px; padding: 4px 8px; border-left: 2px solid var(--line); }
+.eq-row { flex-basis: 100%; }
+.music-eq > .hint:first-child { flex: 1; font-weight: 600; color: var(--text); }
+.layer-row button.open { outline: 2px solid var(--accent); outline-offset: -2px; }
 .eq-row input[type=range] { width: 90px; }
 .eq-value { display: inline-block; min-width: 3.6em; }
 .eq-glide { width: 4.5em; }
+.music-eq .eq-row > label:has(input[type=range]) { flex-basis: 100%; display: grid; grid-template-columns: 4em minmax(0, 1fr) 3.6em; align-items: center; gap: 6px; }
+.music-eq .eq-row input[type=range] { width: 100%; }
