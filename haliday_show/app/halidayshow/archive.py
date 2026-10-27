@@ -138,6 +138,8 @@ def _song_file(st: Storage, rel, archived: bool = False) -> Path | None:
     # No links anywhere on the way: the real file must be exactly where the path says.
     if real != st.media_dir.resolve() / rel or not real.is_file() or not _inside(real, own):
         return None
+    if _inside(real, st.samples_dir.resolve()):  # samples aren't songs: Library → Samples deletes them
+        return None
     return p if _inside(real, shelf) == archived else None
 
 

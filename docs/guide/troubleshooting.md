@@ -28,7 +28,8 @@
 Shows, devices, palettes, your presets, playlists with their schedules and building blocks, each
 song's beats, parts, notes and marks, the Music editor's drafts, the house photo, the public page's
 own picture and settings live in the app's config folder (`/addon_configs/<slug>_haliday_show/`), so
-they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` so media
+they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` (samples to its
+`Samples` folder) so media
 players can play them. The editor layout, the editing speaker, the song volume, the Show player's light offset,
 **Govee scenes**, **Show the Labs tab** and a few other editor choices (such as **Snap**, zoom and **Loop**) are kept in each browser.
 

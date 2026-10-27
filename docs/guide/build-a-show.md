@@ -10,7 +10,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Suggest cuts](#suggest-cuts) ·
+- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Suggest cuts](#suggest-cuts) ·
   [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
@@ -160,6 +160,19 @@ they play instead: **Another song**, or **No song for now** (they keep their eff
 play the lights only). An archived song moves to an **Archived** folder inside HA-liday Show's
 folder, where it's out of HA-liday Show's song lists but still in Home Assistant's Media. Restoring it
 puts it back and gives it back to the shows that were left without a song.
+
+### Samples
+
+**Library → Samples** keeps short sounds, such as sleigh bells, a "ho ho ho" or a voice saying "Merry
+Christmas", ready to layer over a song in the Music editor. There are two ways to make one:
+
+- **From a song:** in the Music editor, select the stretch you want and press **Save as sample…** (in
+  the **Edit** card), then give it a name. It's saved as it sounds in your edit.
+- **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
+
+They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Your songs** and a show's
+song list so those stay tidy. Each sample has **▶** to hear it (press **■** to stop) and **Delete…** to
+remove it for good.
 
 ### Editing a song
 
