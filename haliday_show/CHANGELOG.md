@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.191
+
+- **Make song file** in the **Music editor** has a new **Even out the volume** switch, on to start with.
+  It turns the new song file up or down so it plays at about the same loudness as other songs you make,
+  so a loud song doesn't blast out after a quiet one in a playlist. It never turns a song up so far
+  that it distorts, and the status bar says how much it changed. Song files you've already made aren't
+  changed; make one again to even it out.
+
 ## 0.2.190
 
 - New: **Library → Samples**, for short sounds such as sleigh bells or a "ho ho ho". Make one from a

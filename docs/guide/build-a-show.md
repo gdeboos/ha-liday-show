@@ -229,6 +229,13 @@ their effects don't move with the music, and any other drafts that splice that f
 the new version too) or **Make a new file** (such as "Short version 2.wav"). Making a
 song file without changing anything is a quick way to get a WAV copy of a song.
 
+**Even out the volume**, beside **Make song file** and on unless you turn it off, turns the new file up
+or down so it plays at about the same loudness as other songs made here, the level most streaming
+services play at. That way one song doesn't blast out after a quiet one in a playlist. Only the overall
+level changes, and a song is never turned up so far that its loudest moments would distort, so a very
+spiky one may stay a little quieter. The status bar says how much it was turned up or down. The switch
+is remembered in this browser.
+
 Songs you edited before drafts existed are ordinary songs: press **Edit** on one to start a draft from
 it. A draft can't be opened if a song it uses has been archived or deleted; restore the song first
 (under **Archived songs**). Until then, drafts whose song has gone are listed together at the end of
