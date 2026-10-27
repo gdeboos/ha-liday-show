@@ -22,7 +22,7 @@ const RULER_H = 22;
 const BEAT_H = 16; // the beat lane above the waveform, as in the editor
 const SEC_H = 20; // the section lane under it, where sections are picked and their edges dragged
 const WAVE_B = 210; // the bottom of the waveform; layers' lanes go under it
-const LANE_H = 30; // one layer's lane
+const LANE_H = 56; // one layer's lane, tall enough to show its clips' waveforms
 const LAYER_HUES = [200, 30, 140, 300]; // a colour for each layer's clips
 const MIN_SECTION = 0.5;
 const MAX_MARKS = 200; // as the server allows
@@ -919,6 +919,24 @@ export class MusicEditor {
     return this.allChanges().find((c) => Math.abs(this.x(c.at) - x) <= 6 && Math.abs(this.changeY(c.ch) - y) <= 7) || null;
   }
 
+  // Splits a clip in two at the playhead: the picked clip, or the only one under the playhead. The two
+  // halves play on as one, and can then be moved, trimmed or deleted on their own.
+  splitClip() {
+    const placed = this.placed(), inside = (p) => this.time > p.at + 0.05 && this.time < p.at + p.length - 0.05;
+    const sel = this.clipSel, under = placed.filter(inside);
+    const p = sel ? placed.find((q) => q.layer === sel.layer && q.clip === sel.clip) : under.length === 1 ? under[0] : null;
+    if (!p) return this.host.status(under.length ? "Click the clip to split first" : "Put the playhead inside a clip, then split it", "hint");
+    if (!inside(p)) return this.host.status("Move the playhead inside the clip, away from its ends", "hint");
+    if (this.layers[p.layer].clips.length >= MAX_CLIPS) return this.host.status(`A layer can have up to ${MAX_CLIPS} clips`, "hint");
+    const anchor = anchorAt(this.pieces, this.crossfade, this.time, this.refs);
+    if (!anchor) return;
+    const c = this.layers[p.layer].clips[p.clip], at = Math.round((c.start + (this.time - p.at) * p.speed) * 1000) / 1000;
+    const first = { ...c, end: at, fadeOut: 0 }, second = { ...c, start: at, anchor, fadeIn: 0 };
+    this.editLayers(this.layers.map((l, k) => (k !== p.layer ? l
+      : { ...l, clips: [...l.clips.slice(0, p.clip), first, second, ...l.clips.slice(p.clip + 1)] })), { layer: p.layer, clip: p.clip + 1 });
+    this.host.status("Split it in two: move, trim or delete either part");
+  }
+
   // Puts a sample or song on a layer at the playhead, as long as it is (trim it after), at a level a
   // little under the song's.
   async addClip(i, ref) {
@@ -1112,6 +1130,7 @@ export class MusicEditor {
       if (at) { this.time = Math.max(0, at.at - 1); this.play(this.time, Math.min(this.total, at.at + at.length + 1)); }
     });
     $("music-clip-delete").addEventListener("click", () => this.deleteClip());
+    $("music-clip-split").addEventListener("click", () => this.splitClip());
     $("music-clip-close").addEventListener("click", () => { this.clipSel = null; this.updateControls(); this.draw(); });
   }
 
@@ -2111,18 +2130,50 @@ export class MusicEditor {
         if (x1 < 0 || x0 > w) continue;
         const picked = this.clipSel?.layer === i && this.clipSel?.clip === p.clip;
         const gone = !this.sources[keyOf(c.song)];
-        ctx.fillStyle = gone ? col("--line") : `hsl(${hue} 65% 50% / 0.55)`;
-        ctx.fillRect(x0, y + 3, Math.max(2, x1 - x0), LANE_H - 6);
+        const top = y + 3, bot = y + LANE_H - 3, cx0 = Math.max(0, x0), cx1 = Math.min(w, x1);
+        ctx.fillStyle = gone ? col("--line") : `hsl(${hue} 65% 50% / 0.35)`;
+        ctx.fillRect(x0, top, Math.max(2, x1 - x0), bot - top);
+        // Its song's sections, tinted, where it's been detected.
+        const secs = this.infos[keyOf(c.song)]?.sections || [];
+        const secNames = [...new Set(secs.map((x) => x.label))];
+        const toX = (t) => this.x(p.at + (t - c.start) / p.speed);
+        for (const sec of secs) {
+          const s0 = Math.max(cx0, toX(sec.start)), s1 = Math.min(cx1, toX(sec.end));
+          if (s1 <= s0) continue;
+          ctx.fillStyle = sectionTint(secNames, sec.label, sec.color);
+          ctx.globalAlpha = SECTION_ALPHA;
+          ctx.fillRect(s0, top, s1 - s0, bot - top);
+          ctx.globalAlpha = 1;
+        }
+        // Its own waveform, from the audio it plays (stretched, if it's matching the tempo).
+        const src = this.sources[sourceKey(c, p.speed)];
+        if (src && !gone) {
+          const key = sourceKey(c, p.speed);
+          if (this.clipPeaks?.src !== this.sources) this.clipPeaks = { src: this.sources, by: {} };
+          const pk = (this.clipPeaks.by[key] ??= peaks(src));
+          const rate = this.audio.sampleRate, spp = (this.view.span * rate) / w, mid = (top + bot) / 2 + 5, amp = (bot - top) / 2 - 7;
+          ctx.fillStyle = col("--wave");
+          for (let px = Math.floor(cx0); px < cx1; px++) {
+            const s0 = Math.floor((c.start / p.speed + (this.view.start + px * (this.view.span / w) - p.at)) * rate);
+            const b0 = Math.max(0, Math.floor(s0 / BLOCK)), b1 = Math.min(pk.length, Math.max(b0 + 1, Math.ceil((s0 + spp) / BLOCK)));
+            let m = 0;
+            for (let b = b0; b < b1; b++) if (pk[b] > m) m = pk[b];
+            const hgt = Math.max(0.5, m * amp);
+            ctx.fillRect(px, mid - hgt, 1, hgt * 2);
+          }
+        }
         // Fades as slopes in the corners.
         ctx.fillStyle = `hsl(${hue} 65% 30% / 0.6)`;
         const fi = (c.fadeIn / p.length) * (x1 - x0), fo = (c.fadeOut / p.length) * (x1 - x0);
-        if (fi > 1) { ctx.beginPath(); ctx.moveTo(x0, y + 3); ctx.lineTo(x0 + fi, y + 3); ctx.lineTo(x0, y + LANE_H - 3); ctx.fill(); }
-        if (fo > 1) { ctx.beginPath(); ctx.moveTo(x1, y + 3); ctx.lineTo(x1 - fo, y + 3); ctx.lineTo(x1, y + LANE_H - 3); ctx.fill(); }
-        if (picked) { ctx.strokeStyle = col("--text"); ctx.lineWidth = 2; ctx.strokeRect(x0 + 1, y + 4, Math.max(2, x1 - x0) - 2, LANE_H - 8); ctx.lineWidth = 1; }
+        if (fi > 1) { ctx.beginPath(); ctx.moveTo(x0, top); ctx.lineTo(x0 + fi, top); ctx.lineTo(x0, bot); ctx.fill(); }
+        if (fo > 1) { ctx.beginPath(); ctx.moveTo(x1, top); ctx.lineTo(x1 - fo, top); ctx.lineTo(x1, bot); ctx.fill(); }
+        ctx.strokeStyle = `hsl(${hue} 65% 40%)`;
+        ctx.strokeRect(x0 + 0.5, top + 0.5, Math.max(2, x1 - x0) - 1, bot - top - 1);
+        if (picked) { ctx.strokeStyle = col("--text"); ctx.lineWidth = 2; ctx.strokeRect(x0 + 1, top + 1, Math.max(2, x1 - x0) - 2, bot - top - 2); ctx.lineWidth = 1; }
         ctx.save();
         ctx.beginPath(); ctx.rect(x0, y, Math.max(0, x1 - x0 - 2), LANE_H); ctx.clip();
         ctx.fillStyle = col("--text");
-        ctx.fillText(nameOf(c.song).replace(/\.[^.]+$/, "") + (gone ? " (missing)" : ""), Math.max(x0, 0) + 5, y + LANE_H / 2 + 4);
+        ctx.fillText(nameOf(c.song).replace(/\.[^.]+$/, "") + (gone ? " (missing)" : ""), Math.max(x0, 0) + 5, top + 12);
         ctx.restore();
       }
       // The layer's name at the left, over a faint backing so it reads over clips.
@@ -2368,7 +2419,7 @@ export class MusicEditor {
         this.layers = d.before; // so Undo goes back to before the drag
         this.editLayers(after);
       } else {
-        this.time = d.clip.at;
+        this.time = Math.min(Math.max(d.t0, d.clip.at), d.clip.at + d.clip.length); // where you clicked, ready to Split
         this.updateControls();
         this.draw();
       }
@@ -2429,6 +2480,7 @@ export class MusicEditor {
     else if ((e.key === "Delete" || e.key === "Backspace") && this.clipSel) { e.preventDefault(); this.deleteClip(); }
     else if ((e.key === "Delete" || e.key === "Backspace") && this.chgSel && this.channelEq(this.chgSel.ch)?.changes?.[this.chgSel.i]) { e.preventDefault(); this.deleteChange(this.chgSel.ch, this.chgSel.i); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); this.cutSelection(); }
+    else if (!mod && (e.key === "s" || e.key === "S") && this.layers.length) { e.preventDefault(); this.splitClip(); }
     else if (!mod && (e.key === "m" || e.key === "M")) { e.preventDefault(); this.addMarkHere({ open: !this.playing }); }
     else if (e.key === "Home") { this.time = 0; this.follow(); this.draw(); }
     else if (e.key === "+" || e.key === "=") this.zoom(0.66);

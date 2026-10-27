@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.199
+
+- In the **Music editor**, layer lanes are taller and each clip shows its own waveform and, if its
+  song has been detected, its section colours. You can see where the chorus or the drop is before you
+  place it.
+- New **✂ Split at playhead** in a clip's panel (or press S) cuts a clip in two, so you can take out the
+  middle of a song on a layer and keep the parts you want. Clicking a clip now puts the playhead where
+  you clicked, ready to split.
+
 ## 0.2.198
 
 - **? Help**, at the top right, opens tips for the page you're on in a drawer beside it (over it on a
