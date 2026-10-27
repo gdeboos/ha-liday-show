@@ -128,6 +128,18 @@ export function insert(pieces, crossfade, t, added) {
 
 // The beats to draw when they'd be `gap` pixels apart at this zoom: every beat when there's room,
 // else every bar, then every 2nd, 4th, 8th… bar, so the lines never swamp the waveform.
+// Where ⏪ and ⏩ go from `t`: the bar before or after it (once the song is detected), else `step`
+// seconds. Going back from just after a bar's start goes to the bar before, so pressing it while the
+// song plays doesn't land where it already is.
+export function skipTarget(t, bars, dir, total, step = 5) {
+  const slack = 0.3;
+  let next = bars?.length
+    ? (dir > 0 ? bars.find((b) => b > t + 1e-3) : bars.findLast((b) => b < t - slack))
+    : t + dir * step;
+  if (next == null) next = dir > 0 ? total : 0;
+  return Math.min(Math.max(next, 0), total);
+}
+
 export function beatsToDraw(beats, bars, gap, min = 8) {
   if (gap >= min || !bars.length) return beats;
   const perBar = beats.length / Math.max(bars.length, 1);
@@ -1652,7 +1664,7 @@ export class MusicEditor {
 
   updateControls() {
     const has = this.pieces.length > 0, sel = this.sel;
-    for (const id of ["music-play", "music-insert", "music-append", "music-save", "music-zoom-in", "music-zoom-out", "music-fit",
+    for (const id of ["music-play", "music-home", "music-back", "music-fwd", "music-insert", "music-append", "music-save", "music-zoom-in", "music-zoom-out", "music-fit",
       "music-xf", "music-fadein", "music-fadeout", "music-name"]) $(id).disabled = !has;
     for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview", "music-sample", "music-sel-clear"]) $(id).disabled = !sel;
     $("music-undo").disabled = !this.history.length;
@@ -1715,6 +1727,15 @@ export class MusicEditor {
     };
     requestAnimationFrame(tick);
   }
+
+  // Moves the playhead, carrying on playing from there if it was.
+  seek(t) {
+    this.time = Math.min(Math.max(t, 0), this.total);
+    if (this.playing) this.play(this.time);
+    else { this.follow(); this.draw(); }
+  }
+
+  skip(dir) { this.seek(skipTarget(this.time, this.shown?.bars, dir, this.total)); }
 
   stop() {
     if (!this.playing) return;
@@ -2487,7 +2508,10 @@ export class MusicEditor {
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); this.cutSelection(); }
     else if (!mod && (e.key === "s" || e.key === "S") && this.layers.length) { e.preventDefault(); this.splitClip(); }
     else if (!mod && (e.key === "m" || e.key === "M")) { e.preventDefault(); this.addMarkHere({ open: !this.playing }); }
-    else if (e.key === "Home") { this.time = 0; this.follow(); this.draw(); }
+    else if (e.key === "Home") this.seek(0);
+    else if (e.key === "End") this.seek(this.total);
+    else if (!mod && (e.key === "," || e.key === "<")) this.skip(-1);
+    else if (!mod && (e.key === "." || e.key === ">")) this.skip(1);
     else if (e.key === "+" || e.key === "=") this.zoom(0.66);
     else if (e.key === "-") this.zoom(1.5);
     else if (e.key === "Escape") { this.sel = null; this.kbAnchor = null; this.markSel = this.joinSel = -1; this.clipSel = this.chgSel = null; this.updateControls(); this.draw(); }
@@ -2536,6 +2560,9 @@ export class MusicEditor {
     });
     this.host.volume?.bind($("music-volume"), (g) => { if (this.gainNode) this.gainNode.gain.value = g; });
     $("music-play").addEventListener("click", () => (this.playing ? this.stop() : this.play()));
+    $("music-home").addEventListener("click", () => this.seek(0));
+    $("music-back").addEventListener("click", () => this.skip(-1));
+    $("music-fwd").addEventListener("click", () => this.skip(1));
     $("music-play-sel").addEventListener("click", () => this.sel && this.play(this.sel.start, this.sel.end));
     $("music-preview").addEventListener("click", () => this.previewCut());
     $("music-cut").addEventListener("click", () => this.cutSelection());

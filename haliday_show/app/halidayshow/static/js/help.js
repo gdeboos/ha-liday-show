@@ -110,6 +110,7 @@ export const HELP = {
       ] },
       { id: "playback", title: "Playing", tips: [
         `<b>▶ Play</b> (${k("Space")}) plays from the playhead, and <b>Play selection</b> just the selection.`,
+        `<b>⏮</b> (${k("Home")}) goes back to the start. <b>⏪</b> and <b>⏩</b> (${k(",")} and ${k(".")}) go back or on a bar, or 5 seconds before the song is detected, and keep playing if it was.`,
         "The 🔊 slider is the same level as in the Show editor.",
       ] },
       { id: "wave", title: "The waveform and Mixer", guide: ["build-a-show.md", "layers"], tips: [
@@ -141,7 +142,8 @@ export const HELP = {
         "<b>Fade in</b> and <b>Fade out</b> soften the ends.",
       ] },
       { id: "keys", title: "Keyboard", keys: [
-        [k("Space"), "Play or pause"], [k("Delete"), "Cut the selection"], [k("M"), "Add a mark, even while playing"], [k("S"), "Split the layer clip at the playhead"],
+        [k("Space"), "Play or pause"], [k("Home"), "Back to the start"], [`${k(",")} ${k(".")}`, "Back or on a bar"],
+        [k("Delete"), "Cut the selection"], [k("M"), "Add a mark, even while playing"], [k("S"), "Split the layer clip at the playhead"],
         [k("Ctrl", "Z"), "Undo"], [k("Ctrl", "S"), "Make song file"], [k("Esc"), "Clear the selection"],
         [`${k("←")} ${k("→")}`, "Move a beat at a time (with the waveform outlined)"],
       ] },
