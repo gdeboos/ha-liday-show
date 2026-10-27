@@ -977,3 +977,10 @@ a.button { text-decoration: none; }
 .layer-row { align-items: center; }
 .layer-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .layer-row select { max-width: 16em; }
+.song-dot { background: var(--text); }
+.layer-name { min-width: 6em; font-weight: 600; }
+.layer-row button.on { background: color-mix(in srgb, var(--accent) 20%, var(--panel)); font-weight: 600; }
+.eq-row { margin-left: 18px; padding: 4px 8px; border-left: 2px solid var(--line); }
+.eq-row input[type=range] { width: 90px; }
+.eq-value { display: inline-block; min-width: 3.6em; }
+.eq-glide { width: 4.5em; }

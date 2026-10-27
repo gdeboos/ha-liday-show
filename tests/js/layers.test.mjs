@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DUCK_DB, anchorAt, duckEnvelope, limit, matchGain, mixLayers, placeClips, resultTime } from "../../haliday_show/app/halidayshow/static/js/layers.js";
+import { DUCK_DB, anchorAt, duckEnvelope, limit, sourceKey, matchGain, mixLayers, placeClips, resultTime } from "../../haliday_show/app/halidayshow/static/js/layers.js";
 import { cut, insert } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
 const A = { source: "media", path: "a.mp3" }, B = { source: "media", path: "b.mp3" };
@@ -37,7 +37,7 @@ test("clips are placed, and only those still in the song", () => {
     { song: B, start: 0, end: 2, anchor: { song: A, t: 5 } },
     { song: B, start: 0, end: 2, anchor: { song: A, t: 15 } },
   ] }];
-  assert.deepEqual(placeClips(layers, cut(song, 0, 10, 20), 0), [{ layer: 0, clip: 0, at: 5, length: 2 }]);
+  assert.deepEqual(placeClips(layers, cut(song, 0, 10, 20), 0), [{ layer: 0, clip: 0, at: 5, length: 2, speed: 1 }]);
 });
 
 test("mixing adds each clip at its place with its gain and fades, leaving the song alone", () => {
@@ -101,4 +101,34 @@ test("a layer that quietens the song dips it while its clips play, smoothly, and
   const out = mixLayers(main, layer(true), placed, sources, rate);
   near(out[0][100], 0.2);
   near(out[0][500], 0.2 * dip + 0.5, "the song dipped, the clip at full volume");
+});
+
+test("a layer matching the song's tempo plays its clips faster or slower, from the stretched audio", () => {
+  const layers = [{ name: "Loop", gain: 0, matchTempo: true, clips: [{ song: B, start: 1, end: 3, bpm: 100, anchor: { song: A, t: 2 } }] }];
+  const [p] = placeClips(layers, song, 0, 125);
+  assert.equal(p.speed, 1.25);
+  near(p.length, 1.6, "2 s of it plays in 1.6 s");
+  assert.equal(placeClips([{ ...layers[0], matchTempo: false }], song, 0, 125)[0].speed, 1);
+  assert.equal(placeClips(layers, song, 0, null)[0].speed, 1, "no tempo for the song yet");
+  // The stretched copy: its 0.8–2.4 s is the clip's 1–3 s.
+  const rate = 100, key = sourceKey(layers[0].clips[0], 1.25);
+  const sources = { "media:b.mp3": [new Float32Array(400)], [key]: [Float32Array.from({ length: 320 }, (_, i) => i)] };
+  const out = mixLayers([new Float32Array(1000)], layers, [p], sources, rate);
+  near(out[0][200], 80, "starts at 0.8 s of the stretched audio");
+  near(out[0][359], 239);
+  near(out[0][360], 0, "and ends 1.6 s later");
+});
+
+test("a layer's EQ shapes its clips and not the song", () => {
+  const rate = 8000, n = rate * 3, tone = (f) => Float32Array.from({ length: n }, (_, i) => 0.3 * Math.sin((2 * Math.PI * f * i) / rate));
+  const layers = [{ name: "x", gain: 0, eq: { bass: -24, mid: 0, treble: 0, changes: [] },
+    clips: [{ song: B, start: 0, end: 2, anchor: { song: A, t: 0.5 } }] }];
+  const sources = { "media:b.mp3": [tone(60)] };
+  const placed = placeClips(layers, song, 0);
+  const main = [tone(60)];
+  const out = mixLayers(main, layers, placed, sources, rate, { pieces: song, crossfade: 0 });
+  let peak = 0;
+  for (let i = rate * 1.5; i < rate * 2; i++) peak = Math.max(peak, Math.abs(out[0][i] - main[0][i]));
+  assert.ok(peak < 0.03, `the layer's bass is off: ${peak}`);
+  near(out[0][100], main[0][100], "the song is untouched before it");
 });

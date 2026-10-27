@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.195
+
+- The **Music editor** has a **Mixer**, like a DJ's, for making mash-ups. The song and each layer have
+  an **EQ** button that opens **Bass**, **Mid** and **Treble** faders. Turn a band up or down, or right
+  down to **off**, for example to take the bass out of one song while another carries it.
+- **+ Change here** makes the faders change partway through, gliding to the new settings over a second
+  or so, so you can bring the bass in at the drop. Changes show as small diamonds you can click, drag or
+  delete, and they move with your cuts.
+- Layers have a **Match tempo** switch. It speeds up or slows down that layer's clips to the song's beat
+  without changing their pitch. The song needs **Detect** first. Each clip's own tempo is found when you
+  add it, and you can type it in the clip's panel if it's wrong.
+- **Make song file** includes all of it.
+
 ## 0.2.194
 
 - In the **Music editor**, clicking the waveform now just moves the playhead and keeps your selection, so

@@ -9,7 +9,9 @@ import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { MAX_CLIPS, MAX_LAYERS, anchorAt, limit, matchGain, mixLayers, placeClips } from "./layers.js";
+import { MAX_CLIPS, MAX_LAYERS, anchorAt, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
+import { BANDS, EQ_MAX, EQ_MIN, MAX_CHANGES, applyEq, eqAt, faderText, flatEq, isFlat, placeChanges } from "./mixer.js";
+import { stretch } from "./tempo.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
@@ -414,6 +416,9 @@ export class MusicEditor {
     this.markSel = -1; // the mark picked for editing
     this.joinSel = -1; // the join (index of the piece after it) whose ✂ was clicked
     this.layers = []; // samples or songs played over the song (layers.js), part of the draft
+    this.eq = null; // the song's own bass, mid and treble (mixer.js), part of the draft
+    this.eqOpen = new Set(); // whose EQ faders are showing: "song" or a layer's index
+    this.chgSel = null; // the picked EQ change: { ch (-1 for the song, else a layer), i }
     this.clipSel = null; // the picked clip: { layer, clip }
     this.main = null; // the song alone, before the layers are mixed in (this.rendered has them)
     this.keeper = new DraftKeeper((...a) => this.host.api(...a), {
@@ -494,7 +499,8 @@ export class MusicEditor {
       this.setFades(0, 0);
       this.pieces = [{ src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate }];
       this.layers = [];
-      this.clipSel = null;
+      this.eq = null;
+      this.clipSel = this.chgSel = null;
       this.base = ref;
       this.host.opened?.(ref);
       this.info = null;
@@ -506,7 +512,7 @@ export class MusicEditor {
       $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path)).replace(/\.wav$/i, "");
       this.changed(true);
       const info = await this.host.api(infoUrl(ref)).catch(() => null);
-      if (this.base === ref) { this.info = info; this.secSel = -1; this.updateControls(); this.draw(); }
+      if (this.base === ref) { this.info = info; this.secSel = -1; this.tempoKnown(); }
     } catch (e) {
       this.host.status(songLoadMessage(e), true, "song");
     }
@@ -550,7 +556,8 @@ export class MusicEditor {
     this.base = this.refs[baseKey];
     this.pieces = d.pieces.map((p) => ({ src: keyOf(p.song), start: p.start, end: p.end }));
     this.layers = d.layers || [];
-    this.clipSel = null;
+    this.eq = d.eq || null;
+    this.clipSel = this.chgSel = null;
     this.keeper.start({ id, made: d.made || null });
     this.setFades(d.fadeIn || 0, d.fadeOut || 0, d.crossfade ?? 0.05);
     $("music-name").value = d.name;
@@ -566,7 +573,7 @@ export class MusicEditor {
     this.changed(true);
     const ref = this.base;
     const info = await this.host.api(infoUrl(ref)).catch(() => null);
-    if (this.base === ref) { this.info = info; this.updateControls(); this.draw(); }
+    if (this.base === ref) { this.info = info; this.tempoKnown(); }
     if (!missing.length) this.host.status(`Opened the draft "${d.name}"`);
     return true;
   }
@@ -587,6 +594,7 @@ export class MusicEditor {
       fadeOut: Number($("music-fadeout").value) || 0,
       length: Math.round(this.total * 100) / 100,
       ...(this.layers.length ? { layers: this.layers } : {}),
+      ...(this.eq && (!isFlat(this.eq) || this.eq.changes?.length) ? { eq: this.eq } : {}),
     };
   }
 
@@ -625,7 +633,7 @@ export class MusicEditor {
       const marks = this.base === ref ? this.info?.marks : null; // the server keeps them too
       const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections, ...(marks ? { marks } : {}) };
       await this.host.api(infoUrl(ref), { method: "PUT", json: info });
-      if (this.base === ref) { this.info = info; this.secSel = -1; }
+      if (this.base === ref) { this.info = info; this.secSel = -1; this.tempoKnown(); }
       const parts = `${info.sections.length} section${info.sections.length === 1 ? "" : "s"}`;
       this.host.status((info.tempo ? `Found ${info.beats.length} beats at ${info.tempo} BPM, and ${parts}` : `No steady beat found; found ${parts}`)
         + (this.host.hasAI?.() && this.base === ref ? ". The AI is writing notes for them; carry on meanwhile" : ""));
@@ -732,15 +740,16 @@ export class MusicEditor {
     if (back.pieces !== this.pieces) this.dirty = true; // a layers-only step leaves the song as it was
     this.pieces = back.pieces;
     this.layers = back.layers;
-    this.clipSel = null;
+    this.eq = back.eq;
+    this.clipSel = this.chgSel = null;
     this.markSel = this.shownMark(mark);
     this.joinSel = -1;
     this.changed();
     this.draftChanged();
   }
 
-  // What Undo goes back to: the song's pieces and the layers.
-  snapshot() { return { pieces: this.pieces, layers: this.layers }; }
+  // What Undo goes back to: the song's pieces, the layers and the song's EQ.
+  snapshot() { return { pieces: this.pieces, layers: this.layers, eq: this.eq }; }
 
   // layers ----------------------------------------------------------------------
   // A change to the layers (one Undo step); the song itself isn't changed.
@@ -784,6 +793,115 @@ export class MusicEditor {
     this.editLayers(this.layers.map((l, k) => (k !== sel.layer ? l : { ...l, clips: l.clips.filter((_, j) => j !== sel.clip) })), null);
   }
 
+  // The song's tempo (once detected), which layers can match.
+  get songTempo() { return this.info?.tempo || null; }
+
+  // Every heard clip's place in the result (layers.js placeClips), at the song's tempo.
+  placed() { return placeClips(this.layers, this.pieces, this.crossfade, this.songTempo); }
+
+  // The song's tempo has arrived or changed: layers matching it are placed again.
+  tempoKnown() {
+    if (this.layers.some((l) => l.matchTempo)) this.changed();
+    else { this.updateControls(); this.draw(); }
+  }
+
+  // A sample's or song's own tempo: from its detected beats, else (if it's long enough to have a few)
+  // by listening to it. null if there's no steady beat.
+  async tempoOf(ref) {
+    const key = keyOf(ref), info = await this.loadInfo(ref);
+    if (info?.tempo) return Math.round(info.tempo * 10) / 10;
+    const audio = this.sources[key], rate = this.audio.sampleRate;
+    if (!audio || audio[0].length < rate * 3) return null;
+    try {
+      const mono = toMono(audio, rate), r = await analyseInWorker(mono.samples, mono.rate);
+      return r.tempo ? Math.round(r.tempo * 10) / 10 : null;
+    } catch { return null; }
+  }
+
+  // Match the song's tempo on a layer, finding the tempo of any clip that doesn't have one yet.
+  async setMatchTempo(i, on) {
+    let layer = this.layers[i];
+    if (on) {
+      const missing = layer.clips.filter((c) => !c.bpm && this.sources[keyOf(c.song)]);
+      if (missing.length) this.host.status("Finding the clips' tempos…");
+      const found = {};
+      for (const c of missing) found[keyOf(c.song)] ??= await this.tempoOf(c.song);
+      layer = this.layers[i];
+      if (!layer) return;
+      const clips = layer.clips.map((c) => (c.bpm || !found[keyOf(c.song)] ? c : { ...c, bpm: found[keyOf(c.song)] }));
+      const unknown = [...new Set(clips.filter((c) => !c.bpm).map((c) => nameOf(c.song).replace(/\.[^.]+$/, "")))];
+      this.setLayer(i, { matchTempo: true, clips });
+      this.host.status(unknown.length
+        ? `Couldn't find a steady beat in ${unknown.join(", ")}: click its clip and type its tempo`
+        : `${layer.name} now plays at the song's ${this.songTempo} BPM`, unknown.length ? "hint" : "info");
+    } else this.setLayer(i, { matchTempo: false });
+  }
+
+  // EQ -----------------------------------------------------------------------------
+  // A channel's EQ: -1 is the song, else a layer.
+  channelEq(ch) { return (ch < 0 ? this.eq : this.layers[ch]?.eq) || null; }
+
+  // A change to a channel's EQ (one Undo step).
+  editEq(ch, eq, pick = this.chgSel) {
+    this.stop();
+    this.history.push(this.snapshot());
+    this.future = [];
+    if (ch < 0) this.eq = eq;
+    else this.layers = this.layers.map((l, k) => (k === ch ? { ...l, eq } : l));
+    this.chgSel = pick;
+    this.changed();
+    this.draftChanged();
+  }
+
+  // Moves a fader: it changes the setting in force at the playhead (the channel's own, or the change
+  // the playhead is past).
+  setBand(ch, band, value) {
+    const eq = this.channelEq(ch) || flatEq();
+    const now = eqAt(eq, placeChanges(eq, this.pieces, this.crossfade), this.time).change;
+    this.editEq(ch, now < 0 ? { ...eq, [band]: value }
+      : { ...eq, changes: eq.changes.map((c, k) => (k === now ? { ...c, [band]: value } : c)) });
+  }
+
+  // Adds a change at the playhead, starting at the setting already in force there.
+  addChange(ch) {
+    const eq = this.channelEq(ch) || flatEq(), placed = placeChanges(eq, this.pieces, this.crossfade);
+    const at = this.time < this.total - 0.01 && anchorAt(this.pieces, this.crossfade, this.time, this.refs);
+    if (!at) return this.host.status("Move the playhead into the song first (not right at its end)", "hint");
+    if ((eq.changes || []).length >= MAX_CHANGES) return this.host.status(`Up to ${MAX_CHANGES} changes each`, "hint");
+    if (placed.some((c) => Math.abs(c.at - this.time) < 0.05)) return this.host.status("There's already a change here: move its faders", "hint");
+    const { bass, mid, treble } = eqAt(eq, placed, this.time);
+    const changes = [...(eq.changes || []), { anchor: at, bass, mid, treble, glide: 1 }];
+    this.editEq(ch, { ...eq, changes }, { ch, i: changes.length - 1 });
+    this.host.status(`Added a change at ${fmtTime(this.time)}. Move the faders to set what it glides to`, "hint");
+  }
+
+  setChange(ch, i, change) {
+    const eq = this.channelEq(ch);
+    if (eq?.changes?.[i]) this.editEq(ch, { ...eq, changes: eq.changes.map((c, k) => (k === i ? { ...c, ...change } : c)) });
+  }
+
+  deleteChange(ch, i) {
+    const eq = this.channelEq(ch);
+    if (eq?.changes?.[i]) this.editEq(ch, { ...eq, changes: eq.changes.filter((_, k) => k !== i) }, null);
+  }
+
+  // Each channel's changes that are in the song: [{ch, at, i}].
+  allChanges() {
+    const out = [];
+    for (let ch = -1; ch < this.layers.length; ch++) {
+      for (const c of placeChanges(this.channelEq(ch), this.pieces, this.crossfade)) out.push({ ch, at: c.at, i: c.i });
+    }
+    return out;
+  }
+
+  // Where a channel's change diamonds sit: the bottom of the waveform for the song, else its lane.
+  changeY(ch) { return ch < 0 ? WAVE_B - 7 : WAVE_B + ch * LANE_H + LANE_H - 7; }
+
+  // The change diamond under (x, y), or null.
+  changeAt(x, y) {
+    return this.allChanges().find((c) => Math.abs(this.x(c.at) - x) <= 6 && Math.abs(this.changeY(c.ch) - y) <= 7) || null;
+  }
+
   // Puts a sample or song on a layer at the playhead, as long as it is (trim it after), at a level a
   // little under the song's.
   async addClip(i, ref) {
@@ -796,7 +914,11 @@ export class MusicEditor {
     const end = Math.round((audio[0].length / rate) * 1000) / 1000;
     this.songLufs ??= loudness(this.main, rate);
     const gain = matchGain(this.songLufs, loudness(audio, rate));
-    const layers = this.layers.map((l, k) => (k === i ? { ...l, clips: [...l.clips, { song: ref, start: 0, end, anchor: at, gain, fadeIn: 0, fadeOut: 0 }] } : l));
+    // Its own tempo, for matching the song's: from its detected beats, or found now on a layer that
+    // matches (it can be typed in later too).
+    const bpm = this.layers[i].matchTempo ? await this.tempoOf(ref) : Math.round((this.infos[key]?.tempo || 0) * 10) / 10 || null;
+    const clip = { song: ref, start: 0, end, anchor: at, gain, fadeIn: 0, fadeOut: 0, ...(bpm ? { bpm } : {}) };
+    const layers = this.layers.map((l, k) => (k === i ? { ...l, clips: [...l.clips, clip] } : l));
     this.editLayers(layers, { layer: i, clip: layers[i].clips.length - 1 });
     this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} at ${fmtTime(this.time)}. Drag it to move it, or its ends to trim it`);
   }
@@ -811,7 +933,7 @@ export class MusicEditor {
   clipAt(x, y) {
     const lane = this.laneAt(y);
     if (lane < 0) return null;
-    const hit = placeClips(this.layers, this.pieces, this.crossfade).filter((p) => p.layer === lane)
+    const hit = this.placed().filter((p) => p.layer === lane)
       .find((p) => x >= this.x(p.at) - 4 && x <= this.x(p.at + p.length) + 4);
     if (!hit) return null;
     const x0 = this.x(hit.at), x1 = this.x(hit.at + hit.length);
@@ -821,11 +943,54 @@ export class MusicEditor {
   renderLayers() {
     const box = $("music-layers");
     const samples = this.samplesList || [], songs = this.host.songs();
-    const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, !!l.duck, l.clips.length]), samples.length, songs.length, !!this.pieces.length]);
+    const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, !!l.duck, !!l.matchTempo, isFlat(l.eq), l.clips.length]), isFlat(this.eq),
+      [...this.eqOpen], !!this.songTempo, samples.length, songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
       box.dataset.sig = sig;
       const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
-      const rows = this.layers.map((l, i) => {
+      const eqButton = (ch, id, name) => {
+        const b = el("button", { type: "button", className: `ghost${isFlat(this.channelEq(ch)) ? "" : " on"}`, textContent: "EQ" });
+        b.title = `Bass, mid and treble for ${name}, like a DJ mixer`;
+        b.setAttribute("aria-expanded", String(this.eqOpen.has(id)));
+        b.setAttribute("aria-label", `${name} EQ`);
+        b.addEventListener("click", () => { this.eqOpen[this.eqOpen.has(id) ? "delete" : "add"](id); this.renderLayers(); });
+        return b;
+      };
+      // A channel's faders, under its row: they show and set what's in force at the playhead.
+      const eqRow = (ch, name) => {
+        const row = el("div", { className: "group layer-row eq-row" });
+        row.dataset.ch = ch;
+        for (const band of BANDS) {
+          const label = band[0].toUpperCase() + band.slice(1);
+          const f = el("input", { type: "range", min: EQ_MIN, max: EQ_MAX, step: 1, value: 0 });
+          f.dataset.band = band;
+          f.setAttribute("aria-label", `${name} ${band}`);
+          const v = el("span", { className: "hint eq-value" });
+          v.dataset.band = band;
+          f.addEventListener("input", () => { v.textContent = faderText(Number(f.value)); });
+          f.addEventListener("change", () => this.setBand(ch, band, Number(f.value)));
+          row.append(el("label", {}, `${label} `, f, " ", v));
+        }
+        const add = el("button", { type: "button", textContent: "+ Change here" });
+        add.title = "From the playhead on, glide to new settings: add a change here, then move the faders";
+        add.addEventListener("click", () => this.addChange(ch));
+        const where = el("span", { className: "hint eq-where" });
+        const glide = el("input", { type: "number", min: 0, max: 30, step: 0.1, className: "eq-glide" });
+        glide.setAttribute("aria-label", `${name} glide`);
+        glide.addEventListener("change", () => {
+          const i = Number(row.dataset.change);
+          if (i >= 0) this.setChange(ch, i, { glide: Math.max(0, Math.min(30, Number(glide.value) || 0)) });
+        });
+        const glideLabel = el("label", { className: "eq-glide-label", title: "How long it takes to glide to this change's settings" }, "Glide ", glide, " s");
+        const del = el("button", { type: "button", className: "ghost danger eq-delete", textContent: "Delete change" });
+        del.addEventListener("click", () => { const i = Number(row.dataset.change); if (i >= 0) this.deleteChange(ch, i); });
+        row.append(add, where, glideLabel, del);
+        return row;
+      };
+      const songRow = el("div", { className: "group layer-row" }, el("span", { className: "layer-dot song-dot" }), el("span", { className: "layer-name", textContent: "Song" }),
+        eqButton(-1, "song", "the song"));
+      const rows = [songRow, ...(this.eqOpen.has("song") ? [eqRow(-1, "Song")] : [])];
+      this.layers.forEach((l, i) => {
         const name = el("input", { value: l.name, maxLength: 40, size: 14, title: "The layer's name" });
         name.setAttribute("aria-label", `Layer ${i + 1} name`);
         name.addEventListener("change", () => this.setLayer(i, { name: name.value.trim().slice(0, 40) || `Layer ${i + 1}` }));
@@ -837,6 +1002,11 @@ export class MusicEditor {
         const duck = el("input", { type: "checkbox", checked: !!l.duck });
         duck.addEventListener("change", () => this.setLayer(i, { duck: duck.checked }));
         const duckLabel = el("label", { title: "Turn the song down a little while this layer's clips play, so they're clearer: good for a voice" }, duck, " Quieten the song");
+        const tempo = el("input", { type: "checkbox", checked: !!l.matchTempo, disabled: !this.songTempo && !l.matchTempo });
+        tempo.addEventListener("change", () => this.setMatchTempo(i, tempo.checked));
+        const tempoLabel = el("label", { title: this.songTempo
+          ? `Speed this layer's clips up or slow them down to the song's ${this.songTempo} BPM, keeping their pitch`
+          : "Detect the song first, so it has a tempo to match" }, tempo, " Match tempo");
         const add = el("select", { title: "Put a sample or song on this layer at the playhead" });
         add.setAttribute("aria-label", `Add to ${l.name}`);
         add.append(new Option("+ Add a clip at the playhead…", ""));
@@ -854,24 +1024,45 @@ export class MusicEditor {
         remove.addEventListener("click", () => this.removeLayer(i));
         const dot = el("span", { className: "layer-dot" });
         dot.style.background = `hsl(${LAYER_HUES[i % 4]} 65% 50%)`;
-        return el("div", { className: "group layer-row" }, dot, name, el("label", {}, "Volume ", vol, " ", db), duckLabel, add, remove);
+        rows.push(el("div", { className: "group layer-row" }, dot, name, el("label", {}, "Volume ", vol, " ", db), eqButton(i, i, l.name), duckLabel, tempoLabel, add, remove));
+        if (this.eqOpen.has(i)) rows.push(eqRow(i, l.name));
       });
       const addLayer = el("button", { type: "button", textContent: "+ Add layer", disabled: !this.pieces.length || this.layers.length >= MAX_LAYERS });
       addLayer.title = this.layers.length >= MAX_LAYERS ? `Up to ${MAX_LAYERS} layers` : "Add a row for samples or songs to play over the song";
       addLayer.addEventListener("click", () => this.addLayer());
-      box.replaceChildren(el("div", { className: "group" }, el("span", { className: "section-label", textContent: "Layers" }), addLayer,
-        el("span", { className: "hint", textContent: this.layers.length ? "" : "Sleigh bells, a \"ho ho ho\" or another song, played over this one." })), ...rows);
+      box.replaceChildren(el("div", { className: "group" }, el("span", { className: "section-label", textContent: "Mixer" }), addLayer,
+        el("span", { className: "hint", textContent: this.layers.length ? "" : "Layers play sleigh bells, a \"ho ho ho\" or another song over this one." })), ...rows);
     }
+    this.refreshEq();
     // The picked clip's panel.
     const sel = this.clipSel, c = sel && this.layers[sel.layer]?.clips[sel.clip];
     $("music-clip").hidden = !c;
     if (!c) return;
-    const at = placeClips(this.layers, this.pieces, this.crossfade).find((p) => p.layer === sel.layer && p.clip === sel.clip);
+    const at = this.placed().find((p) => p.layer === sel.layer && p.clip === sel.clip);
     $("music-clip-what").textContent = `${nameOf(c.song).replace(/\.[^.]+$/, "")} on ${this.layers[sel.layer].name}`
-      + (at ? `, at ${fmtTime(at.at)} for ${(c.end - c.start).toFixed(2)} s` : " (on a part that's cut out)")
+      + (at ? `, at ${fmtTime(at.at)} for ${at.length.toFixed(2)} s` : " (on a part that's cut out)")
+      + (at && at.speed !== 1 ? `, ${at.speed > 1 ? "sped up" : "slowed down"} ${(Math.abs(at.speed - 1) * 100).toFixed(1)}% to match the song` : "")
       + (this.sources[keyOf(c.song)] ? "" : ". It's not in your samples or songs any more, so it's silent: delete it, or add it back to Library → Samples");
-    for (const [id, v] of [["music-clip-fadein", c.fadeIn], ["music-clip-fadeout", c.fadeOut], ["music-clip-gain", c.gain]]) {
+    for (const [id, v] of [["music-clip-fadein", c.fadeIn], ["music-clip-fadeout", c.fadeOut], ["music-clip-gain", c.gain], ["music-clip-bpm", c.bpm ?? ""]]) {
       if (document.activeElement !== $(id)) $(id).value = v;
+    }
+  }
+
+  // The open EQ rows' faders, showing the setting in force at the playhead (and the change it's from).
+  refreshEq() {
+    for (const row of $("music-layers").querySelectorAll(".eq-row")) {
+      const ch = Number(row.dataset.ch), eq = this.channelEq(ch) || flatEq();
+      const placed = placeChanges(eq, this.pieces, this.crossfade), now = eqAt(eq, placed, this.time);
+      for (const f of row.querySelectorAll("input[type=range]")) {
+        if (document.activeElement !== f) f.value = now[f.dataset.band];
+        row.querySelector(`.eq-value[data-band="${f.dataset.band}"]`).textContent = faderText(Number(f.value));
+      }
+      row.dataset.change = now.change;
+      const c = now.change >= 0 ? placed.find((p) => p.i === now.change) : null;
+      row.querySelector(".eq-where").textContent = c ? `From the change at ${fmtTime(c.at)}` : placed.length ? "From the start" : "";
+      row.querySelector(".eq-glide-label").hidden = row.querySelector(".eq-delete").hidden = !c;
+      const glide = row.querySelector(".eq-glide");
+      if (c && document.activeElement !== glide) glide.value = c.glide;
     }
   }
 
@@ -879,9 +1070,13 @@ export class MusicEditor {
     $("music-clip-fadein").addEventListener("change", (e) => this.setClip({ fadeIn: Math.max(0, Math.min(30, Number(e.target.value) || 0)) }));
     $("music-clip-fadeout").addEventListener("change", (e) => this.setClip({ fadeOut: Math.max(0, Math.min(30, Number(e.target.value) || 0)) }));
     $("music-clip-gain").addEventListener("change", (e) => this.setClip({ gain: Math.max(-24, Math.min(12, Number(e.target.value) || 0)) }));
+    $("music-clip-bpm").addEventListener("change", (e) => {
+      const v = Number(e.target.value);
+      this.setClip({ bpm: v >= 20 && v <= 400 ? Math.round(v * 10) / 10 : undefined });
+    });
     $("music-clip-play").addEventListener("click", () => {
       const sel = this.clipSel;
-      const at = sel && placeClips(this.layers, this.pieces, this.crossfade).find((p) => p.layer === sel.layer && p.clip === sel.clip);
+      const at = sel && this.placed().find((p) => p.layer === sel.layer && p.clip === sel.clip);
       if (at) { this.time = Math.max(0, at.at - 1); this.play(this.time, Math.min(this.total, at.at + at.length + 1)); }
     });
     $("music-clip-delete").addEventListener("click", () => this.deleteClip());
@@ -1371,9 +1566,22 @@ export class MusicEditor {
       this.mainFor = { pieces: this.pieces, xf: this.crossfade, fadeIn, fadeOut, rate };
       this.songLufs = null; // measured again when a clip is next added
     }
+    // The song through its own EQ (kept until the song or its EQ changes).
+    const eqSame = same && this.eqFor && this.eqFor.eq === this.eq && this.eqFor.main === this.main;
+    if (!eqSame) {
+      this.mainEq = this.main && !isFlat(this.eq)
+        ? applyEq(this.main.map((ch) => Float32Array.from(ch)), rate, this.eq, placeChanges(this.eq, this.pieces, this.crossfade)) : this.main;
+      this.eqFor = { eq: this.eq, main: this.main };
+    }
+    // Clips on layers matching the song's tempo play from a stretched copy of their audio (kept).
+    const placed = this.main ? this.placed() : [];
+    for (const p of placed) {
+      const c = this.layers[p.layer].clips[p.clip], key = sourceKey(c, p.speed), src = this.sources[keyOf(c.song)];
+      if (p.speed !== 1 && src && !this.sources[key]) this.sources[key] = stretch(src, rate, p.speed);
+    }
     // What plays and is made into a song file: the song with its layers mixed in, kept from clipping.
-    const placed = this.main ? placeClips(this.layers, this.pieces, this.crossfade) : [];
-    this.rendered = placed.length ? limit(mixLayers(this.main, this.layers, placed, this.sources, rate), rate) : this.main;
+    this.rendered = placed.length || this.mainEq !== this.main
+      ? limit(mixLayers(this.mainEq, this.layers, placed, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate) : this.main;
     if (!same) this.peaks = this.main ? peaks(this.main) : null;
     if (this.h !== WAVE_B + LANE_H * this.layers.length) this.layout();
     const total = this.total;
@@ -1800,6 +2008,8 @@ export class MusicEditor {
     }
 
     this.drawLayers(col);
+    this.drawChanges(col);
+    this.refreshEq();
 
     // selection on top of everything: dim what's outside it, band the ruler, solid edges with grips
     if (this.sel) {
@@ -1829,10 +2039,29 @@ export class MusicEditor {
   }
 
   // Each layer's lane under the waveform, its clips as blocks with their names and fades.
+  // EQ changes as small diamonds: the song's along the bottom of the waveform, a layer's in its lane.
+  drawChanges(col) {
+    const { ctx, w } = this;
+    ctx.save();
+    for (const c of this.allChanges()) {
+      const x = this.x(c.at), y = this.changeY(c.ch);
+      if (x < -6 || x > w + 6) continue;
+      const picked = this.chgSel?.ch === c.ch && this.chgSel?.i === c.i, r = picked ? 6 : 5;
+      ctx.beginPath();
+      ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath();
+      ctx.fillStyle = c.ch < 0 ? col("--text") : `hsl(${LAYER_HUES[c.ch % 4]} 65% 40%)`;
+      ctx.fill();
+      ctx.strokeStyle = picked ? col("--accent") || col("--text") : col("--panel");
+      ctx.lineWidth = picked ? 2 : 1;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   drawLayers(col) {
     const { ctx, w } = this;
     if (!this.layers.length) return;
-    const placed = placeClips(this.layers, this.pieces, this.crossfade);
+    const placed = this.placed();
     ctx.save();
     ctx.font = "11px system-ui, sans-serif";
     this.layers.forEach((l, i) => {
@@ -1933,6 +2162,18 @@ export class MusicEditor {
     const join = this.joinAt(x, e.offsetY);
     if (join > 0) { this.drag = null; this.hearJoin(join); return; }
     this.canvas.setPointerCapture(e.pointerId);
+    // An EQ change's diamond: pick it (the playhead goes to it and its faders show), or drag it.
+    const chg = this.changeAt(x, e.offsetY);
+    if (chg) {
+      this.chgSel = { ch: chg.ch, i: chg.i };
+      this.clipSel = null;
+      this.eqOpen.add(chg.ch < 0 ? "song" : chg.ch);
+      this.drag = { change: chg, x, moved: false, before: this.channelEq(chg.ch) };
+      this.updateControls();
+      this.draw();
+      return;
+    }
+    this.chgSel = null;
     if (this.laneAt(e.offsetY) >= 0) {
       const hit = this.clipAt(x, e.offsetY);
       if (!hit) { // an empty bit of a lane: move the playhead, as on the waveform
@@ -1977,6 +2218,17 @@ export class MusicEditor {
   move(e) {
     const x = e.offsetX, raw = Math.min(Math.max(this.t(x), 0), this.total), d = this.drag;
     const t = d && !d.section ? this.snap(raw, e) : raw;
+    if (d?.change) {
+      if (!d.moved && Math.abs(x - d.x) < 3) return;
+      d.moved = true;
+      const anchor = anchorAt(this.pieces, this.crossfade, Math.min(t, this.total - 0.01), this.refs);
+      if (!anchor) return;
+      const eq = { ...d.before, changes: d.before.changes.map((c, k) => (k === d.change.i ? { ...c, anchor } : c)) };
+      if (d.change.ch < 0) this.eq = eq;
+      else this.layers = this.layers.map((l, k) => (k === d.change.ch ? { ...l, eq } : l));
+      this.draw();
+      return;
+    }
     if (d?.clip) {
       if (!d.moved && Math.abs(x - d.x) < 3) return;
       d.moved = true;
@@ -1987,17 +2239,24 @@ export class MusicEditor {
         const anchor = anchorAt(this.pieces, this.crossfade, Math.max(0, at), this.refs);
         if (anchor) next = { ...orig, anchor };
       } else if (clip.part === "start") {
-        const delta = Math.max(-orig.start, -clip.at, Math.min(orig.end - orig.start - 0.05, this.snap(clip.at + (raw - d.t0), e, 6) - clip.at));
+        // Trims are in the song's time; a clip played faster or slower moves through its audio at its speed.
+        const sp = clip.speed || 1;
+        const delta = Math.max(-orig.start / sp, -clip.at, Math.min((orig.end - orig.start - 0.05) / sp, this.snap(clip.at + (raw - d.t0), e, 6) - clip.at));
         const anchor = anchorAt(this.pieces, this.crossfade, Math.max(0, clip.at + delta), this.refs);
-        if (anchor) next = { ...orig, start: orig.start + delta, anchor };
+        if (anchor) next = { ...orig, start: orig.start + delta * sp, anchor };
       } else {
         const endAt = this.snap(clip.at + clip.length + (raw - d.t0), e, 6);
-        next = { ...orig, end: Math.max(orig.start + 0.05, Math.min(len, orig.start + (endAt - clip.at))) };
+        next = { ...orig, end: Math.max(orig.start + 0.05, Math.min(len, orig.start + (endAt - clip.at) * (clip.speed || 1))) };
       }
       const r3 = (v) => Math.round(v * 1000) / 1000;
       next = { ...next, start: r3(next.start), end: r3(next.end) };
       this.layers = d.before.map((l, k) => (k !== clip.layer ? l : { ...l, clips: l.clips.map((c, j) => (j === clip.clip ? next : c)) }));
       this.draw();
+      return;
+    }
+    if (!d && this.changeAt(x, e.offsetY)) {
+      this.canvas.style.cursor = "grab";
+      this.canvas.title = "An EQ change: click to see its faders, drag to move it";
       return;
     }
     if (!d && this.laneAt(e.offsetY) >= 0) {
@@ -2043,7 +2302,7 @@ export class MusicEditor {
     } else {
       if (!d.moved && Math.abs(x - d.x) < 3) return;
       d.moved = true;
-      this.clipSel = null; // Delete now means the new selection, not the clip picked before it
+      this.clipSel = this.chgSel = null; // Delete now means the new selection, not the clip or change picked before it
       this.sel = { start: Math.min(t, d.anchor), end: Math.max(t, d.anchor) };
     }
     this.updateControls();
@@ -2054,6 +2313,20 @@ export class MusicEditor {
     const d = this.drag;
     this.drag = null;
     if (d?.section) { this.editSections(this.info.sections); return; }
+    if (d?.change) {
+      const ch = d.change.ch;
+      if (d.moved) {
+        const after = this.channelEq(ch);
+        if (ch < 0) this.eq = d.before; // so Undo goes back to before the drag
+        else this.layers = this.layers.map((l, k) => (k === ch ? { ...l, eq: d.before } : l));
+        this.editEq(ch, after);
+      } else {
+        this.time = d.change.at;
+        this.updateControls();
+        this.draw();
+      }
+      return;
+    }
     if (d?.clip) {
       if (d.moved) {
         const after = this.layers;
@@ -2119,12 +2392,13 @@ export class MusicEditor {
     else if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); this.undo(1); }
     else if (e.key === " ") { e.preventDefault(); this.playing ? this.stop() : this.play(); }
     else if ((e.key === "Delete" || e.key === "Backspace") && this.clipSel) { e.preventDefault(); this.deleteClip(); }
+    else if ((e.key === "Delete" || e.key === "Backspace") && this.chgSel) { e.preventDefault(); this.deleteChange(this.chgSel.ch, this.chgSel.i); }
     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); this.cutSelection(); }
     else if (!mod && (e.key === "m" || e.key === "M")) { e.preventDefault(); this.addMarkHere({ open: !this.playing }); }
     else if (e.key === "Home") { this.time = 0; this.follow(); this.draw(); }
     else if (e.key === "+" || e.key === "=") this.zoom(0.66);
     else if (e.key === "-") this.zoom(1.5);
-    else if (e.key === "Escape") { this.sel = null; this.kbAnchor = null; this.markSel = this.joinSel = -1; this.clipSel = null; this.updateControls(); this.draw(); }
+    else if (e.key === "Escape") { this.sel = null; this.kbAnchor = null; this.markSel = this.joinSel = -1; this.clipSel = this.chgSel = null; this.updateControls(); this.draw(); }
     else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && document.activeElement === this.canvas && this.rendered) {
       e.preventDefault();
       this.arrow(e.key === "ArrowRight" ? 1 : -1, e.shiftKey);
