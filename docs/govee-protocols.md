@@ -67,7 +67,17 @@ mode, tested from the packet lab:
   - A 128-colour rainbow showed every colour, red to violet, within that half, and a 10-colour rainbow
     reached the same place. So unlike the H70C5 (one colour per bulb, bulbs 1–44), the H70D1 **stretches
     whatever it's sent across a fixed window** of about half the string; more colours only add detail.
-  - Not yet tried: the 20 m H70D2, Per bulb, or the window sweeps on the icicles.
+  - **Per bulb doesn't get further** (same day). The box says 400 LEDs. Speed test "Every bulb" with
+    Segments 300 stopped about halfway with random colours at the end; with 400, no random colours but
+    still stopped about halfway. Hand-made pictures (ptReal lines): the **background colour shows on the
+    first half only** (black, then red), and bulbs listed in groups never lit, whether written the
+    H70C5 way (1 byte below 256) or every bulb as 2 bytes LE (bulbs 0–49 green on red: all red, first
+    half). "First 10 bulbs" speed test: the light just went off. An 18-packet picture (four 50-bulb
+    blocks on black) showed no change.
+  - **The Govee app's Finger sketch does reach the far end**, and is noticeably slower to apply each
+    paint than on the H70C5. So the app sends something different for the icicles (perhaps two
+    pictures, one per half, or a different kind); only a Bluetooth capture of the app on the H70D1 will
+    show what. Not yet tried: the 20 m H70D2, the window sweeps on the icicles.
 
 Govee's product data (SignalRGB's copy) marks **none** of the 54 Scene Stage models as
 realtime-capable, including the Permanent Outdoor Lights Pro (H706A/B/C) that do work (owner's, and
