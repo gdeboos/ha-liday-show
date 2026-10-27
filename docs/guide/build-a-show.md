@@ -188,7 +188,8 @@ next to its times or Esc to clear it), then **Cut selection** to remove it or
 another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
 time (a few hundredths of a second hides the click, a few seconds blends one song into the next), and
 **Fade in** and **Fade out** soften the ends. Zoom with the wheel, or type the selection's times for
-precision. The 🔊 slider by the clock sets how loud it plays in your browser. Once the song is detected, selection edges snap to bars
+precision. **⏮** goes back to the start, and **⏪** and **⏩** go back or on a bar (5 seconds before the song
+is detected), carrying on playing if it was. The 🔊 slider by the clock sets how loud it plays in your browser. Once the song is detected, selection edges snap to bars
 (hold Shift to place them freely), clicking a section in the lane selects exactly its stretch (Shift-click
 adds the next), and **Preview cut** plays the join before you cut, with the playhead jumping over the selection as the cut would. Beats and sections follow your edits
 and are kept when you make the song file. Edit the song before placing clips, because cutting it
@@ -204,8 +205,8 @@ the music stays visible; zoom in to see every beat.
 
 You can also use the keyboard: press Tab until the waveform is outlined, then **←** and **→** move the
 playhead a beat at a time (a second at a time before **Detect**), and holding Shift selects as you go.
-Space plays, Delete cuts the selection, M adds a [mark](#marks), Ctrl+Z undoes and Ctrl+S makes the song
-file.
+Space plays, Home goes back to the start, , and . go back or on a bar, Delete cuts the selection, M adds a
+[mark](#marks), Ctrl+Z undoes and Ctrl+S makes the song file.
 
 #### Drafts
 

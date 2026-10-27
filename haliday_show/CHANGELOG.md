@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.201
+
+- The **Music editor**'s **Playback** panel has **⏮** (back to the start), **⏪** and **⏩** (back or on a bar,
+  or 5 seconds before the song is detected). If the song is playing it carries on from there. Point at
+  each for what it does; the keys are Home, comma and full stop.
+
 ## 0.2.200
 
 - Fixed: in the **Music editor**, a long clip on a layer that ran past the end of the song couldn't be

@@ -270,3 +270,17 @@ test("sections from two songs that meet aren't merged, even with the same name",
   const m = mapInfo(a, [{ src: "a", start: 0, end: 10 }, { src: "b", start: 0, end: 5 }], 0, "a", { b });
   assert.deepEqual(m.sections.map((x) => [x.start, x.end, x.label, x.from]), [[0, 10, "Verse", undefined], [10, 15, "Verse", undefined]]);
 });
+
+test("⏪ and ⏩ step a bar at a time once detected, else 5 seconds, and stay in the song", async () => {
+  const { skipTarget } = await import("../../haliday_show/app/halidayshow/static/js/music.js");
+  const bars = [0, 2, 4, 6];
+  assert.equal(skipTarget(3, bars, 1, 8), 4);
+  assert.equal(skipTarget(3, bars, -1, 8), 2);
+  assert.equal(skipTarget(4.1, bars, -1, 8), 2, "just after a bar goes to the one before");
+  assert.equal(skipTarget(4.5, bars, -1, 8), 4);
+  assert.equal(skipTarget(7, bars, 1, 8), 8, "past the last bar goes to the end");
+  assert.equal(skipTarget(0.1, bars, -1, 8), 0);
+  assert.equal(skipTarget(3, [], 1, 6), 6);
+  assert.equal(skipTarget(3, null, -1, 60), 0);
+  assert.equal(skipTarget(30, undefined, 1, 60), 35);
+});
