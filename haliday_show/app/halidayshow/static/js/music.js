@@ -417,7 +417,7 @@ export class MusicEditor {
     this.joinSel = -1; // the join (index of the piece after it) whose ✂ was clicked
     this.layers = []; // samples or songs played over the song (layers.js), part of the draft
     this.eq = null; // the song's own bass, mid and treble (mixer.js), part of the draft
-    this.eqOpen = new Set(); // whose EQ faders are showing: "song" or a layer's index
+    this.eqCh = null; // whose EQ faders show in the Selection panel: "song", a layer's index or null
     this.chgSel = null; // the picked EQ change: { ch (-1 for the song, else a layer), i }
     this.clipSel = null; // the picked clip: { layer, clip }
     this.main = null; // the song alone, before the layers are mixed in (this.rendered has them)
@@ -776,15 +776,16 @@ export class MusicEditor {
   removeLayer(i) {
     const n = this.layers[i].clips.length;
     if (n && !confirm(`Remove "${this.layers[i].name}" and its ${n} clip${n === 1 ? "" : "s"}? Ctrl+Z brings it back.`)) return;
-    // Open EQ rows and a picked change stay with their layers as the ones after it move up.
-    this.eqOpen = new Set([...this.eqOpen].filter((id) => id !== i).map((id) => (typeof id === "number" && id > i ? id - 1 : id)));
+    // The open EQ and a picked change stay with their layers as the ones after it move up.
+    if (this.eqCh === i) this.eqCh = null;
+    else if (typeof this.eqCh === "number" && this.eqCh > i) this.eqCh--;
     this.chgSel = null;
     this.editLayers(this.layers.filter((_, k) => k !== i), null);
   }
 
-  // Forgets open EQ rows and a picked change for layers that aren't there (after Undo, say).
+  // Forgets the open EQ and a picked change for layers that aren't there (after Undo, say).
   keepOpenRows() {
-    this.eqOpen = new Set([...this.eqOpen].filter((id) => typeof id !== "number" || id < this.layers.length));
+    if (typeof this.eqCh === "number" && this.eqCh >= this.layers.length) this.eqCh = null;
     if (this.chgSel && !this.channelEq(this.chgSel.ch)?.changes?.[this.chgSel.i]) this.chgSel = null;
   }
 
@@ -963,19 +964,21 @@ export class MusicEditor {
     const box = $("music-layers");
     const samples = this.samplesList || [], songs = this.host.songs();
     const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, !!l.duck, !!l.matchTempo, isFlat(l.eq), l.clips.length]), isFlat(this.eq),
-      [...this.eqOpen], !!this.songTempo, samples.length, songs.length, !!this.pieces.length]);
+      this.eqCh, !!this.songTempo, samples.length, songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
       box.dataset.sig = sig;
       const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
       const eqButton = (ch, id, name) => {
         const b = el("button", { type: "button", className: `ghost${isFlat(this.channelEq(ch)) ? "" : " on"}`, textContent: "EQ" });
         b.title = `Bass, mid and treble for ${name}, like a DJ mixer`;
-        b.setAttribute("aria-expanded", String(this.eqOpen.has(id)));
+        b.setAttribute("aria-expanded", String(this.eqCh === id));
+        b.setAttribute("aria-controls", "music-eq");
         b.setAttribute("aria-label", `${name} EQ`);
-        b.addEventListener("click", () => { this.eqOpen[this.eqOpen.has(id) ? "delete" : "add"](id); this.renderLayers(); });
+        b.classList.toggle("open", this.eqCh === id);
+        b.addEventListener("click", () => { this.eqCh = this.eqCh === id ? null : id; this.renderLayers(); });
         return b;
       };
-      // A channel's faders, under its row: they show and set what's in force at the playhead.
+      // A channel's faders, in the Selection panel: they show and set what's in force at the playhead.
       const eqRow = (ch, name) => {
         const row = el("div", { className: "group layer-row eq-row" });
         row.dataset.ch = ch;
@@ -1008,7 +1011,7 @@ export class MusicEditor {
       };
       const songRow = el("div", { className: "group layer-row" }, el("span", { className: "layer-dot song-dot" }), el("span", { className: "layer-name", textContent: "Song" }),
         eqButton(-1, "song", "the song"));
-      const rows = [songRow, ...(this.eqOpen.has("song") ? [eqRow(-1, "Song")] : [])];
+      const rows = [songRow];
       this.layers.forEach((l, i) => {
         const name = el("input", { value: l.name, maxLength: 40, size: 14, title: "The layer's name" });
         name.setAttribute("aria-label", `Layer ${i + 1} name`);
@@ -1044,13 +1047,23 @@ export class MusicEditor {
         const dot = el("span", { className: "layer-dot" });
         dot.style.background = `hsl(${LAYER_HUES[i % 4]} 65% 50%)`;
         rows.push(el("div", { className: "group layer-row" }, dot, name, el("label", {}, "Volume ", vol, " ", db), eqButton(i, i, l.name), duckLabel, tempoLabel, add, remove));
-        if (this.eqOpen.has(i)) rows.push(eqRow(i, l.name));
       });
       const addLayer = el("button", { type: "button", textContent: "+ Add layer", disabled: !this.pieces.length || this.layers.length >= MAX_LAYERS });
       addLayer.title = this.layers.length >= MAX_LAYERS ? `Up to ${MAX_LAYERS} layers` : "Add a row for samples or songs to play over the song";
       addLayer.addEventListener("click", () => this.addLayer());
       box.replaceChildren(el("div", { className: "group" }, el("span", { className: "section-label", textContent: "Mixer" }), addLayer,
         el("span", { className: "hint", textContent: this.layers.length ? "" : "Layers play sleigh bells, a \"ho ho ho\" or another song over this one." })), ...rows);
+      // The EQ that's open, in the Selection panel.
+      const eqBox = $("music-eq"), id = this.eqCh, ch = id === "song" ? -1 : id;
+      eqBox.hidden = id == null;
+      if (id == null) eqBox.replaceChildren();
+      else {
+        const name = ch < 0 ? "Song" : this.layers[ch].name;
+        const close = el("button", { type: "button", className: "ghost", textContent: "✕", title: "Done" });
+        close.setAttribute("aria-label", "Close the EQ");
+        close.addEventListener("click", () => { this.eqCh = null; this.renderLayers(); });
+        eqBox.replaceChildren(el("span", { className: "hint", textContent: `EQ for ${ch < 0 ? "the song" : name}` }), close, eqRow(ch, name));
+      }
     }
     this.refreshEq();
     // The picked clip's panel.
@@ -1067,9 +1080,9 @@ export class MusicEditor {
     }
   }
 
-  // The open EQ rows' faders, showing the setting in force at the playhead (and the change it's from).
+  // The open EQ's faders, showing the setting in force at the playhead (and the change it's from).
   refreshEq() {
-    for (const row of $("music-layers").querySelectorAll(".eq-row")) {
+    for (const row of $("music-eq").querySelectorAll(".eq-row")) {
       const ch = Number(row.dataset.ch), eq = this.channelEq(ch) || flatEq();
       const placed = placeChanges(eq, this.pieces, this.crossfade), now = eqAt(eq, placed, this.time);
       for (const f of row.querySelectorAll("input[type=range]")) {
@@ -2189,7 +2202,7 @@ export class MusicEditor {
     if (chg) {
       this.chgSel = { ch: chg.ch, i: chg.i };
       this.clipSel = null;
-      this.eqOpen.add(chg.ch < 0 ? "song" : chg.ch);
+      this.eqCh = chg.ch < 0 ? "song" : chg.ch;
       this.drag = { change: chg, x, moved: false, before: this.channelEq(chg.ch) };
       this.updateControls();
       this.draw();

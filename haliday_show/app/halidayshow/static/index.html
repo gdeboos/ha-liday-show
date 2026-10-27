@@ -402,7 +402,7 @@
       <li><b>+ Add layer</b> (under the waveform) plays samples or songs over this one: pick one under the layer to
         put a clip at the playhead, drag it to move it or its ends to trim it, and click it for its volume and
         fades. Clips move with your cuts.</li>
-      <li><b>EQ</b> on the song's or a layer's row opens its <b>Bass</b>, <b>Mid</b> and <b>Treble</b> faders (right down is
+      <li><b>EQ</b> on the song's or a layer's row opens its <b>Bass</b>, <b>Mid</b> and <b>Treble</b> faders in <b>Selection</b> (right down is
         off). <b>+ Change here</b> makes them glide to new settings from the playhead. <b>Match tempo</b> keeps a
         layer in time with the song.</li>
       <li>Click a <b>✂</b> to hear that join. To change the cut, press <b>Adjust cut</b> (the part comes back,
@@ -466,8 +466,8 @@
   <div class="dock" data-dock="right">
     <section class="panel music-selection" data-panel="selection" data-wide>
       <div class="panel-head"><span class="section-label">Selection</span></div>
-      <p class="hint msel-empty">Click a section or a ⚑ mark in the lanes above the waveform, a clip on a layer, or a ✂ join, to
-        change it here.</p>
+      <p class="hint msel-empty">Click a section or a ⚑ mark in the lanes above the waveform, a clip on a layer or a ✂ join, or
+        press <b>EQ</b> in the Mixer, to change it here.</p>
     <div id="music-join" class="group music-section" hidden>
       <span id="music-join-what" class="hint"></span>
       <button id="music-join-hear" title="Play a few seconds either side of this join">▶ Hear join</button>
@@ -507,6 +507,7 @@
       <button id="music-mark-delete" class="ghost danger" title="Remove this mark">Delete</button>
       <button id="music-mark-close" class="ghost" title="Done">✕</button>
     </div>
+    <div id="music-eq" class="group music-section music-eq" hidden></div>
     </section>
   </div>
   <div class="dock" data-dock="bottom">

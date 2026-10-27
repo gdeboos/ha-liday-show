@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.197
+
+- In the **Music editor**, **EQ** on the song's or a layer's row now opens its **Bass**, **Mid** and
+  **Treble** faders in the **Selection** panel, so the Mixer stays short. Press **EQ** again or **✕** to
+  close them, or another row's **EQ** to switch to its faders. Clicking a ◆ change opens its faders there
+  too.
+
 ## 0.2.196
 
 - The **Music** and **Playlist** editors are now made of panels, like the **Show editor**. Drag a panel
