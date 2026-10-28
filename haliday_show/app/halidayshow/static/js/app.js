@@ -963,6 +963,7 @@ function openConvert(d) {
   $("convert-title").textContent = `Convert ${d.name} to WLED`;
   $("convert-ip").value = "";
   $("convert-leds").value = d.bulbs || d.segments;
+  $("convert-leds").disabled = false;
   $("convert-found").replaceChildren();
   $("convert-dialog").showModal();
   $("convert-ip").focus();
@@ -982,7 +983,7 @@ async function scanForConvert() {
     box.replaceChildren(...free.map((f) => {
       const row = document.createElement("div");
       row.className = "scan-row";
-      row.append(`${f.name} at ${f.ip}, ${f.leds} LEDs`, button("Use", () => { $("convert-ip").value = f.ip; }));
+      row.append(`${f.name} at ${f.ip}, ${f.leds} LEDs`, button("Use", () => { $("convert-ip").value = f.ip; $("convert-leds").disabled = true; }));
       return row;
     }));
   } catch (e) { box.textContent = ""; status(`Scan failed: ${e.message}`, true); }
@@ -1022,8 +1023,8 @@ async function convertLight() {
   const shows = (done ? ` ${done} show${done === 1 ? "" : "s"} updated to match.` : "")
     + (open ? " The show you have open updates when you save it." : "")
     + (failed ? ` ${failed === true ? "Your shows" : `${failed} show${failed === 1 ? "" : "s"}`} couldn't be updated: open and save them.` : "");
-  const next_ = ip ? " Press Test to check it." : " Once the controller is on, type its IP into the light's window and press Test.";
-  status(`${name} is now ${ip ? "a" : "a planned"} WLED light with ${leds}.${parts}${shows}${next_}`, failed ? true : "saved", "lights");
+  const nextStep = ip ? " Press Test to check it." : " Once the controller is on, type its IP into the light's window and press Test.";
+  status(`${name} is now ${ip ? "a" : "a planned"} WLED light with ${leds}.${parts}${shows}${nextStep}`, failed ? true : "saved", "lights");
 }
 
 // Re-bakes saved shows with a track on light `id`, so playlists, schedules and Home Assistant play them
@@ -1053,7 +1054,11 @@ $("convert-dialog").addEventListener("click", (e) => {
   else if (what === "scan") scanForConvert();
   else if (what === "go") convertLight();
 });
-$("convert-ip").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); convertLight(); } });
+for (const id of ["convert-ip", "convert-leds"]) {
+  $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); convertLight(); } });
+}
+// With an IP the LEDs are read from the WLED, so the box is only for a planned light.
+$("convert-ip").addEventListener("input", () => { $("convert-leds").disabled = !!$("convert-ip").value.trim(); });
 $("finder-yes").addEventListener("click", () => answerFinder(true));
 $("finder-no").addEventListener("click", () => answerFinder(false));
 $("finder").addEventListener("click", (e) => {
