@@ -15,7 +15,12 @@ the meantime, it leaves it be until the next start. Only one playlist plays at a
 overlap, the one higher in the list goes first, and another starts once it's done. After a restart
 during the scheduled time, or turning a schedule on during its time, the playlist starts straight
 away; changing the times during it just moves its end. A visitor's show from the public page that's
-playing at the start time finishes first. Times are the local clock as written, so on the
+playing at the start time finishes first.
+
+Scenes (scenelib.py) can have the same kind of schedule. At its start the scene comes on (or, with a
+show or playlist on, waits for it: runner.want_scene), and at its end it goes off. As with playlists,
+turning it off or putting another scene on in the meantime is left be until the next start. One
+scene at a time: where times overlap, the first in name order wins. Times are the local clock as written, so on the
 night the clocks change a stretch over 01:00-02:00 runs an hour longer or shorter.
 """
 import asyncio
@@ -105,6 +110,8 @@ class Scheduler:
         # end (or ends it) rather than counting as a new run.
         self.handled: dict[str, date] = {}  # playlist id -> the day whose run was already dealt with
         self.running: tuple[str, date] | None = None  # the playlist it started, and that run's day
+        self.scene_handled: dict[str, date] = {}  # the same, for scenes
+        self.scene_running: tuple[str, date] | None = None  # the scene it put on, and that run's day
         self.ha_where: Where = None  # Home Assistant's location, checked every hour
         self._ha_checked: float | None = None
 
@@ -135,13 +142,63 @@ class Scheduler:
         for p in playlists.load(self.storage):
             if (n := next_start(p.get("schedule") or {}, now, where)):
                 nexts[p["id"]] = n.isoformat(timespec="minutes")
+        scene_nexts = {}
+        for s in self._scenes():
+            if (n := next_start(s.get("schedule") or {}, now, where)):
+                scene_nexts[s["id"]] = n.isoformat(timespec="minutes")
         sunset = sunset_local(now.date(), *where) if where else None
-        return {"now": now.isoformat(timespec="minutes"), "next": nexts,
+        return {"now": now.isoformat(timespec="minutes"), "next": nexts, "scenes": scene_nexts,
+                "scene_scheduled": self.scene_running[0] if self.scene_running else None,
                 "scheduled": self.running[0] if self.running else None,
                 "location": {"lat": where[0], "lon": where[1], "source": source} if where else None,
                 "sunset": sunset.strftime("%H:%M") if sunset else None}
 
+    def _scenes(self) -> list[dict]:
+        return sorted(self.storage.list_scenes(), key=lambda s: s["name"].lower())
+
+    async def tick_scenes(self, now: datetime | None = None):
+        now = now or datetime.now()
+        where, _ = self.where()
+        found = self._scenes()
+        windows = {s["id"]: w for s in found if (w := window_at(s.get("schedule") or {}, now, where))}
+        current = (self.runner.scene or {}).get("id")
+        if self.scene_running:
+            sid, day = self.scene_running
+            if current != sid:
+                # Turned off, or another scene put on: leave every current stretch be until next time.
+                self.scene_running = None
+                for other, w in windows.items():
+                    self.scene_handled[other] = w[0].date()
+            elif sid not in windows or windows[sid][0].date() != day:
+                log.info("schedule: scene %s's time is up", sid)
+                self.scene_running = None
+                await self.runner.stop_scene(sid)
+        if self.scene_running:
+            return
+        for s in found:
+            w = windows.get(s["id"])
+            if not w or self.scene_handled.get(s["id"]) == w[0].date():
+                continue
+            self.scene_handled[s["id"]] = w[0].date()
+            if current == s["id"]:  # already on: carry on, and turn it off at the end time
+                self.scene_running = (s["id"], w[0].date())
+                return
+            try:
+                await self.runner.want_scene(s["id"])
+            except RunnerError as e:
+                log.warning("schedule: couldn't put on scene %s: %s", s["name"], e)
+                continue
+            log.info("schedule: scene %s on until %s", s["name"], w[1].strftime("%H:%M"))
+            self.scene_running = (s["id"], w[0].date())
+            return
+
     async def tick(self, now: datetime | None = None):
+        try:
+            await self.tick_playlists(now)
+        finally:  # scenes keep to their times whatever a playlist ran into
+            await self.tick_scenes(now)
+
+    async def tick_playlists(self, now: datetime | None = None):
         now = now or datetime.now()
         found = playlists.load(self.storage)
         where, _ = self.where()

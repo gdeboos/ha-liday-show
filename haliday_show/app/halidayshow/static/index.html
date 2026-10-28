@@ -137,6 +137,10 @@
     <div class="sc-cols" aria-hidden="true"><span>Light</span><span>Effect</span><span>Style</span><span>Colours</span><span>Speed</span><span>Brightness</span></div>
     <div id="sc-rows" class="sc-rows"></div>
   </section>
+  <section class="card">
+    <h3 class="section-label">When it plays</h3>
+    <div id="sc-when" class="pl-when"></div>
+  </section>
 </main>
 
 <main id="view-editor" class="view editor panel-grid">
@@ -157,6 +161,7 @@
         <label>Goes round every <input id="sb-loop" type="number" min="1" max="600" step="1"> s</label>
         <button type="button" id="sb-basic" class="ghost"
           title="Back to one effect per light. Only while each light has one effect across the whole loop and the House lane is empty">Switch to Basic</button>
+        <button type="button" id="sb-when" class="ghost">When it plays…</button>
         <button type="button" id="sb-back" class="ghost">← All scenes</button>
       </div>
     </section>

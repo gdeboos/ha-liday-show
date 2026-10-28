@@ -184,7 +184,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   something else and come back after a show. Build them in the **Scene editor**, light by light or
   the same for every light, or switch one to **Advanced** to give it a timeline and the House lane in
   the Show editor. In Home Assistant each scene is a scene entity, and one light turns them on and off
-  and dims them
+  and dims them. Scenes can come on and go off by themselves, at set times or from sunset
 - Playlists: several shows back to back, round and round, by hand or on a schedule (times or
   sunset, days and dates), with a Show player page to play the music on any computer with speakers
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
