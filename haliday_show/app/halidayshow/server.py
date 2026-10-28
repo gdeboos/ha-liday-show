@@ -1328,6 +1328,54 @@ def _clean_song_folders(body) -> list[dict]:
     return out
 
 
+# Folders for the Library's other lists (libfolders.js): per list, [{id, name, items}], where items
+# are the keys of what's in it (a show's id, a palette's name, a preset's "effect:name"). Nothing moves.
+LIBRARY_KINDS = ("shows", "scenes", "playlists", "palettes", "presets")
+MAX_FOLDER_ITEMS = 2000
+
+
+def _clean_library_folders(body) -> tuple[str, list[dict]]:
+    kind = body.get("kind") if isinstance(body, dict) else None
+    folders = body.get("folders") if isinstance(body, dict) else None
+    if kind not in LIBRARY_KINDS:
+        raise web.HTTPBadRequest(text=f"which list? one of {', '.join(LIBRARY_KINDS)}")
+    if not isinstance(folders, list) or len(folders) > MAX_FOLDERS:
+        raise web.HTTPBadRequest(text=f"expected a list of up to {MAX_FOLDERS} folders")
+    out, ids, names, placed = [], set(), set(), set()
+    for f in folders:
+        if not isinstance(f, dict):
+            raise web.HTTPBadRequest(text="each folder needs an id, a name and what's in it")
+        fid, name = str(f.get("id", "")), " ".join(str(f.get("name", "")).split())[:60]
+        items = f.get("items")
+        if not _FOLDER_ID.match(fid) or fid in ids or not name or name.lower() in names \
+                or not isinstance(items, list) or len(items) > MAX_FOLDER_ITEMS:
+            raise web.HTTPBadRequest(text="each folder needs its own id and name, and a list of what's in it")
+        if not all(isinstance(k, str) and 0 < len(k) <= 200 for k in items):
+            raise web.HTTPBadRequest(text="what's in a folder is listed by name or id")
+        ids.add(fid)
+        names.add(name.lower())
+        kept = [k for k in dict.fromkeys(items) if k not in placed]  # in one folder at most
+        placed.update(kept)
+        out.append({"id": fid, "name": name, "items": kept})
+    return kind, out
+
+
+async def get_library_folders(request):
+    saved = request.app[STORAGE].load_settings().get("library_folders")
+    saved = saved if isinstance(saved, dict) else {}
+    return web.json_response({k: saved.get(k) if isinstance(saved.get(k), list) else [] for k in LIBRARY_KINDS})
+
+
+async def put_library_folders(request):
+    kind, folders = _clean_library_folders(await request.json())
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    saved = settings.get("library_folders") if isinstance(settings.get("library_folders"), dict) else {}
+    settings["library_folders"] = {**saved, kind: folders}
+    storage.save_settings(settings)
+    return web.json_response(folders)
+
+
 MAX_GROUPS, MAX_GROUP_MEMBERS = 50, 200
 _MEMBER_ID = re.compile(r"^[^\x00-\x1f]{1,200}$")
 
@@ -2298,6 +2346,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/palettes", put_palettes)
     r.add_get("/api/presets", get_presets)
     r.add_put("/api/presets", put_presets)
+    r.add_get("/api/library-folders", get_library_folders)
+    r.add_put("/api/library-folders", put_library_folders)
     r.add_get("/api/song-folders", get_song_folders)
     r.add_put("/api/song-folders", put_song_folders)
     r.add_get("/api/sample-folders", get_sample_folders)

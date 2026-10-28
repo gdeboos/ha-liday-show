@@ -26,6 +26,13 @@ Your shows are under **Library → Shows**, and nothing changes in a show until 
 **Show editor**. Each show is listed with its song, its length and when it last changed, newest first, and the
 one you were last editing has a **Last edited** badge.
 
+**Folders** sort your shows, and the same works in **Scenes**, **Playlists**, **Palettes** (your own)
+and **Presets**: press **+ New folder** beside the **+ New …** button and name it, then pick it under
+**Folder** on a row. Each folder folds away (press its name) and remembers whether you left it open;
+what's in no folder is listed after them, under **Not in a folder** (presets there stay grouped by
+effect). **Rename…** and **Delete…** are on each folder; deleting one leaves what was in it, just in no
+folder. Folders only sort the list, and they're saved with your settings, so they're in **Export…** too.
+
 - **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
   1. a **Name**, a **Song** (or **+ Add a song…**, or **No song, lights only** with its length) and a
      **Palette** (see [The show's palette](#the-shows-palette)). The name fills in from the song until

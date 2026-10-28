@@ -209,6 +209,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   and previews step at a slow light's own pace so they look like the real thing
 - **Library → Shows**: your shows, to open in the Show editor, duplicate or rename; the editors all open from the Library, with a **↩** button in the top bar back to what you were editing
 - **Library → Songs**: every song, whether it's detected and which shows use it, with a search, your own folders, and Edit in the Music editor
+- **Folders** for every Library list: shows, scenes, playlists, your palettes and presets, as well as songs and samples
 - **Archive or delete** shows and songs, with a way back: archived ones can be restored, and shows using a song can take another one
 - Add a song in one window (name it, upload it, detect it); big songs go up in pieces, so files over
   Home Assistant's 16 MB limit upload fine
@@ -389,6 +390,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/lightgroups.js                   Light groups: members, names, which lanes a selection's effect goes on
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
+    js/libfolders.js                    Folders for the Library's lists: shows, scenes, playlists, palettes, presets
     js/palettepicker.js                 The window for picking a palette by its colours
     js/showpalette.js                   A show's own palette: followed by name, with a copy of its colours
     js/schedule.js                      Schedule entries in words, and small helpers for them

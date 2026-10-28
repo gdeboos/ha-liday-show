@@ -500,6 +500,13 @@ Your shows are under **Library → Shows**, and nothing changes in a show until 
 **Show editor**. Each show is listed with its song, its length and when it last changed, newest first, and the
 one you were last editing has a **Last edited** badge.
 
+**Folders** sort your shows, and the same works in **Scenes**, **Playlists**, **Palettes** (your own)
+and **Presets**: press **+ New folder** beside the **+ New …** button and name it, then pick it under
+**Folder** on a row. Each folder folds away (press its name) and remembers whether you left it open;
+what's in no folder is listed after them, under **Not in a folder** (presets there stay grouped by
+effect). **Rename…** and **Delete…** are on each folder; deleting one leaves what was in it, just in no
+folder. Folders only sort the list, and they're saved with your settings, so they're in **Export…** too.
+
 - **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
   1. a **Name**, a **Song** (or **+ Add a song…**, or **No song, lights only** with its length) and a
      **Palette** (see [The show's palette](#the-shows-palette)). The name fills in from the song until
@@ -1969,7 +1976,7 @@ phone has its own. It holds:
 
 - **Export…** downloads a `.zip` of your lights (with their parts and groups), shows (archived ones
   too), scenes, palettes, presets, playlists, the schedule, settings (the public page's and your
-  song folders too), the Music editor's drafts, what **Detect** found in each song and your notes on it, the house photo and where each light is traced
+  song folders and your Library folders too), the Music editor's drafts, what **Detect** found in each song and your notes on it, the house photo and where each light is traced
   on it, and the public page's own picture. Your songs stay in your songs folder and aren't in it.
   It's the same on every install, so you can move your shows to another Home Assistant, or between
   HA-liday Show and a Docker or pipx install.

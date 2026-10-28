@@ -87,7 +87,7 @@ phone has its own. It holds:
 
 - **Export…** downloads a `.zip` of your lights (with their parts and groups), shows (archived ones
   too), scenes, palettes, presets, playlists, the schedule, settings (the public page's and your
-  song folders too), the Music editor's drafts, what **Detect** found in each song and your notes on it, the house photo and where each light is traced
+  song folders and your Library folders too), the Music editor's drafts, what **Detect** found in each song and your notes on it, the house photo and where each light is traced
   on it, and the public page's own picture. Your songs stay in your songs folder and aren't in it.
   It's the same on every install, so you can move your shows to another Home Assistant, or between
   HA-liday Show and a Docker or pipx install.
