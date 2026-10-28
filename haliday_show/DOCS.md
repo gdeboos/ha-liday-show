@@ -1221,7 +1221,7 @@ whole list from the palette and sets **Colours** to match.
 
 **Effects on the House lane** run across all your lights at once, by where each one is on the
 house photo, like xLights' model effects. Add them the same way, by selecting a stretch of the
-House lane. They sit on top of each light's own effects.
+House lane. They sit on top of each light's own effects, or mix with them (see [Mixing lanes with the lights](#mixing-lanes-with-the-lights)).
 
 | Effect | What it does |
 | --- | --- |
