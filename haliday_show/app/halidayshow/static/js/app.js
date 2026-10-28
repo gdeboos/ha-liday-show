@@ -5384,7 +5384,7 @@ let draftsRedraw = null;
 function draftsChanged() {
   clearTimeout(draftsRedraw);
   draftsRedraw = setTimeout(() => {
-    if (!$("view-songlist").hidden || !$("view-songs").hidden) renderSongsPage();
+    if (!$("view-songs").hidden) renderSongsPage();
   }, 300);
 }
 
@@ -5738,7 +5738,7 @@ function songRow(r) {
 }
 
 async function editSong(ref) {
-  // Ask before switching tabs, rather than after.
+  // Ask before leaving the open draft, rather than after.
   await music.flush();
   if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) return;
   app.songChosen = true;
@@ -6350,8 +6350,8 @@ async function openShow(id, { chosen = true } = {}) {
   layoutPreview();
   timeline.layout();
   reportUnfit();
-  // Opened from Your shows (or by the setup guide or demo while it shows): go to the show.
-  if (chosen && !$("view-showlist").hidden) showView("editor");
+  // Opened from Library → Shows (or by the setup guide or demo while it shows): go to the show.
+  if (chosen && !$("view-shows").hidden) showView("editor");
 }
 
 // Advanced scenes (sceneeditor.js) open here, in the Show editor with no song: the timeline is one
@@ -7671,41 +7671,40 @@ function frame() {
 
 // wiring ----------------------------------------------------------------------
 // Library and Setup each hold several pages; each remembers the page last open in it.
+// Each editor's list is a Library page; older links and history may still name the lists the
+// editors had of their own.
+const EDITOR_LIST = { editor: "shows", music: "songs", playlist: "playlists", scene: "scenes" };
+const LIBRARY_LIST = { showlist: "shows", songlist: "songs", playlistlist: "playlists", scenelist: "scenes" };
 const SECTIONS = { library: ["shows", "scenes", "songs", "samples", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
 const sectionPage = { library: "shows", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
 function showView(view, { push = true } = {}) {
+  view = LIBRARY_LIST[view] || view;
+  // An editor with nothing open in it shows that list in the Library, where things are opened from.
+  const open = { editor: app.chosen, music: app.songChosen, playlist: app.playlistChosen, scene: app.sceneChosen };
+  if (view in open && !open[view]) view = EDITOR_LIST[view];
   if (view === "labs" && !labsOn()) view = "settings";
   if (view === "public" && $("tab-public").hidden) view = "settings";
   const section = Object.keys(SECTIONS).find((k) => SECTIONS[k].includes(view));
   if (section) sectionPage[section] = view;
-  let page = SECTIONS[view] ? sectionPage[view] : view;
-  // Each visit the Show editor starts on Your shows, so nothing changes until you open one.
-  if (page === "editor" && !app.chosen) page = "showlist";
-  // And the Music editor on Your songs.
-  if (page === "music" && !app.songChosen) page = "songlist";
-  // And the Playlist editor on Your playlists.
-  if (page === "playlist" && !app.playlistChosen) page = "playlistlist";
-  // And the Scene editor on Your scenes.
-  if (page === "scene" && !app.sceneChosen) page = "scenelist";
+  const page = SECTIONS[view] ? sectionPage[view] : view;
   const top = section || view;
+  // The editors are opened from the Library, so they light its tab.
+  const lit = top in EDITOR_LIST ? "library" : top;
   for (const t of document.querySelectorAll(".tab")) {
-    // An Advanced scene open in the Show editor still belongs to the Scene tab.
-    const lit = top === "editor" && app.sceneId ? "scene" : top;
-    t.classList.toggle("active", t.dataset.view === ({ showlist: "editor", songlist: "music", playlistlist: "playlist", scenelist: "scene" }[lit] || lit));
-    if (t.dataset.view === top) t.scrollIntoView({ block: "nearest", inline: "nearest" }); // on a phone the tab row scrolls
+    t.classList.toggle("active", t.dataset.view === lit);
+    if (t.dataset.view === lit) t.scrollIntoView({ block: "nearest", inline: "nearest" }); // on a phone the tab row scrolls
   }
   for (const t of document.querySelectorAll(".subtab")) t.classList.toggle("active", t.dataset.view === page);
   for (const k of Object.keys(SECTIONS)) $(`section-${k}`).hidden = k !== top;
-  for (const v of ["showlist", "editor", "songlist", "music", "playlistlist", "playlist", "scenelist", "scene", "public", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
-  if (page === "songlist") document.querySelector("[data-songs-slot]").append($("songs-block"));
+  for (const v of ["editor", "music", "playlist", "scene", "public", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
   if (page === "songs") $("view-songs").append($("songs-block"));
-  if (page === "showlist" || page === "shows") renderShowLists();
-  // Going back to Your shows (← All shows, or the browser's Back) puts the show away, so it stops too.
-  if (page === "showlist" && app.playing) stop();
-  if (page === "songs" || page === "songlist") renderSongsPage();
-  if (page === "scenes" || page === "scenelist") sceneEd.refresh();
+  if (page === "shows") renderShowLists();
+  // Going back to the shows (← All shows, or the browser's Back) puts the show away, so it stops too.
+  if (page === "shows" && !app.chosen && app.playing) stop();
+  if (page === "songs") renderSongsPage();
+  if (page === "scenes") sceneEd.refresh();
   if (page === "scene") sceneEd.draw(); else { sceneEd.stopPreview(); sceneEd.flush(); }
   if (page === "samples") renderSamplesPage(); else stopSample();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
@@ -7717,10 +7716,29 @@ function showView(view, { push = true } = {}) {
     const frame = $("pub-preview-frame");
     if (!frame.src) frame.src = "public-preview/";
   }
-  if (["playlists", "playlistlist", "playlist"].includes(page)) loadPlaylists(); else stopPlaylistWatch();
+  if (["playlists", "playlist"].includes(page)) loadPlaylists(); else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); loadSongMarks(); }
   rememberPage(page, push);
   helpPageChanged();
+  if (page in EDITOR_LIST) lastEditor = page;
+  showResume();
+}
+
+// Out of an editor with something still open in it: a button in the top bar goes back to it.
+let lastEditor = null;
+function showResume() {
+  const b = $("btn-resume");
+  const open = { editor: app.chosen && !app.sceneId, music: app.songChosen, playlist: app.playlistChosen, scene: app.sceneChosen };
+  const name = lastEditor && !(shownPage in EDITOR_LIST) && open[lastEditor] && ({
+    editor: () => app.show?.name, music: () => $("music-name").value || music.base?.path.split("/").pop(),
+    playlist: () => openPlaylist()?.name, scene: () => $("sc-name").value,
+  })[lastEditor]?.();
+  b.hidden = !name;
+  if (!name) return;
+  const what = { editor: "show", music: "song", playlist: "playlist", scene: "scene" }[lastEditor];
+  b.textContent = `↩ ${name}`;
+  b.title = `Back to the ${what} you were editing`;
+  b.setAttribute("aria-label", `Back to the ${what} ${name}`);
 }
 
 // The browser's Back and Forward move between pages of HA-liday Show (inside Home Assistant too:
@@ -7728,7 +7746,7 @@ function showView(view, { push = true } = {}) {
 // named in the address after # and numbered, so a refused Back can be undone step for step.
 let shownPage = null, undoing = false, navigating = false;
 let shownN = (() => { try { return Number.isInteger(history.state?.n) ? history.state.n : 0; } catch { return 0; } })();
-const isPage = (p) => typeof p === "string" && /^[a-z]+$/.test(p) && !!$(`view-${p}`);
+const isPage = (p) => typeof p === "string" && /^[a-z]+$/.test(p) && !!$(`view-${LIBRARY_LIST[p] || p}`);
 
 // Where you were, kept in this browser: Home Assistant opens the app afresh, with no #page, each
 // time you come back to it, so it reopens there (and the show, song or playlist you had open).
@@ -7755,7 +7773,8 @@ function rememberPage(page, push) {
 // Back or Forward: go to that page as the app's own buttons would, asking first where they would.
 async function pageFromHistory(e) {
   if (undoing) { undoing = false; return; } // the browser putting back a refused move
-  const page = e.state?.page || location.hash.slice(1);
+  const named = e.state?.page || location.hash.slice(1);
+  const page = LIBRARY_LIST[named] || named;
   const n = Number.isInteger(e.state?.n) ? e.state.n : shownN;
   // Undo the move (all its steps) and stay where you are.
   const refuse = () => {
@@ -7771,23 +7790,25 @@ async function pageFromHistory(e) {
   }
   navigating = true;
   try {
-    if (shownPage === "editor" && page === "showlist") {
+    // Back (not Forward) from an editor to its Library page puts the open thing away, as ← All … does.
+    const back = n < shownN;
+    if (back && shownPage === "editor" && page === "shows") {
       if (!(await confirmDiscard())) { refuse(); return; }
       app.chosen = false;
     }
-    if (shownPage === "music" && page === "songlist") {
+    if (back && shownPage === "music" && page === "songs") {
       await music.flush();
       if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) { refuse(); return; }
       app.songChosen = false;
     }
-    if (shownPage === "playlist" && page === "playlistlist") app.playlistChosen = false;
+    if (back && shownPage === "playlist" && page === "playlists") app.playlistChosen = false;
     // Forward again to the show, song or playlist that was open.
     if (page === "playlist" && !app.playlistChosen && openPlaylist()) app.playlistChosen = true;
     if (page === "editor" && !app.chosen && app.showId) app.chosen = true;
     if (page === "music" && !app.songChosen && music.base) app.songChosen = true;
     shownN = n;
     showView(page, { push: false }); // also puts the page that actually showed in the address
-    if (shownPage === "showlist") renderShowLists();
+    if (shownPage === "shows") renderShowLists();
   } finally {
     navigating = false;
   }
@@ -7798,6 +7819,7 @@ function wire() {
   // Add a light and Add a speaker from the editor).
   for (const d of document.querySelectorAll(".view dialog")) document.body.append(d);
   for (const tab of document.querySelectorAll(".tab, .subtab")) tab.addEventListener("click", () => showView(tab.dataset.view));
+  $("btn-resume").addEventListener("click", () => lastEditor && showView(lastEditor));
 
   $("show-name").addEventListener("change", (e) => {
     app.show.name = e.target.value.trim() || "Untitled show";
@@ -7895,7 +7917,7 @@ function wire() {
     sel.value = songPick;
     sel.dispatchEvent(new Event("change"));
   });
-  // Opens the picked song in the Music editor, or Your songs when it's lights only.
+  // Opens the picked song in the Music editor, or Library → Songs when it's lights only.
   $("btn-song-music").addEventListener("click", () => {
     $("song-dialog").close("");
     if (songPick) editSong(JSON.parse(songPick));

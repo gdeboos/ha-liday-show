@@ -45,8 +45,7 @@ on their own.
 A scene sets every light at once, like the one-tap scenes in the Govee app, and plays until you
 choose something else. Use one for the hours your lights are on between shows.
 
-Open the **Scene** tab (the **Scene editor**). It starts on **Your scenes**, the same list as
-**Library → Scenes**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
+Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
 while it's on), **Edit** and **Remove…**.
 
 - **+ New scene** asks for a name. Every light starts on a steady warm white, so it does something
@@ -86,7 +85,7 @@ days and dates, as for a playlist (see [Playlists](#playlists)). A start can be 
   everything goes off at midnight.
 - Only one scene comes on by itself at a time. Where two scenes' times overlap, the first by name wins.
 
-**Your scenes** says when each scene comes on by itself.
+**Library → Scenes** says when each scene comes on by itself.
 
 Scenes are also in Home Assistant, as a scene each and one light whose brightness dims them (see
 [With MQTT](automations.md#with-mqtt)).
@@ -102,8 +101,7 @@ HA-liday Show and scenes are made again for the new lights.
 
 ### Playlists
 
-To play several shows back to back, open the **Playlist** tab (the **Playlist editor**). It starts
-on **Your playlists**, the same list as **Library → Playlists**: each says how many shows it has, how
+To play several shows back to back, open **Library → Playlists**. Each playlist says how many shows it has, how
 long it takes to play through once and when it plays, with **Open**, **▶ Play** and **Delete**. Press
 **+ New playlist**, or **Open** one, to edit it:
 
@@ -118,7 +116,7 @@ long it takes to play through once and when it plays, with **Open**, **▶ Play*
 - The coloured bar above the order shows one time through, each show and block as long as it plays,
   and next to **Running order** it says how long that takes.
 - Type over the name at the top to rename the playlist. **Delete playlist** removes it but keeps its
-  shows. **← All playlists** (or your browser's **Back**) goes back to **Your playlists**.
+  shows. **← All playlists** (or your browser's **Back**) goes back to **Library → Playlists**.
 
 Changes save as you make them. A playlist holds up to 100 shows and 200 things in all, and you can
 have up to 50 playlists.
@@ -145,7 +143,7 @@ playlist plays, say) is skipped. Playlists made before blocks have a **Pause** a
 as long as their old **Pause between shows**.
 
 Press **▶ Play** and HA-liday Show plays the shows in order, then starts again from the top, until
-you press **■ Stop**. It carries on with the page closed. A line at the top of **Your playlists**
+you press **■ Stop**. It carries on with the page closed. A line at the top of **Library → Playlists**
 and the Playlist editor says what's playing (a show or a block), which is also outlined in **Running order**. Each show plays on its own **Show speaker**, just as when an automation starts it.
 Only saved shows play: a show you haven't saved yet, or have deleted, says so in the list and is
 skipped. Playing a show from the editor, or stopping it, stops the playlist, and so does pausing or
@@ -196,7 +194,7 @@ Assistant's** goes back to Home Assistant's location. On Google Maps, right-clic
 house and click the numbers at the top to copy them, then paste them into the first box. Sunset is
 worked out to within a couple of minutes. The page shows today's sunset next to the clock.
 
-Only one playlist plays at a time. If two playlists' times overlap, the one higher up **Your playlists** plays
+Only one playlist plays at a time. If two playlists' times overlap, the one higher up **Library → Playlists** plays
 first, and the other starts once it's finished.
 
 Schedules go by HA-liday Show's own clock, which the Playlist editor shows under the schedule. The app uses

@@ -20,27 +20,31 @@ the Home Assistant sidebar.
 
 ## Finding your way
 
-Six tabs run along the top, and a seventh, **Public page**, once you've turned it on. HA-liday Show
-opens on **Library**; the four editors sit together after it, under **Editors**, as **Show**,
-**Scene**, **Music** and **Playlist**:
+Two tabs run along the top, **Library** and **Setup**, and a third, **Public page**, once you've turned
+it on. HA-liday Show opens on **Library**:
 
 | Tab | What's there |
 | --- | --- |
 | **Library** | In two groups. **Shows**: **Shows** (all of yours), **Scenes** (one-tap looks for every light) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
-| **Show** (the **Show editor**) | Where shows are made: the timeline, previews and effect settings. |
-| **Scene** (the **Scene editor**) | Where scenes are made: an effect, colours, speed and brightness for each light (see [Scenes](#scenes)). |
-| **Music** (the **Music editor**) | Where songs are cut, shortened, joined and detected. |
-| **Playlist** (the **Playlist editor**) | Where you drag shows into playlists and set when they play. |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 | **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](#the-public-page)). |
 
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
 page you last had open. Below, "the House tab" and so on mean that page.
 
+The four editors open from the Library: **Open** on a show takes you to the **Show editor** (the timeline,
+previews and effect settings), **Edit** on a scene to the **Scene editor** (see [Scenes](#scenes)),
+**Edit** on a song to the **Music editor** (cutting, shortening, joining and detecting) and **Open** on a
+playlist to the **Playlist editor** (dragging shows into order and setting when they play). **+ New
+show**, **+ New scene** and **+ New playlist** open the new one in its editor too. In an editor,
+**← All shows** (or songs, scenes or playlists) goes back to that Library page and puts it away.
+**Library** or **Setup** at the top leave it open instead: a **↩** button with its name then sits next to the
+tabs, and takes you straight back to it.
+
 Your browser's **Back** and **Forward** buttons (or swiping back on a phone) move between the tabs and
-pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Your shows**, as
-**← All shows** does; from a song in the Music editor, it goes to **Your songs**; from a playlist, to
-**Your playlists**. The first two ask first if you'd lose changes. Going back to **Your shows** stops the show if it's playing. **Back** does nothing
+pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Library → Shows**, as
+**← All shows** does; from a song in the Music editor, it goes to **Library → Songs**; from a playlist, to
+**Library → Playlists**. The first two ask first if you'd lose changes. Going back to the shows stops the show if it's playing. **Back** does nothing
 while a window is open: close it first.
 
 When you come back to HA-liday Show from elsewhere in Home Assistant, or reload the page, it opens where
@@ -88,10 +92,10 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Show** tab (the Show editor), or **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
+4. **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Play it by itself: put it in a [playlist](#playlists) on the **Playlist** tab and turn on
+5. Play it by itself: put it in a [playlist](#playlists) under **Library → Playlists** and turn on
    **Play on a schedule** (at set times or from sunset), or start it from an automation with the MQTT
    **Play** button or the `hassio.app_stdin` action.
 
@@ -488,8 +492,8 @@ timeline.
 
 ### Shows
 
-The **Show editor** opens on **Your shows** each time, so nothing changes in a show until you open
-it. Each show is listed with its song, its length and when it last changed, newest first, and the
+Your shows are under **Library → Shows**, and nothing changes in a show until you open it in the
+**Show editor**. Each show is listed with its song, its length and when it last changed, newest first, and the
 one you were last editing has a **Last edited** badge.
 
 - **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
@@ -653,16 +657,15 @@ Christmas", ready to layer over a song in the Music editor. There are two ways t
   the **Edit** card), then give it a name. It's saved as it sounds in your edit, layers and all.
 - **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
 
-They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Your songs** and a show's
+They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Library → Songs** and a show's
 song list so those stay tidy. Use them on a [layer](#layers) in the Music editor. Each sample has **▶** to hear it (press **■** to stop) and **Delete…** to
 remove it for good.
 
 ### Editing a song
 
-The **Music editor** cuts, shortens and splices songs before you build a show. It opens on **Your
-songs** each visit, the same list as **Library → Songs** (with **+ Add a song**), so nothing is touched
-until you press **Edit** on one. The open song's name sits beside **← All songs**, which goes back to
-the list to open another; switching tabs keeps your song open. The song you open is never changed: your
+The **Music editor** cuts, shortens and splices songs before you build a show. Press **Edit** on a
+song under **Library → Songs** (with **+ Add a song**) to open it; nothing is touched until you do. The open
+song's name sits beside **← All songs**, which goes back to the list to open another. The song you open is never changed: your
 first change starts a [draft](#drafts), kept as you go, which you make into a new song file when you're
 happy. Drag across the waveform to select (clicking moves the playhead and keeps the selection; press **✕**
 next to its times or Esc to clear it), then **Cut selection** to remove it or
@@ -702,7 +705,7 @@ say), the status bar says so, even for a draft you've moved on from, and it's tr
 next change; closing the page then asks first. A song can have several drafts, such as a "Short
 version" and a "Party mix": press **Edit** on the song again to start another.
 
-**Your songs** lists each song's drafts under it, with a **Draft** badge until a song file has been
+**Library → Songs** lists each song's drafts under it, with a **Draft** badge until a song file has been
 made from it. **Open** carries on where you left off (**Undo** starts afresh each visit), **Rename…**
 renames it, and **Delete…** deletes the draft (not the song, or any file it made).
 
@@ -724,7 +727,7 @@ is remembered in this browser.
 Songs you edited before drafts existed are ordinary songs: press **Edit** on one to start a draft from
 it. A draft can't be opened if a song it uses has been archived or deleted; restore the song first
 (under **Archived songs**). Until then, drafts whose song has gone are listed together at the end of
-**Your songs**, under **Drafts of songs that aren't here any more**, so you can still delete them.
+**Library → Songs**, under **Drafts of songs that aren't here any more**, so you can still delete them.
 
 #### Layers
 
@@ -1192,8 +1195,7 @@ on their own.
 A scene sets every light at once, like the one-tap scenes in the Govee app, and plays until you
 choose something else. Use one for the hours your lights are on between shows.
 
-Open the **Scene** tab (the **Scene editor**). It starts on **Your scenes**, the same list as
-**Library → Scenes**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
+Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
 while it's on), **Edit** and **Remove…**.
 
 - **+ New scene** asks for a name. Every light starts on a steady warm white, so it does something
@@ -1233,7 +1235,7 @@ days and dates, as for a playlist (see [Playlists](#playlists)). A start can be 
   everything goes off at midnight.
 - Only one scene comes on by itself at a time. Where two scenes' times overlap, the first by name wins.
 
-**Your scenes** says when each scene comes on by itself.
+**Library → Scenes** says when each scene comes on by itself.
 
 Scenes are also in Home Assistant, as a scene each and one light whose brightness dims them (see
 [With MQTT](#with-mqtt)).
@@ -1249,8 +1251,7 @@ HA-liday Show and scenes are made again for the new lights.
 
 ### Playlists
 
-To play several shows back to back, open the **Playlist** tab (the **Playlist editor**). It starts
-on **Your playlists**, the same list as **Library → Playlists**: each says how many shows it has, how
+To play several shows back to back, open **Library → Playlists**. Each playlist says how many shows it has, how
 long it takes to play through once and when it plays, with **Open**, **▶ Play** and **Delete**. Press
 **+ New playlist**, or **Open** one, to edit it:
 
@@ -1265,7 +1266,7 @@ long it takes to play through once and when it plays, with **Open**, **▶ Play*
 - The coloured bar above the order shows one time through, each show and block as long as it plays,
   and next to **Running order** it says how long that takes.
 - Type over the name at the top to rename the playlist. **Delete playlist** removes it but keeps its
-  shows. **← All playlists** (or your browser's **Back**) goes back to **Your playlists**.
+  shows. **← All playlists** (or your browser's **Back**) goes back to **Library → Playlists**.
 
 Changes save as you make them. A playlist holds up to 100 shows and 200 things in all, and you can
 have up to 50 playlists.
@@ -1292,7 +1293,7 @@ playlist plays, say) is skipped. Playlists made before blocks have a **Pause** a
 as long as their old **Pause between shows**.
 
 Press **▶ Play** and HA-liday Show plays the shows in order, then starts again from the top, until
-you press **■ Stop**. It carries on with the page closed. A line at the top of **Your playlists**
+you press **■ Stop**. It carries on with the page closed. A line at the top of **Library → Playlists**
 and the Playlist editor says what's playing (a show or a block), which is also outlined in **Running order**. Each show plays on its own **Show speaker**, just as when an automation starts it.
 Only saved shows play: a show you haven't saved yet, or have deleted, says so in the list and is
 skipped. Playing a show from the editor, or stopping it, stops the playlist, and so does pausing or
@@ -1343,7 +1344,7 @@ Assistant's** goes back to Home Assistant's location. On Google Maps, right-clic
 house and click the numbers at the top to copy them, then paste them into the first box. Sunset is
 worked out to within a couple of minutes. The page shows today's sunset next to the clock.
 
-Only one playlist plays at a time. If two playlists' times overlap, the one higher up **Your playlists** plays
+Only one playlist plays at a time. If two playlists' times overlap, the one higher up **Library → Playlists** plays
 first, and the other starts once it's finished.
 
 Schedules go by HA-liday Show's own clock, which the Playlist editor shows under the schedule. The app uses

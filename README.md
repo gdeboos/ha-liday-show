@@ -190,7 +190,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
-- **Your shows**: the Show editor starts on a list of your shows (also under Library → Shows), to open, duplicate or rename
+- **Library → Shows**: your shows, to open in the Show editor, duplicate or rename; the editors all open from the Library, with a **↩** button in the top bar back to what you were editing
 - **Library → Songs**: every song, whether it's detected and which shows use it, with a search and Edit in the Music editor
 - **Archive or delete** shows and songs, with a way back: archived ones can be restored, and shows using a song can take another one
 - Add a song in one window (name it, upload it, detect it); big songs go up in pieces, so files over

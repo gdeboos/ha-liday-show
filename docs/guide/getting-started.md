@@ -6,27 +6,31 @@
 
 ## Finding your way
 
-Six tabs run along the top, and a seventh, **Public page**, once you've turned it on. HA-liday Show
-opens on **Library**; the four editors sit together after it, under **Editors**, as **Show**,
-**Scene**, **Music** and **Playlist**:
+Two tabs run along the top, **Library** and **Setup**, and a third, **Public page**, once you've turned
+it on. HA-liday Show opens on **Library**:
 
 | Tab | What's there |
 | --- | --- |
 | **Library** | In two groups. **Shows**: **Shows** (all of yours), **Scenes** (one-tap looks for every light) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
-| **Show** (the **Show editor**) | Where shows are made: the timeline, previews and effect settings. |
-| **Scene** (the **Scene editor**) | Where scenes are made: an effect, colours, speed and brightness for each light (see [Scenes](play-it.md#scenes)). |
-| **Music** (the **Music editor**) | Where songs are cut, shortened, joined and detected. |
-| **Playlist** (the **Playlist editor**) | Where you drag shows into playlists and set when they play. |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 | **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](public-page.md#the-public-page)). |
 
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
 page you last had open. Below, "the House tab" and so on mean that page.
 
+The four editors open from the Library: **Open** on a show takes you to the **Show editor** (the timeline,
+previews and effect settings), **Edit** on a scene to the **Scene editor** (see [Scenes](play-it.md#scenes)),
+**Edit** on a song to the **Music editor** (cutting, shortening, joining and detecting) and **Open** on a
+playlist to the **Playlist editor** (dragging shows into order and setting when they play). **+ New
+show**, **+ New scene** and **+ New playlist** open the new one in its editor too. In an editor,
+**← All shows** (or songs, scenes or playlists) goes back to that Library page and puts it away.
+**Library** or **Setup** at the top leave it open instead: a **↩** button with its name then sits next to the
+tabs, and takes you straight back to it.
+
 Your browser's **Back** and **Forward** buttons (or swiping back on a phone) move between the tabs and
-pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Your shows**, as
-**← All shows** does; from a song in the Music editor, it goes to **Your songs**; from a playlist, to
-**Your playlists**. The first two ask first if you'd lose changes. Going back to **Your shows** stops the show if it's playing. **Back** does nothing
+pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Library → Shows**, as
+**← All shows** does; from a song in the Music editor, it goes to **Library → Songs**; from a playlist, to
+**Library → Playlists**. The first two ask first if you'd lose changes. Going back to the shows stops the show if it's playing. **Back** does nothing
 while a window is open: close it first.
 
 When you come back to HA-liday Show from elsewhere in Home Assistant, or reload the page, it opens where
@@ -74,10 +78,10 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Show** tab (the Show editor), or **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
+4. **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Play it by itself: put it in a [playlist](play-it.md#playlists) on the **Playlist** tab and turn on
+5. Play it by itself: put it in a [playlist](play-it.md#playlists) under **Library → Playlists** and turn on
    **Play on a schedule** (at set times or from sunset), or start it from an automation with the MQTT
    **Play** button or the `hassio.app_stdin` action.
 
