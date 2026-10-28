@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.216
+
+- **Setup → Settings** has a new **Live music** card. It shows what a WLED light with a microphone hears:
+  how loud it is, each beat, and the bass, middle and treble, as it happens. Set that WLED's
+  AudioReactive sound sync to **Send** (the guide has the steps) and it appears under **Listen to**.
+  **Counts as music from** sets how loud counts as music rather than chatter.
+- Nothing on your lights changes yet: scenes that react to it come next.
+
 ## 0.2.215
 
 - The top bar is now just **Library**, **Setup** and **Public page**. The editors open from the Library:

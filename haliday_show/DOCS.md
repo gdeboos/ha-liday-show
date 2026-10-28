@@ -1249,6 +1249,31 @@ scene for good, keeping a copy of all your data first under **Setup → Settings
 Scenes are made for the lights you have when you edit them. If you add or change lights, open
 HA-liday Show and scenes are made again for the new lights.
 
+### Live music
+
+**Setup → Settings → Live music** shows what a WLED light with a microphone hears: how loud it is, each
+beat, and the bass, middle and treble. In the next update, scenes can react to it.
+
+A WLED hears music with a small microphone wired to its controller (an INMP441, say, on an ESP32 board),
+with the **AudioReactive** usermod that most ESP32 builds of WLED 0.14 and later include. It doesn't
+need to be one of your show lights: a small board by the speaker works well. To have it send what it
+hears:
+
+1. In that WLED's web page, open **Config → Usermods** (on some versions it's under **Config → Sync
+   Interfaces**) and find **AudioReactive**.
+2. Check the microphone is set up and the WLED's own sound effects react to music.
+3. Under its sync settings, set **Mode** to **Send**, and leave the port at **11988**.
+
+Within a few seconds it appears under **Listen to**. With more than one WLED sending, pick one, or leave it
+on **Any WLED that sends sound** to use the loudest. **Counts as music from** sets how loud counts as music,
+so chatter in the garden doesn't. A ⚠ note says if nothing is heard, or if a WLED sends in an older
+format (update it to 0.14 or later).
+
+It works on your home network only, and needs nothing from Home Assistant. If HA-liday Show can't listen
+on UDP port 11988 (another program on the machine has it), the card says so. With Docker, keep the host
+networking from `docker-compose.yml`, or the sound won't reach it; with pipx, let UDP port 11988 in
+through your computer's firewall.
+
 ### Playlists
 
 To play several shows back to back, open **Library → Playlists**. Each playlist says how many shows it has, how
