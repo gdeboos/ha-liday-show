@@ -390,3 +390,22 @@ test("movement effects: theatre spacing, fill level, stacking blocks, and early 
     for (const t of [0, 0.01, 0.5]) frame({ effect, style: "popcorn" }, t, 30);
   }
 });
+
+test("xLights-style effects: morph, shockwave, curtain and pinwheel", () => {
+  const at = (key, t, u, v, extra = {}) => EFFECTS[key].renderAt({ ...newClip(key, 0, 4), ...extra }, t, 4, u, v);
+  // Shockwave: the ring passes the centre first, then further out.
+  const lum = (c) => (c ? c[0] : 0);
+  assert.ok(lum(at("shockwave", 0.05, 0.5, 0.5)) > lum(at("shockwave", 0.05, 0.9, 0.5)));
+  assert.ok(lum(at("shockwave", 2.5, 0.95, 0.5)) > lum(at("shockwave", 2.5, 0.5, 0.5)));
+  // Curtain opening: closed across the house at the start, open in the middle at the end.
+  assert.ok(lum(at("curtain", 0, 0.4, 0.5)) > 100);
+  assert.ok(lum(at("curtain", 3.99, 0.5, 0.5)) < 5);
+  assert.ok(lum(at("curtain", 3.99, 0.4, 0.5, { way: "closing" })) > 100);
+  // Pinwheel with even arms: opposite points are in step (arm or gap together).
+  for (const [u, v] of [[0.8, 0.5], [0.6, 0.9], [0.3, 0.2]]) {
+    assert.equal(lum(at("pinwheel", 1.3, u, v, { arms: 4 })) > 128, lum(at("pinwheel", 1.3, 1 - u, 1 - v, { arms: 4 })) > 128);
+  }
+  // Morph: halfway through, the head is at the far end and the tail just leaving the start.
+  const morph = [...renderTrack([newClip("morph", 0, 10)], 5, 10)];
+  assert.ok(morph[9 * 3] > 200 && morph[0] < 100);
+});

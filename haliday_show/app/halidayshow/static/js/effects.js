@@ -631,6 +631,81 @@ Object.assign(EFFECTS, {
   },
 });
 
+// After xLights: Morph on a light, and House lane effects drawn around a point on the house photo.
+const centreX = num("x", "Centre, across the house %", 50, 0, 100, 1);
+const centreY = num("y", "Centre, down the house %", 50, 0, 100, 1);
+Object.assign(EFFECTS, {
+  morph: {
+    label: "Morph", group: "movement", once: true,
+    params: [color("color", "Head", "#ffffff"), color("color2", "Tail", "#0040ff"), color("background", "Background", "#000000"),
+      choice("way", "Way", "stretch and shrink", ["stretch and shrink", "stretch only"]),
+      num("times", "Times in the clip", 1, 1, 50, 1), direction],
+    render: (p, t, dur, n, i) => {
+      // The head runs to the far end, then (stretch and shrink) the tail catches it up.
+      const f = mod((dur > 0 ? t / dur : 1) * Math.max(1, Math.round(p.times)), 1);
+      const both = p.way === "stretch and shrink";
+      const head = smooth(Math.min((both ? 2 : 1) * f, 1)), tail = both ? smooth(Math.max(2 * f - 1, 0)) : 0;
+      const x = n > 1 ? (p.direction === "reverse" ? n - 1 - i : i) / (n - 1) : 0;
+      if (x > head || x < tail || head <= tail) return hexToRgb(p.background);
+      return mix(hexToRgb(p.color2), hexToRgb(p.color), (x - tail) / Math.max(head - tail, 1e-6));
+    },
+  },
+  shockwave: houseEffect({
+    label: "Shockwave",
+    params: [color("color", "Colour", "#ffffff"), color("background", "Background", "#000000"), centreX, centreY,
+      num("rings", "Rings in the clip", 1, 1, 30, 1), num("width", "Ring width (share of the house)", 0.12, 0.02, 0.6, 0.01), outside],
+    renderAt: (p, t, dur, u, v) => {
+      // A ring spreads out from the centre to the furthest corner, fading as it goes.
+      const cx = p.x / 100, cy = p.y / 100, w = Math.max(Number(p.width) || 0.12, 0.01);
+      const far = Math.max(Math.hypot(cx, cy), Math.hypot(1 - cx, cy), Math.hypot(cx, 1 - cy), Math.hypot(1 - cx, 1 - cy));
+      const f = mod((t / dur) * Math.max(1, Math.round(p.rings)), 1), r = f * (far + w);
+      const d = Math.abs(Math.hypot(u - cx, v - cy) - r);
+      return layer(p, hexToRgb(p.color), smooth(Math.max(0, 1 - d / w)) * (1 - 0.6 * f));
+    },
+  }),
+  pinwheel: houseEffect({
+    label: "Pinwheel",
+    params: [color("color", "Colour", "#ff0000"), color("background", "Background", "#000000"), centreX, centreY,
+      num("arms", "Arms", 6, 2, 24, 1), num("share", "Arm width %", 50, 10, 90, 5),
+      num("speed", "Turns per second", 0.3, -5, 5, 0.05), num("twist", "Twist", 0, -5, 5, 0.1), outside],
+    renderAt: (p, t, dur, u, v) => {
+      // Spokes spin round the centre; Twist bends them into a spiral.
+      const dx = u - p.x / 100, dy = v - p.y / 100;
+      const turn = Math.atan2(dy, dx) / (2 * Math.PI) + t * p.speed + p.twist * Math.hypot(dx, dy);
+      const s = mod(turn * Math.round(p.arms), 1), share = p.share / 100, edge = 0.06;
+      const a = Math.min(Math.max(Math.min(s, share - s) / edge + 0.5, 0), 1);
+      return layer(p, hexToRgb(p.color), a);
+    },
+  }),
+  curtain: houseEffect({
+    label: "Curtain", once: true,
+    params: [color("color", "Curtain", "#c00000"), color("background", "Background", "#000000"),
+      choice("way", "Way", "opening", ["opening", "closing"]), choice("from", "Curtains", "both sides", ["both sides", "rising"]),
+      num("pleats", "Pleats", 12, 0, 60, 1), outside],
+    renderAt: (p, t, dur, u, v) => {
+      // Curtains part from the middle (or rise from the bottom up), with pleats; closing runs it backwards.
+      const f = dur > 0 ? Math.min(t / dur, 1) : 1, open = smooth(p.way === "closing" ? 1 - f : f);
+      const covered = p.from === "rising" ? v - open : Math.abs(u - 0.5) * 2 - open;
+      const a = Math.min(Math.max(covered / 0.03 + 0.5, 0), 1);
+      const pleat = p.pleats > 0 ? 0.75 + 0.25 * Math.cos(2 * Math.PI * u * p.pleats) : 1;
+      const c = hexToRgb(p.color);
+      return layer(p, [c[0] * pleat, c[1] * pleat, c[2] * pleat], a);
+    },
+  }),
+  butterfly: houseEffect({
+    label: "Butterfly", list: true,
+    params: [...colourList(["#ff0000", "#ffb000", "#00ff00", "#00c0ff", "#0000ff", "#c000ff"]),
+      num("speed", "Speed", 0.5, -5, 5, 0.05), num("size", "Pattern size", 1, 0.2, 5, 0.1)],
+    renderAt: (p, t, dur, u, v) => {
+      // Overlapping waves, as xLights' Butterfly does, coloured from the list.
+      const k = 6 / p.size, s = t * p.speed * 2;
+      const w = Math.sin(u * k + s) + Math.sin(v * k - s) + Math.sin((u + v) * k * 0.7 + s * 0.6)
+        + Math.sin(Math.hypot(u - 0.5, v - 0.5) * k * 1.5 - s);
+      return blendList(listColours(p), w / 8 + 0.5, true);
+    },
+  }),
+});
+
 // Headings in the effect window, in order. House lane effects all go under "Across the house".
 export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
   ["calm", "Calm"], ["house", "Across the house"]];
@@ -821,6 +896,26 @@ export const PRESETS = {
   level: [
     { label: "Count down", params: { from: 100, to: 0 } },
     { label: "Half full", params: { from: 50, to: 50 } },
+  ],
+  morph: [
+    { label: "Stretch only", params: { way: "stretch only" } },
+    { label: "Four times", params: { times: 4 } },
+  ],
+  shockwave: [
+    { label: "From the bottom", params: { y: 100, rings: 2 } },
+    { label: "Rapid rings", params: { rings: 8, width: 0.06 } },
+  ],
+  pinwheel: [
+    { label: "Spiral", params: { twist: 2 } },
+    { label: "Fast", params: { speed: 1.5, arms: 4 } },
+  ],
+  curtain: [
+    { label: "Closing", params: { way: "closing" } },
+    { label: "Rising", params: { from: "rising" } },
+  ],
+  butterfly: [
+    { label: "Slow and big", params: { speed: 0.15, size: 2.5 } },
+    { label: "Busy", params: { speed: 1.5, size: 0.5 } },
   ],
   snow: [
     { label: "Light snow", params: { density: 5, speed: 4 } },
