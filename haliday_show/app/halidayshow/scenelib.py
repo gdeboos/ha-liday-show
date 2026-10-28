@@ -6,8 +6,6 @@ A scene is saved as house-scenes/<id>.json in the config folder:
    "all": {"effect": "rainbow", "params": {...}}}      # only when Same for every light is on
 A light with no entry stays off. The editor bakes the scene's frames, one seamless time round, into
 house-scenes/<id>.gshow (the same layout as a show's), and the player plays them round and round.
-
-(scenes.py is Govee's own scene library, which is something else.)
 """
 from .playlists import _EFFECT, _clean_params
 

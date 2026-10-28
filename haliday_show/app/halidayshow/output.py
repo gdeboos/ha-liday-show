@@ -11,9 +11,7 @@ import logging
 import socket
 import time
 
-from .protocol import (CMD_PORT, average, colorwc_msg, ptreal_msg, razer_colors, razer_enable, razer_msg,
-                       pixel_packets, scene_packets, segment_changes, segment_colour_packet, segment_colour_packets,
-                       wrap)
+from .protocol import CMD_PORT, average, colorwc_msg, razer_colors, razer_enable, razer_msg, wrap
 from . import e131, twinkly
 from .wled import DDP_PORT, ddp_packets
 
@@ -31,25 +29,6 @@ STARTUP_S = 5
 STARTUP_REENABLE_S = 0.5
 MAX_FPS = 40
 WHOLE_FPS = 10  # colorwc fades each change, so faster than this just blurs
-# The app's segment command isn't made for streaming. A light sent more than it can take queues them
-# up and falls behind (the H70C5 lagged at ~100 a second), so each send carries at most a few
-# commands, biggest change first, and changes too small to see wait until they add up. The rest
-# follow on the next sends. Once the picture settles, it is repeated in case a packet was lost.
-SEGMENTS_FPS = 10
-SEGMENTS_PER_SEND = 3
-SEGMENTS_CLOSE = 12  # out of 255, per channel
-SEGMENTS_RESEND_S = 1.0
-# Per-bulb pictures (Finger sketch) run to a few dozen packets. Lights drop a ptReal message with
-# too many in it (govee-lan-bridge found 24 dropped, 18 fine), so a picture goes as several
-# messages a little apart. The H70C5 needs about 0.12 s per picture plus 0.018 s per packet (speed
-# tests: 3-packet pictures kept up at 2 a second but not 8, 23-packet ones at 2 but not 4); send
-# faster and it drops pictures, so each picture waits that long, with a little to spare.
-PIXELS_FPS = 6
-PIXELS_PICTURE_S = 0.13
-PIXELS_PACKET_S = 0.02
-PIXELS_PER_MESSAGE = 12
-PIXELS_GAP_S = 0.04
-PIXELS_RESEND_S = 5.0
 
 
 class OutputDevice:
@@ -59,13 +38,10 @@ class OutputDevice:
         self.ip = ip
         self.brightness = brightness  # per-light cap, 1-100, applied to every frame
         self.protocol = protocol
-        self.realtime = protocol not in ("whole", "segments", "pixels")
+        self.realtime = protocol != "whole"
         if not self.realtime:
-            max_fps = min(max_fps, {"segments": SEGMENTS_FPS, "pixels": PIXELS_FPS}.get(protocol, WHOLE_FPS))
-        self.keepalive = {"segments": SEGMENTS_RESEND_S, "pixels": PIXELS_RESEND_S}.get(protocol, KEEPALIVE_S)
-        self.queue: list[bytes] = []  # per-bulb pictures: the messages still to send, PIXELS_GAP_S apart
-        self.picture_at = self.picture_s = 0.0  # when the last picture started, and how long it needs
-        self.shown: bytearray | None = None  # app segments: what the light should be showing now
+            max_fps = min(max_fps, WHOLE_FPS)
+        self.keepalive = KEEPALIVE_S
         self.segments = segments
         self.reverse = reverse
         self.gradient = gradient
@@ -77,7 +53,6 @@ class OutputDevice:
         self.last_enable = 0.0
         self.enabled_at = 0.0
         self.enabled = False
-        self.scene: tuple[int, str] | None = None  # (code, param) while a Govee scene is running
 
     def _send(self, payload: bytes):
         try:
@@ -94,31 +69,10 @@ class OutputDevice:
         self.enabled = True
 
     def disable(self):
-        if self.enabled and self.realtime and self.scene is None:
+        if self.enabled and self.realtime:
             self._send(razer_msg(razer_enable(False)))
         self.enabled = False
-        self.scene = None
-        self.pending = self.last_frame = self.shown = None
-        self.queue = []
-
-    def play_scene(self, code: int, param: str):
-        """Experimental: hand the light to one of Govee's built-in scenes until end_scene()."""
-        if self.scene == (code, param):
-            return
-        if self.realtime:
-            self._send(razer_msg(razer_enable(False)))
-        self._send(ptreal_msg(scene_packets(code, param)))
-        self.scene = (code, param)
         self.pending = self.last_frame = None
-
-    def end_scene(self):
-        if self.scene is None:
-            return
-        self.scene = None
-        if self.realtime:
-            self._send(razer_msg(razer_enable(True)))
-        self.last_enable = self.enabled_at = time.monotonic()  # repeat razer-on as at start-up
-        self.last_sent = 0.0
 
     def update(self, rgb: bytes):
         n = self.segments * 3
@@ -130,21 +84,13 @@ class OutputDevice:
         self.pending = seg
 
     def packet(self, frame: bytes, previous: bytes | None = None) -> bytes:
-        if self.protocol == "segments":
-            return ptreal_msg(segment_colour_packets(frame, previous))
-        if self.protocol == "pixels":  # only logged; _tick_pixels sends the whole picture
-            return ptreal_msg(pixel_packets(frame)[:PIXELS_PER_MESSAGE])
         if not self.realtime:
             return colorwc_msg(*average(frame))
-        return razer_msg(razer_colors(frame, self.gradient, self.protocol))
+        return razer_msg(razer_colors(frame, self.gradient))
 
     def tick(self, now: float):
-        if not self.enabled or self.scene is not None:
+        if not self.enabled:
             return
-        if self.protocol == "segments":
-            return self._tick_segments(now)
-        if self.protocol == "pixels":
-            return self._tick_pixels(now)
         starting = now - self.enabled_at < STARTUP_S
         if self.realtime and starting and now - self.last_enable > STARTUP_REENABLE_S:
             self._send(razer_msg(razer_enable(True)))
@@ -157,46 +103,6 @@ class OutputDevice:
             self._send(self.packet(frame, self.last_frame if frame != self.last_frame else None))
             self.last_frame, self.last_sent = frame, now
         self.pending = None
-
-    def _tick_pixels(self, now: float):
-        if self.queue:
-            if now - self.last_sent >= PIXELS_GAP_S:
-                self._send(self.queue.pop(0))
-                self.last_sent = now
-            return
-        frame = self.pending if self.pending is not None else self.last_frame
-        since = now - self.picture_at
-        if frame is None or since < max(self.min_interval, self.picture_s):
-            return  # the light is still taking in the last picture; the latest frame waits
-        if frame != self.last_frame or since > self.keepalive:
-            packets = pixel_packets(frame)
-            self.queue = [ptreal_msg(packets[i: i + PIXELS_PER_MESSAGE])
-                          for i in range(0, len(packets), PIXELS_PER_MESSAGE)]
-            self._send(self.queue.pop(0))
-            self.last_frame, self.last_sent, self.picture_at = frame, now, now
-            self.picture_s = PIXELS_PICTURE_S + PIXELS_PACKET_S * len(packets)
-        self.pending = None
-
-    def _tick_segments(self, now: float):
-        if self.pending is not None:
-            self.last_frame, self.pending = self.pending, None
-        frame = self.last_frame
-        if frame is None or now - self.last_sent < self.min_interval:
-            return
-        settled = self.shown is not None and now - self.last_sent > self.keepalive
-        if self.shown is None or len(self.shown) != len(frame) or settled:
-            # Not known, or settled and due a repeat in case a packet was lost: count every segment
-            # as far from its colour, so all of them get sent over the next few sends.
-            self.shown = bytearray(255 - v for v in frame)
-        changes = segment_changes(frame, self.shown, SEGMENTS_CLOSE)
-        if not changes:
-            return
-        changes = changes[:SEGMENTS_PER_SEND]
-        self._send(ptreal_msg([segment_colour_packet(c, segs) for c, segs in changes]))
-        for c, segs in changes:
-            for i in segs:
-                self.shown[i * 3: i * 3 + 3] = c
-        self.last_sent = now
 
 
 # WLED drops back to its own effect when it hears nothing for a while (2.5 s by default), so a
@@ -247,12 +153,6 @@ class DdpDevice(OutputDevice):
     def disable(self):
         self.enabled = False
         self.pending = self.last_frame = None
-
-    def play_scene(self, code: int, param: str):
-        pass  # Govee scenes don't exist here; the light keeps playing the track's frames
-
-    def end_scene(self):
-        pass
 
     def packet(self, frame: bytes, previous: bytes | None = None) -> bytes:
         return ddp_packets(frame, self.sequence % 15 + 1, self.start)[0]
@@ -458,12 +358,6 @@ class HaDevice(Calls, OutputDevice):
     async def _restore(self):
         if self.saved:
             await self.ha.call("scene", "turn_on", {"entity_id": f"scene.{self.scene_id}"})
-
-    def play_scene(self, code: int, param: str):
-        pass
-
-    def end_scene(self):
-        pass
 
     def state_for(self, frame: bytes) -> tuple:
         r, g, b = average(frame)
@@ -689,7 +583,7 @@ async def run_test_pattern(output: Output, ip: str, segments: int, seconds: floa
     # Logged so a light that ignores the pattern can be compared against other tools.
     first = test_frame(segments, 0)
     if dev.realtime:
-        packet = razer_colors(first, gradient, protocol).hex(" ")
+        packet = razer_colors(first, gradient).hex(" ")
     elif isinstance(dev, TwinklyDevice):
         packet = dev.packet(first)[:16].hex(" ") + " …"
     elif isinstance(dev, HaDevice):

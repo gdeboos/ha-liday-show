@@ -29,7 +29,7 @@ export function modelSummary(model) {
     const lan = model.lan ? "Govee lists it as having LAN Control, which HA-liday Show needs. "
       : "It isn't on Govee's list of lights with LAN Control, but that list misses some lights that have it. ";
     return `${model.name}: not tested with HA-liday Show yet. ${lan}Add it and press Test: most lights with LAN `
-      + "Control work on Realtime, and if only part of it lights up, try Per bulb.";
+      + "Control work on Realtime.";
   }
   return `${model.name}: ${model.note || (status === "works" ? "works on Realtime." : "")}`.trim();
 }

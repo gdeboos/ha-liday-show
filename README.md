@@ -131,8 +131,6 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Split a light into parts (say, the front, side and back of a roof line) that each get their own
   track, while the light's own track still plays across all of them as one; segments in no part
   stay off during the show. **Test** a part to see exactly where it starts and ends on the real light
-- For Govee lights whose realtime mode only reaches part of them, such as the Christmas String Lights 2
-  and icicle lights: per-bulb colour (experimental), using the Govee app's own Finger sketch pictures
 
 </details>
 
@@ -209,7 +207,6 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **? Help** on every page: tips for the page you're on, a ? on each editor panel, search, and links into the guide
 - Arrange the Show, Music and Playlist editors your way: pick a page layout, then drag, collapse or hide any panel
 - The browser's Back and Forward buttons move between the app's pages, inside Home Assistant too
-- Experimental: hand a Govee light to one of Govee's built-in scenes for part of the show
 
 </details>
 
@@ -270,8 +267,7 @@ on its own port (18099) that serves only that page and its queue, never the edit
 Effects are written once, in JavaScript: the editor uses them for the live preview and, on save,
 renders every frame of the show into a compact baked file. The player only streams those frames, each
 light in its own protocol and at the pace it can take: Govee lights over Govee's undocumented
-per-segment "razer" LAN protocol (or its slower app commands, for lights whose realtime mode falls
-short), WLED and DDP controllers over DDP, E1.31 controllers over unicast E1.31, Home Assistant lights
+per-segment "razer" LAN protocol (or the official one-colour command, for lights without it), WLED and DDP controllers over DDP, E1.31 controllers over unicast E1.31, Home Assistant lights
 and switches through Home Assistant's actions, and Twinkly over its realtime mode. Each kind gets its
 own rate limiting and keepalive, and lights set up over HTTP are put back as they were afterwards. It
 follows either the browser's audio position or, for a Home
@@ -341,8 +337,6 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/runner.py               Starts shows on a speaker or for the browser, plays playlists and visitors' requests
   app/halidayshow/public.py               The public page on its own port: visitors' choices and their queue
   app/halidayshow/imagemeta.py            Takes the GPS location and other hidden details out of photos visitors see
-  app/halidayshow/scenes.py               Govee scene library lookup (experimental scenes)
-  app/halidayshow/scenelib.py             Your scenes (Scene editor): checking them as they're saved
   app/halidayshow/scenelib.py             Your scenes (Scene editor): checking them as they're saved
   app/halidayshow/storage.py              Shows, settings, songs and the house photo on disk
   app/halidayshow/backup.py               Export, import and start afresh, with copies kept first

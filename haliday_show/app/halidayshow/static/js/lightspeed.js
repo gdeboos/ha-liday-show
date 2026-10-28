@@ -7,9 +7,7 @@ import { renderTrack } from "./effects.js";
 
 // Changes a second: `whole` is what a light all one colour manages, `busy` every bulb different.
 export const SLOW_PROTOCOLS = {
-  pixels: { label: "Per bulb", whole: 6, busy: 1.5 },
-  segments: { label: "App segments", whole: 10, busy: 3 },
-  whole: { label: "Whole light only", whole: 10, busy: 10 },
+  whole: { label: "Whole light", whole: 10, busy: 10 },
   ha_light: { label: "a Home Assistant light", whole: 4, busy: 4 },
   ha_switch: { label: "a Home Assistant switch", whole: 1, busy: 1 },
 };
@@ -29,7 +27,7 @@ export const switchOn = (frame) => {
 // of the clip rendered as it would be baked. Returns null for realtime lights, else
 // {needed, can, tooFast, label}: changes a second the clip needs and the light manages. It's too fast
 // if it flashes or steps much more often than the light can change, or if it moves smoothly but,
-// sampled at the light's own pace, a good part of it jumps a long way between updates. On Whole light only just the average
+// sampled at the light's own pace, a good part of it jumps a long way between updates. On Whole light just the average
 // colour counts, as that's all it shows.
 // `render(time, n)` gives the light's frame at a show time, for a clip that isn't the light's own
 // (a House lane clip, say); by default it's the clip rendered along the light.
@@ -70,7 +68,7 @@ export function clipPace(clip, device, { seconds = 4, fps = 20, render = null } 
 // What a light shows at `time`, from renderAt(t), the show's frame at t (a fresh array, or one it may
 // overwrite). A slow light shows the frame from its last update, so previews step as the real light
 // does: it updates `whole` times a second, down to `busy` when every bulb is different. On Whole light
-// only every segment shows the frame's average colour. Realtime lights show the frame as it is.
+// every segment shows the frame's average colour. Realtime lights show the frame as it is.
 export function asShown(device, time, renderAt) {
   const speed = SLOW_PROTOCOLS[device?.protocol];
   if (!speed) return renderAt(time);
@@ -95,7 +93,7 @@ function changed(a, b, by) {
   return count;
 }
 
-// The share of bulbs not the frame's most common colour: what a Per bulb picture has to list.
+// The share of bulbs not the frame's most common colour.
 function busyShare(frame) {
   const counts = new Map();
   for (let i = 0; i < frame.length; i += 3) {

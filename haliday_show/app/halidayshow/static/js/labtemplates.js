@@ -11,7 +11,7 @@ const rainbow = (n) => Array.from({ length: n }, (_, i) => {
 const STREAM = { repeat: 50, interval: 100, realtimeOn: true };
 
 // The window the sweeps work on: the light's model's known realtime reach (44 on the H70C5), else
-// Segments. Picking a light sets Segments to its full length (300 on a Per bulb H70C5), and a realtime
+// Segments. Picking a light sets Segments to its full length (300 on an H70C5), and a realtime
 // frame longer than the window makes such a light ignore it, so the known reach wins.
 export const sweepWindow = (model, segments) => model?.reach || segments || 44;
 
@@ -27,17 +27,6 @@ export const LAB_TEMPLATES = {
     text: (n, rgb) => `b0 01 ${hex([n])}  ${repeatRgb(n, rgb)}` },
   rainbow: { label: "Realtime: rainbow", kind: "razer", ...STREAM,
     text: (n) => `b0 01 ${hex([n])}  ${rainbow(n)}` },
-  razerHeader: { label: "Realtime (Razer): fixed length 14", kind: "razer", length: 14, ...STREAM,
-    text: (n, rgb) => `b0 01 ${hex([n])}  ${repeatRgb(n, rgb)}` },
-  v2: { label: "Realtime v2: with zone bytes", kind: "razer", ...STREAM,
-    text: (n, rgb) => `b4 01 ${hex([n])}  ` + Array.from({ length: n }, (_, i) => `${hex(rgb)} ${hex([i < 36 ? 1 : 2])}`).join("  ") },
-  appSegments: { label: "App segments: colour all", kind: "ptreal",
-    text: (n, rgb) => {
-      const mask = (2n ** BigInt(Math.min(n, 56))) - 1n;
-      const bytes = [];
-      for (let m = mask; m > 0n; m >>= 8n) bytes.push(Number(m & 0xffn));
-      return `33 05 15 01 ${hex(rgb)} 00 00 00 00 00 ${hex(bytes)}`;
-    } },
 };
 
 // The "past the window" sweep: lights like the H70C5 and the icicles only take colours for their first

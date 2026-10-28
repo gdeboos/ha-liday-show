@@ -19,7 +19,7 @@ blending, and can have up to `MAX_SEGMENTS` (1000) segments, one per LED.
 - Up to 40 frames a second (the same cap as Govee realtime). An unchanged frame is repeated every
   second: WLED's realtime timeout is 2.5 s by default, after which it goes back to its own effect.
 - Nothing is sent to start or stop: WLED switches to realtime on the first packet and back when they
-  stop. Govee scenes on a WLED track are ignored.
+  stop.
 
 Chosen over WLED's own UDP realtime (port 21324, DRGB/DNRGB) because DRGB caps a packet at 490 LEDs,
 DNRGB needs its own start index per packet and a timeout byte, and DDP needs no setup in WLED.

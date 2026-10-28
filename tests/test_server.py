@@ -631,37 +631,12 @@ async def test_packet_lab_sends_set_up_messages_first(client):
 
 
 async def test_long_lights_only_with_protocols_that_allow_them(client):
-    ok = await client.put("/api/devices", json=[{"ip": "192.168.1.70", "segments": 300, "protocol": "pixels"}])
+    ok = await client.put("/api/devices", json=[{"ip": "192.168.1.70", "segments": 300, "protocol": "whole"}])
     assert ok.status == 200 and (await ok.json())[0]["segments"] == 300
     assert (await client.put("/api/devices", json=[{"ip": "192.168.1.70", "segments": 300}])).status == 400
-    assert (await client.put("/api/devices", json=[{"ip": "192.168.1.70", "segments": 1001, "protocol": "pixels"}])).status == 400
-
-
-async def test_per_bulb_speed_test_alternates_pictures_at_the_rate_asked(client):
-    import socket
-    rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    rx.bind(("127.0.0.1", 4003))
-    rx.setblocking(False)
-    try:
-        await client.put("/api/devices", json=[{"ip": "127.0.0.1", "name": "Pillars", "segments": 300, "protocol": "pixels"}])
-        ok = {"ip": "127.0.0.1", "bulbs": 300, "small": False, "per_second": 8}
-        assert (await client.post("/api/lab/speed", json=ok)).status == 200
-        await asyncio.sleep(0.4)
-        msgs = []
-        while True:
-            try:
-                msgs.append([base64.b64decode(p) for p in json.loads(rx.recv(65535))["msg"]["data"]["command"]])
-            except BlockingIOError:
-                break
-        shown = [m for m in msgs if any(p[:5] == bytes.fromhex("33050a2003") for p in m)]
-        assert 2 <= len(shown) <= 5  # about 8 a second, each a whole picture in two messages
-        firsts = [p for m in msgs for p in m if p[:2] == b"\xa3\x00"]
-        assert firsts[0] != firsts[1]  # red, then blue
-        assert (await client.post("/api/lab/stop")).status == 200
-    finally:
-        rx.close()
-    for bad in ({**ok, "per_second": 100}, {**ok, "bulbs": 0}, {**ok, "ip": "192.0.2.1"}):
-        assert (await client.post("/api/lab/speed", json=bad)).status == 400
+    assert (await client.put("/api/devices", json=[{"ip": "192.168.1.70", "segments": 1001, "protocol": "whole"}])).status == 400
+    for gone in ("razer", "v2", "segments", "pixels"):
+        assert (await client.put("/api/devices", json=[{"ip": "192.168.1.70", "protocol": gone}])).status == 400
 
 
 async def test_packet_lab_sends_a_steps_after_messages_once_it_is_done(client):

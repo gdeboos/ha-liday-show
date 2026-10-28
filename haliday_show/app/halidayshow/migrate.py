@@ -5,12 +5,18 @@ start we copy the old add-on's saved data across (read-only map all_addon_config
 uploaded songs to the new media folder, and point shows at the copied songs. Nothing old is
 changed or deleted, so the old add-on still works until the owner removes it.
 """
+import contextlib
 import hashlib
 import json
 import logging
 import os
+import re
 import shutil
+import time
 from pathlib import Path
+
+from . import baked
+from .storage import _write_atomic
 
 log = logging.getLogger(__name__)
 
@@ -127,3 +133,172 @@ def fill_device_kinds(storage) -> int:
         storage.save_devices(devices)
         log.info("marked %d saved light(s) as Govee", len(missing))
     return len(missing)
+
+
+# 0.2.207 took out the experimental Govee protocols (App segments, Per bulb) and the two realtime
+# variants that never helped (Razer, v2), and Govee scenes. Lights on those go to Realtime, and scene
+# clips come out of shows. What changed is kept in RETIRED so the editor can say so once.
+RETIRED = ".retired-govee.json"
+REALTIME_MAX = 255  # the realtime packet holds the segment count in one byte
+
+
+def stretch_parts(parts: list[dict], old: int, new: int) -> list[dict]:
+    """A light's parts moved from `old` segments to `new`, each keeping its share of the light
+    (segment numbers count from 1). A part squeezed out by those before it is dropped."""
+    if not parts or old == new or old < 1:
+        return parts or []
+    out, after = [], 0
+    for p in sorted(parts, key=lambda p: p["from"]):
+        start = max(round((p["from"] - 1) * new / old) + 1, after + 1)
+        end = min(max(round(p["to"] * new / old), start), new)
+        if start > new:
+            continue
+        out.append({**p, "from": start, "to": end})
+        after = end
+    return out
+
+
+def _model_reach(models_file: Path) -> dict[str, int]:
+    """Bulbs a model lights in realtime, where it doesn't reach them all (static/models.json)."""
+    try:
+        models = json.loads(models_file.read_text()).get("models") or []
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return {m["sku"]: int(m["reach"]) for m in models if isinstance(m, dict) and m.get("reach")}
+
+
+def retire_govee_protocols(storage, models_file: Path | None = None) -> list[str]:
+    """Switches Govee lights on a protocol that's gone to Realtime. Realtime takes at most 255 segments,
+    or as many as the model lights in realtime (44 on the H70C5: more and it ignores the frame), so a
+    light with more is cut down and its parts stretched to fit. Returns the lights' names."""
+    from .protocol import RETIRED_PROTOCOLS
+    models_file = models_file or Path(__file__).parent / "static" / "models.json"
+    devices = storage.load_devices()
+    moved, reach = [], None
+    for d in devices:
+        if not isinstance(d, dict) or d.get("kind", "govee") != "govee" or d.get("protocol") not in RETIRED_PROTOCOLS:
+            continue
+        if reach is None:
+            reach = _model_reach(models_file)
+        d["protocol"] = "standard"
+        old = int(d.get("segments") or 1)
+        most = reach.get(str(d.get("sku") or "").strip().split(" ")[0].upper(), REALTIME_MAX)
+        if old > most:
+            d["segments"] = most
+            d["parts"] = stretch_parts(d.get("parts") or [], old, most)
+        moved.append(str(d.get("name") or d.get("id") or ""))
+    if moved:
+        storage.save_devices(devices)
+        log.info("moved %d light(s) to Realtime: %s", len(moved), ", ".join(moved))
+    return moved
+
+
+def _blank_scenes(blob: bytes) -> bytes | None:
+    """A baked file with its Govee scene stretches dark, or None if it has none. Those frames held only
+    a placeholder shimmer, as the light was handed to the scene."""
+    if blob[:4] != baked.MAGIC:
+        return None
+    hlen = int.from_bytes(blob[5:9], "big")
+    try:
+        header = json.loads(blob[9: 9 + hlen])
+        scenes = header.pop("scenes", None)
+        if not scenes:
+            return None
+        sizes = [int(t["segments"]) * 3 for t in header["tracks"]]
+        data = bytearray(blob[9 + hlen:])
+        stride, frames = sum(sizes), int(header["frames"])
+        for s in scenes:
+            k = int(s["track"])
+            off = sum(sizes[:k])
+            for f in range(max(0, int(s["start"])), min(frames, int(s["end"]))):
+                at = f * stride + off
+                data[at: at + sizes[k]] = bytes(sizes[k])
+    except (ValueError, KeyError, TypeError, IndexError):
+        return None
+    head = json.dumps(header).encode()
+    return baked.MAGIC + blob[4:5] + len(head).to_bytes(4, "big") + head + bytes(data)
+
+
+def drop_govee_scenes(storage) -> dict:
+    """Takes Govee scene clips out of saved shows (archived ones too) and blanks them in baked files,
+    so shows play on without them. Playlist blocks of a Govee scene become "off" blocks.
+    Returns {"clips": n, "shows": [names]}."""
+    clips, shows = 0, []
+    folders = [storage.shows_dir, storage.shows_dir / "archived"]
+    for folder in folders:
+        for p in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+            try:
+                show = json.loads(p.read_text())
+            except (OSError, ValueError):
+                continue
+            gone = 0
+            for tr in show.get("tracks") or [] if isinstance(show, dict) else []:
+                if isinstance(tr, dict) and isinstance(tr.get("clips"), list):
+                    kept = [c for c in tr["clips"] if not (isinstance(c, dict) and c.get("effect") == "scene")]
+                    gone += len(tr["clips"]) - len(kept)
+                    tr["clips"] = kept
+            if gone:
+                # Written in place: saving through storage would delete the baked frames, and the
+                # show would stop playing until it's opened again.
+                _write_atomic(p, json.dumps(show, indent=1).encode())
+                clips += gone
+                shows.append(str(show.get("name") or p.stem))
+    for folder in folders + [storage.blocks_dir]:
+        for p in sorted(folder.glob("*.gshow")) if folder.is_dir() else []:
+            try:
+                fixed = _blank_scenes(p.read_bytes())
+            except OSError:
+                continue
+            if fixed is not None:
+                _write_atomic(p, fixed)
+    settings = storage.load_settings()
+    blocks = 0
+    for pl in settings.get("playlists") or []:
+        for it in (pl.get("items") or []) if isinstance(pl, dict) else []:
+            if isinstance(it, dict) and it.get("type") == "effect" and it.get("effect") == "scene":
+                it["type"] = "off"
+                it.pop("effect", None)
+                it.pop("params", None)
+                blocks += 1
+    if blocks:
+        storage.save_settings(settings)
+    # Govee's scene lists were cached as scenes/<MODEL>.json. 0.2.205 kept your own scenes there too
+    # (storage moves them to house-scenes), so only a JSON list under an upper-case name goes.
+    cache = storage.config_dir / "scenes"
+    for p in cache.glob("*.json"):
+        if re.match(r"^[A-Z0-9]{3,12}$", p.stem):
+            with contextlib.suppress(OSError, ValueError):
+                if isinstance(json.loads(p.read_text()), list):
+                    p.unlink()
+    with contextlib.suppress(OSError):
+        cache.rmdir()  # only goes if nothing else is left in it
+    if clips or blocks:
+        log.info("took %d Govee scene clip(s) out of %d show(s), %d playlist block(s)", clips, len(shows), blocks)
+    return {"clips": clips, "shows": shows, "blocks": blocks}
+
+
+def retire_govee_extras(storage) -> dict | None:
+    """Both of the above. Anything they changed is added to RETIRED for the editor to mention once."""
+    lights = retire_govee_protocols(storage)
+    scenes = drop_govee_scenes(storage)
+    if not (lights or scenes["clips"] or scenes["blocks"]):
+        return None
+    marker = storage.config_dir / RETIRED
+    try:
+        done = json.loads(marker.read_text())
+    except (OSError, ValueError):
+        done = {"lights": [], "clips": 0, "shows": [], "blocks": 0}
+    done["lights"] = sorted(set(done.get("lights", [])) | set(lights))
+    done["shows"] = sorted(set(done.get("shows", [])) | set(scenes["shows"]))
+    done["clips"] = done.get("clips", 0) + scenes["clips"]
+    done["blocks"] = done.get("blocks", 0) + scenes["blocks"]
+    done["at"] = int(time.time())
+    _write_atomic(marker, json.dumps(done).encode())
+    return done
+
+
+def retired(config_dir: Path) -> dict | None:
+    try:
+        return json.loads((config_dir / RETIRED).read_text())
+    except (OSError, ValueError):
+        return None

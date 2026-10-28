@@ -15,7 +15,7 @@ test("anything that only moves along the light won't work on Whole light only", 
   }
   for (const effect of ["duo", "trio", "gradient"]) assert.equal(level(clip(effect, { speed: 0 }), whole), "no", effect);
   assert.equal(level(clip("rainbow", { spread: 1, speed: 0 }), whole), "no");
-  assert.match(clipFit(clip("chase"), whole).reasons[0], /Whole light only/);
+  assert.match(clipFit(clip("chase"), whole).reasons[0], /Whole light/);
 });
 
 test("whole-light changes still work on Whole light only", () => {
@@ -45,17 +45,11 @@ test("settings too big for a short light make it one steady colour", () => {
 });
 
 test("too fast for a slow light is limited, not blocked", () => {
-  const pixels = { protocol: "pixels", segments: 300, ip: "10.0.0.4" };
-  const r = clipFit(clip("chase", { speed: 2 }), pixels);
+  const lamp = { protocol: "ha_light", segments: 1, entity: "light.porch" };
+  const r = clipFit(clip("cycle", { rate: 8, blend: "step" }), lamp);
   assert.equal(r.level, "limited");
   assert.match(r.reasons[0], /Too fast/);
-  assert.equal(level(clip("cycle", { rate: 0.2, blend: "fade" }), pixels), "ok");
-});
-
-test("a Govee scene needs a linked light with its model set", () => {
-  assert.equal(level(clip("scene"), { ...realtime, ip: "", sku: "H70C5" }), "no");
-  assert.equal(level(clip("scene"), { ...realtime, sku: "" }), "no");
-  assert.equal(level(clip("scene"), { ...realtime, sku: "H70C5" }), "ok");
+  assert.equal(level(clip("cycle", { rate: 0.2, blend: "fade" }), lamp), "ok");
 });
 
 test("House lane clips are marked when lights aren't on the house photo", () => {
@@ -73,19 +67,19 @@ test("House lane clips too fast for a slow light are marked, naming it", () => {
   const along = (n) => Array.from({ length: n }, (_, i) => [i / (n - 1), 0.5]);
   const light = (name, protocol) => ({ name, placed: true, positions: along(60), device: { protocol, segments: 60 } });
   const fast = clip("sweep", { sweeps: 20 });
-  const onSlow = clipFit(fast, null, { house: { lights: [light("Pillars", "pixels"), light("Roof", "standard")] } });
+  const onSlow = clipFit(fast, null, { house: { lights: [light("Pillars", "ha_light"), light("Roof", "standard")] } });
   assert.equal(onSlow.level, "limited");
-  assert.match(onSlow.reasons[0], /Too fast for Pillars \(Per bulb\)/);
+  assert.match(onSlow.reasons[0], /Too fast for Pillars \(a Home Assistant light\)/);
   assert.doesNotMatch(onSlow.reasons[0], /Roof/);
   assert.equal(level(fast, null, { house: { lights: [light("Roof", "standard")] } }), "ok");
   const slow = clip("sweep", { sweeps: 1, width: 1 }, 60);
-  assert.equal(level(slow, null, { house: { lights: [light("Pillars", "pixels")] } }), "ok");
+  assert.equal(level(slow, null, { house: { lights: [light("Pillars", "ha_light")] } }), "ok");
 });
 
 test("a House clip can be both too fast somewhere and missing a light", () => {
   const along = Array.from({ length: 60 }, (_, i) => [i / 59, 0.5]);
   const r = clipFit(clip("sweep", { sweeps: 20 }), null, { house: { lights: [
-    { name: "Pillars", placed: true, positions: along, device: { protocol: "pixels", segments: 60 } },
+    { name: "Pillars", placed: true, positions: along, device: { protocol: "ha_light", segments: 60 } },
     { name: "Tree", placed: false }] } });
   assert.equal(r.level, "limited");
   assert.match(r.reasons.join(" "), /Tree.*Too fast for Pillars/);
@@ -106,9 +100,9 @@ test("worst picks the result that matters most", () => {
 test("realtime reach is noted only where the model's realtime mode stops short", () => {
   const h70c5 = { sku: "H70C5", reach: 44 };
   assert.match(reachNote({ protocol: "standard", bulbs: 300 }, h70c5).text, /first 44 bulbs of 300/);
-  assert.match(reachNote({ protocol: "razer" }, h70c5).text, /first 44 bulbs\./);
-  assert.equal(reachNote({ protocol: "razer" }, h70c5).short, "first 44 bulbs only");
-  assert.equal(reachNote({ protocol: "pixels", bulbs: 300 }, h70c5), null);
+  assert.match(reachNote({ protocol: "standard" }, h70c5).text, /first 44 bulbs\..*Whole light/);
+  assert.equal(reachNote({ protocol: "standard" }, h70c5).short, "first 44 bulbs only");
+  assert.equal(reachNote({ protocol: "whole", bulbs: 300 }, h70c5), null);
   assert.equal(reachNote({ protocol: "standard", bulbs: 40 }, h70c5), null);
   assert.equal(reachNote({ protocol: "standard" }, { sku: "H6199" }), null);
   assert.equal(reachNote({ protocol: "standard" }, undefined), null);

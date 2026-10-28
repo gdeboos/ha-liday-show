@@ -31,7 +31,7 @@ def test_one_wled_segment_over_the_whole_strip_is_no_split():
     assert [(p["id"], p["from"], p["to"]) for p in parts] == [("w0", 1, 30), ("w3", 41, 60)]
 
 
-def test_wled_light_streams_frames_over_ddp_and_ignores_govee_scenes():
+def test_wled_light_streams_frames_over_ddp():
     sock = FakeSock()
     out = output.Output.__new__(output.Output)
     out.sock, out.devices, out._task = sock, {}, None
@@ -44,9 +44,8 @@ def test_wled_light_streams_frames_over_ddp_and_ignores_govee_scenes():
     (payload, addr), = sock.sent
     assert addr == ("10.0.0.9", wled.DDP_PORT)
     assert payload[10:] == b"\x00\x7f\x00\x7f\x00\x00"  # reversed and at half brightness
-    dev.play_scene(5, "")
     dev.tick(now + 0.1)
-    assert len(sock.sent) == 1  # unchanged frame, and a Govee scene changes nothing
+    assert len(sock.sent) == 1  # unchanged frame
     dev.tick(now + output.WLED_RESEND_S + 0.1)
     assert len(sock.sent) == 2  # repeated so WLED doesn't fall back to its own effect
     out.release("10.0.0.9")

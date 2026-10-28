@@ -53,17 +53,12 @@ picks up the change straight away, so you don't need to press **Test** again aft
 
 #### Test only turns the light on?
 
-Lights accept different forms of the realtime command. Change
-**Protocol** and press **Test** again:
+Not every Govee light has a realtime mode. Change **Protocol** and press **Test** again:
 
 | Protocol | When to use it |
 | --- | --- |
 | Realtime | The default, the same packets OpenRGB sends. Works for most strips and outdoor lights. |
-| Realtime (Razer) | The fixed-size packet Razer Chroma sends. Try it next. |
-| Realtime v2 | The newer DreamView form some recent lights use. |
-| Whole light only | For lights with no realtime mode. The whole light shows the average colour of its segments, at up to 10 changes a second, and each change fades a little. |
-| Per bulb (experimental) | For lights whose app has **Finger sketch**, such as the Christmas String Lights 2 and the icicle lights, when their realtime mode doesn't reach every bulb. Sends a picture with a colour for every bulb, as Finger sketch does, so set **Segments** to the number of bulbs (300 on the 30 m Christmas String Lights 2). How fast it changes depends on the picture: about 6 times a second when most of the light is one colour (fades, flashes, a few bulbs moving over a background), down to about once or twice a second when every bulb is different (a rainbow). Similar colours are merged when a picture has a lot of them. **Find** doesn't work with it. |
-| App segments (experimental) | For lights whose realtime mode doesn't reach every bulb. Colours the light the way the Govee Home app does, in the app's own segments, so set **Segments** to the number the app shows. It sends a few segments at a time, the biggest changes first, so the light keeps up rather than lagging behind; slow looks suit it better than fast chases. **Find** doesn't work with it. |
+| Whole light (one colour) | For lights with no realtime mode, or whose realtime mode only reaches part of the light. The whole light shows the average colour of its segments, at up to 10 changes a second, and each change fades a little. |
 
 ### WLED strips
 
@@ -175,8 +170,8 @@ found on real lights: **✓ works** (tested, works on Realtime), **⚠ limited**
 point at the badge to see what it can do) or **? untested** (not tried with HA-liday Show yet: most
 Govee lights with LAN Control work, so add one and press **Test** before buying more; the badge's
 tooltip says whether Govee lists the model as having LAN Control). A tested model
-starts with the settings that suit it, such as **Per bulb** with 300 segments for the 30 m Christmas
-String Lights 2, both when you plan it and when you add it from **Scan network** (under **+ Add a light → Govee light**). Lights you've already
+starts with the settings that suit it, such as 44 segments for the 30 m Christmas String Lights 2
+(as many as it lights in realtime), both when you plan it and when you add it from **Scan network** (under **+ Add a light → Govee light**). Lights you've already
 added keep their settings. Otherwise 15 segments is a guess until you test the real
 light. Planned lights appear in the previews but nothing is sent to them. When the light arrives, type
 its IP into the planned light's window (or pick it, for a Home Assistant light). For a Govee light you can

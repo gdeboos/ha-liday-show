@@ -72,8 +72,8 @@ class Storage:
         self.songs_dir = config_dir / "songs"
         self.drafts_dir = config_dir / "drafts"
         self.blocks_dir = config_dir / "blocks"  # playlists' building blocks, baked (playlists.py)
-        # Your scenes and their baked loops (scenelib.py). Not "scenes": that folder is the cache of
-        # Govee's own scene library (scenes.py).
+        # Your scenes and their baked loops (scenelib.py). Not "scenes": that folder was the cache of
+        # Govee's own scene library until 0.2.207 (migrate.drop_govee_scenes clears it).
         self.scenes_dir = config_dir / "house-scenes"
         self.upload_dir = media_dir / "haliday_show"
         self.devices_file = config_dir / "devices.json"
