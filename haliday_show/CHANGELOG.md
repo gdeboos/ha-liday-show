@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.217
+
+- **Light groups.** Under **Groups** on **Setup → Devices**, press **+ New group**, name it (such as Roof)
+  and pick its lights and parts.
+- Each group gets its own lane in the Show editor, under **House**. Effects on it either run **along the
+  group as if its lights were one strip** (a chase flows from one icicle strip into the next) or **across
+  the group by where its lights are on the house photo** (Sweep, House wipe and Rainbow wave, measured
+  across just those lights).
+- While a group's effect runs it takes over its lights; the rest of the time each light plays its own.
+
 ## 0.2.215
 
 - The top bar is now just **Library**, **Setup** and **Public page**. The editors open from the Library:

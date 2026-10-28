@@ -373,6 +373,16 @@ On the timeline a split light's tracks (when there's more than one) are grouped:
 and its parts, the parts are indented under it, and a heavier line marks where the group starts and
 ends.
 
+### Light groups
+
+A group is a set of lights, or parts of lights, that a show can give one effect: the two strips of
+roof icicles, say, or the left part of each pillar. Under **Groups**, below your lights on the
+**Devices** tab, press **+ New group**, give it a name and turn on the lights and parts to put in it, then
+press **Add group**. A part is in automatically when its whole light is. **Edit…** changes a group and
+**Delete…** removes it. A light can be in as many groups as you like.
+
+Each group gets its own lane in the Show editor, under **House** (see [Group lanes](#group-lanes)).
+
 ## 2. Speakers
 
 The song can play on any Home Assistant media player that can play files from the media folder.
@@ -1153,6 +1163,24 @@ House lane. They sit on top of each light's own effects.
 - Positions are worked out when the show is saved. Playing from the editor picks up any retracing
   by itself, but a show started from an automation needs saving again after you retrace a light
   (any edit with Auto save on does it).
+
+#### Group lanes
+
+Each [light group](#light-groups) has a lane under **House**, named after it. Select a stretch of it and
+press **＋ Add effect…**, and the chooser has two kinds:
+
+- **Along the group, as if its lights were one strip**: any light effect, running through the group's
+  lights and parts one after another, in the **Devices** tab's order. A chase on the roof icicles runs off
+  the end of the left strip and on into the right one. Change the order on the Devices tab.
+- **Across the group, by where its lights are on the house photo**: **Sweep**, **House wipe** and
+  **Rainbow wave**, as on the House lane but measured across just the group's lights, so a sweep crosses
+  the whole group, however much of the house it covers.
+
+While a group's clip runs it takes over its lights from their own effects (the House lane still goes on
+top). Before and after, each light plays its own. Selecting a group lane with lights or the House lane
+puts light effects on the lights and House effects on the House lane, as before. Changing a group
+updates the saved shows that use group lanes, so automations and playlists play it straight away.
+Shared shows don't carry group lanes, because the groups are yours.
 
 ## 5. Play it
 

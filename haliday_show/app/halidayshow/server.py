@@ -1319,6 +1319,46 @@ def _clean_song_folders(body) -> list[dict]:
     return out
 
 
+MAX_GROUPS, MAX_GROUP_MEMBERS = 50, 200
+_MEMBER_ID = re.compile(r"^[^\x00-\x1f]{1,200}$")
+
+
+# Light groups ({id, name, members}): lights and parts that a show can give one effect, on its own
+# lane in the Show editor. Members are device ids, or "light#part" for a part.
+def _clean_light_groups(body) -> list[dict]:
+    if not isinstance(body, list) or len(body) > MAX_GROUPS:
+        raise web.HTTPBadRequest(text=f"expected a list of up to {MAX_GROUPS} groups")
+    out, ids, names = [], set(), set()
+    for g in body:
+        if not isinstance(g, dict):
+            raise web.HTTPBadRequest(text="each group needs an id, a name and its lights")
+        gid, name = str(g.get("id", "")), " ".join(str(g.get("name", "")).split())[:60]
+        members = g.get("members")
+        if not _FOLDER_ID.match(gid) or gid in ids or not name or name.lower() in names \
+                or not isinstance(members, list) or len(members) > MAX_GROUP_MEMBERS:
+            raise web.HTTPBadRequest(text="each group needs its own id and name, and a list of lights")
+        if not all(isinstance(m, str) and _MEMBER_ID.match(m) for m in members):
+            raise web.HTTPBadRequest(text="a group's lights are named by their ids")
+        ids.add(gid)
+        names.add(name.lower())
+        out.append({"id": gid, "name": name, "members": list(dict.fromkeys(members))})
+    return out
+
+
+async def get_light_groups(request):
+    groups = request.app[STORAGE].load_settings().get("light_groups")
+    return web.json_response(groups if isinstance(groups, list) else [])
+
+
+async def put_light_groups(request):
+    groups = _clean_light_groups(await request.json())
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    settings["light_groups"] = groups
+    storage.save_settings(settings)
+    return web.json_response(groups)
+
+
 async def get_song_folders(request):
     folders = request.app[STORAGE].load_settings().get("song_folders")
     return web.json_response(folders if isinstance(folders, list) else [])
@@ -2158,6 +2198,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/presets", put_presets)
     r.add_get("/api/song-folders", get_song_folders)
     r.add_put("/api/song-folders", put_song_folders)
+    r.add_get("/api/light-groups", get_light_groups)
+    r.add_put("/api/light-groups", put_light_groups)
     r.add_get("/api/playlists", get_playlists)
     r.add_put("/api/playlists", put_playlists)
     r.add_post("/api/playlists/{id}/play", play_playlist)

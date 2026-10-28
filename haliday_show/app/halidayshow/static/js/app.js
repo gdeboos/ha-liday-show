@@ -6,7 +6,7 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, FPS, HOUSE, PRESETS, applyHouse, bake, composeLight, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -20,6 +20,8 @@ import { House, partRgb } from "./house.js";
 import { placeOnSample } from "./samplehouse.js";
 import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
 import { Layout } from "./layout.js";
+import { groupSegments, memberChoices, membersText, nameProblem as groupNameProblem, newGroupId, rangeTakes, tidyMembers }
+  from "./lightgroups.js";
 import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor } from "./music.js";
@@ -128,6 +130,7 @@ const app = {
   bakedKey: null,
   deviceList: [],
   devices: {},
+  groups: [], // light groups (lightgroups.js), each with a lane in every show
   pps: prefs.get("pps", 60),
   time: 0,
   playing: false,
@@ -268,7 +271,9 @@ function restore(step) {
 
 // devices -------------------------------------------------------------------
 async function loadDevices() {
-  app.deviceList = await api("api/devices");
+  const [list, groups] = await Promise.all([api("api/devices"), api("api/light-groups").catch(() => [])]);
+  app.deviceList = list;
+  app.groups = groups;
   indexDevices();
 }
 
@@ -342,13 +347,20 @@ function ensureTracks() {
       at++;
     }
   }
-  // Empty tracks for parts that no longer exist.
-  app.show.tracks = tracks.filter((t) => !t.device.includes("#") || app.devices[t.device] || t.clips.length);
+  // A lane per light group, under the House lane.
+  for (const g of app.groups) if (!has(GROUP + g.id)) tracks.splice(1, 0, { device: GROUP + g.id, clips: [] });
+  // Empty tracks for parts and groups that no longer exist.
+  app.show.tracks = tracks.filter((t) => (isGroupTrack(t.device) ? groupById(t.device) : !t.device.includes("#") || app.devices[t.device])
+    || t.clips.length);
   // Tracks follow the Devices tab's order: the House lane, then each light with its parts. Tracks for
   // missing lights stay at the end.
   const order = new Map(app.deviceList.map((d, i) => [d.id, i]));
   const rank = (t) => {
     if (t.device === HOUSE) return -1;
+    if (isGroupTrack(t.device)) {
+      const g = app.groups.indexOf(groupById(t.device));
+      return g < 0 ? Infinity : -1 + (g + 1) / (app.groups.length + 1);
+    }
     const dev = app.devices[t.device];
     if (!dev) return Infinity;
     if (!dev.parent) return order.get(dev.id) * 1000;
@@ -414,6 +426,7 @@ async function stopTest(d) {
 
 function renderDevices() {
   renderLab();
+  renderGroups();
   const rows = $("device-rows");
   rows.replaceChildren();
   if (!app.deviceList.length) {
@@ -1027,20 +1040,130 @@ async function convertLight() {
   status(`${name} is now ${ip ? "a" : "a planned"} WLED light with ${leds}.${parts}${shows}${nextStep}`, failed ? true : "saved", "lights");
 }
 
+// Light groups on the Devices tab: a row each, with a window to name it and pick its lights and parts.
+function renderGroups() {
+  const box = $("group-list");
+  if (!box) return;
+  box.replaceChildren(...app.groups.map((g) => {
+    const picture = document.createElement("span");
+    picture.className = "group-picture";
+    picture.textContent = "▦";
+    const del = button("Delete…", () => deleteGroup(g), "ghost danger");
+    del.setAttribute("aria-label", `Delete the group ${g.name}`);
+    const n = groupSegments(g.members, app.deviceList);
+    return itemRow({ picture, name: g.name, detail: `${membersText(g.members, app.deviceList)}${n ? ` · ${n} segments` : ""}`,
+      edit: () => openGroupWindow(g), extra: [del], label: "the group" });
+  }));
+  if (!app.groups.length) {
+    box.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "No groups yet." }));
+  }
+  $("btn-new-group").disabled = !app.deviceList.length;
+}
+
+function openGroupWindow(group) {
+  const w = editWindow(group ? `Edit group: ${group.name}` : "New group");
+  const name = document.createElement("input");
+  name.value = group?.name || "";
+  name.maxLength = 60;
+  name.placeholder = "e.g. Roof";
+  const nl = document.createElement("label");
+  nl.className = "field";
+  nl.append("Name", name);
+  const picked = new Set(group?.members || []);
+  const list = document.createElement("div");
+  list.className = "group-members";
+  list.setAttribute("role", "group");
+  list.setAttribute("aria-label", "Lights and parts in the group");
+  const count = document.createElement("p");
+  count.className = "hint";
+  const draw = () => {
+    list.replaceChildren(...memberChoices(app.deviceList).map((c) => {
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      // A part goes with its whole light: ticked and fixed while the light is in.
+      const viaLight = c.part && picked.has(c.parent);
+      box.checked = picked.has(c.id) || viaLight;
+      box.disabled = viaLight;
+      box.addEventListener("change", () => {
+        if (box.checked) picked.add(c.id); else picked.delete(c.id);
+        draw();
+      });
+      const l = document.createElement("label");
+      l.className = c.part ? "group-member part" : "group-member";
+      l.append(box, ` ${c.label}`);
+      if (viaLight) l.title = "In the group with its whole light";
+      return l;
+    }));
+    const members = tidyMembers([...picked], app.deviceList);
+    const n = groupSegments(members, app.deviceList);
+    count.textContent = members.length ? `Effects on the group run along these in this order (the Devices tab's), ${n} segments in all.`
+      : "Pick the lights, or parts of lights, to put in it.";
+  };
+  draw();
+  w.body.append(nl, Object.assign(document.createElement("span"), { className: "field-label", textContent: "Lights and parts" }), list, count);
+  const save = button(group ? "Save" : "Add group", async () => {
+    const problem = groupNameProblem(app.groups, name.value, group?.id);
+    if (problem) { status(problem, "hint"); name.focus(); return; }
+    const members = tidyMembers([...picked], app.deviceList);
+    if (!members.length) { status("Pick at least one light or part", "hint"); return; }
+    const v = name.value.trim().replace(/\s+/g, " ");
+    const next = group ? app.groups.map((g) => (g === group ? { ...g, name: v, members } : g))
+      : [...app.groups, { id: newGroupId(app.groups, v), name: v, members }];
+    if (await saveGroups(next, group ? `${v} saved` : `Added the group ${v}. It has its own lane under House in the Show editor`)) w.dlg.close();
+  }, "primary");
+  w.foot.append(button("Cancel", () => w.dlg.close(), "ghost"), save);
+  w.dlg.showModal();
+  name.focus();
+}
+
+async function deleteGroup(g) {
+  const used = await showsWith((show) => show.tracks?.some((t) => t.device === GROUP + g.id && t.clips.length)).catch(() => []);
+  const where = used.length ? ` Its effects in ${used.length === 1 ? used[0] : `${used.length} shows`} stop playing, and stay on its lane until you clear it.` : "";
+  if (!confirm(`Delete the group ${g.name}?${where}`)) return;
+  await saveGroups(app.groups.filter((x) => x !== g), `Deleted the group ${g.name}`);
+}
+
+// The names of saved shows that `uses`.
+async function showsWith(uses) {
+  const out = [];
+  for (const s of await api("api/shows")) {
+    const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
+    if (uses(show)) out.push(show.name || s.name);
+  }
+  return out;
+}
+
+async function saveGroups(next, what) {
+  try {
+    app.groups = await api("api/light-groups", { method: "PUT", json: next });
+  } catch (e) {
+    status(`Couldn't save the groups: ${e.message}`, true, "groups");
+    return false;
+  }
+  ensureTracks();
+  renderGroups();
+  timeline.layout();
+  renderInspector();
+  status(what, "saved", "groups");
+  // Shows with effects on group lanes play the new groups from automations and playlists straight away.
+  await rebakeShowsFor(null, (show) => show.tracks?.some((t) => isGroupTrack(t.device) && t.clips.length));
+  return true;
+}
+
 // Re-bakes saved shows with a track on light `id`, so playlists, schedules and Home Assistant play them
 // at its new length straight away. The open show re-bakes when it next saves.
-async function rebakeShowsFor(id) {
+async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
   let done = 0, failed = 0, open = false, list;
-  const pos = housePositions();
+  const pos = housePositionsAll();
   app.bakedKey = null;
   try { list = await api("api/shows"); } catch { return { done, failed: true, open }; }
   for (const s of list) {
-    if (s.id === app.showId && app.dirty) { open = showUses(app.show, id); continue; }
+    if (s.id === app.showId && app.dirty) { open = uses(app.show); continue; }
     try {
       const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
-      if (!showUses(show, id)) continue;
-      await uploadBake(s.id, bake(show, app.devices, FPS, pos));
-      if (s.id === app.showId) app.bakedKey = JSON.stringify([app.deviceList.map((d) => [d.id, d.segments, d.parts]), pos]);
+      if (!uses(show)) continue;
+      await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups));
+      if (s.id === app.showId) app.bakedKey = showBakeKey(pos);
       done++;
     } catch { failed++; }
   }
@@ -1488,7 +1611,7 @@ const sceneEd = new SceneEditor({
   api, status, house, asShown, prefs,
   lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
   palettes: () => allPalettes(), presetsFor: (effect) => presetsFor(effect),
-  positions: () => housePositions(), editAdvanced: (id) => openSceneInEditor(id),
+  positions: () => housePositionsAll(), groups: () => app.groups, editAdvanced: (id) => openSceneInEditor(id),
   scheduleEditor: (holder, id, onChange) => sceneScheduleEditor(holder, id, onChange),
   opened: () => { app.sceneChosen = true; showView("scene"); },
   closed: () => { app.sceneChosen = false; showView("scene"); },
@@ -1497,8 +1620,19 @@ const sceneEd = new SceneEditor({
 // The House lane: its clips, and where each light's segments sit for them.
 const houseClips = () => app.show.tracks.find((t) => t.device === HOUSE)?.clips || [];
 const isHouse = (i) => app.show.tracks[i]?.device === HOUSE;
-// House effects go on the House lane and nowhere else; light effects everywhere but.
-const fitsTrack = (effect, i) => !!EFFECTS[effect]?.house === isHouse(i);
+// A group lane plays its clips across a light group (see planGroups): House effects by where its
+// lights are on the photo, light effects along them as one strip.
+const groupById = (device) => app.groups.find((g) => GROUP + g.id === device) || null;
+const isGroup = (i) => isGroupTrack(app.show.tracks[i]?.device);
+const isLane = (i) => isHouse(i) || isGroup(i);
+app.groupFor = groupById; // for the timeline's lane names
+const trackKind = (i) => (isHouse(i) ? "house" : isGroup(i) ? "group" : "light");
+// House effects go on the House lane and group lanes; light effects everywhere but the House lane.
+const fitsTrack = (effect, i) => isGroup(i) || !!EFFECTS[effect]?.house === isHouse(i);
+// The group lanes as they play, for composeLight; pass the house positions when there are any.
+const groupPlans = (pos = {}) => planGroups(app.groups, app.deviceList, (id) => app.show.tracks.find((t) => t.device === id), pos);
+// Group lanes need the house photo's positions for their House effects too.
+const groupsUseHouse = (show = app.show) => (show.tracks || []).some((t) => isGroupTrack(t.device) && t.clips.some((c) => EFFECTS[c.effect]?.house));
 
 // Whether clips suit their lights (compat.js). A long show on a slow light takes a while to
 // check, so the timeline and effect chooser get theirs in the background (pass `then`), and every
@@ -1509,6 +1643,7 @@ const fitMemo = new Map(), fitJobs = new Map();
 let fitTimer = null;
 
 function fitContext(i) {
+  if (isGroup(i)) return { dev: null, opts: {} };
   if (!isHouse(i)) return { dev: app.devices[app.show.tracks[i]?.device], opts: {} };
   const pos = housePositionsAll();
   const lights = houseLights().map((d) => ({ name: d.name, placed: !!pos[d.id], positions: pos[d.id] || null,
@@ -1608,7 +1743,7 @@ app.clipFit = (clip, i) => {
 app.trackNote = (dev) => trackNote(dev)?.short || null;
 
 function housePositions() {
-  return houseClips().length ? housePositionsAll() : {};
+  return houseClips().length || groupsUseHouse() ? housePositionsAll() : {};
 }
 
 // Worked out at most every 100 ms: the preview, House panel and every light's frame share it.
@@ -1627,8 +1762,9 @@ function housePositionsAll() {
   return posMemo.value;
 }
 
-// A light's colours at `time`: its own clips, then the House lane's over them.
+// A light's colours at `time`: its own clips, then its groups' and the House lane's over them.
 function lightFrame(tr, dev, time, pos) {
+  if (!dev.parent && app.lights[dev.id]) return physicalFrame(app.lights[dev.id], time, pos);
   const rgb = renderTrack(tr.clips, time, dev.segments);
   if (pos[dev.id]) applyHouse(houseClips(), time, pos[dev.id], rgb);
   return dim(rgb, showLevel(app.show, dev.parent || dev.id));
@@ -1636,8 +1772,8 @@ function lightFrame(tr, dev, time, pos) {
 
 // A whole physical light's colours, as the show plays it.
 function physicalFrame(light, time, pos) {
-  return dim(composeLight(light, (id) => app.show.tracks.find((t) => t.device === id), time, pos, houseClips()),
-    showLevel(app.show, light.id));
+  return dim(composeLight(light, (id) => app.show.tracks.find((t) => t.device === id), time, pos, houseClips(), undefined,
+    groupPlans(pos)), showLevel(app.show, light.id));
 }
 
 // What a physical light shows now: stepped (and on Whole light, one colour) as on the real light.
@@ -2064,10 +2200,17 @@ function drawClipPreview() {
   const track = sel?.clip && c?.isConnected && c.offsetParent && app.show.tracks[sel.track];
   const clip = sel?.clip, len = clip && Math.max(clip.end - clip.start, 0.05);
   const t = clip && clip.start + ((performance.now() - clipPreview.started) / 1000) % len;
-  if (track?.device === HOUSE) {
+  if (track?.device === HOUSE || (isGroupTrack(track?.device) && EFFECTS[clip.effect]?.house)) {
     // A House clip on its own: as if one strip ran left to right across the house.
     if (clipPreview.dev) stopLightPreview();
     drawStrip(c, renderTrack([clip], t, 30), 30);
+    return;
+  }
+  if (isGroupTrack(track?.device)) {
+    // Along the group as one strip, with up to 120 of its segments.
+    if (clipPreview.dev) stopLightPreview();
+    const n = Math.max(1, Math.min(120, groupSegments(groupById(track.device)?.members || [], app.deviceList)));
+    drawStrip(c, renderTrack([clip], t, n), n);
     return;
   }
   const dev = track && app.devices[track.device];
@@ -2129,6 +2272,9 @@ async function stopLightPreview() {
 }
 
 // effects and inspector -------------------------------------------------------
+// A group lane's effects, in the effect chooser.
+const GROUP_CHOICES = [["Along the group, as if its lights were one strip", false],
+  ["Across the group, by where its lights are on the house photo", true]];
 const labsOn = () => prefs.get("labs", false);
 // house: true for the House lane's effects, false for lights', undefined for both.
 const visibleEffects = (keep, house) => Object.entries(EFFECTS).filter(([, fx]) => house === undefined || !!fx.house === house);
@@ -2360,7 +2506,7 @@ function renderInspector() {
   const currentPreset = [...presets].reverse().find((pr) => matchesPreset(pr, clip)) || null;
   const effect = button(`${fxLabel}${currentPreset ? ` · ${presetLabel(currentPreset)}` : ""} ▾`, () => chooseEffect({
     title: `Change the effect on ${trackName(sel.track)}`,
-    groups: [[null, isHouse(sel.track)]],
+    groups: isGroup(sel.track) ? GROUP_CHOICES : [[null, isHouse(sel.track)]],
     dev, length: clip.end - clip.start, from: clip, current: clip.effect, currentPreset,
     fit: (c, then) => clipFitOn(c, sel.track, then),
     onPick: (key, preset) => {
@@ -2448,7 +2594,7 @@ function renderInspector() {
   actions.className = "insp-actions";
   actions.append(button("Save as preset…", () => savePresetFrom(clip), "ghost"));
   actions.append(button("Copy", copySelection, "ghost"));
-  if (!isHouse(sel.track)) {
+  if (!isLane(sel.track)) {
     actions.append(button("Copy to all lights", () => copyClipsTo([clip], sel.track, otherTracks(sel.track)), "ghost"));
   }
   actions.append(button("Delete clip", deleteSelected, "ghost danger"));
@@ -2457,9 +2603,10 @@ function renderInspector() {
 
 // copy and paste ----------------------------------------------------------------
 const trackName = (i) => (isHouse(i) ? "the House lane"
+  : isGroup(i) ? `the ${groupById(app.show.tracks[i].device)?.name || "missing"} group`
   : app.devices[app.show.tracks[i]?.device]?.name || "missing light");
-// The other lights' tracks (never the House lane, whose effects are a different kind).
-const otherTracks = (i) => app.show.tracks.map((_, k) => k).filter((k) => k !== i && !isHouse(k) && playingDev(app.show.tracks[k]));
+// The other lights' tracks (never the House lane or a group lane).
+const otherTracks = (i) => app.show.tracks.map((_, k) => k).filter((k) => k !== i && !isLane(k) && playingDev(app.show.tracks[k]));
 const clone = (clip) => JSON.parse(JSON.stringify(clip));
 
 function copySelection() {
@@ -2517,9 +2664,18 @@ function renderTrackInspector(i) {
   const clips = app.show.tracks[i].clips;
   box.replaceChildren();
   const h = document.createElement("h3");
-  h.textContent = `${isHouse(i) ? "House lane" : trackName(i)}: ${clips.length} effect${clips.length === 1 ? "" : "s"}`;
+  const g = isGroup(i) && groupById(app.show.tracks[i].device);
+  h.textContent = `${isHouse(i) ? "House lane" : g ? `${g.name} group` : trackName(i)}: ${clips.length} effect${clips.length === 1 ? "" : "s"}`;
   box.append(h);
-  const reach = !isHouse(i) && trackNote(app.devices[app.show.tracks[i].device]);
+  if (isGroup(i)) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = g
+      ? `${membersText(g.members, app.deviceList, 6)}. Effects here run along the group as if it were one strip, or (House effects) across it by where its lights are on the house photo, on top of each light's own effects. Change the group under Setup → Devices.`
+      : "This group has been deleted, so its effects don't play. Clear them, or remove the lane.";
+    box.append(p);
+  }
+  const reach = !isLane(i) && trackNote(app.devices[app.show.tracks[i].device]);
   if (reach) {
     const p = document.createElement("p");
     p.className = "hint fit-warning";
@@ -2534,7 +2690,7 @@ function renderTrackInspector(i) {
       : "Effects here run across all your lights by where they are on the house photo. Trace your lights under Setup → House first.";
     box.append(p);
   }
-  if (!isHouse(i) && otherTracks(i).length && clips.length) {
+  if (!isLane(i) && otherTracks(i).length && clips.length) {
     const target = document.createElement("select");
     target.add(new Option("All other lights", "all"));
     for (const k of otherTracks(i)) target.add(new Option(trackName(k), k));
@@ -2558,15 +2714,15 @@ function renderTrackInspector(i) {
   p.disabled = !app.clipboard;
   box.append(p);
   if (clips.length) {
-    box.append(button(isHouse(i) ? "Clear the House lane" : "Clear this light", () => {
+    box.append(button(isHouse(i) ? "Clear the House lane" : isGroup(i) ? "Clear this group" : "Clear this light", () => {
       app.show.tracks[i].clips = [];
       app.changed();
     }, "ghost danger"));
   }
   // A track that plays on nothing (its light was removed, or it's a parts-only light's own track)
   // can be taken out of the show, with its effects.
-  if (!isHouse(i) && !playingDev(app.show.tracks[i])) {
-    const dead = app.show.tracks.filter((t) => t.device !== HOUSE && !playingDev(t));
+  if (!isHouse(i) && !(isGroup(i) && g) && !playingDev(app.show.tracks[i])) {
+    const dead = app.show.tracks.filter((t) => t.device !== HOUSE && !groupById(t.device) && !playingDev(t));
     const remove = (tracks) => {
       const n = tracks.reduce((s, t) => s + t.clips.length, 0);
       if (n && !confirm(`Remove ${tracks.length === 1 ? "this track" : `${tracks.length} tracks`} and ${n} effect${n === 1 ? "" : "s"} from the show?`)) return;
@@ -4048,10 +4204,11 @@ function renderRangeInspector(r) {
   box.replaceChildren();
   const tracks = rangeTracks(r);
   const h = document.createElement("h3");
-  const lights = tracks.filter((t) => !isHouse(t));
+  const lights = tracks.filter((t) => !isLane(t));
+  const lanes = tracks.filter(isLane).map(trackName);
   h.textContent = `Selected ${fmtTime(r.start)} to ${fmtTime(r.end)} on `
-    + (tracks.length === 1 ? trackName(tracks[0]) : lights.length === tracks.length ? `${tracks.length} lights`
-      : `the House lane and ${lights.length} light${lights.length === 1 ? "" : "s"}`);
+    + (tracks.length === 1 ? trackName(tracks[0]) : !lanes.length ? `${tracks.length} lights`
+      : [...lanes, ...(lights.length ? [`${lights.length} light${lights.length === 1 ? "" : "s"}`] : [])].join(", ").replace(/, ([^,]*)$/, " and $1"));
   box.append(h);
   const timeInput = (key) => {
     const el = document.createElement("input");
@@ -4074,9 +4231,11 @@ function renderRangeInspector(r) {
   const del = button("Delete effects here", deleteRange, "ghost danger");
   del.disabled = !overlaps;
   // With the House lane in the selection, House effects go there and light effects on the lights.
-  const onHouse = tracks.some(isHouse);
-  const groups = !onHouse ? [[null, false]] : !lights.length ? [[null, true]]
-    : [["For the lights", false], ["For the House lane, across all lights by where they are on the house photo", true]];
+  // Group lanes alone take both kinds, along the group or across it.
+  const onHouse = tracks.some(isHouse), onGroup = tracks.some(isGroup);
+  const groups = onGroup && !onHouse && !lights.length ? GROUP_CHOICES
+    : !onHouse ? [[lights.length ? null : "For the groups", false]] : !lights.length && !onGroup ? [[null, true]]
+    : [[lights.length ? "For the lights" : "For the groups", false], ["For the House lane, across all lights by where they are on the house photo", true]];
   const actions = document.createElement("div");
   actions.className = "add-actions";
   const choose = button("＋ Add effect…", () => chooseEffect({
@@ -4088,7 +4247,7 @@ function renderRangeInspector(r) {
   }), "primary");
   actions.append(choose);
   const last = app.lastAdd;
-  if (last && tracks.some((t) => fitsTrack(last.key, t))) {
+  if (last && tracks.some((t) => rangeFits(last.key, t, tracks))) {
     actions.append(button(`Add ${EFFECTS[last.key].label}${last.preset ? ` · ${last.preset.label}` : ""} again`,
       () => addToRange(last.key, last.preset), "ghost"));
   }
@@ -4117,10 +4276,14 @@ function suggestionsFor(r, lights) {
   return { heading: `Suggested for this ${section ? `part (${section.label}, ${mood})` : "part"} in ${currentPalette().name} colours`, looks };
 }
 
+// Whether an effect added to a selection spanning `tracks` goes on track t (see rangeTakes).
+const rangeFits = (effect, t, tracks) => rangeTakes(!!EFFECTS[effect]?.house, trackKind(t), tracks.map(trackKind));
+
 function addToRange(effect, preset = null) {
   const r = app.selected.range;
   const clipFor = () => ({ effect, start: r.start, end: r.end, ...chosenParams(effect, preset) });
-  const kind = rangeTracks(r).filter((t) => fitsTrack(effect, t));
+  const all = rangeTracks(r);
+  const kind = all.filter((t) => rangeFits(effect, t, all));
   // Left off the lights it won't work on, unless that's allowed.
   const tracks = kind.filter((t) => !unfit(clipFor(), t));
   const left = kind.filter((t) => !tracks.includes(t));
@@ -6471,7 +6634,7 @@ async function save() {
     prefs.set("lastShow", id);
   }
   const pos = housePositions();
-  const key = JSON.stringify([app.deviceList.map((d) => [d.id, d.segments, d.parts]), pos]);
+  const key = showBakeKey(pos);
   if (app.dirty || app.bakedKey === null) {
     app.show.duration = app.duration();
     const edits = app.edits;
@@ -6480,12 +6643,15 @@ async function save() {
     app.bakedKey = null;  // saving the show clears the server's bake
   }
   if (app.bakedKey !== key) {
-    await uploadBake(app.showId, bake(app.show, app.devices, FPS, pos));
+    await uploadBake(app.showId, bake(app.show, app.devices, FPS, pos, app.groups));
     app.bakedKey = key;
   }
   await refreshShows();
   renderOutput();
 }
+
+// What a show's bake depends on besides the show: the lights, the groups and where they are on the house.
+const showBakeKey = (pos) => JSON.stringify([app.deviceList.map((d) => [d.id, d.segments, d.parts]), app.groups, pos]);
 
 async function uploadBake(showId, blob) {
   // A long show on many bulbs is more than Home Assistant passes on in one go, so it goes in pieces.
@@ -7819,6 +7985,7 @@ function wire() {
   // Add a light and Add a speaker from the editor).
   for (const d of document.querySelectorAll(".view dialog")) document.body.append(d);
   for (const tab of document.querySelectorAll(".tab, .subtab")) tab.addEventListener("click", () => showView(tab.dataset.view));
+  $("btn-new-group").addEventListener("click", () => openGroupWindow(null));
   $("btn-resume").addEventListener("click", () => lastEditor && showView(lastEditor));
 
   $("show-name").addEventListener("change", (e) => {

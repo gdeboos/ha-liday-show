@@ -8,6 +8,11 @@ export const FPS = 40;
 // The House lane's track id. Its clips run across every light by where its segments sit on the
 // house photo, on top of each light's own effects.
 export const HOUSE = "@house";
+// A group lane's track id is this and the group's id. Its clips run across the group's lights and
+// parts as if they were one long strip, in the Devices tab's order, or (House effects) by where they
+// sit on the house photo, measured across just those lights. They sit over the lights' own effects.
+export const GROUP = "@group:";
+export const isGroupTrack = (id) => typeof id === "string" && id.startsWith(GROUP);
 
 export function hexToRgb(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
@@ -423,6 +428,67 @@ export function applyHouse(clips, time, pos, out) {
   return out;
 }
 
+// How each group lane plays: for every light it touches, which of the light's segments are which
+// stretch of the group's strip. `groups` is [{id, members: [light or part id]}]; `lights` the
+// physical lights in the Devices tab's order. A member that's a split light covers all its parts.
+export function planGroups(groups, lights, trackOf, positions = {}) {
+  const plans = [];
+  for (const g of groups || []) {
+    const clips = trackOf(GROUP + g.id)?.clips || [];
+    if (!clips.length) continue;
+    const want = new Set(g.members || []);
+    const ranges = [];
+    for (const light of lights) {
+      const parts = light.parts?.length ? light.parts : null;
+      const pieces = !parts ? (want.has(light.id) ? [{ from: 1, to: light.segments, pos: light.id }] : [])
+        : parts.filter((p) => want.has(light.id) || want.has(`${light.id}#${p.id}`))
+          .map((p) => ({ from: p.from, to: p.to, pos: `${light.id}#${p.id}` }));
+      for (const p of pieces) ranges.push({ light: light.id, start: p.from - 1, n: p.to - p.from + 1, pos: p.pos });
+    }
+    if (!ranges.length) continue;
+    let offset = 0, box = null;
+    for (const r of ranges) {
+      r.offset = offset;
+      offset += r.n;
+      for (const q of positions[r.pos] || []) {
+        if (!q) continue;
+        box ||= [q[0], q[1], q[0], q[1]];
+        box = [Math.min(box[0], q[0]), Math.min(box[1], q[1]), Math.max(box[2], q[0]), Math.max(box[3], q[1])];
+      }
+    }
+    plans.push({ id: g.id, clips, ranges, total: offset, box, at: null, strip: null });
+  }
+  return plans;
+}
+
+// Lays the group lanes' clips over a light's frame (all its segments, `out`).
+export function applyGroups(plans, light, time, positions, out) {
+  for (const plan of plans) {
+    const mine = plan.ranges.filter((r) => r.light === light);
+    if (!mine.length) continue;
+    const live = plan.clips.filter((c) => time >= c.start && time < c.end);
+    if (!live.length) continue;
+    // The strip is the same for every light in the group, so it's worked out once a frame.
+    if (plan.at !== time) {
+      const plain = live.filter((c) => !EFFECTS[c.effect]?.house);
+      plan.strip = plain.length ? renderTrack(plain, time, plan.total) : null;
+      plan.at = time;
+    }
+    const house = live.filter((c) => EFFECTS[c.effect]?.house);
+    for (const r of mine) {
+      const slice = out.subarray(r.start * 3, (r.start + r.n) * 3);
+      if (plan.strip) slice.set(plan.strip.subarray(r.offset * 3, (r.offset + r.n) * 3));
+      const pos = positions[r.pos];
+      if (house.length && pos && plan.box) {
+        const [u0, v0, u1, v1] = plan.box;
+        const across = (q) => q && [u1 > u0 ? (q[0] - u0) / (u1 - u0) : 0.5, v1 > v0 ? (q[1] - v0) / (v1 - v0) : 0.5];
+        applyHouse(house, time, pos.slice(0, r.n).map(across), slice);
+      }
+    }
+  }
+  return out;
+}
+
 // Clips later in the list sit on top. Uncovered segments are black.
 export function renderTrack(clips, time, n, out = new Uint8Array(n * 3)) {
   out.fill(0);
@@ -454,12 +520,14 @@ export function showDuration(show) {
 // A whole physical light's colours at `time`. `trackOf(id)` finds a track by device id. A light
 // split into parts plays its own track across the parts joined end to end (as if the unused
 // segments weren't there), unless `whole` is false, and each part's track wins on that part while
-// one of its clips is running. Segments outside every part stay off.
-export function composeLight(light, trackOf, time, positions = {}, houseClips = [], out = new Uint8Array(light.segments * 3)) {
+// one of its clips is running. Segments outside every part stay off. Group lanes (`groups`, from
+// planGroups) go over that, and the House lane over everything.
+export function composeLight(light, trackOf, time, positions = {}, houseClips = [], out = new Uint8Array(light.segments * 3), groups = []) {
   out.fill(0);
   if (!light.parts?.length) {
     const tr = trackOf(light.id);
     if (tr) renderTrack(tr.clips, time, light.segments, out);
+    if (groups.length) applyGroups(groups, light.id, time, positions, out);
     if (houseClips.length && positions[light.id]) applyHouse(houseClips, time, positions[light.id], out);
     return out;
   }
@@ -473,8 +541,14 @@ export function composeLight(light, trackOf, time, positions = {}, houseClips = 
     const tr = trackOf(id);
     if (tr?.clips.some((c) => time >= c.start && time < c.end)) renderTrack(tr.clips, time, n, slice);
     else if (all) slice.set(all.subarray(k * 3, (k + n) * 3));
-    if (houseClips.length && positions[id]) applyHouse(houseClips, time, positions[id], slice);
     k += n;
+  }
+  if (groups.length) applyGroups(groups, light.id, time, positions, out);
+  if (houseClips.length) {
+    for (const p of light.parts) {
+      const id = `${light.id}#${p.id}`;
+      if (positions[id]) applyHouse(houseClips, time, positions[id], out.subarray((p.from - 1) * 3, p.to * 3));
+    }
   }
   return out;
 }
@@ -501,8 +575,10 @@ export function dim(rgb, level) {
 // light {segments, parts?}, or to a part of one ("lightId#partId", with parent, from and to,
 // 1-based and inclusive); `light` on an entry points at the physical light when the entry stands
 // for all of a split light's parts. Tracks without a known device are skipped. positions maps
-// device id -> each segment's [u, v] on the house (or null), for the House lane's clips.
-export function bake(show, devices, fps = FPS, positions = {}) {
+// device id -> each segment's [u, v] on the house (or null), for the House lane's clips. groups are
+// the light groups ({id, members}) for the group lanes; their strips run in the show's track order,
+// which is the Devices tab's.
+export function bake(show, devices, fps = FPS, positions = {}, groups = []) {
   const tracks = show.tracks || [];
   const houseClips = tracks.find((tr) => tr.device === HOUSE)?.clips || [];
   const byId = new Map(tracks.map((tr) => [tr.device, tr]));
@@ -528,10 +604,11 @@ export function bake(show, devices, fps = FPS, positions = {}) {
   out.set(headerBytes, 9);
   let off = 9 + headerBytes.length;
   const levels = lights.map((l) => showLevel(show, l.id));
+  const plans = planGroups(groups, lights, trackOf, positions);
   for (let f = 0; f < header.frames; f++) {
     const time = f / fps;
     for (const [k, l] of lights.entries()) {
-      dim(composeLight(l, trackOf, time, positions, houseClips, out.subarray(off, off + l.segments * 3)), levels[k]);
+      dim(composeLight(l, trackOf, time, positions, houseClips, out.subarray(off, off + l.segments * 3), plans), levels[k]);
       off += l.segments * 3;
     }
   }

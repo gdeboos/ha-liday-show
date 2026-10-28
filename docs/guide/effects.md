@@ -46,6 +46,24 @@ House lane. They sit on top of each light's own effects.
   by itself, but a show started from an automation needs saving again after you retrace a light
   (any edit with Auto save on does it).
 
+#### Group lanes
+
+Each [light group](lights.md#light-groups) has a lane under **House**, named after it. Select a stretch of it and
+press **＋ Add effect…**, and the chooser has two kinds:
+
+- **Along the group, as if its lights were one strip**: any light effect, running through the group's
+  lights and parts one after another, in the **Devices** tab's order. A chase on the roof icicles runs off
+  the end of the left strip and on into the right one. Change the order on the Devices tab.
+- **Across the group, by where its lights are on the house photo**: **Sweep**, **House wipe** and
+  **Rainbow wave**, as on the House lane but measured across just the group's lights, so a sweep crosses
+  the whole group, however much of the house it covers.
+
+While a group's clip runs it takes over its lights from their own effects (the House lane still goes on
+top). Before and after, each light plays its own. Selecting a group lane with lights or the House lane
+puts light effects on the lights and House effects on the House lane, as before. Changing a group
+updates the saved shows that use group lanes, so automations and playlists play it straight away.
+Shared shows don't carry group lanes, because the groups are yours.
+
 ---
 
 [← Build a show](build-a-show.md) · [Contents](README.md) · [Play it and playlists →](play-it.md)

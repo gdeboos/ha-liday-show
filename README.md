@@ -204,6 +204,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Marks**: flag and name moments in a song (a big hit, the bells coming in); every show using the song sees them and clips snap to them
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
 - **? Help** on every page: tips for the page you're on, a ? on each editor panel, search, and links into the guide
+- **Light groups**: pick lights and parts (the roof's icicles, say) and give them one effect on their own lane, along them as one strip or across them on the house photo
 - Arrange the Show, Music and Playlist editors your way: pick a page layout, then drag, collapse or hide any panel
 - The browser's Back and Forward buttons move between the app's pages, inside Home Assistant too
 
@@ -363,6 +364,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/demo.js, sample-song.mp3         Try the demo: its planned lights and the music-box song
     js/devicetest.js                    Frames for testing a light's parts on the Devices tab
     js/labtemplates.js                  Packet lab starting points
+    js/lightgroups.js                   Light groups: members, names, which lanes a selection's effect goes on
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
     js/schedule.js                      A playlist's schedule in words

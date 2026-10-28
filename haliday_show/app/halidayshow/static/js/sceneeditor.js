@@ -392,7 +392,9 @@ export class SceneEditor {
     const lights = this.d.lights();
     if (!lights.length) return;
     const loop = sceneLoop(scene, lights, FPS);
-    const blob = bake(sceneShow(scene, lights, loop), this.d.devices(), FPS, scene.mode === "advanced" ? this.d.positions() : {});
+    const advanced = scene.mode === "advanced";
+    const blob = bake(sceneShow(scene, lights, loop), this.d.devices(), FPS, advanced ? this.d.positions() : {},
+      advanced ? this.d.groups?.() || [] : []);
     const path = `api/house-scenes/${encodeURIComponent(id)}/baked`;
     if (blob.byteLength > PART) await sendParts(this.d.api, `${path}/part`, new Blob([blob]));
     else await this.d.api(path, { method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" } });
