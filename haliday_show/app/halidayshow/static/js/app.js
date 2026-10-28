@@ -6,7 +6,7 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, EFFECT_GROUPS, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, unusedColour, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -28,7 +28,7 @@ import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor } from "./music.js";
 import { createVolume } from "./volume.js";
-import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
+import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette, usedColourKeys } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, entriesFor, scheduleLine, whenNext } from "./schedule.js";
 import { SchedulePage } from "./schedulepage.js";
 import { readability } from "../public/colours.js";
@@ -2752,6 +2752,7 @@ function renderInspector() {
   field("End", timeInput("end"));
 
   for (const p of EFFECTS[clip.effect].params) {
+    if (unusedColour(clip.effect, p.key, clip)) continue;
     target = p.type === "color" ? groups.colours : p.type === "range" ? groups.brightness : groups.settings;
     let el;
     if (p.type === "select") {
@@ -2771,6 +2772,8 @@ function renderInspector() {
       app.changed({ live: true });
     });
     el.addEventListener("change", () => app.changed());
+    // A colour list shows as many colour boxes as it uses.
+    if (p.key === "count" && EFFECTS[clip.effect].list) el.addEventListener("change", () => renderInspector());
     if (p.type === "color") el.addEventListener("focus", () => { app.lastColourKey = p.key; });
     if (p.type === "range") {
       const shown = document.createElement("span");
@@ -2785,7 +2788,7 @@ function renderInspector() {
     }
     field(p.label, el);
   }
-  const colourKeys = EFFECTS[clip.effect].params.filter((p) => p.type === "color").map((p) => p.key);
+  const colourKeys = EFFECTS[clip.effect].params.filter((p) => p.type === "color" && !unusedColour(clip.effect, p.key, clip)).map((p) => p.key);
   if (colourKeys.length) {
     groups.colours.append(paletteRow((c) => {
       const key = colourKeys.includes(app.lastColourKey) ? app.lastColourKey : colourKeys[0];
@@ -2795,6 +2798,7 @@ function renderInspector() {
     }, button("Apply palette", () => {
       applyPalette(clip, currentPalette().colors);
       app.changed();
+      if (EFFECTS[clip.effect].list) renderInspector();
     }, "ghost")));
   }
   // Only groups with something in them (a legend alone) are shown.
@@ -3283,6 +3287,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
   const colourKeys = [];
   for (const q of fx.params) {
     if (q.type === "color" && !(q.key in preset.params)) continue;
+    if (unusedColour(preset.effect, q.key, { ...defaultParams(preset.effect), ...preset.params })) continue;
     if (q.type === "color") colourKeys.push(q.key);
     const target = q.type === "color" ? groups.colours : q.type === "range" ? groups.brightness : groups.settings;
     let input;
@@ -3306,6 +3311,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
       preset.params[q.key] = v;
       show();
       changed();
+      if (q.key === "count" && fx.list) redraw();
     });
     if (q.type === "color") input.addEventListener("focus", () => { app.lastColourKey = q.key; });
     show();
@@ -3328,6 +3334,14 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
     }, button("Apply palette", () => {
       const tmp = { effect: preset.effect, ...preset.params };
       applyPalette(tmp, currentPalette().colors);
+      if (fx.list) {
+        // The whole list: every colour the palette fills, and how many there are.
+        for (const k of paletteKeys(preset.effect)) if (k in tmp && k in preset.params) preset.params[k] = tmp[k];
+        preset.params.count = tmp.count;
+        changed();
+        redraw();
+        return;
+      }
       for (const k of colourKeys) preset.params[k] = tmp[k];
       setColours();
     }, "ghost")));
@@ -4316,12 +4330,12 @@ function blockEditor(block) {
       if (!p) return;
       const c = { effect: block.effect, ...block.params };
       applyPalette(c, p.colors);
-      for (const k of paletteKeys(block.effect)) block.params[k] = c[k];
+      for (const k of [...paletteKeys(block.effect), "count"]) if (k in c) block.params[k] = c[k];
       changed(true);
     });
     const sw = document.createElement("span");
     sw.className = "pl-colours";
-    for (const k of paletteKeys(block.effect)) {
+    for (const k of usedColourKeys(block.effect, clip)) {
       const s = document.createElement("span");
       s.style.background = clip[k];
       sw.append(s);

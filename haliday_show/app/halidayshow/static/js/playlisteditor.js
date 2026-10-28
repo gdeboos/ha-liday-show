@@ -22,7 +22,7 @@ export const BLOCKS = {
 
 // Effects a block can play: ones that look the same however long they run (not Fade or Wipe, which
 // play once across their length), on each light rather than across the house photo.
-export const BLOCK_EFFECTS = Object.keys(EFFECTS).filter((k) => !["solid", "fade", "wipe"].includes(k)
+export const BLOCK_EFFECTS = Object.keys(EFFECTS).filter((k) => k !== "solid" && !EFFECTS[k].once
   && !EFFECTS[k].house && !EFFECTS[k].experimental);
 
 const rand = () => Math.random().toString(36).slice(2, 8);

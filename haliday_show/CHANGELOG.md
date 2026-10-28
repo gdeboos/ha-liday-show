@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.237
+
+- Five new effects, after WLED's:
+  - **Fairy lights**: old-fashioned coloured bulbs that each fade on and off on their own.
+  - **Ocean waves**: swells of blue rolling along the light.
+  - **Aurora**: drifting curtains of green, teal and purple, like the northern lights.
+  - **Flowing colours**: soft patches of colour drifting and blending.
+  - **Sunrise**: a slow dawn over the length of the clip, or a sunset.
+- They're under a new **Calm** heading in the effect window (Fairy lights is under **Sparkle and festive**). Apart from Sunrise, they work in scenes and playlist blocks too.
+- The first four take up to 8 colours. Pick how many with **Colours**, and **Apply palette** fills them all from your palette.
+
 ## 0.2.236
 
 - Five new festive effects, after WLED's favourites:

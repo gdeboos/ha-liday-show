@@ -6,7 +6,7 @@
 // (House lane included) going round every `loop` seconds.
 
 import { EFFECTS, HOUSE, composeLight, defaultParams } from "./effects.js";
-import { paletteKeys } from "./palettes.js";
+import { paletteKeys, usedColourKeys } from "./palettes.js";
 import { BLOCK_EFFECTS, loopLength } from "./playlisteditor.js";
 
 export const ADVANCED_LOOP_S = 20;
@@ -26,8 +26,10 @@ export function changeEffect(look, effect) {
   const next = newLook(effect);
   if (!look) return next;
   const old = clipFor(look, 0, 1);
-  const colours = paletteKeys(look.effect).map((k) => old[k]).filter(Boolean);
+  const colours = usedColourKeys(look.effect, old).map((k) => old[k]).filter(Boolean);
   paletteKeys(effect).forEach((k, i) => { if (i < colours.length) next.params[k] = colours[i]; });
+  // A list of colours takes as many as the old look had (at least two).
+  if (EFFECTS[effect]?.list && colours.length >= 2) next.params.count = String(Math.min(colours.length, paletteKeys(effect).length));
   if (look.params.brightness != null) next.params.brightness = look.params.brightness;
   return next;
 }
@@ -119,7 +121,7 @@ export function sceneColours(scene, lights) {
     : scene.all ? [scene.all] : lights.flatMap((d) => looksOf(scene, d));
   for (const look of looks) {
     const clip = clipFor(look, 0, 1);
-    for (const k of paletteKeys(look.effect)) {
+    for (const k of usedColourKeys(look.effect, clip)) {
       if (clip[k] && !out.includes(clip[k])) out.push(clip[k]);
       if (out.length === 3) return out;
     }
