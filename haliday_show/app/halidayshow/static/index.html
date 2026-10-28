@@ -1108,18 +1108,19 @@
 </main>
   </div>
 </div>
-<main id="view-public" class="view pub-view" hidden>
+<main id="view-public" class="view pub-section" hidden>
+  <nav class="subnav" role="tablist" aria-label="Public page" aria-orientation="vertical">
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-access" data-pubtab="access" aria-controls="pub-panel-access"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><b>Access</b><span>Link, code and hours</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-shows" data-pubtab="shows" aria-controls="pub-panel-shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><b>Shows</b><span>What visitors can pick</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-look" data-pubtab="look" aria-controls="pub-panel-look"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg><b>Look</b><span>Picture and colours</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-words" data-pubtab="words" aria-controls="pub-panel-words"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg><b>Words</b><span>What visitors read</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-queue" data-pubtab="queue" aria-controls="pub-panel-queue"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Queue</b><span>Visitors waiting</span></button>
+  </nav>
+  <div class="section-body view pub-view">
   <div class="pub-settings">
   <div class="pub-top">
     <a id="pub-open-page" class="button primary pub-open-big" target="_blank" rel="noopener">▶ Open the page</a>
     <span class="hint">Opens your visitors' link in a new tab, as people outside will see it.</span>
-  </div>
-  <div class="pub-tabs" role="tablist" aria-label="Public page settings">
-    <button type="button" role="tab" class="pub-tab" id="pub-tab-access" data-pubtab="access" aria-controls="pub-panel-access"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Access</button>
-    <button type="button" role="tab" class="pub-tab" id="pub-tab-shows" data-pubtab="shows" aria-controls="pub-panel-shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg>Shows</button>
-    <button type="button" role="tab" class="pub-tab" id="pub-tab-look" data-pubtab="look" aria-controls="pub-panel-look"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg>Look</button>
-    <button type="button" role="tab" class="pub-tab" id="pub-tab-words" data-pubtab="words" aria-controls="pub-panel-words"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg>Words</button>
-    <button type="button" role="tab" class="pub-tab" id="pub-tab-queue" data-pubtab="queue" aria-controls="pub-panel-queue"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Queue</button>
   </div>
   <div class="pub-panel" id="pub-panel-access" role="tabpanel" aria-labelledby="pub-tab-access" hidden>
   <section class="card pub-card">
@@ -1296,6 +1297,7 @@
       loading="lazy"></iframe>
     <p class="hint">Buttons here don't start anything.</p>
   </aside>
+  </div>
 </main>
 <!-- The setup guide: a new user's first steps in one window (app.js, "setup guide"). -->
 <dialog id="wizard" class="effect-dialog form-dialog add-dialog wizard" aria-labelledby="wz-title">
