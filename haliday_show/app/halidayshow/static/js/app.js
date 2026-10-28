@@ -31,7 +31,7 @@ import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, length as fmtLength, showRows, songName } from "./showlist.js";
 import {
-  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, suggest, suggestSong,
+  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, suggest, suggestSong,
 } from "./sharing.js";
 import {
   BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
@@ -5023,7 +5023,7 @@ function imLights() {
     pick.addEventListener("change", () => {
       const to = byId.get(pick.value) || null;
       plan[t.key] = { light: to?.id || null, why: "", parts: partPlan(t, to) };
-      imPrev.tracks = null;
+      imPrev.tracks = imPrev.levels = null;
       imLights();
     });
     const why = document.createElement("span");
@@ -5074,7 +5074,7 @@ function imParts(t, m, p) {
     for (const mp of m.parts) pick.add(new Option(mp.name, mp.id, false, mp.id === at));
     pick.add(new Option(m.whole ? "Whole light" : "All its parts", "whole", false, at === "whole"));
     pick.add(new Option("Leave it out", "", false, !at));
-    pick.addEventListener("change", () => { p.parts[part.key] = pick.value || null; imPrev.tracks = null; });
+    pick.addEventListener("change", () => { p.parts[part.key] = pick.value || null; imPrev.tracks = imPrev.levels = null; });
     box.append(name, pick);
   }
   return box;
@@ -5105,7 +5105,7 @@ function imPreviewButton() {
 
 function imPreviewStart() {
   imPrev.on = true;
-  imPrev.tracks = null;
+  imPrev.tracks = imPrev.levels = null;
   $("im-preview").hidden = false;
   const ref = imp.song ? JSON.parse(imp.song) : null;
   imPrev.audio = ref ? new Audio(audioUrl(ref)) : null;
@@ -5131,11 +5131,13 @@ function imPreviewFrame() {
   const t = imPrev.audio ? imPrev.audio.currentTime : (performance.now() - imPrev.start) / 1000;
   if (t >= end || imPrev.audio?.ended) { imPreviewStop(); return; }
   imPrev.tracks ||= buildTracks(imp.share, imp.plan, imp.mine, imFits).tracks;
+  imPrev.levels ||= shareLevels(imp.share, imp.plan);
   const byId = new Map(imPrev.tracks.map((tr) => [tr.device, tr]));
   const pos = housePositionsAll(), houseFx = byId.get(HOUSE)?.clips || [];
   const frames = new Map();
   const full = (light) => {
-    if (!frames.has(light.id)) frames.set(light.id, asShown(light, t, (at) => composeLight(light, (id) => byId.get(id), at, pos, houseFx)));
+    const level = showLevel(imPrev.levels, light.id);
+    if (!frames.has(light.id)) frames.set(light.id, asShown(light, t, (at) => dim(composeLight(light, (id) => byId.get(id), at, pos, houseFx), level)));
     return frames.get(light.id);
   };
   house.paint($("im-canvas"), Math.min(window.innerHeight * 0.35, 320), (dev) => {
@@ -5164,7 +5166,7 @@ async function imSubmit(e) {
   await openShow(null);
   const { tracks, dropped } = buildTracks(share, imp.plan, imp.mine, imFits);
   Object.assign(app.show, { name, audio: imp.song ? JSON.parse(imp.song) : null, duration: share.duration,
-    beats: share.beats, bars: share.bars, sections: share.sections, tracks });
+    beats: share.beats, bars: share.bars, sections: share.sections, tracks, ...shareLevels(share, imp.plan) });
   if (share.tempo !== null) app.show.tempo = share.tempo;
   ensureTracks();
   $("show-name").value = name;

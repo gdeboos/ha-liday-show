@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildTracks, lengthNote, lightType, makeShare, matchCount, myLights, partPlan, readShare, shareFileName,
-  suggest, suggestSong,
+  shareLevels, suggest, suggestSong,
 } from "../../haliday_show/app/halidayshow/static/js/sharing.js";
 
 const models = {
@@ -123,4 +123,30 @@ test("songs, lengths and file names", () => {
   assert.match(lengthNote(178, 212).text, /Yours is 3:32 and theirs was 2:58/);
   assert.equal(shareFileName("Xmas: 1/2"), "Xmas 1 2.halidayshow");
   assert.equal(lightType({ kind: "ha", protocol: "ha_light" }).label, "Home Assistant light");
+});
+
+test("brightness from Show settings travels in the share file and lands on your lights", () => {
+  const dimmed = { ...show, brightness: 60, lightBrightness: { roof: 40, pillars: 100, tree: 30 } };
+  const s = makeShare(dimmed, [pillars, roof, tree], { models, positions });
+  assert.equal(s.brightness, 60);
+  assert.deepEqual(s.lights.map((l) => l.brightness), [undefined, 40]); // tree has no effects, so it isn't shared
+  const r = readShare(JSON.stringify(s));
+  assert.equal(r.brightness, 60);
+  assert.equal(r.lights[1].brightness, 40);
+  // Their Roof goes on your Gutter; their Pillars on your Porch.
+  assert.deepEqual(shareLevels(r, { L1: { light: "porch" }, L2: { light: "gutter" } }),
+    { brightness: 60, lightBrightness: { gutter: 40 } });
+  // Two of theirs on one of yours: the brighter wins.
+  assert.deepEqual(shareLevels(r, { L1: { light: "porch" }, L2: { light: "porch" } }), { brightness: 60 });
+});
+
+test("an undimmed show shares as before, and odd levels are left out", () => {
+  const s = makeShare(show, [pillars, roof], { models, positions });
+  assert.ok(!("brightness" in s));
+  assert.ok(s.lights.every((l) => !("brightness" in l)));
+  const r = readShare(JSON.stringify({ ...s, brightness: "lots", lights: s.lights.map((l) => ({ ...l, brightness: 250 })) }));
+  assert.ok(!("brightness" in r));
+  assert.ok(r.lights.every((l) => !("brightness" in l)));
+  assert.deepEqual(shareLevels(r, {}), {});
+  assert.equal(readShare(JSON.stringify({ ...s, brightness: 0 })).brightness, 1);
 });

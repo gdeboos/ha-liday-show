@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.204
+
+- Shared shows now keep their **Brightness** from **⚙ Show settings…**. When you import one, the
+  whole-show level comes along, and each light's level goes onto the light of yours that plays it.
+  **▶ Preview on your house** shows it dimmed too. Older copies of HA-liday Show still open these files;
+  they just play them at 100%.
+
 ## 0.2.203
 
 - **⚙ Show settings…** has a new **Brightness** section. **Whole show** dims the whole show, and

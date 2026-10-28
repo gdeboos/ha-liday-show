@@ -64,7 +64,8 @@ drag. Shows you made before keep playing at 100%.
 You can swap shows with friends, or post one on a forum, without either of you changing your lights.
 
 - **Share** on a show's row downloads a small file ending in `.halidayshow`. It holds the show's effects,
-  its beats and sections, the song's name and length, and a short description of each light it uses
+  its beats and sections, its **Brightness** levels from **⚙ Show settings…**, the song's name and length,
+  and a short description of each light it uses
   (its name, what kind of light it is, how many segments and parts it has, and roughly where it is on
   your house photo). It doesn't hold the song, your house photo, IP addresses or any settings. Lights
   with no effects in the show are left out.
@@ -88,6 +89,11 @@ You can swap shows with friends, or post one on a forum, without either of you c
        while it plays and the preview follows. Nothing is sent to your lights, and nothing is saved.
        Press **■ Stop preview** to stop it. It needs your lights on the house photo
        (**Setup → House**).
+
+  The show's **Brightness** comes along: the whole-show level as it was, and each light's level on
+  the light of yours that plays it. Where two of their lights play on one of yours, the brighter level
+  is used. You can change them afterwards in **⚙ Show settings…**. A show shared from an older
+  HA-liday Show, before brightness, imports at 100%.
 
   **Import show** saves it and opens it in the editor. Effects a light can't show are marked as usual
   (see [Effects a light can't show](#effects-a-light-cant-show)).
