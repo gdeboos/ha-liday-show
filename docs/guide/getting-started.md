@@ -23,8 +23,9 @@ previews and effect settings), **Edit** on a scene to the **Scene editor** (see 
 **Edit** on a song to the **Music editor** (cutting, shortening, joining and detecting) and **Open** on a
 playlist to the **Playlist editor** (dragging shows into order and setting when they play). **+ New
 show**, **+ New scene** and **+ New playlist** open the new one in its editor too. In an editor,
-**← All shows** (or songs, scenes or playlists) goes back to that Library page, and **Library** at the
-top does too.
+**← All shows** (or songs, scenes or playlists) goes back to that Library page and puts it away.
+**Library** or **Setup** at the top leave it open instead: a **↩** button with its name then sits next to the
+tabs, and takes you straight back to it.
 
 Your browser's **Back** and **Forward** buttons (or swiping back on a phone) move between the tabs and
 pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Library → Shows**, as

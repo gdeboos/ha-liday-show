@@ -6,6 +6,8 @@
   **Open** on a show, **Edit** on a song or scene, **Open** on a playlist, or **+ New …**. **← All shows**
   (or songs, scenes or playlists) takes you back to that Library page, and **Library** stays lit while
   you're in an editor.
+- If you leave an editor through the top bar with something still open, a **↩** button with its name sits
+  next to the tabs and takes you straight back to it.
 - The editors' own copies of those lists (Your shows, Your songs and so on) are gone, as they were the
   same as the Library's.
 

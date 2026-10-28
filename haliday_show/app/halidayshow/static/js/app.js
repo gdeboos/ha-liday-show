@@ -5712,7 +5712,7 @@ function songRow(r) {
 }
 
 async function editSong(ref) {
-  // Ask before switching tabs, rather than after.
+  // Ask before leaving the open draft, rather than after.
   await music.flush();
   if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) return;
   app.songChosen = true;
@@ -7694,6 +7694,25 @@ function showView(view, { push = true } = {}) {
   if (page === "editor") { layoutPreview(); timeline.layout(); loadSongMarks(); }
   rememberPage(page, push);
   helpPageChanged();
+  if (page in EDITOR_LIST) lastEditor = page;
+  showResume();
+}
+
+// Out of an editor with something still open in it: a button in the top bar goes back to it.
+let lastEditor = null;
+function showResume() {
+  const b = $("btn-resume");
+  const open = { editor: app.chosen && !app.sceneId, music: app.songChosen, playlist: app.playlistChosen, scene: app.sceneChosen };
+  const name = lastEditor && !(shownPage in EDITOR_LIST) && open[lastEditor] && ({
+    editor: () => app.show?.name, music: () => $("music-name").value || music.base?.path.split("/").pop(),
+    playlist: () => openPlaylist()?.name, scene: () => $("sc-name").value,
+  })[lastEditor]?.();
+  b.hidden = !name;
+  if (!name) return;
+  const what = { editor: "show", music: "song", playlist: "playlist", scene: "scene" }[lastEditor];
+  b.textContent = `↩ ${name}`;
+  b.title = `Back to the ${what} you were editing`;
+  b.setAttribute("aria-label", `Back to the ${what} ${name}`);
 }
 
 // The browser's Back and Forward move between pages of HA-liday Show (inside Home Assistant too:
@@ -7745,16 +7764,18 @@ async function pageFromHistory(e) {
   }
   navigating = true;
   try {
-    if (shownPage === "editor" && page === "shows") {
+    // Back (not Forward) from an editor to its Library page puts the open thing away, as ← All … does.
+    const back = n < shownN;
+    if (back && shownPage === "editor" && page === "shows") {
       if (!(await confirmDiscard())) { refuse(); return; }
       app.chosen = false;
     }
-    if (shownPage === "music" && page === "songs") {
+    if (back && shownPage === "music" && page === "songs") {
       await music.flush();
       if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) { refuse(); return; }
       app.songChosen = false;
     }
-    if (shownPage === "playlist" && page === "playlists") app.playlistChosen = false;
+    if (back && shownPage === "playlist" && page === "playlists") app.playlistChosen = false;
     // Forward again to the show, song or playlist that was open.
     if (page === "playlist" && !app.playlistChosen && openPlaylist()) app.playlistChosen = true;
     if (page === "editor" && !app.chosen && app.showId) app.chosen = true;
@@ -7772,6 +7793,7 @@ function wire() {
   // Add a light and Add a speaker from the editor).
   for (const d of document.querySelectorAll(".view dialog")) document.body.append(d);
   for (const tab of document.querySelectorAll(".tab, .subtab")) tab.addEventListener("click", () => showView(tab.dataset.view));
+  $("btn-resume").addEventListener("click", () => lastEditor && showView(lastEditor));
 
   $("show-name").addEventListener("change", (e) => {
     app.show.name = e.target.value.trim() || "Untitled show";
@@ -7869,7 +7891,7 @@ function wire() {
     sel.value = songPick;
     sel.dispatchEvent(new Event("change"));
   });
-  // Opens the picked song in the Music editor, or Your songs when it's lights only.
+  // Opens the picked song in the Music editor, or Library → Songs when it's lights only.
   $("btn-song-music").addEventListener("click", () => {
     $("song-dialog").close("");
     if (songPick) editSong(JSON.parse(songPick));
