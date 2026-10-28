@@ -176,3 +176,25 @@ async def test_a_scene_with_one_look_for_every_light_saves_as_it_was_sent(tmp_pa
         body = {"name": "Party", "mode": "basic", "lights": {}, "all": {"effect": "rainbow", "params": {"speed": 2}}}
         assert (await client.put(f"/api/house-scenes/{scene_id}", json=body)).status == 200
         assert await (await client.get(f"/api/house-scenes/{scene_id}")).json() == body
+
+
+def test_govee_scene_cache_files_are_not_taken_for_your_scenes(tmp_path):
+    # Govee's scene library caches each model's list as scenes/<SKU>.json: a list, not a scene.
+    cache = tmp_path / "config" / "scenes"
+    cache.mkdir(parents=True)
+    (cache / "H70C5.json").write_text('[{"name": "Forest", "code": 212}]')
+    storage = Storage(tmp_path / "config", tmp_path / "media")
+    assert storage.list_scenes() == []
+    assert (cache / "H70C5.json").exists()
+
+
+def test_scenes_saved_by_0_2_205_move_to_their_own_folder(tmp_path):
+    old = tmp_path / "config" / "scenes"
+    old.mkdir(parents=True)
+    (old / "glow.json").write_text('{"name": "Glow", "mode": "basic", "lights": {}}')
+    (old / "glow.gshow").write_bytes(baked.encode(40, [{"device": "a", "segments": 1}], [b"\\x00\\x00\\x00"]))
+    (old / "H70C5.json").write_text("[]")
+    storage = Storage(tmp_path / "config", tmp_path / "media")
+    [row] = storage.list_scenes()
+    assert row["id"] == "glow" and row["baked"]
+    assert not (old / "glow.json").exists() and (old / "H70C5.json").exists()

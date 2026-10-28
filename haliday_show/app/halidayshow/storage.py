@@ -72,11 +72,31 @@ class Storage:
         self.songs_dir = config_dir / "songs"
         self.drafts_dir = config_dir / "drafts"
         self.blocks_dir = config_dir / "blocks"  # playlists' building blocks, baked (playlists.py)
-        self.scenes_dir = config_dir / "scenes"  # scenes and their baked loops (scenelib.py)
+        # Your scenes and their baked loops (scenelib.py). Not "scenes": that folder is the cache of
+        # Govee's own scene library (scenes.py).
+        self.scenes_dir = config_dir / "house-scenes"
         self.upload_dir = media_dir / "haliday_show"
         self.devices_file = config_dir / "devices.json"
         self.settings_file = config_dir / "settings.json"
         self.shows_dir.mkdir(parents=True, exist_ok=True)
+        self._move_scenes()
+
+    def _move_scenes(self):
+        """0.2.205 kept your scenes beside Govee's scene cache; they move to their own folder."""
+        old = self.config_dir / "scenes"
+        if not old.is_dir():
+            return
+        for p in old.glob("*.json"):
+            try:
+                scene = json.loads(p.read_text())
+            except (OSError, ValueError):
+                continue
+            if not isinstance(scene, dict) or "lights" not in scene or "mode" not in scene:
+                continue  # one of Govee's cached libraries
+            self.scenes_dir.mkdir(parents=True, exist_ok=True)
+            for f in (p, p.with_suffix(".gshow")):
+                if f.exists() and not (self.scenes_dir / f.name).exists():
+                    f.replace(self.scenes_dir / f.name)
 
     # devices -------------------------------------------------------------
     def load_devices(self) -> list[dict]:
@@ -199,6 +219,8 @@ class Storage:
             try:
                 scene = json.loads(p.read_text())
             except ValueError:
+                continue
+            if not isinstance(scene, dict):
                 continue
             out.append({"id": p.stem, "name": scene.get("name", p.stem), "mode": scene.get("mode", "basic"),
                         "lights": scene.get("lights", {}), "all": scene.get("all"),
