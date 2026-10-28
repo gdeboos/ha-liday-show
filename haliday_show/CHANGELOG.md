@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.211
+
+- **Convert to WLED…** works before the controller is plugged in. Leave the IP blank, set **LEDs** to
+  how many it will have, and the light becomes a planned WLED light, with its shows and parts ready.
+  Type its IP into the light's window once it's on.
+- If a WLED doesn't answer, the message now says you can convert it as a planned light instead.
+
 ## 0.2.210
 
 - Your scenes are in **Home Assistant** (with the MQTT broker app set up). Each scene has its own scene

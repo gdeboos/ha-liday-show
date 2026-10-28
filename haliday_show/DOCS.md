@@ -220,6 +220,11 @@ Rewired a Govee light to run from a WLED controller? You don't need to add it ag
 window. Type the WLED's IP address, or press **Scan network** and **Use** next to it, then press
 **Convert**.
 
+Controller not plugged in yet? Leave the IP blank, set **LEDs** to how many it will have (it starts
+at the light's **Bulbs**) and press **Convert**. The light becomes a planned WLED light, so you can
+work on its shows straight away. Once the controller is on, type its IP into the light's window and
+press **Test**.
+
 - The light keeps its name, its tracks in every show and its place on the house photo.
 - **Segments** becomes the WLED's number of LEDs, and its parts keep their share of the light: on a
   44-segment light split into thirds, **Left**, **Center** and **Right** become thirds of the new length.

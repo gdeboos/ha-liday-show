@@ -962,6 +962,7 @@ function openConvert(d) {
   converting.id = d.id;
   $("convert-title").textContent = `Convert ${d.name} to WLED`;
   $("convert-ip").value = "";
+  $("convert-leds").value = d.bulbs || d.segments;
   $("convert-found").replaceChildren();
   $("convert-dialog").showModal();
   $("convert-ip").focus();
@@ -994,7 +995,16 @@ async function convertLight() {
   const problem = convertProblem(d, ip, app.deviceList);
   if (problem) { status(problem, "hint"); return; }
   let w;
-  try { w = await wledInfo(ip); } catch (e) { status(`Couldn't reach a WLED light at ${ip}: ${e.message}`, true); return; }
+  if (!ip) { // planned: no controller to ask yet, so the LEDs come from the form
+    const leds = Math.round(Number($("convert-leds").value));
+    if (!(leds >= 1 && leds <= 1000)) { status("Set how many LEDs it will have, 1 to 1000", "hint"); return; }
+    w = { leds, all: leds };
+  } else {
+    try { w = await wledInfo(ip); } catch (e) {
+      status(`Couldn't reach a WLED light at ${ip}: ${e.message}. Not plugged in yet? Clear the IP to convert it as a planned light.`, true, "lights");
+      return;
+    }
+  }
   const name = d.name, next = toWled(d, ip, w.leds), before = app.deviceList;
   app.deviceList = app.deviceList.map((x) => (x.id === d.id ? next : x));
   await saveDevices();
@@ -1012,7 +1022,8 @@ async function convertLight() {
   const shows = (done ? ` ${done} show${done === 1 ? "" : "s"} updated to match.` : "")
     + (open ? " The show you have open updates when you save it." : "")
     + (failed ? ` ${failed === true ? "Your shows" : `${failed} show${failed === 1 ? "" : "s"}`} couldn't be updated: open and save them.` : "");
-  status(`${name} is now a WLED light with ${leds}.${parts}${shows} Press Test to check it.`, failed ? true : "saved", "lights");
+  const next_ = ip ? " Press Test to check it." : " Once the controller is on, type its IP into the light's window and press Test.";
+  status(`${name} is now ${ip ? "a" : "a planned"} WLED light with ${leds}.${parts}${shows}${next_}`, failed ? true : "saved", "lights");
 }
 
 // Re-bakes saved shows with a track on light `id`, so playlists, schedules and Home Assistant play them
