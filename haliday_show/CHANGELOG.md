@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.248
+
+- Eight new effects for the House lane and group lanes, made for layering with **Lights' own effects** (Add, Brighter of the two, Only where they're lit):
+  - **House solid**: one colour everywhere.
+  - **House gradient**: your colours blended across the house.
+  - **Stripes**: at any angle, still or moving. Try **Candy cane**.
+  - **Chequerboard**: squares of colour, still or swapping.
+  - **Colour wave**: your palette rolling across the house.
+  - **House sparkle**: sparkles over every light.
+  - **Spotlight**: a soft light wandering over the house.
+  - **Polka dots**: dots of colour across the house.
+- When adding an effect to a group lane, **Across the group, by where its lights are on the house photo** now comes first.
+
 ## 0.2.247
 
 - Saving a show is quicker. Getting a show ready for the lights now takes about a third of the time it did, and the effects with a list of colours (Fairy lights, Ocean waves, Aurora, Flowing colours, Juggle, Ripple, Bouncing balls, Stacking blocks) are four to six times quicker than in 0.2.237–0.2.246.

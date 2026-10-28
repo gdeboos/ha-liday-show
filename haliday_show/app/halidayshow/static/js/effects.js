@@ -765,6 +765,86 @@ Object.assign(EFFECTS, {
   },
 });
 
+// Patterns over the whole house (or a group, by where its lights are): mostly for layering, with a
+// lane's mix (Add, Brighter, Only where lit) over the lights' own effects.
+const angle = num("angle", "Angle (degrees)", 45, 0, 180, 5);
+const across = (p, u, v) => { const a = (p.angle * Math.PI) / 180; return u * Math.cos(a) + v * Math.sin(a); };
+Object.assign(EFFECTS, {
+  housesolid: houseEffect({
+    label: "House solid",
+    params: [color("color", "Colour", "#ff0000")],
+    renderAt: (p) => hexToRgb(p.color),
+  }),
+  housegradient: houseEffect({
+    label: "House gradient", list: true,
+    params: [...colourList(["#ff0000", "#00b000", "#ffffff"]), houseDirection, num("speed", "Drift (per second)", 0, -2, 2, 0.05)],
+    renderAt: (p, t, dur, u, v) => blendList(listColours(p), bounce(along(p.direction, u, v) + t * p.speed)),
+  }),
+  housestripes: houseEffect({
+    label: "Stripes", list: true,
+    params: [...colourList(["#ff0000", "#ffffff"]), angle, num("width", "Stripe width (share of the house)", 0.08, 0.01, 1, 0.01),
+      num("speed", "Move (stripes per second)", 0, -20, 20, 0.25), num("soft", "Soft edges %", 10, 0, 50, 5)],
+    renderAt: (p, t, dur, u, v) => {
+      // Each stripe a colour of the list in turn, with an optional soft blend into the next.
+      const cols = listColours(p), x = across(p, u, v) / Math.max(p.width, 0.005) - t * p.speed;
+      const k = Math.floor(x), f = x - k, soft = p.soft / 100;
+      const c = cols[mod(k, cols.length)];
+      return soft > 0 && f > 1 - soft ? mix(c, cols[mod(k + 1, cols.length)], smooth((f - 1 + soft) / soft)) : c;
+    },
+  }),
+  housechecks: houseEffect({
+    label: "Chequerboard", list: true,
+    params: [...colourList(["#ff0000", "#00b000"]), num("size", "Squares across the house", 8, 1, 60, 1),
+      num("rate", "Swaps per second (0 = still)", 0, 0, 10, 0.25)],
+    renderAt: (p, t, dur, u, v) => {
+      const cols = listColours(p), n = Math.max(1, Math.round(p.size));
+      return cols[mod(Math.floor(u * n) + Math.floor(v * n) + Math.floor(t * p.rate), cols.length)];
+    },
+  }),
+  housewave: houseEffect({
+    label: "Colour wave", list: true,
+    params: [...colourList(["#ff0000", "#ffb000", "#00b000", "#0040ff"]), houseDirection,
+      num("size", "Waves across the house", 1, 0.1, 10, 0.1), num("speed", "Speed (waves per second)", 0.3, -10, 10, 0.05)],
+    renderAt: (p, t, dur, u, v) => blendList(listColours(p), along(p.direction, u, v) * p.size - t * p.speed, true),
+  }),
+  housesparkle: houseEffect({
+    label: "House sparkle",
+    params: [color("color", "Sparkle", "#ffffff"), color("background", "Background", "#000000"),
+      num("density", "Sparkles %", 15, 1, 100, 1), num("rate", "Twinkles per second", 4, 0.5, 20, 0.5),
+      { ...outside, default: "lights' own effects" }],
+    renderAt: (p, t, dur, u, v) => {
+      // Each bulb by where it is on the photo, so every light sparkles on its own.
+      const spot = Math.round(u * 2048) * 4099 + Math.round(v * 2048), s = t * p.rate + hash01(spot, 97), k = Math.floor(s);
+      const a = hash01(spot, k) < p.density / 100 ? Math.sin((s - k) * Math.PI) : 0;
+      return layer(p, hexToRgb(p.color), a);
+    },
+  }),
+  spotlight: houseEffect({
+    label: "Spotlight",
+    params: [color("color", "Colour", "#fff4d0"), color("background", "Background", "#000000"),
+      num("size", "Size (share of the house)", 0.2, 0.03, 1, 0.01), num("speed", "Wander", 0.3, 0, 5, 0.05),
+      { ...outside, default: "lights' own effects" }],
+    renderAt: (p, t, dur, u, v) => {
+      // A soft round light drifting about the house.
+      const s = t * p.speed, cx = 0.1 + 0.8 * noise(s, 91), cy = 0.1 + 0.8 * noise(s + 50, 93);
+      const d = Math.hypot(u - cx, v - cy) / Math.max(p.size, 0.01);
+      return layer(p, hexToRgb(p.color), d < 1 ? smooth(1 - d) : 0);
+    },
+  }),
+  housedots: houseEffect({
+    label: "Polka dots", list: true,
+    params: [...colourList(["#ffffff", "#ff0000"]), color("background", "Background", "#000000"),
+      num("size", "Dots across the house", 8, 1, 60, 1), num("dot", "Dot size %", 40, 5, 100, 5),
+      num("speed", "Drift (per second)", 0, -2, 2, 0.05), outside],
+    renderAt: (p, t, dur, u, v) => {
+      const cols = listColours(p), n = Math.max(1, Math.round(p.size));
+      const x = u * n + t * p.speed * n, y = v * n, cx = Math.floor(x), cy = Math.floor(y);
+      const d = Math.hypot(x - cx - 0.5, y - cy - 0.5) / (p.dot / 200);
+      return layer(p, cols[mod(cx + cy, cols.length)], d < 1 ? Math.min(1, (1 - d) * 4) : 0);
+    },
+  }),
+});
+
 // Headings in the effect window, in order. House lane effects all go under "Across the house".
 export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
   ["calm", "Calm"], ["music", "Follows the music"], ["house", "Across the house"]];
@@ -980,6 +1060,34 @@ export const PRESETS = {
     { label: "From the middle", params: { from: "the middle" } },
     { label: "Sensitive", params: { boost: 180 } },
     { label: "One colour", params: { color: "#00c0ff", color2: "#00c0ff", color3: "#ffffff" } },
+  ],
+  housesolid: [
+    { label: "Warm white", params: { color: "#ffc880" } },
+  ],
+  housestripes: [
+    { label: "Candy cane", params: { color: "#ff0000", color2: "#ffffff", count: "2", angle: 45, speed: 1 } },
+    { label: "Wide bands", params: { width: 0.25, soft: 40, angle: 90 } },
+    { label: "Barber's pole", params: { angle: 60, speed: 3, width: 0.05 } },
+  ],
+  housechecks: [
+    { label: "Big squares", params: { size: 3 } },
+    { label: "Flashing", params: { rate: 2 } },
+  ],
+  housewave: [
+    { label: "Slow tide", params: { speed: 0.1, size: 0.5 } },
+    { label: "Rising", params: { direction: "bottom to top" } },
+  ],
+  housesparkle: [
+    { label: "Glitter", params: { density: 30, rate: 10 } },
+    { label: "Gentle", params: { density: 8, rate: 2 } },
+  ],
+  spotlight: [
+    { label: "Searching", params: { speed: 1.2, size: 0.12 } },
+    { label: "Big and slow", params: { speed: 0.1, size: 0.45 } },
+  ],
+  housedots: [
+    { label: "Snowballs", params: { color: "#ffffff", count: "2", color2: "#c0e8ff", dot: 30 } },
+    { label: "Drifting", params: { speed: 0.2 } },
   ],
   snow: [
     { label: "Light snow", params: { density: 5, speed: 4 } },

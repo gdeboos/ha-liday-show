@@ -545,3 +545,16 @@ test("colours kept between calls are never shared with an effect that changes th
   assert.notDeepEqual(f1, f2);
 });
 import { hexToRgb as hexToRgbForTest } from "../../haliday_show/app/halidayshow/static/js/effects.js";
+
+test("House patterns: stripes alternate, chequerboard alternates, solid is solid", () => {
+  const at = (key, extra, t, u, v) => { const fx = EFFECTS[key]; return fx.renderAt({ ...newClip(key, 0, 10), ...extra }, t, 10, u, v); };
+  assert.deepEqual(at("housesolid", { color: "#123456" }, 1, 0.3, 0.7), [18, 52, 86]);
+  // Vertical stripes 0.1 wide, red then white, no softening.
+  const s = (u) => at("housestripes", { angle: 0, width: 0.1, soft: 0, speed: 0 }, 0, u, 0.5);
+  assert.deepEqual(s(0.05), [255, 0, 0]);
+  assert.deepEqual(s(0.15), [255, 255, 255]);
+  assert.deepEqual(s(0.25), [255, 0, 0]);
+  const c = (u, v) => at("housechecks", { size: 2 }, 0, u, v);
+  assert.notDeepEqual(c(0.25, 0.25), c(0.75, 0.25));
+  assert.deepEqual(c(0.25, 0.25), c(0.75, 0.75));
+});
