@@ -2848,13 +2848,13 @@ function renderInspector() {
 
   const colourKeys = EFFECTS[clip.effect].params.filter((p) => p.type === "color" && !unusedColour(clip.effect, p.key, clip)).map((p) => p.key);
   if (colourKeys.length) {
-    groups.colours.append(paletteRow((c) => {
+    groups.colours.append(paletteRow(clip, (c) => {
       const key = colourKeys.includes(app.lastColourKey) ? app.lastColourKey : colourKeys[0];
       clip[key] = c;
       app.lastColourKey = key;
       app.changed();
     }, button("Apply palette", () => {
-      applyPalette(clip, currentPalette().colors);
+      applyPalette(clip, currentPalette(clip).colors);
       app.changed();
       if (EFFECTS[clip.effect].list) renderInspector();
     }, "ghost")));
@@ -3027,9 +3027,10 @@ function renderTrackInspector(i) {
     }, "primary"));
   }
   if (clips.length) {
-    box.append(paletteRow(null,
-      button("Recolour this light", () => recolour([i]), "ghost"),
-      button("Recolour all lights", () => recolour(app.show.tracks.map((_, k) => k)), "ghost")));
+    const owner = `track:${i}`;
+    box.append(paletteRow(owner, null,
+      button("Recolour this light", () => recolour([i], currentPalette(owner)), "ghost"),
+      button("Recolour all lights", () => recolour(app.show.tracks.map((_, k) => k), currentPalette(owner)), "ghost")));
 
   }
   box.append(button("Copy (Ctrl+C)", copySelection, "ghost"));
@@ -3438,12 +3439,12 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
       }
       changed();
     };
-    groups.colours.append(paletteRow((c) => {
+    groups.colours.append(paletteRow(preset, (c) => {
       preset.params[colourKeys.includes(app.lastColourKey) ? app.lastColourKey : colourKeys[0]] = c;
       setColours();
     }, button("Apply palette", () => {
       const tmp = { effect: preset.effect, ...preset.params };
-      applyPalette(tmp, currentPalette().colors);
+      applyPalette(tmp, currentPalette(preset).colors);
       if (fx.list) {
         // The whole list: every colour the palette fills, and how many there are.
         for (const k of paletteKeys(preset.effect)) if (k in tmp && k in preset.params) preset.params[k] = tmp[k];
@@ -3464,9 +3465,11 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
 const allPalettes = () => [...PRESET_PALETTES, ...app.palettes];
 // The open show's palette (null for none, or while a scene is open in the editor).
 const editorPalette = () => (app.show && !app.sceneId ? showPalette(app.show, allPalettes()) : null);
-// The palette the pickers use: one picked just now in a clip's palette picker, else the show's, else
-// the last one picked (remembered in this browser).
-const currentPalette = () => (app.rowPalette && allPalettes().find((p) => p.name === app.rowPalette)) || editorPalette()
+// The palette a picker uses: one just picked in that picker (`owner` is what it colours: a clip, a
+// track's row, a preset), else the show's, else the last one picked (remembered in this browser).
+// A pick in one picker never leaks into another, or into the show's own colours.
+const currentPalette = (owner = null) => (owner && app.rowPalette?.owner === owner
+  && allPalettes().find((p) => p.name === app.rowPalette.name)) || editorPalette()
   || allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0];
 
 function swatch(color, onclick) {
@@ -3479,8 +3482,7 @@ function swatch(color, onclick) {
 }
 
 // Palette picker for the inspector. Clicking a swatch calls onSwatch with its colour.
-function paletteRow(onSwatch, ...actions) {
-  app.rowPalette = null; // each picker starts on the show's palette
+function paletteRow(owner, onSwatch, ...actions) {
   const row = document.createElement("div");
   row.className = "palette-row";
   const sel = document.createElement("select");
@@ -3489,16 +3491,17 @@ function paletteRow(onSwatch, ...actions) {
     if (!list.length) continue;
     const g = document.createElement("optgroup");
     g.label = label;
-    for (const p of list) g.append(new Option(p.name, p.name, false, p.name === currentPalette().name));
+    for (const p of list) g.append(new Option(p.name, p.name, false, p.name === currentPalette(owner).name));
     sel.append(g);
   }
   const swatches = document.createElement("span");
   swatches.className = "swatches";
-  const fill = () => swatches.replaceChildren(...currentPalette().colors.map((c) => swatch(c, onSwatch)));
-  if (!allPalettes().some((p) => p.name === currentPalette().name)) sel.prepend(new Option(currentPalette().name, currentPalette().name, true, true));
+  const fill = () => swatches.replaceChildren(...currentPalette(owner).colors.map((c) => swatch(c, onSwatch)));
+  const shown = currentPalette(owner).name;
+  if (!allPalettes().some((p) => p.name === shown)) sel.prepend(new Option(shown, shown, true, true));
   sel.addEventListener("change", () => {
-    // With a show palette, picking another here is just for this clip; without one, it's remembered.
-    if (editorPalette()) app.rowPalette = sel.value;
+    // With a show palette, picking another here is just for this picker; without one, it's remembered.
+    if (editorPalette()) app.rowPalette = { owner, name: sel.value };
     else { app.colourPalette = sel.value; prefs.set("colourPalette", sel.value); }
     fill();
   });
@@ -3511,8 +3514,8 @@ function paletteRow(onSwatch, ...actions) {
 }
 
 // Each light steps through the palette clip by clip, in time order, so lights stay matched.
-function recolour(tracks) {
-  const colors = currentPalette().colors;
+function recolour(tracks, palette = currentPalette()) {
+  const colors = palette.colors;
   let n = 0;
   for (const t of tracks) {
     const clips = [...app.show.tracks[t].clips].sort((a, b) => a.start - b.start);
@@ -3520,7 +3523,7 @@ function recolour(tracks) {
     for (const c of clips) if (applyPalette(c, colors, k)) { k++; n++; }
   }
   if (!n) { status("No effects with colours to recolour", "hint"); return; }
-  status(`Recoloured ${n} effect${n > 1 ? "s" : ""} with ${currentPalette().name}`);
+  status(`Recoloured ${n} effect${n > 1 ? "s" : ""} with ${palette.name}`);
   app.changed();
 }
 
@@ -7907,7 +7910,7 @@ function changeShowPalette() {
   app.changed();
   renderShowPalette();
   const tracks = app.show.tracks.map((_, i) => i).filter((i) => app.show.tracks[i].clips.length);
-  if (palette && tracks.length && confirm(`Recolour the effects already in this show with ${palette.name}?`)) recolour(tracks);
+  if (palette && tracks.length && confirm(`Recolour the effects already in this show with ${palette.name}?`)) recolour(tracks, palette);
   renderInspector();
 }
 

@@ -531,8 +531,8 @@ settings…**. Effects you add take its colours, and the effect chooser previews
 The palette picker under a clip's colours starts on it too; picking another palette there is just for
 colouring that clip. Change the show's palette later and you're asked whether to recolour the effects
 already in the show; say no and only new effects use it. **None** keeps each effect's own colours, as
-shows made before this had. If you edit one of your palettes, shows using it follow; if you delete it,
-they keep the colours it had.
+shows made before this had. If you change the colours of one of your palettes, shows using it follow;
+if you delete or rename it, they keep the colours it had (the open show follows a rename).
 
 **Brightness** in **⚙ Show settings…** dims this show without changing any of its effects:
 
