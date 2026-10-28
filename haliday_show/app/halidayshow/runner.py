@@ -246,6 +246,7 @@ class Runner:
             await self._end_playlist()
             async with self._lock:
                 await self._stop()
+                self.player.set_level(self.scene_level())  # before the first frame goes out
                 await self.player.play(None, baked, self.storage.devices_by_id(), position=position, length=math.inf)
                 self.scene = {"id": scene_id, "name": scene.get("name", scene_id)}
                 self.scene_playing = True
@@ -254,6 +255,40 @@ class Runner:
             settings["last_scene"] = scene_id
             self.storage.save_settings(settings)
         log.info("playing scene %s", scene_id)
+
+    def scene_level(self) -> int:
+        """Scenes' brightness, 1-100 (Home Assistant's HA-liday Show light). Shows aren't dimmed by it."""
+        level = self.storage.load_settings().get("scene_brightness", 100)
+        return level if isinstance(level, int) and 1 <= level <= 100 else 100
+
+    def set_scene_level(self, level: int):
+        level = max(1, min(100, int(level)))
+        settings = self.storage.load_settings()
+        if settings.get("scene_brightness") != level:
+            settings["scene_brightness"] = level
+            self.storage.save_settings(settings)
+        if self.scene_playing:
+            self.player.set_level(level)
+
+    def busy(self) -> bool:
+        """A show, playlist or visitor's request has the lights (not the scene itself)."""
+        return ((self.player.playing and not self.scene_playing) or self._playlist_running()
+                or bool(self.requests) or bool(self.public_now))
+
+    async def want_scene(self, scene_id: str):
+        """Home Assistant asked for a scene: now, or once the show that's on has finished."""
+        scene = self.storage.load_scene(scene_id)
+        if scene is None or self.storage.load_scene_baked(scene_id) is None:
+            raise RunnerError("that scene doesn't exist or hasn't been saved in the editor")
+        if self.busy():
+            self.scene = {"id": scene_id, "name": scene.get("name", scene_id)}
+            self.scene_playing = False
+            settings = self.storage.load_settings()
+            settings["last_scene"] = scene_id
+            self.storage.save_settings(settings)
+            log.info("scene %s waits for the show to finish", scene_id)
+            return
+        await self.play_scene(scene_id)
 
     async def stop_scene(self, scene_id: str | None = None):
         """Turn the scene off (only that one, with `scene_id`), whether it's on now or waiting."""
@@ -417,6 +452,7 @@ class Runner:
         self.song = None
         self.block = None
         self.scene_playing = False
+        self.player.set_level(100)
         if self._follow:
             self._follow.cancel()
             self._follow = None

@@ -1215,6 +1215,9 @@ works as in a show. Each light's look becomes one effect across the whole timeli
 - **Switch to Basic** goes back to a row per light. It's only offered while nothing would be lost: each
   light with one effect across the whole loop, played on the whole light, and nothing on the House lane.
 
+Scenes are also in Home Assistant, as a scene each and one light whose brightness dims them (see
+[With MQTT](#with-mqtt)).
+
 While a scene is on, starting a show or a playlist (from an editor, an automation, a schedule or a
 visitor) takes the lights over. When it finishes, or you stop it, the scene comes back after a
 couple of seconds, and its row says **Comes back after the show** meanwhile. To turn the lights off,
@@ -1582,6 +1585,34 @@ actions:
 
 You can also publish a show's name or id to the `haliday_show/play` MQTT topic.
 
+Your [scenes](#scenes) are on the same device:
+
+- **A scene for each of yours**, such as `scene.ha_liday_show_candy_cane`. They're in Home Assistant's
+  **Scenes**, so you can turn one on from a dashboard, an automation or by voice ("activate Candy cane").
+- **One light**, `light.ha_liday_show`, for all of them. Its **Effect** list is your scenes. Turning it
+  on plays the scene you pick, or the last one; turning it off turns the scene off. Its **brightness**
+  dims scenes only: shows always play at their own brightness (see **Brightness** in **⚙ Show
+  settings…**).
+- A scene turned on while a show or playlist is playing waits for it to finish, then comes on.
+  The light shows as on meanwhile.
+
+For example, a scene from sunset to midnight:
+
+```yaml
+triggers:
+  - trigger: sun
+    event: sunset
+actions:
+  - action: light.turn_on
+    target:
+      entity_id: light.ha_liday_show
+    data:
+      effect: Candy cane
+      brightness_pct: 60
+```
+
+and `light.turn_off` at midnight.
+
 ### Without MQTT
 
 Without MQTT, use the app's stdin:
@@ -1598,7 +1629,8 @@ actions:
 ```
 
 To start a playlist instead, send `input: {action: play, playlist: Halloween night}` (its name, in
-any case). Send `input: {action: stop}` to stop. **Setup → Speakers** shows the exact input for the open show, under Automations.
+any case). Send `input: {action: stop}` to stop. For a scene, send
+`input: {action: scene, scene: Candy cane}`, or `scene: "off"` to turn it off. **Setup → Speakers** shows the exact input for the open show, under Automations.
 Automations that use the older `hassio.addon_stdin` action with `addon:` keep working, and that's
 the one to use on Home Assistant before 2026.2.
 

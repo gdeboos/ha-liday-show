@@ -224,3 +224,99 @@ async def test_the_show_editor_plays_a_scene_from_its_playhead(runner):
     _scene(runner.storage)
     await runner.play_scene("glow", position=0.05)
     assert runner.scene_playing and runner.player.position() >= 0.05
+
+
+# Home Assistant: the light, a scene per scene, and commands ------------------------------------
+class FakeClient:
+    def __init__(self):
+        self.published = {}
+
+    async def publish(self, topic, payload, retain=False):
+        self.published[topic] = payload
+
+
+def test_home_assistant_gets_a_light_and_a_scene_each():
+    from halidayshow import mqtt
+    cfgs = mqtt.scene_configs([{"id": "glow", "name": "Glow"}, {"id": "snow", "name": "Snow"}])
+    light = cfgs["homeassistant/light/haliday_show/scenes/config"]
+    assert light["name"] is None and light["effect_list"] == ["Glow", "Snow"] and light["brightness_scale"] == 100
+    scene = cfgs["homeassistant/scene/haliday_show/glow/config"]
+    assert scene["name"] == "Glow" and scene["command_topic"] == "haliday_show/scene/glow/set"
+    assert "effect_list" not in mqtt.scene_configs([])["homeassistant/light/haliday_show/scenes/config"]
+
+
+async def test_the_light_turns_scenes_on_and_off_and_dims_them(runner):
+    import json
+    from halidayshow import mqtt
+    _scene(runner.storage)
+    _scene(runner.storage, "snow", "Snow")
+    bridge = mqtt.MqttBridge(runner)
+    bridge.client = FakeClient()
+    await bridge._publish_all()
+    assert json.loads(bridge.client.published["haliday_show/light/state"])["state"] == "OFF"
+    await bridge._on_message("haliday_show/light/set", b'{"state": "ON", "effect": "Snow", "brightness": 40}')
+    state = json.loads(bridge.client.published["haliday_show/light/state"])
+    assert state == {"state": "ON", "brightness": 40, "color_mode": "brightness", "effect": "Snow"}
+    assert runner.scene_playing and runner.player.level == 40
+    await bridge._on_message("haliday_show/light/set", b'{"state": "OFF"}')
+    assert runner.scene is None and not runner.player.playing
+    # On by itself plays the last scene; a scene entity plays its own.
+    await bridge._on_message("haliday_show/light/set", b'{"state": "ON"}')
+    assert runner.scene["id"] == "snow"
+    await bridge._on_message("haliday_show/scene/glow/set", b"ON")
+    assert runner.scene["id"] == "glow"
+    # A deleted scene's entity goes from Home Assistant.
+    runner.storage.delete_scene("snow")
+    await bridge._publish_all()
+    assert bridge.client.published["homeassistant/scene/haliday_show/snow/config"] == b""
+
+
+async def test_a_scene_asked_for_during_a_show_waits_for_it(runner):
+    _scene(runner.storage)
+    _show(runner.storage, "one", frames=12)
+    await runner.play("one")
+    await runner.want_scene("glow")
+    assert runner.player.show_id == "one" and not runner.scene_playing  # the show carries on
+    assert await _until(lambda: runner.scene_playing)
+
+
+async def test_shows_play_at_full_brightness_whatever_the_scenes_level(runner):
+    _scene(runner.storage)
+    _show(runner.storage, "one", frames=400)
+    runner.set_scene_level(30)
+    await runner.play_scene("glow")
+    assert runner.player.level == 30
+    await runner.play("one")
+    assert runner.player.level == 100
+
+
+def test_the_player_dims_frames_without_touching_the_bake():
+    from halidayshow.player import Player
+    p = Player(Output())
+    p.set_level(50)
+    assert bytes([255, 100, 0]).translate(p._dim) == bytes([127, 50, 0])
+    p.set_level(100)
+    assert p._dim is None
+
+
+async def test_automations_turn_scenes_on_and_off(runner):
+    from halidayshow import commands
+    _scene(runner.storage, "glow", "Candy cane")
+    assert commands.parse("scene Candy cane") == {"action": "scene", "scene": "Candy cane"}
+    assert await commands.handle(runner, "scene candy cane") == "scene glow"
+    assert runner.scene_playing
+    assert await commands.handle(runner, '{"action": "scene", "scene": "off"}') == "scene off"
+    assert runner.scene is None
+    with pytest.raises(ValueError):
+        await commands.handle(runner, "scene Nope")
+
+
+async def test_mqtt_only_plays_scenes_that_are_yours(runner):
+    from halidayshow import mqtt
+    _scene(runner.storage)
+    bridge = mqtt.MqttBridge(runner)
+    bridge.client = FakeClient()
+    await bridge._publish_all()
+    await bridge._on_message("haliday_show/scene/../settings/set", b"ON")
+    await bridge._on_message("haliday_show/scene/gone/set", b"ON")
+    assert runner.scene is None

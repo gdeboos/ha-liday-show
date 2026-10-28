@@ -3,8 +3,9 @@
   {"action": "play", "show": "halloween", "media_player": "media_player.garden"}
   {"action": "play", "playlist": "Halloween night"}
   {"action": "stop"}
+  {"action": "scene", "scene": "Candy cane"}       (or "off"; waits for a show that's on)
 
-"show" may be a show's id or its name. Without "media_player" the show's saved
+"show" (and "scene") may be an id or a name. Without "media_player" the show's saved
 speaker is used; a show with no speaker plays the lights only.
 """
 import asyncio
@@ -33,6 +34,18 @@ def find_show(storage: Storage, ref: str) -> str | None:
     return None
 
 
+def find_scene(storage: Storage, ref: str) -> str | None:
+    ref = ref.strip()
+    scenes = storage.list_scenes()
+    for s in scenes:
+        if s["id"] == ref:
+            return s["id"]
+    for s in scenes:
+        if s["name"].strip().lower() == ref.lower():
+            return s["id"]
+    return None
+
+
 def parse(raw) -> dict:
     if isinstance(raw, (bytes, bytearray)):
         raw = raw.decode(errors="replace")
@@ -41,9 +54,9 @@ def parse(raw) -> dict:
             raw = json.loads(raw)
         except ValueError:
             pass
-        if isinstance(raw, str):  # plain text: "stop" or "play <show>"
+        if isinstance(raw, str):  # plain text: "stop", "play <show>" or "scene <scene>"
             action, _, rest = raw.strip().partition(" ")
-            return {"action": action, "show": rest.strip()}
+            return {"action": action, "scene" if action.lower() == "scene" else "show": rest.strip()}
     if not isinstance(raw, dict):
         raise ValueError('expected an object like {"action": "play", "show": "..."}')
     return raw
@@ -78,6 +91,16 @@ async def handle(runner: Runner, raw) -> str:
     if action == "stop":
         await runner.stop()
         return "stopped"
+    if action == "scene":
+        ref = str(cmd.get("scene", ""))
+        if ref.strip().lower() == "off":
+            await runner.stop_scene()
+            return "scene off"
+        scene_id = find_scene(runner.storage, ref)
+        if not scene_id:
+            raise ValueError(f"no scene called '{ref}'")
+        await runner.want_scene(scene_id)
+        return f"scene {scene_id}"
     if action == "play" and cmd.get("playlist"):
         playlist = playlists.find(runner.storage, str(cmd["playlist"]))
         if not playlist:
