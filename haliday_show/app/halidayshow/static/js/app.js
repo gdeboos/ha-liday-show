@@ -3,6 +3,7 @@
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
 import { keepLevels, levelCurve, levelsFit } from "./musiclevel.js";
+import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
@@ -2494,8 +2495,15 @@ const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOu
 
 // What a clip becomes with `effect` and, optionally, one of its presets: the effect's defaults, the
 // colours and brightness carried over from `from` (the clip being changed), then the preset.
-function chosenParams(effect, preset, from = null) {
+// A new effect (no `from`) takes its colours from `palette`: by default the open show's palette.
+function chosenParams(effect, preset, from = null, palette = editorPalette()) {
   const out = defaultParams(effect);
+  if (!from && palette) {
+    const tmp = { effect, ...out };
+    applyPalette(tmp, palette.colors);
+    delete tmp.effect;
+    Object.assign(out, tmp);
+  }
   for (const p of EFFECTS[effect].params) {
     if (from && (p.type === "color" || p.key === "brightness") && from[p.key] !== undefined) out[p.key] = from[p.key];
   }
@@ -2510,7 +2518,7 @@ function chosenParams(effect, preset, from = null) {
 // fit(clip, then), when given, says whether a choice suits the light (as fitFor does): ones that won't
 // work are greyed out unless "Allow effects that won't work" is ticked, and the current one never is.
 function chooseEffect({ title, groups, dev = null, length = 3, from = null, current = null, currentPreset = null,
-  suggested = null, fit = null, only = null, paramsFor = null, onPick }) {
+  suggested = null, fit = null, only = null, paramsFor = null, palette = editorPalette(), onPick }) {
   const dlg = document.createElement("dialog");
   dlg.className = "effect-dialog";
   const head = document.createElement("div");
@@ -2560,7 +2568,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     span.textContent = label;
     b.append(strip, span);
     const base = paramsFor?.(effect);
-    const params = base ? (preset ? { ...base, ...presetParams(preset, base) } : base) : chosenParams(effect, preset, from);
+    const params = base ? (preset ? { ...base, ...presetParams(preset, base) } : base) : chosenParams(effect, preset, from, palette);
     pickerPreview.items.push({ canvas: strip, clip: { effect, start: 0, end: len, ...params }, dev });
     const mark = (r) => {
       if (!r || r.level === "ok") return;
@@ -2840,13 +2848,13 @@ function renderInspector() {
 
   const colourKeys = EFFECTS[clip.effect].params.filter((p) => p.type === "color" && !unusedColour(clip.effect, p.key, clip)).map((p) => p.key);
   if (colourKeys.length) {
-    groups.colours.append(paletteRow((c) => {
+    groups.colours.append(paletteRow(clip, (c) => {
       const key = colourKeys.includes(app.lastColourKey) ? app.lastColourKey : colourKeys[0];
       clip[key] = c;
       app.lastColourKey = key;
       app.changed();
     }, button("Apply palette", () => {
-      applyPalette(clip, currentPalette().colors);
+      applyPalette(clip, currentPalette(clip).colors);
       app.changed();
       if (EFFECTS[clip.effect].list) renderInspector();
     }, "ghost")));
@@ -3019,9 +3027,10 @@ function renderTrackInspector(i) {
     }, "primary"));
   }
   if (clips.length) {
-    box.append(paletteRow(null,
-      button("Recolour this light", () => recolour([i]), "ghost"),
-      button("Recolour all lights", () => recolour(app.show.tracks.map((_, k) => k)), "ghost")));
+    const owner = `track:${i}`;
+    box.append(paletteRow(owner, null,
+      button("Recolour this light", () => recolour([i], currentPalette(owner)), "ghost"),
+      button("Recolour all lights", () => recolour(app.show.tracks.map((_, k) => k), currentPalette(owner)), "ghost")));
 
   }
   box.append(button("Copy (Ctrl+C)", copySelection, "ghost"));
@@ -3195,7 +3204,7 @@ function itemRow({ picture, name, detail, edit, extra = [], label }) {
 let presetEditing = null; // the preset whose row to bring into view after the list is drawn
 const presetDialogPreview = { items: [], started: 0 };
 const presetPreviewDev = () => app.devices[prefs.get("presetPreviewLight", "")] || null;
-const presetClip = (p) => ({ effect: p.effect, start: 0, end: 4, ...chosenParams(p.effect, p) });
+const presetClip = (p) => ({ effect: p.effect, start: 0, end: 4, ...chosenParams(p.effect, p, null, null) });
 const hasColours = (effect) => EFFECTS[effect].params.some((q) => q.type === "color");
 const keepsColours = (p) => EFFECTS[p.effect].params.some((q) => q.type === "color" && q.key in p.params);
 
@@ -3205,11 +3214,11 @@ const PRESET_EFFECT_GROUPS = [["Light effects", false], ["House lane effects", t
 function newPreset() {
   chooseEffect({
     title: "New preset: pick an effect to start from",
-    groups: PRESET_EFFECT_GROUPS, dev: presetPreviewDev(), length: 4,
+    groups: PRESET_EFFECT_GROUPS, dev: presetPreviewDev(), length: 4, palette: null,
     onPick: (key, preset) => {
       const fx = EFFECTS[key];
       const name = freePresetName(key, preset ? `My ${preset.label.toLowerCase()}` : `My ${fx.label.toLowerCase()}`);
-      openPresetWindow(null, asPreset({ name, effect: key, params: chosenParams(key, preset) }));
+      openPresetWindow(null, asPreset({ name, effect: key, params: chosenParams(key, preset, null, null) }));
     },
   });
 }
@@ -3327,7 +3336,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
   name.addEventListener("input", () => { preset.name = preset.label = name.value; });
   const effect = button(`${fx.label} ▾`, () => chooseEffect({
     title: `Change the effect of ${preset.name}`,
-    groups: PRESET_EFFECT_GROUPS, dev, length: 4, from: { ...preset.params }, current: preset.effect,
+    groups: PRESET_EFFECT_GROUPS, dev, length: 4, from: { ...preset.params }, current: preset.effect, palette: null,
     onPick: (key, start) => {
       const keep = keepsColours(preset);
       const params = chosenParams(key, start, preset.params);
@@ -3430,12 +3439,12 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
       }
       changed();
     };
-    groups.colours.append(paletteRow((c) => {
+    groups.colours.append(paletteRow(preset, (c) => {
       preset.params[colourKeys.includes(app.lastColourKey) ? app.lastColourKey : colourKeys[0]] = c;
       setColours();
     }, button("Apply palette", () => {
       const tmp = { effect: preset.effect, ...preset.params };
-      applyPalette(tmp, currentPalette().colors);
+      applyPalette(tmp, currentPalette(preset).colors);
       if (fx.list) {
         // The whole list: every colour the palette fills, and how many there are.
         for (const k of paletteKeys(preset.effect)) if (k in tmp && k in preset.params) preset.params[k] = tmp[k];
@@ -3454,7 +3463,14 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
 
 // colour palettes ---------------------------------------------------------------
 const allPalettes = () => [...PRESET_PALETTES, ...app.palettes];
-const currentPalette = () => allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0];
+// The open show's palette (null for none, or while a scene is open in the editor).
+const editorPalette = () => (app.show && !app.sceneId ? showPalette(app.show, allPalettes()) : null);
+// The palette a picker uses: one just picked in that picker (`owner` is what it colours: a clip, a
+// track's row, a preset), else the show's, else the last one picked (remembered in this browser).
+// A pick in one picker never leaks into another, or into the show's own colours.
+const currentPalette = (owner = null) => (owner && app.rowPalette?.owner === owner
+  && allPalettes().find((p) => p.name === app.rowPalette.name)) || editorPalette()
+  || allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0];
 
 function swatch(color, onclick) {
   const el = document.createElement(onclick ? "button" : "span");
@@ -3466,7 +3482,7 @@ function swatch(color, onclick) {
 }
 
 // Palette picker for the inspector. Clicking a swatch calls onSwatch with its colour.
-function paletteRow(onSwatch, ...actions) {
+function paletteRow(owner, onSwatch, ...actions) {
   const row = document.createElement("div");
   row.className = "palette-row";
   const sel = document.createElement("select");
@@ -3475,15 +3491,18 @@ function paletteRow(onSwatch, ...actions) {
     if (!list.length) continue;
     const g = document.createElement("optgroup");
     g.label = label;
-    for (const p of list) g.append(new Option(p.name, p.name, false, p.name === currentPalette().name));
+    for (const p of list) g.append(new Option(p.name, p.name, false, p.name === currentPalette(owner).name));
     sel.append(g);
   }
   const swatches = document.createElement("span");
   swatches.className = "swatches";
-  const fill = () => swatches.replaceChildren(...currentPalette().colors.map((c) => swatch(c, onSwatch)));
+  const fill = () => swatches.replaceChildren(...currentPalette(owner).colors.map((c) => swatch(c, onSwatch)));
+  const shown = currentPalette(owner).name;
+  if (!allPalettes().some((p) => p.name === shown)) sel.prepend(new Option(shown, shown, true, true));
   sel.addEventListener("change", () => {
-    app.colourPalette = sel.value;
-    prefs.set("colourPalette", sel.value);
+    // With a show palette, picking another here is just for this picker; without one, it's remembered.
+    if (editorPalette()) app.rowPalette = { owner, name: sel.value };
+    else { app.colourPalette = sel.value; prefs.set("colourPalette", sel.value); }
     fill();
   });
   fill();
@@ -3495,8 +3514,8 @@ function paletteRow(onSwatch, ...actions) {
 }
 
 // Each light steps through the palette clip by clip, in time order, so lights stay matched.
-function recolour(tracks) {
-  const colors = currentPalette().colors;
+function recolour(tracks, palette = currentPalette()) {
+  const colors = palette.colors;
   let n = 0;
   for (const t of tracks) {
     const clips = [...app.show.tracks[t].clips].sort((a, b) => a.start - b.start);
@@ -3504,7 +3523,7 @@ function recolour(tracks) {
     for (const c of clips) if (applyPalette(c, colors, k)) { k++; n++; }
   }
   if (!n) { status("No effects with colours to recolour", "hint"); return; }
-  status(`Recoloured ${n} effect${n > 1 ? "s" : ""} with ${currentPalette().name}`);
+  status(`Recoloured ${n} effect${n > 1 ? "s" : ""} with ${palette.name}`);
   app.changed();
 }
 
@@ -3670,6 +3689,8 @@ function openPaletteWindow(palette, draft = null) {
     }
     if (palette) {
       if (app.colourPalette === palette.name) { app.colourPalette = v; prefs.set("colourPalette", v); }
+      // The open show follows a renamed palette (others keep the colours they last saved).
+      if (app.show?.palette?.name === palette.name && v !== palette.name) { app.show.palette.name = v; app.changed(); }
       Object.assign(palette, { name: v, colors: work.colors });
     } else {
       app.palettes.push({ name: v, colors: work.colors });
@@ -4778,7 +4799,7 @@ async function tryDemo() {
       await api("api/house", { method: "PUT", json: { paths: house.paths, styles: house.styles, pins: house.pins, dim: house.dim } });
     }
     const christmas = allPalettes().find((p) => p.name === "Christmas") || currentPalette();
-    await makeShow(DEMO_SHOW, await sampleSong(), christmas.colors);
+    await makeShow(DEMO_SHOW, await sampleSong(), christmas.colors, christmas);
     status("The demo is ready: press ▶ Play");
   } catch (e) {
     status(`Couldn't set up the demo: ${e.message}`, true);
@@ -4792,10 +4813,11 @@ async function sampleSong() {
 
 // A new show called `name` on the song `file`: uploaded to the songs folder (so speakers can play it),
 // listened to, generated in `colors` (or left blank without them) and saved.
-async function makeShow(name, file, colors) {
+async function makeShow(name, file, colors, palette = null) {
   status(`Adding ${file.name}…`);
   const ref = await uploadSong(api, file);
   await openShow(null);
+  setShowPalette(app.show, palette);
   app.show.name = name;
   $("show-name").value = name;
   app.show.audio = ref;
@@ -5501,7 +5523,8 @@ async function wizardMakeShow(generated) {
   closeWizard();
   showView("editor");
   try {
-    await makeShow(name, file, generated ? (seasonalPalette() || allPalettes().find((p) => p.name === "Christmas")).colors : null);
+    const palette = seasonalPalette() || allPalettes().find((p) => p.name === "Christmas");
+    await makeShow(name, file, generated ? palette.colors : null, palette);
     status(generated ? `${name} is ready: press ▶ Play` : `${name} is ready for your effects`);
   } catch (e) {
     status(`Couldn't make the show: ${e.message}`, true);
@@ -7249,6 +7272,7 @@ async function save() {
   }
   const pos = housePositions();
   const key = showBakeKey(pos);
+  if (refreshShowPalette(app.show, allPalettes())) app.dirty = true;
   if (app.dirty || app.bakedKey === null) {
     app.show.duration = app.duration();
     const edits = app.edits;
@@ -7858,11 +7882,43 @@ async function aiSectionNotes(sections, traits, song) {
 // Generate: a first draft of the whole show from the song, a palette and a style.
 let generateSeed = 0;
 
+// A palette picker: None, then the built-in palettes and yours, with `selected` (a name) picked.
+function fillPaletteSelect(sel, selected, { none = "None: each effect's own colours" } = {}) {
+  sel.replaceChildren(new Option(none, "", false, !selected));
+  for (const [label, list] of [["Built in", PRESET_PALETTES], ["Your palettes", app.palettes]]) {
+    if (!list.length) continue;
+    const g = document.createElement("optgroup");
+    g.label = label;
+    for (const p of list) g.append(new Option(p === seasonalPalette() ? `${p.name} (in season)` : p.name, p.name, false, p.name === selected));
+    sel.append(g);
+  }
+  if (selected && !sel.value) sel.prepend(new Option(selected, selected, true, true)); // a deleted palette the show still has
+}
+
+// Show settings: the show's palette. Changing it asks whether to recolour what's already there.
+function renderShowPalette() {
+  const sel = $("show-palette");
+  fillPaletteSelect(sel, app.show.palette?.name || "");
+  $("show-palette-bar").replaceChildren(...(editorPalette() ? [paletteBar(editorPalette().colors)] : []));
+}
+
+function changeShowPalette() {
+  const name = $("show-palette").value;
+  const palette = name ? allPalettes().find((p) => p.name === name) : null;
+  if (name && !palette) return; // the deleted one it already had
+  setShowPalette(app.show, palette);
+  app.changed();
+  renderShowPalette();
+  const tracks = app.show.tracks.map((_, i) => i).filter((i) => app.show.tracks[i].clips.length);
+  if (palette && tracks.length && confirm(`Recolour the effects already in this show with ${palette.name}?`)) recolour(tracks, palette);
+  renderInspector();
+}
+
 // The settings Generate asks for, shared by its own window and step 2 of New show. `nodes` go in a
 // form; read() gives what to generate with (and remembers the choices for next time).
-function generateControls() {
+function generateControls({ paletteFrom = null } = {}) {
   const palette = document.createElement("select");
-  const preferred = seasonalPalette() || currentPalette();
+  const preferred = editorPalette() || seasonalPalette() || currentPalette();
   for (const p of allPalettes()) {
     const label = p === seasonalPalette() ? `${p.name} (in season)` : p.name;
     palette.add(new Option(label, p.name, false, p.name === preferred.name));
@@ -7897,11 +7953,13 @@ function generateControls() {
     prefs.set("genStyle", style.value);
     prefs.set("genBuild", build.checked);
     prefs.set("genMaxBars", Number(longest.value));
-    const chosen = allPalettes().find((p) => p.name === palette.value) || currentPalette();
+    // In New show the palette comes from step 1 (paletteFrom), so it isn't asked twice.
+    const name = paletteFrom ? paletteFrom() : palette.value;
+    const chosen = allPalettes().find((p) => p.name === name) || seasonalPalette() || currentPalette();
     return { colors: chosen.colors, paletteName: chosen.name, style: style.value, house: !hl.hidden && house.checked,
       build: build.checked, maxBars: Number(longest.value) };
   };
-  return { nodes: [pl, sl, ll, bl, hl], read };
+  return { nodes: paletteFrom ? [sl, ll, bl, hl] : [pl, sl, ll, bl, hl], read };
 }
 
 function generateDialog() {
@@ -8035,8 +8093,10 @@ async function openNewShow() {
   if (!(await confirmDiscard())) return;
   await refreshAudio().catch(() => {});
   newShow.taken = (await api("api/shows").catch(() => [])).map((s) => s.name);
-  Object.assign(newShow, { song: "", start: "empty", named: false, gen: generateControls() });
+  Object.assign(newShow, { song: "", start: "empty", named: false, gen: generateControls({ paletteFrom: () => $("ns-palette").value }) });
   $("ns-gen").replaceChildren(...newShow.gen.nodes);
+  fillPaletteSelect($("ns-palette"), (seasonalPalette() || allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0]).name);
+  nsPaletteBar();
   nsSongPicked();
   $("ns-length").value = 60;
   $("new-show-dialog").showModal();
@@ -8059,13 +8119,20 @@ async function nsSubmit(e) {
   }
   const show = { name: $("ns-name").value.trim(), audio: newShow.song ? JSON.parse(newShow.song) : null,
     length: Math.max(1, Number($("ns-length").value) || 60), start: newShow.start,
+    palette: allPalettes().find((p) => p.name === $("ns-palette").value) || null,
     gen: newShow.start === "empty" ? null : newShow.gen.read() };
   $("new-show-dialog").close();
   await createShow(show);
 }
 
-async function createShow({ name, audio: ref, length, start, gen }) {
+const nsPaletteBar = () => {
+  const p = allPalettes().find((q) => q.name === $("ns-palette").value);
+  $("ns-palette-bar").replaceChildren(...(p ? [paletteBar(p.colors)] : []));
+};
+
+async function createShow({ name, audio: ref, length, start, gen, palette = null }) {
   await openShow(null);
+  setShowPalette(app.show, palette);
   app.show.name = name;
   $("show-name").value = name;
   app.show.audio = ref;
@@ -8690,6 +8757,8 @@ function wire() {
   $("ns-form").addEventListener("submit", nsSubmit);
   $("ns-back").addEventListener("click", () => nsStep(1));
   $("ns-name").addEventListener("input", () => { newShow.named = true; });
+  $("ns-palette").addEventListener("change", nsPaletteBar);
+  $("show-palette").addEventListener("change", changeShowPalette);
   for (const b of document.querySelectorAll("[data-ns=cancel]")) b.addEventListener("click", () => $("new-show-dialog").close());
   $("ns-upload-wrap").addEventListener("click", () => openAddSong({ onAdded: (v) => { if (v) newShow.song = v; nsSongPicked(); } }));
   $("autosave").checked = prefs.get("autosave", true);
@@ -8705,6 +8774,7 @@ function wire() {
   $("rm-replacement").addEventListener("change", () => { document.querySelector("input[name=rm-instead][value=song]").checked = true; });
   $("btn-show-settings").addEventListener("click", () => {
     $("btn-delete").disabled = !app.showId;
+    renderShowPalette();
     renderShowBrightness();
     $("show-dialog").showModal();
   });
