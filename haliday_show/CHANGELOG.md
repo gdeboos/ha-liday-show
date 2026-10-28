@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.212
+
+- **Setup → Devices** no longer shows **✓ works** next to lights that work as they should. Only
+  **⚠ limited** and **? untested** are shown, so the ones that need a look stand out. The same goes for
+  **Plan a light** and **Scan network**.
+
 ## 0.2.211
 
 - **Convert to WLED…** works before the controller is plugged in. Leave the IP blank, set **LEDs** to
