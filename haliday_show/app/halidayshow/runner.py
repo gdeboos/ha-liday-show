@@ -5,6 +5,10 @@ stdin), the MQTT entities and playlists. A playlist plays its shows in order, ea
 show speaker, with a pause between them, round and round until it's stopped. Playing or stopping
 anything else ends it.
 
+A scene (scenelib.py) plays round and round until something else is chosen. A show or playlist
+started while a scene is on takes the lights over, and the scene comes back once nothing else is
+playing. Stopping while the scene itself is on turns it off.
+
 Visitors on the public page add requests (a show, or a playlist to play through once) to a queue.
 A request plays once nothing else is on; during a playlist it slots in after the show that's on, and
 the playlist carries on afterwards. Stopping from the editor, an automation or the speaker clears
@@ -12,6 +16,7 @@ the queue.
 """
 import asyncio
 import logging
+import math
 from datetime import datetime, timezone
 
 from . import playlists
@@ -23,6 +28,7 @@ from .storage import Storage
 log = logging.getLogger(__name__)
 
 START_TIMEOUT_S = 20
+SCENE_BACK_S = 2.0  # how long the lights rest after a show before the scene comes back
 FOLLOW_EVERY_S = 1.0
 RESYNC_S = 1.0  # media players report position coarsely; only correct big jumps
 ENDING_S = 5.0  # a speaker that stops this close to the end of the show has just finished the song
@@ -66,18 +72,24 @@ class Runner:
         # Goes up whenever you play or stop something yourself, which ends a visitor's request part-way.
         self._yours = 0
         self._durations: dict[str, tuple[float, float]] = {}  # show id -> (baked file's mtime, seconds)
+        self.scene: dict | None = None  # the scene on, or waiting to come back after a show: {id, name}
+        self.scene_playing = False  # its frames are what the lights are showing now
+        self._idle_since: float | None = None
 
     def status(self) -> dict:
         st = self.player.status()
+        scene = {**self.scene, "playing": self.scene_playing and st["playing"]} if self.scene else None
         show = self.storage.load_show(st["show"]) if st["show"] else None
         playlist = self.playlist if self._playlist and not self._playlist.done() else None
         block = self.block if st["playing"] else None
         return {**st, "media_player": self.media_player if st["playing"] else None,
-                "name": show.get("name") if show else f"{block['type'].title()} block" if block else None,
+                "name": show.get("name") if show else f"{block['type'].title()} block" if block
+                else self.scene["name"] if scene and scene["playing"] else None,
                 "playlist": {"id": playlist["id"], "name": playlist["name"], "finishing": self.finishing}
                 if playlist else None,
                 "song": self.song if st["playing"] else None, "started": self.started,
-                "block": {k: block[k] for k in ("type", "id", "seconds", "effect") if k in block} if block else None}
+                "block": {k: block[k] for k in ("type", "id", "seconds", "effect") if k in block} if block else None,
+                "scene": scene}
 
     async def play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
                    position: float = 0.0, offset: float = 0.0):
@@ -202,13 +214,86 @@ class Runner:
         except asyncio.CancelledError:
             pass
 
-    async def stop(self):
+    async def stop(self, show: str | None = None):
+        """Stop whatever is on. With `show`, only if that show is what's playing (the editor
+        stopping its own show mustn't turn off a scene that has come back since). Stopping while
+        the scene itself is on turns it off; stopping a show over a scene lets the scene come back."""
+        if show is not None and (self.player.show_id != show or self.scene_playing):
+            return
+        self.requests.clear()
+        self._yours += 1
+        async with self._control:
+            if self.scene_playing:
+                self.scene = None
+            await self._end_playlist()
+            async with self._lock:
+                await self._stop()
+
+    # scenes ------------------------------------------------------------------------
+    async def play_scene(self, scene_id: str):
+        """Play a scene round and round, in place of whatever is on."""
+        blob = self.storage.load_scene_baked(scene_id)
+        scene = self.storage.load_scene(scene_id)
+        if blob is None or scene is None:
+            raise RunnerError("that scene doesn't exist or hasn't been saved in the editor")
+        baked = decode(blob)
         self.requests.clear()
         self._yours += 1
         async with self._control:
             await self._end_playlist()
             async with self._lock:
                 await self._stop()
+                await self.player.play(None, baked, self.storage.devices_by_id(), length=math.inf)
+                self.scene = {"id": scene_id, "name": scene.get("name", scene_id)}
+                self.scene_playing = True
+        settings = self.storage.load_settings()
+        if settings.get("last_scene") != scene_id:
+            settings["last_scene"] = scene_id
+            self.storage.save_settings(settings)
+        log.info("playing scene %s", scene_id)
+
+    async def stop_scene(self, scene_id: str | None = None):
+        """Turn the scene off (only that one, with `scene_id`), whether it's on now or waiting."""
+        if not self.scene or (scene_id and self.scene["id"] != scene_id):
+            return
+        playing = self.scene_playing
+        self.scene = None
+        if playing:
+            async with self._control:
+                async with self._lock:
+                    if self.scene_playing:
+                        await self._stop()
+
+    def forget_scene(self, scene_id: str):
+        """A scene was deleted: don't bring it back."""
+        if self.scene and self.scene["id"] == scene_id and not self.scene_playing:
+            self.scene = None
+
+    def _idle(self) -> bool:
+        """Nothing is using the lights: no show, block, playlist, visitor, test or preview."""
+        return (not self.player.playing and not self._playlist_running() and not self.requests
+                and not self.public_now and not self.player.output.devices)
+
+    async def watch_scene(self):
+        """Brings the scene back once whatever took the lights over has finished."""
+        loop = asyncio.get_running_loop()
+        while True:
+            await asyncio.sleep(0.5)
+            if self.scene_playing and not self.player.playing:
+                self.scene_playing = False
+            if not self.scene or self.scene_playing or not self._idle():
+                self._idle_since = None
+                continue
+            self._idle_since = self._idle_since or loop.time()
+            if loop.time() - self._idle_since < SCENE_BACK_S:
+                continue
+            self._idle_since = None
+            scene_id = self.scene["id"]
+            try:
+                await self.play_scene(scene_id)
+            except Exception as e:  # deleted or not baked: give up on it
+                log.warning("couldn't bring back scene %s: %s", scene_id, e)
+                self.scene = None
 
     async def play_playlist(self, playlist: dict):
         """Play a playlist (see playlists.py: its items, in order) until it's stopped."""
@@ -333,6 +418,7 @@ class Runner:
     async def _stop(self):
         self.song = None
         self.block = None
+        self.scene_playing = False
         if self._follow:
             self._follow.cancel()
             self._follow = None

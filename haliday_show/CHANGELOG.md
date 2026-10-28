@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.205
+
+- **Scenes**, like the one-tap scenes in the Govee app. A scene sets every light at once and plays
+  until you choose something else. Make them in the new **Scene** tab (the **Scene editor**): give
+  each light an **Effect** (or **Off**), a **Style**, **Colours**, **Speed** and **Brightness**, or turn
+  on **Same for every light**. The **Preview** shows it on your house photo, and changes save as you
+  make them.
+- **▶ Play** on a scene (in **Your scenes**, **Library → Scenes**, or **▶ Play on lights** in the
+  editor) keeps it going round and round. Start a show or a playlist and it takes the lights over;
+  once it's finished, or you stop it, the scene comes back. **■ Stop** on the scene turns it off.
+- Scenes are in your data exports and backups. Turning them on from Home Assistant (a light and a
+  scene for each) comes in a later update.
+
 ## 0.2.204
 
 - Shared shows now keep their **Brightness** from **⚙ Show settings…**. When you import one, the

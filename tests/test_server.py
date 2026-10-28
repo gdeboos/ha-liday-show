@@ -1220,3 +1220,36 @@ async def test_song_folders_round_trip_and_validation(client):
                 [{"id": "a", "name": "", "songs": []}], [{"id": "a", "name": "A", "songs": [{"path": "x"}]}],
                 [{"id": f"f{k}", "name": f"F{k}", "songs": []} for k in range(101)]):
         assert (await client.put("/api/song-folders", json=bad)).status == 400
+
+
+async def test_scenes_are_made_saved_baked_played_and_deleted(client):
+    resp = await client.post("/api/house-scenes", json={"name": "Candy cane"})
+    scene_id = (await resp.json())["id"]
+    assert scene_id == "candy-cane"
+    assert (await client.post("/api/house-scenes", json={"name": "candy CANE"})).status == 409  # names are unique
+    assert (await client.post("/api/house-scenes", json={"name": " "})).status == 400
+    body = {"name": "Candy cane", "mode": "basic", "lights": {"a": {"effect": "chase", "params": {"color": "#ff0000"}}}}
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json=body)).status == 200
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json={**body, "mode": "odd"})).status == 400
+    assert (await client.put("/api/house-scenes/gone", json=body)).status == 404
+    assert (await (await client.get(f"/api/house-scenes/{scene_id}")).json())["lights"]["a"]["effect"] == "chase"
+    # Not baked yet: it can't play.
+    assert (await client.post(f"/api/house-scenes/{scene_id}/play")).status == 409
+    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 40)
+    assert (await client.put(f"/api/house-scenes/{scene_id}/baked", data=b"junk")).status == 400
+    assert (await client.put(f"/api/house-scenes/{scene_id}/baked", data=blob)).status == 200
+    [row] = await (await client.get("/api/house-scenes")).json()
+    assert row["baked"] and row["name"] == "Candy cane"
+    st = await (await client.post(f"/api/house-scenes/{scene_id}/play")).json()
+    assert st["scene"] == {"id": scene_id, "name": "Candy cane", "playing": True}
+    st = await (await client.post(f"/api/house-scenes/{scene_id}/stop")).json()
+    assert st["scene"] is None
+    assert (await client.delete(f"/api/house-scenes/{scene_id}")).status == 200
+    assert await (await client.get("/api/house-scenes")).json() == []
+    assert (await client.delete(f"/api/house-scenes/{scene_id}")).status == 404
+
+
+async def test_the_editor_stopping_its_own_show_only_stops_that_show(client):
+    resp = await client.post("/api/player/stop", json={"show": "not-playing"})
+    assert resp.status == 200
+    assert (await client.post("/api/player/stop")).status == 200  # no body: stop whatever is on

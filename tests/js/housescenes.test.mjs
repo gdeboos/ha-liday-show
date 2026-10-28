@@ -1,0 +1,75 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { bake } from "../../haliday_show/app/halidayshow/static/js/effects.js";
+import {
+  SCENE_EFFECTS, WARM_WHITE, lookFor, newScene, sceneColours, sceneLoop, sceneShow, sceneSummary, setSame, speedParam,
+} from "../../haliday_show/app/halidayshow/static/js/housescenes.js";
+
+const roof = { id: "roof", name: "Roof", segments: 4, parts: [] };
+const tree = { id: "192.168.2.30", name: "Tree", segments: 2, parts: [] };
+const split = { id: "pillars", name: "Pillars", segments: 6, whole: false,
+  parts: [{ id: "l", name: "Left", from: 1, to: 3 }, { id: "r", name: "Right", from: 4, to: 6 }] };
+const lights = [roof, tree, split];
+
+test("a new scene starts every light on a steady warm white", () => {
+  const s = newScene("Evening", lights);
+  assert.equal(s.mode, "basic");
+  assert.deepEqual(Object.keys(s.lights), ["roof", "192.168.2.30", "pillars"]);
+  assert.deepEqual(s.lights.roof, { effect: "solid", params: { color: WARM_WHITE } });
+  assert.equal(SCENE_EFFECTS[0], "solid");
+  assert.ok(!SCENE_EFFECTS.includes("fade") && !SCENE_EFFECTS.includes("scene"));
+});
+
+test("each light plays its own look, a light with none stays off, and parts-only lights play on their parts", () => {
+  const s = { name: "x", mode: "basic", lights: { roof: { effect: "solid", params: { color: "#ff0000" } },
+    pillars: { effect: "solid", params: { color: "#0000ff" } } } };
+  const show = sceneShow(s, lights, 2);
+  assert.deepEqual(show.tracks.map((t) => t.device), ["roof", "pillars#l", "pillars#r"]);
+  assert.equal(show.tracks[0].clips[0].end, 2);
+  const devices = { roof, [tree.id]: tree, pillars: split,
+    "pillars#l": { parent: "pillars", segments: 3, from: 1, to: 3 }, "pillars#r": { parent: "pillars", segments: 3, from: 4, to: 6 } };
+  const blob = bake(show, devices, 10);
+  assert.ok(blob.length > 0);
+  assert.equal(lookFor(s, tree.id), null);
+});
+
+test("Same for every light plays one look on all of them, and back again", () => {
+  const s = newScene("x", lights);
+  s.lights.roof = { effect: "rainbow", params: {} };
+  setSame(s, true, lights);
+  assert.deepEqual(s.all, { effect: "rainbow", params: {} });
+  assert.equal(sceneShow(s, lights, 1).tracks.length, 4);
+  setSame(s, false, lights);
+  assert.equal(s.all, undefined);
+  assert.deepEqual(Object.values(s.lights).map((l) => l.effect), ["rainbow", "rainbow", "rainbow"]);
+});
+
+test("a still scene loops every second; a moving one goes round where it joins up", () => {
+  assert.equal(sceneLoop(newScene("x", lights), lights, 10), 1);
+  const moving = { name: "x", mode: "basic", lights: {}, all: { effect: "rainbow", params: { speed: 1 } } };
+  const loop = sceneLoop(moving, [roof], 10);
+  assert.ok(loop >= 10 && loop <= 60, String(loop));
+});
+
+test("a scene's row shows its colours and what it plays", () => {
+  const s = { name: "x", mode: "basic", lights: { roof: { effect: "chase", params: { color: "#ff0000", background: "#000000" } },
+    pillars: { effect: "twinkle", params: { color: "#ffffff" } } } };
+  assert.deepEqual(sceneColours(s, lights), ["#ff0000", "#ffffff"]);
+  assert.equal(sceneSummary(s, lights), "2 lights · Chase, Twinkle");
+  assert.equal(sceneSummary({ ...s, all: { effect: "rainbow", params: {} } }, lights), "Every light · Rainbow");
+  assert.equal(sceneSummary({ name: "x", lights: {} }, lights), "No lights on yet");
+});
+
+test("the Speed slider moves an effect's speed or its rate", () => {
+  assert.equal(speedParam("chase").key, "speed");
+  assert.equal(speedParam("twinkle").key, "rate");
+  assert.equal(speedParam("solid"), null);
+});
+
+test("picking another effect keeps a light's colours and brightness", async () => {
+  const { changeEffect } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const look = { effect: "chase", params: { color: "#ff0000", background: "#000000", brightness: 70 } };
+  assert.deepEqual(changeEffect(look, "twinkle").params, { color: "#ff0000", brightness: 70 });
+  assert.deepEqual(changeEffect(null, "rainbow"), { effect: "rainbow", params: {} });
+});

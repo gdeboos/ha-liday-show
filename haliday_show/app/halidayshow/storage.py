@@ -72,6 +72,7 @@ class Storage:
         self.songs_dir = config_dir / "songs"
         self.drafts_dir = config_dir / "drafts"
         self.blocks_dir = config_dir / "blocks"  # playlists' building blocks, baked (playlists.py)
+        self.scenes_dir = config_dir / "scenes"  # scenes and their baked loops (scenelib.py)
         self.upload_dir = media_dir / "haliday_show"
         self.devices_file = config_dir / "devices.json"
         self.settings_file = config_dir / "settings.json"
@@ -190,6 +191,54 @@ class Storage:
         for block_id in self.baked_blocks():
             if block_id not in keep:
                 (self.blocks_dir / f"{block_id}.gshow").unlink(missing_ok=True)
+
+    # scenes --------------------------------------------------------------
+    def list_scenes(self) -> list[dict]:
+        out = []
+        for p in sorted(self.scenes_dir.glob("*.json")) if self.scenes_dir.exists() else []:
+            try:
+                scene = json.loads(p.read_text())
+            except ValueError:
+                continue
+            out.append({"id": p.stem, "name": scene.get("name", p.stem), "mode": scene.get("mode", "basic"),
+                        "lights": scene.get("lights", {}), "all": scene.get("all"),
+                        "baked": (self.scenes_dir / f"{p.stem}.gshow").exists(),
+                        "modified": int(p.stat().st_mtime)})
+        return out
+
+    def load_scene(self, scene_id: str) -> dict | None:
+        try:
+            return json.loads((self.scenes_dir / f"{scene_id}.json").read_text())
+        except (FileNotFoundError, ValueError):
+            return None
+
+    def save_scene(self, scene_id: str, scene: dict):
+        self.scenes_dir.mkdir(parents=True, exist_ok=True)
+        _write_atomic(self.scenes_dir / f"{scene_id}.json", json.dumps(scene, indent=1).encode())
+        # The bake is stale until the editor uploads a new one.
+        (self.scenes_dir / f"{scene_id}.gshow").unlink(missing_ok=True)
+
+    def save_scene_baked(self, scene_id: str, blob: bytes):
+        _write_atomic(self.scenes_dir / f"{scene_id}.gshow", blob)
+
+    def load_scene_baked(self, scene_id: str) -> bytes | None:
+        try:
+            return (self.scenes_dir / f"{scene_id}.gshow").read_bytes()
+        except FileNotFoundError:
+            return None
+
+    def delete_scene(self, scene_id: str) -> bool:
+        found = (self.scenes_dir / f"{scene_id}.json").exists()
+        (self.scenes_dir / f"{scene_id}.json").unlink(missing_ok=True)
+        (self.scenes_dir / f"{scene_id}.gshow").unlink(missing_ok=True)
+        return found
+
+    def new_scene_id(self, name: str) -> str:
+        base = slugify(name)
+        scene_id, n = base, 2
+        while (self.scenes_dir / f"{scene_id}.json").exists():
+            scene_id, n = f"{base}-{n}", n + 1
+        return scene_id
 
     def new_show_id(self, name: str) -> str:
         base = slugify(name)
