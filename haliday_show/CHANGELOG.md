@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.250
+
+- **✨ Generate** uses the new effects: fairy lights, waves, aurora and flowing colours in quiet parts; theatre chases, juggling dots, dissolves and a sweeping beam in the middle; fireworks, ripples, fast theatre chases and bouncing balls at the loudest.
+- Generated shows now crossfade into each new section, and lights fade in as they join and fade out as they go dark, instead of switching. Changes within a section still land on the beat.
+- With lights traced on the house photo, a ring of colour bursts across the house when every light comes in together.
+- It still builds up: fewer lights in quiet parts, all of them only for the biggest moments.
+
 ## 0.2.249
 
 - The AI (**Describe it** and **Generate with AI**) knows what every effect looks like, including all the new ones, so it picks them by look.

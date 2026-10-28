@@ -954,10 +954,13 @@ from the song.
 Pick the **Colours** (any palette) and a **Style** (Calm, Balanced or Lively), and it fills your lights
 with effects that follow the song: soft, slow looks in quiet parts, faster ones that move on the beat
 as it gets louder, every light moving together in the chorus, the same looks each time a section comes
-back, and a change every few bars. Quiet starts and ends fade in and out, and with lights traced on the
-house photo, turn on **Sweep across the house as the music lifts** for a sweep from one side to the
-other. It runs **Detect** first if the song hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press it again for a
-different take, then edit whatever you like. The colours start on the palette for the time of year
+back, and a change every few bars. Looks include fairy lights, waves and aurora when it's quiet, theatre
+chases, juggling dots and dissolves in the middle, and fireworks and ripples at the loudest. Each new
+section crossfades in, lights that come on or go dark fade, and quiet starts and ends fade in and out.
+With lights traced on the house photo, turn on **Sweep across the house as the music lifts** for a sweep
+from one side to the other as the music lifts, and a ring of colour across the house when every light
+comes in together. It runs **Detect** first if the song hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press it again for a
+different take, then edit whatever you like. The colours start on the show's palette, or else the one for the time of year
 (Halloween in October, Christmas in December…) when there is one.
 
 **Longest effect** sets how long one effect may run before the look changes: **2 bars**, **4 bars**
