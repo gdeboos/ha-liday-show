@@ -26,3 +26,13 @@ export function levelsFit(show, songPath, duration) {
   const l = show?.loudness;
   return !!l && Array.isArray(l.values) && l.song === songPath && Math.abs(l.values.length / (l.fps || LEVEL_FPS) - duration) < 1;
 }
+
+// The song's loudness is measured, not edited, so undo mustn't take it away: a show restored from
+// before it was measured (or from another song's) takes the measurement it had, when it's for the
+// same song.
+export function keepLevels(before, after) {
+  const l = before?.loudness;
+  if (!l || !after?.audio || l.song !== after.audio.path) return after;
+  if (after.loudness?.song !== l.song) after.loudness = l;
+  return after;
+}

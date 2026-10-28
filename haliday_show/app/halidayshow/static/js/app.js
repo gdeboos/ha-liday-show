@@ -2,7 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
-import { levelCurve, levelsFit } from "./musiclevel.js";
+import { keepLevels, levelCurve, levelsFit } from "./musiclevel.js";
 import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
@@ -265,7 +265,8 @@ function restore(step) {
   const i = app.historyIndex + step;
   if (i < 0 || i >= app.history.length) return;
   app.historyIndex = i;
-  app.show = JSON.parse(app.history[i]);
+  app.show = keepLevels(app.show, JSON.parse(app.history[i]));
+  setMusicLevels(app.show.audio ? app.show.loudness : null);
   app.dirty = true;
   app.edits++;
   app.selected = null;
@@ -7234,6 +7235,8 @@ async function loadAudio(ref) {
       const channels = Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c));
       const mono = toMono(channels, decoded.sampleRate);
       app.show.loudness = levelCurve(mono.samples, mono.rate, ref.path);
+      // A show already using Music level (its song changed) needs saving and baking again.
+      if (app.show.tracks?.some((t) => t.clips.some((c) => EFFECTS[c.effect]?.music))) app.changed();
     }
     if (app.show?.audio === ref) setMusicLevels(app.show.loudness);
     status("", "info", "song");
