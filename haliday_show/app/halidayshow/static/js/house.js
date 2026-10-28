@@ -77,13 +77,21 @@ export function bulbLayout(points, count) {
 
 // An icicle light's drops: `drops` spread along its path like bulbs (null when out of view), each
 // with how long it hangs as a share of `length` and how many of the light's `bulbs` are on it.
+// A drop needs a bulb, so there are never more drops than bulbs.
 export function icicleDrops(points, drops, bulbs) {
-  const per = Math.max(bulbs / drops, 1);
+  drops = Math.max(1, Math.min(drops, bulbs));
+  const per = bulbs / drops;
   return bulbLayout(points, drops).map((at, i) => {
     if (!at) return null;
     const f = STAGGER[i % STAGGER.length];
     return { top: at, f, n: Math.max(1, Math.round((per * f) / STAGGER_MEAN)) };
   });
+}
+
+// How many drops a light starts with as Icicle: about five bulbs to a drop, like most icicle lights.
+export function defaultDrops(dev) {
+  const bulbs = Math.min(dev.bulbs || dev.segments * BULBS_PER_SEGMENT, MAX_BULBS);
+  return Math.max(1, Math.round(bulbs / 5));
 }
 
 // How far along a path each of its points is, from the start.
@@ -425,9 +433,10 @@ export class House {
       bulbs.forEach((b, j) => {
         if (!b) return;
         if (b.top) {
-          // A drop: its bulbs hang evenly from the line to the drop's tip, a little smaller.
+          // A drop: its bulbs hang evenly from the line to the drop's tip, a little smaller. A drop
+          // with one bulb hangs it at the tip, so the drops still show below the line.
           const c = colour(j), drop = icicle.length * h * b.f;
-          for (let k = 0; k < b.n; k++) dot(b.top[0] * w, b.top[1] * h + (b.n > 1 ? (drop * k) / (b.n - 1) : 0), c, 0.7);
+          for (let k = 0; k < b.n; k++) dot(b.top[0] * w, b.top[1] * h + (b.n > 1 ? (drop * k) / (b.n - 1) : drop), c, 0.7);
         } else {
           dot(b[0] * w, b[1] * h, colour(j));
         }
