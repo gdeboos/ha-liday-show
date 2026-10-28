@@ -3,7 +3,7 @@
 // The canvas stays the size of the viewport (sticky inside a wide scroll area),
 // so long songs at high zoom never hit browser canvas size limits.
 
-import { EFFECTS, HOUSE, renderTrack } from "./effects.js";
+import { EFFECTS, HOUSE, isGroupTrack, renderTrack } from "./effects.js";
 import { asShown } from "./lightspeed.js";
 
 const HEADER_W = 150;
@@ -172,6 +172,7 @@ export class Timeline {
         ctx.globalAlpha = 1;
       }
       const house = tr.device === HOUSE;
+      const lane = isGroupTrack(tr.device) && (this.app.groupFor?.(tr.device) || { name: "Deleted group", gone: true });
       // A part under its light's own track (or another part) shows just its own name, indented.
       const nested = dev?.parent && groupOf(i - 1) === dev.parent;
       const x = nested ? 26 : 10;
@@ -181,18 +182,19 @@ export class Timeline {
         ctx.beginPath(); ctx.moveTo(14.5, y); ctx.lineTo(14.5, y + 16); ctx.lineTo(21, y + 16); ctx.stroke();
         ctx.globalAlpha = 1;
       }
-      ctx.fillStyle = col(house ? "--accent" : "--text");
+      ctx.fillStyle = col(house || lane ? "--accent" : "--text");
       ctx.font = `${nested ? 500 : 600} 13px system-ui, sans-serif`;
-      const name = house ? "House" : !dev ? "Missing device" : nested ? dev.partName : dev.name;
+      const name = house ? "House" : lane ? lane.name : !dev ? "Missing device" : nested ? dev.partName : dev.name;
       ctx.fillText(clipText(ctx, name, HEADER_W - x - 6), x, y + 20);
       ctx.fillStyle = col("--muted");
       ctx.font = "12px system-ui, sans-serif";
       const sub = house ? "Across all lights"
+        : lane ? (lane.gone ? "Not played" : `Group of ${lane.members.length}`)
         : !dev ? tr.device
         : dev.light ? (dev.light.whole === false ? "Not played: parts only" : `All parts · ${dev.segments} segments`)
         : dev.parent ? `Segments ${dev.from}–${dev.to}`
         : `${dev.segments} segments${dev.ip || dev.entity ? "" : " · planned"}`;
-      const note = !house && dev && this.app.trackNote?.(dev);
+      const note = !house && !lane && dev && this.app.trackNote?.(dev);
       if (note) ctx.fillStyle = WARN;
       ctx.fillText(clipText(ctx, note ? `⚠ ${note}` : sub, HEADER_W - x - 6), x, y + 36);
     });
@@ -534,9 +536,15 @@ export class Timeline {
       c.start = Math.max(0, s);
       c.end = c.start + len;
       const ti = this.trackAt(y);
-      // A clip can move to another light, but not between the House lane and the lights.
-      const kind = (k) => this.app.show.tracks[k].device === HOUSE;
-      if (ti >= 0 && ti !== d.track && kind(ti) === kind(d.track)) {
+      // A clip can move to another light or group lane, but not between the House lane and the
+      // lights, and a House effect only between group lanes.
+      const kind = (k) => {
+        const dv = this.app.show.tracks[k].device;
+        return dv === HOUSE ? "house" : isGroupTrack(dv) ? "group" : "light";
+      };
+      const house = !!EFFECTS[c.effect]?.house;
+      const fits = (k) => kind(k) === kind(d.track) || (!house && kind(k) !== "house" && kind(d.track) !== "house");
+      if (ti >= 0 && ti !== d.track && fits(ti)) {
         const from = this.app.show.tracks[d.track].clips;
         from.splice(from.indexOf(c), 1);
         this.app.show.tracks[ti].clips.push(c);

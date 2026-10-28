@@ -4,7 +4,7 @@
 // With build, it lights the house the way a person would: a few lights in quiet parts, more as the
 // music builds, and every light together only for the loudest parts and the chorus.
 
-import { HOUSE, newClip } from "./effects.js";
+import { HOUSE, isGroupTrack, newClip } from "./effects.js";
 import { applyPalette } from "./palettes.js";
 
 // How a style shifts a section's energy before picking looks, and how often looks change.
@@ -222,6 +222,8 @@ export function suggestLooks(analysis, start, end, segments = 15, style = "balan
 export function applyGenerated(show, result) {
   for (const tr of show.tracks) {
     if (tr.device === HOUSE) { if (result.house.length) tr.clips = result.house; }
+    // Group lanes would cover the new look, so a whole new take clears them (Ctrl+Z brings them back).
+    else if (isGroupTrack(tr.device)) tr.clips = [];
     else if (result.clips[tr.device]) tr.clips = result.clips[tr.device];
   }
 }

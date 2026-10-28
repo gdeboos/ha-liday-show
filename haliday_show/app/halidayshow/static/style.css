@@ -1135,3 +1135,13 @@ body.editing-scene :is([data-panel=song], [data-panel=beats], [data-panel=ai], #
 .pub-word .pub-word-reset[hidden] { display: inline-block !important; visibility: hidden; }
 @media (max-width: 720px) { .pub-word { grid-template-columns: minmax(0, 1fr) auto; }
   .pub-word > span:first-child { grid-column: 1 / -1; } }
+
+/* Light groups on the Devices tab, and their window's list of lights and parts. */
+.light-groups { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.light-groups h2 { margin: 0; }
+.light-groups .hint { margin: 0; }
+.group-picture { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; flex: none;
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel)); color: var(--accent); font-size: 20px; }
+.group-members { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; padding: 2px; }
+.group-member { display: flex; align-items: center; gap: 8px; }
+.group-member.part { padding-left: 28px; }

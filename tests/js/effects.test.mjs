@@ -215,3 +215,49 @@ test("a split light played as parts only ignores its own track", () => {
   const out = composeLight(roof, (id) => (id === "roof" ? { clips: [white] } : undefined), 0);
   assert.deepEqual([...out], Array(12).fill(0));
 });
+
+test("a group lane runs a light effect along its lights as one strip, over their own effects", async () => {
+  const { GROUP, planGroups } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const a = { id: "a", segments: 4 }, b = { id: "b", segments: 6, parts: [{ id: "p", from: 1, to: 3 }, { id: "q", from: 4, to: 6 }] };
+  const red = { ...newClip("solid", 0, 10), color: "#ff0000" };
+  const wipe = { ...newClip("wipe", 0, 10), color: "#00ff00", background: "#000000" };
+  const tracks = new Map([["a", { clips: [red] }], [`${GROUP}g`, { clips: [wipe] }]]);
+  const trackOf = (id) => tracks.get(id);
+  const plans = planGroups([{ id: "g", members: ["a", "b#q"] }], [a, b], trackOf);
+  assert.equal(plans[0].total, 7);
+  // Half way through, the wipe has filled the first half of the 7-segment strip: a's 4 and nothing of b.
+  const fa = composeLight(a, trackOf, 5, {}, [], undefined, plans);
+  const fb = composeLight(b, trackOf, 5, {}, [], undefined, plans);
+  const green = (f, i) => f[i * 3 + 1] > 200;
+  assert.deepEqual([0, 1, 2].map((i) => green(fa, i)), [true, true, true]);
+  assert.equal(fa[0], 0, "the group's clip wins over the light's own red while it runs");
+  assert.ok(!green(fb, 0) && !green(fb, 2), "part p isn't in the group");
+  // Before and after the group's clip, the light's own effect shows.
+  const plans2 = planGroups([{ id: "g", members: ["a"] }], [a, b], (id) => (id === `${GROUP}g` ? { clips: [{ ...wipe, start: 6, end: 8 }] } : trackOf(id)));
+  assert.equal(composeLight(a, trackOf, 2, {}, [], undefined, plans2)[0], 255);
+});
+
+test("House effects on a group lane are measured across just the group's lights", async () => {
+  const { GROUP, planGroups } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const a = { id: "a", segments: 2 }, b = { id: "b", segments: 2 };
+  // a sits on the left of the group, b on the right, both in the left half of the house.
+  const positions = { a: [[0.1, 0.5], [0.15, 0.5]], b: [[0.35, 0.5], [0.4, 0.5]] };
+  const fill = { ...newClip("housewipe", 0, 10), color: "#0000ff", background: "#000000", soft: 0 };
+  const trackOf = (id) => (id === `${GROUP}g` ? { clips: [fill] } : null);
+  const plans = planGroups([{ id: "g", members: ["a", "b"] }], [a, b], trackOf, positions);
+  // Over the whole house the wipe would reach b by about 40%; across the group it's half way at 5 s.
+  const fa = composeLight(a, trackOf, 5.5, positions, [], undefined, plans);
+  const fb = composeLight(b, trackOf, 5.5, positions, [], undefined, plans);
+  assert.ok(fa[2] > 200 && fa[5] > 200);
+  assert.ok(fb[2] < 50, "b, on the group's right, isn't filled yet");
+});
+
+test("bake plays group lanes and leaves them out of the lights", async () => {
+  const { GROUP } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const show = { duration: 1, tracks: [{ device: `${GROUP}g`, clips: [{ ...newClip("solid", 0, 1), color: "#00ff00" }] }, { device: "a", clips: [] }] };
+  const out = bake(show, { a: { segments: 2 } }, 2, {}, [{ id: "g", members: ["a"] }]);
+  const len = new DataView(out.buffer).getUint32(5);
+  const header = JSON.parse(new TextDecoder().decode(out.subarray(9, 9 + len)));
+  assert.deepEqual(header.tracks.map((t) => t.device), ["a"]);
+  assert.equal(out[9 + len + 1], 255);
+});
