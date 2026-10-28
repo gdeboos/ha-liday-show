@@ -321,3 +321,35 @@ test("every effect has a heading in the effect window", async () => {
     assert.equal(fx.group === "house", !!fx.house, key);
   }
 });
+
+test("colour lists: a palette fills the list, extra colours are hidden, calm effects stay in their colours", async () => {
+  const { unusedColour } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const { applyPalette } = await import("../../haliday_show/app/halidayshow/static/js/palettes.js");
+  const { BLOCK_EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/playlisteditor.js");
+  const fairy = newClip("fairy", 0, 10);
+  applyPalette(fairy, ["#111111", "#222222", "#333333"]);
+  assert.equal(fairy.count, "3");
+  assert.deepEqual([fairy.color, fairy.color2, fairy.color3], ["#111111", "#222222", "#333333"]);
+  assert.ok(!unusedColour("fairy", "color3", fairy) && unusedColour("fairy", "color4", fairy));
+  assert.ok(!unusedColour("cycle", "color4", { count: "2" })); // older effects show every box, as before
+  applyPalette(fairy, Array(12).fill("#123456"));
+  assert.equal(fairy.count, "8");
+  // Fairy lights in turn: segment i takes colour i mod count (when lit).
+  const lit = { ...newClip("fairy", 0, 10), count: "2", color: "#ff0000", color2: "#00ff00", density: 100 };
+  const f = renderTrack([lit], 5, 4);
+  assert.deepEqual([...f], [255, 0, 0, 0, 255, 0, 255, 0, 0, 0, 255, 0]);
+  // Ocean only ever shows blends of its own colours: here two greys, so r = g = b.
+  const sea = { ...newClip("ocean", 0, 10), count: "2", color: "#000000", color2: "#ffffff" };
+  for (const t of [0, 1.7, 4.2]) {
+    const o = renderTrack([sea], t, 30);
+    for (let i = 0; i < 30; i++) assert.ok(o[i * 3] === o[i * 3 + 1] && o[i * 3 + 1] === o[i * 3 + 2]);
+  }
+  // Sunrise: dark at the start, daylight at the end; Sunset the other way round.
+  const sun = { ...newClip("sunrise", 0, 60), spread: 0 };
+  assert.deepEqual([...renderTrack([sun], 0, 1)], [0, 0, 0]);
+  assert.deepEqual([...renderTrack([sun], 59.99, 1)].map((v) => v > 200), [true, true, true]);
+  assert.deepEqual([...renderTrack([{ ...sun, way: "sunset" }], 59.99, 1)].map((v) => v < 5), [true, true, true]);
+  // Effects that play once across their length aren't offered as looping blocks.
+  for (const k of ["fade", "wipe", "sunrise"]) assert.ok(!BLOCK_EFFECTS.includes(k), k);
+  for (const k of ["fairy", "ocean", "aurora", "flow"]) assert.ok(BLOCK_EFFECTS.includes(k), k);
+});

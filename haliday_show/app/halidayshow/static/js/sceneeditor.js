@@ -2,7 +2,7 @@
 // A scene's logic is in housescenes.js; scenelib.py keeps them and the runner plays them round and
 // round. This draws the pages, saves as you go, and bakes each scene's loop for the player.
 
-import { EFFECTS, FPS, bake, composeLight, matchesPreset, presetParams } from "./effects.js";
+import { EFFECTS, FPS, bake, composeLight, matchesPreset, presetParams, unusedColour } from "./effects.js";
 import {
   SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, sceneColours, sceneLoop, sceneShow,
   sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
@@ -344,7 +344,7 @@ export class SceneEditor {
       return row;
     }
     const none = () => el("span", { class: "sc-none hint", "aria-hidden": "true" }, "—");
-    const keys = paletteKeys(look.effect);
+    const keys = paletteKeys(look.effect).filter((k) => !unusedColour(look.effect, k, clip));
     if (keys.length) {
       const colours = el("select", { class: "sc-palette", "aria-label": `Colours for ${full} from a palette`, title: "Use one of your palettes" });
       colours.add(new Option("Palette…", ""));
@@ -354,7 +354,7 @@ export class SceneEditor {
         if (!p) return;
         const c = { effect: look.effect, ...look.params };
         applyPalette(c, p.colors);
-        for (const k of keys) look.params[k] = c[k];
+        for (const k of [...paletteKeys(look.effect), "count"]) if (k in c) look.params[k] = c[k];
         changed(true);
       });
       const swatches = el("span", { class: "sc-swatches" }, ...keys.map((k) => {

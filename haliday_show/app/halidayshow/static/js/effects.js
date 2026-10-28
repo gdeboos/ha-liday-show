@@ -62,6 +62,33 @@ function events(t, rate, life, seed, fn) {
   }
 }
 const add = (a, c, u) => { a[0] += c[0] * u; a[1] += c[1] * u; a[2] += c[2] * u; };
+// Smooth random values along a line: 0..1, the same for the same x and seed.
+const noise = (x, seed = 1) => { const k = Math.floor(x); return hash01(k, seed) + (hash01(k + 1, seed) - hash01(k, seed)) * smooth(x - k); };
+
+// Effects that take a list of colours (up to 8): Colour 1, Colour 2, ... and how many of them to use.
+// A palette fills the whole list. The colours past the count are kept but hidden.
+const LIST_MAX = 8;
+function colourList(defaults) {
+  const keys = Array.from({ length: LIST_MAX }, (_, k) => (k ? `color${k + 1}` : "color"));
+  const spare = ["#ffffff", "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff", "#ff8000"];
+  return [...keys.map((key, k) => color(key, `Colour ${k + 1}`, defaults[k] || spare[k])),
+    choice("count", "Colours", String(defaults.length), Array.from({ length: LIST_MAX - 1 }, (_, k) => String(k + 2)))];
+}
+const listColours = (p) => Array.from({ length: Math.min(Math.max(Number(p.count) || 2, 1), LIST_MAX) },
+  (_, k) => hexToRgb(p[k ? `color${k + 1}` : "color"]));
+// u (0..1) along the colours as a blend; cyclic wraps the last back round to the first.
+function blendList(cols, u, cyclic = false) {
+  if (cols.length === 1) return cols[0];
+  const x = cyclic ? mod(u, 1) * cols.length : Math.min(Math.max(u, 0), 1) * (cols.length - 1);
+  const k = Math.min(Math.floor(x), cyclic ? cols.length - 1 : cols.length - 2);
+  return mix(cols[k], cols[(k + 1) % cols.length], x - k);
+}
+// Whether a colour setting is past a colour list's count, so the editor can hide it.
+export function unusedColour(effect, key, p) {
+  if (!EFFECTS[effect]?.list) return false;
+  const m = /^color(\d*)$/.exec(key);
+  return !!m && Number(m[1] || 1) > Number(p.count ?? EFFECTS[effect].params.find((q) => q.key === "count")?.default);
+}
 
 // Two or three solid colours side by side: split the light into equal bands, or alternate
 // them every few segments along it.
@@ -128,7 +155,7 @@ export const EFFECTS = {
     },
   },
   fade: {
-    label: "Fade",
+    label: "Fade", once: true,
     params: [color("from", "From", "#000000"), color("to", "To", "#ff0000")],
     render: (p, t, dur) => mix(hexToRgb(p.from), hexToRgb(p.to), dur > 0 ? Math.min(t / dur, 1) : 1),
   },
@@ -223,7 +250,7 @@ export const EFFECTS = {
     },
   },
   wipe: {
-    label: "Wipe",
+    label: "Wipe", once: true,
     params: [color("color", "Colour", "#00ff00"), color("background", "Background", "#000000"), direction],
     render: (p, t, dur, n, i) => {
       const filled = dur > 0 ? Math.min(t / dur, 1) * n : n;
@@ -415,6 +442,70 @@ Object.assign(EFFECTS, {
 });
 
 
+// Effects with a list of colours: Fairy lights, and the calm ones, after WLED's.
+Object.assign(EFFECTS, {
+  fairy: {
+    label: "Fairy lights", group: "festive", list: true,
+    params: [...colourList(["#ff0000", "#00b000", "#0040ff", "#ffb000", "#ff00a0"]), color("background", "Background", "#000000"),
+      choice("order", "Colour order", "in turn", ["in turn", "random"]), num("density", "Lit %", 70, 5, 100, 5),
+      num("rate", "Changes per second", 0.3, 0.02, 5, 0.02)],
+    render: (p, t, dur, n, i) => {
+      const cols = listColours(p);
+      const c = cols[p.order === "random" ? Math.floor(hash01(i + 1, 41) * cols.length) : i % cols.length];
+      // Each bulb drifts on and off on its own clock, fading between.
+      const s = t * p.rate + hash01(i + 1, 43), k = Math.floor(s);
+      const on = (j) => (hash01(i + 1, j) < p.density / 100 ? 1 : 0);
+      const a = on(k) + (on(k + 1) - on(k)) * smooth(s - k);
+      return mix(hexToRgb(p.background), c, a);
+    },
+  },
+  ocean: {
+    label: "Ocean waves", group: "calm", list: true,
+    params: [...colourList(["#000820", "#002080", "#0060ff", "#00c0ff", "#a0fff0"]),
+      num("speed", "Speed", 1, 0, 5, 0.1), num("size", "Waves across the light", 1, 0.2, 10, 0.1)],
+    render: (p, t, dur, n, i) => {
+      const x = (n > 1 ? i / (n - 1) : 0) * 2 * Math.PI * p.size, s = t * p.speed;
+      // Swells of different lengths and speeds add up, so the crests (the last colour) come and go.
+      const v = 0.5 + 0.22 * Math.sin(1.3 * x - 0.7 * s) + 0.16 * Math.sin(3.1 * x + 1.1 * s + 1)
+        + 0.12 * Math.sin(7.3 * x - 1.9 * s + 2);
+      return blendList(listColours(p), v);
+    },
+  },
+  aurora: {
+    label: "Aurora", group: "calm", list: true,
+    params: [...colourList(["#00ff60", "#00ffb0", "#0080ff", "#8000ff"]), color("background", "Background", "#000010"),
+      num("speed", "Speed", 1, 0, 5, 0.1), num("size", "Curtains across the light", 3, 0.5, 20, 0.5)],
+    render: (p, t, dur, n, i) => {
+      const x = (n > 1 ? i / (n - 1) : 0) * p.size, s = t * p.speed;
+      const c = blendList(listColours(p), noise(x * 0.7 + s * 0.05, 51) * 1.4, true);
+      // Curtains of light brighten and fade as they drift.
+      const a = Math.min(Math.max(noise(x * 2 - s * 0.25, 53) * 1.8 - 0.45, 0), 1) * (0.6 + 0.4 * noise(s * 0.3, 57));
+      return mix(hexToRgb(p.background), c, smooth(a));
+    },
+  },
+  flow: {
+    label: "Flowing colours", group: "calm", list: true,
+    params: [...colourList(["#ff0000", "#ffb000", "#00ff00", "#00c0ff", "#0000ff", "#c000ff"]),
+      num("speed", "Speed", 0.5, 0, 5, 0.05), num("size", "Patch size (segments)", 20, 2, 300, 1)],
+    render: (p, t, dur, n, i) => {
+      const x = i / Math.max(p.size, 1), s = t * p.speed;
+      return blendList(listColours(p), noise(x + s, 61) + 0.5 * noise(x * 2 - s * 0.7, 67), true);
+    },
+  },
+  sunrise: {
+    label: "Sunrise", group: "calm", once: true,
+    params: [choice("way", "Way", "sunrise", ["sunrise", "sunset"]), color("color", "Daylight", "#fff0d8"),
+      num("spread", "Rises from the start of the light %", 20, 0, 100, 5)],
+    render: (p, t, dur, n, i) => {
+      // Dark, deep red, orange, gold, then daylight, over the length of the clip.
+      const pos = n > 1 ? i / (n - 1) : 0, lead = p.spread / 100;
+      let u = Math.min(Math.max((dur > 0 ? t / dur : 1) * (1 + lead) - lead * pos, 0), 1);
+      if (p.way === "sunset") u = 1 - u;
+      return blendList([[0, 0, 0], [70, 0, 0], [255, 40, 0], [255, 140, 20], [255, 200, 100], hexToRgb(p.color)], u);
+    },
+  },
+});
+
 // Headings in the effect window, in order. House lane effects all go under "Across the house".
 export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
   ["calm", "Calm"], ["house", "Across the house"]];
@@ -550,6 +641,27 @@ export const PRESETS = {
   candles: [
     { label: "Calm", params: { rate: 1.5 } },
     { label: "Draughty", params: { rate: 6 } },
+  ],
+  fairy: [
+    { label: "Twinkling", params: { rate: 1.5, density: 60 } },
+    { label: "Always on", params: { density: 100 } },
+    { label: "Mixed up", params: { order: "random" } },
+  ],
+  ocean: [
+    { label: "Calm sea", params: { speed: 0.4, size: 0.6 } },
+    { label: "Choppy", params: { speed: 2.5, size: 3 } },
+  ],
+  aurora: [
+    { label: "Slow", params: { speed: 0.4 } },
+    { label: "Dancing", params: { speed: 2.5, size: 6 } },
+  ],
+  flow: [
+    { label: "Slow and big", params: { speed: 0.15, size: 60 } },
+    { label: "Busy", params: { speed: 1.5, size: 6 } },
+  ],
+  sunrise: [
+    { label: "Sunset", params: { way: "sunset" } },
+    { label: "All at once", params: { spread: 0 } },
   ],
   snow: [
     { label: "Light snow", params: { density: 5, speed: 4 } },

@@ -50,7 +50,13 @@ export function paletteKeys(effect) {
 // Fill the clip's colours from the palette in order, starting `offset` colours in, so a run of
 // clips can step through the palette.
 export function applyPalette(clip, colors, offset = 0) {
-  const keys = paletteKeys(clip.effect);
+  let keys = paletteKeys(clip.effect);
+  // An effect with a list of colours takes the whole palette (up to its 8).
+  if (EFFECTS[clip.effect]?.list) {
+    const n = Math.min(Math.max(colors.length, 2), keys.length);
+    clip.count = String(n);
+    keys = keys.slice(0, n);
+  }
   keys.forEach((k, i) => { clip[k] = colors[(offset + i) % colors.length]; });
   return keys.length;
 }

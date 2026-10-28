@@ -7,8 +7,12 @@
 ## Effects
 
 **Effects on a light** run along that light, from the plug end (or the other end with
-**Reverse**). In the effect chooser they're under headings: **Basics**, **Movement** and **Sparkle and
-festive**.
+**Reverse**). In the effect chooser they're under headings: **Basics**, **Movement**, **Sparkle and
+festive** and **Calm**.
+
+Fairy lights, Ocean waves, Aurora and Flowing colours take a list of up to 8 colours. Set
+**Colours** to how many to use, and only that many colour boxes show. **Apply palette** fills the
+whole list from the palette and sets **Colours** to match.
 
 | Effect | What it does |
 | --- | --- |
@@ -32,6 +36,11 @@ festive**.
 | Drip | Drops swell at one end, fall faster and faster and splash at the other. Set **Icicle length** to the length of each icicle on icicle lights, so every icicle drips on its own |
 | Candles | Every segment (or every few, with **Segments per candle**) flickers like its own candle, with the odd draught |
 | Snow | Flakes fall along the light, some near and some further off. The **Rain** preset turns it into fast blue rain |
+| Fairy lights | Each bulb has its own colour from a list, in turn or mixed up, and fades on and off on its own |
+| Ocean waves | Swells of your colours roll along the light, from the deep (first colour) to the crests (last) |
+| Aurora | Curtains of colour that drift, brighten and fade, like the northern lights |
+| Flowing colours | Soft patches of your colours that drift and blend into each other |
+| Sunrise | Dark, then deep red, orange and gold, then daylight, over the length of the clip. **Way: sunset** goes the other way |
 
 **Effects on the House lane** run across all your lights at once, by where each one is on the
 house photo, like xLights' model effects. Add them the same way, by selecting a stretch of the
