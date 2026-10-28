@@ -1228,3 +1228,26 @@ async def test_the_editor_stopping_its_own_show_only_stops_that_show(client):
     resp = await client.post("/api/player/stop", json={"show": "not-playing"})
     assert resp.status == 200
     assert (await client.post("/api/player/stop")).status == 200  # no body: stop whatever is on
+
+
+async def test_advanced_scenes_are_saved_and_the_editor_plays_one_from_its_playhead(client):
+    scene_id = (await (await client.post("/api/house-scenes", json={"name": "Snow"})).json())["id"]
+    body = {"name": "Snow", "mode": "advanced", "loop": 10,
+            "tracks": [{"device": "@house", "clips": [{"effect": "sweep", "start": 0, "end": 10, "color": "#ffffff"}]},
+                       {"device": "a", "clips": [{"effect": "twinkle", "start": 2, "end": 8}]}]}
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json=body)).status == 200
+    saved = await (await client.get(f"/api/house-scenes/{scene_id}")).json()
+    assert saved["mode"] == "advanced" and saved["loop"] == 10 and len(saved["tracks"]) == 2
+    [row] = await (await client.get("/api/house-scenes")).json()
+    assert row["loop"] == 10 and row["tracks"][1]["device"] == "a"
+    late = {**body, "tracks": [{"device": "a", "clips": [{"effect": "solid", "start": 9, "end": 12}]}]}
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json=late)).status == 400
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json={**body, "loop": 9999})).status == 400
+    # Played from the Show editor's playhead.
+    assert (await client.post("/api/player/play", json={"scene": "Not An Id"})).status == 400
+    assert (await client.post("/api/player/play", json={"scene": "gone", "position": 1})).status == 409
+    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 400)
+    await client.put(f"/api/house-scenes/{scene_id}/baked", data=blob)
+    st = await (await client.post("/api/player/play", json={"scene": scene_id, "position": 3})).json()
+    assert st["scene"]["id"] == scene_id and st["scene"]["playing"] and st["position"] >= 3
+    await client.post(f"/api/house-scenes/{scene_id}/stop")

@@ -115,6 +115,11 @@
   <section class="card scene-bar">
     <button type="button" id="sc-back" class="ghost">← All scenes</button>
     <label class="sc-name">Scene <input id="sc-name" maxlength="80" aria-label="Scene name"></label>
+    <div class="sc-mode" role="group" aria-label="Mode">
+      <button type="button" aria-pressed="true">Basic</button>
+      <button type="button" id="sc-advanced" aria-pressed="false"
+        title="Open this scene in the Show editor, to make effects change over time and across the house">Advanced</button>
+    </div>
     <button type="button" id="sc-play" class="primary">▶ Play on lights</button>
     <span id="sc-state" class="hint" aria-live="polite"></span>
   </section>
@@ -146,6 +151,13 @@
         <button id="btn-show-settings" title="Name, show speaker, auto save, delete">⚙ Show settings…</button>
         <button id="btn-generate" title="Fill every light with effects that follow the song">✨ Generate</button>
         <span id="save-state" class="save-state"></span>
+      </div>
+      <div id="scene-banner" class="scene-banner group" hidden>
+        <span class="section-label">Scene</span>
+        <label>Goes round every <input id="sb-loop" type="number" min="1" max="600" step="1"> s</label>
+        <button type="button" id="sb-basic" class="ghost"
+          title="Back to one effect per light. Only while each light has one effect across the whole loop and the House lane is empty">Switch to Basic</button>
+        <button type="button" id="sb-back" class="ghost">← All scenes</button>
       </div>
     </section>
     <section class="panel" data-panel="song">

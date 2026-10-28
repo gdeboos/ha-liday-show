@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.208
+## 0.2.209
 
 - **Convert to WLED…**: moved a Govee light over to a WLED controller? Press **Edit** on it in
   **Setup → Devices**, then **Convert to WLED…**, and give it the WLED's IP address (or **Scan network**).
@@ -9,6 +9,16 @@
   **Right** still cover the same stretches.
 - Shows that use the light are updated as soon as it's converted, so they play on every LED from
   playlists, schedules and Home Assistant without opening them.
+
+## 0.2.208
+
+- Scenes have an **Advanced** mode. Press **Advanced** beside a scene's name and it opens in the
+  **Show editor**, with no song: put effects on the timeline, use the **House** lane, and the timeline
+  goes round and round. Set how long under **Goes round every**. **▶ Play** shows it on your lights from
+  the playhead.
+- **Switch to Basic** goes back to a row per light, while each light still has one effect across the
+  whole loop. In **Your scenes**, an Advanced scene says how often it goes round, and **Edit** opens it
+  in the Show editor.
 
 ## 0.2.207
 

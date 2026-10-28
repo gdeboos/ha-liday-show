@@ -204,6 +204,11 @@ export const HELP = {
         "<b>▶ Play on lights</b> plays it round and round on your real lights. Change it while it plays and the lights follow.",
         "<b>← All scenes</b> goes back to the list.",
       ] },
+      { id: "advanced", title: "Advanced", tips: [
+        "<b>Advanced</b> opens the scene in the Show editor, so effects can change over time and use the <b>House</b> lane.",
+        "The timeline is one time round: set how long under <b>Goes round every</b>.",
+        "<b>Switch to Basic</b> comes back here while each light has one effect across the whole loop.",
+      ] },
     ],
   },
   playlists: {

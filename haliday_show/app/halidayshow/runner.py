@@ -232,8 +232,9 @@ class Runner:
                 await self._stop()
 
     # scenes ------------------------------------------------------------------------
-    async def play_scene(self, scene_id: str):
-        """Play a scene round and round, in place of whatever is on."""
+    async def play_scene(self, scene_id: str, position: float = 0.0):
+        """Play a scene round and round, in place of whatever is on (from `position` seconds in, for
+        the Show editor playing an Advanced scene from its playhead)."""
         blob = self.storage.load_scene_baked(scene_id)
         scene = self.storage.load_scene(scene_id)
         if blob is None or scene is None:
@@ -245,7 +246,7 @@ class Runner:
             await self._end_playlist()
             async with self._lock:
                 await self._stop()
-                await self.player.play(None, baked, self.storage.devices_by_id(), length=math.inf)
+                await self.player.play(None, baked, self.storage.devices_by_id(), position=position, length=math.inf)
                 self.scene = {"id": scene_id, "name": scene.get("name", scene_id)}
                 self.scene_playing = True
         settings = self.storage.load_settings()

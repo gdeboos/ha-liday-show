@@ -198,3 +198,29 @@ def test_scenes_saved_by_0_2_205_move_to_their_own_folder(tmp_path):
     [row] = storage.list_scenes()
     assert row["id"] == "glow" and row["baked"]
     assert not (old / "glow.json").exists() and (old / "H70C5.json").exists()
+
+
+def test_an_advanced_scene_keeps_its_loop_and_tracks():
+    body = {"name": "Snow", "mode": "advanced", "loop": 20, "lights": {"x": {}},
+            "tracks": [{"device": "@house", "clips": [{"effect": "sweep", "start": 0, "end": 20, "color": "#ffffff"}]},
+                       {"device": "pillars#l", "clips": [{"effect": "twinkle", "start": 0, "end": 12, "density": 40,
+                                                          "colors": ["#fff", "#00f"]}]}]}
+    s = scenelib.clean_scene(body)
+    assert s == {"name": "Snow", "mode": "advanced", "loop": 20.0, "tracks": body["tracks"]}
+
+
+@pytest.mark.parametrize("body", [
+    {"name": "x", "mode": "advanced", "loop": 0, "tracks": []},
+    {"name": "x", "mode": "advanced", "loop": 10, "tracks": [{"device": "a", "clips": [{"effect": "solid", "start": 5, "end": 11}]}]},
+    {"name": "x", "mode": "advanced", "loop": 10, "tracks": [{"device": "a", "clips": [{"effect": "Bad", "start": 0, "end": 1}]}]},
+    {"name": "x", "mode": "advanced", "loop": 10, "tracks": "no"},
+])
+def test_odd_advanced_scenes_are_turned_down(body):
+    with pytest.raises(scenelib.SceneError):
+        scenelib.clean_scene(body)
+
+
+async def test_the_show_editor_plays_a_scene_from_its_playhead(runner):
+    _scene(runner.storage)
+    await runner.play_scene("glow", position=0.05)
+    assert runner.scene_playing and runner.player.position() >= 0.05
