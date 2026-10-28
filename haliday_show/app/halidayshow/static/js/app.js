@@ -1668,6 +1668,22 @@ function button(label, onclick, cls = "") {
   return b;
 }
 
+// A button that opens a window to choose something (an effect, a palette): it shows what's chosen,
+// then "Change…", so it never looks like a drop-down list. `what` names it for screen readers.
+function pickerButton(shown, onclick, what) {
+  const b = button("", onclick, "picker-button");
+  b.setAttribute("aria-haspopup", "dialog");
+  const name = document.createElement("span");
+  name.className = "picker-name";
+  name.textContent = shown;
+  const change = document.createElement("span");
+  change.className = "picker-change";
+  change.textContent = "Change…";
+  b.append(name, change);
+  b.setAttribute("aria-label", `${what}: ${shown}. Change`);
+  return b;
+}
+
 function addDevice(found) {
   if (app.devices[found.id] || app.deviceList.some((d) => d.ip && d.ip === found.ip)) throw new Nudge(`${found.ip} is already on the list`);
   const name = `${found.sku || "Govee"} ${found.ip.split(".").pop()}`;
@@ -2727,7 +2743,7 @@ function renderInspector() {
   const presets = presetsFor(clip.effect);
   // Prefer the user's own preset when one matches as well as a built-in one.
   const currentPreset = [...presets].reverse().find((pr) => matchesPreset(pr, clip)) || null;
-  const effect = button(`${fxLabel}${currentPreset ? ` · ${presetLabel(currentPreset)}` : ""} ▾`, () => chooseEffect({
+  const effect = pickerButton(`${fxLabel}${currentPreset ? ` · ${presetLabel(currentPreset)}` : ""}`, () => chooseEffect({
     title: `Change the effect on ${trackName(sel.track)}`,
     groups: isGroup(sel.track) ? GROUP_CHOICES : [[null, isHouse(sel.track)]],
     dev, length: clip.end - clip.start, from: clip, current: clip.effect, currentPreset,
@@ -2743,7 +2759,7 @@ function renderInspector() {
       }
       app.changed();
     },
-  }), "ghost effect-change");
+  }), "Effect");
   effect.title = presets.length ? "Change this clip's effect or pick one of its presets" : "Change this clip's effect";
   field("Effect", effect);
 
@@ -3295,7 +3311,7 @@ function openPresetWindow(preset, draft = null) {
   const draw = () => {
     presetDialogPreview.items = [];
     presetDialogPreview.started = performance.now();
-    renderPresetEditor(w.body, presetPreviewDev(), work, { redraw: () => { draw(); w.body.querySelector(".effect-change")?.focus(); },
+    renderPresetEditor(w.body, presetPreviewDev(), work, { redraw: () => { draw(); w.body.querySelector(".picker-button")?.focus(); },
       changed: () => { for (const item of presetDialogPreview.items) item.clip = presetClip(work); } });
   };
   draw();
@@ -3335,7 +3351,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
   name.title = "The preset's name";
   name.setAttribute("aria-label", "Name");
   name.addEventListener("input", () => { preset.name = preset.label = name.value; });
-  const effect = button(`${fx.label} ▾`, () => chooseEffect({
+  const effect = pickerButton(fx.label, () => chooseEffect({
     title: `Change the effect of ${preset.name}`,
     groups: PRESET_EFFECT_GROUPS, dev, length: 4, from: { ...preset.params }, current: preset.effect, palette: null,
     onPick: (key, start) => {
@@ -3346,7 +3362,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
       preset.params = params;
       redraw();
     },
-  }), "ghost effect-change");
+  }), "Effect");
   effect.title = "Change the effect, or start again from one of its presets";
   const el = document.createElement("label");
   el.append("Effect", effect);

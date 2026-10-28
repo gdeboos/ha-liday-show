@@ -533,7 +533,7 @@ ones crossing its edges are trimmed.
 Click a clip to select it. Drag it to move it (onto another light too), drag
 its edges to resize it, and change its effect, colours and settings in the Selection panel. While a
 clip is selected it loops on its own in a strip at the top of its settings, so changes show
-straight away. To swap the effect, press the **Effect** button: it opens the same effect
+straight away. To swap the effect, press **Change…** beside **Effect**: it opens the same effect
 chooser used to add one, playing on that light for the clip's length, with the current effect
 outlined. Changing effect keeps the clip's colours, brightness and transitions.
 
@@ -656,7 +656,7 @@ Effects scale to each light's segment count. **D** duplicates the selected clip.
 
 ### Colour palettes
 
-An effect's settings include a **Palette** button showing the palette's colours: press it to pick
+An effect's settings show the **Palette** in use, with its colours: press **Change…** to pick
 another from a window of colour bars (built-in ones first, then yours). Click a colour to put it in
 the colour field you last clicked, or press **Apply palette** to fill them all in order. Click a
 light's name to **Recolour this light** or **Recolour all lights**: each light steps through the

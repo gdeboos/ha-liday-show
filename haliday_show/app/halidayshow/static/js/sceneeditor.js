@@ -316,9 +316,9 @@ export class SceneEditor {
     const clip = look ? clipFor(look, 0, 1) : null;
     const preset = look ? this.d.presetsFor(look.effect).find((p) => matchesPreset(p, clip)) : null;
     const fxName = look ? `${EFFECTS[look.effect]?.label || look.effect}${preset ? ` · ${preset.label || preset.name}` : ""}` : "Off";
-    const eff = el("button", { type: "button", class: "sc-effect", "aria-haspopup": "dialog",
+    const eff = el("button", { type: "button", class: "sc-effect picker-button", "aria-haspopup": "dialog",
       "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: `${fxName}. Pick an effect or preset, with a preview of each` },
-      el("span", {}, fxName), el("span", { class: "sc-caret", "aria-hidden": "true" }, "▾"));
+      el("span", { class: "picker-name" }, fxName), el("span", { class: "picker-change", "aria-hidden": "true" }, "Change…"));
     eff.addEventListener("click", () => this.d.chooseEffect({
       title: `Effect for ${full}`, dev: this.d.devices()[devId] || null, length: 6,
       current: look?.effect ?? null, currentPreset: preset, only: SCENE_EFFECTS,
