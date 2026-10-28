@@ -53,6 +53,8 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "" 
     out.lights.push({ key, name: d.name, type: lightType(d, models[d.sku]), sku: d.kind === "govee" ? d.sku || "" : "",
       kind: d.kind || "govee", segments: d.segments, parts: parts.map(({ id, ...p }) => p),
       where: whereOf(positions[d.id]), _parts: parts });
+    const level = show.lightBrightness?.[d.id];
+    if (level != null && level !== 100) out.lights.at(-1).brightness = level;
     return key;
   };
   for (const tr of show.tracks || []) {
@@ -73,6 +75,8 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "" 
     fps: show.fps, duration: round2(show.duration || 60), tempo: show.tempo ?? null,
     beats: show.beats || [], bars: show.bars || [], sections: show.sections || [],
     lights: out.lights, tracks: out.tracks,
+    // Show settings → Brightness, only when dimmed (older copies ignore it and play at 100%).
+    ...(show.brightness != null && show.brightness !== 100 ? { brightness: show.brightness } : {}),
   };
 }
 
@@ -93,6 +97,11 @@ export function readShare(text) {
   const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
   const text64 = (v, d = "") => (typeof v === "string" ? v.slice(0, 80) : d);
   const nums = (a) => (Array.isArray(a) ? a.filter((v) => Number.isFinite(v)) : []);
+  // A brightness level, 1–100; anything else (or 100) is left out.
+  const level = (v) => {
+    const n = Math.round(Number(v));
+    return v != null && Number.isFinite(n) && n < 100 ? Math.max(1, n) : undefined;
+  };
   const lights = (Array.isArray(s.lights) ? s.lights : []).slice(0, MAX_LIGHTS)
     .filter((l) => l && typeof l.key === "string")
     .map((l) => ({
@@ -103,6 +112,7 @@ export function readShare(text) {
         .map((p) => ({ key: p.key, name: text64(p.name, "Part"), from: num(p.from, 1), to: num(p.to, 1) })),
       where: l.where && ["x", "y", "w", "h"].every((k) => Number.isFinite(l.where[k]))
         ? { x: l.where.x, y: l.where.y, w: l.where.w, h: l.where.h } : null,
+      ...(level(l.brightness) ? { brightness: level(l.brightness) } : {}),
     }));
   const keys = new Set(lights.map((l) => l.key));
   let count = 0;
@@ -123,7 +133,25 @@ export function readShare(text) {
     beats: nums(s.beats), bars: nums(s.bars),
     sections: (Array.isArray(s.sections) ? s.sections : []).filter((x) => x && Number.isFinite(x.start) && Number.isFinite(x.end)),
     lights: lights.filter((l) => tracks.some((t) => t.light === l.key)), tracks,
+    ...(level(s.brightness) ? { brightness: level(s.brightness) } : {}),
   };
+}
+
+// The imported show's Show settings → Brightness: theirs for the whole show, and each of their
+// dimmed lights' level on the light of yours it's paired with. Where two of theirs share one of
+// yours, the brighter level wins, so neither ends up darker than it was made.
+export function shareLevels(share, plan) {
+  const out = {};
+  if (share.brightness) out.brightness = share.brightness;
+  const per = {};
+  for (const l of share.lights) {
+    const mine = plan[l.key]?.light;
+    if (!mine) continue;
+    const level = l.brightness ?? 100;
+    per[mine] = Math.max(per[mine] ?? 0, level);
+  }
+  for (const [id, level] of Object.entries(per)) if (level < 100) (out.lightBrightness ||= {})[id] = level;
+  return out;
 }
 
 // Your lights as the match screen offers them. `whole: false` lights play their parts only.
