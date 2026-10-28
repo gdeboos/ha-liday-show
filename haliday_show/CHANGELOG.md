@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.230
+
+- In the Scene editor, pressing a light's effect opens the same effect window as the Show editor, with each effect moving in that light's colours. Tick **Show presets** there to pick a preset. **Off**, beside the effect, turns that light off in the scene.
+- Scenes can now set each part of a split light. Turn on **Each part on its own** under the light's name to give every part its own effect. A light that only plays as parts has a row for each part.
+
 ## 0.2.229
 
 - Adding a Home Assistant light or switch is much easier. Instead of one long drop-down, the window has a **Find** box and a list you can narrow to **Colour lights**, **Other lights** or **Switches**. Colour lights come first.

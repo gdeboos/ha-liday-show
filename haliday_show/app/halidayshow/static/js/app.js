@@ -1800,6 +1800,7 @@ const sceneEd = new SceneEditor({
   palettes: () => allPalettes(), presetsFor: (effect) => presetsFor(effect),
   positions: () => housePositionsAll(), groups: () => app.groups, editAdvanced: (id) => openSceneInEditor(id),
   scheduleEditor: (holder, id, onChange) => sceneScheduleEditor(holder, id, onChange),
+  chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }),
   opened: () => { app.sceneChosen = true; showView("scene"); },
   closed: () => { app.sceneChosen = false; showView("scene"); },
 });
@@ -2502,7 +2503,7 @@ function chosenParams(effect, preset, from = null) {
 // fit(clip, then), when given, says whether a choice suits the light (as fitFor does): ones that won't
 // work are greyed out unless "Allow effects that won't work" is ticked, and the current one never is.
 function chooseEffect({ title, groups, dev = null, length = 3, from = null, current = null, currentPreset = null,
-  suggested = null, fit = null, onPick }) {
+  suggested = null, fit = null, only = null, paramsFor = null, onPick }) {
   const dlg = document.createElement("dialog");
   dlg.className = "effect-dialog";
   const head = document.createElement("div");
@@ -2551,7 +2552,8 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     const span = document.createElement("span");
     span.textContent = label;
     b.append(strip, span);
-    const params = chosenParams(effect, preset, from);
+    const base = paramsFor?.(effect);
+    const params = base ? (preset ? { ...base, ...presetParams(preset, base) } : base) : chosenParams(effect, preset, from);
     pickerPreview.items.push({ canvas: strip, clip: { effect, start: 0, end: len, ...params }, dev });
     const mark = (r) => {
       if (!r || r.level === "ok") return;
@@ -2587,7 +2589,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         sh.textContent = heading;
         body.append(sh);
       }
-      const effects = visibleEffects(current ?? undefined, house);
+      const effects = visibleEffects(current ?? undefined, house).filter(([key]) => !only || only.includes(key));
       if (!toggle.checked) {
         const row = document.createElement("div");
         row.className = "effect-picker";
