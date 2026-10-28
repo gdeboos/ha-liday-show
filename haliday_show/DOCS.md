@@ -1270,7 +1270,9 @@ so chatter in the garden doesn't. A ⚠ note says if nothing is heard, or if a W
 format (update it to 0.14 or later).
 
 It works on your home network only, and needs nothing from Home Assistant. If HA-liday Show can't listen
-on UDP port 11988 (another program on the machine has it), the card says so.
+on UDP port 11988 (another program on the machine has it), the card says so. With Docker, keep the host
+networking from `docker-compose.yml`, or the sound won't reach it; with pipx, let UDP port 11988 in
+through your computer's firewall.
 
 ### Playlists
 

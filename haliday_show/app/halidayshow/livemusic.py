@@ -33,7 +33,7 @@ PACKET_V2 = struct.Struct("<6s2xffBx16sHff")
 HEADER_V2 = b"00002"
 HEADER_V1 = b"00001"
 GONE_S = 5.0  # a WLED not heard for this long is no longer listed as sending
-BEAT_HOLD_S = 0.15  # a beat stays lit this long, so a page polling a few times a second sees it
+BEAT_HOLD_S = 0.3  # longer than the Settings card's 250 ms poll, so it never misses a beat
 
 
 def parse(data: bytes) -> dict | None:

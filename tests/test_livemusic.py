@@ -45,8 +45,8 @@ def test_a_beat_stays_lit_for_a_moment():
     live = LiveMusic()
     live.heard(packet(peak=1), "10.0.0.5", now=100)
     live.heard(packet(peak=0), "10.0.0.5", now=100.05)
-    assert live.now(now=100.1)["beat"] is True
-    assert live.now(now=100.3)["beat"] is False
+    assert live.now(now=100.26)["beat"] is True  # still lit at the card's next 250 ms poll
+    assert live.now(now=100.4)["beat"] is False
 
 
 @pytest.fixture
