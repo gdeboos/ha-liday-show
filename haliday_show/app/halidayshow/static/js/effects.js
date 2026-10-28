@@ -594,9 +594,10 @@ Object.assign(EFFECTS, {
       num("rate", "Turns per second", 0.3, 0.02, 5, 0.02), num("width", "Beam width %", 30, 5, 100, 5),
       num("glow", "Glow when the beam is away %", 10, 0, 100, 5), direction],
     render: (p, t, dur, n, i) => {
-      // The beam sweeps past once a turn, with a soft edge, and the lamp glows faintly in between.
+      // The beam sweeps past once a turn, with a soft edge, then points away for a while (the extra 2w
+      // of travel) while the lamp glows faintly.
       const x = (n > 1 ? (p.direction === "reverse" ? n - 1 - i : i) / (n - 1) : 0.5), w = p.width / 100;
-      const centre = -w + mod(t * p.rate, 1) * (1 + 2 * w * 2);
+      const centre = -w + mod(t * p.rate, 1) * (1 + 4 * w);
       const d = Math.abs(x - centre) / w, beam = d < 1 ? Math.cos(d * Math.PI / 2) ** 2 : 0;
       return mix(hexToRgb(p.background), hexToRgb(p.color), p.glow / 100 + (1 - p.glow / 100) * beam);
     },

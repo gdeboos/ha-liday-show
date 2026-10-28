@@ -381,8 +381,9 @@ test("movement effects: theatre spacing, fill level, stacking blocks, and early 
   const half = on(frame({ effect: "level", from: 0, to: 100, soft: 0 }, 5, 10), 10);
   assert.equal(half.filter(Boolean).length, 5);
   assert.ok(half[0] && !half[9]);
-  // Stacking blocks: just before the clear, the whole light is full.
-  const full = on(frame({ effect: "tetris", size: 2, rate: 5 }, 10 / 5 / 2 * 2 - 0.01 + 0, 10), 10);
+  // Stacking blocks: 5 blocks of 2 at 5 a second take a second; just before then, 4 have landed.
+  const fall = 1;
+  const full = on(frame({ effect: "tetris", size: 2, rate: 5 }, fall - 0.01, 10), 10);
   assert.ok(full.slice(0, 8).every(Boolean), String(full));
   // Effects built on random events render from the very start of a clip.
   for (const effect of ["bounce", "ripple", "fireworks", "drip", "juggle", "dissolve", "lighthouse"]) {
