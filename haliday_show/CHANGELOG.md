@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.220
+
+- Groups on **Setup → Devices** have **↑** and **↓** to change their order, which is the order of their
+  lanes in the Show editor.
+
 ## 0.2.219
 
 - **Light groups.** Under **Groups** on **Setup → Devices**, press **+ New group**, name it (such as Roof)

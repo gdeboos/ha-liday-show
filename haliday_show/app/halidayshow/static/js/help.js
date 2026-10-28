@@ -267,7 +267,7 @@ export const HELP = {
       { id: "groups", title: "Groups", guide: ["lights.md", "light-groups"], tips: [
         "<b>+ New group</b> puts lights and parts together, such as the roof's icicles, so a show can give them one effect.",
         "Each group gets a lane under <b>House</b> in the Show editor. Effects run along its lights in this tab's order.",
-        "A light can be in as many groups as you like.",
+        "<b>↑</b> and <b>↓</b> set the order of the groups' lanes. A light can be in as many groups as you like.",
       ] },
     ],
   },
