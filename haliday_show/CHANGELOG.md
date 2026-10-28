@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.236
+
+- Five new festive effects, after WLED's favourites:
+  - **Halloween eyes**: pairs of eyes open along the light, blink, and close again.
+  - **Fireworks**: bursts in three colours that bloom and fade. Try the **Finale** preset.
+  - **Drip**: drops swell, fall and splash. Set **Icicle length** on icicle lights so each icicle drips on its own.
+  - **Candles**: every bulb flickers like its own candle.
+  - **Snow**: flakes falling along the light. The **Rain** preset makes it rain instead.
+- The effect window is easier to find your way around: effects are under headings, **Basics**, **Movement** and **Sparkle and festive**.
+- The new effects work in scenes and playlist blocks too.
+
 ## 0.2.235
 
 - New presets, borrowed from WLED's favourites. Tick **Show presets** in the effect window to find them:

@@ -285,3 +285,39 @@ test("WLED-style shapes: heartbeat, twin scanner and sparkly tail", async () => 
   assert.ok(matchesPreset(PRESETS.pulse.find((p) => p.label === "Steady beat"), old));
   assert.ok(!matchesPreset(PRESETS.pulse.find((p) => p.label === "Heartbeat"), old));
 });
+
+test("festive effects: eyes come in pairs, drips stay on their icicle, snow moves", () => {
+  const frame = (clip, t, n) => [...renderTrack([{ ...newClip(clip.effect, 0, 60), ...clip }], t, n)];
+  const lit = (buf, n) => Array.from({ length: n }, (_, i) => buf[i * 3] + buf[i * 3 + 1] + buf[i * 3 + 2] > 30);
+  // One pair of 1-segment eyes, 2 apart: whenever any segment is lit, exactly two are, 3 apart.
+  for (let t = 0; t < 30; t += 0.37) {
+    const on = lit(frame({ effect: "eyes", pairs: 1, size: 1, gap: 2 }, t, 40), 40).flatMap((v, i) => (v ? [i] : []));
+    assert.ok(on.length === 0 || (on.length === 2 && on[1] - on[0] === 3), `${t}: ${on}`);
+  }
+  // Drips on 10-segment icicles: the first segment of each icicle swells on its own timetable.
+  const tops = new Set();
+  for (let t = 0; t < 20; t += 0.25) {
+    const on = lit(frame({ effect: "drip", length: 10, rate: 0.5 }, t, 50), 50);
+    tops.add([0, 10, 20, 30, 40].map((i) => on[i]).join());
+  }
+  assert.ok(tops.size > 3);
+  // Snow: the bright (near) flakes at t are those of a second before, moved on by its speed.
+  const bright = (buf) => Array.from({ length: 200 }, (_, i) => buf[i * 3] > 200);
+  const a = bright(frame({ effect: "snow", density: 30, speed: 10, length: 1 }, 1, 200));
+  const b = bright(frame({ effect: "snow", density: 30, speed: 10, length: 1 }, 2, 200));
+  assert.ok(a.some(Boolean));
+  for (let i = 0; i + 10 < 200; i++) if (a[i]) assert.ok(b[i + 10] || b[i + 9] || b[i + 11], String(i));
+  // Fireworks and candles are the same every time they're rendered.
+  for (const effect of ["fireworks", "candles", "eyes", "drip", "snow"]) {
+    assert.deepEqual(frame({ effect }, 3.3, 60), frame({ effect }, 3.3, 60), effect);
+  }
+});
+
+test("every effect has a heading in the effect window", async () => {
+  const { EFFECT_GROUPS } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const keys = new Set(EFFECT_GROUPS.map(([g]) => g));
+  for (const [key, fx] of Object.entries(EFFECTS)) {
+    assert.ok(keys.has(fx.group), key);
+    assert.equal(fx.group === "house", !!fx.house, key);
+  }
+});
