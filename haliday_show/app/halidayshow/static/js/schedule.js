@@ -1,5 +1,5 @@
-// Words for a playlist's schedule. Times are HA-liday Show's clock, sent as "YYYY-MM-DDTHH:MM" with
-// no time zone, so they're compared as written rather than in this browser's time zone.
+// Words and small helpers for the schedule (schedule.py). Times are HA-liday Show's clock, sent as
+// "YYYY-MM-DDTHH:MM" with no time zone, so they're compared as written rather than in this browser's time zone.
 
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -46,3 +46,36 @@ export function describeSchedule(s) {
 }
 
 export { MONTHS };
+
+// Schedule entries ---------------------------------------------------------------------------
+// An entry: {id, play: {type: "playlist" | "show" | "scene", id}, on, start, end, days, from, to}.
+export const KIND_NAMES = { playlist: "playlist", show: "show", scene: "scene" };
+
+export const entriesFor = (entries, type, id) => entries.filter((e) => e.play.type === type && e.play.id === id);
+
+// A new entry for this playlist, show or scene, with the usual evening times.
+export function newEntry(type, id, taken = []) {
+  const used = new Set(taken.map((e) => e.id));
+  let eid = `e-${Date.now().toString(36)}`;
+  for (let k = 2; used.has(eid); k++) eid = `e-${Date.now().toString(36)}-${k}`;
+  return { id: eid, play: { type, id }, ...DEFAULT_SCHEDULE, days: [...DEFAULT_SCHEDULE.days] };
+}
+
+// The earliest next start among this thing's entries that are on (state.next is by entry id).
+export function nextFor(entries, type, id, state) {
+  const starts = entriesFor(entries, type, id).filter((e) => e.on).map((e) => state?.next?.[e.id]).filter(Boolean);
+  return starts.sort()[0] || null;
+}
+
+// For a playlist's card, a scene and the Library lists: what the schedule does with it.
+export function scheduleLine(entries, type, id, state) {
+  const mine = entriesFor(entries, type, id);
+  const on = mine.filter((e) => e.on);
+  if (!mine.length) return "Not on the schedule";
+  if (!on.length) return mine.length === 1 ? "On the schedule, switched off" : `On the schedule ${mine.length}×, all switched off`;
+  const lane = type === "scene" ? state?.scene_scheduled : state?.scheduled;
+  if (on.some((e) => e.id === lane)) return "On now, on the schedule";
+  const what = on.length === 1 ? `On the schedule: ${describeSchedule(on[0])}` : `On the schedule ${on.length}×`;
+  const next = nextFor(entries, type, id, state);
+  return next && state?.now ? `${what}. Next starts ${whenNext(next, state.now)}` : what;
+}

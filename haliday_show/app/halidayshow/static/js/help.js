@@ -207,8 +207,8 @@ export const HELP = {
         "<b>▶ Play on lights</b> plays it round and round on your real lights. Change it while it plays and the lights follow.",
         "<b>← All scenes</b> goes back to the list.",
       ] },
-      { id: "when", title: "When it plays", tips: [
-        "Turn on <b>Comes on by itself on a schedule</b> and pick the times and days, as for a playlist. A start can be at sunset.",
+      { id: "when", title: "When it plays", guide: ["play-it.md", "schedule"], tips: [
+        "Scenes come on by themselves from the <b>Schedule</b> tab. <b>+ Add to schedule</b> here adds this scene there.",
         "If a show or playlist is on at the start, the scene waits for it, then comes on. At the end it goes off.",
       ] },
       { id: "advanced", title: "Advanced", tips: [
@@ -245,13 +245,32 @@ export const HELP = {
         "Drag a show from <b>Your shows</b>, or press <b>+</b> to add it at the end. The same show can go in more than once.",
         "<b>Building blocks</b> go between shows: a <b>Pause</b>, one <b>Colour</b>, <b>Off</b>, an <b>Effect</b> or one of your <b>Scenes</b>, each with its own length.",
       ] },
-      { id: "when", title: "When it plays", guide: ["play-it.md", "playlists"], tips: [
-        "Turn on <b>Play on a schedule</b> and pick the times and days. A start time can be at sunset.",
-        "<b>Only between</b> limits it to some dates, such as December.",
+      { id: "when", title: "When it plays", guide: ["play-it.md", "schedule"], tips: [
+        "Playlists play by themselves from the <b>Schedule</b> tab. <b>+ Add to schedule</b> here adds this playlist there.",
+        "One playlist can be on the schedule more than once, such as weekdays and weekends at different times.",
         "For shows with no speaker, open the <b>Show player</b> on a computer with speakers and leave it open.",
       ] },
     ],
     panels: { playlist: "playlist", blocks: "shows", shows: "shows", order: "order", when: "when" },
+  },
+  schedule: {
+    title: "Schedule", guide: ["play-it.md", "schedule"],
+    topics: [
+      { id: "entries", title: "What plays when", tips: [
+        "Each row plays a playlist, a show (round and round) or a scene by itself at its times, even with this page closed.",
+        "<b>+ Add to schedule</b> adds a row. Pick what it plays, then the times and days. A start can be at sunset.",
+        "<b>Only between</b> limits a row to some dates, such as December. Untick <b>On</b> to pause a row without losing it.",
+        "The same playlist can have several rows, such as weekdays 17:00 to 22:00 and weekends until 23:00.",
+      ] },
+      { id: "order", title: "When times overlap", tips: [
+        "The row higher in the list plays first. Drag ⠿, or press <b>↑</b> and <b>↓</b>, to change the order.",
+        "A scene can be on alongside a playlist or show: it waits while they play and comes back after.",
+        "If you stop something the schedule started, it stays off until its next start.",
+      ] },
+      { id: "sunset", title: "Sunset", tips: [
+        "Sunset times use Home Assistant's location, or a place you type in at the bottom of the page.",
+      ] },
+    ],
   },
   devices: {
     title: "Devices", guide: ["lights.md", "1-devices"],

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.233
+
+- New **Schedule** tab at the top, between **Library** and **Setup**: everything that plays by itself, in one list. Each row plays a playlist, a show (round and round) or a scene at its times, days and dates, as schedules did before.
+- The same playlist, show or scene can now be on the schedule more than once, such as 17:00 to 22:00 on weekdays and until 23:00 at weekends. A playlist with two rows back to back carries straight on.
+- Where times overlap, the row higher in the list plays first. Drag ⠿, or press **↑** and **↓**, to change the order. A scene can still be on alongside a playlist or show, and comes back after.
+- Your existing playlist and scene schedules have moved to the **Schedule** tab for you, unchanged.
+- **When it plays** in the Playlist and Scene editors now says what the schedule does with them, with **+ Add to schedule** and **Open Schedule**. The sunset location is at the bottom of the **Schedule** tab.
+
 ## 0.2.232
 
 - The Scene editor's lights line up neatly. Every row has the same columns, **Effect**, **Colours**, **Speed** and **Brightness**, with a dash where an effect has no speed.

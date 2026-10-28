@@ -188,8 +188,10 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   the Show editor. In Home Assistant each scene is a scene entity, and one light turns them on and off
   and dims them. Scenes can come on and go off by themselves, at set times or from sunset
 - **Live music**: see what a WLED with a microphone hears (loudness, beats, bass to treble) in Settings
-- Playlists: several shows back to back, round and round, by hand or on a schedule (times or
-  sunset, days and dates), with a Show player page to play the music on any computer with speakers
+- Playlists: several shows back to back, round and round, with a Show player page to play the music
+  on any computer with speakers
+- A Schedule tab: playlists, shows and scenes that play by themselves (times or sunset, days and
+  dates), as many entries as you like, the one higher in the list first where they overlap
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
@@ -338,7 +340,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/baked.py                Baked show file format
   app/halidayshow/player.py               Plays baked frames against a movable clock
   app/halidayshow/playlists.py            Saved playlists and their building blocks: checking them, finding one by name
-  app/halidayshow/schedule.py             Starts and stops playlists at their scheduled times
+  app/halidayshow/schedule.py             The schedule's entries: starts and stops playlists, shows and scenes at their times
   app/halidayshow/sun.py                  Sunset times, for playlists that start at sunset
   app/halidayshow/runner.py               Starts shows on a speaker or for the browser, plays playlists and visitors' requests
   app/halidayshow/public.py               The public page on its own port: visitors' choices and their queue
@@ -375,7 +377,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/lightgroups.js                   Light groups: members, names, which lanes a selection's effect goes on
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
-    js/schedule.js                      A playlist's schedule in words
+    js/schedule.js                      Schedule entries in words, and small helpers for them
+    js/schedulepage.js                  The Schedule tab: entries in priority order, saved as you go
     js/playlisteditor.js                Playlist editor: where a dragged card lands, running time, building blocks
     js/sceneeditor.js                   Scene editor and Your scenes: rows per light, preview, saving and baking
     js/housescenes.js                   A scene's sums: what each light plays, its loop, its row's colours

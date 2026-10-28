@@ -73,9 +73,16 @@ async def setup(tmp_path):
 
 
 def save(storage, *lists):
+    """Saves these playlists, and a schedule entry for each one's times (replacing playlist entries)."""
     settings = storage.load_settings()
     settings["playlists"] = list(lists)
+    others = [e for e in settings.get("schedule", []) if e["play"]["type"] != "playlist"]
+    settings["schedule"] = [entry("playlist", p["id"], p["schedule"]) for p in lists if p.get("schedule")] + others
     storage.save_settings(settings)
+
+
+def entry(kind, ref, times, eid=None):
+    return {"id": eid or f"{kind}-{ref}", "play": {"type": kind, "id": ref}, **times}
 
 
 async def started(runner):
@@ -96,7 +103,7 @@ async def test_starts_at_the_start_and_finishes_the_show_at_the_end(setup):
     await sched.tick(at(16, 59))
     assert runner.status()["playlist"] is None
     await sched.tick(at(17))
-    assert runner.status()["playlist"]["id"] == "night" and sched.state(at(17))["scheduled"] == "night"
+    assert runner.status()["playlist"]["id"] == "night" and sched.state(at(17))["scheduled"] == "playlist-night"
     await started(runner)
     await sched.tick(at(22))
     assert runner.status()["playlist"]["finishing"] and runner.player.playing  # the 10 s show plays on
@@ -341,8 +348,11 @@ def test_taking_a_deleted_show_out_keeps_the_pauses_tidy():
 
 # Scenes on a schedule ---------------------------------------------------------------------------
 def scene(storage, sid, schedule):
-    storage.save_scene(sid, {"name": sid.title(), "mode": "basic", "lights": {}, "schedule": schedule})
+    storage.save_scene(sid, {"name": sid.title(), "mode": "basic", "lights": {}})
     storage.save_scene_baked(sid, baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 4))
+    settings = storage.load_settings()
+    settings["schedule"] = settings.get("schedule", []) + [entry("scene", sid, schedule)]
+    storage.save_settings(settings)
 
 
 SUNSET_TO_MIDNIGHT_ISH = {"on": True, "start": "16:00", "end": "00:00", "days": list(range(7)), "from": "", "to": ""}
@@ -355,7 +365,7 @@ async def test_a_scene_comes_on_at_its_start_and_goes_off_at_its_end(setup):
     assert runner.scene is None
     await sched.tick(at(16))
     assert runner.scene_playing and runner.scene["id"] == "glow"
-    assert sched.state(at(16))["scene_scheduled"] == "glow"
+    assert sched.state(at(16))["scene_scheduled"] == "scene-glow"
     await sched.tick(at(23, 59))
     assert runner.scene_playing
     await sched.tick(at(0, 0, day=26))
@@ -403,9 +413,104 @@ async def test_a_scene_schedule_is_checked_like_a_playlists():
         scenelib.clean_scene({"name": "Glow", "lights": {}, "schedule": {"on": True, "start": "25:00"}})
 
 
-async def test_where_scene_times_overlap_the_first_by_name_comes_on(setup):
+async def test_where_scene_times_overlap_the_higher_entry_comes_on(setup):
     storage, runner, sched = setup
     scene(storage, "snow", SUNSET_TO_MIDNIGHT_ISH)
     scene(storage, "glow", SUNSET_TO_MIDNIGHT_ISH)
     await sched.tick(at(16))
-    assert runner.scene["id"] == "glow"
+    assert runner.scene["id"] == "snow"
+
+
+# Schedule entries ----------------------------------------------------------------------------
+async def test_old_schedules_move_across_once(setup):
+    storage, runner, sched = setup
+    from halidayshow.schedule import load_entries
+    settings = storage.load_settings()
+    settings["playlists"] = [pl("night", EVENINGS), pl("spare", None)]
+    storage.save_settings(settings)
+    storage.save_scene("glow", {"name": "Glow", "mode": "basic", "lights": {}, "schedule": {**EVENINGS, "on": False}})
+    entries = load_entries(storage)
+    assert [(e["id"], e["play"], e["on"]) for e in entries] == [
+        ("playlist-night", {"type": "playlist", "id": "night"}, True),
+        ("scene-glow", {"type": "scene", "id": "glow"}, False)]
+    assert storage.load_settings()["playlists"][0]["schedule"] == EVENINGS  # left for older versions
+    settings = storage.load_settings()
+    settings["schedule"] = []
+    storage.save_settings(settings)
+    assert load_entries(storage) == []  # not made again once you've changed the schedule
+
+
+async def test_one_playlist_on_two_entries(setup):
+    storage, runner, sched = setup
+    save(storage, pl("night", None))
+    settings = storage.load_settings()
+    settings["schedule"] = [entry("playlist", "night", {**EVENINGS, "days": [5, 6], "end": "23:00"}, "weekend"),
+                            entry("playlist", "night", {**EVENINGS, "days": [0, 1, 2, 3, 4]}, "weekday")]
+    storage.save_settings(settings)
+    await sched.tick(at(17))  # a Sunday
+    await started(runner)
+    assert sched.state(at(17))["scheduled"] == "weekend"
+    await sched.tick(at(22))
+    assert not runner.status()["playlist"]["finishing"]
+    await sched.tick(at(23))
+    assert runner.status()["playlist"]["finishing"]
+    assert sched.state(at(23, day=25))["next"]["weekday"].endswith("T17:00")
+
+
+async def test_back_to_back_entries_for_the_same_playlist_carry_on(setup):
+    storage, runner, sched = setup
+    save(storage, pl("night", None))
+    settings = storage.load_settings()
+    settings["schedule"] = [entry("playlist", "night", {**EVENINGS, "end": "20:00"}, "a"),
+                            entry("playlist", "night", {**EVENINGS, "start": "20:00", "end": "23:00"}, "b")]
+    storage.save_settings(settings)
+    await sched.tick(at(17))
+    await started(runner)
+    task = runner._playlist
+    await sched.tick(at(20))
+    assert runner._playlist is task and not runner.status()["playlist"]["finishing"]
+    assert sched.state(at(20))["scheduled"] == "b"
+
+
+async def test_a_show_entry_plays_the_show_round_and_round(setup):
+    storage, runner, sched = setup
+    settings = storage.load_settings()
+    settings["schedule"] = [entry("show", "two", EVENINGS)]
+    storage.save_settings(settings)
+    await sched.tick(at(17))
+    await started(runner)
+    assert runner.status()["playlist"]["name"] == "Two" and runner.player.show_id == "two"
+    await sched.tick(at(22))
+    assert runner.status()["playlist"]["finishing"]
+
+
+async def test_an_entry_for_something_deleted_is_skipped(setup):
+    storage, runner, sched = setup
+    settings = storage.load_settings()
+    settings["schedule"] = [entry("show", "gone", EVENINGS), entry("playlist", "nope", EVENINGS),
+                            entry("show", "one", EVENINGS)]
+    storage.save_settings(settings)
+    await sched.tick(at(17))
+    await started(runner)
+    assert runner.player.show_id == "one"
+
+
+def test_entries_are_checked():
+    from halidayshow.schedule import clean_entry
+    good = entry("scene", "glow", EVENINGS)
+    assert clean_entry(good) == good
+    assert clean_entry({**good, "play": {"type": "song", "id": "x"}}) is None
+    assert clean_entry({**good, "id": "Not An Id"}) is None
+    assert clean_entry({**good, "end": "17:00"}) is None
+
+
+async def test_a_long_scene_id_still_moves_across(setup):
+    storage, runner, sched = setup
+    from halidayshow.schedule import load_entries
+    from halidayshow.storage import valid_id
+    long_id = "a" * 64
+    storage.save_scene(long_id, {"name": "A" * 64, "mode": "basic", "lights": {}, "schedule": EVENINGS})
+    storage.save_scene("a" * 63, {"name": "Twin", "mode": "basic", "lights": {}, "schedule": EVENINGS})
+    entries = load_entries(storage)
+    assert sorted(e["play"]["id"] for e in entries) == sorted([long_id, "a" * 63])
+    assert all(valid_id(e["id"]) for e in entries) and len({e["id"] for e in entries}) == 2

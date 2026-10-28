@@ -56,7 +56,7 @@ export function visitorLink(view, hostname) {
 // What the nearby check measures from, or why it can't run.
 export function nearbyText(view) {
   if (!view.nearby) return "Anyone with the link can start a show, wherever they are.";
-  const from = view.home === "you" ? "the home location you typed in under When it plays, in the Playlist editor"
+  const from = view.home === "you" ? "the home location you typed in on the Schedule tab"
     : view.home === "ha" ? "your home location in Home Assistant" : "";
   if (!from) return "⚠ There's no home location to measure from, so visitors reaching the page through the internet can't start shows until you set one in Home Assistant (Settings → System → General). Your home Wi-Fi still works.";
   return `Phones reaching the page through the internet must be within ${view.distance} m of ${from}. On your home Wi-Fi they're not asked. Visitors' phones ask to share their location when the page opens, and only show Start once they're close enough.`;

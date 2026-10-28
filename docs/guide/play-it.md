@@ -78,19 +78,9 @@ works as in a show. Each light's look becomes one effect across the whole timeli
 - **Switch to Basic** goes back to a row per light. It's only offered while nothing would be lost: each
   light with one effect across the whole loop, played on the whole light, and nothing on the House lane.
 
-**When it plays** (at the foot of the Scene editor, or **When it plays…** in the banner for an Advanced
-scene) turns a scene on and off by itself: turn on **Comes on by itself on a schedule** and pick the times,
-days and dates, as for a playlist (see [Playlists](#playlists)). A start can be at sunset.
-
-- At its start the scene comes on. If a show or playlist is playing, the scene waits for it to finish.
-- At its end it goes off.
-- If you turn it off, or put another scene on, before then, it's left that way until its next start.
-- For example: **Candy cane** from sunset to midnight, and your show playlist from 18:00 to 20:00. The
-  lights glow from sunset, the shows take over at six, the scene comes back once they've finished, and
-  everything goes off at midnight.
-- Only one scene comes on by itself at a time. Where two scenes' times overlap, the first by name wins.
-
-**Library → Scenes** says when each scene comes on by itself.
+Scenes come on and off by themselves from the [Schedule](#schedule) tab. **When it plays** at the foot
+of the Scene editor (or **Schedule…** in the banner for an Advanced scene) says what the schedule does
+with the scene, with **+ Add to schedule** and **Open Schedule**. **Library → Scenes** says it too.
 
 Scenes are also in Home Assistant, as a scene each and one light whose brightness dims them (see
 [With MQTT](automations.md#with-mqtt)).
@@ -187,7 +177,7 @@ when a playlist, its schedule or an automation starts it. Without Home Assistant
 To hear the music too, use the **Show player**:
 
 1. On a computer or tablet connected to your speakers, open the **Show player** link under
-   **When it plays** in the Playlist editor. Without Home Assistant, the address is `http://<HA-liday Show's address>:8099/player`.
+   the **Schedule** tab. Without Home Assistant, the address is `http://<HA-liday Show's address>:8099/player`.
 2. Press **▶ Start the Show player** (browsers only play sound after a press on the page).
 3. Leave it open. Each song plays there from the right point, and your lights follow it.
 
@@ -195,42 +185,69 @@ Keep that computer from going to sleep while your shows run. If the lights are a
 make **Light offset** bigger; if they're behind, make it smaller. Shows you play from the editor, or
 on a speaker, don't play in the Show player, so you never hear a song twice.
 
-#### Playing on a schedule
+### Schedule
 
-Turn on **Play on a schedule** under **When it plays**, in the Playlist editor, to have a playlist start
-and stop by itself:
+The **Schedule** tab is where playlists, shows and scenes play by themselves at set times, even with
+the page closed. Each row is one thing it plays, then its times, days and dates.
+
+- Press **+ Add to schedule**, then pick what it plays: a playlist, a show (it plays round and round
+  for the whole time) or a scene. **+ Add to schedule** under **When it plays**, in the Playlist editor
+  or the Scene editor, adds that playlist or scene.
+- The same thing can be on the schedule more than once, such as your playlist 17:00 to 22:00 on
+  weekdays and 16:00 to 23:00 at weekends.
+- Untick **On** to pause a row without losing its times. **Delete** takes it off the schedule.
+- A row whose playlist, show or scene you delete stays, greyed out, and is skipped.
+
+Times work like this:
 
 - **From** and **to** set the times, such as 17:00 to 22:00. An end time earlier than the start runs
   past midnight: 20:00 to 01:00 on a Saturday plays until 1 in the morning on Sunday.
 - To start when it gets dark, change **From** to **sunset**. You can start up to 3 hours before or
-  after it, such as 15 **minutes after**. Sunset moves through the year, so the playlist does too.
+  after it, such as 15 **minutes after**. Sunset moves through the year, so the row does too.
   An end time in the morning (before 12:00), such as 01:00, is the next morning. On an evening the sun
   sets after the end time (21:00 in midsummer, say), it doesn't play.
 - Press the days it shouldn't play to turn them off.
 - Turn on **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
   every year, and can run over New Year (1 Dec and 6 Jan).
 
-Under the schedule it says when the playlist next starts. At the start time it starts, even if
-something else is playing. At the end time the show that's on finishes, then it stops (a building block that's on stops
-straight away). If you press
+Each row says when it next starts. At the start time a playlist or show starts, even if something else
+is playing. At the end time the show that's on finishes, then it stops (a building block that's on
+stops straight away), unless another row for the same thing carries straight on. If you press
 **■ Stop**, pause the song on the speaker or play something else in between, it stays off until its
-next start time. If HA-liday Show restarts during the scheduled time (after an update, say), the
-playlist starts again, and so does one whose schedule you turn on during its time. Changing the
-times while it plays just moves when it stops.
+next start time. If HA-liday Show restarts during the scheduled time (after an update, say), it
+starts again, and so does a row you turn on during its time. Changing the times while it plays
+just moves when it stops.
+
+A scene row puts the scene on at its start and off at its end. If a show or playlist is playing,
+the scene waits for it to finish. If you turn it off, or put another scene on, before then, it's left
+that way until its next start.
+
+#### When times overlap
+
+Playlists and shows take turns, and so do scenes; a scene can be on alongside a playlist or show.
+
+- Where two playlists' or shows' times overlap, the row higher up the list plays first, and the
+  other starts once it's finished. The same goes for two scenes. Drag ⠿ (or press **↑** and **↓**) to
+  change the order.
+- A playlist or show takes the lights over from a scene, and the scene comes back once it's finished.
+  For example: **Candy cane** from sunset to midnight, and your show playlist from 18:00 to 20:00. The
+  lights glow from sunset, the shows take over at six, the scene comes back once they've finished, and
+  everything goes off at midnight.
+
+#### Sunset and the clock
 
 Sunset times are worked out for Home Assistant's location (**Settings → System → General** in Home
 Assistant). Without Home Assistant, or to use another place, type your latitude and longitude in the
-boxes that appear under the schedule once a playlist starts at sunset, and press **Save**. **Use Home
-Assistant's** goes back to Home Assistant's location. On Google Maps, right-click your
-house and click the numbers at the top to copy them, then paste them into the first box. Sunset is
-worked out to within a couple of minutes. The page shows today's sunset next to the clock.
+boxes at the bottom of the **Schedule** tab (they appear once a row starts at sunset), and press
+**Save**. **Use Home Assistant's** goes back to Home Assistant's location. On Google Maps, right-click
+your house and click the numbers at the top to copy them, then paste them into the first box. Sunset
+is worked out to within a couple of minutes. The page shows today's sunset next to the clock.
 
-Only one playlist plays at a time. If two playlists' times overlap, the one higher up **Library → Playlists** plays
-first, and the other starts once it's finished.
-
-Schedules go by HA-liday Show's own clock, which the Playlist editor shows under the schedule. The app uses
-Home Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
+The schedule goes by HA-liday Show's own clock, which the **Schedule** tab shows. The app uses Home
+Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
 `Europe/London`); with Python, it uses your computer's clock.
+
+Schedules you'd set on a playlist or scene before 0.2.233 were moved to the **Schedule** tab for you.
 
 ---
 

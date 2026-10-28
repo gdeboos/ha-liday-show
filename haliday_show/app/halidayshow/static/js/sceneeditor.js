@@ -8,7 +8,6 @@ import {
   sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
-import { describeSchedule } from "./schedule.js";
 import { PART, sendParts } from "./upload.js";
 
 const SAVE_AFTER_MS = 600;
@@ -32,7 +31,8 @@ export class SceneEditor {
   // positions() (where each light is on the house, for an Advanced scene's House lane),
   // opened() (after a scene opens, to show the editor page), closed() (back to the list),
   // editAdvanced(id) (an Advanced scene opens in the Show editor),
-  // scheduleEditor(holder, id, onChange) (the playlists' When it plays, for a scene),
+  // scheduleLink(id) (what the schedule does with a scene, and a way to the Schedule tab),
+  // scheduleLine(id) (the same in words, or "" when it isn't on the schedule),
   // chooseEffect(options) (the Show editor's effect window, with its moving previews)
   constructor(deps) {
     this.d = deps;
@@ -89,7 +89,8 @@ export class SceneEditor {
     if (playing) head.append(el("span", { class: "show-last" }, "▶ Playing now"));
     if (waiting) head.append(el("span", { class: "show-last" }, "Comes back after the show"));
     if (!s.baked) head.append(el("span", { class: "badge warn", title: "Open it once so it's ready to play" }, "⚠ Not ready yet"));
-    const when = s.schedule?.on ? ` · comes on ${describeSchedule(s.schedule)}` : "";
+    const line = this.d.scheduleLine(s.id);
+    const when = line ? ` · ${line[0].toLowerCase()}${line.slice(1)}` : "";
     const main = el("div", { class: "show-main" }, head, el("div", { class: "hint" }, sceneSummary(s, lights) + when));
     const play = playing
       ? el("button", { type: "button", class: "primary", onclick: () => this.stop(s.id), "aria-label": `Stop ${s.name}` }, "■ Stop")
@@ -274,7 +275,7 @@ export class SceneEditor {
     } else {
       rows.replaceChildren(...lights.flatMap((d) => this.lightRows(s, d)));
     }
-    $("sc-when").replaceChildren(this.d.scheduleEditor(this.scene, this.id, () => this.changed()));
+    $("sc-when").replaceChildren(this.d.scheduleLink(this.id));
     this.drawPlayButton();
     this.startPreview();
   }

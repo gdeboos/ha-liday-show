@@ -853,14 +853,27 @@ async def test_playlists_round_trip_validation_and_play(client):
     assert st["playlist"] is None and not st["playing"]
 
 
-async def test_playlist_schedules_save_and_show_when_they_next_start(client):
+async def test_a_playlists_old_schedule_is_still_accepted(client):
     evenings = {"on": True, "start": "17:00", "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""}
     pl = {"id": "night", "name": "Night", "shows": [], "gap": 5, "schedule": evenings}
     assert (await (await client.put("/api/playlists", json=[pl])).json())[0]["schedule"] == evenings
     bad = {**pl, "schedule": {**evenings, "start": "17:00", "end": "17:00"}}
     assert (await client.put("/api/playlists", json=[bad])).status == 400
     st = await (await client.get("/api/schedule")).json()
-    assert st["now"] and st["next"]["night"].endswith("T17:00") and st["scheduled"] is None
+    # Schedules moved to the Schedule tab when the app started; a playlist's own one is only kept now.
+    assert st["now"] and st["next"] == {} and st["scheduled"] is None and st["entries"] == []
+
+
+async def test_the_schedule_saves_its_entries_in_order(client):
+    evenings = {"on": True, "start": "17:00", "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""}
+    entries = [{"id": "e2", "play": {"type": "show", "id": "one"}, **evenings},
+               {"id": "e1", "play": {"type": "scene", "id": "glow"}, **evenings, "start": "sunset", "offset": -15}]
+    st = await (await client.put("/api/schedule", json=entries)).json()
+    assert [e["id"] for e in st["entries"]] == ["e2", "e1"] and st["entries"][1]["offset"] == -15
+    assert [e["id"] for e in (await (await client.get("/api/schedule")).json())["entries"]] == ["e2", "e1"]
+    for bad in ([{**entries[0], "play": {"type": "song", "id": "x"}}], [entries[0], entries[0]],
+                [{**entries[0], "days": "all"}], {"id": "e"}):
+        assert (await client.put("/api/schedule", json=bad)).status == 400, bad
 
 
 async def test_location_for_sunset(client):
