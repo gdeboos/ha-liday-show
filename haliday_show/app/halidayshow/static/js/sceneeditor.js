@@ -235,8 +235,10 @@ export class SceneEditor {
 
   bakeKey(scene = this.scene) {
     const { name, ...look } = scene;
-    // An Advanced scene's House lane also depends on where the lights are on the house.
-    return JSON.stringify([look, this.d.lightsKey(), scene.mode === "advanced" ? this.d.positions() : null]);
+    // An Advanced scene's House and group lanes also depend on where the lights are on the house, and
+    // on the groups.
+    const advanced = scene.mode === "advanced";
+    return JSON.stringify([look, this.d.lightsKey(), advanced ? this.d.positions() : null, advanced ? this.d.groups?.() || [] : null]);
   }
 
   // Basic → Advanced: each light's look becomes one effect across the loop, in the Show editor.

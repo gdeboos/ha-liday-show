@@ -54,11 +54,12 @@ export function nameProblem(groups, name, except = null) {
   return null;
 }
 
-// A new id from the name, free among `groups`.
-export function newGroupId(groups, name) {
-  const base = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "group";
-  let id = base;
-  for (let k = 2; groups.some((g) => g.id === id); k++) id = `${base}-${k}`;
+// A new id from the name and the time, so a group made again with a deleted one's name doesn't pick
+// up the effects still on the deleted one's lanes.
+export function newGroupId(groups, name, now = Date.now()) {
+  const base = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 28) || "group";
+  let id = `${base}-${now.toString(36).slice(-6)}`;
+  for (let k = 2; groups.some((g) => g.id === id); k++) id = `${base}-${now.toString(36).slice(-6)}-${k}`;
   return id;
 }
 

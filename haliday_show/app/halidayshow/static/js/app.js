@@ -1630,7 +1630,15 @@ const trackKind = (i) => (isHouse(i) ? "house" : isGroup(i) ? "group" : "light")
 // House effects go on the House lane and group lanes; light effects everywhere but the House lane.
 const fitsTrack = (effect, i) => isGroup(i) || !!EFFECTS[effect]?.house === isHouse(i);
 // The group lanes as they play, for composeLight; pass the house positions when there are any.
-const groupPlans = (pos = {}) => planGroups(app.groups, app.deviceList, (id) => app.show.tracks.find((t) => t.device === id), pos);
+// Made once per animation frame or so, so the lights in a preview share each group's strip.
+const plansMemo = { at: -Infinity, pos: null, plans: [] };
+const groupPlans = (pos = {}) => {
+  const now = performance.now();
+  if (now - plansMemo.at > 12 || plansMemo.pos !== pos) {
+    Object.assign(plansMemo, { at: now, pos, plans: planGroups(app.groups, app.deviceList, (id) => app.show.tracks.find((t) => t.device === id), pos) });
+  }
+  return plansMemo.plans;
+};
 // Group lanes need the house photo's positions for their House effects too.
 const groupsUseHouse = (show = app.show) => (show.tracks || []).some((t) => isGroupTrack(t.device) && t.clips.some((c) => EFFECTS[c.effect]?.house));
 

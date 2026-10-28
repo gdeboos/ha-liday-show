@@ -8,7 +8,8 @@
   group as if its lights were one strip** (a chase flows from one icicle strip into the next) or **across
   the group by where its lights are on the house photo** (Sweep, House wipe and Rainbow wave, measured
   across just those lights).
-- While a group's effect runs it takes over its lights; the rest of the time each light plays its own.
+- While a group's effect runs it takes over (or, for the house-photo kind, goes over) its lights; the rest of
+  the time each light plays its own.
 
 ## 0.2.215
 

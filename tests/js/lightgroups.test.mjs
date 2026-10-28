@@ -27,8 +27,10 @@ test("names are needed and free; ids come from them", () => {
   assert.equal(nameProblem(groups, "  "), "Give the group a name");
   assert.match(nameProblem(groups, "roof"), /already/);
   assert.equal(nameProblem(groups, "roof", "roof"), null);
-  assert.equal(newGroupId(groups, "Roof"), "roof-2");
-  assert.equal(newGroupId(groups, "Front & side!"), "front-side");
+  assert.match(newGroupId(groups, "Roof", 1e12), /^roof-[a-z0-9]{1,6}$/);
+  assert.notEqual(newGroupId(groups, "Roof", 1e12), newGroupId(groups, "Roof", 2e12), "never the same as an older group's");
+  assert.match(newGroupId(groups, "Front & side!"), /^front-side-[a-z0-9]+$/);
+  assert.match(newGroupId([], "x".repeat(80)), /^[a-z0-9-]{1,40}$/);
 });
 
 test("a selected stretch puts each kind of effect on the right lanes", () => {

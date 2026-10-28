@@ -1176,8 +1176,10 @@ press **＋ Add effect…**, and the chooser has two kinds:
   **Rainbow wave**, as on the House lane but measured across just the group's lights, so a sweep crosses
   the whole group, however much of the house it covers.
 
-While a group's clip runs it takes over its lights from their own effects (the House lane still goes on
-top). Before and after, each light plays its own. Selecting a group lane with lights or the House lane
+While a light effect runs on a group it takes over the group's lights from their own effects; a House
+effect on a group goes over them, as on the House lane (and the House lane still goes on top of
+everything). Before and after, each light plays its own. **✨ Generate** clears the group lanes, as their
+effects would cover its new look (Ctrl+Z brings them back). Selecting a group lane with lights or the House lane
 puts light effects on the lights and House effects on the House lane, as before. Changing a group
 updates the saved shows that use group lanes, so automations and playlists play it straight away.
 Shared shows don't carry group lanes, because the groups are yours.
