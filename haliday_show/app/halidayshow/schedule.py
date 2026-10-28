@@ -10,7 +10,7 @@ neither, a sunset entry doesn't play. The dates are optional and come round ever
 "to" wraps over New Year (1 Dec to 6 Jan). An end before the start runs past midnight, counted as part
 of the day it started. Times are HA-liday Show's own clock (the TZ setting Home Assistant gives apps).
 
-Until 0.2.232 each playlist and scene had one "schedule" of its own. The first time there's no
+Until 0.2.233 each playlist and scene had one "schedule" of its own. The first time there's no
 "schedule" list, one is made from those (playlists in list order, then scenes by name), and the old
 fields are left where they are, unused, so an older version still finds them.
 

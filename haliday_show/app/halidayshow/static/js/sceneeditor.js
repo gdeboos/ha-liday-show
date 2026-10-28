@@ -292,36 +292,43 @@ export class SceneEditor {
       this.changed();
       this.draw();
     });
-    const head = el("div", { class: "sc-split", role: "group", "aria-label": d.name }, el("span", { class: "sc-light" }, d.name),
-      el("label", { class: "sc-same", title: d.whole === false
-        ? "This light only plays as parts. To light it as one too, turn on Also play as one under Setup → Devices."
-        : "Give each part its own effect" }, box, " Each part on its own"));
-    if (!split) return [head, this.lookRow("Whole light", s.lights[d.id] || null, whole, d.id, d.name)];
+    const toggle = el("label", { class: "sc-parts", title: d.whole === false
+      ? "This light only plays as parts. To light it as one too, turn on Also play as one under Setup → Devices."
+      : "Give each part its own effect" }, box, " Each part on its own");
+    // Played whole, the light is one row with the switch under its name; by parts, that row is just
+    // its name and the switch, with a row for each part under it.
+    if (!split) return [this.lookRow(d.name, s.lights[d.id] || null, whole, d.id, null, toggle)];
+    const head = el("div", { class: "sc-row sc-split", role: "group", "aria-label": d.name },
+      el("span", { class: "sc-light" }, d.name, toggle));
     return [head, ...d.parts.map((p) => this.lookRow(p.name, partLook(s, d, p),
       (look) => { setPartLook(s, d, p, look); this.byParts.add(d.id); }, partKey(d, p), `${d.name} · ${p.name}`))];
   }
 
-  // One light's row: effect (or Off), style, colours, speed and brightness. `devId` is what the
-  // effect window previews on; `name` the light's full name for its title, when `label` is a part's.
-  lookRow(label, look, set, devId = null, name = null) {
+  // One light's row: effect (or Off), colours, speed and brightness, every cell there even when empty
+  // so the columns line up. `devId` is what the effect window previews on; `name` the light's full
+  // name when `label` is a part's; `extra` goes under the name.
+  lookRow(label, look, set, devId = null, name = null, extra = null) {
     const changed = (redraw) => { this.changed(); if (redraw) this.draw(); };
     const nested = !!name;
     const full = name || label;
     const row = el("div", { class: `sc-row${nested ? " nested" : ""}`, role: "group", "aria-label": full });
-    const fxName = look ? EFFECTS[look.effect]?.label || look.effect : "Off";
+    const clip = look ? clipFor(look, 0, 1) : null;
+    const preset = look ? this.d.presetsFor(look.effect).find((p) => matchesPreset(p, clip)) : null;
+    const fxName = look ? `${EFFECTS[look.effect]?.label || look.effect}${preset ? ` · ${preset.label || preset.name}` : ""}` : "Off";
     const eff = el("button", { type: "button", class: "sc-effect", "aria-haspopup": "dialog",
-      "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: "Pick an effect, with a preview of each" }, `${fxName} ▾`);
+      "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: `${fxName}. Pick an effect or preset, with a preview of each` },
+      el("span", {}, fxName), el("span", { class: "sc-caret", "aria-hidden": "true" }, "▾"));
     eff.addEventListener("click", () => this.d.chooseEffect({
       title: `Effect for ${full}`, dev: this.d.devices()[devId] || null, length: 6,
-      current: look?.effect ?? null, only: SCENE_EFFECTS,
+      current: look?.effect ?? null, currentPreset: preset, only: SCENE_EFFECTS,
       // Each effect previews as it would be picked: this light's colours carried over.
       paramsFor: (key) => {
         const { start, end, effect, ...params } = clipFor(changeEffect(look, key), 0, 1);
         return params;
       },
-      onPick: (key, preset) => {
+      onPick: (key, picked) => {
         const next = changeEffect(look, key);
-        if (preset) next.params = { ...next.params, ...presetParams(preset, clipFor(next, 0, 1)) };
+        if (picked) next.params = { ...next.params, ...presetParams(picked, clipFor(next, 0, 1)) };
         set(next);
         changed(true);
       },
@@ -331,49 +338,37 @@ export class SceneEditor {
       fx.append(el("button", { type: "button", class: "ghost small", "aria-label": `Turn ${full} off in this scene`,
         title: "Off in this scene", onclick: () => { set(null); changed(true); } }, "Off"));
     }
-    row.append(el("span", { class: "sc-light" }, label), fx);
+    row.append(el("span", { class: "sc-light" }, label, extra), fx);
     if (!look) {
       row.append(el("span", { class: "hint sc-off" }, "Off in this scene"));
       return row;
     }
-    const clip = clipFor(look, 0, 1);
-    const style = el("select", { "aria-label": `Style for ${label}` });
-    const presets = this.d.presetsFor(look.effect);
-    style.add(new Option("Style…", ""));
-    presets.forEach((p, k) => style.add(new Option(p.label || p.name, String(k), false, matchesPreset(p, clip))));
-    style.hidden = !presets.length;
-    style.addEventListener("change", () => {
-      const p = presets[Number(style.value)];
-      if (!p) return;
-      look.params = { ...look.params, ...presetParams(p, clip) };
-      changed(true);
-    });
+    const none = () => el("span", { class: "sc-none hint", "aria-hidden": "true" }, "—");
     const keys = paletteKeys(look.effect);
-    const colours = el("select", { "aria-label": `Colours for ${label}` });
-    colours.add(new Option("Colours…", ""));
-    this.d.palettes().forEach((p, k) => colours.add(new Option(p.name, String(k))));
-    colours.hidden = !keys.length;
-    colours.addEventListener("change", () => {
-      const p = this.d.palettes()[Number(colours.value)];
-      if (!p) return;
-      const c = { effect: look.effect, ...look.params };
-      applyPalette(c, p.colors);
-      for (const k of keys) look.params[k] = c[k];
-      changed(true);
-    });
-    const swatches = el("span", { class: "sc-swatches" }, ...keys.map((k) => {
-      const input = el("input", { type: "color", value: clip[k], "aria-label": `${EFFECTS[look.effect].params.find((p) => p.key === k).label} for ${label}` });
-      input.addEventListener("input", () => { look.params[k] = input.value; this.changed({ live: true }); });
-      input.addEventListener("change", () => { look.params[k] = input.value; changed(false); });
-      return input;
-    }));
-    row.append(style, el("span", { class: "sc-colours" }, colours, swatches));
+    if (keys.length) {
+      const colours = el("select", { class: "sc-palette", "aria-label": `Colours for ${full} from a palette`, title: "Use one of your palettes" });
+      colours.add(new Option("Palette…", ""));
+      this.d.palettes().forEach((p, k) => colours.add(new Option(p.name, String(k))));
+      colours.addEventListener("change", () => {
+        const p = this.d.palettes()[Number(colours.value)];
+        if (!p) return;
+        const c = { effect: look.effect, ...look.params };
+        applyPalette(c, p.colors);
+        for (const k of keys) look.params[k] = c[k];
+        changed(true);
+      });
+      const swatches = el("span", { class: "sc-swatches" }, ...keys.map((k) => {
+        const input = el("input", { type: "color", value: clip[k], "aria-label": `${EFFECTS[look.effect].params.find((p) => p.key === k).label} for ${full}` });
+        input.addEventListener("input", () => { look.params[k] = input.value; this.changed({ live: true }); });
+        input.addEventListener("change", () => { look.params[k] = input.value; changed(false); });
+        return input;
+      }));
+      row.append(el("span", { class: "sc-colours" }, swatches, colours));
+    } else row.append(none());
     const sp = speedParam(look.effect);
-    row.append(sp ? this.slider("Speed", label, sp, clip[sp.key], (v) => { look.params[sp.key] = v; })
-      : el("span", { class: "sc-nospeed hint" }, "—"));
+    row.append(sp ? this.slider("Speed", full, sp, clip[sp.key], (v) => { look.params[sp.key] = v; }) : none());
     const br = EFFECTS[look.effect].params.find((p) => p.key === "brightness");
-    row.append(br ? this.slider("Brightness", label, br, clip.brightness, (v) => { look.params.brightness = v; })
-      : el("span"));
+    row.append(br ? this.slider("Brightness", full, br, clip.brightness, (v) => { look.params.brightness = v; }) : none());
     return row;
   }
 
