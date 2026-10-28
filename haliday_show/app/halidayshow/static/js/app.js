@@ -256,6 +256,7 @@ function restore(step) {
   app.edits++;
   app.selected = null;
   $("show-name").value = app.show.name; // undo can take back a rename
+  if ($("show-dialog").open) renderShowBrightness();
   renderInspector();
   timeline.layout();
   scheduleAutoSave();
