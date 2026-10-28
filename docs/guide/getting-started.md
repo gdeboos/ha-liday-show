@@ -6,14 +6,15 @@
 
 ## Finding your way
 
-Five tabs run along the top, and a sixth, **Public page**, once you've turned it on. HA-liday Show
-opens on **Library**; the three editors sit together after it, under **Editors**, as **Show**,
-**Music** and **Playlist**:
+Six tabs run along the top, and a seventh, **Public page**, once you've turned it on. HA-liday Show
+opens on **Library**; the four editors sit together after it, under **Editors**, as **Show**,
+**Scene**, **Music** and **Playlist**:
 
 | Tab | What's there |
 | --- | --- |
-| **Library** | In two groups. **Shows**: **Shows** (all of yours) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
+| **Library** | In two groups. **Shows**: **Shows** (all of yours), **Scenes** (one-tap looks for every light) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
 | **Show** (the **Show editor**) | Where shows are made: the timeline, previews and effect settings. |
+| **Scene** (the **Scene editor**) | Where scenes are made: an effect, colours, speed and brightness for each light (see [Scenes](play-it.md#scenes)). |
 | **Music** (the **Music editor**) | Where songs are cut, shortened, joined and detected. |
 | **Playlist** (the **Playlist editor**) | Where you drag shows into playlists and set when they play. |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |

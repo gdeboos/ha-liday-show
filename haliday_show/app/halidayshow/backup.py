@@ -2,7 +2,7 @@
 
 The zip holds the config folder's own files (lights, shows and their bakes, archived shows, settings
 with palettes, presets and the house lines, the house photo, what Detect found in each song, and the
-record of archived songs, and the Music editor's drafts). Songs stay in the media folder and aren't included. Hidden files (the
+record of archived songs, the Music editor's drafts, and scenes). Songs stay in the media folder and aren't included. Hidden files (the
 old-name import markers) are never exported, cleared or replaced. Before an import, a fresh start or
 deleting a show or song for good, what's there is kept as an automatic copy in backups/, so it can
 be undone.
@@ -51,6 +51,9 @@ def _allowed(name: str) -> bool:
     if len(parts) == 2 and parts[0] == "blocks":  # playlists' building blocks, baked
         p = Path(parts[1])
         return p.suffix == ".gshow" and valid_id(p.stem)
+    if len(parts) == 2 and parts[0] == "scenes":  # scenes and their baked loops (scenelib.py)
+        p = Path(parts[1])
+        return p.suffix in (".json", ".gshow") and valid_id(p.stem)
     if len(parts) == 2 and parts[0] == "drafts":  # Music editor drafts
         p = Path(parts[1])
         return p.suffix == ".json" and valid_id(p.stem)

@@ -121,7 +121,8 @@ def test_govee_scene_clips_come_out_of_shows_and_bakes(tmp_path):
     store.save_settings({"playlists": [{"id": "p", "items": [{"type": "effect", "id": "b1", "seconds": 5, "effect": "scene", "params": {}},
                                                              {"type": "show", "id": "xmas"}]}]})
     (store.config_dir / "scenes").mkdir()
-    (store.config_dir / "scenes" / "H70C5.json").write_text("[]")
+    (store.config_dir / "scenes" / "H70C5.json").write_text("[]")  # Govee's scene list, cached
+    (store.config_dir / "scenes" / "candy-cane.json").write_text('{"name": "Candy cane"}')  # one of yours
 
     done = migrate.drop_govee_scenes(store)
     assert done == {"clips": 2, "shows": ["Xmas", "Old"], "blocks": 1}
@@ -131,7 +132,7 @@ def test_govee_scene_clips_come_out_of_shows_and_bakes(tmp_path):
     assert [baked.decode(b).track_frame(baked.decode(b).tracks[0], i) for i in range(4)] == \
         [b"\x01\x02\x03", bytes(3), bytes(3), b"\x01\x02\x03"]
     assert store.load_settings()["playlists"][0]["items"][0] == {"type": "off", "id": "b1", "seconds": 5}
-    assert not (store.config_dir / "scenes").exists()
+    assert [p.name for p in (store.config_dir / "scenes").iterdir()] == ["candy-cane.json"]
     assert migrate.drop_govee_scenes(store) == {"clips": 0, "shows": [], "blocks": 0}
 
 

@@ -36,6 +36,7 @@
   <symbol id="i-palettes" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.9 1.4-1.9-.3-.9.2-2.1 1.6-2.1H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol>
   <symbol id="i-swatches" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
   <symbol id="i-presets" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></symbol>
+  <symbol id="i-scenes" viewBox="0 0 24 24"><path d="M10 3.5l1.6 4.4 4.4 1.6-4.4 1.6L10 15.5l-1.6-4.4L4 9.5l4.4-1.6z"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></symbol>
   <symbol id="i-playlists" viewBox="0 0 24 24"><path d="M3 6h12M3 12h12M3 18h7"/><path d="m15 15 6 3.5-6 3.5z"/></symbol>
   <symbol id="i-timing" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-automations" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></symbol>
@@ -56,6 +57,7 @@
     <span class="tab-sep" aria-hidden="true"></span>
     <span class="tab-group" id="tab-editors-label">Editors</span>
     <button class="tab" data-view="editor" aria-label="Show editor"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><span>Show</span></button>
+    <button class="tab" data-view="scene" aria-label="Scene editor"><svg class="ico" aria-hidden="true"><use href="#i-scenes"/></svg><span>Scene</span></button>
     <button class="tab" data-view="music" aria-label="Music editor"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><span>Music</span></button>
     <button class="tab" data-view="playlist" aria-label="Playlist editor"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><span>Playlist</span></button>
     <span class="tab-sep" aria-hidden="true"></span>
@@ -99,6 +101,37 @@
       you press <b>Restore</b>.</p>
     <div class="show-list"></div>
   </details>
+</main>
+
+<!-- Your scenes: where the Scene editor starts each visit (sceneeditor.js); the same list is under Library → Scenes. -->
+<main id="view-scenelist" class="view showlist" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-scenes"/></svg>Your scenes</h2>
+  <p class="hint">A scene sets every light at once and plays until you choose something else. After a show, it comes back.</p>
+  <div class="show-list" role="list" aria-label="Your scenes" data-scene-list></div>
+  <p class="group"><button type="button" class="primary" data-scene-new>+ New scene</button></p>
+</main>
+
+<main id="view-scene" class="view scene-editor" hidden>
+  <section class="card scene-bar">
+    <button type="button" id="sc-back" class="ghost">← All scenes</button>
+    <label class="sc-name">Scene <input id="sc-name" maxlength="80" aria-label="Scene name"></label>
+    <button type="button" id="sc-play" class="primary">▶ Play on lights</button>
+    <span id="sc-state" class="hint" aria-live="polite"></span>
+  </section>
+  <section class="card">
+    <h3 class="section-label">Preview</h3>
+    <canvas id="sc-canvas" role="img" aria-label="Your house with this scene on its lights"></canvas>
+    <p class="hint">Changes save as you make them. Press <b>▶ Play on lights</b> to see the scene on your lights.
+      Lights show here once they're on the house under <b>Setup → House</b>.</p>
+  </section>
+  <section class="card">
+    <div class="sc-head">
+      <h3 class="section-label">Lights</h3>
+      <label class="sc-same"><input type="checkbox" id="sc-same"> Same for every light</label>
+    </div>
+    <div class="sc-cols" aria-hidden="true"><span>Light</span><span>Effect</span><span>Style</span><span>Colours</span><span>Speed</span><span>Brightness</span></div>
+    <div id="sc-rows" class="sc-rows"></div>
+  </section>
 </main>
 
 <main id="view-editor" class="view editor panel-grid">
@@ -607,6 +640,7 @@
     <!-- What plays, then what shows are made from. -->
     <p class="subnav-group" id="lib-group-shows">Shows</p>
     <button class="subtab" data-view="shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><b>Shows</b><span>All your shows</span></button>
+    <button class="subtab" data-view="scenes"><svg class="ico" aria-hidden="true"><use href="#i-scenes"/></svg><b>Scenes</b><span>One tap for every light</span></button>
     <button class="subtab" data-view="playlists"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Playlists</b><span>Shows back to back</span></button>
     <p class="subnav-group" id="lib-group-blocks">Ingredients</p>
     <button class="subtab" data-view="songs"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><b>Songs</b><span>Your songs folder</span></button>
@@ -627,6 +661,12 @@
       you press <b>Restore</b>.</p>
     <div class="show-list"></div>
   </details>
+</main>
+<main id="view-scenes" class="view showlist" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-scenes"/></svg>Scenes</h2>
+  <p class="hint">A scene sets every light at once and plays until you choose something else. After a show, it comes back.</p>
+  <div class="show-list" role="list" aria-label="Your scenes" data-scene-list></div>
+  <p class="group"><button type="button" class="primary" data-scene-new>+ New scene</button></p>
 </main>
 <main id="view-samples" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Samples</h2>

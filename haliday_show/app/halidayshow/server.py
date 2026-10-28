@@ -20,7 +20,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, public, schedule, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, public, scenelib, schedule, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -134,7 +134,7 @@ async def no_cache_static(request, response):
 async def info(request):
     return web.json_response({"version": __version__, "ha": request.app[HA].available,
                               "mqtt": request.app[MQTT].client is not None,
-                              # what 0.2.205's Govee clear-out changed, for the editor to say once
+                              # what 0.2.206's Govee clear-out changed, for the editor to say once
                               "retired": migrate.retired(request.app[STORAGE].config_dir)})
 
 
@@ -152,7 +152,7 @@ async def start_listening(request):
     listening = app[LISTENING]
     if (old := listening["listener"]) and old.running:
         old.stop()
-    await app[RUNNER].stop()  # so the add-on's own frames aren't in the recording
+    await app[RUNNER].stop(keep_scene=True)  # so the add-on's own frames aren't in the recording
     lights = {d["ip"]: d["name"] for d in app[STORAGE].load_devices() if d.get("ip")}
     listener = listening["listener"] = Listener(lights, **listening["options"])
     listener.start(seconds)
@@ -221,7 +221,7 @@ async def lab_send(request):
         raise web.HTTPBadRequest(text=f"steps must be a list of 1-{LAB_MAX_STEPS}")
     steps = [_lab_step(s) for s in raw_steps]
     # Nothing else may talk to the light meanwhile, or the results mean nothing.
-    await app[RUNNER].stop()
+    await app[RUNNER].stop(keep_scene=True)
     if (old := app[TESTS].pop(ip, None)):
         old.cancel()
     app[OUTPUT].release(ip)
@@ -452,7 +452,7 @@ async def test_device(request):
         app[OUTPUT].release(target)
         return web.json_response({"ok": True})
     if app[RUNNER].player.playing or app[RUNNER].playlist:  # stopping lets go of every light, which makes a lit test blink
-        await app[RUNNER].stop()
+        await app[RUNNER].stop(keep_scene=True)
     settings = dict(reverse=d["reverse"], gradient=d["gradient"], protocol=d["protocol"], brightness=d["brightness"])
     if rgb is None:
         task = run_test_pattern(app[OUTPUT], target, d["segments"], seconds, **settings)
@@ -484,7 +484,7 @@ async def probe_device(request):
     if segment == 0:
         app[OUTPUT].release(target)
         return web.json_response({"ok": True})
-    await app[RUNNER].stop()
+    await app[RUNNER].stop(keep_scene=True)
     tests[target] = asyncio.create_task(run_probe(
         app[OUTPUT], target, segment, gradient=d["gradient"], protocol=d["protocol"]))
     return web.json_response({"ok": True, "max": PROBE_MAX})
@@ -512,7 +512,7 @@ async def preview_device(request):
         raise web.HTTPBadRequest(text="rgb must have 3 bytes per segment")
     if live is None or live.task.done():
         # Previewing takes the light over from a running show or a test, like Test does.
-        await app[RUNNER].stop()
+        await app[RUNNER].stop(keep_scene=True)
         if (old := tests.pop(target, None)):
             old.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -1440,6 +1440,112 @@ async def play_playlist(request):
     return web.json_response(request.app[RUNNER].status())
 
 
+# scenes (scenelib.py) -------------------------------------------------------------
+def _scene_id(request) -> str:
+    scene_id = request.match_info["id"]
+    if not valid_id(scene_id):
+        raise web.HTTPBadRequest(text="bad scene id")
+    return scene_id
+
+
+def _scene_name_taken(storage, name: str, but: str | None = None) -> bool:
+    # Home Assistant gets a scene per scene, by name, so two mustn't share one.
+    return any(s["name"].lower() == name.lower() and s["id"] != but for s in storage.list_scenes())
+
+
+async def list_scenes(request):
+    return web.json_response(request.app[STORAGE].list_scenes())
+
+
+async def create_scene(request):
+    try:
+        body = await request.json()
+        name = scenelib.clean_name(body.get("name") if isinstance(body, dict) else None)
+    except ValueError as e:
+        raise web.HTTPBadRequest(text=str(e) if isinstance(e, scenelib.SceneError) else "expected JSON")
+    storage = request.app[STORAGE]
+    if _scene_name_taken(storage, name):
+        raise web.HTTPConflict(text=f"there's already a scene called {name}")
+    scene_id = storage.new_scene_id(name)
+    storage.save_scene(scene_id, {"name": name, "mode": "basic", "lights": {}})
+    return web.json_response({"id": scene_id})
+
+
+async def get_scene(request):
+    scene = request.app[STORAGE].load_scene(_scene_id(request))
+    if scene is None:
+        raise web.HTTPNotFound(text="that scene isn't there")
+    return web.json_response(scene)
+
+
+async def put_scene(request):
+    scene_id = _scene_id(request)
+    storage = request.app[STORAGE]
+    if storage.load_scene(scene_id) is None:
+        raise web.HTTPNotFound(text="that scene has been deleted")
+    try:
+        scene = scenelib.clean_scene(await request.json())
+    except ValueError as e:
+        raise web.HTTPBadRequest(text=str(e) if isinstance(e, scenelib.SceneError) else "expected JSON")
+    if _scene_name_taken(storage, scene["name"], but=scene_id):
+        raise web.HTTPConflict(text=f"there's already a scene called {scene['name']}")
+    storage.save_scene(scene_id, scene)
+    return web.json_response({"ok": True})
+
+
+async def delete_scene(request):
+    scene_id = _scene_id(request)
+    storage = request.app[STORAGE]
+    if storage.load_scene(scene_id) is None:
+        raise web.HTTPNotFound(text="that scene isn't there")
+    await request.app[RUNNER].stop_scene(scene_id)
+    await asyncio.to_thread(backup.keep_copy, storage.config_dir, __version__, "delete")
+    storage.delete_scene(scene_id)
+    return web.json_response({"ok": True})
+
+
+def _save_scene_baked(request, scene_id: str, blob: bytes):
+    if request.app[STORAGE].load_scene(scene_id) is None:
+        raise web.HTTPNotFound(text="that scene has been deleted")
+    try:
+        decode(blob)
+    except BakedError as e:
+        raise web.HTTPBadRequest(text=str(e))
+    request.app[STORAGE].save_scene_baked(scene_id, blob)
+    return web.json_response({"ok": True, "bytes": len(blob)})
+
+
+async def put_scene_baked(request):
+    scene_id = _scene_id(request)
+    return _save_scene_baked(request, scene_id, await request.read())
+
+
+async def put_scene_baked_part(request):
+    scene_id = _scene_id(request)
+    storage = request.app[STORAGE]
+    storage.scenes_dir.mkdir(parents=True, exist_ok=True)
+    part, size, done = await _receive_part(request, storage.scenes_dir)
+    if not done:
+        return web.json_response({"received": size})
+    blob = part.read_bytes()
+    part.unlink(missing_ok=True)
+    return _save_scene_baked(request, scene_id, blob)
+
+
+async def play_scene(request):
+    await stop_tests(request.app)
+    try:
+        await request.app[RUNNER].play_scene(_scene_id(request))
+    except RunnerError as e:
+        raise web.HTTPConflict(text=str(e))
+    return web.json_response(request.app[RUNNER].status())
+
+
+async def stop_scene(request):
+    await request.app[RUNNER].stop_scene(_scene_id(request))
+    return web.json_response(request.app[RUNNER].status())
+
+
 # the public page ---------------------------------------------------------------
 def _public_view(app) -> dict:
     site, runner = app[PUBLIC], app[RUNNER]
@@ -1835,7 +1941,16 @@ async def player_sync(request):
 
 
 async def player_stop(request):
-    await request.app[RUNNER].stop()
+    """Stops what's on. {"show": id} stops it only if that show is what's playing (the editor)."""
+    show = None
+    if request.can_read_body:
+        try:
+            body = await request.json()
+        except ValueError:
+            body = None
+        if isinstance(body, dict) and isinstance(body.get("show"), str):
+            show = body["show"]
+    await request.app[RUNNER].stop(show)
     return web.json_response(request.app[RUNNER].status())
 
 
@@ -1862,6 +1977,7 @@ async def _replace_data(app, reason: str, data: bytes | None) -> dict:
     if data is not None:
         backup.check(data)  # refuse a bad file before anything changes
     await app[RUNNER].stop()
+    app[RUNNER].scene = None  # its scene may not be there afterwards
     kept = backup.keep_copy(config, __version__, reason)
     restored = 0
     if data is None:
@@ -1869,7 +1985,7 @@ async def _replace_data(app, reason: str, data: bytes | None) -> dict:
     else:
         restored = backup.restore(config, data)
         migrate.fill_device_kinds(app[STORAGE])  # an export from before lights had a kind
-        migrate.retire_govee_extras(app[STORAGE])  # or from before 0.2.205's Govee clear-out
+        migrate.retire_govee_extras(app[STORAGE])  # or from before 0.2.206's Govee clear-out
     app[MQTT].refresh()
     await app[PUBLIC].apply()
     return {"ok": True, "kept": kept, "restored": restored}
@@ -1947,7 +2063,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[RUNNER] = Runner(app[STORAGE], app[PLAYER], app[HA])
         app[MQTT] = MqttBridge(app[RUNNER])
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
-        app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run())]
+        app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run()), asyncio.create_task(app[RUNNER].watch_scene())]
         app[PUBLIC] = public.PublicSite(app[STORAGE], app[RUNNER], lambda: app[SCHEDULER].where()[0])
         await app[PUBLIC].apply()
         if read_stdin:
@@ -2032,6 +2148,15 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/playlists", get_playlists)
     r.add_put("/api/playlists", put_playlists)
     r.add_post("/api/playlists/{id}/play", play_playlist)
+    r.add_get("/api/house-scenes", list_scenes)
+    r.add_post("/api/house-scenes", create_scene)
+    r.add_get("/api/house-scenes/{id}", get_scene)
+    r.add_put("/api/house-scenes/{id}", put_scene)
+    r.add_delete("/api/house-scenes/{id}", delete_scene)
+    r.add_put("/api/house-scenes/{id}/baked", put_scene_baked)
+    r.add_post("/api/house-scenes/{id}/baked/part", put_scene_baked_part)
+    r.add_post("/api/house-scenes/{id}/play", play_scene)
+    r.add_post("/api/house-scenes/{id}/stop", stop_scene)
     r.add_get("/api/blocks", get_blocks)
     r.add_put("/api/blocks/{id}/baked", put_block)
     r.add_post("/api/blocks/{id}/baked/part", put_block_part)

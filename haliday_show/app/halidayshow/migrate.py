@@ -134,7 +134,7 @@ def fill_device_kinds(storage) -> int:
     return len(missing)
 
 
-# 0.2.205 took out the experimental Govee protocols (App segments, Per bulb) and the two realtime
+# 0.2.206 took out the experimental Govee protocols (App segments, Per bulb) and the two realtime
 # variants that never helped (Razer, v2), and Govee scenes. Lights on those go to Realtime, and scene
 # clips come out of shows. What changed is kept in RETIRED so the editor can say so once.
 RETIRED = ".retired-govee.json"
@@ -261,13 +261,13 @@ def drop_govee_scenes(storage) -> dict:
                 blocks += 1
     if blocks:
         storage.save_settings(settings)
-    cache = storage.config_dir / "scenes"  # Govee's scene lists, kept a week for offline use
-    if cache.is_dir():
-        for p in cache.glob("*.json"):
-            if re.match(r"^[A-Z0-9]{3,12}$", p.stem):
-                p.unlink(missing_ok=True)
-        with contextlib.suppress(OSError):
-            cache.rmdir()
+    # Govee's scene lists were cached as scenes/<MODEL>.json, the folder your own scenes now use.
+    # A cached list is a JSON list under an upper-case name, which no scene of yours can be.
+    for p in storage.config_dir.glob("scenes/*.json"):
+        if re.match(r"^[A-Z0-9]{3,12}$", p.stem):
+            with contextlib.suppress(OSError, ValueError):
+                if isinstance(json.loads(p.read_text()), list):
+                    p.unlink()
     if clips or blocks:
         log.info("took %d Govee scene clip(s) out of %d show(s), %d playlist block(s)", clips, len(shows), blocks)
     return {"clips": clips, "shows": shows, "blocks": blocks}

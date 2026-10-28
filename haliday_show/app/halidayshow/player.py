@@ -5,6 +5,7 @@ start time and nudges it when the reported position drifts too far.
 """
 import asyncio
 import logging
+import math
 import time
 
 from .baked import Baked
@@ -41,14 +42,17 @@ class Player:
     def status(self) -> dict:
         return {"playing": self.playing, "show": self.show_id,
                 "position": round(self.position(), 3),
-                "duration": self.length or (self.baked.duration if self.baked else 0)}
+                # A scene loops with no end (length is infinite): report one time round.
+                "duration": self.length if self.length and math.isfinite(self.length)
+                else (self.baked.duration if self.baked else 0)}
 
     async def play(self, show_id: str | None, baked: Baked, devices: dict, position: float = 0.0,
                    offset: float = 0.0, length: float | None = None):
         """devices maps a track's device id to its stored config (ip, reverse, gradient, protocol, brightness).
 
         Planned devices (no IP yet) are skipped. With `length`, the frames play round and round
-        for that many seconds (a playlist's building block) rather than once.
+        for that many seconds (a playlist's building block) rather than once; an infinite length
+        (a scene) goes round until it's stopped.
         """
         devices = {k: d for k, d in devices.items() if linked(d)}
         await self.stop(release=False)

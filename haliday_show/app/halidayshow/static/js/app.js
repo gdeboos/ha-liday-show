@@ -10,6 +10,7 @@ import {
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
+import { SceneEditor } from "./sceneeditor.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
 import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
@@ -364,6 +365,7 @@ async function saveDevices() {
     app.deviceList = await api("api/devices", { method: "PUT", json: app.deviceList });
     indexDevices();
     keepBlocksReady();
+    sceneEd.keepReady();
     status("Lights saved", "saved", "lights");
   } catch (e) { status(`Couldn't save your lights: ${e.message}`, true, "lights"); return; }
   for (const d of app.deviceList) retestLight(d);
@@ -1364,6 +1366,15 @@ const house = new House({
   },
 });
 house.hiddenLights = new Set(prefs.get("house.hiddenLights", []));
+
+// Scenes (sceneeditor.js): the Scene editor and Your scenes.
+const sceneEd = new SceneEditor({
+  api, status, house, asShown, prefs,
+  lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
+  palettes: () => allPalettes(), presetsFor: (effect) => presetsFor(effect),
+  opened: () => { app.sceneChosen = true; showView("scene"); },
+  closed: () => { app.sceneChosen = false; showView("scene"); },
+});
 
 // The House lane: its clips, and where each light's segments sit for them.
 const houseClips = () => app.show.tracks.find((t) => t.device === HOUSE)?.clips || [];
@@ -6641,7 +6652,8 @@ async function stop() {
   audio.pause();
   $("btn-play").textContent = "▶ Play";
   if (wasPlaying) {
-    try { await api("api/player/stop", { method: "POST" }); } catch { /* nothing to stop */ }
+    // Only its own show: a scene that has come back since is left on.
+    try { await api("api/player/stop", { method: "POST", json: { show: app.showId || "" } }); } catch { /* nothing to stop */ }
   }
 }
 
@@ -7396,7 +7408,7 @@ function frame() {
 
 // wiring ----------------------------------------------------------------------
 // Library and Setup each hold several pages; each remembers the page last open in it.
-const SECTIONS = { library: ["shows", "songs", "samples", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
+const SECTIONS = { library: ["shows", "scenes", "songs", "samples", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
 const sectionPage = { library: "shows", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
@@ -7412,20 +7424,24 @@ function showView(view, { push = true } = {}) {
   if (page === "music" && !app.songChosen) page = "songlist";
   // And the Playlist editor on Your playlists.
   if (page === "playlist" && !app.playlistChosen) page = "playlistlist";
+  // And the Scene editor on Your scenes.
+  if (page === "scene" && !app.sceneChosen) page = "scenelist";
   const top = section || view;
   for (const t of document.querySelectorAll(".tab")) {
-    t.classList.toggle("active", t.dataset.view === ({ showlist: "editor", songlist: "music", playlistlist: "playlist" }[top] || top));
+    t.classList.toggle("active", t.dataset.view === ({ showlist: "editor", songlist: "music", playlistlist: "playlist", scenelist: "scene" }[top] || top));
     if (t.dataset.view === top) t.scrollIntoView({ block: "nearest", inline: "nearest" }); // on a phone the tab row scrolls
   }
   for (const t of document.querySelectorAll(".subtab")) t.classList.toggle("active", t.dataset.view === page);
   for (const k of Object.keys(SECTIONS)) $(`section-${k}`).hidden = k !== top;
-  for (const v of ["showlist", "editor", "songlist", "music", "playlistlist", "playlist", "public", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
+  for (const v of ["showlist", "editor", "songlist", "music", "playlistlist", "playlist", "scenelist", "scene", "public", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
   if (page === "songlist") document.querySelector("[data-songs-slot]").append($("songs-block"));
   if (page === "songs") $("view-songs").append($("songs-block"));
   if (page === "showlist" || page === "shows") renderShowLists();
   // Going back to Your shows (← All shows, or the browser's Back) puts the show away, so it stops too.
   if (page === "showlist" && app.playing) stop();
   if (page === "songs" || page === "songlist") renderSongsPage();
+  if (page === "scenes" || page === "scenelist") sceneEd.refresh();
+  if (page === "scene") sceneEd.draw(); else { sceneEd.stopPreview(); sceneEd.flush(); }
   if (page === "samples") renderSamplesPage(); else stopSample();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
@@ -7454,7 +7470,8 @@ const isPage = (p) => typeof p === "string" && /^[a-z]+$/.test(p) && !!$(`view-$
 function rememberPlace() {
   if (!shownPage) return;
   const ref = music.base && { source: music.base.source, path: music.base.path };
-  prefs.set("place", { page: shownPage, playlist: openPlaylistId, draft: music.draft?.id || null, song: ref || null });
+  prefs.set("place", { page: shownPage, playlist: openPlaylistId, draft: music.draft?.id || null, song: ref || null,
+    scene: sceneEd.id || null });
 }
 addEventListener("pagehide", rememberPlace);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") rememberPlace(); });
@@ -7552,6 +7569,10 @@ function wire() {
     await renderShowLists();
     if (id) focusRow(id, "open");
   });
+  for (const b of document.querySelectorAll("[data-scene-new]")) b.addEventListener("click", () => sceneEd.newScene());
+  $("sc-back").addEventListener("click", () => sceneEd.close());
+  $("sc-name").addEventListener("change", (e) => sceneEd.rename(e.target.value));
+  $("sc-same").addEventListener("change", (e) => sceneEd.setSame(e.target.checked));
   for (const b of document.querySelectorAll("[data-show-new]")) {
     b.addEventListener("click", openNewShow);
   }
@@ -7640,7 +7661,7 @@ function wire() {
   $("lights").checked = prefs.get("lights", true);
   $("lights").addEventListener("change", (e) => {
     prefs.set("lights", e.target.checked);
-    if (!e.target.checked && app.playing) api("api/player/stop", { method: "POST" }).catch(() => {});
+    if (!e.target.checked && app.playing) api("api/player/stop", { method: "POST", json: { show: app.showId || "" } }).catch(() => {});
   });
   $("offset").addEventListener("change", offsetChanged);
   $("output-select").addEventListener("change", async (e) => {
@@ -7861,7 +7882,7 @@ async function listenForTraffic() {
   poll();
 }
 
-// 0.2.205 took out Govee scenes and the App segments, Per bulb, Razer and v2 protocols. Says once, in
+// 0.2.206 took out Govee scenes and the App segments, Per bulb, Razer and v2 protocols. Says once, in
 // each browser, what that changed here.
 async function tellRetired() {
   const r = (await api("api/info").catch(() => null))?.retired;
@@ -7911,6 +7932,7 @@ async function init() {
   try {
     await loadDevices();
     keepBlocksReady();
+    sceneEd.keepReady();
     loadSpeakers();
     loadModels();
     loadPalettes();
@@ -7931,6 +7953,7 @@ async function init() {
       const last = prefs.get("lastShow", null);
       if (same && wanted === "editor" && shows.some((x) => x.id === last)) { await openShow(last, { chosen: false }); app.chosen = true; }
       if (same && wanted === "playlist" && place.playlist) { openPlaylistId = place.playlist; app.playlistChosen = true; }
+      if (same && wanted === "scene" && place.scene) await sceneEd.open(place.scene);
       if (same && wanted === "music" && place.draft) await openDraft(place.draft);
       else if (same && wanted === "music" && place.song) await reopenSong(place.song);
       else showView(wanted, { push: false });
