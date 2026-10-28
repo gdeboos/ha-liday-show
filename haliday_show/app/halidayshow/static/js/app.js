@@ -43,6 +43,7 @@ import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./
 import { addFolder, deleteFolder, folderNameProblem, folderOf, inFolders, moveSong, renameFolder } from "./songfolders.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
+import { convertProblem, showUses, toWled } from "./convert.js";
 import { PART, sendParts, uploadSong } from "./upload.js";
 
 const $ = (id) => document.getElementById(id);
@@ -623,6 +624,14 @@ function renderLightEditor() {
     parts.classList.add("light-parts");
     body.append(parts);
   }
+  if ((d.kind || "govee") === "govee") {
+    const box = document.createElement("div");
+    box.className = "light-convert";
+    box.append(Object.assign(document.createElement("p"), { className: "hint",
+      textContent: "Running this light from a WLED controller now? Convert it, and it keeps its shows, parts and place on the house photo." }),
+    button("Convert to WLED…", () => openConvert(d)));
+    body.append(box);
+  }
   body.scrollTop = scroll;
   const test = $("light-test");
   test.disabled = !linked(d);
@@ -944,6 +953,87 @@ $("light-dialog").addEventListener("click", async (e) => {
     saveDevices();
   }
 });
+// Convert to WLED (convert.js): the light keeps its id, so shows, parts and the house photo follow it.
+const converting = { id: null };
+
+function openConvert(d) {
+  converting.id = d.id;
+  $("convert-title").textContent = `Convert ${d.name} to WLED`;
+  $("convert-ip").value = "";
+  $("convert-found").replaceChildren();
+  $("convert-dialog").showModal();
+  $("convert-ip").focus();
+}
+
+async function scanForConvert() {
+  const box = $("convert-found");
+  box.textContent = "Scanning…";
+  try {
+    const { found } = await api("api/wled/scan", { method: "POST" });
+    const free = found.filter((f) => !app.deviceList.some((d) => d.ip === f.ip && d.id !== converting.id));
+    if (!free.length) {
+      box.innerHTML = `<p class="hint">No WLED lights answered that aren't on your list already. Type its IP
+        address instead (it's on the WLED app's <b>Info</b> page).</p>`;
+      return;
+    }
+    box.replaceChildren(...free.map((f) => {
+      const row = document.createElement("div");
+      row.className = "scan-row";
+      row.append(`${f.name} at ${f.ip}, ${f.leds} LEDs`, button("Use", () => { $("convert-ip").value = f.ip; }));
+      return row;
+    }));
+  } catch (e) { box.textContent = ""; status(`Scan failed: ${e.message}`, true); }
+}
+
+async function convertLight() {
+  const d = app.lights[converting.id];
+  if (!d) { $("convert-dialog").close(); return; }
+  const ip = $("convert-ip").value.trim();
+  const problem = convertProblem(d, ip, app.deviceList);
+  if (problem) { status(problem, "hint"); return; }
+  let w;
+  try { w = await wledInfo(ip); } catch (e) { status(`Couldn't reach a WLED light at ${ip}: ${e.message}`, true); return; }
+  const name = d.name, next = toWled(d, ip, w.leds);
+  app.deviceList = app.deviceList.map((x) => (x.id === d.id ? next : x));
+  await saveDevices();
+  if (app.lights[d.id]?.kind !== "wled") return; // not saved: saveDevices said why
+  $("convert-dialog").close();
+  $("light-dialog").close();
+  status(`${name} is now a WLED light with ${w.leds} LEDs. Updating your shows…`);
+  const { done, failed } = await rebakeShowsFor(d.id);
+  const shows = done ? ` ${done} show${done === 1 ? "" : "s"} updated to match.` : "";
+  const parts = next.parts.length ? ` Its parts now cover ${next.parts.map((p) => `${p.name} ${p.from}–${p.to}`).join(", ")}.` : "";
+  status(`${name} is now a WLED light with ${w.leds} LEDs.${parts}${shows}${failed ? ` ${failed} couldn't be updated: open and save them.` : ""} Press Test to check it.`,
+    failed ? true : "saved", "lights");
+}
+
+// Re-bakes saved shows with a track on light `id`, so playlists, schedules and Home Assistant play them
+// at its new length straight away. The open show re-bakes when it next saves.
+async function rebakeShowsFor(id) {
+  let done = 0, failed = 0;
+  const pos = housePositions();
+  app.bakedKey = null;
+  for (const s of await api("api/shows").catch(() => [])) {
+    if (s.id === app.showId && app.dirty) continue;
+    try {
+      const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
+      if (!showUses(show, id)) continue;
+      await uploadBake(s.id, bake(show, app.devices, FPS, pos));
+      if (s.id === app.showId) app.bakedKey = JSON.stringify([app.deviceList.map((d) => [d.id, d.segments, d.parts]), pos]);
+      done++;
+    } catch { failed++; }
+  }
+  await refreshShows();
+  return { done, failed };
+}
+
+$("convert-dialog").addEventListener("click", (e) => {
+  const what = e.target.closest("[data-convert]")?.dataset.convert;
+  if (what === "close") $("convert-dialog").close();
+  else if (what === "scan") scanForConvert();
+  else if (what === "go") convertLight();
+});
+$("convert-ip").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); convertLight(); } });
 $("finder-yes").addEventListener("click", () => answerFinder(true));
 $("finder-no").addEventListener("click", () => answerFinder(false));
 $("finder").addEventListener("click", (e) => {
@@ -6226,18 +6316,21 @@ async function save() {
     app.bakedKey = null;  // saving the show clears the server's bake
   }
   if (app.bakedKey !== key) {
-    const blob = bake(app.show, app.devices, FPS, pos);
-    // A long show on many bulbs is more than Home Assistant passes on in one go, so it goes in pieces.
-    if (blob.byteLength > PART) await sendParts(api, `api/shows/${app.showId}/baked/part`, new Blob([blob]));
-    else {
-      await api(`api/shows/${app.showId}/baked`, {
-        method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" },
-      });
-    }
+    await uploadBake(app.showId, bake(app.show, app.devices, FPS, pos));
     app.bakedKey = key;
   }
   await refreshShows();
   renderOutput();
+}
+
+async function uploadBake(showId, blob) {
+  // A long show on many bulbs is more than Home Assistant passes on in one go, so it goes in pieces.
+  if (blob.byteLength > PART) await sendParts(api, `api/shows/${showId}/baked/part`, new Blob([blob]));
+  else {
+    await api(`api/shows/${showId}/baked`, {
+      method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" },
+    });
+  }
 }
 
 async function saveClicked() {

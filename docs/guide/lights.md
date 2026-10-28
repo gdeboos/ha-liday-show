@@ -73,6 +73,20 @@ parts* below). Change them in WLED later? Press **Use WLED segments** under the 
 again: a part keeps its clips as long as its WLED segment is still there. You can also split the strip
 here by hand, without touching WLED.
 
+#### Moving a Govee light to WLED
+
+Rewired a Govee light to run from a WLED controller? You don't need to add it again. Open
+**Setup → Devices**, press **Edit** on the Govee light, then **Convert to WLED…** at the bottom of the
+window. Type the WLED's IP address, or press **Scan network** and **Use** next to it, then press
+**Convert**.
+
+- The light keeps its name, its tracks in every show and its place on the house photo.
+- **Segments** becomes the WLED's number of LEDs, and its parts keep their share of the light: on a
+  44-segment light split into thirds, **Left**, **Center** and **Right** become thirds of the new length.
+- Shows that use the light are updated straight away, so playlists, schedules and Home Assistant play
+  them on every LED.
+- Press **Test** afterwards. If the white dot runs the wrong way, turn on **Reverse**.
+
 During a show HA-liday Show sets every LED itself, so the effect you picked in WLED, and its segments'
 own effects, are paused until a couple of seconds after the show stops, then WLED carries on where it
 left off. WLED's own brightness still applies, on top of **Brightness %** here. If only part of the
