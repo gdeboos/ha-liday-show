@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.241
+
+- **Transitions**, after xLights: every clip can now come **In** and go **Out** gently instead of switching on and off. Under **Transitions** in the Selection panel, pick **Fade**, **Wipe**, **Wipe back**, **From the middle** or **Dissolve**, and how many seconds.
+- Two clips back to back on one light crossfade: the old look turns into the new one, with no dark gap.
+- On the House lane and group lanes, a clip fades in and out over the lights' own effects.
+- Changing a clip's effect keeps its transitions.
+
 ## 0.2.240
 
 - New **Music level** effect, after xLights' VU meter, under **Follows the music**: the light fills from green to red as the song gets louder, with a dot that marks the peak and falls back. Try **From the middle**.
