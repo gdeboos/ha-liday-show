@@ -1135,10 +1135,20 @@ export function transitionShare(tr, x, i, clip) {
 
 // The part of a clip from start to end, as left when part of it is cut away: an edge that's been
 // cut loses its transition (the left piece keeps the In, the right piece the Out).
+// Settings that change over the clip carry on as they were: each piece plays its own part (span)
+// of the curve.
 export function clipPiece(clip, start, end) {
   const piece = { ...clip, start, end };
   if (start > clip.start) { delete piece.transIn; delete piece.transInSecs; }
   if (end < clip.end) { delete piece.transOut; delete piece.transOutSecs; }
+  if (clip.curves && (start > clip.start || end < clip.end)) {
+    const dur = clip.end - clip.start;
+    piece.curves = Object.fromEntries(Object.entries(clip.curves).map(([key, c]) => {
+      const [a, b] = Array.isArray(c?.span) && c.span.length === 2 ? c.span.map(Number) : [0, 1];
+      const at = (x) => a + ((b - a) * (x - clip.start)) / dur;
+      return [key, { ...c, span: [at(start), at(end)] }];
+    }));
+  }
   return piece;
 }
 
@@ -1166,7 +1176,9 @@ export function curvedSettings(p, t, dur) {
   for (const [key, c] of Object.entries(curves)) {
     const from = Number(p[key]), to = Number(c?.to);
     if (!Number.isFinite(from) || !Number.isFinite(to) || !(dur > 0)) continue;
-    const v = (x) => from + (to - from) * curveAt(c.shape, x / dur);
+    // span: the part of the curve this clip plays, when it's a piece left after a cut.
+    const [a, b] = Array.isArray(c.span) && c.span.length === 2 ? c.span.map(Number) : [0, 1];
+    const v = (x) => from + (to - from) * curveAt(c.shape, a + ((b - a) * x) / dur);
     if (out === p) out = { ...p };
     if (RATES.has(key) && !warped) {
       // Running total of the speed from the start to t (Simpson's rule), drawn at the start speed.

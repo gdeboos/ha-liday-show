@@ -2880,7 +2880,7 @@ function curveRow(clip, p) {
   const save = () => {
     const v = Number(to.value);
     if (!Number.isFinite(v)) return;
-    clip.curves = { ...clip.curves, [p.key]: { to: Math.min(Math.max(v, p.min), p.max), shape: shape.value } };
+    clip.curves = { ...clip.curves, [p.key]: { ...clip.curves?.[p.key], to: Math.min(Math.max(v, p.min), p.max), shape: shape.value } };
     app.changed();
   };
   on.addEventListener("change", () => {
@@ -7161,7 +7161,7 @@ const MAX_SCENE_LOOP_S = 600;
 const sceneNow = () => {
   const loop = Math.min(Math.round(app.duration() * 1000) / 1000, MAX_SCENE_LOOP_S);
   const tracks = app.show.tracks.map((t) => ({ device: t.device,
-    clips: t.clips.filter((c) => c.start < loop).map((c) => (c.end > loop ? { ...c, end: loop } : c)) }));
+    clips: t.clips.filter((c) => c.start < loop).map((c) => (c.end > loop ? clipPiece(c, c.start, loop) : c)) }));
   return { name: app.show.name, mode: "advanced", loop, tracks, ...(app.sceneSchedule ? { schedule: app.sceneSchedule } : {}) };
 };
 

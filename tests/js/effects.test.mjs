@@ -495,3 +495,21 @@ test("value curves: settings change over the clip, and speeding up never jumps b
   const plain = { speed: 2 };
   assert.deepEqual(curvedSettings(plain, 3, 10), [plain, 3]);
 });
+
+test("cutting a clip keeps its changing settings where they were", async () => {
+  const { clipPiece, curvedSettings } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const c = { ...newClip("chase", 0, 10), speed: 1, curves: { speed: { to: 3, shape: "steady" }, width: { to: 12, shape: "ease in" } } };
+  const left = clipPiece(c, 0, 4), right = clipPiece(c, 6, 10);
+  assert.deepEqual(left.curves.speed.span, [0, 0.4]);
+  // Each piece's settings match the whole clip's at the same moment, even after a second cut.
+  const again = clipPiece(right, 6, 8);
+  for (const [piece, t] of [[left, 3], [right, 2], [right, 3.5], [again, 1]]) {
+    const [whole] = curvedSettings({ ...c }, piece.start + t, 10), [part] = curvedSettings({ ...piece }, t, piece.end - piece.start);
+    assert.ok(Math.abs(whole.width - part.width) < 1e-9, `${whole.width} ${part.width}`);
+  }
+  // A cut speed carries on at the speed it had: the right piece starts moving at 2.2 a second.
+  const [, t0] = curvedSettings({ ...right }, 0, 4), [, t1] = curvedSettings({ ...right }, 0.001, 4);
+  assert.ok(Math.abs((t1 - t0) / 0.001 - 2.2) < 0.01);
+  // A piece that isn't cut keeps its curves as they are.
+  assert.equal(clipPiece(c, 0, 10).curves, c.curves);
+});
