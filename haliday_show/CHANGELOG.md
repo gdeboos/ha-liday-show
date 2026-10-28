@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.225
+
+- The Show editor's **Timeline** is now never taller than your screen. With lots of lights it scrolls them inside itself, so the times, song and beats stay in view and you no longer scroll the whole page up and down.
+- Use the mouse wheel over the light names to scroll through the lights. Dragging a selection near the top or bottom edge scrolls too.
+
 ## 0.2.224
 
 - A light that plays only as parts (such as **Roof · Left**, **Center** and **Right** with no **Roof** track)

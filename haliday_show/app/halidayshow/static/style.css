@@ -278,9 +278,10 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .clip-preview canvas { display: block; flex: 1 1 240px; min-width: 0; height: 22px; background: #000; border-radius: 6px; }
 
 .timeline-wrap { border-radius: 6px; overflow: hidden; }
-.timeline-scroll { overflow-x: auto; overflow-y: hidden; }
+/* About a screen tall at most, so the ruler, song and beat lane stay in view over many lights. */
+.timeline-scroll { overflow: auto; max-height: max(320px, calc(100dvh - 220px)); }
 .timeline-inner { position: relative; }
-.timeline-stage { position: sticky; left: 0; width: 100%; }
+.timeline-stage { position: sticky; left: 0; top: 0; width: 100%; }
 .timeline-stage canvas { position: absolute; left: 0; top: 0; display: block; }
 #timeline-overlay { pointer-events: none; }
 
