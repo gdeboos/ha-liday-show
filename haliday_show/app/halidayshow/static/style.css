@@ -624,7 +624,12 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
   .playlist-editor.panel-grid { grid-template-areas: "top" "middle" "left" "right" "bottom"; }
   .dock[data-dock="left"], .dock[data-dock="right"] { width: auto; }
 }
-.effect-change { min-width: 130px; text-align: left; }
+/* A button that opens a window to choose something: what's chosen, then a muted "Change…". Never a
+   ▾, which is for real drop-down lists and folding. */
+.picker-button { display: inline-flex; align-items: center; gap: 10px; min-width: 130px; max-width: 100%; text-align: left; font-weight: 400; }
+.picker-button .picker-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-button .picker-change { flex: none; color: var(--muted); font-size: 12px; }
+.picker-button:hover .picker-change { color: var(--text); }
 /* The effect chooser, for adding an effect or changing a clip's. */
 .effect-dialog {
   width: min(960px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0;
@@ -1138,7 +1143,6 @@ a.button { text-decoration: none; }
 .sc-fx { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .sc-effect { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; }
 .sc-effect span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sc-caret { font-size: 10px; color: var(--muted); }
 /* The Each part on its own switch, small, under a split light's name. */
 .sc-parts { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 400; color: var(--muted); }
 .sc-split { min-height: 0; }

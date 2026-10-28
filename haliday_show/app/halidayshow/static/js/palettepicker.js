@@ -54,10 +54,11 @@ export function pickPalette({ title = "Pick a palette", groups, current = "", no
 // A button showing a palette (its colours and name) that opens pickPalette(); onPick(name) runs with
 // a new choice. Returns the button, with set(name, colors) to show another palette.
 export function paletteButton({ label = "Palette", current = "", colors = null, none = null, ...opts }, onPick) {
-  const b = el("button", { type: "button", class: "palette-button", "aria-haspopup": "dialog" });
+  // Like every button that opens a window to choose from: what's chosen, then "Change…" (never ▾).
+  const b = el("button", { type: "button", class: "picker-button palette-button", "aria-haspopup": "dialog" });
   const set = (name, cols) => {
     b.replaceChildren(cols?.length ? colourBar(cols, "palette-bar palette-bar-small") : el("span", { class: "palette-bar palette-bar-small palette-none" }),
-      el("span", {}, name || none || "None"), el("span", { "aria-hidden": "true" }, " ▾"));
+      el("span", { class: "picker-name" }, name || none || "None"), el("span", { class: "picker-change", "aria-hidden": "true" }, "Change…"));
     b.dataset.value = name || "";
     b.setAttribute("aria-label", `${label}: ${name || none || "none"}. Change`);
   };

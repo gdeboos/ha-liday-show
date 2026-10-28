@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.246
+
+- Buttons that open a window to choose from (a clip's **Effect**, a **Palette**, an effect in the Scene editor) no longer look like drop-down lists. They show what's chosen, followed by **Change…**.
+
 ## 0.2.245
 
 - Picking a palette is now visual: wherever you choose one (a clip's colours, **Show settings**, **New show**, **✨ Generate**, playlist blocks and the Scene editor), press the button showing its colours and pick from a window of colour bars instead of a list of names.
