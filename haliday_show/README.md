@@ -3,7 +3,7 @@
 ![HA-liday Show](https://raw.githubusercontent.com/gdeboos/ha-liday-show/main/haliday_show/logo.png)
 
 Music-synchronised light shows for the lights you already have, built right inside Home Assistant:
-Govee, WLED, pixel controllers (DDP or E1.31), Twinkly (experimental), and any Home Assistant light or
+WLED, pixel controllers (DDP or E1.31), Govee, Twinkly (experimental), and any Home Assistant light or
 smart plug.
 
 ![The editor: a generated show on five lights, playing on the house preview](https://raw.githubusercontent.com/gdeboos/ha-liday-show/main/docs/images/editor.webp)
@@ -14,14 +14,16 @@ smart plug.
 - 🏠 Watch the show on a photo of your house, bulb by bulb, before it runs for real
 - 📦 Plan shows for lights that haven't arrived yet
 - 📅 Playlists play your shows back to back every evening, at set times or from sunset
+- 🌟 Scenes: one-tap looks for the whole house between shows, on a schedule or from Home Assistant
+- 🧩 Light groups give several lights one effect, and shows can be shared with friends as a file
 - 📱 A public page for a QR code on a sign: people near your house pick a show on their phone and it
   joins a queue
 - ✂️ Shorten and join songs in the **Music editor**, as drafts kept as you go
 - ⏯️ Play the song on any Home Assistant speaker and start shows from automations (MQTT or
   `hassio.app_stdin`)
 
-Works with any mix of those lights on your network; Govee lights need **LAN Control** switched on in the
-Govee Home app. After starting the app, open **HA-liday Show** from the sidebar and press
-**+ Add a light** under **Setup → Devices**. The **Documentation** tab has the full guide.
+Works with any mix of those lights on your network. WLED strips are found and filled in for you;
+Govee lights need **LAN Control** switched on in the Govee Home app. After starting the app, open
+**HA-liday Show** from the sidebar and press **+ Add a light** under **Setup → Devices**. The **Documentation** tab has the full guide.
 
 [Source, issues and screenshots on GitHub](https://github.com/gdeboos/ha-liday-show)

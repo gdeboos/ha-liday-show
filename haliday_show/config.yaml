@@ -1,7 +1,7 @@
 name: HA-liday Show
-version: "0.2.225"
+version: "0.2.226"
 slug: haliday_show
-description: Music-synchronised light shows for Govee, WLED, pixel controllers, Twinkly and Home Assistant lights (formerly Govee Light Show).
+description: Music-synchronised light shows for WLED, pixel controllers, Govee, Twinkly and Home Assistant lights (formerly Govee Light Show).
 url: https://github.com/gdeboos/ha-liday-show
 arch:
   - aarch64

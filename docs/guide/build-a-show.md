@@ -41,11 +41,12 @@ one you were last editing has a **Last edited** badge.
   Each show needs its own name. An automation that starts the show by its name needs the new name.
 - **Share** downloads the show as a file you can send to anyone with HA-liday Show (see [Sharing shows](#sharing-shows)).
 - **Remove…** archives or deletes a show (see [Archiving and deleting](#archiving-and-deleting)).
-- **← All shows**, at the start of the Show panel, takes you back to the list. Switching between tabs
-  keeps your show open until you go back to the list or close the page.
+- **← All shows**, at the start of the Show panel, takes you back to **Library → Shows**. Going to
+  another tab instead keeps your show open, with **↩** at the top to come back to it (see
+  [Finding your way](getting-started.md#finding-your-way)).
 
-The same list is under **Library → Shows**. The Show panel shows the open show's name beside **← All
-shows**; to switch to another show, go back to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Show speaker**
+The Show panel shows the open show's name beside **← All shows**; to switch to another show, go back
+to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Show speaker**
 (below), **Brightness** (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
 
 **Brightness** in **⚙ Show settings…** dims this show without changing any of its effects:
@@ -184,7 +185,7 @@ puts it back and gives it back to the shows that were left without a song.
 Christmas", ready to layer over a song in the Music editor. There are two ways to make one:
 
 - **From a song:** in the Music editor, select the stretch you want and press **Save as sample…** (in
-  the **Edit** card), then give it a name. It's saved as it sounds in your edit, layers and all.
+  the **Edit** panel), then give it a name. It's saved as it sounds in your edit, layers and all.
 - **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
 
 They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Library → Songs** and a show's
@@ -235,9 +236,10 @@ say), the status bar says so, even for a draft you've moved on from, and it's tr
 next change; closing the page then asks first. A song can have several drafts, such as a "Short
 version" and a "Party mix": press **Edit** on the song again to start another.
 
-**Library → Songs** lists each song's drafts under it, with a **Draft** badge until a song file has been
-made from it. **Open** carries on where you left off (**Undo** starts afresh each visit), **Rename…**
-renames it, and **Delete…** deletes the draft (not the song, or any file it made).
+**Library → Songs** lists each song's drafts inside its card (see [Songs](#songs)): as **✎ Draft · no
+file yet** until a song file has been made from it, then with that file as **✂ Edit · song file**.
+**Open** (or **Edit draft**) carries on where you left off (**Undo** starts afresh each visit),
+**Rename…** renames it, and **Delete…** deletes the draft (not the song, or any file it made).
 
 **Make song file** (Ctrl+S) writes the draft as a WAV in `/media/haliday_show/`, named after the draft,
 so every speaker can play it; pick it under **Song** in a show. Its beats, sections and marks go with it.
@@ -323,7 +325,7 @@ The waveform still shows the song as it was, without the mixer.
 heard: for when the intro goes on too long, say, or the song is longer than your show needs. It works
 in whole bars, so the song needs to be detected first (**Detect**).
 
-1. Press **✂ Suggest cuts…** in the **Edit** card, or pick a section in the lane and press **✂ Shorten…**.
+1. Press **✂ Suggest cuts…** in the **Edit** panel, or pick a section in the lane and press **✂ Shorten…**.
    A window opens, set to the section you've picked (or **the whole song** if you haven't picked one).
 2. Under **Shorten**, choose **the whole song** or a section. Under **To about**, type how long you'd
    like it, as 1:30 or 90. It starts at half the section, or three quarters of the song, and shows how
@@ -332,7 +334,7 @@ in whole bars, so the song needs to be detected first (**Detect**).
 4. Press a cut's **▶** to hear a few seconds either side of its join. What it would take out shows in
    red on the waveform.
 5. Press **Use** on the one you like. The cut is made and the window closes. **Undo** in the **Edit**
-   card (or Ctrl+Z) takes it back. To try another length instead, press **← Back**.
+   panel (or Ctrl+Z) takes it back. To try another length instead, press **← Back**.
 
 It only takes out whole bars, in 4- or 8-bar phrases where it can, and only where the music either side
 of the join matches, such as a loop that repeats or a verse and chorus that come round again. For the
@@ -493,7 +495,9 @@ Each light has a track, with the **House** lane at the top. The timeline is neve
 your screen: with lots of lights it scrolls them inside itself, and the times, song and beats stay at
 the top. Scroll through the lights with the mouse wheel over their names (or drag the scroll bar), and
 along the song with the wheel over the tracks; zoom with the **−** and **+** buttons in the Timeline panel, the + and − keys, or
-Ctrl+wheel (or a trackpad pinch) around the pointer. Click the ruler to move the playhead.
+Ctrl+wheel (or a trackpad pinch) around the pointer. Click the ruler to move the playhead. The **▸**
+before **House** folds the [group lanes](effects.md#group-lanes) away, and the one before a split light's name
+folds its parts (see [The whole light as one](lights.md#the-whole-light-as-one)); **▾** brings them back.
 
 ### Adding effects
 
@@ -545,7 +549,7 @@ segments can't show a chase wider than itself.
   a message says how many of its clips won't work.
 - Nothing is changed or removed for you: such clips stay in your show and play as before. They are
   marked again whenever you change a light under **Setup → Devices**, say from **Realtime** to **Whole
-  light only**.
+  light (one colour)**.
 - **Copy to all lights**, paste and adding an effect to several lights at once leave out the lights it
   won't work on, and say which. **Generate** and **Describe it** only use effects that work.
 - A light whose realtime mode only reaches part of it, like the 30 m Christmas String Lights 2 (H70C5)

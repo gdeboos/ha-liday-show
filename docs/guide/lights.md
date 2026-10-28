@@ -7,9 +7,9 @@
 ## 1. Devices
 
 On the **Devices** tab press **+ Add a light**. First pick what you're adding under **A light you have**
-(a Govee light, a WLED strip, a pixel controller, a Home Assistant light or switch, or a Twinkly), or
+(a WLED strip, a pixel controller, a Govee light, a Home Assistant light or switch, or a Twinkly), or
 **Plan a light** for one that hasn't arrived yet. Then fill in what that kind needs and press **Add**. For a
-Govee light or a WLED strip, press **Scan network** and **Add** each light it finds, or type its IP if it
+WLED strip or a Govee light, press **Scan network** and **Add** each light it finds, or type its IP if it
 doesn't show up. When it's added, press **Add another**
 for the next one, or **Done**.
 
@@ -30,35 +30,6 @@ else on the line (or **Edit**) to open the light's window, which has all its set
 
 Some kinds have a little more in their window: **first LED** for a pixel controller over DDP, **universe**
 and **channel** for one over E1.31, and the light or switch for a Home Assistant one.
-
-### Govee lights
-
-Switch on **LAN Control** for each light in the Govee Home app first. Then press **+ Add a light**, pick
-**Govee light**, press **Scan network** and **Add** each light it finds, or type its IP if it doesn't show
-up. Govee lights need a little more setting up than the others, because Govee doesn't report how many
-segments a light has, and different models take colours in different ways.
-
-#### Setting the segment count
-
-Press **Test**: a rainbow runs along the light with a white dot
-stepping from segment to segment. Set **Segments** so the dot visits every segment once per lap,
-and turn on **Reverse** if it runs the wrong way. If the light is still on its reel, press **Find**
-next to **Segments** instead: a window opens, lights one segment and asks whether anything is lit.
-Each answer halves the possible range, so after about 7 answers the count is filled in and the
-window says what it found. **Cancel** stops it and lets the light go back to normal. Set **Reverse** later,
-once the light is hung up.
-
-While the test is running you can change **Segments**, **Reverse** or **Protocol** and the light
-picks up the change straight away, so you don't need to press **Test** again after each one.
-
-#### Test only turns the light on?
-
-Not every Govee light has a realtime mode. Change **Protocol** and press **Test** again:
-
-| Protocol | When to use it |
-| --- | --- |
-| Realtime | The default, the same packets OpenRGB sends. Works for most strips and outdoor lights. |
-| Whole light (one colour) | For lights with no realtime mode, or whose realtime mode only reaches part of the light. The whole light shows the average colour of its segments, at up to 10 changes a second, and each change fades a little. |
 
 ### WLED strips
 
@@ -136,6 +107,35 @@ When a show or test stops, HA-liday Show tells the controller, so it goes straig
 doing. To plan one before it arrives, pick **Plan a light** and choose **Pixel controller (E1.31)** as the
 **Kind of light**.
 
+### Govee lights
+
+Switch on **LAN Control** for each light in the Govee Home app first. Then press **+ Add a light**, pick
+**Govee light**, press **Scan network** and **Add** each light it finds, or type its IP if it doesn't show
+up. Govee lights need a little more setting up than the others, because Govee doesn't report how many
+segments a light has, and different models take colours in different ways.
+
+#### Setting the segment count
+
+Press **Test**: a rainbow runs along the light with a white dot
+stepping from segment to segment. Set **Segments** so the dot visits every segment once per lap,
+and turn on **Reverse** if it runs the wrong way. If the light is still on its reel, press **Find**
+next to **Segments** instead: a window opens, lights one segment and asks whether anything is lit.
+Each answer halves the possible range, so after about 7 answers the count is filled in and the
+window says what it found. **Cancel** stops it and lets the light go back to normal. Set **Reverse** later,
+once the light is hung up.
+
+While the test is running you can change **Segments**, **Reverse** or **Protocol** and the light
+picks up the change straight away, so you don't need to press **Test** again after each one.
+
+#### Test only turns the light on?
+
+Not every Govee light has a realtime mode. Change **Protocol** and press **Test** again:
+
+| Protocol | When to use it |
+| --- | --- |
+| Realtime | The default, the same packets OpenRGB sends. Works for most strips and outdoor lights. |
+| Whole light (one colour) | For lights with no realtime mode, or whose realtime mode only reaches part of the light. The whole light shows the average colour of its segments, at up to 10 changes a second, and each change fades a little. |
+
 ### Home Assistant lights and switches
 
 Any light or switch in Home Assistant can join in: Zigbee and Hue bulbs, LIFX, or a smart plug driving an
@@ -183,11 +183,11 @@ light's parts kept together under it.
 
 ### Lights not delivered yet?
 
-Press **+ Add a light** and pick **Plan a light**. Choose the **Kind of light** (a Govee light, a WLED
-strip, a pixel controller, a Home Assistant light or switch, or a Twinkly), give it a name and press
-**Add planned light**, then build shows with it straight away. Each kind only asks for what it needs: a
-Govee light its **Model** (for example `H706A`, optional) and **Segments**, the strips, pixel controllers
-and Twinkly their **LEDs**, and a Home Assistant light just a name. For Govee models, a badge next to the model flags anything we've
+Press **+ Add a light** and pick **Plan a light**. Choose the **Kind of light** (a WLED strip to start
+with, a pixel controller, a Govee light, a Home Assistant light or switch, or a Twinkly), give it a name
+and press **Add planned light**, then build shows with it straight away. Each kind only asks for what it
+needs: the strips, pixel controllers and Twinkly their **LEDs**, a Govee light its **Model** (for example
+`H706A`, optional) and **Segments**, and a Home Assistant light just a name. For Govee models, a badge next to the model flags anything we've
 found on real lights that you should know: **⚠ limited** (tested, only partly works; point at the badge
 to see what it can do) or **? untested** (not tried with HA-liday Show yet: most
 Govee lights with LAN Control work, so add one and press **Test** before buying more; the badge's
@@ -207,8 +207,8 @@ A long light can run where you only want part of it in the show,
 or you may want different effects on different stretches, like a roof line that goes round the
 whole house. Press the light's line to open its window, then **Split into parts…**. The first part covers every
 segment; set its first and last segment, then press **+ Add part** for the next stretch (it starts
-just after the last part). For example, a 60-segment Permanent Outdoor Pro could be **Front roof**
-3–23, **Side** 24–40 and **Back** 41–60. Segments are counted the way effects run, so with
+just after the last part). For example, a 150-LED WLED strip round the roof could be **Front roof**
+1–60, **Side** 61–100 and **Back** 101–150. Segments are counted the way effects run, so with
 **Reverse** on, segment 1 is the far end. Parts are listed one per line, each with its colour,
 and the bar above them maps the light's segments: each part in its colour, unused ones grey.
 

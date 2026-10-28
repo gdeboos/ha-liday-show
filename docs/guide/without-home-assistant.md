@@ -90,12 +90,12 @@ To update, run `pipx upgrade haliday-show`.
 
 ## Notes
 
-- Each kind of light is driven its own way: Govee lights with Govee's realtime ("razer") protocol, which
-  the Govee app's own LAN API doesn't document; WLED strips and DDP pixel controllers with DDP; E1.31
-  controllers with E1.31 sent straight to their IP; Home Assistant lights and switches through Home
+- Each kind of light is driven its own way: WLED strips and DDP pixel controllers with DDP; E1.31
+  controllers with E1.31 sent straight to their IP; Govee lights with Govee's realtime ("razer")
+  protocol, which the Govee app's own LAN API doesn't document; Home Assistant lights and switches through Home
   Assistant; and Twinkly lights with Twinkly's own realtime mode. While a show plays, the lights ignore
   other commands; they go back to what they were doing when it stops.
-- As a Home Assistant app, HA-liday Show uses the host network to find Govee and WLED lights and to send to every light, but its web
+- As a Home Assistant app, HA-liday Show uses the host network to find WLED and Govee lights and to send to every light, but its web
   server only answers Home Assistant's ingress proxy, so the editor isn't reachable directly on your LAN.
 
 ---

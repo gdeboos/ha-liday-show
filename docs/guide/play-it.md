@@ -42,8 +42,8 @@ on their own.
 
 ### Scenes
 
-A scene sets every light at once, like the one-tap scenes in the Govee app, and plays until you
-choose something else. Use one for the hours your lights are on between shows.
+A scene sets every light at once, like a preset in WLED or a one-tap scene in a lights app, and
+plays until you choose something else. Use one for the hours your lights are on between shows.
 
 Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
 while it's on), **Edit** and **Remove…**.
@@ -102,7 +102,8 @@ HA-liday Show and scenes are made again for the new lights.
 ### Live music
 
 **Setup → Settings → Live music** shows what a WLED light with a microphone hears: how loud it is, each
-beat, and the bass, middle and treble. In the next update, scenes can react to it.
+beat, and the bass, middle and treble. Nothing on your lights reacts to it yet: scenes that do are
+coming.
 
 A WLED hears music with a small microphone wired to its controller (an INMP441, say, on an ESP32 board),
 with the **AudioReactive** usermod that most ESP32 builds of WLED 0.14 and later include. It doesn't

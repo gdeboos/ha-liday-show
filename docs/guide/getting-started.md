@@ -52,12 +52,12 @@ Help →** for the rest.
   Home Assistant 2026.2. No apps? You can [run it without them](without-home-assistant.md#running-without-home-assistant), with
   Docker or Python.
 - Lights on the same network as Home Assistant, any of:
+  - **WLED** strips: any string of pixels on an ESP32 or ESP8266 running WLED.
+  - **Pixel controllers** that take **DDP** (Falcon Player, ESPixelStick, ESPHome, Tasmota, an ESP32) or
+    **E1.31**, also called sACN (Falcon, Kulp, xLights set-ups).
   - **Govee** lights with **LAN Control** switched on in the Govee Home app, with multicast allowed. The
     model needs Govee's per-segment realtime mode (the Devices tab tells you whether a model is known
     to have it).
-  - **WLED** strips.
-  - **Pixel controllers** that take **DDP** (Falcon Player, ESPixelStick, ESPHome, Tasmota, an ESP32) or
-    **E1.31**, also called sACN (Falcon, Kulp, xLights set-ups).
   - Any **Home Assistant** light or switch, such as Zigbee or Hue bulbs, or a smart plug for a prop.
   - **Twinkly** lights (experimental).
 - Optional: a Home Assistant media player for the music. Without one, songs play in your browser
@@ -74,7 +74,8 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 **Try the demo** (see [The demo](#the-demo)). To do it by hand instead:
 
 1. **Setup → Devices**: press **+ Add a light**, pick what kind it is and follow the steps, then press
-   **Test** to check it. For a Govee light, **Find** or **Test** sets its segment count.
+   **Test** to check it. A WLED strip's LEDs are filled in for you; for a Govee light, **Find** or
+   **Test** sets its segment count.
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
@@ -104,26 +105,6 @@ It's only offered while you have no lights, so it never mixes with your own. Whe
 **Remove the demo** under **Setup → Settings → Demo**: the demo's lights, their places on the house and
 **Demo show** go, and your own shows are kept. The sample song stays in your songs, to use in your own
 shows if you like.
-
-## Moving from Govee Light Show
-
-This app used to be called **Govee Light Show**. Home Assistant treats the renamed app as a new
-one, so you install **HA-liday Show** alongside the old one:
-
-1. Stop **Govee Light Show**, so only one app drives your lights.
-2. Install **HA-liday Show** and start it. The first time it starts, it copies your shows, lights,
-   palettes, presets, settings, house photo and songs across from the old app. The old app's
-   copy isn't changed.
-3. In **HA-liday Show**'s **Configuration** tab, paste your **Claude API key** again if you use one,
-   and turn on **Show in sidebar** and **Start on boot**.
-4. If you use MQTT, the old **Govee Light Show** entities are removed and new **HA-liday Show** ones
-   appear (for example `select.ha_liday_show_show`). Point your automations at the new ones, and
-   change the app in any `hassio.app_stdin` (or older `hassio.addon_stdin`) action to **HA-liday Show**.
-5. Once your shows play as before, uninstall **Govee Light Show**. Your songs stay in
-   `/media/govee_show` until you delete them; the new app uses its own copies in
-   `/media/haliday_show`.
-
-The copy only happens once, and only if **HA-liday Show** has no lights or shows of its own yet.
 
 ---
 
