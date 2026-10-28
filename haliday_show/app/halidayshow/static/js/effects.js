@@ -997,8 +997,8 @@ export function applyHouse(clips, time, pos, out) {
     if (time < clip.start || time >= clip.end) continue;
     const fx = EFFECTS[clip.effect];
     if (!fx?.house) continue;
-    const p = { ...defaultParams(clip.effect), ...clip };
-    const t = time - clip.start, dur = clip.end - clip.start;
+    const dur = clip.end - clip.start;
+    const [p, t] = curvedSettings({ ...defaultParams(clip.effect), ...clip }, time - clip.start, dur);
     const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
     const tr = transitionAt([], clip, time); // over the House lane, a transition fades in over the lights
     for (let i = 0; i < pos.length; i++) {
@@ -1142,12 +1142,54 @@ export function clipPiece(clip, start, end) {
   return piece;
 }
 
+// Value curves: a number setting that changes over the clip. clip.curves is {key: {to, shape}};
+// the setting runs from its own value to `to` by the shape. Optional, so old clips are unchanged.
+export const CURVE_SHAPES = ["steady", "ease in", "ease out", "up and back"];
+const RATES = new Set(["speed", "rate"]); // settings that multiply time: these move by their running total
+function curveAt(shape, u) {
+  u = Math.min(Math.max(u, 0), 1);
+  switch (shape) {
+    case "ease in": return u * u;
+    case "ease out": return 1 - (1 - u) * (1 - u);
+    case "up and back": return 1 - Math.abs(2 * u - 1);
+    default: return u;
+  }
+}
+
+// The settings a clip has t seconds in, and the time its effect should be drawn at. A changing speed
+// can't simply be swapped in (the chase would jump back and forth as it changed), so for a speed or
+// rate the effect's clock is run on by the speed's running total instead.
+export function curvedSettings(p, t, dur) {
+  const curves = p.curves;
+  if (!curves || typeof curves !== "object") return [p, t];
+  let out = p, time = t, warped = false;
+  for (const [key, c] of Object.entries(curves)) {
+    const from = Number(p[key]), to = Number(c?.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || !(dur > 0)) continue;
+    const v = (x) => from + (to - from) * curveAt(c.shape, x / dur);
+    if (out === p) out = { ...p };
+    if (RATES.has(key) && !warped) {
+      // Running total of the speed from the start to t (Simpson's rule), drawn at the start speed.
+      const base = from !== 0 ? from : to !== 0 ? to : 0;
+      if (base === 0) continue;
+      const end = Math.min(Math.max(t, 0), dur), steps = 16, h = end / steps;
+      let sum = v(0) + v(end);
+      for (let k = 1; k < steps; k++) sum += (k % 2 ? 4 : 2) * v(k * h);
+      const total = (h / 3) * sum + Math.max(t - dur, 0) * v(dur) + Math.min(t, 0) * from;
+      out[key] = base;
+      time = total / base;
+      warped = true;
+    } else out[key] = v(Math.min(Math.max(t, 0), dur));
+  }
+  return [out, time];
+}
+
 // A clip's colours at `time` (which may be outside it, for a crossfade) as floats, brightness applied.
 function paintClip(clip, time, n, buf) {
   const fx = EFFECTS[clip.effect];
   if (!fx) { buf.fill(0); return buf; }
-  const p = { ...defaultParams(clip.effect), ...clip };
-  const t = time - clip.start, dur = clip.end - clip.start;
+  const dur = clip.end - clip.start;
+  const [p, t] = curvedSettings({ ...defaultParams(clip.effect), ...clip }, time - clip.start, dur);
   const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
   for (let i = 0; i < n; i++) {
     const c = fx.render(p, t, dur, n, i);

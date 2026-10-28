@@ -471,3 +471,27 @@ test("every effect gives real colours just outside its clip, for crossfades", as
   const left = clipPiece(c, 0, 4), right = clipPiece(c, 6, 10);
   assert.deepEqual([left.transIn, left.transOut, right.transIn, right.transOut], ["fade", undefined, undefined, "wipe"]);
 });
+
+test("value curves: settings change over the clip, and speeding up never jumps back", async () => {
+  const { curvedSettings } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  // Brightness from 100 to 0, steady: half way, half bright.
+  const dim = { ...newClip("solid", 0, 10), color: "#ff0000", curves: { brightness: { to: 0, shape: "steady" } } };
+  assert.deepEqual([...renderTrack([dim], 5, 1)], [128, 0, 0]);
+  // Up and back: at the far value in the middle, back at the start value at the end.
+  const [mid] = curvedSettings({ size: 2, curves: { size: { to: 10, shape: "up and back" } } }, 5, 10);
+  const [end] = curvedSettings({ size: 2, curves: { size: { to: 10, shape: "up and back" } } }, 9.999, 10);
+  assert.equal(mid.size, 10);
+  assert.ok(Math.abs(end.size - 2) < 0.01);
+  // A speed from 1 to 3 over 10 s: the clock runs by the running total (1*t + t*t/10), drawn at speed 1.
+  const p = { speed: 1, curves: { speed: { to: 3, shape: "steady" } } };
+  for (const t of [0, 2.5, 5, 10]) {
+    const [q, at] = curvedSettings(p, t, 10);
+    assert.equal(q.speed, 1);
+    assert.ok(Math.abs(at - (t + (t * t) / 10)) < 1e-6, String(t));
+  }
+  let last = -1;
+  for (let t = 0; t <= 10; t += 0.1) { const [, at] = curvedSettings({ ...p, curves: { speed: { to: 3, shape: "up and back" } } }, t, 10); assert.ok(at >= last); last = at; }
+  // Without curves, nothing changes.
+  const plain = { speed: 2 };
+  assert.deepEqual(curvedSettings(plain, 3, 10), [plain, 3]);
+});

@@ -489,7 +489,7 @@ timeline.
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
 - **By hand:** [The timeline](#the-timeline) · [Adding effects](#adding-effects) ·
-  [Editing a clip](#editing-a-clip) · [Transitions](#transitions) · [Presets](#presets) · [Your own presets](#your-own-presets) ·
+  [Editing a clip](#editing-a-clip) · [Transitions](#transitions) · [Settings that change over a clip](#settings-that-change-over-a-clip) · [Presets](#presets) · [Your own presets](#your-own-presets) ·
   [Copying](#copying) · [Colour palettes](#colour-palettes)
 - **Odds and ends:** [Lights that are gone](#lights-that-are-gone) · [Working on one part](#working-on-one-part) ·
   [Undo](#undo) · [Shortcuts](#shortcuts)
@@ -1014,6 +1014,15 @@ When two clips are back to back on one light, the transition is a crossfade: the
 the new one with no dark gap. Use the second clip's **In** (or, if it has none, the first clip's
 **Out**). On the House lane and group lanes, a clip fades in and out over the lights' own effects.
 The timeline shows each transition on its clip.
+
+### Settings that change over a clip
+
+Any number setting (a speed, a size, how many, brightness) can change over the length of a clip,
+like xLights' value curves. Turn on **Changes** under the setting, give the value it should reach,
+and pick how it gets there: **Steady**, **Ease in** (slow at first), **Ease out** (slow at the end)
+or **Up and back** (to the new value halfway, then back again). For example, make a chase speed up
+into the chorus, or let brightness swell and fade. A speed that changes moves smoothly from one
+speed to the next, so nothing jumps backwards. The setting box keeps the value the clip starts at.
 
 Previews show what the real light will do. A light on **Whole light (one colour)**, or a Home
 Assistant light or switch, can only change a few times a second, so its previews (the timeline,

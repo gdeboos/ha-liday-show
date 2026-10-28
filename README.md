@@ -180,6 +180,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   presets saved from any clip
 - Transitions on any clip (fade, wipe, from the middle or dissolve, in and out), with crossfades
   between clips back to back
+- Settings that change over a clip, like xLights' value curves: speed up a chase into the chorus,
+  or swell the brightness
 - A **House** lane for effects that run across all your lights by where they are on the photo, like
   xLights' model effects: sweeps, wipes and rainbow waves in any direction, shockwaves, pinwheels,
   curtains and butterfly patterns
