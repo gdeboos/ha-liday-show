@@ -533,3 +533,15 @@ test("lane clips mix with the lights' own effects: cover, add, brighter, only wh
   const f = [...composeLight(light, (id) => tracks.get(id), 1, {}, [], undefined, plans)];
   assert.deepEqual(f, [0, 255, 0, 0, 0, 0]);
 });
+
+test("colours kept between calls are never shared with an effect that changes them", () => {
+  const a = hexToRgbForTest("#102030");
+  a[0] = 255;
+  assert.deepEqual(hexToRgbForTest("#102030"), [16, 32, 48]);
+  // Two frames of Juggle render the same as a fresh render of each, so nothing leaks between frames.
+  const clip = newClip("juggle", 0, 10);
+  const f1 = [...renderTrack([clip], 1, 50)], f2 = [...renderTrack([clip], 2, 50)];
+  assert.deepEqual([...renderTrack([clip], 1, 50)], f1);
+  assert.notDeepEqual(f1, f2);
+});
+import { hexToRgb as hexToRgbForTest } from "../../haliday_show/app/halidayshow/static/js/effects.js";

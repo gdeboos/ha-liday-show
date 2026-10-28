@@ -14,10 +14,28 @@ export const HOUSE = "@house";
 export const GROUP = "@group:";
 export const isGroupTrack = (id) => typeof id === "string" && id.startsWith(GROUP);
 
+// Effects ask for the same few colours for every segment of every frame, so parsed colours are kept.
+// Each call still gets its own array, as some effects add to the one they're given.
+const parsed = new Map();
 export function hexToRgb(hex) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
-  const n = m ? parseInt(m[1], 16) : 0;
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  let c = parsed.get(hex);
+  if (!c) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+    const n = m ? parseInt(m[1], 16) : 0;
+    c = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    if (parsed.size < 4096) parsed.set(hex, c);
+  }
+  return [c[0], c[1], c[2]];
+}
+
+// Work an effect does once a frame rather than once a segment: the settings object `p` is made
+// afresh for each frame of each clip, so a result kept against it lasts exactly that frame.
+const frameMemo = new WeakMap();
+function perFrame(p, key, make) {
+  let m = frameMemo.get(p);
+  if (!m) frameMemo.set(p, (m = new Map()));
+  if (!m.has(key)) m.set(key, make());
+  return m.get(key);
 }
 
 export function rgbToHex([r, g, b]) {
@@ -74,8 +92,9 @@ function colourList(defaults) {
   return [...keys.map((key, k) => color(key, `Colour ${k + 1}`, defaults[k] || spare[k])),
     choice("count", "Colours", String(defaults.length), Array.from({ length: LIST_MAX - 1 }, (_, k) => String(k + 2)))];
 }
-const listColours = (p) => Array.from({ length: Math.min(Math.max(Number(p.count) || 2, 1), LIST_MAX) },
-  (_, k) => hexToRgb(p[k ? `color${k + 1}` : "color"]));
+// The colours in use, worked out once a frame. Don't change the arrays: they're shared.
+const listColours = (p) => perFrame(p, "colours", () => Array.from({ length: Math.min(Math.max(Number(p.count) || 2, 1), LIST_MAX) },
+  (_, k) => hexToRgb(p[k ? `color${k + 1}` : "color"])));
 // u (0..1) along the colours as a blend; cyclic wraps the last back round to the first.
 function blendList(cols, u, cyclic = false) {
   if (cols.length === 1) return cols[0];
@@ -527,13 +546,12 @@ Object.assign(EFFECTS, {
     render: (p, t, dur, n, i) => {
       // One dot per colour, swinging back and forth at its own pace, leaving a fading trail.
       const out = hexToRgb(p.background), cols = listColours(p), steps = p.trail > 0 ? 8 : 1;
+      // Where each dot and its trail are this frame: the same for every segment.
+      const where = perFrame(p, `juggle:${t}:${n}`, () => cols.map((_, k) => Array.from({ length: steps }, (_, j) =>
+        (n - 1) * (0.5 + 0.5 * Math.sin((t - (j / 8) * p.trail) * p.speed * (0.9 + k * 0.23) + k * 1.7)))));
       cols.forEach((c, k) => {
         let a = 0;
-        for (let j = 0; j < steps; j++) {
-          const at = t - (j / 8) * p.trail;
-          const x = (n - 1) * (0.5 + 0.5 * Math.sin(at * p.speed * (0.9 + k * 0.23) + k * 1.7));
-          a = Math.max(a, (1 - j / steps) * Math.max(0, 1 - Math.abs(i - x) / p.width));
-        }
+        for (let j = 0; j < steps; j++) a = Math.max(a, (1 - j / steps) * Math.max(0, 1 - Math.abs(i - where[k][j]) / p.width));
         add(out, c, a);
       });
       return out;

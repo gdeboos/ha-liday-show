@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.247
+
+- Saving a show is quicker. Getting a show ready for the lights now takes about a third of the time it did, and the effects with a list of colours (Fairy lights, Ocean waves, Aurora, Flowing colours, Juggle, Ripple, Bouncing balls, Stacking blocks) are four to six times quicker than in 0.2.237–0.2.246.
+
 ## 0.2.246
 
 - Buttons that open a window to choose from (a clip's **Effect**, a **Palette**, an effect in the Scene editor) no longer look like drop-down lists. They show what's chosen, followed by **Change…**.
