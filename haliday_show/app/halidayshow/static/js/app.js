@@ -20,8 +20,9 @@ import { House, defaultDrops, partRgb } from "./house.js";
 import { placeOnSample } from "./samplehouse.js";
 import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
 import { Layout } from "./layout.js";
-import { groupSegments, memberChoices, membersText, nameProblem as groupNameProblem, newGroupId, rangeTakes, tidyMembers }
+import { groupShares, groupSegments, memberChoices, membersText, nameProblem as groupNameProblem, newGroupId, rangeTakes, tidyMembers }
   from "./lightgroups.js";
+import { countLabel, countText, isHa, isPixels, showBulbs, sizeText, unitWord } from "./lightwords.js";
 import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor } from "./music.js";
@@ -498,7 +499,7 @@ function segmentPreview(d) {
     span.style.background = k >= 0 ? colourOf(k) : parts.length ? "" : "var(--accent)";
     map.append(span);
   }
-  const what = isHa(d) ? "one colour" : `${d.segments} segment${d.segments === 1 ? "" : "s"}`;
+  const what = countText(d);
   const text = Object.assign(document.createElement("span"), { className: "hint",
     textContent: parts.length ? `${what} · ${parts.length} part${parts.length === 1 ? "" : "s"}` : what });
   box.title = parts.length ? parts.map((p) => `${p.name}: ${p.from}–${p.to}`).join("\n") : "";
@@ -575,11 +576,15 @@ function lightFields(d) {
     find.disabled = !d.ip || LONG_PROTOCOLS.includes(d.protocol);
     find.title = d.ip ? "Work out the segment count with a few yes or no questions" : "Link this light first";
     const count = input("number", "segments", { min: 1, max: LONG_PROTOCOLS.includes(d.protocol) ? 1000 : 255 });
-    if (isHa(d)) Object.assign(count, { disabled: true, title: "A Home Assistant light is one colour at a time" });
-    if (wled) count.title = "How many LEDs the light has. Each one is a segment.";
+    if (isPixels(d)) {
+      count.title = "How many LEDs the light has";
+      // Bulbs follows the LEDs, unless it was set to something else.
+      const was = d.segments;
+      count.addEventListener("change", () => { if (d.bulbs == null || d.bulbs === was) { d.bulbs = d.segments; saveDevices(); } });
+    }
     segs.append(count);
     if (!wled) segs.append(" ", find);
-    cell(segs, "Segments", isHa(d) ? "" : wled ? "How many LEDs it has." : "Press <b>Find</b> to work it out with a few yes or no questions, or use <b>Test</b>.");
+    if (!isHa(d)) cell(segs, countLabel(d), isPixels(d) ? "How many LEDs it has." : "Press <b>Find</b> to work it out with a few yes or no questions, or use <b>Test</b>.");
     const bulbs = document.createElement("input");
     Object.assign(bulbs, { type: "number", min: 1, max: 2000, value: d.bulbs ?? "", placeholder: `${d.segments * 4}?`,
       title: "How many bulbs the light has, so the House view draws each one. Blank guesses 4 per segment." });
@@ -588,7 +593,7 @@ function lightFields(d) {
       d.bulbs = v >= 1 ? Math.min(v, 2000) : null;
       saveDevices();
     });
-    cell(bulbs, "Bulbs", "So the House view draws each one. Blank guesses 4 per segment.");
+    if (showBulbs(d)) cell(bulbs, "Bulbs", isPixels(d) || isHa(d) ? "So the House view draws each one." : "So the House view draws each one. Blank guesses 4 per segment.");
     cell(input("number", "brightness", { min: 1, max: 100, title: "Caps this light in every show. 100 is full brightness." }),
       "Brightness %", "Caps this light in every show.");
     if (!isHa(d)) cell(input("checkbox", "reverse"), "Reverse", "Turn on if Test's white dot runs the wrong way.");
@@ -757,11 +762,12 @@ function partsPanel(d) {
   const tr = document.createElement("section");
   const td = tr;
   const parts = d.parts || [];
+  const one = unitWord(d, 1), many = unitWord(d);
   const add = () => {
     // The first gap after the last part, so parts go on round the light in order.
     const runs = unusedRuns(d), end = Math.max(0, ...parts.map((p) => p.to));
     const run = runs.find(([a]) => a > end) || runs[0];
-    if (!run) { status("Every segment is already in a part", "hint"); return; }
+    if (!run) { status(`Every ${one} is already in a part`, "hint"); return; }
     let n = 1;
     while (parts.some((p) => p.id === `p${n}` || p.name === `Part ${n}`)) n++;
     d.parts = [...parts, { id: `p${n}`, name: `Part ${n}`, from: run[0], to: run[1] }].sort((a, b) => a.from - b.from);
@@ -771,7 +777,7 @@ function partsPanel(d) {
   if (fromWled) fromWled.title = "Make a part from each segment you've set up in WLED, with its name and LEDs";
   if (!parts.length) {
     const b = button("Split into parts…", add, "ghost small");
-    b.title = "Give stretches of this light their own tracks, and leave segments you can't see off";
+    b.title = `Give stretches of this light their own tracks, and leave ${many} you can't see off`;
     td.append(b);
     if (fromWled) td.append(" ", fromWled);
     return tr;
@@ -784,7 +790,7 @@ function partsPanel(d) {
   label.textContent = "Parts";
   const map = document.createElement("div");
   map.className = "parts-map";
-  map.title = "Where each part sits on the light. Grey segments are unused and stay off.";
+  map.title = `Where each part sits on the light. Grey ${many} are unused and stay off.`;
   const list = document.createElement("div");
   list.className = "parts-list";
   panel.append(label, map, list);
@@ -808,13 +814,13 @@ function partsPanel(d) {
     const num = (key) => {
       const el = document.createElement("input");
       Object.assign(el, { type: "number", min: 1, max: d.segments, value: p[key], className: "seg-num",
-        title: key === "from" ? "First segment, counted from the start of the show" : "Last segment" });
+        title: key === "from" ? `First ${one}, counted from the start of the light` : `Last ${one}` });
       el.addEventListener("change", () => {
         const v = Math.round(Number(el.value));
         const next = { ...p, [key]: v };
         const clash = parts.find((o) => o !== p && o.from <= next.to && next.from <= o.to);
         if (!(v >= 1 && v <= d.segments) || next.from > next.to) {
-          status(`Segments run from 1 to ${d.segments}, and a part's first comes before its last`, "hint");
+          status(`${countLabel(d)} run from 1 to ${d.segments}, and a part's first comes before its last`, "hint");
         } else if (clash) {
           status(`That overlaps ${clash.name}`, "hint");
         } else {
@@ -833,14 +839,14 @@ function partsPanel(d) {
     }, "ghost small");
     del.title = `Remove ${p.name}. Its clips stay in your shows.`;
     const test = button("Test", async () => {
-      if (await testLight(d, p.id)) status(`${p.name} is lit for a minute, white at its first segment. Change its segments to move it.`);
+      if (await testLight(d, p.id)) status(`${p.name} is lit for a minute, white at its first ${one}. Change its numbers to move it.`);
     }, "ghost small");
     test.title = "Light just this part on the real light, so you can see where it starts and ends";
     test.disabled = !linked(d) || d.protocol === "whole";
     const count = document.createElement("span");
     count.className = "hint";
-    count.textContent = `${p.to - p.from + 1} segments`;
-    chip.append(swatch, name, " segments ", num("from"), "–", num("to"), count, test, del);
+    count.textContent = countText(d, p.to - p.from + 1);
+    chip.append(swatch, name, ` ${many} `, num("from"), "–", num("to"), count, test, del);
     list.append(chip);
   });
   const more = button("+ Add part", add, "ghost small");
@@ -856,13 +862,13 @@ function partsPanel(d) {
   const unused = unusedRuns(d);
   const note = document.createElement("span");
   note.className = "hint";
-  note.textContent = unused.length ? `Unused, off in shows: ${runText(unused)}` : "Every segment is in a part";
+  note.textContent = unused.length ? `Unused, off in shows: ${runText(unused)}` : `Every ${one} is in a part`;
   const foot = document.createElement("div");
   foot.className = "parts-foot";
   const testAll = button("Test parts", async () => {
-    if (await testLight(d, "parts")) status(`${d.name}'s parts are lit in their colours for a minute, each white at its first segment`);
+    if (await testLight(d, "parts")) status(`${d.name}'s parts are lit in their colours for a minute, each white at its first ${one}`);
   }, "ghost small");
-  testAll.title = "Light every part in its colour on the real light, with unused segments off";
+  testAll.title = `Light every part in its colour on the real light, with unused ${many} off`;
   testAll.disabled = !linked(d) || d.protocol === "whole";
   const stop = button("Stop", () => stopTest(d), "ghost small");
   stop.title = "Let the light go back to what it was doing";
@@ -1091,8 +1097,7 @@ function renderGroups() {
     cell(order);
     cell(Object.assign(document.createElement("b"), { textContent: g.name }));
     cell(Object.assign(document.createElement("span"), { className: "hint", textContent: membersText(g.members, app.deviceList, 4) }));
-    const n = groupSegments(g.members, app.deviceList);
-    cell(Object.assign(document.createElement("span"), { className: "hint", textContent: n ? `${n} segments` : "–" }));
+    cell(Object.assign(document.createElement("span"), { className: "hint", textContent: sizeText(groupShares(g.members, app.deviceList)) || "–" }));
     const edit = button("Edit", () => openGroupWindow(g), "ghost");
     edit.setAttribute("aria-label", `Edit the group ${g.name}`);
     const del = button("Delete…", () => deleteGroup(g), "ghost danger");
@@ -1178,8 +1183,7 @@ function openGroupWindow(group) {
       return l;
     }));
     const members = tidyMembers([...picked], app.deviceList);
-    const n = groupSegments(members, app.deviceList);
-    count.textContent = members.length ? `Effects on the group run along these in this order (the Devices tab's), ${n} segments in all.`
+    count.textContent = members.length ? `Effects on the group run along these in this order (the Devices tab's), ${sizeText(groupShares(members, app.deviceList))} in all.`
       : "Pick the lights, or parts of lights, to put in it.";
   };
   draw();
@@ -1287,7 +1291,6 @@ async function loadModels() {
 }
 
 const isWled = (d) => d?.kind === "wled";
-const isHa = (d) => d?.kind === "ha";
 // Whether a light has somewhere to send to: an IP, or a Home Assistant entity (output.linked).
 const linked = (d) => !!(d?.ip || d?.entity);
 // Why Test can't be pressed yet, for a planned light.
@@ -1326,7 +1329,6 @@ async function fillHaPicker(select, current = "") {
     status(`Couldn't list Home Assistant's lights: ${e.message}`, true);
   }
 }
-const isPixels = (d) => ["wled", "ddp", "e131", "twinkly"].includes(d?.kind); // one LED a segment, not a Govee light
 
 // Twinkly (experimental): asks the light for its name and LED count, like WLED.
 async function addTwinkly(ip) {
@@ -1993,13 +1995,13 @@ function houseSegmentEditor(d) {
   const box = document.createElement("div");
   box.className = "house-stretch row";
   const label = document.createElement("span");
-  label.textContent = `Segment ${num}${pinned ? " (pinned)" : ""}`;
+  label.textContent = `${unitWord(light, 1).replace(/^s/, "S")} ${num}${pinned ? " (pinned)" : ""}`;
   const lightIt = button("Light it", async () => {
     // Find segments lights one segment, counted from the light's own first one.
     const segment = light.reverse ? light.segments + 1 - num : num;
     try {
       await api("api/devices/probe", { method: "POST", json: { ...light, segment } });
-      status(`Segment ${num} of ${light.name} is lit white. Drag its number to where it is.`);
+      status(`${unitWord(light, 1).replace(/^s/, "S")} ${num} of ${light.name} is lit white. Drag its number to where it is.`);
     } catch (e) { status(`Couldn't light it: ${e.message}`, true); }
   }, "primary");
   lightIt.title = "Light just this segment on the real light, white, so you can see where it is";
@@ -5223,7 +5225,7 @@ function renderWizardCheck() {
       find.disabled = LONG_PROTOCOLS.includes(d.protocol);
       end.push(find);
     }
-    return wizardRow(d.name, isHa(d) ? "One colour at a time" : `${d.segments} segments`, ...end);
+    return wizardRow(d.name, isHa(d) ? "One colour at a time" : countText(d), ...end);
   }));
 }
 

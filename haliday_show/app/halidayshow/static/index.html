@@ -756,7 +756,7 @@
     <button id="btn-add-light" class="primary">+ Add a light</button>
   </section>
   <p class="hint">Press a light to change its settings or split it into parts. <b>Test</b> runs a rainbow with a white
-    dot stepping along it: set <b>Segments</b> so the dot visits every segment once per lap.</p>
+    dot stepping along it: set <b>LEDs</b> (<b>Segments</b> on a Govee light) so the dot visits each one once per lap.</p>
   <dialog id="add-dialog" class="effect-dialog form-dialog add-dialog" aria-labelledby="add-title">
     <div class="effect-dialog-head"><h3 id="add-title">Add a light</h3>
       <span id="add-steps" class="hint"></span>
@@ -875,7 +875,7 @@
   </dialog>
   <div class="table-scroll">
   <table class="devices device-list">
-    <thead><tr><th title="Drag to reorder. Shows, the timeline and the House tab follow this order."></th><th>Name</th><th>IP</th><th>Model</th><th>Segments</th><th></th></tr></thead>
+    <thead><tr><th title="Drag to reorder. Shows, the timeline and the House tab follow this order."></th><th>Name</th><th>IP</th><th>Model</th><th>Size</th><th></th></tr></thead>
     <tbody id="device-rows"></tbody>
   </table>
   </div>
@@ -887,7 +887,7 @@
     <div class="table-scroll">
     <table class="devices device-list" id="group-table" hidden>
       <thead><tr><th title="Drag to reorder. Group lanes in the Show editor follow this order."></th><th>Name</th>
-        <th>Lights and parts</th><th>Segments</th><th></th></tr></thead>
+        <th>Lights and parts</th><th>Size</th><th></th></tr></thead>
       <tbody id="group-rows"></tbody>
     </table>
     </div>

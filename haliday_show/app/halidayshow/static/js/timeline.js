@@ -6,6 +6,7 @@
 
 import { EFFECTS, HOUSE, isGroupTrack, renderTrack } from "./effects.js";
 import { asShown } from "./lightspeed.js";
+import { countText, rangeText } from "./lightwords.js";
 
 const HEADER_W = 150;
 const RULER_H = 22;
@@ -264,9 +265,9 @@ export class Timeline {
       const sub = house ? "Across all lights"
         : lane ? (lane.gone ? "Not played" : `Group of ${lane.members.length}`)
         : !dev ? tr.device
-        : dev.light ? (dev.light.whole === false ? "Not played: parts only" : `All parts · ${dev.segments} segments`)
-        : dev.parent ? `Segments ${dev.from}–${dev.to}`
-        : `${dev.segments} segments${dev.ip || dev.entity ? "" : " · planned"}`;
+        : dev.light ? (dev.light.whole === false ? "Not played: parts only" : `All parts · ${countText(dev)}`)
+        : dev.parent ? rangeText(dev, dev.from, dev.to)
+        : `${countText(dev)}${dev.ip || dev.entity ? "" : " · planned"}`;
       const note = !house && !lane && dev && this.app.trackNote?.(dev);
       if (note) ctx.fillStyle = WARN;
       // Folded, it says what's tucked away under it instead.

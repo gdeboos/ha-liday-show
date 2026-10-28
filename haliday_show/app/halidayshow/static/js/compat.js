@@ -7,6 +7,7 @@
 
 import { EFFECTS, applyHouse, renderTrack } from "./effects.js";
 import { clipPace, switchOn } from "./lightspeed.js";
+import { countText } from "./lightwords.js";
 
 export const REALTIME_PROTOCOLS = ["standard"];
 const SAMPLES = 48;
@@ -75,7 +76,7 @@ export function clipFit(clip, dev, { house = null } = {}) {
       ? "On Whole light the light shows one colour at a time, the average of this effect, and that hardly changes."
       : dev.protocol === "ha_light"
         ? "A Home Assistant light shows one colour at a time, and this effect hardly changes it."
-        : `With ${n} segment${n === 1 ? "" : "s"} this light is too short for these settings, so it shows one steady colour.`);
+        : `With ${countText(dev, n)} this light is too short for these settings, so it shows one steady colour.`);
   }
   const pace = clipPace(clip, dev);
   if (pace?.tooFast) {
