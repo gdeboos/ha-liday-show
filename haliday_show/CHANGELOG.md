@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.242
+
+- **Settings that change over a clip**, after xLights' value curves. Under any number setting (speed, size, how many, brightness), turn on **Changes**, give the value to reach, and pick **Steady**, **Ease in**, **Ease out** or **Up and back**. Make a chase speed up into the chorus, or let a light swell and fade.
+- A changing speed moves smoothly, so nothing jumps backwards as it speeds up.
+
 ## 0.2.241
 
 - **Transitions**, after xLights: every clip can now come **In** and go **Out** gently instead of switching on and off. Under **Transitions** in the Selection panel, pick **Fade**, **Wipe**, **Wipe back**, **From the middle** or **Dissolve**, and how many seconds.

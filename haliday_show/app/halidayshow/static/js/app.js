@@ -7,7 +7,7 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, EFFECT_GROUPS, TRANSITIONS, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -2789,9 +2789,11 @@ function renderInspector() {
       const wrap = document.createElement("span");
       wrap.append(el, shown);
       field("", wrap);
+      target.append(curveRow(clip, p));
       continue;
     }
     field(p.label, el);
+    if (p.type === "number") target.append(curveRow(clip, p));
   }
   // Transitions: how the clip comes in and goes out. Back to back with another clip, it crossfades.
   groups.transitions = group("Transitions");
@@ -2848,6 +2850,58 @@ function renderInspector() {
   }
   actions.append(button("Delete clip", deleteSelected, "ghost danger"));
   box.append(actions);
+}
+
+// A setting's value curve: "Changes over the clip", then the value it ends at and how it gets there.
+// Saved as clip.curves[key] = {to, shape}; turning it off removes it.
+function curveRow(clip, p) {
+  const row = document.createElement("div");
+  row.className = "insp-curve";
+  const on = document.createElement("input");
+  on.type = "checkbox";
+  on.checked = !!clip.curves?.[p.key];
+  const ol = document.createElement("label");
+  ol.append(on, p.type === "range" ? "Changes over the clip" : "Changes");
+  ol.title = `Make ${p.label.toLowerCase()} change over the clip, such as speeding up into a chorus`;
+  const to = document.createElement("input");
+  Object.assign(to, { type: "number", min: p.min, max: p.max, step: p.step });
+  to.setAttribute("aria-label", `${p.label} at the end`);
+  const shape = document.createElement("select");
+  shape.setAttribute("aria-label", `How ${p.label.toLowerCase()} changes`);
+  for (const o of CURVE_SHAPES) shape.add(new Option(o[0].toUpperCase() + o.slice(1), o));
+  const extra = document.createElement("span");
+  extra.className = "insp-curve-to";
+  extra.append("to", to, shape);
+  const sync = () => {
+    const c = clip.curves?.[p.key];
+    extra.hidden = !c;
+    if (c) { to.value = c.to; shape.value = c.shape || "steady"; }
+  };
+  const save = () => {
+    const v = Number(to.value);
+    if (!Number.isFinite(v)) return;
+    clip.curves = { ...clip.curves, [p.key]: { ...clip.curves?.[p.key], to: Math.min(Math.max(v, p.min), p.max), shape: shape.value } };
+    app.changed();
+  };
+  on.addEventListener("change", () => {
+    if (on.checked) {
+      const now = Number(clip[p.key] ?? p.default);
+      // Start from a change worth seeing: double a speed, or the other end of the range.
+      const guess = p.key === "speed" || p.key === "rate" ? Math.min(now * 2 || p.step || 1, p.max)
+        : now > (p.min + p.max) / 2 ? p.min : p.max;
+      clip.curves = { ...clip.curves, [p.key]: { to: guess, shape: "steady" } };
+    } else if (clip.curves) {
+      delete clip.curves[p.key];
+      if (!Object.keys(clip.curves).length) delete clip.curves;
+    }
+    sync();
+    app.changed();
+  });
+  to.addEventListener("change", save);
+  shape.addEventListener("change", save);
+  sync();
+  row.append(ol, extra);
+  return row;
 }
 
 // copy and paste ----------------------------------------------------------------
@@ -7107,7 +7161,7 @@ const MAX_SCENE_LOOP_S = 600;
 const sceneNow = () => {
   const loop = Math.min(Math.round(app.duration() * 1000) / 1000, MAX_SCENE_LOOP_S);
   const tracks = app.show.tracks.map((t) => ({ device: t.device,
-    clips: t.clips.filter((c) => c.start < loop).map((c) => (c.end > loop ? { ...c, end: loop } : c)) }));
+    clips: t.clips.filter((c) => c.start < loop).map((c) => (c.end > loop ? clipPiece(c, c.start, loop) : c)) }));
   return { name: app.show.name, mode: "advanced", loop, tracks, ...(app.sceneSchedule ? { schedule: app.sceneSchedule } : {}) };
 };
 
