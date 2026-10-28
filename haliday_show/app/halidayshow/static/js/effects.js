@@ -1006,10 +1006,25 @@ export function applyHouse(clips, time, pos, out) {
       const c = fx.renderAt(p, t, dur, pos[i][0], pos[i][1]);
       if (!c) continue;
       const a = (c.length > 3 ? c[3] : 1) * (tr ? transitionShare(tr, pos[i][0], i, clip) : 1);
-      for (let k = 0; k < 3; k++) out[i * 3 + k] = clamp(out[i * 3 + k] * (1 - a) + c[k] * level * a);
+      mixInto(out, i * 3, [c[0] * level, c[1] * level, c[2] * level], a, clip.mix);
     }
   }
   return out;
+}
+
+// How a House or group lane clip mixes with the lights' own effects underneath (clip.mix, optional):
+// cover them (the default), add to them, keep whichever is brighter, or show only where they're lit.
+export const MIXES = ["cover", "add", "brighter", "only where lit"];
+// One segment: `under` (0-255 RGB, the lights' own) and `c` (the lane's), with the lane at strength a.
+function mixInto(out, o, c, a, mode) {
+  const u0 = out[o], u1 = out[o + 1], u2 = out[o + 2];
+  let m0 = c[0], m1 = c[1], m2 = c[2];
+  if (mode === "add") { m0 += u0; m1 += u1; m2 += u2; }
+  else if (mode === "brighter") { m0 = Math.max(m0, u0); m1 = Math.max(m1, u1); m2 = Math.max(m2, u2); }
+  else if (mode === "only where lit") { const lit = Math.max(u0, u1, u2) / 255; m0 *= lit; m1 *= lit; m2 *= lit; }
+  out[o] = clamp(u0 * (1 - a) + m0 * a);
+  out[o + 1] = clamp(u1 * (1 - a) + m1 * a);
+  out[o + 2] = clamp(u2 * (1 - a) + m2 * a);
 }
 
 // How each group lane plays: for every light it touches, which of the light's segments are which
@@ -1059,15 +1074,17 @@ export function applyGroups(plans, light, time, positions, out) {
       const any = plain.some((c) => time >= c.start && time < c.end);
       plan.strip = any ? renderTrack(plain, time, plan.total, undefined, true) : null;
       plan.cover = any ? laneCover(plain, time, plan.total) : null;
+      // The lane mixes as its latest playing clip says.
+      plan.mix = plain.filter((c) => time >= c.start && time < c.end).at(-1)?.mix || "cover";
       plan.at = time;
     }
     const house = live.filter((c) => EFFECTS[c.effect]?.house);
     for (const r of mine) {
       const slice = out.subarray(r.start * 3, (r.start + r.n) * 3);
-      if (plan.strip && plan.cover) {
+      if (plan.strip && (plan.cover || plan.mix !== "cover")) {
         for (let i = 0; i < r.n; i++) {
-          const w = plan.cover[r.offset + i];
-          for (let k = 0; k < 3; k++) slice[i * 3 + k] = clamp(slice[i * 3 + k] * (1 - w) + plan.strip[(r.offset + i) * 3 + k] * w);
+          const j = (r.offset + i) * 3;
+          mixInto(slice, i * 3, [plan.strip[j], plan.strip[j + 1], plan.strip[j + 2]], plan.cover ? plan.cover[r.offset + i] : 1, plan.mix);
         }
       } else if (plan.strip) slice.set(plan.strip.subarray(r.offset * 3, (r.offset + r.n) * 3));
       const pos = positions[r.pos];

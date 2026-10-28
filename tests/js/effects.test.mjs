@@ -513,3 +513,23 @@ test("cutting a clip keeps its changing settings where they were", async () => {
   // A piece that isn't cut keeps its curves as they are.
   assert.equal(clipPiece(c, 0, 10).curves, c.curves);
 });
+
+test("lane clips mix with the lights' own effects: cover, add, brighter, only where lit", async () => {
+  const { applyHouse, planGroups, GROUP } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const under = () => new Uint8Array([0, 0, 200, 0, 0, 0]); // segment 0 lit blue, segment 1 off
+  const pos = [[0.5, 0.5], [0.5, 0.5]];
+  const wave = (mix) => ({ ...newClip("housewipe", 0, 1), color: "#ff0000", background: "#000000", soft: 0, ...(mix ? { mix } : {}) });
+  const run = (mix) => [...applyHouse([wave(mix)], 0.99, pos, under())];
+  assert.deepEqual(run(undefined), [255, 0, 0, 255, 0, 0]);
+  assert.deepEqual(run("add"), [255, 0, 200, 255, 0, 0]);
+  assert.deepEqual(run("brighter"), [255, 0, 200, 255, 0, 0]);
+  assert.deepEqual(run("only where lit"), [200, 0, 0, 0, 0, 0]);
+  // A group lane clip set to Only where lit: shows only where the light's own effect is on.
+  const light = { id: "a", segments: 2 };
+  const own = { ...newClip("chase", 0, 4), color: "#ffffff", width: 1, speed: 0 };
+  const tracks = new Map([["a", { device: "a", clips: [own] }],
+    [GROUP + "g", { device: GROUP + "g", clips: [{ ...newClip("solid", 0, 4), color: "#00ff00", mix: "only where lit" }] }]]);
+  const plans = planGroups([{ id: "g", members: ["a"] }], [light], (id) => tracks.get(id));
+  const f = [...composeLight(light, (id) => tracks.get(id), 1, {}, [], undefined, plans)];
+  assert.deepEqual(f, [0, 255, 0, 0, 0, 0]);
+});

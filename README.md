@@ -182,6 +182,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   between clips back to back
 - Settings that change over a clip, like xLights' value curves: speed up a chase into the chorus,
   or swell the brightness
+- House and group lane clips can cover the lights' own effects, add to them, keep the brighter, or
+  show only where they're lit
 - A **House** lane for effects that run across all your lights by where they are on the photo, like
   xLights' model effects: sweeps, wipes and rainbow waves in any direction, shockwaves, pinwheels,
   curtains and butterfly patterns
