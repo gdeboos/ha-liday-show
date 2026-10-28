@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.206
+
+- Fixed: **Your scenes** could say "Couldn't load your scenes" if you'd ever used Govee's own scenes in a
+  show, because both were kept in the same folder. Your scenes now have a folder of their own, and any
+  you'd already made move there by themselves.
+
 ## 0.2.205
 
 - **Scenes**, like the one-tap scenes in the Govee app. A scene sets every light at once and plays

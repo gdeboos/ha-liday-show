@@ -51,7 +51,7 @@ def _allowed(name: str) -> bool:
     if len(parts) == 2 and parts[0] == "blocks":  # playlists' building blocks, baked
         p = Path(parts[1])
         return p.suffix == ".gshow" and valid_id(p.stem)
-    if len(parts) == 2 and parts[0] == "scenes":  # scenes and their baked loops (scenelib.py)
+    if len(parts) == 2 and parts[0] == "house-scenes":  # your scenes and their baked loops (scenelib.py)
         p = Path(parts[1])
         return p.suffix in (".json", ".gshow") and valid_id(p.stem)
     if len(parts) == 2 and parts[0] == "drafts":  # Music editor drafts
