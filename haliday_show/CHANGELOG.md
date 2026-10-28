@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.240
+
+- New **Music level** effect, after xLights' VU meter, under **Follows the music**: the light fills from green to red as the song gets louder, with a dot that marks the peak and falls back. Try **From the middle**.
+- To make this work, HA-liday Show now measures how loud a show's song is when you open the show, and keeps it with the show when you next save. Your shows are otherwise unchanged.
+
 ## 0.2.239
 
 - Five new effects borrowed from xLights:

@@ -8,7 +8,12 @@
 
 **Effects on a light** run along that light, from the plug end (or the other end with
 **Reverse**). In the effect chooser they're under headings: **Basics**, **Movement**, **Sparkle and
-festive** and **Calm**.
+festive**, **Calm** and **Follows the music**.
+
+**Music level** needs the show's song: HA-liday Show measures how loud the song is from moment to
+moment when you open the show, and keeps that with the show when you next save it. A show with no
+song (lights only) leaves it dark, and it isn't offered in scenes or playlist blocks, which have no
+song.
 
 Fairy lights, Ocean waves, Aurora, Flowing colours, Juggle, Ripple, Bouncing balls and Stacking blocks take a list of up to 8 colours. Set
 **Colours** to how many to use, and only that many colour boxes show. **Apply palette** fills the
@@ -50,6 +55,7 @@ whole list from the palette and sets **Colours** to match.
 | Stacking blocks | Blocks drop from the far end and pile up until the light is full, then it fades and starts again |
 | Fill to a level | Lit up to a level that moves from **Level at the start** to **Level at the end** over the clip. The **Count down** preset empties it |
 | Morph | A band of light stretches from the start to the far end, then shrinks away into it, blending from the **Tail** colour to the **Head**. Set how many **Times in the clip** |
+| Music level | A level meter that follows the song: the light fills from green to red as the music gets louder, with a dot marking the last second's peak. **Rises from: the middle** fills outwards from the centre, and **Sensitivity** fills it further on quieter songs |
 
 **Effects on the House lane** run across all your lights at once, by where each one is on the
 house photo, like xLights' model effects. Add them the same way, by selecting a stretch of the

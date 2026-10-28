@@ -2,11 +2,12 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
+import { keepLevels, levelCurve, levelsFit } from "./musiclevel.js";
 import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, EFFECT_GROUPS, unusedColour, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -264,7 +265,8 @@ function restore(step) {
   const i = app.historyIndex + step;
   if (i < 0 || i >= app.history.length) return;
   app.historyIndex = i;
-  app.show = JSON.parse(app.history[i]);
+  app.show = keepLevels(app.show, JSON.parse(app.history[i]));
+  setMusicLevels(app.show.audio ? app.show.loudness : null);
   app.dirty = true;
   app.edits++;
   app.selected = null;
@@ -7205,6 +7207,7 @@ let songBuffer = null; // the decoded song, for Detect
 async function loadAudio(ref) {
   app.peaks = null;
   songBuffer = null;
+  setMusicLevels(ref ? app.show?.loudness : null);
   app.songMarks = [];
   loadSongMarks();
   app.audioDuration = 0;
@@ -7226,6 +7229,16 @@ async function loadAudio(ref) {
     app.peaks = computePeaks(decoded);
     songBuffer = decoded;
     app.audioDuration = decoded.duration;
+    // The song's loudness, for the Music level effect. Kept with the show (saved with its next save);
+    // measured again only when the song has changed.
+    if (app.show && app.show.audio === ref && !levelsFit(app.show, ref.path, decoded.duration)) {
+      const channels = Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c));
+      const mono = toMono(channels, decoded.sampleRate);
+      app.show.loudness = levelCurve(mono.samples, mono.rate, ref.path);
+      // A show already using Music level (its song changed) needs saving and baking again.
+      if (app.show.tracks?.some((t) => t.clips.some((c) => EFFECTS[c.effect]?.music))) app.changed();
+    }
+    if (app.show?.audio === ref) setMusicLevels(app.show.loudness);
     status("", "info", "song");
   } catch (e) {
     status(songLoadMessage(e), true, "song");
