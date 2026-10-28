@@ -3369,6 +3369,59 @@ function scheduleNote(pl) {
   return `Next starts ${whenNext(next, scheduleState.now)}.`;
 }
 
+// Setup → Settings → Live music (livemusic.py) ---------------------------------------
+// While the page is open it asks a few times a second what the chosen WLED hears.
+let liveTimer = null, liveView = null;
+function startLiveMusic() {
+  if (liveTimer) return;
+  if (!$("lm-bands").children.length) for (let i = 0; i < 16; i++) $("lm-bands").append(document.createElement("span"));
+  const tick = async () => {
+    try { renderLiveMusic(await api("api/live-music")); } catch { /* next time */ }
+  };
+  tick();
+  liveTimer = setInterval(tick, 250);
+}
+function stopLiveMusic() { clearInterval(liveTimer); liveTimer = null; }
+
+function renderLiveMusic(v) {
+  liveView = v;
+  const sel = $("lm-source");
+  if (document.activeElement !== sel) {
+    const opts = [["any", "Any WLED that sends sound"], ...v.sending.map((s) => [s.ip, `${s.name}${s.name === s.ip ? "" : ` · ${s.ip}`}`])];
+    if (v.settings.source !== "any" && !opts.some(([ip]) => ip === v.settings.source)) opts.push([v.settings.source, `${v.settings.source} (not heard lately)`]);
+    const key = JSON.stringify(opts);
+    if (sel.dataset.key !== key) {
+      sel.replaceChildren(...opts.map(([value, label]) => new Option(label, value)));
+      sel.dataset.key = key;
+    }
+    sel.value = v.settings.source;
+  }
+  if (document.activeElement !== $("lm-from")) $("lm-from").value = v.settings.from;
+  const old = v.sending.filter((s) => s.old);
+  const note = !v.listening ? `HA-liday Show couldn't listen for sound: ${v.error || "unknown reason"}.`
+    : !v.now && old.length ? `${old[0].name} sends sound in an older format. Update its WLED to 0.14 or later.`
+      : !v.now ? "Not hearing any WLED yet. On the WLED with the microphone, turn on sending its sound to other devices (see the guide)."
+        : "";
+  $("lm-note").hidden = !note;
+  $("lm-note-text").textContent = note;
+  $("lm-badge").hidden = !v.now;
+  $("lm-badge").textContent = v.music ? "✓ Hearing music" : "✓ Hearing sound, quieter than music";
+  $("lm-levels").classList.toggle("is-quiet", !v.now);
+  const n = v.now || {};
+  for (const k of ["loud", "bass", "mid", "treble"]) {
+    const val = n[k === "loud" ? "loudness" : k];
+    $(`lm-${k}`).style.width = `${val ?? 0}%`;
+    $(`lm-${k}-n`).value = val == null ? "—" : `${val}%`;
+  }
+  $("lm-beat").classList.toggle("on", !!n.beat);
+  [...$("lm-bands").children].forEach((b, i) => { b.style.height = `${n.bands?.[i] ?? 0}%`; });
+}
+
+async function saveLiveMusic(change) {
+  try { renderLiveMusic(await api("api/live-music", { method: "PUT", json: change })); status("Live music saved", "saved", "live"); }
+  catch (e) { status(`Couldn't save Live music: ${e.message}`, true, "live"); }
+}
+
 // When a scene plays, for its schedule editor: on now, or its next start.
 function sceneScheduleNote(id, s) {
   if (!s?.on) return "";
@@ -7748,7 +7801,7 @@ function showView(view, { push = true } = {}) {
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
-  if (page === "settings") { renderCopies(); loadPublic(); }
+  if (page === "settings") { renderCopies(); loadPublic(); startLiveMusic(); } else stopLiveMusic();
   if (page === "public") {
     loadPublic({ items: true });
     const frame = $("pub-preview-frame");
@@ -7899,6 +7952,8 @@ function wire() {
   $("sc-name").addEventListener("change", (e) => sceneEd.rename(e.target.value));
   $("sc-same").addEventListener("change", (e) => sceneEd.setSame(e.target.checked));
   $("sc-advanced").addEventListener("click", () => sceneEd.toAdvanced());
+  $("lm-source").addEventListener("change", (e) => saveLiveMusic({ source: e.target.value }));
+  $("lm-from").addEventListener("change", (e) => saveLiveMusic({ from: Number(e.target.value) }));
   $("sb-back").addEventListener("click", () => leaveScene());
   $("sb-when").addEventListener("click", openSceneWhen);
   $("sb-basic").addEventListener("click", () => leaveScene(true));
