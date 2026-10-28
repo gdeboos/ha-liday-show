@@ -238,7 +238,8 @@ own track goes away (or, if it has effects on it, is marked *Not played: parts o
 
 On the timeline a split light's tracks (when there's more than one) are grouped: a coloured bar runs down the left of the light
 and its parts, the parts are indented under it, and a heavier line marks where the group starts and
-ends. Press the **▸** before the light's name to fold its parts away under it, and **▾** to bring them back.
+ends. Press the **▸** before the light's name to fold its parts away under it, and **▾** to bring them back. A
+light that plays only as parts (no track of its own) folds the rest under its first part.
 
 ### Light groups
 

@@ -54,8 +54,16 @@ export class Timeline {
     const tr = this.app.show.tracks[i];
     if (!tr) return null;
     if (tr.device === HOUSE) return this.app.show.tracks.some((t) => isGroupTrack(t.device)) ? "@groups" : null;
-    const d = this.app.devices[tr.device];
-    return d?.light?.parts?.length && this.app.show.tracks.some((t) => this.app.devices[t.device]?.parent === d.light.id) ? d.light.id : null;
+    const tracks = this.app.show.tracks, d = this.app.devices[tr.device];
+    const partsOf = (id) => tracks.filter((t) => this.app.devices[t.device]?.parent === id);
+    // A split light folds its parts under its own track, or, when it plays only as parts (no track of
+    // its own), the rest of them under its first part.
+    if (d?.light?.parts?.length) return partsOf(d.light.id).length ? d.light.id : null;
+    if (d?.parent && !tracks.some((t) => t.device === d.parent)) {
+      const parts = partsOf(d.parent);
+      return parts[0] === tr && parts.length > 1 ? d.parent : null;
+    }
+    return null;
   }
 
   hidden(i) {
@@ -64,8 +72,10 @@ export class Timeline {
     const tr = tracks[i];
     if (isGroupTrack(tr.device)) return folded.has("@groups");
     const parent = this.app.devices[tr.device]?.parent;
-    // Only under the light's own track: a parts-only light keeps its parts showing.
-    return !!parent && folded.has(parent) && tracks.some((t) => t.device === parent);
+    if (!parent || !folded.has(parent)) return false;
+    // Under the light's own track; with none, every part but the first, which stands for the light.
+    if (tracks.some((t) => t.device === parent)) return true;
+    return tracks.find((t) => this.app.devices[t.device]?.parent === parent) !== tr;
   }
 
   // The tracks on show, top to bottom, as indices into show.tracks.
@@ -248,6 +258,7 @@ export class Timeline {
       // Folded, it says what's tucked away under it instead.
       const count = (n, what) => `${n} ${what}${n === 1 ? "" : "s"} folded`;
       const line = !folded ? sub : fold === "@groups" ? count(tracks.filter((t) => isGroupTrack(t.device)).length, "group")
+        : dev?.parent ? `${count(tracks.filter((t) => this.app.devices[t.device]?.parent === fold).length - 1, "more part")}`
         : count(tracks.filter((t) => this.app.devices[t.device]?.parent === fold).length, "part");
       ctx.fillText(clipText(ctx, note ? `⚠ ${note}` : line, HEADER_W - x - 6), x, y + 36);
     });
@@ -561,6 +572,14 @@ export class Timeline {
     const d = this.drag;
     if (!d) {
       const hit = this.hitClip(x, y);
+      // Over the names: the fold arrow and the names themselves are pressed, not dragged across.
+      if (x < HEADER_W) {
+        const ti = this.trackAt(y);
+        this.canvas.style.cursor = ti >= 0 ? "pointer" : "default";
+        this.canvas.title = ti >= 0 && x < 20 && this.foldKey(ti) ? (this.app.folded?.has(this.foldKey(ti)) ? "Unfold" : "Fold away") : "";
+        return;
+      }
+      this.canvas.title = "";
       this.canvas.style.cursor = !hit ? (y < RULER_H && x > HEADER_W ? "col-resize"
         : y < RULER_H + WAVE_H && x > HEADER_W ? "text" : "crosshair")
         : hit.mode === "move" && !e.altKey ? "grab" : e.altKey ? "crosshair" : "ew-resize";

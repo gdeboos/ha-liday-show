@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.224
+
+- A light that plays only as parts (such as **Roof · Left**, **Center** and **Right** with no **Roof** track)
+  can now fold too: the **▸** on its first part tucks the rest away under it.
+- Over the names on the timeline the pointer is now a hand, not a cross, and the arrow says **Fold away**
+  or **Unfold** when you point at it.
+
 ## 0.2.223
 
 - Groups on **Setup → Devices** are now listed like your lights, in a table: the ⠿ handle and **↑ ↓** on
