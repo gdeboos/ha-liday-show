@@ -1050,44 +1050,97 @@ async function convertLight() {
 
 // Light groups on the Devices tab: a row each, with a window to name it and pick its lights and parts.
 function renderGroups() {
-  const box = $("group-list");
-  if (!box) return;
-  box.replaceChildren(...app.groups.map((g) => {
-    const picture = document.createElement("span");
-    picture.className = "group-picture";
-    picture.textContent = "▦";
+  const rows = $("group-rows");
+  if (!rows) return;
+  $("group-table").hidden = !app.groups.length;
+  $("group-none").hidden = !!app.groups.length;
+  rows.replaceChildren(...app.groups.map((g, k) => {
+    const tr = document.createElement("tr");
+    tr.className = "device-line";
+    tr.title = `Edit ${g.name}`;
+    const cell = (...kids) => { const td = document.createElement("td"); td.append(...kids); tr.append(td); return td; };
+    // The same order controls as the lights above: the order of the groups' lanes in the Show editor.
+    const order = document.createElement("span");
+    order.className = "order";
+    const grip = document.createElement("span");
+    grip.className = "grip";
+    grip.textContent = "⠿";
+    grip.title = "Drag to reorder";
+    grip.draggable = true;
+    grip.addEventListener("dragstart", (e) => {
+      groupDrag.from = g;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", g.id);
+      e.dataTransfer.setDragImage(tr, 10, 10);
+    });
+    grip.addEventListener("dragend", () => { groupDrag.from = null; groupDropMarks(); });
+    const up = button("↑", () => moveGroup(g, k - 1, -1), "ghost small");
+    const down = button("↓", () => moveGroup(g, k + 1, 1), "ghost small");
+    up.dataset.move = "-1";
+    down.dataset.move = "1";
+    up.title = "Move up: its lane goes higher in the Show editor";
+    down.title = "Move down: its lane goes lower in the Show editor";
+    up.setAttribute("aria-label", `Move ${g.name} up`);
+    down.setAttribute("aria-label", `Move ${g.name} down`);
+    up.disabled = k === 0;
+    down.disabled = k === app.groups.length - 1;
+    const arrows = document.createElement("span");
+    arrows.className = "arrows";
+    arrows.append(up, down);
+    order.append(grip, arrows);
+    cell(order);
+    cell(Object.assign(document.createElement("b"), { textContent: g.name }));
+    cell(Object.assign(document.createElement("span"), { className: "hint", textContent: membersText(g.members, app.deviceList, 4) }));
+    const n = groupSegments(g.members, app.deviceList);
+    cell(Object.assign(document.createElement("span"), { className: "hint", textContent: n ? `${n} segments` : "–" }));
+    const edit = button("Edit", () => openGroupWindow(g), "ghost");
+    edit.setAttribute("aria-label", `Edit the group ${g.name}`);
     const del = button("Delete…", () => deleteGroup(g), "ghost danger");
     del.setAttribute("aria-label", `Delete the group ${g.name}`);
-    // Up and down set the order of the groups' lanes in the Show editor.
-    const k = app.groups.indexOf(g);
-    const move = (by) => {
-      const next = [...app.groups];
-      [next[k], next[k + by]] = [next[k + by], next[k]];
-      saveGroups(next, `Moved ${g.name} ${by < 0 ? "up" : "down"}`, { rebake: false })
-        .then(() => {
-          const row = $("group-list").querySelectorAll(".show-row")[k + by];
-          const same = row?.querySelector(`[data-move="${by}"]`);
-          (same && !same.disabled ? same : row?.querySelector(`[data-move="${-by}"]`))?.focus();
-        });
-    };
-    const up = button("↑", () => move(-1), "ghost");
-    up.dataset.move = "-1";
-    up.disabled = k === 0;
-    up.setAttribute("aria-label", `Move ${g.name} up`);
-    up.title = "Earlier: its lane goes higher in the Show editor";
-    const down = button("↓", () => move(1), "ghost");
-    down.dataset.move = "1";
-    down.disabled = k === app.groups.length - 1;
-    down.setAttribute("aria-label", `Move ${g.name} down`);
-    down.title = "Later: its lane goes lower in the Show editor";
-    const n = groupSegments(g.members, app.deviceList);
-    return itemRow({ picture, name: g.name, detail: `${membersText(g.members, app.deviceList)}${n ? ` · ${n} segments` : ""}`,
-      edit: () => openGroupWindow(g), extra: [up, down, del], label: "the group" });
+    cell(del, " ", edit).className = "device-actions";
+    // As with a light, pressing anywhere else on the line opens it.
+    tr.addEventListener("click", (e) => { if (!e.target.closest("button, .grip")) openGroupWindow(g); });
+    tr.addEventListener("dragover", (e) => {
+      if (!groupDrag.from) return;
+      e.preventDefault();
+      const r = tr.getBoundingClientRect(), above = e.clientY < (r.top + r.bottom) / 2;
+      groupDropMarks(tr);
+      tr.classList.toggle("drop-above", above);
+      tr.classList.toggle("drop-below", !above);
+    });
+    tr.addEventListener("drop", (e) => {
+      const from = groupDrag.from;
+      if (!from) return;
+      e.preventDefault();
+      const r = tr.getBoundingClientRect(), above = e.clientY < (r.top + r.bottom) / 2;
+      const to = k + (above ? 0 : 1) - (app.groups.indexOf(from) < k + (above ? 0 : 1) ? 1 : 0);
+      groupDropMarks();
+      moveGroup(from, to);
+    });
+    return tr;
   }));
-  if (!app.groups.length) {
-    box.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "No groups yet." }));
-  }
   $("btn-new-group").disabled = !app.deviceList.length;
+}
+
+const groupDrag = { from: null };
+const groupDropMarks = (keep) => {
+  for (const r of document.querySelectorAll("#group-rows .drop-above, #group-rows .drop-below")) {
+    if (r !== keep) r.classList.remove("drop-above", "drop-below");
+  }
+};
+
+// Moves group `g` to position `to`; `by` (from ↑ or ↓) keeps the keyboard on that button.
+function moveGroup(g, to, by = 0) {
+  const next = app.groups.filter((x) => x !== g);
+  to = Math.max(0, Math.min(to, next.length));
+  next.splice(to, 0, g);
+  if (next.every((x, i) => x === app.groups[i])) return;
+  saveGroups(next, `Moved ${g.name} ${to < app.groups.indexOf(g) ? "up" : "down"}`, { rebake: false }).then(() => {
+    if (!by) return;
+    const row = $("group-rows").children[to];
+    const same = row?.querySelector(`[data-move="${by}"]`);
+    (same && !same.disabled ? same : row?.querySelector(`[data-move="${-by}"]`))?.focus();
+  });
 }
 
 function openGroupWindow(group) {

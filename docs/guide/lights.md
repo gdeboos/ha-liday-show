@@ -245,9 +245,9 @@ ends. Press the **▸** before the light's name to fold its parts away under it,
 A group is a set of lights, or parts of lights, that a show can give one effect: the two strips of
 roof icicles, say, or the left part of each pillar. Under **Groups**, below your lights on the
 **Devices** tab, press **+ New group**, give it a name and turn on the lights and parts to put in it, then
-press **Add group**. A part is in automatically when its whole light is. **Edit…** changes a group and
-**Delete…** removes it. **↑** and **↓** change the order of the groups, which is the order of their lanes in
-the Show editor. A light can be in as many groups as you like.
+press **Add group**. A part is in automatically when its whole light is. **Edit** changes a group and
+**Delete…** removes it. Groups are listed like your lights: press a group's line to change it, and drag it
+by its ⠿ handle (or use **↑** and **↓**) to change the order of their lanes in the Show editor. A light can be in as many groups as you like.
 
 Each group gets its own lane in the Show editor, under **House** (see [Group lanes](effects.md#group-lanes)).
 

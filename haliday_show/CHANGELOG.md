@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.223
+
+- Groups on **Setup → Devices** are now listed like your lights, in a table: the ⠿ handle and **↑ ↓** on
+  the left to reorder them (drag works too), then the name, its lights and parts, its segments, and
+  **Delete…** and **Edit** on the right. Press anywhere on a group's line to change it.
+
 ## 0.2.222
 
 - The Show editor's timeline folds: press **▸** before **House** to tuck all the group lanes away under it,
