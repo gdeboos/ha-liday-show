@@ -1894,7 +1894,7 @@ export class MusicEditor {
     if (!this.rendered) {
       ctx.fillStyle = col("--muted");
       ctx.font = "13px system-ui, sans-serif";
-      ctx.fillText("Open a song from Your songs to start", 12, RULER_H + 30);
+      ctx.fillText("Open a song from Library → Songs to start", 12, RULER_H + 30);
       return;
     }
     const rate = this.audio.sampleRate;

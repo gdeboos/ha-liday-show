@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.214
+
+- The top bar is now just **Library**, **Setup** and **Public page**. The editors open from the Library:
+  **Open** on a show, **Edit** on a song or scene, **Open** on a playlist, or **+ New …**. **← All shows**
+  (or songs, scenes or playlists) takes you back to that Library page, and **Library** stays lit while
+  you're in an editor.
+- The editors' own copies of those lists (Your shows, Your songs and so on) are gone, as they were the
+  same as the Library's.
+
 ## 0.2.213
 
 - **Setup → Devices** no longer shows **✓ works** next to lights that work as they should. Only

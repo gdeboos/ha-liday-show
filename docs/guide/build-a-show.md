@@ -22,8 +22,8 @@ timeline.
 
 ### Shows
 
-The **Show editor** opens on **Your shows** each time, so nothing changes in a show until you open
-it. Each show is listed with its song, its length and when it last changed, newest first, and the
+Your shows are under **Library → Shows**, and nothing changes in a show until you open it in the
+**Show editor**. Each show is listed with its song, its length and when it last changed, newest first, and the
 one you were last editing has a **Last edited** badge.
 
 - **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
@@ -187,16 +187,15 @@ Christmas", ready to layer over a song in the Music editor. There are two ways t
   the **Edit** card), then give it a name. It's saved as it sounds in your edit, layers and all.
 - **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
 
-They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Your songs** and a show's
+They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Library → Songs** and a show's
 song list so those stay tidy. Use them on a [layer](#layers) in the Music editor. Each sample has **▶** to hear it (press **■** to stop) and **Delete…** to
 remove it for good.
 
 ### Editing a song
 
-The **Music editor** cuts, shortens and splices songs before you build a show. It opens on **Your
-songs** each visit, the same list as **Library → Songs** (with **+ Add a song**), so nothing is touched
-until you press **Edit** on one. The open song's name sits beside **← All songs**, which goes back to
-the list to open another; switching tabs keeps your song open. The song you open is never changed: your
+The **Music editor** cuts, shortens and splices songs before you build a show. Press **Edit** on a
+song under **Library → Songs** (with **+ Add a song**) to open it; nothing is touched until you do. The open
+song's name sits beside **← All songs**, which goes back to the list to open another. The song you open is never changed: your
 first change starts a [draft](#drafts), kept as you go, which you make into a new song file when you're
 happy. Drag across the waveform to select (clicking moves the playhead and keeps the selection; press **✕**
 next to its times or Esc to clear it), then **Cut selection** to remove it or
@@ -236,7 +235,7 @@ say), the status bar says so, even for a draft you've moved on from, and it's tr
 next change; closing the page then asks first. A song can have several drafts, such as a "Short
 version" and a "Party mix": press **Edit** on the song again to start another.
 
-**Your songs** lists each song's drafts under it, with a **Draft** badge until a song file has been
+**Library → Songs** lists each song's drafts under it, with a **Draft** badge until a song file has been
 made from it. **Open** carries on where you left off (**Undo** starts afresh each visit), **Rename…**
 renames it, and **Delete…** deletes the draft (not the song, or any file it made).
 
@@ -258,7 +257,7 @@ is remembered in this browser.
 Songs you edited before drafts existed are ordinary songs: press **Edit** on one to start a draft from
 it. A draft can't be opened if a song it uses has been archived or deleted; restore the song first
 (under **Archived songs**). Until then, drafts whose song has gone are listed together at the end of
-**Your songs**, under **Drafts of songs that aren't here any more**, so you can still delete them.
+**Library → Songs**, under **Drafts of songs that aren't here any more**, so you can still delete them.
 
 #### Layers
 
