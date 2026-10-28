@@ -61,6 +61,7 @@ export const HELP = {
         "Drag across a light, or the <b>House</b> lane, to select a stretch of time. Drag up or down to cover several lights.",
         "Click a clip to edit it: drag it to move, drag its edges to resize.",
         `Zoom with <b>−</b> and <b>+</b>, the ${k("+")} and ${k("−")} keys, or ${k("Ctrl")} + wheel round the pointer.`,
+        "With lots of lights, the wheel over the names scrolls through them. The times, song and beats stay at the top.",
         "Click a light's name to copy or recolour all its effects.",
         "<b>▸</b> before <b>House</b> folds the group lanes away; before a split light, its parts.",
         "Coloured flags on the beat lane are the song's marks, made in the Music editor. Clips snap to them.",

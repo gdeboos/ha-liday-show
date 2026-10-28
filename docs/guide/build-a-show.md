@@ -489,8 +489,10 @@ show's name covers the editor with a spinner and the time so far, so nothing cha
 
 ### The timeline
 
-Each light has a track, with the **House** lane at the top. Scroll with the mouse
-wheel; zoom with the **−** and **+** buttons in the Timeline panel, the + and − keys, or
+Each light has a track, with the **House** lane at the top. The timeline is never taller than
+your screen: with lots of lights it scrolls them inside itself, and the times, song and beats stay at
+the top. Scroll through the lights with the mouse wheel over their names (or drag the scroll bar), and
+along the song with the wheel over the tracks; zoom with the **−** and **+** buttons in the Timeline panel, the + and − keys, or
 Ctrl+wheel (or a trackpad pinch) around the pointer. Click the ruler to move the playhead.
 
 ### Adding effects
