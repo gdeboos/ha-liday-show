@@ -1137,7 +1137,7 @@ Ctrl+Z undoes and Ctrl+Shift+Z (or Ctrl+Y) redoes, even after a change has been 
 **Reverse**). In the effect chooser they're under headings: **Basics**, **Movement**, **Sparkle and
 festive** and **Calm**.
 
-Fairy lights, Ocean waves, Aurora and Flowing colours take a list of up to 8 colours. Set
+Fairy lights, Ocean waves, Aurora, Flowing colours, Juggle, Ripple, Bouncing balls and Stacking blocks take a list of up to 8 colours. Set
 **Colours** to how many to use, and only that many colour boxes show. **Apply palette** fills the
 whole list from the palette and sets **Colours** to match.
 
@@ -1168,6 +1168,14 @@ whole list from the palette and sets **Colours** to match.
 | Aurora | Curtains of colour that drift, brighten and fade, like the northern lights |
 | Flowing colours | Soft patches of your colours that drift and blend into each other |
 | Sunrise | Dark, then deep red, orange and gold, then daylight, over the length of the clip. **Way: sunset** goes the other way |
+| Theatre chase | One segment lit in every few, stepping along like theatre marquee lights. **Lit in: rainbow** makes a rainbow chase |
+| Juggle | A dot for each colour swings back and forth at its own pace, leaving a fading trail |
+| Ripple | Drops land at random and ripple outwards in your colours |
+| Dissolve | Segments light one at a time in a random order until the light is full, then go out the same way |
+| Bouncing balls | Balls in your colours bounce up from the start of the light. **Style: popcorn** pops kernels up at random instead |
+| Lighthouse | A soft beam sweeps along the light once a turn, with a faint glow in between |
+| Stacking blocks | Blocks drop from the far end and pile up until the light is full, then it fades and starts again |
+| Fill to a level | Lit up to a level that moves from **Level at the start** to **Level at the end** over the clip. The **Count down** preset empties it |
 
 **Effects on the House lane** run across all your lights at once, by where each one is on the
 house photo, like xLights' model effects. Add them the same way, by selecting a stretch of the

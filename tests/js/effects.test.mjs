@@ -369,3 +369,24 @@ test("colour lists in scenes: changing effect carries the colours in use and how
   assert.deepEqual(sceneColours({ all: { effect: "fairy", params: { count: "2", color: "#111111", color2: "#222222", color3: "#999999" } } }, []),
     ["#111111", "#222222"]);
 });
+
+test("movement effects: theatre spacing, fill level, stacking blocks, and early events", () => {
+  const frame = (clip, t, n) => [...renderTrack([{ ...newClip(clip.effect, 0, 10), ...clip }], t, n)];
+  const on = (buf, n) => Array.from({ length: n }, (_, i) => buf[i * 3] + buf[i * 3 + 1] + buf[i * 3 + 2] > 0);
+  // Theatre chase: one lit in every 3, stepping along.
+  const a = on(frame({ effect: "theatre", every: 3, speed: 1 }, 0.5, 9), 9);
+  assert.deepEqual(a, [true, false, false, true, false, false, true, false, false]);
+  assert.deepEqual(on(frame({ effect: "theatre", every: 3, speed: 1 }, 1.5, 9), 9), [false, true, false, false, true, false, false, true, false]);
+  // Fill to a level: half the light lit halfway through a 0 to 100% clip.
+  const half = on(frame({ effect: "level", from: 0, to: 100, soft: 0 }, 5, 10), 10);
+  assert.equal(half.filter(Boolean).length, 5);
+  assert.ok(half[0] && !half[9]);
+  // Stacking blocks: 5 blocks of 2 at 5 a second take a second; just before then, 4 have landed.
+  const fall = 1;
+  const full = on(frame({ effect: "tetris", size: 2, rate: 5 }, fall - 0.01, 10), 10);
+  assert.ok(full.slice(0, 8).every(Boolean), String(full));
+  // Effects built on random events render from the very start of a clip.
+  for (const effect of ["bounce", "ripple", "fireworks", "drip", "juggle", "dissolve", "lighthouse"]) {
+    for (const t of [0, 0.01, 0.5]) frame({ effect, style: "popcorn" }, t, 30);
+  }
+});
