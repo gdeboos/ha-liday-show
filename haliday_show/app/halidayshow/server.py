@@ -150,7 +150,7 @@ async def start_listening(request):
     listening = app[LISTENING]
     if (old := listening["listener"]) and old.running:
         old.stop()
-    await app[RUNNER].stop()  # so the add-on's own frames aren't in the recording
+    await app[RUNNER].stop(keep_scene=True)  # so the add-on's own frames aren't in the recording
     lights = {d["ip"]: d["name"] for d in app[STORAGE].load_devices() if d.get("ip")}
     listener = listening["listener"] = Listener(lights, **listening["options"])
     listener.start(seconds)
@@ -219,7 +219,7 @@ async def lab_send(request):
         raise web.HTTPBadRequest(text=f"steps must be a list of 1-{LAB_MAX_STEPS}")
     steps = [_lab_step(s) for s in raw_steps]
     # Nothing else may talk to the light meanwhile, or the results mean nothing.
-    await app[RUNNER].stop()
+    await app[RUNNER].stop(keep_scene=True)
     if (old := app[TESTS].pop(ip, None)):
         old.cancel()
     app[OUTPUT].release(ip)
@@ -242,7 +242,7 @@ async def lab_speed(request):
         raise web.HTTPBadRequest(text="bulbs and per_second must be numbers")
     if not 1 <= bulbs <= MAX_SEGMENTS or not 0.5 <= per_second <= 20:
         raise web.HTTPBadRequest(text=f"bulbs must be 1-{MAX_SEGMENTS} and per_second 0.5-20")
-    await app[RUNNER].stop()
+    await app[RUNNER].stop(keep_scene=True)
     if (old := app[TESTS].pop(ip, None)):
         old.cancel()
     app[OUTPUT].release(ip)
@@ -473,7 +473,7 @@ async def test_device(request):
         app[OUTPUT].release(target)
         return web.json_response({"ok": True})
     if app[RUNNER].player.playing or app[RUNNER].playlist:  # stopping lets go of every light, which makes a lit test blink
-        await app[RUNNER].stop()
+        await app[RUNNER].stop(keep_scene=True)
     settings = dict(reverse=d["reverse"], gradient=d["gradient"], protocol=d["protocol"], brightness=d["brightness"])
     if rgb is None:
         task = run_test_pattern(app[OUTPUT], target, d["segments"], seconds, **settings)
@@ -505,7 +505,7 @@ async def probe_device(request):
     if segment == 0:
         app[OUTPUT].release(target)
         return web.json_response({"ok": True})
-    await app[RUNNER].stop()
+    await app[RUNNER].stop(keep_scene=True)
     tests[target] = asyncio.create_task(run_probe(
         app[OUTPUT], target, segment, gradient=d["gradient"], protocol=d["protocol"]))
     return web.json_response({"ok": True, "max": PROBE_MAX})
@@ -533,7 +533,7 @@ async def preview_device(request):
         raise web.HTTPBadRequest(text="rgb must have 3 bytes per segment")
     if live is None or live.task.done():
         # Previewing takes the light over from a running show or a test, like Test does.
-        await app[RUNNER].stop()
+        await app[RUNNER].stop(keep_scene=True)
         if (old := tests.pop(target, None)):
             old.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -2008,6 +2008,7 @@ async def _replace_data(app, reason: str, data: bytes | None) -> dict:
     if data is not None:
         backup.check(data)  # refuse a bad file before anything changes
     await app[RUNNER].stop()
+    app[RUNNER].scene = None  # its scene may not be there afterwards
     kept = backup.keep_copy(config, __version__, reason)
     restored = 0
     if data is None:

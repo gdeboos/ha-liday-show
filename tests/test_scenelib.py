@@ -157,3 +157,22 @@ async def test_the_scene_waits_while_a_light_is_being_previewed(runner):
     assert not runner.scene_playing
     runner.player.output.release("10.0.0.9")
     assert await _until(lambda: runner.scene_playing)
+
+
+async def test_a_test_or_preview_on_a_light_pauses_the_scene_rather_than_ending_it(runner):
+    _scene(runner.storage)
+    await runner.play_scene("glow")
+    await runner.stop(keep_scene=True)  # as Test, the lab or a live preview do
+    assert runner.scene and not runner.scene_playing
+    assert await _until(lambda: runner.scene_playing)
+
+
+async def test_a_scene_with_one_look_for_every_light_saves_as_it_was_sent(tmp_path):
+    from aiohttp.test_utils import TestClient, TestServer
+    from halidayshow import server
+    app = server.make_app(tmp_path / "config", tmp_path / "media", allow_all=True)
+    async with TestClient(TestServer(app)) as client:
+        scene_id = (await (await client.post("/api/house-scenes", json={"name": "Party"})).json())["id"]
+        body = {"name": "Party", "mode": "basic", "lights": {}, "all": {"effect": "rainbow", "params": {"speed": 2}}}
+        assert (await client.put(f"/api/house-scenes/{scene_id}", json=body)).status == 200
+        assert await (await client.get(f"/api/house-scenes/{scene_id}")).json() == body

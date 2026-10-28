@@ -214,16 +214,18 @@ class Runner:
         except asyncio.CancelledError:
             pass
 
-    async def stop(self, show: str | None = None):
+    async def stop(self, show: str | None = None, keep_scene: bool = False):
         """Stop whatever is on. With `show`, only if that show is what's playing (the editor
         stopping its own show mustn't turn off a scene that has come back since). Stopping while
-        the scene itself is on turns it off; stopping a show over a scene lets the scene come back."""
+        the scene itself is on turns it off; stopping a show over a scene lets the scene come back.
+        keep_scene: the lights are wanted for a moment (a test, the lab, a preview), and the scene
+        comes back once they're let go."""
         if show is not None and (self.player.show_id != show or self.scene_playing):
             return
         self.requests.clear()
         self._yours += 1
         async with self._control:
-            if self.scene_playing:
+            if self.scene_playing and not keep_scene:
                 self.scene = None
             await self._end_playlist()
             async with self._lock:
@@ -263,11 +265,6 @@ class Runner:
                 async with self._lock:
                     if self.scene_playing:
                         await self._stop()
-
-    def forget_scene(self, scene_id: str):
-        """A scene was deleted: don't bring it back."""
-        if self.scene and self.scene["id"] == scene_id and not self.scene_playing:
-            self.scene = None
 
     def _idle(self) -> bool:
         """Nothing is using the lights: no show, block, playlist, visitor, test or preview."""
