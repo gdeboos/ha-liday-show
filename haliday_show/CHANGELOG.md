@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.225
+## 0.2.226
 
 - WLED now comes first. **+ Add a light** and **Plan a light** list **WLED strip** first, then the pixel
   controllers, then **Govee light**, and a planned light starts as a WLED strip.
@@ -15,6 +15,11 @@
   - calls the Music editor's **Edit** panel a panel, not a card;
   - mentions folding on the timeline;
   - no longer promises scenes that react to **Live music** in "the next update".
+
+## 0.2.225
+
+- The Show editor's **Timeline** is now never taller than your screen. With lots of lights it scrolls them inside itself, so the times, song and beats stay in view and you no longer scroll the whole page up and down.
+- Use the mouse wheel over the light names to scroll through the lights. Dragging a selection near the top or bottom edge scrolls too.
 
 ## 0.2.224
 

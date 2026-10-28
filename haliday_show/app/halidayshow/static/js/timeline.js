@@ -1,7 +1,8 @@
 // Canvas timeline: ruler, waveform, beat lane and one track per device.
 //
-// The canvas stays the size of the viewport (sticky inside a wide scroll area),
-// so long songs at high zoom never hit browser canvas size limits.
+// The canvas stays the size of the viewport (sticky inside a wide, tall scroll area),
+// so long songs at high zoom never hit browser canvas size limits. Up and down, the lights scroll
+// under the ruler, song and beat lane, which stay put.
 
 import { EFFECTS, HOUSE, isGroupTrack, renderTrack } from "./effects.js";
 import { asShown } from "./lightspeed.js";
@@ -85,11 +86,14 @@ export class Timeline {
     return out;
   }
 
-  yOf(i, rows = this.rows()) { return TOP + rows.indexOf(i) * TRACK_H; }
+  // Where a track's row is on the canvas: the tracks scroll up and down under the ruler, song and
+  // beat lane, which stay put.
+  get sy() { return this.scroll.scrollTop; }
+  yOf(i, rows = this.rows()) { return TOP + rows.indexOf(i) * TRACK_H - this.sy; }
 
   trackAt(y) {
-    const rows = this.rows(), r = Math.floor((y - TOP) / TRACK_H);
-    return y >= TOP && r < rows.length ? rows[r] : -1;
+    const rows = this.rows(), r = Math.floor((y - TOP + this.sy) / TRACK_H);
+    return y >= TOP && r >= 0 && r < rows.length ? rows[r] : -1;
   }
 
   toggleFold(key) {
@@ -101,9 +105,11 @@ export class Timeline {
 
   layout() {
     const w = this.scroll.clientWidth;
-    const h = TOP + Math.max(this.app.show ? this.rows().length : 0, 1) * TRACK_H;
+    const full = TOP + Math.max(this.app.show ? this.rows().length : 0, 1) * TRACK_H;
     this.inner.style.width = `${HEADER_W + this.duration * this.app.pps + 40}px`;
-    this.inner.style.height = `${h}px`;
+    this.inner.style.height = `${full}px`;
+    // The panel is at most about a screen tall (CSS), so the canvas is the part of the tracks in view.
+    const h = Math.min(full, this.scroll.clientHeight || full);
     // The stage must be only as wide as the view, or it has no room to stick and scrolls away.
     Object.assign(this.canvas.parentElement.style, { width: `${w}px`, height: `${h}px` });
     const dpr = window.devicePixelRatio || 1;
@@ -147,16 +153,21 @@ export class Timeline {
     const col = (n) => css.getPropertyValue(n).trim();
     ctx.clearRect(0, 0, w, h);
 
-    // tracks
-    const rows = this.rows();
+    // tracks, scrolled by sy and kept below the beat lane
+    const rows = this.rows(), sy = this.sy;
+    const inView = (y) => y + TRACK_H > TOP && y < h;
+    const below = () => { ctx.save(); ctx.beginPath(); ctx.rect(0, TOP, w, h - TOP); ctx.clip(); };
+    below();
     rows.forEach((i, row) => {
       const tr = this.app.show.tracks[i];
-      const y = TOP + row * TRACK_H;
+      const y = TOP + row * TRACK_H - sy;
+      if (!inView(y)) return;
       ctx.fillStyle = col(row % 2 ? "--track-alt" : "--track");
       ctx.fillRect(HEADER_W, y, w - HEADER_W, TRACK_H);
       const dev = this.app.devices[tr.device];
       tr.clips.forEach((clip) => this.drawClip(clip, y, dev, col, this.app.clipFit?.(clip, i)));
     });
+    ctx.restore();
 
     // beats, with the first beat of each bar drawn stronger
     ctx.fillStyle = col("--panel");
@@ -200,22 +211,25 @@ export class Timeline {
     tracks.forEach((_, k) => { const g = lightOf(k); if (g) sizes[g] = (sizes[g] || 0) + 1; });
     const groupOf = (k) => { const g = lightOf(k); return g && sizes[g] > 1 ? g : null; };
     // Neighbours on screen, past folded tracks.
-    const above = (i) => rows[rows.indexOf(i) - 1], below = (i) => rows[rows.indexOf(i) + 1];
+    const above = (i) => rows[rows.indexOf(i) - 1], under = (i) => rows[rows.indexOf(i) + 1];
+    below();
     rows.forEach((i, row) => {
       const g = groupOf(i);
       if (!g) return;
-      const y = TOP + row * TRACK_H;
+      const y = TOP + row * TRACK_H - sy;
+      if (!inView(y)) return;
       ctx.fillStyle = col("--accent");
       ctx.globalAlpha = 0.07;
       ctx.fillRect(0, y, HEADER_W, TRACK_H);
       ctx.globalAlpha = 0.8;
-      const joinUp = groupOf(above(i)) === g, joinDown = groupOf(below(i)) === g;
+      const joinUp = groupOf(above(i)) === g, joinDown = groupOf(under(i)) === g;
       ctx.fillRect(0, y + (joinUp ? 0 : 4), 4, TRACK_H - (joinUp ? 0 : 4) - (joinDown ? 0 : 4));
       ctx.globalAlpha = 1;
     });
     rows.forEach((i, row) => {
       const tr = tracks[i];
-      const y = TOP + row * TRACK_H;
+      const y = TOP + row * TRACK_H - sy;
+      if (!inView(y)) return;
       const dev = this.app.devices[tr.device];
       if (this.app.selected?.track === i && !this.app.selected.clip && !this.app.selected.range) {
         ctx.fillStyle = col("--accent");
@@ -263,10 +277,12 @@ export class Timeline {
       ctx.fillText(clipText(ctx, note ? `⚠ ${note}` : line, HEADER_W - x - 6), x, y + 36);
     });
     this.drawRange(col);
+    ctx.restore();
     ctx.strokeStyle = col("--line");
     ctx.beginPath(); ctx.moveTo(HEADER_W + 0.5, 0); ctx.lineTo(HEADER_W + 0.5, h); ctx.stroke();
     for (let row = 0; row <= rows.length; row++) {
-      const y = TOP + row * TRACK_H + 0.5;
+      const y = TOP + row * TRACK_H + 0.5 - sy;
+      if (y < TOP || y > h) continue;
       // A heavier line where a group of a split light's tracks starts or ends.
       const now = groupOf(rows[row]), before = groupOf(rows[row - 1]);
       const edge = now !== before && (now || before);
@@ -598,6 +614,9 @@ export class Timeline {
     const c = d.clip;
     if (d.mode === "range") {
       const s = Math.max(0, this.snapTime(t, e));
+      // Near the top or bottom edge, the tracks scroll so the selection can reach further.
+      if (y > this.h - 24) this.scroll.scrollTop += 12;
+      else if (y < TOP + 12 && this.sy > 0) this.scroll.scrollTop -= 12;
       const ti = this.trackAt(Math.min(Math.max(y, TOP), this.h - 1));
       const [a, b] = s >= d.anchor ? [d.anchor, Math.max(s, d.anchor + MIN_LEN)] : [s, d.anchor];
       this.setRange(d.track, ti >= 0 ? ti : d.track, a, b);
@@ -664,7 +683,9 @@ export class Timeline {
       this.zoom(Math.exp(-dy * 0.004), this.pos(e)[0]);
     } else if (!e.shiftKey && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
       e.preventDefault();
-      this.scroll.scrollLeft += e.deltaY * unit;
+      // Over the light names it scrolls up and down through the lights; over the tracks, along the song.
+      if (this.pos(e)[0] < HEADER_W) this.scroll.scrollTop += e.deltaY * unit;
+      else this.scroll.scrollLeft += e.deltaY * unit;
     }
   }
 }
