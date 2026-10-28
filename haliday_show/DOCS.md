@@ -41,8 +41,12 @@ Your browser's **Back** and **Forward** buttons (or swiping back on a phone) mov
 pages you've visited, in Home Assistant too. From an open show, **Back** goes to **Your shows**, as
 **← All shows** does; from a song in the Music editor, it goes to **Your songs**; from a playlist, to
 **Your playlists**. The first two ask first if you'd lose changes. Going back to **Your shows** stops the show if it's playing. **Back** does nothing
-while a window is open: close it first. Without Home Assistant (Docker or Python), reloading the
-page keeps you on the same tab or page.
+while a window is open: close it first.
+
+When you come back to HA-liday Show from elsewhere in Home Assistant, or reload the page, it opens where
+you left it, with the same show, song, draft or playlist open. It opens on **Library** the first time,
+and if what you had open has gone, it shows that editor's list. This is kept in your browser, so each
+computer or phone remembers its own place.
 
 ### Help
 

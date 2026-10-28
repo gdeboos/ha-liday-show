@@ -5265,6 +5265,15 @@ async function openDraft(id) {
   if (!(await music.openDraft(id))) { app.songChosen = !!music.base; showView("music"); }
 }
 
+// Back in the Music editor on the song you had open; if it's gone, its list instead.
+async function reopenSong(ref) {
+  app.songChosen = true;
+  showView("music", { push: false });
+  await refreshAudio().catch(() => {});
+  await music.open(ref, { asked: true });
+  if (!music.base) { app.songChosen = false; showView("music", { push: false }); }
+}
+
 async function renameDraft(d) {
   const name = prompt("Rename the draft", d.name)?.trim();
   if (!name || name === d.name) return;
@@ -7441,10 +7450,21 @@ let shownPage = null, undoing = false, navigating = false;
 let shownN = (() => { try { return Number.isInteger(history.state?.n) ? history.state.n : 0; } catch { return 0; } })();
 const isPage = (p) => typeof p === "string" && /^[a-z]+$/.test(p) && !!$(`view-${p}`);
 
+// Where you were, kept in this browser: Home Assistant opens the app afresh, with no #page, each
+// time you come back to it, so it reopens there (and the show, song or playlist you had open).
+function rememberPlace() {
+  if (!shownPage) return;
+  const ref = music.base && { source: music.base.source, path: music.base.path };
+  prefs.set("place", { page: shownPage, playlist: openPlaylistId, draft: music.draft?.id || null, song: ref || null });
+}
+addEventListener("pagehide", rememberPlace);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") rememberPlace(); });
+
 function rememberPage(page, push) {
   if (page === shownPage && push) return;
   const first = shownPage === null;
   shownPage = page;
+  rememberPlace();
   try {
     if (push && !first) history.pushState({ page, n: (shownN += 1) }, "", `#${page}`); // drops any Forward
     else history.replaceState({ page, n: shownN }, "", `#${page}`);
@@ -7900,11 +7920,21 @@ async function init() {
     house.load().then(renderHouseLights);
     const shows = await api("api/shows");
     await openShow(null, { chosen: false });
-    // Reloaded or bookmarked on a page: open that page (an editor opens on its list).
-    const wanted = location.hash.slice(1);
+    // Reloaded, bookmarked, or back in the app after a while: open the page you were on, with what
+    // you had open in it.
+    const place = prefs.get("place", null);
+    const wanted = location.hash.slice(1) || place?.page;
+    const same = place?.page === wanted;
     // It opens on the Library: your shows and songs, with the editors a tab away.
     showView("library");
-    if (isPage(wanted) && wanted !== shownPage) showView(wanted, { push: false });
+    if (isPage(wanted) && wanted !== shownPage) {
+      const last = prefs.get("lastShow", null);
+      if (same && wanted === "editor" && shows.some((x) => x.id === last)) { await openShow(last, { chosen: false }); app.chosen = true; }
+      if (same && wanted === "playlist" && place.playlist) { openPlaylistId = place.playlist; app.playlistChosen = true; }
+      if (same && wanted === "music" && place.draft) await openDraft(place.draft);
+      else if (same && wanted === "music" && place.song) await reopenSong(place.song);
+      else showView(wanted, { push: false });
+    }
     window.addEventListener("popstate", pageFromHistory);
     // A fresh install opens the setup guide, once.
     if (!app.deviceList.length && !shows.length && !prefs.get("wizard.done", false)) openWizard();
