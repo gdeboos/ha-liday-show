@@ -489,7 +489,7 @@ timeline.
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
 - **By hand:** [The timeline](#the-timeline) · [Adding effects](#adding-effects) ·
-  [Editing a clip](#editing-a-clip) · [Presets](#presets) · [Your own presets](#your-own-presets) ·
+  [Editing a clip](#editing-a-clip) · [Transitions](#transitions) · [Presets](#presets) · [Your own presets](#your-own-presets) ·
   [Copying](#copying) · [Colour palettes](#colour-palettes)
 - **Odds and ends:** [Lights that are gone](#lights-that-are-gone) · [Working on one part](#working-on-one-part) ·
   [Undo](#undo) · [Shortcuts](#shortcuts)
@@ -998,7 +998,22 @@ its edges to resize it, and change its effect, colours and settings in the Selec
 clip is selected it loops on its own in a strip at the top of its settings, so changes show
 straight away. To swap the effect, press the **Effect** button: it opens the same effect
 chooser used to add one, playing on that light for the clip's length, with the current effect
-outlined. Changing effect keeps the clip's colours and brightness.
+outlined. Changing effect keeps the clip's colours, brightness and transitions.
+
+### Transitions
+
+Under **Transitions** in the Selection panel, a clip can come **In** and go **Out** gently rather than
+switching on and off. Pick how, and how many seconds it takes:
+
+- **Fade**: the whole light at once.
+- **Wipe** and **Wipe back**: along the light from one end or the other.
+- **From the middle**: spreading out from the middle of the light.
+- **Dissolve**: bulbs switching one by one in a random order.
+
+When two clips are back to back on one light, the transition is a crossfade: the old look turns into
+the new one with no dark gap. Use the second clip's **In** (or, if it has none, the first clip's
+**Out**). On the House lane and group lanes, a clip fades in and out over the lights' own effects.
+The timeline shows each transition on its clip.
 
 Previews show what the real light will do. A light on **Whole light (one colour)**, or a Home
 Assistant light or switch, can only change a few times a second, so its previews (the timeline,

@@ -7,7 +7,7 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, EFFECT_GROUPS, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, TRANSITIONS, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -2489,6 +2489,9 @@ const MINE_ONLY_KEY = "halidayshow.myPresetsOnly";
 const presetsFor = (effect) => [...(PRESETS[effect] || []), ...app.myPresets.filter((p) => p.effect === effect)];
 const presetLabel = (p) => (p.mine ? `★ ${p.label}` : p.label);
 
+// What a clip keeps when its effect changes: its place, and how it comes in, goes out and mixes.
+const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOut", "transOutSecs"];
+
 // What a clip becomes with `effect` and, optionally, one of its presets: the effect's defaults, the
 // colours and brightness carried over from `from` (the clip being changed), then the preset.
 function chosenParams(effect, preset, from = null) {
@@ -2726,7 +2729,7 @@ function renderInspector() {
         // Same effect: a preset only changes the settings it names, Default resets the rest.
         Object.assign(clip, preset ? presetParams(preset, clip) : params);
       } else {
-        for (const k of Object.keys(clip)) if (!["effect", "start", "end"].includes(k)) delete clip[k];
+        for (const k of Object.keys(clip)) if (!CLIP_KEEPS.includes(k)) delete clip[k];
         Object.assign(clip, params, { effect: key });
       }
       app.changed();
@@ -2790,6 +2793,37 @@ function renderInspector() {
     }
     field(p.label, el);
   }
+  // Transitions: how the clip comes in and goes out. Back to back with another clip, it crossfades.
+  groups.transitions = group("Transitions");
+  target = groups.transitions;
+  for (const [key, label] of [["transIn", "In"], ["transOut", "Out"]]) {
+    const type = document.createElement("select");
+    for (const o of TRANSITIONS) type.add(new Option(o === "none" ? "None" : o[0].toUpperCase() + o.slice(1), o, false, o === (clip[key] || "none")));
+    const secs = document.createElement("input");
+    Object.assign(secs, { type: "number", min: 0.05, max: 30, step: 0.05, value: clip[`${key}Secs`] ?? 1 });
+    secs.disabled = !clip[key] || clip[key] === "none";
+    secs.setAttribute("aria-label", `${label} seconds`);
+    type.addEventListener("change", () => {
+      if (type.value === "none") { delete clip[key]; delete clip[`${key}Secs`]; } else {
+        clip[key] = type.value;
+        clip[`${key}Secs`] ??= 1;
+      }
+      secs.disabled = type.value === "none";
+      secs.value = clip[`${key}Secs`] ?? 1;
+      app.changed();
+    });
+    secs.addEventListener("change", () => {
+      const v = Number(secs.value);
+      if (!Number.isFinite(v) || v <= 0 || !clip[key]) return;
+      clip[`${key}Secs`] = Math.min(v, 30);
+      app.changed();
+    });
+    const wrap = document.createElement("span");
+    wrap.className = "insp-trans";
+    wrap.append(type, secs, " s");
+    field(label, wrap);
+  }
+
   const colourKeys = EFFECTS[clip.effect].params.filter((p) => p.type === "color" && !unusedColour(clip.effect, p.key, clip)).map((p) => p.key);
   if (colourKeys.length) {
     groups.colours.append(paletteRow((c) => {
@@ -4618,8 +4652,8 @@ function deleteRange() {
     for (const c of app.show.tracks[t].clips) {
       if (c.end <= r.start || c.start >= r.end) { kept.push(c); continue; }
       n++;
-      if (c.start < r.start) kept.push({ ...c, end: r.start });
-      if (c.end > r.end) kept.push({ ...c, start: r.end });
+      if (c.start < r.start) kept.push(clipPiece(c, c.start, r.start));
+      if (c.end > r.end) kept.push(clipPiece(c, r.end, c.end));
     }
     app.show.tracks[t].clips = kept;
   }

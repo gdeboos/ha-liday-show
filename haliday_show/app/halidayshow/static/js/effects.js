@@ -150,7 +150,7 @@ export const EFFECTS = {
       choice("blend", "Change", "fade", ["fade", "step"])],
     render: (p, t) => {
       const cs = [p.color, p.color2, p.color3, p.color4].slice(0, Number(p.count)).map(hexToRgb);
-      const s = t * p.rate, k = Math.floor(s) % cs.length;
+      const s = t * p.rate, k = mod(Math.floor(s), cs.length);
       return p.blend === "step" ? cs[k] : mix(cs[k], cs[(k + 1) % cs.length], smooth(s - Math.floor(s)));
     },
   },
@@ -1000,11 +1000,12 @@ export function applyHouse(clips, time, pos, out) {
     const p = { ...defaultParams(clip.effect), ...clip };
     const t = time - clip.start, dur = clip.end - clip.start;
     const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
+    const tr = transitionAt([], clip, time); // over the House lane, a transition fades in over the lights
     for (let i = 0; i < pos.length; i++) {
       if (!pos[i]) continue;
       const c = fx.renderAt(p, t, dur, pos[i][0], pos[i][1]);
       if (!c) continue;
-      const a = c.length > 3 ? c[3] : 1;
+      const a = (c.length > 3 ? c[3] : 1) * (tr ? transitionShare(tr, pos[i][0], i, clip) : 1);
       for (let k = 0; k < 3; k++) out[i * 3 + k] = clamp(out[i * 3 + k] * (1 - a) + c[k] * level * a);
     }
   }
@@ -1053,14 +1054,22 @@ export function applyGroups(plans, light, time, positions, out) {
     if (!live.length) continue;
     // The strip is the same for every light in the group, so it's worked out once a frame.
     if (plan.at !== time) {
-      const plain = live.filter((c) => !EFFECTS[c.effect]?.house);
-      plan.strip = plain.length ? renderTrack(plain, time, plan.total) : null;
+      // All the lane's plain clips, so a clip next to one that has just ended can crossfade from it.
+      const plain = plan.clips.filter((c) => !EFFECTS[c.effect]?.house);
+      const any = plain.some((c) => time >= c.start && time < c.end);
+      plan.strip = any ? renderTrack(plain, time, plan.total, undefined, true) : null;
+      plan.cover = any ? laneCover(plain, time, plan.total) : null;
       plan.at = time;
     }
     const house = live.filter((c) => EFFECTS[c.effect]?.house);
     for (const r of mine) {
       const slice = out.subarray(r.start * 3, (r.start + r.n) * 3);
-      if (plan.strip) slice.set(plan.strip.subarray(r.offset * 3, (r.offset + r.n) * 3));
+      if (plan.strip && plan.cover) {
+        for (let i = 0; i < r.n; i++) {
+          const w = plan.cover[r.offset + i];
+          for (let k = 0; k < 3; k++) slice[i * 3 + k] = clamp(slice[i * 3 + k] * (1 - w) + plan.strip[(r.offset + i) * 3 + k] * w);
+        }
+      } else if (plan.strip) slice.set(plan.strip.subarray(r.offset * 3, (r.offset + r.n) * 3));
       const pos = positions[r.pos];
       if (house.length && pos && plan.box) {
         const [u0, v0, u1, v1] = plan.box;
@@ -1072,21 +1081,120 @@ export function applyGroups(plans, light, time, positions, out) {
   return out;
 }
 
-// Clips later in the list sit on top. Uncovered segments are black.
-export function renderTrack(clips, time, n, out = new Uint8Array(n * 3)) {
-  out.fill(0);
+// Transitions: a clip's In (transIn, over transInSecs) and Out (transOut, transOutSecs). Optional
+// clip fields; a clip without them starts and stops at once, as before.
+export const TRANSITIONS = ["none", "fade", "wipe", "wipe back", "from the middle", "dissolve"];
+const ADJACENT = 0.02; // seconds: clips this close count as back to back, and crossfade
+
+// How much of the incoming look shows (0..1) at progress u (0..1) for a segment at x (0..1 along
+// the light, or across the house) and index i.
+function transWeight(type, u, x, i, seed) {
+  const soft = 0.08;
+  switch (type) {
+    case "wipe": return Math.min(Math.max((u * (1 + soft) - x) / soft, 0), 1);
+    case "wipe back": return Math.min(Math.max((u * (1 + soft) - (1 - x)) / soft, 0), 1);
+    case "from the middle": return Math.min(Math.max((u * (1 + soft) - Math.abs(x - 0.5) * 2) / soft, 0), 1);
+    case "dissolve": return Math.min(Math.max((u * 1.1 - hash01(i + 1, seed)) / 0.1, 0), 1);
+    default: return u;
+  }
+}
+
+// In and Out lengths for a clip, shrunk together if they'd overlap.
+function transLengths(clip) {
+  const on = (type) => type && type !== "none";
+  let a = on(clip.transIn) ? Math.max(Number(clip.transInSecs) || 0, 0) : 0;
+  let b = on(clip.transOut) ? Math.max(Number(clip.transOutSecs) || 0, 0) : 0;
+  const dur = clip.end - clip.start;
+  if (a + b > dur && a + b > 0) { const k = dur / (a + b); a *= k; b *= k; }
+  return [a, b];
+}
+
+// The transition a clip is in at `time`, if any: {type, u, out, from}. `from` is the clip it
+// crossfades with (the one before for an In, the one after for an Out), or null for dark. Where two
+// clips meet and the second has an In, that In is the crossfade and the first clip's Out is skipped.
+export function transitionAt(clips, clip, time) {
+  const [a, b] = transLengths(clip);
+  const t = time - clip.start, dur = clip.end - clip.start;
+  if (a > 0 && t < a) {
+    const from = clips.find((c) => c !== clip && Math.abs(c.end - clip.start) < ADJACENT && c.start < clip.start) || null;
+    return { type: clip.transIn, u: t / a, out: false, from };
+  }
+  if (b > 0 && t > dur - b) {
+    const next = clips.find((c) => c !== clip && Math.abs(c.start - clip.end) < ADJACENT && c.end > clip.end) || null;
+    if (next && transLengths(next)[0] > 0) return null;
+    return { type: clip.transOut, u: (dur - t) / b, out: true, from: next };
+  }
+  return null;
+}
+
+// How much of a clip shows on a segment during its transition `tr`.
+export function transitionShare(tr, x, i, clip) {
+  const seed = Math.round(clip.start * 100) + (tr.out ? 7 : 3);
+  return tr.out ? 1 - transWeight(tr.type, 1 - tr.u, x, i, seed) : transWeight(tr.type, tr.u, x, i, seed);
+}
+
+// The part of a clip from start to end, as left when part of it is cut away: an edge that's been
+// cut loses its transition (the left piece keeps the In, the right piece the Out).
+export function clipPiece(clip, start, end) {
+  const piece = { ...clip, start, end };
+  if (start > clip.start) { delete piece.transIn; delete piece.transInSecs; }
+  if (end < clip.end) { delete piece.transOut; delete piece.transOutSecs; }
+  return piece;
+}
+
+// A clip's colours at `time` (which may be outside it, for a crossfade) as floats, brightness applied.
+function paintClip(clip, time, n, buf) {
+  const fx = EFFECTS[clip.effect];
+  if (!fx) { buf.fill(0); return buf; }
+  const p = { ...defaultParams(clip.effect), ...clip };
+  const t = time - clip.start, dur = clip.end - clip.start;
+  const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
+  for (let i = 0; i < n; i++) {
+    const c = fx.render(p, t, dur, n, i);
+    buf[i * 3] = c[0] * level;
+    buf[i * 3 + 1] = c[1] * level;
+    buf[i * 3 + 2] = c[2] * level;
+  }
+  return buf;
+}
+
+// How much a lane's clips cover each of n segments at `time` (0..1), so a lane clip fading in or out
+// shows the lights' own effects underneath rather than dark. null when they cover it fully.
+export function laneCover(clips, time, n) {
+  let cover = null;
   for (const clip of clips) {
     if (time < clip.start || time >= clip.end) continue;
-    const fx = EFFECTS[clip.effect];
-    if (!fx) continue;
-    const p = { ...defaultParams(clip.effect), ...clip };
-    const t = time - clip.start, dur = clip.end - clip.start;
-    const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
+    const tr = transitionAt(clips, clip, time);
+    if (!tr || tr.from) return null; // a clip with no transition, or crossfading into another, covers it all
+    cover ||= new Float32Array(n);
+    for (let i = 0; i < n; i++) cover[i] = Math.max(cover[i], transitionShare(tr, n > 1 ? i / (n - 1) : 0, i, clip));
+  }
+  return cover;
+}
+
+let scratchA = new Float32Array(0), scratchB = new Float32Array(0);
+
+// Clips later in the list sit on top. Uncovered segments are black. A clip in a transition shows
+// over the clip it crossfades with, or over what's beneath it (dark, on a light's own track). For a
+// lane (lane true) a clip fading to or from nothing is drawn in full: laneCover() says how much of
+// it lies over the lights.
+export function renderTrack(clips, time, n, out = new Uint8Array(n * 3), lane = false) {
+  out.fill(0);
+  if (scratchA.length < n * 3) { scratchA = new Float32Array(n * 3); scratchB = new Float32Array(n * 3); }
+  const mine = scratchA.subarray(0, n * 3), under = scratchB.subarray(0, n * 3);
+  for (const clip of clips) {
+    if (time < clip.start || time >= clip.end || !EFFECTS[clip.effect]) continue;
+    paintClip(clip, time, n, mine);
+    const tr = transitionAt(clips, clip, time);
+    if (!tr || (lane && !tr.from)) {
+      for (let j = 0; j < n * 3; j++) out[j] = clamp(mine[j]);
+      continue;
+    }
+    if (tr.from) paintClip(tr.from, time, n, under);
+    else for (let j = 0; j < n * 3; j++) under[j] = out[j];
     for (let i = 0; i < n; i++) {
-      const c = fx.render(p, t, dur, n, i);
-      out[i * 3] = clamp(c[0] * level);
-      out[i * 3 + 1] = clamp(c[1] * level);
-      out[i * 3 + 2] = clamp(c[2] * level);
+      const w = transitionShare(tr, n > 1 ? i / (n - 1) : 0, i, clip);
+      for (let k = i * 3; k < i * 3 + 3; k++) out[k] = clamp(under[k] * (1 - w) + mine[k] * w);
     }
   }
   return out;

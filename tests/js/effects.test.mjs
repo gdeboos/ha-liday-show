@@ -409,3 +409,65 @@ test("xLights-style effects: morph, shockwave, curtain and pinwheel", () => {
   const morph = [...renderTrack([newClip("morph", 0, 10)], 5, 10)];
   assert.ok(morph[9 * 3] > 200 && morph[0] < 100);
 });
+
+test("transitions: fade in from dark, crossfade between clips back to back, wipe and dissolve", async () => {
+  const { transitionAt, laneCover } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const red = { ...newClip("solid", 0, 4), color: "#ff0000" }, blue = { ...newClip("solid", 4, 8), color: "#0000ff" };
+  // No transitions: as before.
+  assert.deepEqual([...renderTrack([red, blue], 4.1, 1)], [0, 0, 255]);
+  // Fade in over 2 s from dark: halfway at 1 s.
+  const fadeIn = { ...red, transIn: "fade", transInSecs: 2 };
+  assert.deepEqual([...renderTrack([fadeIn], 1, 1)], [128, 0, 0]);
+  // Back to back, the second's In crossfades from the first: half red, half blue, no dark dip.
+  const cross = [red, { ...blue, transIn: "fade", transInSecs: 2 }];
+  assert.deepEqual([...renderTrack(cross, 5, 1)], [128, 0, 128]);
+  // Only an Out on the first: it crossfades into the second before the second starts.
+  const out = [{ ...red, transOut: "fade", transOutSecs: 2 }, blue];
+  assert.deepEqual([...renderTrack(out, 3, 1)], [128, 0, 128]);
+  // ...but not when the second has its own In (that In is the crossfade).
+  assert.equal(transitionAt([{ ...red, transOut: "fade", transOutSecs: 2 }, cross[1]], { ...red, transOut: "fade", transOutSecs: 2 }, 3), null);
+  // Out to dark with nothing after.
+  assert.deepEqual([...renderTrack([{ ...red, transOut: "fade", transOutSecs: 2 }], 3, 1)], [128, 0, 0]);
+  // Wipe in: the start of the light first.
+  const wipe = renderTrack([{ ...red, transIn: "wipe", transInSecs: 2 }], 1, 10);
+  assert.ok(wipe[0] === 255 && wipe[27] === 0);
+  // Dissolve in: some segments fully on, some off, halfway through.
+  const dis = renderTrack([{ ...red, transIn: "dissolve", transInSecs: 2 }], 1, 40);
+  const on = Array.from({ length: 40 }, (_, i) => dis[i * 3]);
+  assert.ok(on.filter((v) => v === 255).length > 5 && on.filter((v) => v === 0).length > 5);
+  // In and Out longer than the clip share it.
+  assert.ok(transitionAt([], { ...red, transIn: "fade", transInSecs: 10, transOut: "fade", transOutSecs: 10 }, 1.9).u < 1);
+  // A lane clip fading in covers the lights underneath only partly.
+  const cover = laneCover([fadeIn], 1, 3);
+  assert.ok(cover && Math.abs(cover[0] - 0.5) < 0.01);
+  assert.equal(laneCover([red], 1, 3), null);
+});
+
+test("a group lane clip fading in shows the light's own effect underneath", async () => {
+  const { planGroups, GROUP } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const light = { id: "a", segments: 2 };
+  const tracks = new Map([
+    ["a", { device: "a", clips: [{ ...newClip("solid", 0, 4), color: "#0000ff" }] }],
+    [GROUP + "g", { device: GROUP + "g", clips: [{ ...newClip("solid", 0, 4), color: "#ff0000", transIn: "fade", transInSecs: 2 }] }],
+  ]);
+  const plans = planGroups([{ id: "g", members: ["a"] }], [light], (id) => tracks.get(id));
+  const f = [...composeLight(light, (id) => tracks.get(id), 1, {}, [], undefined, plans)];
+  assert.deepEqual(f.slice(0, 3), [128, 0, 128]);
+});
+
+test("every effect gives real colours just outside its clip, for crossfades", async () => {
+  const { clipPiece } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  for (const [key, fx] of Object.entries(EFFECTS)) {
+    const p = { ...newClip(key, 2, 6) };
+    for (const t of [-1, -0.01, 4.01, 5]) {
+      for (let i = 0; i < 12; i++) {
+        const c = fx.house ? (fx.renderAt(p, t, 4, i / 11, 0.5) || [0, 0, 0]) : fx.render(p, t, 4, 12, i);
+        assert.ok(c.every(Number.isFinite), `${key} at ${t}`);
+      }
+    }
+  }
+  // Cutting a clip: each piece keeps only the transition on its uncut edge.
+  const c = { ...newClip("solid", 0, 10), transIn: "fade", transInSecs: 1, transOut: "wipe", transOutSecs: 2 };
+  const left = clipPiece(c, 0, 4), right = clipPiece(c, 6, 10);
+  assert.deepEqual([left.transIn, left.transOut, right.transIn, right.transOut], ["fade", undefined, undefined, "wipe"]);
+});
