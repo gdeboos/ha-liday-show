@@ -1,7 +1,7 @@
 // Colour palettes: presets that ship with the add-on, and how a palette recolours a clip.
 // Colours are picked to look right on LEDs, which wash out pastels and dark shades.
 
-import { EFFECTS } from "./effects.js";
+import { EFFECTS, defaultParams, unusedColour } from "./effects.js";
 
 export const PRESET_PALETTES = [
   { name: "Christmas", colors: ["#ff0000", "#00b000", "#ffffff", "#ffb000"] },
@@ -45,6 +45,13 @@ export function seasonalPalette(date = new Date()) {
 // The colours a palette fills on an effect. Backgrounds stay as they are, usually off.
 export function paletteKeys(effect) {
   return (EFFECTS[effect]?.params || []).filter((p) => p.type === "color" && p.key !== "background").map((p) => p.key);
+}
+
+// The colours an effect with settings `p` actually uses: for a list of colours, only up to its count.
+export function usedColourKeys(effect, p = {}) {
+  if (!EFFECTS[effect]) return [];
+  const full = { ...defaultParams(effect), ...p };
+  return paletteKeys(effect).filter((k) => !unusedColour(effect, k, full));
 }
 
 // Fill the clip's colours from the palette in order, starting `offset` colours in, so a run of

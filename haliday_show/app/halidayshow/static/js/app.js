@@ -28,7 +28,7 @@ import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor } from "./music.js";
 import { createVolume } from "./volume.js";
-import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
+import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette, usedColourKeys } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, entriesFor, scheduleLine, whenNext } from "./schedule.js";
 import { SchedulePage } from "./schedulepage.js";
 import { readability } from "../public/colours.js";
@@ -4330,12 +4330,12 @@ function blockEditor(block) {
       if (!p) return;
       const c = { effect: block.effect, ...block.params };
       applyPalette(c, p.colors);
-      for (const k of paletteKeys(block.effect)) block.params[k] = c[k];
+      for (const k of [...paletteKeys(block.effect), "count"]) if (k in c) block.params[k] = c[k];
       changed(true);
     });
     const sw = document.createElement("span");
     sw.className = "pl-colours";
-    for (const k of paletteKeys(block.effect)) {
+    for (const k of usedColourKeys(block.effect, clip)) {
       const s = document.createElement("span");
       s.style.background = clip[k];
       sw.append(s);

@@ -353,3 +353,19 @@ test("colour lists: a palette fills the list, extra colours are hidden, calm eff
   for (const k of ["fade", "wipe", "sunrise"]) assert.ok(!BLOCK_EFFECTS.includes(k), k);
   for (const k of ["fairy", "ocean", "aurora", "flow"]) assert.ok(BLOCK_EFFECTS.includes(k), k);
 });
+
+test("colour lists in scenes: changing effect carries the colours in use and how many", async () => {
+  const { changeEffect, sceneColours } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const { usedColourKeys } = await import("../../haliday_show/app/halidayshow/static/js/palettes.js");
+  assert.deepEqual(usedColourKeys("fairy", { count: "3" }), ["color", "color2", "color3"]);
+  assert.deepEqual(usedColourKeys("cycle", { count: "2" }), ["color", "color2", "color3", "color4"]);
+  const trio = { effect: "trio", params: { color: "#111111", color2: "#222222", color3: "#333333" } };
+  const fairy = changeEffect(trio, "fairy");
+  assert.equal(fairy.params.count, "3");
+  assert.deepEqual([fairy.params.color, fairy.params.color3], ["#111111", "#333333"]);
+  // A two-colour fairy look doesn't pass on its hidden third colour.
+  const back = changeEffect({ effect: "fairy", params: { count: "2", color: "#111111", color2: "#222222", color3: "#999999" } }, "trio");
+  assert.equal(back.params.color3, undefined);
+  assert.deepEqual(sceneColours({ all: { effect: "fairy", params: { count: "2", color: "#111111", color2: "#222222", color3: "#999999" } } }, []),
+    ["#111111", "#222222"]);
+});
