@@ -73,6 +73,15 @@ parts* below). Change them in WLED later? Press **Use WLED segments** under the 
 again: a part keeps its clips as long as its WLED segment is still there. You can also split the strip
 here by hand, without touching WLED.
 
+During a show HA-liday Show sets every LED itself, so the effect you picked in WLED, and its segments'
+own effects, are paused until a couple of seconds after the show stops, then WLED carries on where it
+left off. WLED's own brightness still applies, on top of **Brightness %** here. If only part of the
+strip lights up during a show, open WLED's **Config → Sync Interfaces** and untick **Use main segment
+only**.
+
+To plan a WLED strip before it arrives, pick **Plan a light**, type **WLED** as the model and set
+**Segments** to its number of LEDs.
+
 #### Moving a Govee light to WLED
 
 Rewired a Govee light to run from a WLED controller? You don't need to add it again. Open
@@ -85,16 +94,8 @@ window. Type the WLED's IP address, or press **Scan network** and **Use** next t
   44-segment light split into thirds, **Left**, **Center** and **Right** become thirds of the new length.
 - Shows that use the light are updated straight away, so playlists, schedules and Home Assistant play
   them on every LED.
-- Press **Test** afterwards. If the white dot runs the wrong way, turn on **Reverse**.
-
-During a show HA-liday Show sets every LED itself, so the effect you picked in WLED, and its segments'
-own effects, are paused until a couple of seconds after the show stops, then WLED carries on where it
-left off. WLED's own brightness still applies, on top of **Brightness %** here. If only part of the
-strip lights up during a show, open WLED's **Config → Sync Interfaces** and untick **Use main segment
-only**.
-
-To plan a WLED strip before it arrives, pick **Plan a light**, type **WLED** as the model and set
-**Segments** to its number of LEDs.
+- **Reverse** stays as it was. Press **Test** afterwards, and if the white dot runs the wrong way,
+  change **Reverse**.
 
 ### Pixel controllers
 

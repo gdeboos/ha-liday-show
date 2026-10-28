@@ -993,28 +993,35 @@ async function convertLight() {
   if (problem) { status(problem, "hint"); return; }
   let w;
   try { w = await wledInfo(ip); } catch (e) { status(`Couldn't reach a WLED light at ${ip}: ${e.message}`, true); return; }
-  const name = d.name, next = toWled(d, ip, w.leds);
+  const name = d.name, next = toWled(d, ip, w.leds), before = app.deviceList;
   app.deviceList = app.deviceList.map((x) => (x.id === d.id ? next : x));
   await saveDevices();
-  if (app.lights[d.id]?.kind !== "wled") return; // not saved: saveDevices said why
+  if (app.lights[d.id]?.kind !== "wled") { // not saved (saveDevices said why): put the Govee light back
+    app.deviceList = before;
+    indexDevices();
+    return;
+  }
   $("convert-dialog").close();
   $("light-dialog").close();
   status(`${name} is now a WLED light with ${w.leds} LEDs. Updating your shows…`);
-  const { done, failed } = await rebakeShowsFor(d.id);
-  const shows = done ? ` ${done} show${done === 1 ? "" : "s"} updated to match.` : "";
+  const { done, failed, open } = await rebakeShowsFor(d.id);
+  const leds = w.all > w.leds ? `${w.leds} of its ${w.all} LEDs (the most a light can have)` : `${w.leds} LEDs`;
   const parts = next.parts.length ? ` Its parts now cover ${next.parts.map((p) => `${p.name} ${p.from}–${p.to}`).join(", ")}.` : "";
-  status(`${name} is now a WLED light with ${w.leds} LEDs.${parts}${shows}${failed ? ` ${failed} couldn't be updated: open and save them.` : ""} Press Test to check it.`,
-    failed ? true : "saved", "lights");
+  const shows = (done ? ` ${done} show${done === 1 ? "" : "s"} updated to match.` : "")
+    + (open ? " The show you have open updates when you save it." : "")
+    + (failed ? ` ${failed === true ? "Your shows" : `${failed} show${failed === 1 ? "" : "s"}`} couldn't be updated: open and save them.` : "");
+  status(`${name} is now a WLED light with ${leds}.${parts}${shows} Press Test to check it.`, failed ? true : "saved", "lights");
 }
 
 // Re-bakes saved shows with a track on light `id`, so playlists, schedules and Home Assistant play them
 // at its new length straight away. The open show re-bakes when it next saves.
 async function rebakeShowsFor(id) {
-  let done = 0, failed = 0;
+  let done = 0, failed = 0, open = false, list;
   const pos = housePositions();
   app.bakedKey = null;
-  for (const s of await api("api/shows").catch(() => [])) {
-    if (s.id === app.showId && app.dirty) continue;
+  try { list = await api("api/shows"); } catch { return { done, failed: true, open }; }
+  for (const s of list) {
+    if (s.id === app.showId && app.dirty) { open = showUses(app.show, id); continue; }
     try {
       const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
       if (!showUses(show, id)) continue;
@@ -1024,7 +1031,7 @@ async function rebakeShowsFor(id) {
     } catch { failed++; }
   }
   await refreshShows();
-  return { done, failed };
+  return { done, failed, open };
 }
 
 $("convert-dialog").addEventListener("click", (e) => {
@@ -1140,7 +1147,7 @@ const LONG_PROTOCOLS = ["whole", "ddp", "e131"];
 async function wledInfo(ip) {
   const info = await api("api/wled/info", { method: "POST", json: { ip } });
   if (info.leds > info.max) status(`${info.name} has ${info.leds} LEDs; shows can drive the first ${info.max}`, "hint");
-  return { ...info, leds: Math.min(info.leds, info.max) };
+  return { ...info, leds: Math.min(info.leds, info.max), all: info.leds };
 }
 
 async function addWled(ip) {
