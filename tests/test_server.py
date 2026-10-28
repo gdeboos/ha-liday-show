@@ -1251,3 +1251,9 @@ async def test_advanced_scenes_are_saved_and_the_editor_plays_one_from_its_playh
     st = await (await client.post("/api/player/play", json={"scene": scene_id, "position": 3})).json()
     assert st["scene"]["id"] == scene_id and st["scene"]["playing"] and st["position"] >= 3
     await client.post(f"/api/house-scenes/{scene_id}/stop")
+
+
+async def test_a_scene_with_a_bad_schedule_is_turned_down(client):
+    scene_id = (await (await client.post("/api/house-scenes", json={"name": "Glow"})).json())["id"]
+    bad = {"name": "Glow", "mode": "basic", "lights": {}, "schedule": {"on": True, "start": "25:00", "end": "22:00"}}
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json=bad)).status == 400

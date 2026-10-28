@@ -95,3 +95,11 @@ test("Basic to Advanced and back, while nothing would be lost", async () => {
   assert.deepEqual(sceneColours(adv, lights), ["#ff0000"]);
   assert.equal(sceneLoop(adv, lights, 40), 20);
 });
+
+test("switching modes keeps the scene's schedule", async () => {
+  const { toAdvanced, toBasic } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const schedule = { on: true, start: "sunset", offset: 0, end: "00:00", days: [0, 1], from: "", to: "" };
+  const adv = toAdvanced({ name: "Glow", mode: "basic", lights: {}, schedule }, lights, 20);
+  assert.deepEqual(adv.schedule, schedule);
+  assert.deepEqual(toBasic(adv).schedule, schedule);
+});

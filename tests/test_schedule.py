@@ -401,3 +401,11 @@ async def test_a_scene_schedule_is_checked_like_a_playlists():
     assert s["schedule"]["start"] == "16:00"
     with pytest.raises(scenelib.SceneError):
         scenelib.clean_scene({"name": "Glow", "lights": {}, "schedule": {"on": True, "start": "25:00"}})
+
+
+async def test_where_scene_times_overlap_the_first_by_name_comes_on(setup):
+    storage, runner, sched = setup
+    scene(storage, "snow", SUNSET_TO_MIDNIGHT_ISH)
+    scene(storage, "glow", SUNSET_TO_MIDNIGHT_ISH)
+    await sched.tick(at(16))
+    assert runner.scene["id"] == "glow"

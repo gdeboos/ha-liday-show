@@ -193,8 +193,10 @@ class Scheduler:
             return
 
     async def tick(self, now: datetime | None = None):
-        await self.tick_playlists(now)
-        await self.tick_scenes(now)
+        try:
+            await self.tick_playlists(now)
+        finally:  # scenes keep to their times whatever a playlist ran into
+            await self.tick_scenes(now)
 
     async def tick_playlists(self, now: datetime | None = None):
         now = now or datetime.now()
