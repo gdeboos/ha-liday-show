@@ -1095,21 +1095,26 @@ a.button { text-decoration: none; }
 #sc-canvas { display: block; max-width: 100%; border-radius: 6px; margin: 6px 0; }
 .sc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .sc-same { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
-.sc-cols, .sc-row { display: grid; grid-template-columns: minmax(110px, 1.1fr) minmax(110px, 1fr) minmax(90px, 1fr)
-  minmax(150px, 1.4fr) minmax(90px, 1fr) minmax(90px, 1fr); gap: 8px 12px; align-items: center; }
+.sc-cols, .sc-row { display: grid; grid-template-columns: minmax(130px, 1.1fr) minmax(170px, 1.3fr) minmax(170px, 1.3fr)
+  minmax(100px, 1fr) minmax(100px, 1fr); gap: 8px 16px; align-items: center; }
 .sc-cols { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-.sc-rows { display: flex; flex-direction: column; gap: 8px; }
-.sc-row { padding: 6px 0; border-top: 1px solid var(--line); }
-.sc-light { font-weight: 600; overflow-wrap: anywhere; }
+.sc-rows { display: flex; flex-direction: column; }
+.sc-row { padding: 8px 0; border-top: 1px solid var(--line); min-height: 48px; }
+.sc-light { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; font-weight: 600; overflow-wrap: anywhere; }
 .sc-off { grid-column: 3 / -1; }
+.sc-none { color: var(--muted); }
 .sc-fx { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.sc-effect { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* A light split into parts: its name and the switch, then the whole light or each part, set in. */
-.sc-split { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 0 0; border-top: 1px solid var(--line); }
+.sc-effect { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; }
+.sc-effect span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-caret { font-size: 10px; color: var(--muted); }
+/* The Each part on its own switch, small, under a split light's name. */
+.sc-parts { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 400; color: var(--muted); }
+.sc-split { min-height: 0; }
 .sc-row.nested { border-top: 0; padding-top: 0; }
-.sc-row.nested .sc-light { padding-left: 16px; font-weight: 500; }
-.sc-colours { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.sc-swatches { display: inline-flex; gap: 4px; }
+.sc-row.nested .sc-light { padding-left: 18px; font-weight: 500; }
+.sc-colours { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sc-palette { flex: 1; min-width: 0; }
+.sc-swatches { display: inline-flex; gap: 4px; flex: none; }
 .sc-swatches input[type=color] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 3px;
   background: none; }
 .sc-row input[type=range] { width: 100%; accent-color: var(--accent); }
@@ -1123,6 +1128,9 @@ a.button { text-decoration: none; }
   .sc-light { grid-column: 1 / -1; }
   .sc-off { grid-column: 1 / -1; }
   .sc-mini { display: block; }
+  .sc-none { display: none; }
+  .sc-fx { grid-column: 1 / -1; }
+  .sc-colours { grid-column: 1 / -1; }
 }
 .sc-mode { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .sc-mode button { border: 0; border-radius: 0; }

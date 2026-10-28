@@ -50,11 +50,11 @@ while it's on), **Edit** and **Remove…**.
 
 - **+ New scene** asks for a name. Every light starts on a steady warm white, so it does something
   the moment you play it.
-- In the editor, each light has its own row: an **Effect**, a **Style** and **Colours**
-  from your presets and palettes, a colour box for each of its colours, and **Speed** and
-  **Brightness** sliders. Press the effect to change it: the same window as the Show editor's opens,
-  with every effect moving in the light's own colours (tick **Show presets** to pick a preset).
-  **Off** beside it turns the light off in this scene.
+- In the editor, each light has its own row: its **Effect**, its **Colours** (a colour box for each,
+  and **Palette…** to use one of your palettes), and **Speed** and **Brightness** sliders. Press the
+  effect to change it: the same window as the Show editor's opens, with every effect moving in the
+  light's own colours. Tick **Show presets** there to pick a preset; the effect then shows its name,
+  such as **Three colours · Still blocks**. **Off** beside it turns the light off in this scene.
 - A light split into parts plays one look across the whole light. Turn on **Each part on its own**
   under its name to give every part its own row instead, each starting on the light's look. A light set to play only as parts always
   has a row for each part.

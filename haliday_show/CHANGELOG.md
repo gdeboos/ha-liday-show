@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.232
+
+- The Scene editor's lights line up neatly. Every row has the same columns, **Effect**, **Colours**, **Speed** and **Brightness**, with a dash where an effect has no speed.
+- The **Style** column has gone: pick a preset in the effect window instead (tick **Show presets**). The effect button shows the preset's name, such as **Three colours · Still blocks**.
+- The colour boxes come first, with **Palette…** beside them.
+- A split light's **Each part on its own** switch now sits under its name, so a light played whole is a single row.
+
 ## 0.2.231
 
 - A Govee light with a segment for every bulb (such as the Christmas String Lights 2 on **Per bulb**, with **Bulbs** the same as **Segments**) now says bulbs rather than segments: "300 bulbs" on **Setup → Devices**, "Bulbs 1–100" for a part on the timeline, and in the Groups list.
