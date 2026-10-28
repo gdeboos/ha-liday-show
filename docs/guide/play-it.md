@@ -247,7 +247,7 @@ The schedule goes by HA-liday Show's own clock, which the **Schedule** tab shows
 Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
 `Europe/London`); with Python, it uses your computer's clock.
 
-Schedules you'd set on a playlist or scene before 0.2.231 were moved to the **Schedule** tab for you.
+Schedules you'd set on a playlist or scene before 0.2.232 were moved to the **Schedule** tab for you.
 
 ---
 

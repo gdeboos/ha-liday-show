@@ -1,12 +1,17 @@
 # Changelog
 
-## 0.2.231
+## 0.2.232
 
 - New **Schedule** tab at the top, between **Library** and **Setup**: everything that plays by itself, in one list. Each row plays a playlist, a show (round and round) or a scene at its times, days and dates, as schedules did before.
 - The same playlist, show or scene can now be on the schedule more than once, such as 17:00 to 22:00 on weekdays and until 23:00 at weekends. A playlist with two rows back to back carries straight on.
 - Where times overlap, the row higher in the list plays first. Drag ⠿, or press **↑** and **↓**, to change the order. A scene can still be on alongside a playlist or show, and comes back after.
 - Your existing playlist and scene schedules have moved to the **Schedule** tab for you, unchanged.
 - **When it plays** in the Playlist and Scene editors now says what the schedule does with them, with **+ Add to schedule** and **Open Schedule**. The sunset location is at the bottom of the **Schedule** tab.
+
+## 0.2.231
+
+- A Govee light with a segment for every bulb (such as the Christmas String Lights 2 on **Per bulb**, with **Bulbs** the same as **Segments**) now says bulbs rather than segments: "300 bulbs" on **Setup → Devices**, "Bulbs 1–100" for a part on the timeline, and in the Groups list.
+
 ## 0.2.230
 
 - In the Scene editor, pressing a light's effect opens the same effect window as the Show editor, with each effect moving in that light's colours. Tick **Show presets** there to pick a preset. **Off**, beside the effect, turns that light off in the scene.

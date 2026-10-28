@@ -132,7 +132,8 @@ doesn't show up. When it's added, press **Add another**
 for the next one, or **Done**.
 
 The list shows one line per light: its name, IP, model and its **Size**, a bar with each part in its
-colour and how many LEDs (or segments, on a Govee light) and parts it has. Press **Test** on a line to test the light. Press anywhere
+colour and how many LEDs (or segments, on a Govee light) and parts it has. A Govee light
+with a segment for every bulb, such as one on **Per bulb**, says bulbs instead. Press **Test** on a line to test the light. Press anywhere
 else on the line (or **Edit**) to open the light's window, which has all its settings and its parts.
 **Remove light** is at the bottom of that window. The settings are:
 
@@ -1428,7 +1429,7 @@ The schedule goes by HA-liday Show's own clock, which the **Schedule** tab shows
 Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
 `Europe/London`); with Python, it uses your computer's clock.
 
-Schedules you'd set on a playlist or scene before 0.2.231 were moved to the **Schedule** tab for you.
+Schedules you'd set on a playlist or scene before 0.2.232 were moved to the **Schedule** tab for you.
 
 ### The public page
 
