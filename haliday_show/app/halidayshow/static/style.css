@@ -433,6 +433,23 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 .pl-swatch-scene { background: #e9b949; }
 .pl-block.pl-block-scene { background: #e9b949; }
 .pl-disabled { opacity: .5; }
+/* Setup → Settings → Live music: what a WLED with a microphone hears. */
+.lm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.lm-row label { font-weight: 600; }
+.lm-row input[type=range] { flex: 1 1 200px; max-width: 320px; accent-color: var(--accent); }
+.lm-levels { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--bg);
+  display: flex; flex-direction: column; gap: 10px; margin: 8px 0; }
+.lm-levels.is-quiet { opacity: .5; }
+.lm-grid { display: grid; grid-template-columns: 90px minmax(0, 1fr) 48px; align-items: center; gap: 8px 12px; }
+.lm-grid output { font: 12px ui-monospace, monospace; color: var(--muted); text-align: right; }
+.lm-bar { height: 12px; border-radius: 6px; background: var(--track-alt); overflow: hidden; }
+.lm-bar > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+.lm-beat { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--track-alt);
+  border: 1px solid var(--line); }
+.lm-beat.on { background: var(--beat); }
+.lm-bands { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
+.lm-bands span { flex: 1 1 0; border-radius: 2px 2px 0 0; background: var(--wave); min-height: 2px; }
+.lm-ends { display: flex; justify-content: space-between; }
 .pl-swatch-colour { background: linear-gradient(135deg, #e53935, #fdd835, #43a047, #1e88e5); }
 .pl-swatch-effect { background: repeating-linear-gradient(90deg, #1e88e5 0 4px, #fff 4px 6px, #8e24aa 6px 10px); }
 #pl-order .pl-block-card { border-left: 6px solid var(--line); background: var(--track); }

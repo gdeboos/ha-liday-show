@@ -39,6 +39,18 @@ During a show the add-on writes every LED directly, so WLED's segment effects, m
 don't apply. WLED's **Use main segment only** (Config → Sync Interfaces) limits realtime data to the
 main segment, so it should be off. WLED's master brightness still scales the frames.
 
+## Live music: listening to sound sync
+
+`livemusic.py` listens on UDP 11988 (joined to multicast 239.0.0.1) for WLED's AudioReactive sound
+sync, version 2: 44 bytes, little-endian, header `00002\0`, then sampleRaw and sampleSmth (f32),
+samplePeak (u8), 16 FFT bands (u8), FFT_Magnitude and FFT_MajorPeak (f32), as `audioSyncPacket` in
+WLED's `audio_reactive.h` (0.14 and later). Older `00001` packets are only reported as too old.
+Loudness is sampleSmth scaled from 0-255; bass, middle and treble are bands 0-3, 4-9 and 10-15.
+
+Written from WLED's source, not yet checked against a real WLED with a microphone (Gavin's will be the
+first). Still to confirm there: where the sync **Send** setting is in WLED's pages on his version, the
+range of sampleSmth with AGC on and off, and how often a beat flag arrives.
+
 ## Open questions
 
 - Matrices (2D): later. For now a matrix is driven as one long strip in WLED's LED order.
