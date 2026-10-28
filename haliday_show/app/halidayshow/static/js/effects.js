@@ -506,6 +506,130 @@ Object.assign(EFFECTS, {
   },
 });
 
+// Movement effects, after WLED's.
+Object.assign(EFFECTS, {
+  theatre: {
+    label: "Theatre chase", group: "movement",
+    params: [color("color", "Colour", "#ffffff"), color("background", "Gap colour", "#000000"),
+      choice("colours", "Lit in", "your colour", ["your colour", "rainbow"]),
+      num("every", "One lit in every (segments)", 3, 2, 20, 1), num("speed", "Steps per second", 8, 0, 50, 0.5), direction],
+    render: (p, t, dur, n, i) => {
+      const pos = p.direction === "reverse" ? n - 1 - i : i, every = Math.max(2, Math.round(p.every));
+      if (mod(pos - Math.floor(t * p.speed), every) !== 0) return hexToRgb(p.background);
+      return p.colours === "rainbow" ? hsv(mod(pos / Math.max(n, 1) - t * 0.2, 1), 1, 1) : hexToRgb(p.color);
+    },
+  },
+  juggle: {
+    label: "Juggle", group: "movement", list: true,
+    params: [...colourList(["#ff0000", "#ffb000", "#00ff00", "#0080ff"]), color("background", "Background", "#000000"),
+      num("speed", "Speed", 1, 0.05, 10, 0.05), num("width", "Dot size (segments)", 2, 0.5, 30, 0.5),
+      num("trail", "Trail (seconds)", 0.6, 0, 3, 0.1)],
+    render: (p, t, dur, n, i) => {
+      // One dot per colour, swinging back and forth at its own pace, leaving a fading trail.
+      const out = hexToRgb(p.background), cols = listColours(p), steps = p.trail > 0 ? 8 : 1;
+      cols.forEach((c, k) => {
+        let a = 0;
+        for (let j = 0; j < steps; j++) {
+          const at = t - (j / 8) * p.trail;
+          const x = (n - 1) * (0.5 + 0.5 * Math.sin(at * p.speed * (0.9 + k * 0.23) + k * 1.7));
+          a = Math.max(a, (1 - j / steps) * Math.max(0, 1 - Math.abs(i - x) / p.width));
+        }
+        add(out, c, a);
+      });
+      return out;
+    },
+  },
+  ripple: {
+    label: "Ripple", group: "movement", list: true,
+    params: [...colourList(["#0060ff", "#00e0ff", "#ffffff"]), color("background", "Background", "#000000"),
+      num("rate", "Drops per second", 1, 0.1, 10, 0.1), num("speed", "Spread (segments per second)", 15, 1, 150, 1)],
+    render: (p, t, dur, n, i) => {
+      const out = hexToRgb(p.background), cols = listColours(p);
+      events(t, p.rate, 2, 3, (k, age) => {
+        const centre = hash01(k + 1, 71) * (n - 1), r = age * p.speed, d = Math.abs(i - centre) - r;
+        add(out, cols[Math.floor(hash01(k + 1, 73) * cols.length)], (1 - age / 2) ** 1.5 * Math.exp(-(d * d) / 1.5));
+      });
+      return out;
+    },
+  },
+  dissolve: {
+    label: "Dissolve", group: "movement",
+    params: [color("color", "Colour", "#ff0000"), color("background", "Background", "#000000"),
+      num("seconds", "Seconds to fill", 3, 0.2, 60, 0.1)],
+    render: (p, t, dur, n, i) => {
+      // Segments light one by one in a random order, then go out one by one in another.
+      const fill = Math.max(p.seconds, 0.1), round = Math.floor(t / (2 * fill)), f = mod(t, 2 * fill) / fill;
+      const u = hash01(i + 1, round * 2 + (f < 1 ? 0 : 1));
+      const soft = 0.25 / fill; // each segment fades over about a quarter of a second
+      const a = f < 1 ? (f - u) / soft : 1 - (f - 1 - u) / soft;
+      return mix(hexToRgb(p.background), hexToRgb(p.color), Math.min(Math.max(a, 0), 1));
+    },
+  },
+  bounce: {
+    label: "Bouncing balls", group: "movement", list: true,
+    params: [...colourList(["#ff0000", "#ffff00", "#00a0ff"]), color("background", "Background", "#000000"),
+      choice("style", "Style", "bounce", ["bounce", "popcorn"]), num("balls", "Balls", 3, 1, 12, 1),
+      num("speed", "Speed", 1, 0.1, 5, 0.1), direction],
+    render: (p, t, dur, n, i) => {
+      const out = hexToRgb(p.background), cols = listColours(p), pos = p.direction === "reverse" ? n - 1 - i : i;
+      const ball = (k, h) => add(out, cols[mod(k, cols.length)], Math.max(0, 1 - Math.abs(pos - h * (n - 1))));
+      if (p.style === "popcorn") {
+        // Kernels shoot up from the start of the light at random and fall back once.
+        events(t, p.balls * 0.6 * p.speed, 2.4 / p.speed, 5, (k, age) => {
+          const life = (1.2 + 1.2 * hash01(k + 1, 83)) / p.speed, a = age / life;
+          if (a < 1) ball(k, 4 * a * (1 - a) * (0.3 + 0.7 * hash01(k + 1, 89)));
+        });
+        return out;
+      }
+      for (let k = 0; k < Math.round(p.balls); k++) {
+        const period = (1.2 + hash01(k + 1, 79)) / p.speed, ph = mod(t / period + hash01(k + 1, 81), 1);
+        ball(k, 4 * ph * (1 - ph));
+      }
+      return out;
+    },
+  },
+  lighthouse: {
+    label: "Lighthouse", group: "movement",
+    params: [color("color", "Beam", "#fff4d0"), color("background", "Background", "#000000"),
+      num("rate", "Turns per second", 0.3, 0.02, 5, 0.02), num("width", "Beam width %", 30, 5, 100, 5),
+      num("glow", "Glow when the beam is away %", 10, 0, 100, 5), direction],
+    render: (p, t, dur, n, i) => {
+      // The beam sweeps past once a turn, with a soft edge, and the lamp glows faintly in between.
+      const x = (n > 1 ? (p.direction === "reverse" ? n - 1 - i : i) / (n - 1) : 0.5), w = p.width / 100;
+      const centre = -w + mod(t * p.rate, 1) * (1 + 2 * w * 2);
+      const d = Math.abs(x - centre) / w, beam = d < 1 ? Math.cos(d * Math.PI / 2) ** 2 : 0;
+      return mix(hexToRgb(p.background), hexToRgb(p.color), p.glow / 100 + (1 - p.glow / 100) * beam);
+    },
+  },
+  tetris: {
+    label: "Stacking blocks", group: "movement", list: true,
+    params: [...colourList(["#ff0000", "#00ff00", "#0060ff", "#ffb000"]), color("background", "Background", "#000000"),
+      num("size", "Block size (segments)", 5, 1, 100, 1), num("rate", "Blocks per second", 2, 0.2, 30, 0.1), direction],
+    render: (p, t, dur, n, i) => {
+      // Blocks drop from the far end and pile up at the start; when the light is full it fades and starts again.
+      const size = Math.max(1, Math.round(p.size)), blocks = Math.ceil(n / size), cols = listColours(p);
+      const fall = blocks / p.rate, tau = mod(t, fall + 1), pos = p.direction === "reverse" ? n - 1 - i : i;
+      const colour = (j) => cols[j % cols.length];
+      if (tau >= fall) return mix(hexToRgb(p.background), colour(Math.floor(pos / size)), 1 - (tau - fall));
+      const b = Math.floor(tau * p.rate), f = tau * p.rate - b, top = b * size;
+      if (pos < top) return colour(Math.floor(pos / size));
+      const y = n - (n - top) * f * f;
+      return pos >= Math.floor(y) && pos < Math.floor(y) + size ? colour(b) : hexToRgb(p.background);
+    },
+  },
+  level: {
+    label: "Fill to a level", group: "movement", once: true,
+    params: [color("color", "Colour", "#00ff00"), color("background", "Background", "#000000"),
+      num("from", "Level at the start %", 0, 0, 100, 1), num("to", "Level at the end %", 100, 0, 100, 1),
+      num("soft", "Soft edge (segments)", 1, 0, 50, 1), direction],
+    render: (p, t, dur, n, i) => {
+      const u = dur > 0 ? Math.min(t / dur, 1) : 1, level = ((p.from + (p.to - p.from) * u) / 100) * n;
+      const pos = p.direction === "reverse" ? n - 1 - i : i, soft = Math.max(p.soft, 0.001);
+      return mix(hexToRgb(p.background), hexToRgb(p.color), Math.min(Math.max((level - pos) / soft, 0), 1));
+    },
+  },
+});
+
 // Headings in the effect window, in order. House lane effects all go under "Across the house".
 export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
   ["calm", "Calm"], ["house", "Across the house"]];
@@ -662,6 +786,40 @@ export const PRESETS = {
   sunrise: [
     { label: "Sunset", params: { way: "sunset" } },
     { label: "All at once", params: { spread: 0 } },
+  ],
+  theatre: [
+    { label: "Rainbow chase", params: { colours: "rainbow" } },
+    { label: "Slow", params: { speed: 3 } },
+    { label: "Wide gaps", params: { every: 6, speed: 10 } },
+  ],
+  juggle: [
+    { label: "Lazy", params: { speed: 0.4, trail: 1.5 } },
+    { label: "Frantic", params: { speed: 3, trail: 0.3 } },
+  ],
+  ripple: [
+    { label: "Raindrops", params: { rate: 3, speed: 25 } },
+    { label: "Slow pond", params: { rate: 0.4, speed: 6 } },
+  ],
+  dissolve: [
+    { label: "Quick", params: { seconds: 1 } },
+    { label: "Slow", params: { seconds: 10 } },
+  ],
+  bounce: [
+    { label: "Popcorn", params: { style: "popcorn", balls: 5 } },
+    { label: "One ball", params: { balls: 1 } },
+    { label: "Lots", params: { balls: 8 } },
+  ],
+  lighthouse: [
+    { label: "Slow", params: { rate: 0.1 } },
+    { label: "Searchlight", params: { rate: 0.6, width: 15, glow: 0 } },
+  ],
+  tetris: [
+    { label: "Small and fast", params: { size: 2, rate: 8 } },
+    { label: "Big", params: { size: 15, rate: 1 } },
+  ],
+  level: [
+    { label: "Count down", params: { from: 100, to: 0 } },
+    { label: "Half full", params: { from: 50, to: 50 } },
   ],
   snow: [
     { label: "Light snow", params: { density: 5, speed: 4 } },

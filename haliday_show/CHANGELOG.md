@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.238
+
+- Eight new effects under **Movement**, after WLED's:
+  - **Theatre chase**: one lit in every few, stepping along. Its **Rainbow chase** preset lights them in rainbow colours.
+  - **Juggle**: coloured dots swinging back and forth with fading trails.
+  - **Ripple**: drops landing and rippling outwards.
+  - **Dissolve**: segments lighting one at a time in random order, then going out the same way.
+  - **Bouncing balls**: balls bouncing up from the start of the light. Its **Popcorn** preset pops them up at random.
+  - **Lighthouse**: a soft beam sweeping past.
+  - **Stacking blocks**: blocks dropping and piling up until the light is full.
+  - **Fill to a level**: lit up to a level that rises or falls over the clip. Try **Count down**.
+- All but **Fill to a level** work in scenes and playlist blocks too.
+
 ## 0.2.237
 
 - Five new effects, after WLED's:
