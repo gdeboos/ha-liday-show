@@ -172,14 +172,15 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Effect suggestions for the selected part of the song, timed to its tempo
 - Timeline editor with the song's waveform, one track per light, beat markers and snapping, and
   smooth zoom (+/−, Ctrl+wheel or pinch) and scroll
-- 34 effects on each light (solid, two and three colours, pulse, gradient, colour cycle, fade, chase,
+- 35 effects on each light (solid, two and three colours, pulse, gradient, colour cycle, fade, chase,
   rainbow, comet, scanner, flicker, lightning, strobe, twinkle, wipe, and more after WLED's:
   Halloween eyes, fireworks, drip, candles, snow, fairy lights, ocean waves, aurora, flowing colours,
   sunrise, theatre chase, juggle, ripple, dissolve, bouncing balls, lighthouse, stacking blocks and
-  fill to a level) with live, segment-level previews, built-in presets for each, and your own
+  fill to a level, and xLights' morph) with live, segment-level previews, built-in presets for each, and your own
   presets saved from any clip
 - A **House** lane for effects that run across all your lights by where they are on the photo, like
-  xLights' model effects: sweeps, wipes and rainbow waves in any direction
+  xLights' model effects: sweeps, wipes and rainbow waves in any direction, shockwaves, pinwheels,
+  curtains and butterfly patterns
 - Colour palettes for holidays and moods, plus your own (or ones the AI makes from a description), to
   recolour an effect, a light or the whole show in one click
 - Copy and paste effects between lights, play and loop just a region, undo and redo

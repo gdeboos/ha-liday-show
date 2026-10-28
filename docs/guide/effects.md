@@ -49,6 +49,7 @@ whole list from the palette and sets **Colours** to match.
 | Lighthouse | A soft beam sweeps along the light once a turn, with a faint glow in between |
 | Stacking blocks | Blocks drop from the far end and pile up until the light is full, then it fades and starts again |
 | Fill to a level | Lit up to a level that moves from **Level at the start** to **Level at the end** over the clip. The **Count down** preset empties it |
+| Morph | A band of light stretches from the start to the far end, then shrinks away into it, blending from the **Tail** colour to the **Head**. Set how many **Times in the clip** |
 
 **Effects on the House lane** run across all your lights at once, by where each one is on the
 house photo, like xLights' model effects. Add them the same way, by selecting a stretch of the
@@ -59,6 +60,10 @@ House lane. They sit on top of each light's own effects.
 | Sweep | A band of colour crossing the house. Set its **Width** and how many **Sweeps** fit in the clip. |
 | House wipe | Fills the house with a colour over the clip, with a **Soft edge**. |
 | Rainbow wave | A rainbow across the house; set how many fit across it and how fast it moves. |
+| Shockwave | A ring of colour spreads from a point on the house to its furthest corner. Set the centre, the ring's width and how many rings fit in the clip |
+| Pinwheel | Spokes spin round a point on the house. **Twist** bends them into a spiral, and a negative speed spins the other way |
+| Curtain | Curtains open from the middle (or rise from the bottom) over the clip, with pleats. **Way: closing** draws them shut |
+| Butterfly | Swirling, overlapping waves of your colours across the whole house, like xLights' Butterfly |
 
 - **Direction** can be left to right, right to left, top to bottom, bottom to top, out from the
   centre or in to the centre.

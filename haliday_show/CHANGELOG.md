@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.239
+
+- Five new effects borrowed from xLights:
+  - **Morph** (on a light, under **Movement**): a band of light stretches to the far end, then shrinks away into it.
+  - **Shockwave** (House lane): a ring of colour spreading across the house from a point you choose. Lovely on a big beat.
+  - **Pinwheel** (House lane): spokes spinning round a point on the house, or a spiral with **Twist**.
+  - **Curtain** (House lane): curtains opening across the house, or closing, or rising.
+  - **Butterfly** (House lane): swirling waves of colour over the whole house.
+
 ## 0.2.238
 
 - Eight new effects under **Movement**, after WLED's:
