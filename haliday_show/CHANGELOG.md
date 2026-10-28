@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.243
+
+- **Mixing lanes with the lights**, after xLights' layer blending. A clip on the House lane or a group lane has a new **Lights' own effects** setting under **Clip**:
+  - **Cover them**: as before.
+  - **Add to them**: a white sweep brightens a red chase as it passes.
+  - **Brighter of the two**: whichever is brighter.
+  - **Only where they're lit**: a rainbow wave over a chase makes a rainbow chase.
+
 ## 0.2.242
 
 - **Settings that change over a clip**, after xLights' value curves. Under any number setting (speed, size, how many, brightness), turn on **Changes**, give the value to reach, and pick **Steady**, **Ease in**, **Ease out** or **Up and back**. Make a chase speed up into the chorus, or let a light swell and fade.

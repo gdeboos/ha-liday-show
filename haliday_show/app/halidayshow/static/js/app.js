@@ -7,7 +7,7 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, EFFECT_GROUPS, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -2490,7 +2490,7 @@ const presetsFor = (effect) => [...(PRESETS[effect] || []), ...app.myPresets.fil
 const presetLabel = (p) => (p.mine ? `★ ${p.label}` : p.label);
 
 // What a clip keeps when its effect changes: its place, and how it comes in, goes out and mixes.
-const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOut", "transOutSecs"];
+const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOut", "transOutSecs", "mix"];
 
 // What a clip becomes with `effect` and, optionally, one of its presets: the effect's defaults, the
 // colours and brightness carried over from `from` (the clip being changed), then the preset.
@@ -2755,6 +2755,18 @@ function renderInspector() {
   };
   field("Start", timeInput("start"));
   field("End", timeInput("end"));
+  // On the House lane and group lanes: how the clip mixes with the lights' own effects underneath.
+  if (isLane(sel.track)) {
+    const mix = document.createElement("select");
+    const labels = { cover: "Cover them", add: "Add to them", brighter: "Brighter of the two", "only where lit": "Only where they're lit" };
+    for (const m of MIXES) mix.add(new Option(labels[m], m, false, m === (clip.mix || "cover")));
+    mix.title = "How this clip mixes with the lights' own effects underneath";
+    mix.addEventListener("change", () => {
+      if (mix.value === "cover") delete clip.mix; else clip.mix = mix.value;
+      app.changed();
+    });
+    field("Lights' own effects", mix);
+  }
 
   for (const p of EFFECTS[clip.effect].params) {
     if (unusedColour(clip.effect, p.key, clip)) continue;

@@ -489,7 +489,7 @@ timeline.
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
 - **By hand:** [The timeline](#the-timeline) · [Adding effects](#adding-effects) ·
-  [Editing a clip](#editing-a-clip) · [Transitions](#transitions) · [Settings that change over a clip](#settings-that-change-over-a-clip) · [Presets](#presets) · [Your own presets](#your-own-presets) ·
+  [Editing a clip](#editing-a-clip) · [Transitions](#transitions) · [Settings that change over a clip](#settings-that-change-over-a-clip) · [Mixing lanes with the lights](#mixing-lanes-with-the-lights) · [Presets](#presets) · [Your own presets](#your-own-presets) ·
   [Copying](#copying) · [Colour palettes](#colour-palettes)
 - **Odds and ends:** [Lights that are gone](#lights-that-are-gone) · [Working on one part](#working-on-one-part) ·
   [Undo](#undo) · [Shortcuts](#shortcuts)
@@ -1014,6 +1014,17 @@ When two clips are back to back on one light, the transition is a crossfade: the
 the new one with no dark gap. Use the second clip's **In** (or, if it has none, the first clip's
 **Out**). On the House lane and group lanes, a clip fades in and out over the lights' own effects.
 The timeline shows each transition on its clip.
+
+### Mixing lanes with the lights
+
+A clip on the House lane or a group lane covers the lights' own effects by default. Under **Clip**,
+**Lights' own effects** changes how it mixes with them:
+
+- **Cover them**: the lane's colours replace the lights' own (as before).
+- **Add to them**: both together, so a sweep of white brightens a red chase as it passes.
+- **Brighter of the two**: whichever is brighter on each bulb.
+- **Only where they're lit**: the lane's colours show only where a light's own effect is lit, at its
+  brightness. A rainbow wave over a chase gives a chase in rainbow colours.
 
 ### Settings that change over a clip
 
