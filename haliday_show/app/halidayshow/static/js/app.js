@@ -3212,11 +3212,20 @@ let playlists = [], playlistShows = [], playlistArchived = [], playlistPlaying =
 let playlistsLoaded = false; // never save over the stored playlists before they've been read
 let scheduleState = { now: null, next: {}, scheduled: null }; // HA-liday Show's clock and next starts
 
+// Your scenes, for Scene blocks: their names, and the first one for a new block.
+let playlistScenes = [];
+const sceneNames = () => Object.fromEntries(playlistScenes.map((s) => [s.id, s.name]));
+function newPlaylistBlock(type) {
+  const b = newBlock(type);
+  if (type === "scene") b.scene = playlistScenes[0]?.id || "";
+  return b;
+}
+
 async function loadPlaylists() {
   try {
     await flushPlaylists(); // an edit made just before leaving the page
-    [playlists, playlistShows, playlistArchived] = await Promise.all([api("api/playlists"), api("api/shows"),
-      api("api/shows/archived").catch(() => [])]);
+    [playlists, playlistShows, playlistArchived, playlistScenes] = await Promise.all([api("api/playlists"), api("api/shows"),
+      api("api/shows/archived").catch(() => []), api("api/house-scenes").catch(() => [])]);
     playlistsLoaded = true;
   } catch (e) {
     playlistsLoaded = false;
@@ -3245,7 +3254,7 @@ async function refreshPlaylistStatus() {
   playlistPlaying = now;
   const nowText = !now ? ""
     : `▶ Playing ${now.name}: ${now.show ? (playlistShows.find((x) => x.id === now.show)?.name || now.show)
-      : now.block ? playlistBlockLabel(now.block) : "a pause"}`
+      : now.block ? playlistBlockLabel(now.block, sceneNames()) : "a pause"}`
       + (st.playlist?.finishing ? ". Its time is up, so it stops when this show ends." : "");
   for (const p of document.querySelectorAll("[data-playlist-now]")) p.textContent = nowText;
   markPlaylistPlaying();
@@ -3735,11 +3744,18 @@ function renderBlockPalette() {
     hint.className = "hint";
     hint.textContent = b.hint;
     text.append(name, hint);
-    const add = button("+", () => changeOrder(inserted(openPlaylist().items, newBlock(type)), true), "ghost pl-add");
+    const add = button("+", () => changeOrder(inserted(openPlaylist().items, newPlaylistBlock(type)), true), "ghost pl-add");
     add.title = "Add at the end";
     add.setAttribute("aria-label", `Add ${b.label} at the end`);
     li.append(add);
-    li.addEventListener("pointerdown", (e) => dragCard(e, li, () => newBlock(type), null));
+    if (type === "scene" && !playlistScenes.length) {
+      // Nothing to pick yet: say where scenes come from, and don't let one be dragged in.
+      hint.textContent = "Make a scene in the Scene editor first";
+      add.disabled = true;
+      li.classList.add("pl-disabled");
+      return li;
+    }
+    li.addEventListener("pointerdown", (e) => dragCard(e, li, () => newPlaylistBlock(type), null));
     return li;
   }));
 }
@@ -3801,6 +3817,16 @@ function blockEditor(block) {
   const sl = document.createElement("label");
   sl.append(secs, " seconds");
   box.append(sl);
+  if (block.type === "scene") {
+    const pick = document.createElement("select");
+    pick.setAttribute("aria-label", "Scene");
+    for (const s of playlistScenes) pick.add(new Option(s.name, s.id, false, s.id === block.scene));
+    if (!playlistScenes.some((s) => s.id === block.scene)) {
+      pick.add(new Option("A scene that's gone: pick another", block.scene || "", true, true));
+    }
+    pick.addEventListener("change", () => { block.scene = pick.value; changed(true); });
+    box.append(pick);
+  }
   if (block.type === "colour") {
     const c = document.createElement("input");
     c.type = "color";
@@ -3861,7 +3887,7 @@ function drawPlaylistStrip() {
   if (!pl) return;
   const byId = playlistShowById();
   $("pl-summary").textContent = playlistSummary(pl.items, byId);
-  const s = playlistStrip(pl.items, byId);
+  const s = playlistStrip(pl.items, byId, sceneNames());
   $("pl-strip").hidden = !s.blocks.length;
   $("pl-strip").replaceChildren(...s.blocks.map((b) => {
     const el = document.createElement("span");
@@ -3895,7 +3921,7 @@ function renderPlaylistOrder() {
       li.dataset.blockId = item.id;
       text.before(blockSwatch(item.type, item.colour));
       const name = document.createElement("b");
-      name.textContent = playlistBlockLabel(item);
+      name.textContent = playlistBlockLabel(item, sceneNames());
       const hint = document.createElement("span");
       hint.className = "hint";
       hint.textContent = PLAYLIST_BLOCKS[item.type]?.hint || "";
