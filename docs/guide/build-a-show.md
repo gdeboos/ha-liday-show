@@ -570,6 +570,9 @@ a preset sets just the settings it names. When adding an effect it uses the effe
 when changing a clip your colours stay. The Effect button shows the preset a clip matches, such as
 **Three colours · Wide marquee**. The chooser remembers whether presets were showing.
 
+Some presets come from WLED's favourites: **Heartbeat** (Pulse), **Meteor** (Comet), **Twin scanner** (Scanner)
+and **Dark sparkle** (Twinkle: lit all over in your colour, with bulbs blinking out).
+
 ### Your own presets
 
 Get a clip looking right, then press **Save as preset…** under its settings.
@@ -612,7 +615,7 @@ the colour field you last clicked, or press **Apply palette** to fill them all i
 light's name to **Recolour this light** or **Recolour all lights**: each light steps through the
 palette effect by effect, so the lights stay matched (backgrounds are left alone). **Library →
 Palettes** lists your palettes, each with **Edit…**, **Duplicate** and **Delete…**, then the built-in
-ones. **Edit…** opens a window to rename the palette and change its colours: pick each colour, move it
+ones (seasonal ones, plus looks such as **Classic C9 bulbs**, **Lava**, **Aurora** and **Ice and fire**). **Edit…** opens a window to rename the palette and change its colours: pick each colour, move it
 up with **↑**, take it out with **✕**, or **+ Add a colour** (up to 12). **Save** keeps the changes.
 **+ New palette**, or **Copy…** on a built-in one, opens the same window for a new palette. Or describe some colours in the box above, such as
 "frosty winter night" or "tropical sunset", and press **✨ Make palettes**: the AI suggests up to three, each
