@@ -150,7 +150,7 @@ export const EFFECTS = {
       choice("blend", "Change", "fade", ["fade", "step"])],
     render: (p, t) => {
       const cs = [p.color, p.color2, p.color3, p.color4].slice(0, Number(p.count)).map(hexToRgb);
-      const s = t * p.rate, k = Math.floor(s) % cs.length;
+      const s = t * p.rate, k = mod(Math.floor(s), cs.length);
       return p.blend === "step" ? cs[k] : mix(cs[k], cs[(k + 1) % cs.length], smooth(s - Math.floor(s)));
     },
   },
@@ -1131,6 +1131,15 @@ export function transitionAt(clips, clip, time) {
 export function transitionShare(tr, x, i, clip) {
   const seed = Math.round(clip.start * 100) + (tr.out ? 7 : 3);
   return tr.out ? 1 - transWeight(tr.type, 1 - tr.u, x, i, seed) : transWeight(tr.type, tr.u, x, i, seed);
+}
+
+// The part of a clip from start to end, as left when part of it is cut away: an edge that's been
+// cut loses its transition (the left piece keeps the In, the right piece the Out).
+export function clipPiece(clip, start, end) {
+  const piece = { ...clip, start, end };
+  if (start > clip.start) { delete piece.transIn; delete piece.transInSecs; }
+  if (end < clip.end) { delete piece.transOut; delete piece.transOutSecs; }
+  return piece;
 }
 
 // A clip's colours at `time` (which may be outside it, for a crossfade) as floats, brightness applied.

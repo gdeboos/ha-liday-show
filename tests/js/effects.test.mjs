@@ -454,3 +454,20 @@ test("a group lane clip fading in shows the light's own effect underneath", asyn
   const f = [...composeLight(light, (id) => tracks.get(id), 1, {}, [], undefined, plans)];
   assert.deepEqual(f.slice(0, 3), [128, 0, 128]);
 });
+
+test("every effect gives real colours just outside its clip, for crossfades", async () => {
+  const { clipPiece } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  for (const [key, fx] of Object.entries(EFFECTS)) {
+    const p = { ...newClip(key, 2, 6) };
+    for (const t of [-1, -0.01, 4.01, 5]) {
+      for (let i = 0; i < 12; i++) {
+        const c = fx.house ? (fx.renderAt(p, t, 4, i / 11, 0.5) || [0, 0, 0]) : fx.render(p, t, 4, 12, i);
+        assert.ok(c.every(Number.isFinite), `${key} at ${t}`);
+      }
+    }
+  }
+  // Cutting a clip: each piece keeps only the transition on its uncut edge.
+  const c = { ...newClip("solid", 0, 10), transIn: "fade", transInSecs: 1, transOut: "wipe", transOutSecs: 2 };
+  const left = clipPiece(c, 0, 4), right = clipPiece(c, 6, 10);
+  assert.deepEqual([left.transIn, left.transOut, right.transIn, right.transOut], ["fade", undefined, undefined, "wipe"]);
+});

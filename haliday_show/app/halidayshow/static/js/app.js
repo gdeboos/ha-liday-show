@@ -7,7 +7,7 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, EFFECT_GROUPS, TRANSITIONS, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, TRANSITIONS, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -2490,7 +2490,7 @@ const presetsFor = (effect) => [...(PRESETS[effect] || []), ...app.myPresets.fil
 const presetLabel = (p) => (p.mine ? `★ ${p.label}` : p.label);
 
 // What a clip keeps when its effect changes: its place, and how it comes in, goes out and mixes.
-const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOut", "transOutSecs", "blend"];
+const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOut", "transOutSecs"];
 
 // What a clip becomes with `effect` and, optionally, one of its presets: the effect's defaults, the
 // colours and brightness carried over from `from` (the clip being changed), then the preset.
@@ -4652,8 +4652,8 @@ function deleteRange() {
     for (const c of app.show.tracks[t].clips) {
       if (c.end <= r.start || c.start >= r.end) { kept.push(c); continue; }
       n++;
-      if (c.start < r.start) kept.push({ ...c, end: r.start });
-      if (c.end > r.end) kept.push({ ...c, start: r.end });
+      if (c.start < r.start) kept.push(clipPiece(c, c.start, r.start));
+      if (c.end > r.end) kept.push(clipPiece(c, r.end, c.end));
     }
     app.show.tracks[t].clips = kept;
   }

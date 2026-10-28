@@ -2,7 +2,7 @@
 // checked and placed. The model can get names, times or settings wrong, so nothing goes on the
 // timeline until it has been matched to a real light and effect and clamped to valid values.
 
-import { EFFECTS, defaultParams } from "./effects.js";
+import { EFFECTS, clipPiece, defaultParams } from "./effects.js";
 
 const r2 = (t) => Math.round(t * 100) / 100;
 
@@ -106,8 +106,8 @@ export function placeClips(show, placed) {
       const next = [];
       for (const c of kept) {
         if (c.end <= n.start || c.start >= n.end) { next.push(c); continue; }
-        if (c.start < n.start) next.push({ ...c, end: n.start });
-        if (c.end > n.end) next.push({ ...c, start: n.end });
+        if (c.start < n.start) next.push(clipPiece(c, c.start, n.start));
+        if (c.end > n.end) next.push(clipPiece(c, n.end, c.end));
       }
       kept = next;
     }
