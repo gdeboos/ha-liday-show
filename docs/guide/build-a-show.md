@@ -46,7 +46,18 @@ one you were last editing has a **Last edited** badge.
 
 The same list is under **Library → Shows**. The Show panel shows the open show's name beside **← All
 shows**; to switch to another show, go back to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Show speaker**
-(below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
+(below), **Brightness** (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
+
+**Brightness** in **⚙ Show settings…** dims this show without changing any of its effects:
+
+- **Whole show** dims every light in the show.
+- **Each light in this show** has its own slider, so you can bring down one light that's too bright
+  next to the others. A light split into parts is dimmed as one.
+
+The two work together with each effect's own **Brightness %** on the timeline, and with each light's
+brightness under **Setup → Devices**, which applies to every show. For example, a show at 50% with a
+light at 50% plays that light at a quarter. The preview and the house photo show the result as you
+drag. Shows you made before keep playing at 100%.
 
 ### Sharing shows
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.203
+
+- **⚙ Show settings…** has a new **Brightness** section. **Whole show** dims the whole show, and
+  **Each light in this show** dims one light at a time, without touching your effects. The preview shows
+  the result as you drag, and shows you made before keep playing at 100%.
+
 ## 0.2.202
 
 - Coming back to HA-liday Show from elsewhere in Home Assistant now opens where you left it, instead of

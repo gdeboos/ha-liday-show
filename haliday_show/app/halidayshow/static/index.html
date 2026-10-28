@@ -211,6 +211,18 @@
         <label class="field">Show speaker <select id="show-speaker"></select>
           <span class="hint">Where the song plays when an automation or the MQTT Play button starts this show.
             Editing uses the speaker in the Playback panel.</span></label>
+        <fieldset class="field show-bright">
+          <legend>Brightness</legend>
+          <div class="bright-grid">
+            <label for="show-brightness">Whole show</label>
+            <input id="show-brightness" type="range" min="1" max="100" step="1" value="100">
+            <output for="show-brightness" id="show-brightness-out">100%</output>
+          </div>
+          <span class="hint" id="show-light-brightness-head">Each light in this show</span>
+          <div class="bright-grid" id="show-light-brightness"></div>
+          <span class="hint">Works together with each effect's <b>Brightness %</b> and each light's limit in
+            <b>Setup → Devices</b>.</span>
+        </fieldset>
         <label><input id="autosave" type="checkbox" checked> Save automatically a couple of seconds after each change</label>
       </div>
       <div class="form-dialog-foot">
