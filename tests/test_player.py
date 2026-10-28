@@ -48,18 +48,3 @@ class RecordingDevice:
     def update(self, rgb):
         pass
 
-
-async def test_player_hands_a_light_to_a_scene_for_its_frames():
-    from halidayshow import baked
-    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\0\0\0"] * 4,
-                        scenes=[{"track": 0, "start": 1, "end": 3, "code": 7, "param": ""}])
-    dev = RecordingDevice()
-    out = FakeOutput()
-    out.devices = {"1.2.3.4": dev}
-    out.release_all = lambda: None
-    p = player.Player(out)
-    p.baked, p.devices, p.offset = baked.decode(blob), {"a": {"ip": "1.2.3.4"}}, 0.0
-    p.start = time.monotonic()
-    await p._run()
-    assert ("scene", 7) in dev.calls
-    assert dev.calls.index(("scene", 7)) < max(i for i, c in enumerate(dev.calls) if c == ("end",))

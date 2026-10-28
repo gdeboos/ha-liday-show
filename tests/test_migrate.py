@@ -75,3 +75,70 @@ def test_saved_lights_without_a_kind_are_marked_govee(tmp_path):
     assert migrate.fill_device_kinds(store) == 0  # nothing to do: the file isn't rewritten
     assert store.devices_file.stat().st_mtime_ns == before
     assert migrate.fill_device_kinds(Storage(tmp_path / "empty", tmp_path / "media")) == 0
+
+
+def test_parts_stretch_to_keep_their_share_of_the_light():
+    parts = [{"id": "p1", "name": "Left", "from": 1, "to": 100}, {"id": "p2", "name": "Center", "from": 101, "to": 200},
+             {"id": "p3", "name": "Right", "from": 201, "to": 300}]
+    assert [(p["from"], p["to"]) for p in migrate.stretch_parts(parts, 300, 44)] == [(1, 15), (16, 29), (30, 44)]
+    assert [(p["from"], p["to"]) for p in migrate.stretch_parts(parts, 300, 600)] == [(1, 200), (201, 400), (401, 600)]
+    assert migrate.stretch_parts(parts, 300, 300) == parts
+    assert [p["id"] for p in migrate.stretch_parts(parts, 300, 2)] == ["p1", "p2"]  # no room left for Right
+
+
+def test_lights_on_retired_govee_protocols_move_to_realtime(tmp_path):
+    store = Storage(tmp_path / "config", tmp_path / "media")
+    parts = [{"id": "p1", "name": "Left", "from": 1, "to": 150}, {"id": "p2", "name": "Right", "from": 151, "to": 300}]
+    store.save_devices([
+        {"id": "pillars", "kind": "govee", "name": "Pillars", "sku": "H70C5", "segments": 300, "protocol": "pixels",
+         "parts": parts},
+        {"id": "strip", "kind": "govee", "name": "Strip", "sku": "H6199", "segments": 400, "protocol": "segments"},
+        {"id": "bar", "kind": "govee", "name": "Bar", "segments": 15, "protocol": "v2"},
+        {"id": "ok", "kind": "govee", "name": "Ok", "segments": 300, "protocol": "whole"},
+        {"id": "w", "kind": "wled", "name": "W", "segments": 300, "protocol": "ddp"}])
+    assert migrate.retire_govee_protocols(store) == ["Pillars", "Strip", "Bar"]
+    by = store.devices_by_id()
+    assert (by["pillars"]["protocol"], by["pillars"]["segments"]) == ("standard", 44)  # its realtime reach
+    assert [(p["from"], p["to"]) for p in by["pillars"]["parts"]] == [(1, 22), (23, 44)]
+    assert (by["strip"]["protocol"], by["strip"]["segments"]) == ("standard", 255)
+    assert (by["bar"]["protocol"], by["bar"]["segments"]) == ("standard", 15)
+    assert by["ok"]["protocol"] == "whole" and by["w"]["protocol"] == "ddp"
+    assert migrate.retire_govee_protocols(store) == []
+
+
+def test_govee_scene_clips_come_out_of_shows_and_bakes(tmp_path):
+    from halidayshow import baked
+    store = Storage(tmp_path / "config", tmp_path / "media")
+    scene = {"effect": "scene", "start": 0, "end": 1, "code": 7, "param": ""}
+    plain = {"effect": "solid", "start": 1, "end": 2}
+    store.save_show("xmas", {"name": "Xmas", "tracks": [{"device": "a", "clips": [scene, plain]}]})
+    store.save_show("calm", {"name": "Calm", "tracks": [{"device": "a", "clips": [plain]}]})
+    blob = baked.encode(2, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"] * 4,
+                        {"scenes": [{"track": 0, "start": 1, "end": 3, "code": 7, "param": ""}]})
+    store.save_baked("xmas", blob)
+    (store.shows_dir / "archived").mkdir()
+    (store.shows_dir / "archived" / "old.json").write_text(json.dumps({"name": "Old", "tracks": [{"device": "a", "clips": [scene]}]}))
+    store.save_settings({"playlists": [{"id": "p", "items": [{"type": "effect", "id": "b1", "seconds": 5, "effect": "scene", "params": {}},
+                                                             {"type": "show", "id": "xmas"}]}]})
+    (store.config_dir / "scenes").mkdir()
+    (store.config_dir / "scenes" / "H70C5.json").write_text("[]")
+
+    done = migrate.drop_govee_scenes(store)
+    assert done == {"clips": 2, "shows": ["Xmas", "Old"], "blocks": 1}
+    assert store.load_show("xmas")["tracks"][0]["clips"] == [plain]
+    b = store.load_baked("xmas")  # kept, so the show still plays, with the scene stretch dark
+    assert b is not None and b"scenes" not in b
+    assert [baked.decode(b).track_frame(baked.decode(b).tracks[0], i) for i in range(4)] == \
+        [b"\x01\x02\x03", bytes(3), bytes(3), b"\x01\x02\x03"]
+    assert store.load_settings()["playlists"][0]["items"][0] == {"type": "off", "id": "b1", "seconds": 5}
+    assert not (store.config_dir / "scenes").exists()
+    assert migrate.drop_govee_scenes(store) == {"clips": 0, "shows": [], "blocks": 0}
+
+
+def test_what_the_clear_out_changed_is_kept_for_the_editor(tmp_path):
+    store = Storage(tmp_path / "config", tmp_path / "media")
+    assert migrate.retire_govee_extras(store) is None and migrate.retired(store.config_dir) is None
+    store.save_devices([{"id": "a", "kind": "govee", "name": "Pillars", "segments": 15, "protocol": "razer"}])
+    done = migrate.retire_govee_extras(store)
+    assert (done["lights"], done["clips"]) == (["Pillars"], 0)
+    assert migrate.retired(store.config_dir)["at"] == done["at"]

@@ -69,7 +69,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 | Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
 | Setup guide | **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](getting-started.md#quick-start)). |
 | Demo | **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](getting-started.md#the-demo)). |
-| Experimental | **Govee scenes** (below), and **Show the Labs tab**. |
+| Experimental | **Show the Labs tab**. |
 
 **Labs** is a tab under **Setup** for working out new ways to drive Govee lights. It's hidden until you
 turn on **Show the Labs tab** under **Experimental**; that's saved in this browser, so each computer or

@@ -1485,11 +1485,10 @@
 "sku": "H70C5",
 "name": "30m Christmas String Lights 2",
 "status": "limited",
-"protocol": "pixels",
-"segments": 300,
+"segments": 44,
 "bulbs": 300,
 "reach": 44,
-"note": "Realtime only lights its first 44 bulbs. Per bulb lights every bulb at a few changes a second; App segments (10 segments) and Whole light only also light the whole string.",
+"note": "Realtime only lights its first 44 bulbs. Whole light (one colour) lights the whole string, one colour at a time.",
 "lan": true
 },
 {
@@ -1510,14 +1509,14 @@
 "sku": "H70D1",
 "name": "10m RGBIC Outdoor Icicle Lights",
 "status": "limited",
-"note": "Reported to light only part of the string in realtime mode, like the H70C5. Per bulb may reach it all; not tested yet.",
+"note": "Reported to light only part of the string in realtime mode, like the H70C5.",
 "lan": true
 },
 {
 "sku": "H70D2",
 "name": "20m RGBIC Outdoor Icicle Lights",
 "status": "limited",
-"note": "Reported to light only part of the string in realtime mode, like the H70C5. Per bulb may reach it all; not tested yet.",
+"note": "Reported to light only part of the string in realtime mode, like the H70C5.",
 "lan": true
 },
 {

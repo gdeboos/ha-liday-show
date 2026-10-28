@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 MODELS = Path(__file__).parent.parent / "haliday_show/app/halidayshow/static/models.json"
-PROTOCOLS = {"standard", "razer", "v2", "whole", "segments", "pixels"}
+PROTOCOLS = {"standard", "whole"}
 
 
 def test_model_list_is_well_formed():
@@ -15,12 +15,12 @@ def test_model_list_is_well_formed():
         assert m.get("lan", True) is True  # only ever marks models on Govee's list
         assert m.get("status", "works") in {"works", "limited"}
         assert m.get("protocol", "standard") in PROTOCOLS
-        assert m.get("segments", 1) <= (1000 if m.get("protocol") in {"whole", "segments", "pixels"} else 255)
+        assert m.get("segments", 1) <= (1000 if m.get("protocol") == "whole" else 255)
     by_sku = {m["sku"]: m for m in models}
     assert "status" not in by_sku["H7093"]  # Govee's list says realtime; untested here
     assert by_sku["H706A"]["status"] == "works"  # Govee's list says otherwise
     h70c5 = by_sku["H70C5"]
-    assert (h70c5["protocol"], h70c5["segments"], h70c5["reach"]) == ("pixels", 300, 44)
+    assert ("protocol" not in h70c5, h70c5["segments"], h70c5["bulbs"], h70c5["reach"]) == (True, 44, 300, 44)
     assert not any("Thermo" in m["name"] or "Purifier" in m["name"] for m in models)
     # Every model tested on real lights is on Govee's list of lights with LAN control, and so are newer
     # ones the first list lacked (R models included).

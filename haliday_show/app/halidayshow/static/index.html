@@ -961,11 +961,6 @@
   </section>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-experimental"/></svg>Experimental</h2>
-    <p><label><input id="exp-scenes" type="checkbox"> Govee scenes</label></p>
-    <p class="hint">Adds a <b>Govee scene</b> effect that hands a light to one of the scenes built into the Govee
-      app (the Scenes list, not your saved snapshots) for the length of the clip. It uses an unofficial command
-      and Govee's public scene list, so it may not work on every light. The editor's preview can't show the
-      scene itself, and the light may blink as it switches in and out. Saved in this browser.</p>
     <p><label><input id="exp-labs" type="checkbox"> Show the Labs tab</label></p>
     <p class="hint">Adds <b>Labs</b> under <b>Setup</b>, with the <b>Packet lab</b> and <b>Listen for Govee
       traffic</b>: tools for working out new ways to drive Govee lights. Saved in this browser.</p>
@@ -1012,16 +1007,6 @@
       white. Watch for a colour reaching past the window, or anything other than the first bulbs lighting up. It takes
       about a minute and a half.</p>
     <p><button id="btn-lab-mode-sweep">Try app modes first</button></p>
-    <h3>Per bulb speed test</h3>
-    <p class="hint">For lights on <b>Per bulb (experimental)</b>: changes the picture for six seconds, using
-      <b>Segments</b> above as the number of bulbs: the first 10 bulbs flip between red and blue, or a red, green
-      and blue pattern moves along every bulb. Watch whether the light keeps up or skips some. Try both, at a
-      few rates.</p>
-    <p><label>Picture <select id="lab-speed-size"><option value="small">First 10 bulbs</option>
-        <option value="full">Every bulb</option></select></label>
-      <label>Pictures a second <select id="lab-speed-rate"><option>1</option><option selected>2</option>
-        <option>4</option><option>8</option></select></label>
-      <button id="btn-lab-speed">Run speed test</button></p>
     <p id="lab-now" class="lab-now" hidden></p>
     <ol id="lab-legend" class="hint" hidden></ol>
     <pre id="lab-log" class="lab-log" hidden></pre>

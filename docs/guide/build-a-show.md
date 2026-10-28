@@ -476,7 +476,7 @@ each time, and the parts of a split light (like **Pillars · Left** and **Pillar
 off together. A song that hasn't been analysed into parts fills every light. Turn it off to fill every
 light all the way through. It works for the **AI** too.
 
-Lights on **Per bulb**, **App segments** or **Whole light only** can only change a few times a second,
+Lights on **Whole light (one colour)**, and Home Assistant lights and switches, can only change a few times a second,
 so Generate gives them looks that suit that: colour changes, fades and pulses of the whole light, still
 blocks and slow gradients, never faster than once a beat. The AI is told the same, and the effect ideas
 in the **Selection** panel follow suit for those lights.
@@ -515,26 +515,24 @@ straight away. To swap the effect, press the **Effect** button: it opens the sam
 chooser used to add one, playing on that light for the clip's length, with the current effect
 outlined. Changing effect keeps the clip's colours and brightness.
 
-Previews show what the real light will do. A light using **Per bulb**, **App segments** or **Whole
-light only** can only change a few times a second, so its previews (the timeline, **Preview**, the
-house photo, the Selection strip and the effect chooser) step at that pace rather than moving smoothly,
-and a **Whole light only** light shows the single colour it really will.
+Previews show what the real light will do. A light on **Whole light (one colour)**, or a Home
+Assistant light or switch, can only change a few times a second, so its previews (the timeline,
+**Preview**, the house photo, the Selection strip and the effect chooser) step at that pace rather than
+moving smoothly, and a **Whole light (one colour)** light shows the single colour it really will.
 
-On a light using **Per bulb**, **App segments** or **Whole light only**, which can only change a few
-times a second, the Selection panel warns **⚠ Too fast for this light** when a clip's effect changes
+On one of these slow lights, the Selection panel warns **⚠ Too fast for this light** when a clip's effect changes
 faster than that, such as a quick chase, sparkle or strobe. It would look steppy on the real light.
 Slow the effect down, or use a fade, pulse or colour change instead.
 
 House lane effects are checked the same way, light by light: the warning names each slow light the
-effect is too fast for, such as **⚠ Too fast for Pillars · Left (Per bulb)**. Realtime lights in the
+effect is too fast for, such as **⚠ Too fast for Porch (a Home Assistant light)**. Realtime lights in the
 same sweep or wave are fine.
 
 ### Effects a light can't show
 
-Not every effect works on every light. A light set to **Whole light only** shows one colour at a
+Not every effect works on every light. A light set to **Whole light (one colour)** shows one colour at a
 time, so a chase, comet or two-colour blocks come out as one steady colour. A light with only a few
-segments can't show a chase wider than itself. A Govee scene needs a light that is linked and has
-its model set.
+segments can't show a chase wider than itself.
 
 - In the effect chooser, effects that won't work on the light are greyed out. Click one to see why.
   Turn on **Allow effects that won't work** to pick them anyway.
