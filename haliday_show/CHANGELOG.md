@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.231
+
+- A Govee light with a segment for every bulb (such as the Christmas String Lights 2 on **Per bulb**, with **Bulbs** the same as **Segments**) now says bulbs rather than segments: "300 bulbs" on **Setup → Devices**, "Bulbs 1–100" for a part on the timeline, and in the Groups list.
+
 ## 0.2.230
 
 - In the Scene editor, pressing a light's effect opens the same effect window as the Show editor, with each effect moving in that light's colours. Tick **Show presets** there to pick a preset. **Off**, beside the effect, turns that light off in the scene.
