@@ -187,7 +187,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   show only where they're lit
 - A **House** lane for effects that run across all your lights by where they are on the photo, like
   xLights' model effects: sweeps, wipes and rainbow waves in any direction, shockwaves, pinwheels,
-  curtains and butterfly patterns
+  curtains and butterfly patterns, plus solid colour, gradients, stripes, chequerboards, colour waves,
+  sparkle, a spotlight and polka dots
 - Colour palettes for holidays and moods, plus your own (or ones the AI makes from a description), to
   recolour an effect, a light or the whole show in one click
 - Copy and paste effects between lights, play and loop just a region, undo and redo

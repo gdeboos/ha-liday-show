@@ -1244,6 +1244,14 @@ House lane. They sit on top of each light's own effects, or mix with them (see [
 | Pinwheel | Spokes spin round a point on the house. **Twist** bends them into a spiral, and a negative speed spins the other way |
 | Curtain | Curtains open from the middle (or rise from the bottom) over the clip, with pleats. **Way: closing** draws them shut |
 | Butterfly | Swirling, overlapping waves of your colours across the whole house, like xLights' Butterfly |
+| House solid | One colour on every light. Most useful mixed with the lights' own effects (see below) |
+| House gradient | Up to 8 colours blended across the house in any direction, still or drifting |
+| Stripes | Stripes of your colours at any **Angle** (45° for candy cane), still or moving, with soft or sharp edges |
+| Chequerboard | Squares of your colours across the house, still or swapping |
+| Colour wave | Your colours rolling across the house as a wave, in any direction |
+| House sparkle | Sparkles scattered over every light by where it is, over the lights' own effects |
+| Spotlight | A soft round light that wanders over the house |
+| Polka dots | Dots of your colours in a grid across the house, still or drifting |
 
 - **Direction** can be left to right, right to left, top to bottom, bottom to top, out from the
   centre or in to the centre.
@@ -1261,12 +1269,12 @@ all the group lanes away under it, and **▾** to bring them back. Folding is re
 a stretch selected across lights leaves folded tracks out. Select a stretch of it and
 press **＋ Add effect…**, and the chooser has two kinds:
 
+- **Across the group, by where its lights are on the house photo** (first): the House lane's effects
+  (**Sweep**, **Stripes**, **Colour wave** and the rest), measured across just the group's lights, so a
+  sweep crosses the whole group, however much of the house it covers.
 - **Along the group, as if its lights were one strip**: any light effect, running through the group's
   lights and parts one after another, in the **Devices** tab's order. A chase on the roof icicles runs off
   the end of the left strip and on into the right one. Change the order on the Devices tab.
-- **Across the group, by where its lights are on the house photo**: **Sweep**, **House wipe** and
-  **Rainbow wave**, as on the House lane but measured across just the group's lights, so a sweep crosses
-  the whole group, however much of the house it covers.
 
 While a light effect runs on a group it takes over the group's lights from their own effects; a House
 effect on a group goes over them, as on the House lane (and the House lane still goes on top of

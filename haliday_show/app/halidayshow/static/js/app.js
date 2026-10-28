@@ -2491,8 +2491,8 @@ async function stopLightPreview() {
 
 // effects and inspector -------------------------------------------------------
 // A group lane's effects, in the effect chooser.
-const GROUP_CHOICES = [["Along the group, as if its lights were one strip", false],
-  ["Across the group, by where its lights are on the house photo", true]];
+const GROUP_CHOICES = [["Across the group, by where its lights are on the house photo", true],
+  ["Along the group, as if its lights were one strip", false]];
 const labsOn = () => prefs.get("labs", false);
 // house: true for the House lane's effects, false for lights', undefined for both.
 const visibleEffects = (keep, house) => Object.entries(EFFECTS).filter(([, fx]) => house === undefined || !!fx.house === house);
