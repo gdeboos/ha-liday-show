@@ -47,7 +47,7 @@ def razer_enable(on: bool = True) -> bytes:
 
 
 def razer_colors(rgb: bytes, gradient: bool = False) -> bytes:
-    n = len(rgb) // 3
+    n = min(len(rgb) // 3, 255)  # the count is one byte
     flag = 0 if gradient else 1
     return frame(CMD_COLORS, bytes([flag, n]) + bytes(rgb[: n * 3]))
 

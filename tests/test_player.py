@@ -35,16 +35,27 @@ def test_tiny_drift_is_ignored_and_a_seek_jumps():
     assert abs(p.position() - 30.0) < 0.01
 
 
-class RecordingDevice:
+class ClaimingOutput:
     def __init__(self):
-        self.calls = []
+        self.devices, self.claims = {}, []
 
-    def play_scene(self, code, param):
-        self.calls.append(("scene", code))
+    def claim(self, ip, segments, **kw):
+        self.claims.append((ip, segments))
 
-    def end_scene(self):
-        self.calls.append(("end",))
-
-    def update(self, rgb):
+    def release(self, ip):
         pass
 
+    def release_all(self):
+        pass
+
+
+async def test_a_bake_longer_than_the_light_is_played_at_the_lights_length():
+    # Baked when Pillars was on Per bulb with 300 segments; it's 44 now, on Realtime.
+    from halidayshow import baked
+    b = baked.decode(baked.encode(10, [{"device": "p", "segments": 300}, {"device": "w", "segments": 10}],
+                                  [bytes(930)]))
+    out = ClaimingOutput()
+    p = player.Player(out)
+    await p.play("x", b, {"p": {"ip": "10.0.0.2", "segments": 44}, "w": {"ip": "10.0.0.3", "segments": 60}})
+    await p.stop()
+    assert out.claims == [("10.0.0.2", 44), ("10.0.0.3", 10)]

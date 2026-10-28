@@ -131,8 +131,6 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Split a light into parts (say, the front, side and back of a roof line) that each get their own
   track, while the light's own track still plays across all of them as one; segments in no part
   stay off during the show. **Test** a part to see exactly where it starts and ends on the real light
-- For Govee lights whose realtime mode only reaches part of them, such as the Christmas String Lights 2
-  and icicle lights: per-bulb colour (experimental), using the Govee app's own Finger sketch pictures
 
 </details>
 

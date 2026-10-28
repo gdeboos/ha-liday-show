@@ -35,3 +35,8 @@ def test_colorwc_uses_average_colour():
     assert msg["msg"]["cmd"] == "colorwc"
     assert msg["msg"]["data"]["color"] == {"r": 127, "g": 0, "b": 127}
 
+
+
+def test_realtime_count_never_overflows_its_byte():
+    pkt = protocol.razer_colors(bytes(900))
+    assert pkt[5] == 255 and len(pkt) == 4 + 2 + 255 * 3 + 1

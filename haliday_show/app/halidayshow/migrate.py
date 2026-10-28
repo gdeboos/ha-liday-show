@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 from . import baked
+from .storage import _write_atomic
 
 log = logging.getLogger(__name__)
 
@@ -239,7 +240,7 @@ def drop_govee_scenes(storage) -> dict:
             if gone:
                 # Written in place: saving through storage would delete the baked frames, and the
                 # show would stop playing until it's opened again.
-                p.write_text(json.dumps(show, indent=1))
+                _write_atomic(p, json.dumps(show, indent=1).encode())
                 clips += gone
                 shows.append(str(show.get("name") or p.stem))
     for folder in folders + [storage.blocks_dir]:
@@ -249,7 +250,7 @@ def drop_govee_scenes(storage) -> dict:
             except OSError:
                 continue
             if fixed is not None:
-                p.write_bytes(fixed)
+                _write_atomic(p, fixed)
     settings = storage.load_settings()
     blocks = 0
     for pl in settings.get("playlists") or []:
@@ -289,7 +290,7 @@ def retire_govee_extras(storage) -> dict | None:
     done["clips"] = done.get("clips", 0) + scenes["clips"]
     done["blocks"] = done.get("blocks", 0) + scenes["blocks"]
     done["at"] = int(time.time())
-    marker.write_text(json.dumps(done))
+    _write_atomic(marker, json.dumps(done).encode())
     return done
 
 

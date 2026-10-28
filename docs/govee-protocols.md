@@ -99,7 +99,7 @@ names came from SignalRGB's data;
 defaults (`static/js/models.js`); `reach` (bulbs its realtime mode lights) drives the timeline warning
 (`compat.js`). Add to it when the owner tests a light.
 
-## Per bulb: the Finger sketch picture
+## Per bulb: the Finger sketch picture (removed in 0.2.206)
 
 The Govee app's **Finger sketch** colours any bulb on these lights. Its format, from a decrypted
 Bluetooth capture and confirmed by replaying it over the LAN (`pixel_picture()` / `pixel_packets()`):
@@ -144,7 +144,7 @@ pictures a second for mostly-one-colour looks, about 1.5 for a full 300-bulb rai
 verdict: "ok but not amazing"; it's the light's processing, not the transport, so a faster link won't
 help. Fast chases look steppy; fades, colour changes and beat flashes look good.
 
-## App segments: 33 05 15
+## App segments: 33 05 15 (removed in 0.2.206)
 
 `33 05 15 01 <r g b> 00 00 00 00 00 <segment mask LE, bit 0 = segment 1>` colours the app's own
 segments (10 on the H70C5). Separate datagrams sent back-to-back get dropped, so commands are bundled
