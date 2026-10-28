@@ -2,14 +2,41 @@
 // checked and placed. The model can get names, times or settings wrong, so nothing goes on the
 // timeline until it has been matched to a real light and effect and clamped to valid values.
 
-import { EFFECTS, clipPiece, defaultParams } from "./effects.js";
+import { CURVE_SHAPES, EFFECTS, MIXES, TRANSITIONS, clipPiece, defaultParams } from "./effects.js";
 
 const r2 = (t) => Math.round(t * 100) / 100;
+
+// What each effect looks like, in a few words, so the AI can pick by look rather than by name.
+export const EFFECT_NOTES = {
+  solid: "one steady colour", duo: "two colours in blocks or alternating; can move like marquee lights",
+  trio: "three colours in blocks or alternating; can move like marquee lights", pulse: "breathes in and out, or a heartbeat",
+  gradient: "two or three colours blended along the light", cycle: "the whole light changes through colours",
+  fade: "fades from one colour to another over the clip", chase: "a block of colour running along",
+  rainbow: "a moving rainbow", comet: "a bright head with a fading tail running along", scanner: "a dot bouncing end to end",
+  flicker: "fire or candle flicker", lightning: "random bright flashes", strobe: "rapid flashing", twinkle: "random sparkles",
+  wipe: "fills the light with colour over the clip", eyes: "pairs of eyes that open, blink and close (Halloween)",
+  fireworks: "bursts that bloom and fade", drip: "drops that swell, fall and splash (icicles)", candles: "every bulb its own candle",
+  snow: "flakes (or rain) falling along the light", fairy: "old-fashioned coloured bulbs fading on and off",
+  ocean: "rolling waves of blue", aurora: "drifting curtains of colour like the northern lights",
+  flow: "soft patches of colour drifting and blending", sunrise: "a slow dawn (or sunset) over the clip",
+  theatre: "one lit in every few, stepping along; can be rainbow", juggle: "coloured dots swinging with trails",
+  ripple: "drops landing and rippling outwards", dissolve: "bulbs lighting one by one in random order, then going out",
+  bounce: "bouncing balls, or popcorn", lighthouse: "a soft beam sweeping past", tetris: "blocks dropping and piling up",
+  level: "lit up to a level that rises or falls over the clip", morph: "a band stretching to the far end then shrinking away",
+  vumeter: "a level meter following the song's loudness",
+  sweep: "a band of colour crossing the house", housewipe: "fills the house with colour over the clip",
+  wave: "a rainbow across the house", shockwave: "a ring spreading out from a point (big beats)",
+  pinwheel: "spokes spinning round a point", curtain: "curtains opening or closing across the house",
+  butterfly: "swirling waves of colour over the house", housesolid: "one colour on every light (good mixed)",
+  housegradient: "colours blended across the house", housestripes: "stripes at any angle, still or moving (candy cane)",
+  housechecks: "a chequerboard of colours", housewave: "the palette rolling across the house",
+  housesparkle: "sparkles over every light", spotlight: "a soft light wandering over the house", housedots: "polka dots",
+};
 
 // Every effect with its settings, as the AI sees them.
 export function effectsForAI() {
   return Object.entries(EFFECTS).filter(([, fx]) => !fx.experimental).map(([key, fx]) => ({
-    key, label: fx.label, ...(fx.house ? { house: true } : {}),
+    key, label: fx.label, ...(EFFECT_NOTES[key] ? { looks: EFFECT_NOTES[key] } : {}), ...(fx.house ? { house: true } : {}),
     settings: fx.params.map((p) => ({
       key: p.key, type: p.type === "range" ? "number" : p.type,
       ...(p.min !== undefined ? { min: p.min, max: p.max } : {}),
@@ -75,6 +102,30 @@ function checkSettings(fx, settings) {
 
 const norm = (s) => String(s || "").trim().toLowerCase();
 
+// The extras the AI may give a clip, checked: how it comes in and goes out, settings that change over
+// it, and (on the House lane) how it mixes with the lights' own effects. Anything invalid is left out.
+function extras(fx, c, length, light) {
+  const out = {};
+  for (const [field, key] of [["in", "transIn"], ["out", "transOut"]]) {
+    const type = norm(c?.[field]?.type), secs = Number(c?.[field]?.seconds);
+    if (TRANSITIONS.includes(type) && type !== "none" && Number.isFinite(secs) && secs > 0) {
+      out[key] = type;
+      out[`${key}Secs`] = r2(Math.min(secs, length, 30));
+    }
+  }
+  const curves = {};
+  for (const ch of Array.isArray(c?.changes) ? c.changes : []) {
+    const def = fx.params.find((p) => p.key === ch?.key && (p.type === "number" || p.type === "range"));
+    const to = def && settingValue(def, ch.to);
+    if (to === undefined) continue;
+    curves[def.key] = { to, shape: CURVE_SHAPES.includes(norm(ch.shape)) ? norm(ch.shape) : "steady" };
+  }
+  if (Object.keys(curves).length) out.curves = curves;
+  const mix = norm(c?.mix);
+  if (light.house && MIXES.includes(mix) && mix !== "cover") out.mix = mix;
+  return out;
+}
+
 // Checks the AI's clips and turns them into real ones: [{trackIndex, clip}], plus how many were
 // left out and why. lights is the same list buildContext had, with each light's trackIndex.
 export function checkClips(reply, lights, duration) {
@@ -88,7 +139,8 @@ export function checkClips(reply, lights, duration) {
     if (!!fx.house !== !!light.house) { skipped.push(`${fx.label} can't go on ${light.name}`); continue; }
     const start = Math.max(0, Number(c.start)), end = Math.min(duration, Number(c.end));
     if (!Number.isFinite(start) || !Number.isFinite(end) || end - start < 0.05) { skipped.push("a clip with bad times"); continue; }
-    const clip = { effect: c.effect, start: r2(start), end: r2(end), ...defaultParams(c.effect), ...checkSettings(fx, c.settings) };
+    const clip = { effect: c.effect, start: r2(start), end: r2(end), ...defaultParams(c.effect), ...checkSettings(fx, c.settings),
+      ...extras(fx, c, end - start, light) };
     placed.push({ trackIndex: light.trackIndex, clip });
   }
   return { placed, skipped };

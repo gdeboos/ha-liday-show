@@ -39,7 +39,7 @@ def claude_key() -> str:
     return str(options().get("claude_api_key") or os.environ.get("ANTHROPIC_API_KEY") or "").strip()
 
 
-INSTRUCTIONS = """You design light shows for Govee LED lights. Each light is a strip of segments that the \
+INSTRUCTIONS = """You design light shows for LED lights (WLED strips, Govee lights and others). Each light is a strip of segments that the \
 show colours frame by frame. A show is a list of clips: one effect, with its settings, on one light from a \
 start time to an end time in seconds. Clips you add replace what that light had in that stretch of time.
 
@@ -48,10 +48,11 @@ Turn the user's request into clips, using the context below:
 "house") run across every light by where it sits on the house photo; use it only if it is listed, and only \
 with house effects. Other lights take only the other effects. A light marked "slow" can only change a few \
 times a second: give it effects that change the whole light at once or barely move (fades, colour cycles, \
-pulses, still blocks, slow gradients), at most once a beat, and never fast chases, comets, scanners, \
-marquees, twinkles, strobes, flicker or rainbows.
-- "effects": every effect, with its settings (key, type, range or options, and default). Leave out settings \
-the default suits. Colours are "#rrggbb"; LEDs wash out pastels and dark shades, so use strong colours, and \
+pulses, still blocks, slow gradients), at most once a beat, and never anything that moves along the light \
+quickly (chases, comets, scanners, marquees, theatre chases, juggles, ripples, fireworks, snow), twinkles, \
+strobes, flicker or rainbows.
+- "effects": every effect, with what it looks like ("looks") and its settings (key, type, range or options, \
+and default). Leave out settings the default suits. Colours are "#rrggbb"; LEDs wash out pastels and dark shades, so use strong colours, and \
 "#000000" for off.
 - "song": its length, tempo, beat and bar times, and sections (Intro, Verse, Chorus...) with their energy \
 from 0 (quiet) to 1 (loud). Start and end clips on bar or beat times so changes land with the music, and \
@@ -62,15 +63,38 @@ where or when, use the selection, else the whole song.
 - "palettes": named colour sets, for requests like "in Christmas colours".
 - "clips": what the lights have now, for requests that refer to it.
 
+A clip can also have, when it helps (leave them out otherwise):
+- "in" and "out": how it starts and ends, {"type": "fade" | "wipe" | "wipe back" | "from the middle" | \
+"dissolve", "seconds"}. Back-to-back clips on one light with an "in" on the second crossfade. Good at section \
+changes and for quiet starts and endings.
+- "changes": number settings that move over the clip, [{"key", "to", "shape": "steady" | "ease in" | \
+"ease out" | "up and back"}], from the setting's value to "to". For example a chase speeding up into a \
+chorus, or brightness swelling.
+- "mix": on the House lane only, how it mixes with the lights' own effects: "add", "brighter" or \
+"only where lit" (default: it covers them). "only where lit" recolours whatever the lights are doing.
+
 When asked for a complete new show (the lights are cleared first, so a light with no clip is dark), design \
-it as a person would rather than lighting everything all the time: quiet parts use fewer lights, lights come \
-in as the music builds, and every light together is saved for the biggest moments, unless the request says \
-otherwise. For anything smaller (a selection, named lights, a change to what's there), do just what's asked \
+it as a person would rather than lighting everything all the time: quiet parts use fewer lights (about a \
+third), lights come in as the music builds (about two thirds), and every light together is saved for the \
+biggest moments (the loudest sections and the chorus), unless the request says otherwise. A light that \
+should be off simply has no clip there; leave real gaps. Having many effects to choose from is no reason to \
+light more: vary the look, not the number of lights. A House lane effect lights every light, so it counts \
+as all lights on: keep it for the big moments and short accents (a shockwave on a drop, a sweep into a \
+chorus), or give it "mix": "only where lit" so it only recolours the lights that are already on. For anything smaller (a selection, named lights, a change to what's there), do just what's asked \
 on the lights it's about.
 
 Use only light names and effect keys from the context. Keep clips within the song. Give a one-sentence \
 summary of what you made, in plain words. If the request can't be done with these lights and effects, \
 return no clips and say why in the summary."""
+
+# How a clip comes in or goes out (optional on each clip).
+TRANSITION = {
+    "type": "object",
+    "properties": {"type": {"type": "string", "enum": ["fade", "wipe", "wipe back", "from the middle", "dissolve"]},
+                   "seconds": {"type": "number"}},
+    "required": ["type", "seconds"],
+    "additionalProperties": False,
+}
 
 SCHEMA = {
     "type": "object",
@@ -94,6 +118,18 @@ SCHEMA = {
                             "additionalProperties": False,
                         },
                     },
+                    "in": TRANSITION, "out": TRANSITION,
+                    "changes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {"key": {"type": "string"}, "to": {"type": "string"},
+                                           "shape": {"type": "string", "enum": ["steady", "ease in", "ease out", "up and back"]}},
+                            "required": ["key", "to", "shape"],
+                            "additionalProperties": False,
+                        },
+                    },
+                    "mix": {"type": "string", "enum": ["cover", "add", "brighter", "only where lit"]},
                 },
                 "required": ["light", "start", "end", "effect", "settings"],
                 "additionalProperties": False,

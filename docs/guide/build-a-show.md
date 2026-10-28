@@ -467,6 +467,12 @@ stretch first and the request doesn't say where or when, it works on the selecti
 wrong (a light or effect that doesn't exist) is left out and listed in the status bar, and Ctrl+Z undoes
 the lot. It needs an AI to be set up first; see [Setting up the AI](editor-and-settings.md#setting-up-the-ai).
 
+The AI knows every effect and what it looks like, and can also use
+[transitions](#transitions), [settings that change over a clip](#settings-that-change-over-a-clip) and
+[mixing lanes with the lights](#mixing-lanes-with-the-lights): ask for "fade the roof in over two bars" or
+"speed the chase up into the chorus". A whole new show still builds up: a few lights in quiet parts,
+more as the music builds, and every light together only for the biggest moments.
+
 ### Generate
 
 **✨ Generate** in the Show panel opens **Generate a show**, which makes a first draft of the whole show

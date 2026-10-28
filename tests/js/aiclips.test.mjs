@@ -121,3 +121,28 @@ test("palettes from the AI keep valid colours only, up to 12, and skip ones with
   assert.equal(skipped.length, 2);
   assert.deepEqual(checkPalettes(null), { palettes: [], skipped: [] });
 });
+
+test("every effect is described for the AI", async () => {
+  const { EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const { EFFECT_NOTES, effectsForAI } = await import("../../haliday_show/app/halidayshow/static/js/aiclips.js");
+  for (const [key, fx] of Object.entries(EFFECTS)) if (!fx.experimental) assert.ok(EFFECT_NOTES[key], key);
+  assert.ok(effectsForAI().every((e) => e.looks));
+});
+
+test("the AI's transitions, changing settings and lane mixes are checked", async () => {
+  const { checkClips } = await import("../../haliday_show/app/halidayshow/static/js/aiclips.js");
+  const lights = [{ name: "Roof", trackIndex: 0, segments: 30 }, { name: "House", trackIndex: 1, house: true }];
+  const { placed } = checkClips({ clips: [
+    { light: "Roof", start: 0, end: 8, effect: "chase", settings: [],
+      in: { type: "Fade", seconds: 2 }, out: { type: "spin", seconds: 1 },
+      changes: [{ key: "speed", to: "4", shape: "ease in" }, { key: "color", to: "#ff0000", shape: "steady" }, { key: "speed", to: "x", shape: "steady" }],
+      mix: "add" },
+    { light: "House", start: 0, end: 4, effect: "housesolid", settings: [], mix: "only where lit", in: { type: "wipe", seconds: 99 } },
+  ] }, lights, 60);
+  const [roof, house] = placed.map((p) => p.clip);
+  assert.deepEqual([roof.transIn, roof.transInSecs, roof.transOut], ["fade", 2, undefined]);
+  assert.deepEqual(roof.curves, { speed: { to: 4, shape: "ease in" } });
+  assert.equal(roof.mix, undefined); // only lanes mix
+  assert.equal(house.mix, "only where lit");
+  assert.equal(house.transInSecs, 4); // no longer than the clip
+});
