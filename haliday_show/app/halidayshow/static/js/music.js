@@ -14,6 +14,7 @@ import { BANDS, EQ_MAX, EQ_MIN, MAX_CHANGES, applyEq, eqAt, faderText, flatEq, i
 import { stretch } from "./tempo.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
+import { itemsInFolders } from "./songfolders.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 
@@ -998,7 +999,7 @@ export class MusicEditor {
     const box = $("music-layers");
     const samples = this.samplesList || [], songs = this.host.songs();
     const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, !!l.duck, !!l.matchTempo, isFlat(l.eq), l.clips.length]), isFlat(this.eq),
-      this.eqCh, !!this.songTempo, samples.length, songs.length, !!this.pieces.length]);
+      this.eqCh, !!this.songTempo, samples.length, JSON.stringify(this.sampleFolders || []), songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
       box.dataset.sig = sig;
       const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
@@ -1072,7 +1073,10 @@ export class MusicEditor {
           for (const r of refs) g.append(new Option(r.path.split("/").pop().replace(/\.[^.]+$/, ""), JSON.stringify({ source: r.source, path: r.path })));
           add.append(g);
         };
-        group("Samples", samples);
+        // Samples by their folders (Library → Samples), then those in none.
+        const { groups, loose } = itemsInFolders(samples, this.sampleFolders || []);
+        for (const g of groups) group(`Samples · ${g.folder.name}`, g.items);
+        group(groups.length ? "Samples · not in a folder" : "Samples", loose);
         group("Songs", songs);
         add.addEventListener("change", () => { const v = add.value; add.value = ""; if (v) this.addClip(i, JSON.parse(v)); });
         const remove = el("button", { type: "button", className: "ghost", textContent: "Remove" });
@@ -1152,7 +1156,9 @@ export class MusicEditor {
 
   // Samples for the layers' Add lists (Library → Samples), read when the editor shows.
   async loadSamples() {
-    this.samplesList = await this.host.api("api/samples").catch(() => this.samplesList || []);
+    [this.samplesList, this.sampleFolders] = await Promise.all([
+      this.host.api("api/samples").catch(() => this.samplesList || []),
+      this.host.api("api/sample-folders").catch(() => this.sampleFolders || [])]);
     this.renderLayers();
   }
 

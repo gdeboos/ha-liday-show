@@ -1382,6 +1382,22 @@ async def put_song_folders(request):
     return web.json_response(folders)
 
 
+# Folders for Library → Samples, the same shape as song folders: the files stay in the Samples folder,
+# so Music editor drafts still find them.
+async def get_sample_folders(request):
+    folders = request.app[STORAGE].load_settings().get("sample_folders")
+    return web.json_response(folders if isinstance(folders, list) else [])
+
+
+async def put_sample_folders(request):
+    folders = _clean_song_folders(await request.json())
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    settings["sample_folders"] = folders
+    storage.save_settings(settings)
+    return web.json_response(folders)
+
+
 # playlists ----------------------------------------------------------------------
 async def get_playlists(request):
     return web.json_response(playlists.load(request.app[STORAGE]))
@@ -2284,6 +2300,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/presets", put_presets)
     r.add_get("/api/song-folders", get_song_folders)
     r.add_put("/api/song-folders", put_song_folders)
+    r.add_get("/api/sample-folders", get_sample_folders)
+    r.add_put("/api/sample-folders", put_sample_folders)
     r.add_get("/api/light-groups", get_light_groups)
     r.add_put("/api/light-groups", put_light_groups)
     r.add_get("/api/playlists", get_playlists)

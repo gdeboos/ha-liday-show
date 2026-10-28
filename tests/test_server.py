@@ -1214,6 +1214,16 @@ async def test_song_folders_round_trip_and_validation(client):
         assert (await client.put("/api/song-folders", json=bad)).status == 400
 
 
+async def test_sample_folders_are_kept_apart_from_song_folders(client):
+    assert await (await client.get("/api/sample-folders")).json() == []
+    sample = {"source": "media", "path": "haliday_show/Samples/ho-ho-ho.wav"}
+    resp = await client.put("/api/sample-folders", json=[{"id": "voices", "name": " Voices ", "songs": [sample]}])
+    assert resp.status == 200
+    assert await (await client.get("/api/sample-folders")).json() == [{"id": "voices", "name": "Voices", "songs": [sample]}]
+    assert await (await client.get("/api/song-folders")).json() == []
+    assert (await client.put("/api/sample-folders", json=[{"id": "Bad Id", "name": "A", "songs": []}])).status == 400
+
+
 async def test_light_groups_round_trip_and_validation(client):
     assert await (await client.get("/api/light-groups")).json() == []
     mine = [{"id": "roof", "name": "  Roof  ", "members": ["icicles-left", "icicles-right", "icicles-left"]},

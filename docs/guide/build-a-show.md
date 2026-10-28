@@ -192,6 +192,12 @@ They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Lib
 song list so those stay tidy. Use them on a [layer](#layers) in the Music editor. Each sample has **▶** to hear it (press **■** to stop) and **Delete…** to
 remove it for good.
 
+To sort them, press **+ New folder** and give it a name, then pick the folder under **Folder** on each
+sample (or pick **New folder…** there). A folder's title folds it away, and **Rename…** and
+**Delete…** sit beside it; deleting a folder keeps its samples, which move to **Not in a folder**. The
+files themselves stay where they are, so songs that use them still find them. In the Music editor, a
+layer's **+ Add a clip** list shows the samples under their folders.
+
 ### Editing a song
 
 The **Music editor** cuts, shortens and splices songs before you build a show. Press **Edit** on a
