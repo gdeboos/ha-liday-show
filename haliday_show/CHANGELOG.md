@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.229
+
+- Adding a Home Assistant light or switch is much easier. Instead of one long drop-down, the window has a **Find** box and a list you can narrow to **Colour lights**, **Other lights** or **Switches**. Colour lights come first.
+- Tick as many as you like and press **Add** to add them all at once. Ones you've already added are greyed out.
+- In a Home Assistant light's own window, the drop-down is now split into the same three kinds.
+
 ## 0.2.228
 
 - The **Public page** now has a list down the left, the same as **Library** and **Setup**: **Access**, **Shows**, **Look**, **Words** and **Queue**, each with a line saying what's in it. On a phone the list runs along the top.

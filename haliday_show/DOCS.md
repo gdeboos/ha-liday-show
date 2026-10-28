@@ -259,8 +259,11 @@ Not every Govee light has a realtime mode. Change **Protocol** and press **Test*
 ### Home Assistant lights and switches
 
 Any light or switch in Home Assistant can join in: Zigbee and Hue bulbs, LIFX, or a smart plug driving an
-inflatable or a lit-up prop. Press **+ Add a light**, pick **Home Assistant light or switch**, pick it from
-the list and press **Add**. To swap it for another later, pick it in the light's window.
+inflatable or a lit-up prop. Press **+ Add a light** and pick **Home Assistant light or switch**. Type part of a
+name in **Find a light or switch** (or pick **Colour lights**, **Other lights** or **Switches** to narrow the
+list), press each one you want so it's ticked, then press **Add**: you can add several at once. A
+double-click adds just that one, and so does **Enter** when only one matches. Ones you've already added
+are greyed out. To swap one for another later, pick it in the light's window.
 
 Changes go through Home Assistant, so these are slow, and each is one colour at a time:
 
