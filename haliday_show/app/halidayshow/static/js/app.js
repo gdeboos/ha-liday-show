@@ -6,9 +6,10 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, FPS, HOUSE, PRESETS, applyHouse, bake, composeLight, defaultParams, matchesPreset, presetParams,
+  EFFECTS, FPS, HOUSE, PRESETS, applyHouse, bake, composeLight, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
+import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
 import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
@@ -202,6 +203,42 @@ const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [
   draftsChanged: () => draftsChanged() });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
+// Show settings → Brightness ------------------------------------------------
+// Dragging a slider redraws the preview straight away; letting go saves it as one change (Undo).
+function wireLevel(input, out, set) {
+  const apply = (live) => {
+    set(input.value);
+    out.value = `${input.value}%`;
+    app.changed({ live });
+    if (live) timeline.draw();
+  };
+  input.addEventListener("input", () => apply(true));
+  input.addEventListener("change", () => apply(false));
+}
+
+function renderShowBrightness() {
+  const whole = wholeLevel(app.show);
+  $("show-brightness").value = whole;
+  $("show-brightness-out").value = `${whole}%`;
+  const box = $("show-light-brightness");
+  box.replaceChildren();
+  const ids = lightsInShow(app.show, app.devices).filter((id) => app.lights[id]);
+  $("show-light-brightness-head").hidden = !ids.length;
+  for (const id of ids) {
+    const level = lightLevel(app.show, id), key = `show-bright-${box.children.length / 3}`;
+    const label = document.createElement("label");
+    label.htmlFor = key;
+    label.textContent = app.lights[id].name;
+    const input = document.createElement("input");
+    Object.assign(input, { id: key, type: "range", min: 1, max: 100, step: 1, value: level });
+    const out = document.createElement("output");
+    out.htmlFor = key;
+    out.value = `${level}%`;
+    wireLevel(input, out, (v) => setLightLevel(app.show, id, v));
+    box.append(label, input, out);
+  }
+}
+
 // history -----------------------------------------------------------------
 function commit() {
   app.history.splice(app.historyIndex + 1);
@@ -219,6 +256,7 @@ function restore(step) {
   app.edits++;
   app.selected = null;
   $("show-name").value = app.show.name; // undo can take back a rename
+  if ($("show-dialog").open) renderShowBrightness();
   renderInspector();
   timeline.layout();
   scheduleAutoSave();
@@ -1468,12 +1506,13 @@ function housePositionsAll() {
 function lightFrame(tr, dev, time, pos) {
   const rgb = renderTrack(tr.clips, time, dev.segments);
   if (pos[dev.id]) applyHouse(houseClips(), time, pos[dev.id], rgb);
-  return rgb;
+  return dim(rgb, showLevel(app.show, dev.parent || dev.id));
 }
 
 // A whole physical light's colours, as the show plays it.
 function physicalFrame(light, time, pos) {
-  return composeLight(light, (id) => app.show.tracks.find((t) => t.device === id), time, pos, houseClips());
+  return dim(composeLight(light, (id) => app.show.tracks.find((t) => t.device === id), time, pos, houseClips()),
+    showLevel(app.show, light.id));
 }
 
 // What a physical light shows now: stepped (and on Whole light only, one colour) as on the real light.
@@ -7584,8 +7623,10 @@ function wire() {
   $("rm-replacement").addEventListener("change", () => { document.querySelector("input[name=rm-instead][value=song]").checked = true; });
   $("btn-show-settings").addEventListener("click", () => {
     $("btn-delete").disabled = !app.showId;
+    renderShowBrightness();
     $("show-dialog").showModal();
   });
+  wireLevel($("show-brightness"), $("show-brightness-out"), (v) => setWholeLevel(app.show, v));
   $("btn-song").addEventListener("click", () => refreshAudio().catch(() => {}).then(openSongDialog));
   $("song-dialog").addEventListener("close", () => {
     const sel = $("audio-select");

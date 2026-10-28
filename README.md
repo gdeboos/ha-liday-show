@@ -124,6 +124,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   back as it was after the show
 - **Twinkly** lights (experimental), through Twinkly's local realtime mode
 - Set each light's segments, bulb count, brightness and direction, and **Test** it on the real light
+- Dim a whole show, or one light in it, from the show's settings, on top of each effect's own brightness
 - Plan shows before your lights arrive: add planned lights by name and segment count, then link
   them to the real lights later
 - Put your lights in any order (drag them on the Devices tab) and every show's timeline follows

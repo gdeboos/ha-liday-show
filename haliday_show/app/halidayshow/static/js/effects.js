@@ -491,6 +491,23 @@ export function composeLight(light, trackOf, time, positions = {}, houseClips = 
   return out;
 }
 
+// The show's own dimming for one physical light, 0–1: Show settings' whole-show level times that
+// light's level in this show. Both are optional percentages; a missing or odd one counts as 100.
+export function showLevel(show, lightId) {
+  const pct = (v) => {
+    const n = Number(v ?? 100);
+    return Number.isFinite(n) ? Math.min(Math.max(n, 0), 100) / 100 : 1;
+  };
+  return pct(show?.brightness) * pct(show?.lightBrightness?.[lightId]);
+}
+
+// Scales a frame in place by `level` (0–1) and returns it.
+export function dim(rgb, level) {
+  if (level >= 1) return rgb;
+  for (let i = 0; i < rgb.length; i++) rgb[i] = Math.round(rgb[i] * level);
+  return rgb;
+}
+
 // Bake every frame into the layout the Python player reads (see baked.py): one track per physical
 // light, in the order lights first appear in the show. devices maps a track's device id to its
 // light {segments, parts?}, or to a part of one ("lightId#partId", with parent, from and to,
@@ -536,10 +553,11 @@ export function bake(show, devices, fps = FPS, positions = {}) {
   new DataView(out.buffer).setUint32(5, headerBytes.length);
   out.set(headerBytes, 9);
   let off = 9 + headerBytes.length;
+  const levels = lights.map((l) => showLevel(show, l.id));
   for (let f = 0; f < header.frames; f++) {
     const time = f / fps;
-    for (const l of lights) {
-      composeLight(l, trackOf, time, positions, houseClips, out.subarray(off, off + l.segments * 3));
+    for (const [k, l] of lights.entries()) {
+      dim(composeLight(l, trackOf, time, positions, houseClips, out.subarray(off, off + l.segments * 3)), levels[k]);
       off += l.segments * 3;
     }
   }

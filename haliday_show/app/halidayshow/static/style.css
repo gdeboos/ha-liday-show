@@ -626,6 +626,14 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .form-dialog-body .field { display: flex; flex-direction: column; align-items: stretch; gap: 4px; font-weight: 600; }
 .form-dialog-body .field > :is(input, select) { font-weight: 400; width: 100%; }
 .form-dialog-body .field .hint { font-weight: 400; }
+/* Show settings → Brightness: a slider per row, its name on the left and the % on the right. */
+.show-bright { border: 0; margin: 0; padding: 0; min-width: 0; }
+.show-bright legend { padding: 0; margin-bottom: 4px; }
+.bright-grid { display: grid; grid-template-columns: minmax(80px, max-content) minmax(0, 1fr) 3.5em; gap: 6px 10px;
+  align-items: center; font-weight: 400; }
+.bright-grid:empty { display: none; }
+.bright-grid input[type=range] { width: 100%; accent-color: var(--accent); }
+.bright-grid output { font: 12px ui-monospace, monospace; color: var(--muted); text-align: right; }
 .form-dialog-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px;
   border-top: 1px solid var(--line); }
 .form-dialog-foot .spacer { flex: 1; }
