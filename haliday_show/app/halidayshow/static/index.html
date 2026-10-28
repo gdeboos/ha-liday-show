@@ -792,13 +792,23 @@
         <label class="field" id="add-entity-field" hidden>Light or switch
           <select id="add-entity"></select></label>
         <div id="add-plan-fields" hidden>
-          <label class="field">Model
-            <input id="plan-model" list="model-list" placeholder="e.g. H706A, WLED, DDP, E1.31, HA or Twinkly (optional)"
+          <label class="field">Kind of light
+            <select id="plan-kind">
+              <option value="govee">Govee light</option>
+              <option value="wled">WLED strip</option>
+              <option value="ddp">Pixel controller (DDP)</option>
+              <option value="e131">Pixel controller (E1.31)</option>
+              <option value="ha">Home Assistant light or switch</option>
+              <option value="twinkly">Twinkly (experimental)</option>
+            </select></label>
+          <label class="field" id="plan-model-field">Model
+            <input id="plan-model" list="model-list" placeholder="e.g. H706A (optional)"
               title="Pick the model to fill in its name and the settings that suit it">
             <datalist id="model-list"></datalist>
             <span id="plan-info" class="hint"></span></label>
           <label class="field">Name <input id="plan-name" placeholder="e.g. Porch"></label>
-          <label class="field">Segments <input id="plan-segments" type="number" min="1" max="255" value="15"></label>
+          <label class="field" id="plan-segments-field"><span id="plan-segments-label">Segments</span>
+            <input id="plan-segments" type="number" min="1" max="255" value="15"></label>
         </div>
         <p id="add-error" class="hint warn" hidden></p>
       </section>
