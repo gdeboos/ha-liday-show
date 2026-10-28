@@ -639,6 +639,7 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .effect-dialog-head h3 { margin: 0; flex: 1; font-size: 15px; }
 .effect-dialog-body { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .effect-dialog-section { margin-top: 4px; }
+.effect-dialog-kind { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 4px; }
 .effect-dialog .effect-picker button { min-width: 110px; }
 .effect-dialog-note { flex-basis: 100%; margin: 0; }
 /* Effects that won't work on the light (compat.js) are greyed out; ones that only partly work are marked. */

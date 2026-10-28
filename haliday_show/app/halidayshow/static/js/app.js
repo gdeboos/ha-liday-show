@@ -6,7 +6,7 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -2591,36 +2591,46 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         sh.textContent = heading;
         body.append(sh);
       }
-      const effects = visibleEffects(current ?? undefined, house).filter(([key]) => !only || only.includes(key));
-      if (!toggle.checked) {
-        const row = document.createElement("div");
-        row.className = "effect-picker";
-        for (const [key, fx] of effects) row.append(choice(key, null, fx.label, key === current));
-        body.append(row);
-        continue;
-      }
-      const grid = document.createElement("div");
-      grid.className = "preset-groups";
-      for (const [key, fx] of effects) {
-        const presets = presetsFor(key).filter((p) => !onlyMine || p.mine);
-        if (onlyMine && !presets.length) continue;
-        const g = document.createElement("fieldset");
-        g.className = `preset-group${key === current ? " current" : ""}`;
-        const legend = document.createElement("legend");
-        legend.textContent = fx.label;
-        const row = document.createElement("div");
-        row.className = "effect-picker";
-        if (!onlyMine) row.append(choice(key, null, "Default", key === current && !currentPreset));
-        for (const preset of presets) {
-          row.append(choice(key, preset, presetLabel(preset), key === current && preset === currentPreset));
+      const all = visibleEffects(current ?? undefined, house).filter(([key]) => !only || only.includes(key));
+      // Under small headings (Basics, Movement, ...) when there's more than one kind.
+      const kinds = EFFECT_GROUPS.map(([g, label]) => [label, all.filter(([, fx]) => fx.group === g)]).filter(([, e]) => e.length);
+      for (const [kind, effects] of kinds) {
+        if (kinds.length > 1 && !(toggle.checked && onlyMine)) {
+          const sub = document.createElement("div");
+          sub.className = "effect-dialog-kind";
+          sub.textContent = kind;
+          body.append(sub);
         }
-        g.append(legend, row);
-        grid.append(g);
+        if (!toggle.checked) {
+          const row = document.createElement("div");
+          row.className = "effect-picker";
+          for (const [key, fx] of effects) row.append(choice(key, null, fx.label, key === current));
+          body.append(row);
+          continue;
+        }
+        const grid = document.createElement("div");
+        grid.className = "preset-groups";
+        for (const [key, fx] of effects) {
+          const presets = presetsFor(key).filter((p) => !onlyMine || p.mine);
+          if (onlyMine && !presets.length) continue;
+          const g = document.createElement("fieldset");
+          g.className = `preset-group${key === current ? " current" : ""}`;
+          const legend = document.createElement("legend");
+          legend.textContent = fx.label;
+          const row = document.createElement("div");
+          row.className = "effect-picker";
+          if (!onlyMine) row.append(choice(key, null, "Default", key === current && !currentPreset));
+          for (const preset of presets) {
+            row.append(choice(key, preset, presetLabel(preset), key === current && preset === currentPreset));
+          }
+          g.append(legend, row);
+          grid.append(g);
+        }
+        if (grid.children.length) body.append(grid);
       }
-      if (!grid.children.length) {
-        grid.innerHTML = `<p class="hint">No presets of your own yet. Select a clip and press <b>Save as preset</b>.</p>`;
-      }
-      body.append(grid);
+    }
+    if (toggle.checked && onlyMine && !body.querySelector(".preset-group")) {
+      body.insertAdjacentHTML("beforeend", `<p class="hint">No presets of your own yet. Select a clip and press <b>Save as preset</b>.</p>`);
     }
   };
   allow.addEventListener("change", () => { prefs.set(ALLOW_UNFIT, allow.checked); render(); });

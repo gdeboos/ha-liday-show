@@ -1134,7 +1134,8 @@ Ctrl+Z undoes and Ctrl+Shift+Z (or Ctrl+Y) redoes, even after a change has been 
 ## Effects
 
 **Effects on a light** run along that light, from the plug end (or the other end with
-**Reverse**):
+**Reverse**). In the effect chooser they're under headings: **Basics**, **Movement** and **Sparkle and
+festive**.
 
 | Effect | What it does |
 | --- | --- |
@@ -1153,6 +1154,11 @@ Ctrl+Z undoes and Ctrl+Shift+Z (or Ctrl+Y) redoes, even after a change has been 
 | Strobe | Flashes on and off |
 | Twinkle | Segments sparkle at random |
 | Wipe | Fills the light with colour over the clip |
+| Halloween eyes | Pairs of eyes open somewhere along the light, blink, and close again. Set how many pairs, their size and the gap between them |
+| Fireworks | Bursts in up to three colours bloom along the light and fade. Set how many a second and how big |
+| Drip | Drops swell at one end, fall faster and faster and splash at the other. Set **Icicle length** to the length of each icicle on icicle lights, so every icicle drips on its own |
+| Candles | Every segment (or every few, with **Segments per candle**) flickers like its own candle, with the odd draught |
+| Snow | Flakes fall along the light, some near and some further off. The **Rain** preset turns it into fast blue rain |
 
 **Effects on the House lane** run across all your lights at once, by where each one is on the
 house photo, like xLights' model effects. Add them the same way, by selecting a stretch of the

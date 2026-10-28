@@ -51,6 +51,18 @@ const mod = (a, n) => ((a % n) + n) % n;
 const bounce = (x) => { const m = mod(x, 2); return m <= 1 ? m : 2 - m; };
 const smooth = (u) => u * u * (3 - 2 * u);
 
+// Random events (bursts, drops) at about `rate` a second, each lasting `life` seconds: calls
+// fn(k, age) for every event k alive at t. Start times come from the stable hash, so a preview and a
+// bake place them identically. `seed` keeps separate streams (one per icicle, say) apart.
+function events(t, rate, life, seed, fn) {
+  if (!(rate > 0)) return;
+  for (let k = Math.floor((t - life) * rate) - 1; k <= Math.floor(t * rate); k++) {
+    const age = t - (k + hash01(k + 7, seed) * 0.9) / rate;
+    if (age >= 0 && age < life) fn(k, age);
+  }
+}
+const add = (a, c, u) => { a[0] += c[0] * u; a[1] += c[1] * u; a[2] += c[2] * u; };
+
 // Two or three solid colours side by side: split the light into equal bands, or alternate
 // them every few segments along it.
 function multiColour(label, colours) {
@@ -295,6 +307,122 @@ Object.assign(EFFECTS, {
   }),
 });
 
+
+// Festive effects, after WLED's: each is still a pure function of time, with randomness from hash01.
+Object.assign(EFFECTS, {
+  eyes: {
+    label: "Halloween eyes", group: "festive",
+    params: [color("color", "Eyes", "#ff3000"), color("background", "Background", "#000000"),
+      num("pairs", "Pairs of eyes", 3, 1, 12, 1), num("size", "Eye size (segments)", 1, 1, 10, 1),
+      num("gap", "Gap between eyes (segments)", 2, 0, 20, 1), num("stay", "Seconds each pair stays", 4, 1, 30, 0.5)],
+    render: (p, t, dur, n, i) => {
+      const size = Math.max(1, Math.round(p.size)), gap = Math.max(0, Math.round(p.gap)), span = size * 2 + gap;
+      let a = 0;
+      for (let j = 0; j < Math.round(p.pairs); j++) {
+        const period = p.stay * (1 + hash01(j + 1, 3)), s = t / period + hash01(j + 1, 5), c = Math.floor(s), f = s - c;
+        if (f > 0.8) continue; // gone for a while before the next pair appears
+        const x = Math.floor(hash01(j * 977 + c, 9) * Math.max(1, n - span + 1));
+        const d = i - x;
+        if (d < 0 || d >= span || (d >= size && d < size + gap)) continue;
+        // Open, blink once, close.
+        const env = f < 0.1 ? f / 0.1 : f > 0.7 ? (0.8 - f) / 0.1 : f > 0.42 && f < 0.46 ? 0.05 : 1;
+        a = Math.max(a, env);
+      }
+      return mix(hexToRgb(p.background), hexToRgb(p.color), a);
+    },
+  },
+  fireworks: {
+    label: "Fireworks", group: "festive",
+    params: [color("color", "Colour 1", "#ff2000"), color("color2", "Colour 2", "#20ff40"), color("color3", "Colour 3", "#4060ff"),
+      color("background", "Background", "#000000"), num("rate", "Bursts per second", 1.5, 0.1, 10, 0.1),
+      num("size", "Burst size (segments)", 12, 1, 150, 1)],
+    render: (p, t, dur, n, i) => {
+      const out = hexToRgb(p.background), cols = [p.color, p.color2, p.color3].map(hexToRgb);
+      events(t, p.rate, 1.5, 1, (k, age) => {
+        const centre = hash01(k + 1, 11) * (n - 1), size = p.size * (0.6 + 0.4 * hash01(k + 1, 17));
+        const r = size * (1 - Math.exp(-age * 5)), d = Math.abs(i - centre);
+        if (d > r + 0.5) return;
+        if (age < 0.08 && d < 1.5) { add(out, [255, 255, 255], 1); return; } // the bang
+        const fade = (1 - age / 1.5) ** 2, edge = d > r - 1.5 ? 1 : 0.5;
+        add(out, cols[Math.floor(hash01(k + 1, 13) * 3)], fade * edge * (0.55 + 0.45 * hash01(i + 1, Math.floor(t * 25) + k)));
+      });
+      return out;
+    },
+  },
+  drip: {
+    label: "Drip", group: "festive",
+    params: [color("color", "Drop", "#a0d8ff"), color("background", "Background", "#000000"),
+      num("rate", "Drops per second (each icicle)", 0.4, 0.05, 5, 0.05),
+      num("length", "Icicle length (segments, 0 = the whole light)", 0, 0, 300, 1), direction],
+    render: (p, t, dur, n, i) => {
+      const len = p.length >= 1 ? Math.min(Math.round(p.length), n) : n;
+      const pos = p.direction === "reverse" ? n - 1 - i : i;
+      const icicle = Math.floor(pos / len), q = pos % len, size = Math.min(len, n - icicle * len);
+      // A drop swells at the top, falls faster and faster, and splashes at the bottom.
+      const grow = 0.8, fall = Math.sqrt((2 * Math.max(size - 1, 1)) / 120), life = grow + fall + 0.3;
+      let a = 0;
+      events(t, p.rate, life, icicle + 1, (k, age) => {
+        if (age < grow) { if (q === 0) a = Math.max(a, age / grow); else if (q === 1) a = Math.max(a, (age / grow) * 0.25); return; }
+        const tf = age - grow;
+        if (tf < fall) {
+          const y = 60 * tf * tf, behind = y - q;
+          if (behind > -1 && behind < 4) a = Math.max(a, behind < 0 ? 1 + behind : Math.exp(-behind));
+          return;
+        }
+        const sp = 1 - (tf - fall) / 0.3; // the splash
+        if (q >= size - 2) a = Math.max(a, sp * (q === size - 1 ? 1 : 0.5));
+      });
+      return mix(hexToRgb(p.background), hexToRgb(p.color), Math.min(a, 1));
+    },
+  },
+  candles: {
+    label: "Candles", group: "festive",
+    params: [color("color", "Flame", "#ff7010"), color("color2", "Bright flame", "#ffb040"),
+      num("rate", "Flicker speed", 3, 0.5, 15, 0.5), num("size", "Segments per candle", 1, 1, 50, 1)],
+    render: (p, t, dur, n, i) => {
+      // Every candle flickers on its own: mostly steady, with now and then a draught that dips it.
+      const g = Math.floor(i / Math.max(1, Math.round(p.size))) + 1;
+      const s = t * p.rate, k = Math.floor(s);
+      const v = hash01(g, k) + (hash01(g, k + 1) - hash01(g, k)) * smooth(s - k);
+      const d = t * 0.5, m = Math.floor(d), w = smooth(d - m);
+      const gust = (hash01(g + 500, m) < 0.15 ? 1 - w : 0) + (hash01(g + 500, m + 1) < 0.15 ? w : 0);
+      const level = (0.72 + 0.28 * v) * (1 - 0.45 * gust * Math.sin(Math.PI * w));
+      const c = mix(hexToRgb(p.color), hexToRgb(p.color2), v);
+      return [c[0] * level, c[1] * level, c[2] * level];
+    },
+  },
+  snow: {
+    label: "Snow", group: "festive",
+    params: [color("color", "Colour", "#ffffff"), color("background", "Background", "#000000"),
+      num("density", "Flakes %", 10, 1, 100, 1), num("speed", "Speed (segments per second)", 6, 0.5, 120, 0.5),
+      num("length", "Trail (segments)", 1, 1, 20, 1), direction],
+    render: (p, t, dur, n, i) => {
+      const pos = p.direction === "reverse" ? n - 1 - i : i, len = Math.max(1, Math.round(p.length));
+      let a = 0;
+      // Two layers at different speeds, the slower one dimmer, so it looks deeper.
+      for (const [speed, level, seed] of [[p.speed, 1, 31], [p.speed * 0.6, 0.45, 37]]) {
+        const moved = t * speed;
+        for (let c = Math.floor(pos - moved) - 1; c <= Math.floor(pos - moved) + len + 1; c++) {
+          if (hash01(c, seed) >= p.density / 100) continue;
+          const behind = c + moved - pos; // how far this segment is behind the flake's head
+          const u = behind < 0 ? 1 + behind : behind < len ? 1 - behind / len : 0;
+          if (u > 0) a = Math.max(a, u * level);
+        }
+      }
+      return mix(hexToRgb(p.background), hexToRgb(p.color), Math.min(a, 1));
+    },
+  },
+});
+
+
+// Headings in the effect window, in order. House lane effects all go under "Across the house".
+export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
+  ["calm", "Calm"], ["house", "Across the house"]];
+const GROUP_OF = { solid: "basics", duo: "basics", trio: "basics", pulse: "basics", gradient: "basics", cycle: "basics",
+  fade: "basics", strobe: "basics", chase: "movement", rainbow: "movement", comet: "movement", scanner: "movement",
+  wipe: "movement", flicker: "festive", lightning: "festive", twinkle: "festive" };
+for (const [key, fx] of Object.entries(EFFECTS)) fx.group = fx.house ? "house" : fx.group || GROUP_OF[key] || "basics";
+
 // Every effect gets a Brightness slider, applied after it renders. Rainbow had its own with the
 // same key, so its older clips keep their level.
 const BRIGHTNESS = { key: "brightness", label: "Brightness %", type: "range", default: 100, min: 0, max: 100, step: 1 };
@@ -404,6 +532,29 @@ export const PRESETS = {
     { label: "Fast wave", params: { size: 1, speed: 1.5 } },
     { label: "Many rainbows", params: { size: 3, speed: 0.5 } },
     { label: "Rising", params: { direction: "bottom to top", size: 1, speed: 0.5 } },
+  ],
+  eyes: [
+    { label: "One pair", params: { pairs: 1, stay: 6 } },
+    { label: "Crowd", params: { pairs: 8, stay: 3 } },
+    { label: "Green goblins", params: { color: "#40ff00", pairs: 4 } },
+  ],
+  fireworks: [
+    { label: "Finale", params: { rate: 6, size: 15 } },
+    { label: "Slow and big", params: { rate: 0.5, size: 30 } },
+    { label: "Gold", params: { color: "#ffb000", color2: "#ffd060", color3: "#ffffff" } },
+  ],
+  drip: [
+    { label: "Icicles", params: { length: 10, rate: 0.3 } },
+    { label: "Steady drip", params: { length: 0, rate: 1 } },
+  ],
+  candles: [
+    { label: "Calm", params: { rate: 1.5 } },
+    { label: "Draughty", params: { rate: 6 } },
+  ],
+  snow: [
+    { label: "Light snow", params: { density: 5, speed: 4 } },
+    { label: "Blizzard", params: { density: 30, speed: 25, length: 2 } },
+    { label: "Rain", params: { color: "#4080ff", density: 15, speed: 40, length: 4 } },
   ],
 };
 
