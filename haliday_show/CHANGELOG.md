@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.214
+## 0.2.215
 
 - The top bar is now just **Library**, **Setup** and **Public page**. The editors open from the Library:
   **Open** on a show, **Edit** on a song or scene, **Open** on a playlist, or **+ New …**. **← All shows**
@@ -10,6 +10,12 @@
   next to the tabs and takes you straight back to it.
 - The editors' own copies of those lists (Your shows, Your songs and so on) are gone, as they were the
   same as the Library's.
+
+## 0.2.214
+
+- Playlists have a **Scene** building block: one of your scenes for a set time between shows, going
+  round as it does on its own, at your scenes' brightness. Pick the scene on the block's card in
+  **Running order**. If you delete the scene later, the block says so and is skipped.
 
 ## 0.2.213
 

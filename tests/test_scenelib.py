@@ -320,3 +320,26 @@ async def test_mqtt_only_plays_scenes_that_are_yours(runner):
     await bridge._on_message("haliday_show/scene/../settings/set", b"ON")
     await bridge._on_message("haliday_show/scene/gone/set", b"ON")
     assert runner.scene is None
+
+
+# Scene blocks in playlists ----------------------------------------------------------------------
+def test_a_scene_block_is_kept_with_its_scene():
+    from halidayshow import playlists
+    assert playlists.clean_item({"type": "scene", "id": "scene-1", "seconds": 60, "scene": "glow"}) == \
+        {"type": "scene", "id": "scene-1", "seconds": 60.0, "scene": "glow"}
+    assert playlists.clean_item({"type": "scene", "id": "scene-1", "seconds": 60}) is None
+    assert playlists.clean_item({"type": "scene", "id": "scene-1", "seconds": 60, "scene": "../x"}) is None
+
+
+async def test_a_playlist_plays_a_scene_block_dimmed_as_scenes_are(runner):
+    _scene(runner.storage)
+    runner.set_scene_level(50)
+    played = await asyncio.wait_for(runner._play_block({"type": "scene", "id": "scene-1", "seconds": 0.2, "scene": "glow"}), 2)
+    assert played and runner.scene is None  # a block, not the scene coming on
+    _show(runner.storage, "one", frames=400)
+    await runner.play("one")
+    assert runner.player.level == 100
+
+
+async def test_a_scene_block_whose_scene_has_gone_is_skipped(runner):
+    assert await runner._play_block({"type": "scene", "id": "scene-1", "seconds": 5, "scene": "gone"}) is False

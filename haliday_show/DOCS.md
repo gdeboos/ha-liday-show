@@ -1281,6 +1281,9 @@ hour), set on its card in **Running order**:
   a **Style** (the same ready-made settings as in the Show editor, your own presets too) and, for
   effects with colours, **Colours** from your palettes. An effect longer than a minute repeats every
   minute or so, at a point where the join doesn't show.
+- **Scene**: one of your [scenes](#scenes) plays, going round as it does on its own, at your scenes'
+  brightness. Pick it on the block's card. It needs at least one scene, made in the **Scene** editor. If
+  the scene is deleted later, the block says so and is skipped until you pick another.
 
 Put a block wherever you like: between every show, only before the first, or several in a row (a
 colour, then off for a moment, say). Colour, Off and Effect blocks are got ready in your browser, like a show

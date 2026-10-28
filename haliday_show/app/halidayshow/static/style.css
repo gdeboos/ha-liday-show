@@ -430,6 +430,9 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 .pl-swatch { flex: none; width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--line); }
 .pl-swatch-pause { border-style: dashed; background: transparent; }
 .pl-swatch-off { background: #111; }
+.pl-swatch-scene { background: #e9b949; }
+.pl-block.pl-block-scene { background: #e9b949; }
+.pl-disabled { opacity: .5; }
 .pl-swatch-colour { background: linear-gradient(135deg, #e53935, #fdd835, #43a047, #1e88e5); }
 .pl-swatch-effect { background: repeating-linear-gradient(90deg, #1e88e5 0 4px, #fff 4px 6px, #8e24aa 6px 10px); }
 #pl-order .pl-block-card { border-left: 6px solid var(--line); background: var(--track); }
