@@ -46,7 +46,7 @@ import {
   itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
 } from "./playlisteditor.js";
 import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
-import { addFolder, deleteFolder, folderNameProblem, folderOf, inFolders, moveSong, renameFolder } from "./songfolders.js";
+import { addFolder, deleteFolder, folderNameProblem, folderOf, inFolders, itemsInFolders, moveSong, renameFolder } from "./songfolders.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
 import { convertProblem, showUses, toWled } from "./convert.js";
@@ -6096,11 +6096,11 @@ function saveSongFolders(next, what) {
   });
 }
 
-function askFolderName(title, current = "", except = null) {
+function askFolderName(title, current = "", except = null, folders = songFolders) {
   for (;;) {
     const name = prompt(title, current);
     if (name === null) return null;
-    const problem = folderNameProblem(songFolders, name, except);
+    const problem = folderNameProblem(folders, name, except);
     if (!problem) return name;
     alert(problem);
     current = name;
@@ -6418,60 +6418,167 @@ function stopSample() {
   for (const b of document.querySelectorAll("#samples-list [data-play]")) b.textContent = "▶";
 }
 
+// Folders for samples (songfolders.js), saved like song folders but on their own.
+let sampleFolders = [], sampleFoldersLoaded = false, sampleFolderChain = Promise.resolve(), samplesShown = [];
+
 async function renderSamplesPage() {
-  const box = $("samples-list");
   let samples;
-  try { samples = await api("api/samples"); } catch (e) { status(`Couldn't list your samples: ${e.message}`, true, "samples"); return; }
-  if (!samples.length) {
+  try {
+    [samples, sampleFolders] = await Promise.all([api("api/samples"),
+      api("api/sample-folders").then((f) => { sampleFoldersLoaded = true; return f; }).catch(() => { sampleFoldersLoaded = false; return sampleFolders; })]);
+  } catch (e) { status(`Couldn't list your samples: ${e.message}`, true, "samples"); return; }
+  samplesShown = samples;
+  drawSamples();
+}
+
+function drawSamples() {
+  const box = $("samples-list"), samples = samplesShown;
+  $("btn-new-sample-folder").disabled = !sampleFoldersLoaded;
+  if (!samples.length && !sampleFolders.length) {
     box.innerHTML = `<p class="hint">No samples yet. Press <b>+ Add a sample</b>, or make one from a song in the Music editor.</p>`;
     return;
   }
-  box.replaceChildren(...samples.map((s) => {
-    const ref = { source: s.source, path: s.path };
-    const name = s.path.split("/").pop().replace(/\.[^.]+$/, "");
-    const row = document.createElement("div");
-    row.className = "show-row";
-    row.setAttribute("role", "listitem");
-    const main = document.createElement("div");
-    main.className = "show-main";
-    const title = document.createElement("b");
-    title.className = "show-name";
-    title.textContent = name;
-    const len = document.createElement("div");
-    len.className = "hint";
-    len.textContent = "…";
-    songLength({ key: songKey(ref), ref, size: s.size, modified: s.modified }).then((t) => { len.textContent = t; });
-    main.append(title, len);
-    const actions = document.createElement("div");
-    actions.className = "group show-actions";
-    const play = button("▶", () => {
-      const same = samplePlaying === s.path;
-      stopSample();
-      if (same) return;
-      samplePlayer ||= new Audio();
-      samplePlayer.src = audioUrl(ref);
-      samplePlayer.volume = volume.gain ?? 1;
-      samplePlayer.onended = () => stopSample();
-      samplePlayer.play().catch(() => {});
-      samplePlaying = s.path;
-      play.textContent = "■";
-    });
-    play.dataset.play = "1";
-    play.setAttribute("aria-label", `Play ${name}`);
-    const del = button("Delete…", async () => {
-      if (!confirm(`Delete the sample "${name}"? It's removed from HA-liday Show's Samples folder for good.`)) return;
-      try {
-        if (samplePlaying === s.path) stopSample();
-        await api(`api/samples?path=${encodeURIComponent(s.path)}`, { method: "DELETE" });
-        status(`Deleted ${name}`, "saved", "samples");
-        renderSamplesPage();
-      } catch (e) { status(`Couldn't delete ${name}: ${e.message}`, true, "samples"); }
+  const list = (items, label) => {
+    const l = document.createElement("div");
+    l.className = "show-list";
+    l.setAttribute("role", "list");
+    l.setAttribute("aria-label", label);
+    l.append(...items.map(sampleRow));
+    return l;
+  };
+  if (!sampleFolders.length) { box.replaceChildren(list(samples, "Your samples")); return; }
+  const { groups, loose } = itemsInFolders(samples, sampleFolders);
+  const out = [];
+  for (const { folder, items } of groups) {
+    // A folder: a header that folds it, with Rename… and Delete…, over its samples.
+    const d = document.createElement("section");
+    d.className = "song-folder";
+    const open = prefs.get(`sampleFolderOpen.${folder.id}`, true);
+    const head = document.createElement("div");
+    head.className = "song-folder-head";
+    const fold = document.createElement("button");
+    fold.type = "button";
+    fold.className = "song-folder-fold";
+    fold.setAttribute("aria-expanded", String(open));
+    fold.append(Object.assign(document.createElement("b"), { textContent: folder.name }),
+      Object.assign(document.createElement("span"), { className: "hint", textContent: items.length ? plural(items.length, "sample") : "empty" }));
+    const ren = button("Rename…", () => {
+      const name = askFolderName("Rename the folder", folder.name, folder.id, sampleFolders);
+      if (name !== null && name.trim() !== folder.name) saveSampleFolders(renameFolder(sampleFolders, folder.id, name), "Folder renamed");
+    }, "ghost");
+    ren.setAttribute("aria-label", `Rename the folder ${folder.name}`);
+    const del = button("Delete…", () => {
+      if (!confirm(`Delete the folder ${folder.name}? Its samples aren't deleted: they move to Not in a folder.`)) return;
+      saveSampleFolders(deleteFolder(sampleFolders, folder.id), `Folder ${folder.name} deleted`);
     }, "ghost danger");
-    del.setAttribute("aria-label", `Delete ${name}`);
-    actions.append(play, del);
-    row.append(main, actions);
-    return row;
-  }));
+    del.setAttribute("aria-label", `Delete the folder ${folder.name}`);
+    head.append(fold, ren, del);
+    const body = items.length ? list(items, `Samples in ${folder.name}`)
+      : Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in it yet. Pick it under Folder on a sample." });
+    body.hidden = !open;
+    fold.addEventListener("click", () => {
+      body.hidden = !body.hidden;
+      fold.setAttribute("aria-expanded", String(!body.hidden));
+      prefs.set(`sampleFolderOpen.${folder.id}`, !body.hidden);
+    });
+    d.append(head, body);
+    out.push(d);
+  }
+  if (loose.length) {
+    const h = document.createElement("h3");
+    h.className = "item-group";
+    h.textContent = "Not in a folder";
+    out.push(h, list(loose, "Samples not in a folder"));
+  }
+  box.replaceChildren(...out);
+}
+
+// Saves go one after another, each showing at once; a failed one reads the folders back afresh.
+function saveSampleFolders(next, what) {
+  if (!sampleFoldersLoaded) { status("Couldn't load your folders, so they can't be changed just now. Try again in a moment", true, "samples"); return; }
+  sampleFolders = next;
+  drawSamples();
+  sampleFolderChain = sampleFolderChain.then(async () => {
+    try {
+      await api("api/sample-folders", { method: "PUT", json: next });
+      status(what, "saved", "samples");
+    } catch (e) {
+      status(`Couldn't save the folders: ${e.message}`, true, "samples");
+      try { sampleFolders = await api("api/sample-folders"); } catch { sampleFoldersLoaded = false; }
+      drawSamples();
+    }
+  });
+}
+
+function newSampleFolder(thenMove = null) {
+  const name = askFolderName("Name the new folder", "", null, sampleFolders);
+  if (name === null) { drawSamples(); return; }
+  const { folders, id } = addFolder(sampleFolders, name);
+  saveSampleFolders(thenMove ? moveSong(folders, thenMove, id) : folders, thenMove ? `Moved into ${name.trim()}` : `Folder ${name.trim()} made`);
+}
+
+function sampleRow(s) {
+  const ref = { source: s.source, path: s.path };
+  const name = s.path.split("/").pop().replace(/\.[^.]+$/, "");
+  const row = document.createElement("div");
+  row.className = "show-row";
+  row.setAttribute("role", "listitem");
+  const main = document.createElement("div");
+  main.className = "show-main";
+  const title = document.createElement("b");
+  title.className = "show-name";
+  title.textContent = name;
+  const len = document.createElement("div");
+  len.className = "hint";
+  len.textContent = "…";
+  songLength({ key: songKey(ref), ref, size: s.size, modified: s.modified }).then((t) => { len.textContent = t; });
+  main.append(title, len);
+  const actions = document.createElement("div");
+  actions.className = "group show-actions";
+  const play = button(samplePlaying === s.path ? "■" : "▶", () => {
+    const same = samplePlaying === s.path;
+    stopSample();
+    if (same) return;
+    samplePlayer ||= new Audio();
+    samplePlayer.src = audioUrl(ref);
+    samplePlayer.volume = volume.gain ?? 1;
+    samplePlayer.onended = () => stopSample();
+    samplePlayer.play().catch(() => {});
+    samplePlaying = s.path;
+    play.textContent = "■";
+  });
+  play.dataset.play = "1";
+  play.setAttribute("aria-label", `Play ${name}`);
+  const del = button("Delete…", async () => {
+    if (!confirm(`Delete the sample "${name}"? It's removed from HA-liday Show's Samples folder for good.`)) return;
+    try {
+      if (samplePlaying === s.path) stopSample();
+      await api(`api/samples?path=${encodeURIComponent(s.path)}`, { method: "DELETE" });
+      status(`Deleted ${name}`, "saved", "samples");
+      renderSamplesPage();
+    } catch (e) { status(`Couldn't delete ${name}: ${e.message}`, true, "samples"); }
+  }, "ghost danger");
+  del.setAttribute("aria-label", `Delete ${name}`);
+  actions.append(play);
+  if (sampleFolders.length && sampleFoldersLoaded) {
+    const sel = document.createElement("select");
+    sel.className = "song-folder-pick";
+    sel.setAttribute("aria-label", `Folder for ${name}`);
+    sel.title = "Which folder this sample is in";
+    sel.add(new Option("No folder", ""));
+    for (const f of [...sampleFolders].sort((a, b) => a.name.localeCompare(b.name))) sel.add(new Option(f.name, f.id));
+    sel.add(new Option("New folder…", "__new__"));
+    sel.value = folderOf(sampleFolders, songKey(ref));
+    sel.addEventListener("change", () => {
+      if (sel.value === "__new__") { newSampleFolder(ref); return; }
+      const f = sampleFolders.find((x) => x.id === sel.value);
+      saveSampleFolders(moveSong(sampleFolders, ref, sel.value), f ? `Moved ${name} into ${f.name}` : `${name} is in no folder now`);
+    });
+    actions.append(sel);
+  }
+  actions.append(del);
+  row.append(main, actions);
+  return row;
 }
 
 async function addSamples(files) {
@@ -8385,6 +8492,7 @@ function wire() {
   }
   $("btn-add-song").addEventListener("click", openAddSong);
   $("btn-add-sample").addEventListener("click", () => $("sample-upload").click());
+  $("btn-new-sample-folder").addEventListener("click", () => newSampleFolder());
   $("sample-upload").addEventListener("change", (e) => { const files = [...e.target.files]; e.target.value = ""; if (files.length) addSamples(files); });
   $("btn-new-folder").addEventListener("click", () => newSongFolder());
   $("as-form").addEventListener("submit", asSubmit);

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.234
+
+- **Library → Samples** has folders. Press **+ New folder**, then pick a folder on each sample. Folders fold away and can be renamed or deleted (their samples stay). The sample files don't move, so nothing that uses them breaks.
+- In the Music editor, a layer's **+ Add a clip** list groups samples by folder.
+
 ## 0.2.233
 
 - New **Schedule** tab at the top, between **Library** and **Setup**: everything that plays by itself, in one list. Each row plays a playlist, a show (round and round) or a scene at its times, days and dates, as schedules did before.

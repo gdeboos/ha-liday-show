@@ -636,8 +636,9 @@
 <main id="view-samples" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Samples</h2>
   <p class="hint">Short sounds, such as sleigh bells or a "ho ho ho", to layer over a song in the Music editor.</p>
-  <div id="samples-list" class="show-list" role="list" aria-label="Your samples"></div>
+  <div id="samples-list"></div>
   <p class="group"><button type="button" class="primary" id="btn-add-sample">+ Add a sample</button>
+    <button type="button" id="btn-new-sample-folder" title="A folder to sort your samples into; the files stay where they are">+ New folder</button>
     <input id="sample-upload" type="file" accept="audio/*" multiple hidden>
     <span id="sample-progress" class="hint" aria-live="polite"></span></p>
 </main>

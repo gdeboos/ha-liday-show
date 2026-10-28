@@ -53,3 +53,18 @@ export const renameFolder = (folders, id, name) =>
 
 // Deleting a folder leaves its songs where they are, just in no folder.
 export const deleteFolder = (folders, id) => folders.filter((f) => f.id !== id);
+
+// Any list of files ({source, path}), such as samples, split into the folders (in name order, each
+// with its items) and those in none.
+export function itemsInFolders(items, folders) {
+  const where = new Map();
+  for (const f of folders) for (const s of f.songs) if (!where.has(songKey(s))) where.set(songKey(s), f.id);
+  const byId = new Map(folders.map((f) => [f.id, { folder: f, items: [] }]));
+  const loose = [];
+  for (const it of items) {
+    const id = where.get(songKey(it));
+    (id && byId.has(id) ? byId.get(id).items : loose).push(it);
+  }
+  const groups = [...byId.values()].sort((a, b) => a.folder.name.localeCompare(b.folder.name, undefined, { sensitivity: "base" }));
+  return { groups, loose };
+}
