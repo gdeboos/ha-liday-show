@@ -15,12 +15,16 @@
     <p id="pp-welcome" class="pp-welcome" hidden></p>
   </header>
   <section id="pp-locked" class="pp-card" hidden>
-    <p class="pp-big">Scan the code on the sign to start a show.</p>
-    <p class="pp-hint">This page only works from the link in the code.</p>
+    <p id="pp-locked-text" class="pp-big"></p>
+    <p id="pp-locked-hint" class="pp-hint"></p>
   </section>
   <section id="pp-closed" class="pp-card" hidden>
-    <p class="pp-big">No shows right now.</p>
-    <p class="pp-hint">Come back later to start one.</p>
+    <p id="pp-closed-text" class="pp-big"></p>
+    <p id="pp-closed-hint" class="pp-hint"></p>
+  </section>
+  <section id="pp-warning" class="pp-card pp-warning" role="note" hidden>
+    <p id="pp-warning-text"></p>
+    <button id="pp-accept" type="button" class="primary" hidden></button>
   </section>
   <div id="pp-open" hidden>
     <p id="pp-now" class="pp-now"></p>
@@ -29,17 +33,17 @@
     <p id="pp-hours" class="pp-card pp-big pp-hours" role="status" hidden></p>
     <section id="pp-where" class="pp-card pp-where" role="status" aria-live="polite" hidden>
       <p id="pp-where-text"></p>
-      <button id="pp-retry" type="button" hidden>Try again</button>
+      <button id="pp-retry" type="button" hidden></button>
     </section>
     <p id="pp-coming" class="pp-card pp-big" hidden></p>
     <div id="pp-pick">
-      <h2 id="pp-pick-head">Pick a show</h2>
-      <p id="pp-pick-hint" class="pp-hint">It plays on the lights and speaker here. If something's on, yours plays next.</p>
+      <h2 id="pp-pick-head"></h2>
+      <p id="pp-pick-hint" class="pp-hint"></p>
       <p id="pp-block" class="pp-block" hidden></p>
     </div>
     <div id="pp-choices" class="pp-list"></div>
-    <p id="pp-none" class="pp-hint" hidden>There aren't any shows to pick yet.</p>
-    <h2 id="pp-soon-head" hidden>Coming soon</h2>
+    <p id="pp-none" class="pp-hint" hidden></p>
+    <h2 id="pp-soon-head" hidden></h2>
     <div id="pp-soon" class="pp-list"></div>
   </div>
   <p id="pp-footer" class="pp-footer" hidden><a id="pp-link" rel="noopener noreferrer" target="_blank"></a></p>

@@ -1,0 +1,88 @@
+{
+  "_about": "Everything visitors read on the public page, and its sign, with the wording it starts with. You change them on the Public page tab, under Words. {name}-style parts are filled in as the page runs.",
+  "groups": [
+    {
+      "group": "Top of the page",
+      "words": [
+        {"key": "idle", "label": "When nothing's playing", "text": "Nothing's on right now. Pick a show to start it."},
+        {"key": "on_now", "label": "When a show's playing", "text": "On now: {name}"},
+        {"key": "on_now_waiting", "label": "When a show's playing and others are waiting", "text": "On now: {name} · {count} waiting"}
+      ]
+    },
+    {
+      "group": "The list of shows",
+      "words": [
+        {"key": "pick_head", "label": "Heading", "text": "Pick a show"},
+        {"key": "pick_hint", "label": "Under the heading", "text": "It plays on the lights and speaker here. If something's on, yours plays next."},
+        {"key": "shows_head", "label": "Heading when visitors can't start one yet", "text": "Shows"},
+        {"key": "start", "label": "Start button", "text": "▶ Start"},
+        {"key": "length", "label": "How long a show lasts", "text": "About {minutes}"},
+        {"key": "length_playlist", "label": "How long a playlist lasts", "text": "Playlist · about {minutes}"},
+        {"key": "no_shows", "label": "When there's nothing to pick", "text": "There aren't any shows to pick yet."},
+        {"key": "soon_head", "label": "Heading for later shows", "text": "Coming soon"},
+        {"key": "soon_from", "label": "When a later show starts", "text": "From {day}"},
+        {"key": "soon_from_playlist", "label": "When a later playlist starts", "text": "Playlist · from {day}"},
+        {"key": "soon_page", "label": "When nothing can be picked yet", "text": "Coming soon on {day}"}
+      ]
+    },
+    {
+      "group": "A visitor's own pick",
+      "words": [
+        {"key": "playing", "label": "Theirs is playing", "text": "Playing now. Enjoy the show!"},
+        {"key": "starting", "label": "Theirs is about to start", "text": "Starting in a moment…"},
+        {"key": "next", "label": "Theirs is next", "text": "You're next, starting in about {minutes}."},
+        {"key": "queued", "label": "Theirs is further back", "text": "You're {place} in the queue, starting in about {minutes}."},
+        {"key": "cancel", "label": "Cancel button", "text": "Cancel"},
+        {"key": "one_waiting", "label": "They've already got one waiting", "text": "You can pick another show once yours starts."},
+        {"key": "many_waiting", "label": "They've got the most waiting", "text": "You've got {count} shows waiting, the most for one phone."},
+        {"key": "full", "label": "The queue is full", "text": "The queue is full. Try again in a few minutes."},
+        {"key": "gone", "label": "A show that's just been taken off", "text": "That show isn't available any more."}
+      ]
+    },
+    {
+      "group": "Opening hours",
+      "words": [
+        {"key": "come_back", "label": "Outside the hours", "text": "Shows start {when}. Come back then!"},
+        {"key": "not_open", "label": "When the hours never come round", "text": "We're not open at the moment. Come back another time!"}
+      ]
+    },
+    {
+      "group": "Nearby only",
+      "words": [
+        {"key": "checking", "label": "While checking where they are", "text": "Checking you're by the lights… Your phone may ask to share your location. It's only used for this and isn't kept."},
+        {"key": "too_far", "label": "Too far away", "text": "You're too far away to start a show. Come and see the lights!"},
+        {"key": "denied", "label": "They won't share their location", "text": "To start a show, let this page use your location: it's only used to check you're by the lights. Allow it in your browser's settings, then press Try again."},
+        {"key": "slow", "label": "Their phone takes too long", "text": "Your phone took too long to find where you are."},
+        {"key": "unknown", "label": "Their phone can't tell", "text": "Your phone couldn't tell where you are."},
+        {"key": "location_needed", "label": "No location sent", "text": "Turn on location so we can check you're by the lights."},
+        {"key": "ask_house", "label": "No home location to measure from", "text": "Shows can't be started from here right now. Ask at the house."},
+        {"key": "try_again", "label": "Try again button", "text": "Try again"}
+      ]
+    },
+    {
+      "group": "Flashing lights warning",
+      "words": [
+        {"key": "warning", "label": "The warning", "text": "⚠ The shows have flashing lights, which may affect people with photosensitive epilepsy."},
+        {"key": "accept", "label": "Button to accept it", "text": "I understand"}
+      ]
+    },
+    {
+      "group": "Closed, and without the code",
+      "words": [
+        {"key": "closed", "label": "Visitors switched off", "text": "No shows right now."},
+        {"key": "closed_hint", "label": "Under that", "text": "Come back later to start one."},
+        {"key": "locked", "label": "Opened without the code", "text": "Scan the code on the sign to start a show."},
+        {"key": "locked_hint", "label": "Under that", "text": "This page only works from the link in the code."},
+        {"key": "not_open_now", "label": "Asking outside the hours", "text": "Shows can't be started right now. Come back when we're open."},
+        {"key": "busy", "label": "Lots of people at once", "text": "Lots of people are asking right now. Try again in a minute."},
+        {"key": "offline", "label": "The page can't reach the lights", "text": "Can't reach the lights right now. Trying again…"}
+      ]
+    },
+    {
+      "group": "The sign",
+      "words": [
+        {"key": "sign_scan", "label": "Under the title", "text": "Scan to start a light show"}
+      ]
+    }
+  ]
+}
