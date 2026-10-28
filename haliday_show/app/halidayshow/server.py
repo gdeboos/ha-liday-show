@@ -1468,6 +1468,7 @@ async def create_scene(request):
         raise web.HTTPConflict(text=f"there's already a scene called {name}")
     scene_id = storage.new_scene_id(name)
     storage.save_scene(scene_id, {"name": name, "mode": "basic", "lights": {}})
+    request.app[MQTT].refresh()  # Home Assistant's scenes and the light's list follow
     return web.json_response({"id": scene_id})
 
 
@@ -1490,6 +1491,7 @@ async def put_scene(request):
     if _scene_name_taken(storage, scene["name"], but=scene_id):
         raise web.HTTPConflict(text=f"there's already a scene called {scene['name']}")
     storage.save_scene(scene_id, scene)
+    request.app[MQTT].refresh()  # Home Assistant's scenes and the light's list follow
     return web.json_response({"ok": True})
 
 
@@ -1501,6 +1503,7 @@ async def delete_scene(request):
     await request.app[RUNNER].stop_scene(scene_id)
     await asyncio.to_thread(backup.keep_copy, storage.config_dir, __version__, "delete")
     storage.delete_scene(scene_id)
+    request.app[MQTT].refresh()  # Home Assistant's scenes and the light's list follow
     return web.json_response({"ok": True})
 
 

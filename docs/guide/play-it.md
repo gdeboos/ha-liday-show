@@ -74,6 +74,9 @@ works as in a show. Each light's look becomes one effect across the whole timeli
 - **Switch to Basic** goes back to a row per light. It's only offered while nothing would be lost: each
   light with one effect across the whole loop, played on the whole light, and nothing on the House lane.
 
+Scenes are also in Home Assistant, as a scene each and one light whose brightness dims them (see
+[With MQTT](automations.md#with-mqtt)).
+
 While a scene is on, starting a show or a playlist (from an editor, an automation, a schedule or a
 visitor) takes the lights over. When it finishes, or you stop it, the scene comes back after a
 couple of seconds, and its row says **Comes back after the show** meanwhile. To turn the lights off,

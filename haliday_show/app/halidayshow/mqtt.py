@@ -5,8 +5,11 @@ Creates a "HA-liday Show" device with:
   button.ha_liday_show_play    play the selected show (on its saved speaker)
   button.ha_liday_show_stop    stop
   sensor.ha_liday_show_status  idle, or the name of the show playing
+  light.ha_liday_show          your scenes as one light: on/off, brightness, and the scenes as effects
+  scene.ha_liday_show_<name>   one per scene, so they're in HA's Scenes, automations and voice
 
-Publishing a show id or name to haliday_show/play also plays it directly.
+Publishing a show id or name to haliday_show/play also plays it directly. A scene asked for while a
+show or playlist is on waits for it to finish (runner.want_scene).
 """
 import asyncio
 import json
@@ -50,13 +53,40 @@ def discovery_configs(options: list[str]) -> dict[str, dict]:
     }
 
 
+def scene_options(scenes: list[dict]) -> dict[str, str]:
+    """Effect name -> scene id. Scenes' names are unique (server.py), but stay safe."""
+    return show_options(scenes)
+
+
+def scene_configs(scenes: list[dict]) -> dict[str, dict]:
+    """The light and a scene entity for each scene, for MQTT discovery."""
+    avail = {"availability_topic": f"{BASE}/availability"}
+    effects = list(scene_options(scenes))
+    out = {
+        f"{DISCOVERY}/light/haliday_show/scenes/config": {
+            # No name of its own: it's the device's main light, light.ha_liday_show.
+            "name": None, "unique_id": "haliday_show_light", "icon": "mdi:string-lights", "schema": "json",
+            "command_topic": f"{BASE}/light/set", "state_topic": f"{BASE}/light/state",
+            "brightness": True, "brightness_scale": 100, "supported_color_modes": ["brightness"],
+            "effect": bool(effects), **({"effect_list": effects} if effects else {}),
+            "device": DEVICE, **avail},
+    }
+    for s in scenes:
+        out[f"{DISCOVERY}/scene/haliday_show/{s['id']}/config"] = {
+            "name": s["name"], "unique_id": f"haliday_show_scene_{s['id']}", "icon": "mdi:creation",
+            "command_topic": f"{BASE}/scene/{s['id']}/set", "payload_on": "ON", "device": DEVICE, **avail}
+    return out
+
+
 class MqttBridge:
     def __init__(self, runner: Runner):
         self.runner = runner
         self.storage = runner.storage
         self.client = None
         self.options: dict[str, str] = {}
+        self.scene_options: dict[str, str] = {}
         self._status = None
+        self._light = None
         self._refresh = asyncio.Event()
 
     def refresh(self):
@@ -122,9 +152,22 @@ class MqttBridge:
         self.options = show_options(self.storage.list_shows())
         for topic, cfg in discovery_configs(list(self.options)).items():
             await self.client.publish(topic, json.dumps(cfg), retain=True)
+        scenes = self.storage.list_scenes()
+        self.scene_options = scene_options(scenes)
+        for topic, cfg in scene_configs(scenes).items():
+            await self.client.publish(topic, json.dumps(cfg), retain=True)
+        # Scenes deleted since last time lose their entity in Home Assistant.
+        settings = self.storage.load_settings()
+        now, before = [s["id"] for s in scenes], settings.get("mqtt_scenes", [])
+        for gone in set(before) - set(now):
+            await self.client.publish(f"{DISCOVERY}/scene/haliday_show/{gone}/config", b"", retain=True)
+        if sorted(before) != sorted(now):
+            settings["mqtt_scenes"] = now
+            self.storage.save_settings(settings)
         await self.client.publish(f"{BASE}/availability", "online", retain=True)
         await self._publish_selected()
         self._status = None
+        self._light = None
         await self._publish_status()
 
     async def _publish_selected(self):
@@ -138,6 +181,41 @@ class MqttBridge:
         if status != self._status:
             self._status = status
             await self.client.publish(f"{BASE}/status", status, retain=True)
+        # The light is on while a scene is on, or waiting to come back after a show.
+        scene = self.runner.scene
+        label = next((k for k, v in self.scene_options.items() if scene and v == scene["id"]), None)
+        light = {"state": "ON" if scene else "OFF", "brightness": self.runner.scene_level(), "color_mode": "brightness",
+                 **({"effect": label} if label else {})}
+        if light != self._light:
+            self._light = light
+            await self.client.publish(f"{BASE}/light/state", json.dumps(light), retain=True)
+
+    async def _light_command(self, text: str):
+        """{"state": "ON"|"OFF", "brightness": 1-100, "effect": scene name} from Home Assistant."""
+        try:
+            cmd = json.loads(text)
+        except ValueError:
+            cmd = {"state": text.upper()}
+        if not isinstance(cmd, dict):
+            raise ValueError("expected a light command")
+        if isinstance(cmd.get("brightness"), (int, float)) and not isinstance(cmd["brightness"], bool):
+            self.runner.set_scene_level(round(cmd["brightness"]))
+        if cmd.get("state") == "OFF":
+            await self.runner.stop_scene()
+        elif cmd.get("effect") or cmd.get("state") == "ON":
+            scene_id = self.scene_options.get(cmd.get("effect") or "")
+            if cmd.get("effect") and not scene_id:
+                raise ValueError(f"no scene called '{cmd['effect']}'")
+            if not scene_id and not self.runner.scene:
+                # On with no scene named: the last one, else the first.
+                last = self.storage.load_settings().get("last_scene")
+                ids = list(self.scene_options.values())
+                scene_id = last if last in ids else (ids[0] if ids else None)
+                if not scene_id:
+                    raise ValueError("there are no scenes yet; make one in the Scene editor")
+            if scene_id and (not self.runner.scene or self.runner.scene["id"] != scene_id):
+                await self.runner.want_scene(scene_id)
+        await self._publish_status()
 
     async def _watch(self):
         while True:
@@ -170,6 +248,12 @@ class MqttBridge:
                     raise ValueError(f"no show called '{text}'" if text != "PRESS" else "no show selected")
                 # Starting a speaker can take seconds; keep handling messages meanwhile.
                 asyncio.create_task(self._play(show_id))
+            elif topic == f"{BASE}/light/set":
+                await self._light_command(text)
+            elif topic.startswith(f"{BASE}/scene/") and topic.endswith("/set"):
+                scene_id = topic[len(f"{BASE}/scene/"):-len("/set")]
+                await self.runner.want_scene(scene_id)
+                await self._publish_status()
             elif topic == f"{BASE}/stop":
                 await self.runner.stop()
                 await self._publish_status()

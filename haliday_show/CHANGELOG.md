@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.210
+
+- Your scenes are in **Home Assistant** (with the MQTT broker app set up). Each scene has its own scene
+  entity, such as `scene.ha_liday_show_candy_cane`, so it's in **Scenes**, dashboards, automations and
+  voice. There's also one light, `light.ha_liday_show`: pick a scene as its **Effect**, turn it on or
+  off, and set its **brightness**, which dims scenes but never shows.
+- A scene turned on from Home Assistant while a show or playlist is playing waits for it to finish.
+- Automations without MQTT can send `{action: scene, scene: Candy cane}` (or `scene: "off"`).
+
 ## 0.2.209
 
 - **Convert to WLED…**: moved a Govee light over to a WLED controller? Press **Edit** on it in

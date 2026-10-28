@@ -30,6 +30,8 @@ class Player:
         self.start = 0.0  # monotonic time of position 0
         self.offset = 0.0  # seconds to shift lights against audio (+ = lights later)
         self.length: float | None = None  # loop the frames for this long (a playlist's block)
+        self.level = 100  # a scene's brightness, 1-100 (Home Assistant's light); shows play at 100
+        self._dim: bytes | None = None
         self._task: asyncio.Task | None = None
 
     @property
@@ -86,6 +88,11 @@ class Player:
             self.start += drift * EASE
         return drift
 
+    def set_level(self, level: int):
+        """Dims every frame from the next one on (a scene's brightness). Only scales baked frames."""
+        self.level = max(0, min(100, int(level)))
+        self._dim = None if self.level >= 100 else bytes(v * self.level // 100 for v in range(256))
+
     async def stop(self, release: bool = True):
         if self._task:
             self._task.cancel()
@@ -116,7 +123,8 @@ class Player:
                     if d:
                         dev = self.output.devices.get(address(d))
                         if dev:
-                            dev.update(b.track_frame(t, idx))
+                            frame = b.track_frame(t, idx)
+                            dev.update(frame.translate(self._dim) if self._dim else frame)
                 last = idx
             await asyncio.sleep(frame_s / 4)
         log.info("%s finished", f"show {self.show_id}" if self.show_id else "block")
