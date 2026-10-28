@@ -7,7 +7,7 @@ Layout (big endian):
   bytes    header JSON: {"fps": 40, "frames": N, "tracks": [{"device": id, "segments": n}, ...]}
   N frames, each the tracks' r g b bytes concatenated in track order (segments * 3 per track)
 
-Files baked before 0.2.206 may also list Govee scenes in the header ("scenes"); they're no longer
+Files baked before 0.2.207 may also list Govee scenes in the header ("scenes"); they're no longer
 played, and start-up blanks those frames (migrate.drop_govee_scenes).
 """
 import json

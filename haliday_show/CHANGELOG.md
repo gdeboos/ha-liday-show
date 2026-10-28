@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.206
+## 0.2.207
 
 - A clear-out of the Govee options that never quite worked. **Govee scenes**, and the **Per bulb**,
   **App segments**, **Realtime (Razer)** and **Realtime v2** protocols, are gone.
@@ -15,6 +15,12 @@
 - The first time you open HA-liday Show after updating, the status bar says which lights moved and how
   many scene clips came out.
 - **Setup → Labs** loses the **Per bulb speed test** and the App segments and Razer test messages.
+
+## 0.2.206
+
+- Fixed: **Your scenes** could say "Couldn't load your scenes" if you'd ever used Govee's own scenes in a
+  show, because both were kept in the same folder. Your scenes now have a folder of their own, and any
+  you'd already made move there by themselves.
 
 ## 0.2.205
 

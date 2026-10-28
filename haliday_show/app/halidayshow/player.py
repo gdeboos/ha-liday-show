@@ -62,7 +62,7 @@ class Player:
         for t in baked.tracks:
             d = devices.get(t.device)
             if d:
-                # Never more than the light has now: a bake from before its count went down (0.2.206
+                # Never more than the light has now: a bake from before its count went down (0.2.207
                 # cut Per bulb lights to their realtime reach) would otherwise overrun it.
                 segments = min(t.segments, int(d.get("segments") or t.segments))
                 self.output.claim(address(d), segments, reverse=d.get("reverse", False),

@@ -134,7 +134,7 @@ async def no_cache_static(request, response):
 async def info(request):
     return web.json_response({"version": __version__, "ha": request.app[HA].available,
                               "mqtt": request.app[MQTT].client is not None,
-                              # what 0.2.206's Govee clear-out changed, for the editor to say once
+                              # what 0.2.207's Govee clear-out changed, for the editor to say once
                               "retired": migrate.retired(request.app[STORAGE].config_dir)})
 
 
@@ -1985,7 +1985,7 @@ async def _replace_data(app, reason: str, data: bytes | None) -> dict:
     else:
         restored = backup.restore(config, data)
         migrate.fill_device_kinds(app[STORAGE])  # an export from before lights had a kind
-        migrate.retire_govee_extras(app[STORAGE])  # or from before 0.2.206's Govee clear-out
+        migrate.retire_govee_extras(app[STORAGE])  # or from before 0.2.207's Govee clear-out
     app[MQTT].refresh()
     await app[PUBLIC].apply()
     return {"ok": True, "kept": kept, "restored": restored}

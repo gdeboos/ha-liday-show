@@ -1,11 +1,11 @@
 """Scenes: one-tap looks for the whole house that play until something else is chosen.
 
-A scene is saved as scenes/<id>.json in the config folder:
+A scene is saved as house-scenes/<id>.json in the config folder:
   {"name": "Candy cane glow", "mode": "basic",
    "lights": {"<light id>": {"effect": "chase", "params": {...}}, ...},
    "all": {"effect": "rainbow", "params": {...}}}      # only when Same for every light is on
 A light with no entry stays off. The editor bakes the scene's frames, one seamless time round, into
-scenes/<id>.gshow (the same layout as a show's), and the player plays them round and round.
+house-scenes/<id>.gshow (the same layout as a show's), and the player plays them round and round.
 """
 from .playlists import _EFFECT, _clean_params
 

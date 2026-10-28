@@ -7882,7 +7882,7 @@ async function listenForTraffic() {
   poll();
 }
 
-// 0.2.206 took out Govee scenes and the App segments, Per bulb, Razer and v2 protocols. Says once, in
+// 0.2.207 took out Govee scenes and the App segments, Per bulb, Razer and v2 protocols. Says once, in
 // each browser, what that changed here.
 async function tellRetired() {
   const r = (await api("api/info").catch(() => null))?.retired;
