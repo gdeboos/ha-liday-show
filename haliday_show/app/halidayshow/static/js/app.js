@@ -1526,7 +1526,7 @@ function addStep(step) {
 function openAddLight() {
   addFlow.kind = null;
   for (const id of ["add-ip", "plan-name", "plan-model"]) $(id).value = "";
-  $("plan-kind").value = "govee";
+  $("plan-kind").value = "wled";
   $("plan-segments").value = 15;
   $("plan-segments").max = 255;
   $("plan-info").replaceChildren();

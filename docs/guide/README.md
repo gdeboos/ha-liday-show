@@ -3,12 +3,12 @@
 # HA-liday Show user guide
 
 Build music-synchronised light shows for your Christmas lights, preview them on a photo of your house,
-and play them from Home Assistant. It drives Govee lights, WLED strips, pixel controllers (DDP or E1.31),
-any Home Assistant light or switch, and Twinkly (experimental), in any mix. Open **HA-liday Show** from
+and play them from Home Assistant. It drives WLED strips, pixel controllers (DDP or E1.31), Govee
+lights, any Home Assistant light or switch, and Twinkly (experimental), in any mix. Open **HA-liday Show** from
 the Home Assistant sidebar.
 
 **Getting started:** [Finding your way](getting-started.md#finding-your-way) · [Requirements](getting-started.md#requirements) ·
-[Quick start](getting-started.md#quick-start) · [The demo](getting-started.md#the-demo) · [Moving from Govee Light Show](getting-started.md#moving-from-govee-light-show)
+[Quick start](getting-started.md#quick-start) · [The demo](getting-started.md#the-demo)
 
 **Setting up:** [1. Devices](lights.md#1-devices) · [2. Speakers](speakers.md#2-speakers) · [3. Your house](house.md#3-your-house)
 
@@ -16,7 +16,8 @@ the Home Assistant sidebar.
 [Playlists](play-it.md#playlists) · [The public page](public-page.md#the-public-page) · [6. Automations](automations.md#6-automations)
 
 **Reference:** [Arrange the editor](editor-and-settings.md#arrange-the-editor) · [Settings](editor-and-settings.md#settings) ·
-[Your data](editor-and-settings.md#your-data) · [Setting up the AI](editor-and-settings.md#setting-up-the-ai) · [Packet lab](labs.md#packet-lab) ·
+[Your data](editor-and-settings.md#your-data) · [Moving from Govee Light Show](editor-and-settings.md#moving-from-govee-light-show) ·
+[Setting up the AI](editor-and-settings.md#setting-up-the-ai) · [Packet lab](labs.md#packet-lab) ·
 [Troubleshooting](troubleshooting.md#troubleshooting) · [Where things are stored](troubleshooting.md#where-things-are-stored) ·
 [Running without Home Assistant](without-home-assistant.md#running-without-home-assistant)
 

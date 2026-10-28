@@ -1,12 +1,12 @@
 # 🎄 HA-liday Show
 
 Build music-synchronised light shows for your Christmas lights, preview them on a photo of your house,
-and play them from Home Assistant. It drives Govee lights, WLED strips, pixel controllers (DDP or E1.31),
-any Home Assistant light or switch, and Twinkly (experimental), in any mix. Open **HA-liday Show** from
+and play them from Home Assistant. It drives WLED strips, pixel controllers (DDP or E1.31), Govee
+lights, any Home Assistant light or switch, and Twinkly (experimental), in any mix. Open **HA-liday Show** from
 the Home Assistant sidebar.
 
 **Getting started:** [Finding your way](#finding-your-way) · [Requirements](#requirements) ·
-[Quick start](#quick-start) · [The demo](#the-demo) · [Moving from Govee Light Show](#moving-from-govee-light-show)
+[Quick start](#quick-start) · [The demo](#the-demo)
 
 **Setting up:** [1. Devices](#1-devices) · [2. Speakers](#2-speakers) · [3. Your house](#3-your-house)
 
@@ -14,7 +14,8 @@ the Home Assistant sidebar.
 [Playlists](#playlists) · [The public page](#the-public-page) · [6. Automations](#6-automations)
 
 **Reference:** [Arrange the editor](#arrange-the-editor) · [Settings](#settings) ·
-[Your data](#your-data) · [Setting up the AI](#setting-up-the-ai) · [Packet lab](#packet-lab) ·
+[Your data](#your-data) · [Moving from Govee Light Show](#moving-from-govee-light-show) ·
+[Setting up the AI](#setting-up-the-ai) · [Packet lab](#packet-lab) ·
 [Troubleshooting](#troubleshooting) · [Where things are stored](#where-things-are-stored) ·
 [Running without Home Assistant](#running-without-home-assistant)
 
@@ -66,12 +67,12 @@ Help →** for the rest.
   Home Assistant 2026.2. No apps? You can [run it without them](#running-without-home-assistant), with
   Docker or Python.
 - Lights on the same network as Home Assistant, any of:
+  - **WLED** strips: any string of pixels on an ESP32 or ESP8266 running WLED.
+  - **Pixel controllers** that take **DDP** (Falcon Player, ESPixelStick, ESPHome, Tasmota, an ESP32) or
+    **E1.31**, also called sACN (Falcon, Kulp, xLights set-ups).
   - **Govee** lights with **LAN Control** switched on in the Govee Home app, with multicast allowed. The
     model needs Govee's per-segment realtime mode (the Devices tab tells you whether a model is known
     to have it).
-  - **WLED** strips.
-  - **Pixel controllers** that take **DDP** (Falcon Player, ESPixelStick, ESPHome, Tasmota, an ESP32) or
-    **E1.31**, also called sACN (Falcon, Kulp, xLights set-ups).
   - Any **Home Assistant** light or switch, such as Zigbee or Hue bulbs, or a smart plug for a prop.
   - **Twinkly** lights (experimental).
 - Optional: a Home Assistant media player for the music. Without one, songs play in your browser
@@ -88,7 +89,8 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 **Try the demo** (see [The demo](#the-demo)). To do it by hand instead:
 
 1. **Setup → Devices**: press **+ Add a light**, pick what kind it is and follow the steps, then press
-   **Test** to check it. For a Govee light, **Find** or **Test** sets its segment count.
+   **Test** to check it. A WLED strip's LEDs are filled in for you; for a Govee light, **Find** or
+   **Test** sets its segment count.
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
@@ -119,32 +121,12 @@ It's only offered while you have no lights, so it never mixes with your own. Whe
 **Demo show** go, and your own shows are kept. The sample song stays in your songs, to use in your own
 shows if you like.
 
-## Moving from Govee Light Show
-
-This app used to be called **Govee Light Show**. Home Assistant treats the renamed app as a new
-one, so you install **HA-liday Show** alongside the old one:
-
-1. Stop **Govee Light Show**, so only one app drives your lights.
-2. Install **HA-liday Show** and start it. The first time it starts, it copies your shows, lights,
-   palettes, presets, settings, house photo and songs across from the old app. The old app's
-   copy isn't changed.
-3. In **HA-liday Show**'s **Configuration** tab, paste your **Claude API key** again if you use one,
-   and turn on **Show in sidebar** and **Start on boot**.
-4. If you use MQTT, the old **Govee Light Show** entities are removed and new **HA-liday Show** ones
-   appear (for example `select.ha_liday_show_show`). Point your automations at the new ones, and
-   change the app in any `hassio.app_stdin` (or older `hassio.addon_stdin`) action to **HA-liday Show**.
-5. Once your shows play as before, uninstall **Govee Light Show**. Your songs stay in
-   `/media/govee_show` until you delete them; the new app uses its own copies in
-   `/media/haliday_show`.
-
-The copy only happens once, and only if **HA-liday Show** has no lights or shows of its own yet.
-
 ## 1. Devices
 
 On the **Devices** tab press **+ Add a light**. First pick what you're adding under **A light you have**
-(a Govee light, a WLED strip, a pixel controller, a Home Assistant light or switch, or a Twinkly), or
+(a WLED strip, a pixel controller, a Govee light, a Home Assistant light or switch, or a Twinkly), or
 **Plan a light** for one that hasn't arrived yet. Then fill in what that kind needs and press **Add**. For a
-Govee light or a WLED strip, press **Scan network** and **Add** each light it finds, or type its IP if it
+WLED strip or a Govee light, press **Scan network** and **Add** each light it finds, or type its IP if it
 doesn't show up. When it's added, press **Add another**
 for the next one, or **Done**.
 
@@ -165,35 +147,6 @@ else on the line (or **Edit**) to open the light's window, which has all its set
 
 Some kinds have a little more in their window: **first LED** for a pixel controller over DDP, **universe**
 and **channel** for one over E1.31, and the light or switch for a Home Assistant one.
-
-### Govee lights
-
-Switch on **LAN Control** for each light in the Govee Home app first. Then press **+ Add a light**, pick
-**Govee light**, press **Scan network** and **Add** each light it finds, or type its IP if it doesn't show
-up. Govee lights need a little more setting up than the others, because Govee doesn't report how many
-segments a light has, and different models take colours in different ways.
-
-#### Setting the segment count
-
-Press **Test**: a rainbow runs along the light with a white dot
-stepping from segment to segment. Set **Segments** so the dot visits every segment once per lap,
-and turn on **Reverse** if it runs the wrong way. If the light is still on its reel, press **Find**
-next to **Segments** instead: a window opens, lights one segment and asks whether anything is lit.
-Each answer halves the possible range, so after about 7 answers the count is filled in and the
-window says what it found. **Cancel** stops it and lets the light go back to normal. Set **Reverse** later,
-once the light is hung up.
-
-While the test is running you can change **Segments**, **Reverse** or **Protocol** and the light
-picks up the change straight away, so you don't need to press **Test** again after each one.
-
-#### Test only turns the light on?
-
-Not every Govee light has a realtime mode. Change **Protocol** and press **Test** again:
-
-| Protocol | When to use it |
-| --- | --- |
-| Realtime | The default, the same packets OpenRGB sends. Works for most strips and outdoor lights. |
-| Whole light (one colour) | For lights with no realtime mode, or whose realtime mode only reaches part of the light. The whole light shows the average colour of its segments, at up to 10 changes a second, and each change fades a little. |
 
 ### WLED strips
 
@@ -271,6 +224,35 @@ When a show or test stops, HA-liday Show tells the controller, so it goes straig
 doing. To plan one before it arrives, pick **Plan a light** and choose **Pixel controller (E1.31)** as the
 **Kind of light**.
 
+### Govee lights
+
+Switch on **LAN Control** for each light in the Govee Home app first. Then press **+ Add a light**, pick
+**Govee light**, press **Scan network** and **Add** each light it finds, or type its IP if it doesn't show
+up. Govee lights need a little more setting up than the others, because Govee doesn't report how many
+segments a light has, and different models take colours in different ways.
+
+#### Setting the segment count
+
+Press **Test**: a rainbow runs along the light with a white dot
+stepping from segment to segment. Set **Segments** so the dot visits every segment once per lap,
+and turn on **Reverse** if it runs the wrong way. If the light is still on its reel, press **Find**
+next to **Segments** instead: a window opens, lights one segment and asks whether anything is lit.
+Each answer halves the possible range, so after about 7 answers the count is filled in and the
+window says what it found. **Cancel** stops it and lets the light go back to normal. Set **Reverse** later,
+once the light is hung up.
+
+While the test is running you can change **Segments**, **Reverse** or **Protocol** and the light
+picks up the change straight away, so you don't need to press **Test** again after each one.
+
+#### Test only turns the light on?
+
+Not every Govee light has a realtime mode. Change **Protocol** and press **Test** again:
+
+| Protocol | When to use it |
+| --- | --- |
+| Realtime | The default, the same packets OpenRGB sends. Works for most strips and outdoor lights. |
+| Whole light (one colour) | For lights with no realtime mode, or whose realtime mode only reaches part of the light. The whole light shows the average colour of its segments, at up to 10 changes a second, and each change fades a little. |
+
 ### Home Assistant lights and switches
 
 Any light or switch in Home Assistant can join in: Zigbee and Hue bulbs, LIFX, or a smart plug driving an
@@ -318,11 +300,11 @@ light's parts kept together under it.
 
 ### Lights not delivered yet?
 
-Press **+ Add a light** and pick **Plan a light**. Choose the **Kind of light** (a Govee light, a WLED
-strip, a pixel controller, a Home Assistant light or switch, or a Twinkly), give it a name and press
-**Add planned light**, then build shows with it straight away. Each kind only asks for what it needs: a
-Govee light its **Model** (for example `H706A`, optional) and **Segments**, the strips, pixel controllers
-and Twinkly their **LEDs**, and a Home Assistant light just a name. For Govee models, a badge next to the model flags anything we've
+Press **+ Add a light** and pick **Plan a light**. Choose the **Kind of light** (a WLED strip to start
+with, a pixel controller, a Govee light, a Home Assistant light or switch, or a Twinkly), give it a name
+and press **Add planned light**, then build shows with it straight away. Each kind only asks for what it
+needs: the strips, pixel controllers and Twinkly their **LEDs**, a Govee light its **Model** (for example
+`H706A`, optional) and **Segments**, and a Home Assistant light just a name. For Govee models, a badge next to the model flags anything we've
 found on real lights that you should know: **⚠ limited** (tested, only partly works; point at the badge
 to see what it can do) or **? untested** (not tried with HA-liday Show yet: most
 Govee lights with LAN Control work, so add one and press **Test** before buying more; the badge's
@@ -342,8 +324,8 @@ A long light can run where you only want part of it in the show,
 or you may want different effects on different stretches, like a roof line that goes round the
 whole house. Press the light's line to open its window, then **Split into parts…**. The first part covers every
 segment; set its first and last segment, then press **+ Add part** for the next stretch (it starts
-just after the last part). For example, a 60-segment Permanent Outdoor Pro could be **Front roof**
-3–23, **Side** 24–40 and **Back** 41–60. Segments are counted the way effects run, so with
+just after the last part). For example, a 150-LED WLED strip round the roof could be **Front roof**
+1–60, **Side** 61–100 and **Back** 101–150. Segments are counted the way effects run, so with
 **Reverse** on, segment 1 is the far end. Parts are listed one per line, each with its colour,
 and the bar above them maps the light's segments: each part in its colour, unused ones grey.
 
@@ -525,11 +507,12 @@ one you were last editing has a **Last edited** badge.
   Each show needs its own name. An automation that starts the show by its name needs the new name.
 - **Share** downloads the show as a file you can send to anyone with HA-liday Show (see [Sharing shows](#sharing-shows)).
 - **Remove…** archives or deletes a show (see [Archiving and deleting](#archiving-and-deleting)).
-- **← All shows**, at the start of the Show panel, takes you back to the list. Switching between tabs
-  keeps your show open until you go back to the list or close the page.
+- **← All shows**, at the start of the Show panel, takes you back to **Library → Shows**. Going to
+  another tab instead keeps your show open, with **↩** at the top to come back to it (see
+  [Finding your way](#finding-your-way)).
 
-The same list is under **Library → Shows**. The Show panel shows the open show's name beside **← All
-shows**; to switch to another show, go back to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Show speaker**
+The Show panel shows the open show's name beside **← All shows**; to switch to another show, go back
+to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Show speaker**
 (below), **Brightness** (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
 
 **Brightness** in **⚙ Show settings…** dims this show without changing any of its effects:
@@ -668,7 +651,7 @@ puts it back and gives it back to the shows that were left without a song.
 Christmas", ready to layer over a song in the Music editor. There are two ways to make one:
 
 - **From a song:** in the Music editor, select the stretch you want and press **Save as sample…** (in
-  the **Edit** card), then give it a name. It's saved as it sounds in your edit, layers and all.
+  the **Edit** panel), then give it a name. It's saved as it sounds in your edit, layers and all.
 - **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
 
 They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Library → Songs** and a show's
@@ -719,9 +702,10 @@ say), the status bar says so, even for a draft you've moved on from, and it's tr
 next change; closing the page then asks first. A song can have several drafts, such as a "Short
 version" and a "Party mix": press **Edit** on the song again to start another.
 
-**Library → Songs** lists each song's drafts under it, with a **Draft** badge until a song file has been
-made from it. **Open** carries on where you left off (**Undo** starts afresh each visit), **Rename…**
-renames it, and **Delete…** deletes the draft (not the song, or any file it made).
+**Library → Songs** lists each song's drafts inside its card (see [Songs](#songs)): as **✎ Draft · no
+file yet** until a song file has been made from it, then with that file as **✂ Edit · song file**.
+**Open** (or **Edit draft**) carries on where you left off (**Undo** starts afresh each visit),
+**Rename…** renames it, and **Delete…** deletes the draft (not the song, or any file it made).
 
 **Make song file** (Ctrl+S) writes the draft as a WAV in `/media/haliday_show/`, named after the draft,
 so every speaker can play it; pick it under **Song** in a show. Its beats, sections and marks go with it.
@@ -807,7 +791,7 @@ The waveform still shows the song as it was, without the mixer.
 heard: for when the intro goes on too long, say, or the song is longer than your show needs. It works
 in whole bars, so the song needs to be detected first (**Detect**).
 
-1. Press **✂ Suggest cuts…** in the **Edit** card, or pick a section in the lane and press **✂ Shorten…**.
+1. Press **✂ Suggest cuts…** in the **Edit** panel, or pick a section in the lane and press **✂ Shorten…**.
    A window opens, set to the section you've picked (or **the whole song** if you haven't picked one).
 2. Under **Shorten**, choose **the whole song** or a section. Under **To about**, type how long you'd
    like it, as 1:30 or 90. It starts at half the section, or three quarters of the song, and shows how
@@ -816,7 +800,7 @@ in whole bars, so the song needs to be detected first (**Detect**).
 4. Press a cut's **▶** to hear a few seconds either side of its join. What it would take out shows in
    red on the waveform.
 5. Press **Use** on the one you like. The cut is made and the window closes. **Undo** in the **Edit**
-   card (or Ctrl+Z) takes it back. To try another length instead, press **← Back**.
+   panel (or Ctrl+Z) takes it back. To try another length instead, press **← Back**.
 
 It only takes out whole bars, in 4- or 8-bar phrases where it can, and only where the music either side
 of the join matches, such as a loop that repeats or a verse and chorus that come round again. For the
@@ -975,7 +959,9 @@ show's name covers the editor with a spinner and the time so far, so nothing cha
 
 Each light has a track, with the **House** lane at the top. Scroll with the mouse
 wheel; zoom with the **−** and **+** buttons in the Timeline panel, the + and − keys, or
-Ctrl+wheel (or a trackpad pinch) around the pointer. Click the ruler to move the playhead.
+Ctrl+wheel (or a trackpad pinch) around the pointer. Click the ruler to move the playhead. The **▸**
+before **House** folds the [group lanes](#group-lanes) away, and the one before a split light's name
+folds its parts (see [The whole light as one](#the-whole-light-as-one)); **▾** brings them back.
 
 ### Adding effects
 
@@ -1027,7 +1013,7 @@ segments can't show a chase wider than itself.
   a message says how many of its clips won't work.
 - Nothing is changed or removed for you: such clips stay in your show and play as before. They are
   marked again whenever you change a light under **Setup → Devices**, say from **Realtime** to **Whole
-  light only**.
+  light (one colour)**.
 - **Copy to all lights**, paste and adding an effect to several lights at once leave out the lights it
   won't work on, and say which. **Generate** and **Describe it** only use effects that work.
 - A light whose realtime mode only reaches part of it, like the 30 m Christmas String Lights 2 (H70C5)
@@ -1228,8 +1214,8 @@ on their own.
 
 ### Scenes
 
-A scene sets every light at once, like the one-tap scenes in the Govee app, and plays until you
-choose something else. Use one for the hours your lights are on between shows.
+A scene sets every light at once, like a preset in WLED or a one-tap scene in a lights app, and
+plays until you choose something else. Use one for the hours your lights are on between shows.
 
 Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
 while it's on), **Edit** and **Remove…**.
@@ -1288,7 +1274,8 @@ HA-liday Show and scenes are made again for the new lights.
 ### Live music
 
 **Setup → Settings → Live music** shows what a WLED light with a microphone hears: how loud it is, each
-beat, and the bass, middle and treble. In the next update, scenes can react to it.
+beat, and the bass, middle and treble. Nothing on your lights reacts to it yet: scenes that do are
+coming.
 
 A WLED hears music with a small microphone wired to its controller (an INMP441, say, on an ESP32 board),
 with the **AudioReactive** usermod that most ESP32 builds of WLED 0.14 and later include. It doesn't
@@ -1419,9 +1406,9 @@ on a sign outside. They see the shows and playlists you've picked, and nothing e
 
 1. Open **Setup → Settings** and turn on **Let visitors start shows** under **Public page**. A **Public
    page** tab appears along the top.
-2. On the **Public page** tab, under **What visitors can pick**, choose a show or playlist next to
-   **+ Add** and press it. Add as many as you like.
-3. To try it, open the **Visitors' link** (under **Who can start shows**) on your phone, connected to
+2. On the **Public page** tab, open **Shows** and, under **What visitors can pick**, choose a show or
+   playlist next to **+ Add** and press it. Add as many as you like.
+3. To try it, open the **Visitors' link** (on **Access**, under **Who can start shows**) on your phone, connected to
    your home Wi-Fi. It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
 
@@ -1819,6 +1806,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 | Section | What's there |
 | --- | --- |
 | Layout | Pick **Show**, **Music** or **Playlist**, then that editor's page layout, where every panel sits (including hidden ones) and its **Reset** button. |
+| Live music | What a WLED with a microphone hears (see [Live music](#live-music)). |
 | Public page | **Let visitors start shows**, which adds the **Public page** tab (see [The public page](#the-public-page)). |
 | AI | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](#setting-up-the-ai)). |
 | Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
@@ -1839,9 +1827,9 @@ phone has its own. It holds:
 
 **Setup → Settings → Your data** puts everything HA-liday Show saves in one file, and back:
 
-- **Export…** downloads a `.zip` of your lights (with their parts), shows (archived ones too),
-  palettes, presets, playlists and their schedules, settings (the public page's too), what
-  **Detect** found in each song and your notes on it, the house photo and where each light is traced
+- **Export…** downloads a `.zip` of your lights (with their parts and groups), shows (archived ones
+  too), scenes, palettes, presets, playlists and their schedules, settings (the public page's and your
+  song folders too), the Music editor's drafts, what **Detect** found in each song and your notes on it, the house photo and where each light is traced
   on it, and the public page's own picture. Your songs stay in your songs folder and aren't in it.
   It's the same on every install, so you can move your shows to another Home Assistant, or between
   HA-liday Show and a Docker or pipx install.
@@ -1857,6 +1845,26 @@ setup guide without losing anything: **Start afresh…**, try it, then **Put bac
 fresh start* (or **Import…** your export).
 
 Home Assistant's own backups include all of this too, as the app's config folder.
+
+## Moving from Govee Light Show
+
+This app used to be called **Govee Light Show**. Home Assistant treats the renamed app as a new
+one, so you install **HA-liday Show** alongside the old one:
+
+1. Stop **Govee Light Show**, so only one app drives your lights.
+2. Install **HA-liday Show** and start it. The first time it starts, it copies your shows, lights,
+   palettes, presets, settings, house photo and songs across from the old app. The old app's
+   copy isn't changed.
+3. In **HA-liday Show**'s **Configuration** tab, paste your **Claude API key** again if you use one,
+   and turn on **Show in sidebar** and **Start on boot**.
+4. If you use MQTT, the old **Govee Light Show** entities are removed and new **HA-liday Show** ones
+   appear (for example `select.ha_liday_show_show`). Point your automations at the new ones, and
+   change the app in any `hassio.app_stdin` (or older `hassio.addon_stdin`) action to **HA-liday Show**.
+5. Once your shows play as before, uninstall **Govee Light Show**. Your songs stay in
+   `/media/govee_show` until you delete them; the new app uses its own copies in
+   `/media/haliday_show`.
+
+The copy only happens once, and only if **HA-liday Show** has no lights or shows of its own yet.
 
 ## Setting up the AI
 
@@ -1936,12 +1944,12 @@ If it hears nothing, the lights are talking to each other directly, where Home A
 
 | Problem | Try |
 | --- | --- |
-| Scan finds no Govee lights | Check **LAN Control** is on for each light in the Govee Home app, and that Home Assistant and the lights are on the same network with multicast allowed. Add the light by IP instead. |
 | Scan finds no WLED strips | Check they're switched on and on the same network. Add the strip by IP instead (it's on the WLED app's **Info** page). |
-| Test only turns a Govee light on | Change **Protocol** on the Devices tab and test again. |
-| Only the first part of a Govee light lights up | Some Govee lights only accept a few segments in realtime mode. The 30 m Christmas String Lights 2 (H70C5) stops at 44 bulbs. **Whole light (one colour)** lights the whole string, one colour at a time. Run from a WLED controller, every bulb lights: see [Moving a Govee light to WLED](#moving-a-govee-light-to-wled). |
 | Only part of a WLED strip lights up | In WLED, open **Config → Sync Interfaces** and untick **Use main segment only**. |
 | A pixel controller doesn't light | For DDP, check DDP is switched on in the controller's settings. For E1.31, check it takes E1.31 as **unicast** and that **universe** and **channel** in the light's window match the controller's set-up. Then check **Segments** matches the number of LEDs. |
+| Scan finds no Govee lights | Check **LAN Control** is on for each light in the Govee Home app, and that Home Assistant and the lights are on the same network with multicast allowed. Add the light by IP instead. |
+| Test only turns a Govee light on | Change **Protocol** on the Devices tab and test again. |
+| Only the first part of a Govee light lights up | Some Govee lights only accept a few segments in realtime mode. The 30 m Christmas String Lights 2 (H70C5) stops at 44 bulbs. **Whole light (one colour)** lights the whole string, one colour at a time. Run from a WLED controller, every bulb lights: see [Moving a Govee light to WLED](#moving-a-govee-light-to-wled). |
 | A Home Assistant light lags behind the music | They change at most 4 times a second (a switch once a second), so fast effects look steppy. Use fades, colour changes and pulses on them. |
 | A Twinkly light doesn't light | Twinkly support is experimental and hasn't been tried on a real Twinkly yet. Please say what happens on GitHub. |
 | Effects run from the wrong end | Turn on **Reverse** on the Devices tab. |
@@ -1953,9 +1961,9 @@ If it hears nothing, the lights are talking to each other directly, where Home A
 
 ## Where things are stored
 
-Shows, devices, palettes, your presets, playlists with their schedules and building blocks, each
-song's beats, parts, notes and marks, the Music editor's drafts, the house photo, the public page's
-own picture and settings live in the app's config folder (`/addon_configs/<slug>_haliday_show/`), so
+Shows, scenes, devices and their groups, palettes, your presets, playlists with their schedules and
+building blocks, each song's beats, parts, notes and marks, your song folders, the Music editor's
+drafts, the house photo, the public page's own picture and settings live in the app's config folder (`/addon_configs/<slug>_haliday_show/`), so
 they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` (samples to its
 `Samples` folder) so media
 players can play them. The editor layout, the editing speaker, the song volume, the Show player's light offset,
@@ -2047,10 +2055,10 @@ To update, run `pipx upgrade haliday-show`.
 
 ## Notes
 
-- Each kind of light is driven its own way: Govee lights with Govee's realtime ("razer") protocol, which
-  the Govee app's own LAN API doesn't document; WLED strips and DDP pixel controllers with DDP; E1.31
-  controllers with E1.31 sent straight to their IP; Home Assistant lights and switches through Home
+- Each kind of light is driven its own way: WLED strips and DDP pixel controllers with DDP; E1.31
+  controllers with E1.31 sent straight to their IP; Govee lights with Govee's realtime ("razer")
+  protocol, which the Govee app's own LAN API doesn't document; Home Assistant lights and switches through Home
   Assistant; and Twinkly lights with Twinkly's own realtime mode. While a show plays, the lights ignore
   other commands; they go back to what they were doing when it stops.
-- As a Home Assistant app, HA-liday Show uses the host network to find Govee and WLED lights and to send to every light, but its web
+- As a Home Assistant app, HA-liday Show uses the host network to find WLED and Govee lights and to send to every light, but its web
   server only answers Home Assistant's ingress proxy, so the editor isn't reachable directly on your LAN.

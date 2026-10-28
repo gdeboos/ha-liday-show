@@ -4,7 +4,7 @@
 
 **Music-synchronised light shows for the lights you already have, made for Home Assistant.**
 
-A simple alternative to xLights for Govee lights, WLED strips, pixel controllers, Twinkly and any Home
+A simple alternative to xLights for WLED strips, pixel controllers, Govee lights, Twinkly and any Home
 Assistant light: design a show in your browser, watch it play on a photo of your house, then run it from
 an automation. Install it as a Home Assistant app (formerly called an add-on), or run it on
 its own with Docker or Python.
@@ -37,8 +37,10 @@ its own with Docker or Python.
   using Claude or any AI you've set up in Home Assistant, local models included.
 - 🏠 **See it on your house.** Trace your lights on a photo and the editor plays the show there,
   bulb by bulb, so you can design without standing in the garden.
-- 🔌 **Works with the lights you have.** Govee, WLED, pixel controllers over DDP or E1.31, Twinkly, and
+- 🔌 **Works with the lights you have.** WLED, pixel controllers over DDP or E1.31, Govee, Twinkly, and
   any Home Assistant light or smart plug, all in one show.
+- 🌟 **Scenes for the rest of the evening.** One-tap looks for the whole house that play between shows,
+  come on by themselves from sunset, and show up in Home Assistant as scenes and a light.
 - 📦 **Plan before you buy.** Add lights that haven't arrived yet and link them to the real ones later.
 - ⏯️ **Runs itself.** Put shows in a playlist that plays every evening, at set times or from sunset.
   The music plays on any Home Assistant speaker, or in a browser left open on a computer with
@@ -68,9 +70,9 @@ its own with Docker or Python.
 
 | Kind | What you need |
 | --- | --- |
-| Govee | **LAN Control** turned on in the Govee Home app, and a model with Govee's per-segment realtime mode |
 | WLED | Any WLED strip |
 | Pixel controllers | DDP (Falcon Player, ESPixelStick, ESPHome, Tasmota, ESP32) or E1.31/sACN (Falcon, Kulp, xLights set-ups) |
+| Govee | **LAN Control** turned on in the Govee Home app, and a model with Govee's per-segment realtime mode |
 | Home Assistant | Any light or switch, such as Zigbee or Hue bulbs, or a smart plug for a prop |
 | Twinkly | Experimental: not tried on a real Twinkly yet |
 
@@ -114,12 +116,12 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 <summary><b>💡 Lights</b></summary>
 
 - One **Add a light** window for every kind: pick what you're adding and fill in only what it needs
-- **Govee** lights, found on the network, with a test pattern and a few yes or no questions to set
-  their segments
 - **WLED** strips, found on the network or added by IP, with their LED count and WLED segments filled
   in for you; a Govee light rewired to WLED converts in one step, keeping its shows and parts
 - **Pixel controllers** over DDP (Falcon Player, ESPixelStick, ESPHome, Tasmota, ESP32) or E1.31/sACN
   (Falcon, Kulp, xLights set-ups), with several lights on one controller
+- **Govee** lights, found on the network, with a test pattern and a few yes or no questions to set
+  their segments
 - Any **Home Assistant** light or switch (Zigbee, Hue, LIFX bulbs, smart plugs for inflatables), put
   back as it was after the show
 - **Twinkly** lights (experimental), through Twinkly's local realtime mode
@@ -192,7 +194,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing
 - **Library → Shows**: your shows, to open in the Show editor, duplicate or rename; the editors all open from the Library, with a **↩** button in the top bar back to what you were editing
-- **Library → Songs**: every song, whether it's detected and which shows use it, with a search and Edit in the Music editor
+- **Library → Songs**: every song, whether it's detected and which shows use it, with a search, your own folders, and Edit in the Music editor
 - **Archive or delete** shows and songs, with a way back: archived ones can be restored, and shows using a song can take another one
 - Add a song in one window (name it, upload it, detect it); big songs go up in pieces, so files over
   Home Assistant's 16 MB limit upload fine
@@ -206,6 +208,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
 - **? Help** on every page: tips for the page you're on, a ? on each editor panel, search, and links into the guide
 - **Light groups**: pick lights and parts (the roof's icicles, say) and give them one effect on their own lane, along them as one strip or across them on the house photo
+- Fold a split light's parts, or all the group lanes, away on the timeline
 - Arrange the Show, Music and Playlist editors your way: pick a page layout, then drag, collapse or hide any panel
 - The browser's Back and Forward buttons move between the app's pages, inside Home Assistant too
 
@@ -253,9 +256,9 @@ flowchart LR
         D[(Baked show)] --> E[Player]
     end
     C -- save --> D
-    E -- "razer packets over LAN UDP" --> F[💡 Govee lights]
     E -- "DDP over LAN UDP" --> W[💡 WLED strips · pixel controllers]
     E -- "E1.31 unicast" --> X[💡 E1.31 controllers]
+    E -- "razer packets over LAN UDP" --> F[💡 Govee lights]
     E -- "light and switch actions" --> Y[💡 HA lights and plugs]
     E -- "realtime over LAN UDP" --> Z[💡 Twinkly, experimental]
     E -- "start song" --> G[🔊 HA media player]

@@ -11,9 +11,9 @@ on a sign outside. They see the shows and playlists you've picked, and nothing e
 
 1. Open **Setup → Settings** and turn on **Let visitors start shows** under **Public page**. A **Public
    page** tab appears along the top.
-2. On the **Public page** tab, under **What visitors can pick**, choose a show or playlist next to
-   **+ Add** and press it. Add as many as you like.
-3. To try it, open the **Visitors' link** (under **Who can start shows**) on your phone, connected to
+2. On the **Public page** tab, open **Shows** and, under **What visitors can pick**, choose a show or
+   playlist next to **+ Add** and press it. Add as many as you like.
+3. To try it, open the **Visitors' link** (on **Access**, under **Who can start shows**) on your phone, connected to
    your home Wi-Fi. It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
 

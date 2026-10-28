@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.225
+
+- WLED now comes first. **+ Add a light** and **Plan a light** list **WLED strip** first, then the pixel
+  controllers, then **Govee light**, and a planned light starts as a WLED strip.
+- The user guide, the app's **Info** tab and the README lead with WLED too. In the guide, **1. Devices**
+  covers WLED strips and pixel controllers before Govee lights, and **Moving from Govee Light Show** has
+  moved to the reference part at the end.
+- The guide is checked against everything released lately, and now:
+  - says that **Export…** includes your scenes, light groups, song folders and Music editor drafts;
+  - lists **Live music** under **Setup → Settings**;
+  - names the **Public page** tab's own tabs (**Shows**, **Access**) in its first steps;
+  - shows how drafts and song files sit inside a song's card in **Library → Songs**;
+  - calls the Music editor's **Edit** panel a panel, not a card;
+  - mentions folding on the timeline;
+  - no longer promises scenes that react to **Live music** in "the next update".
+
 ## 0.2.224
 
 - A light that plays only as parts (such as **Roof · Left**, **Center** and **Right** with no **Roof** track)

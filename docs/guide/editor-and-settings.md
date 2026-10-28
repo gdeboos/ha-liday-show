@@ -64,6 +64,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 | Section | What's there |
 | --- | --- |
 | Layout | Pick **Show**, **Music** or **Playlist**, then that editor's page layout, where every panel sits (including hidden ones) and its **Reset** button. |
+| Live music | What a WLED with a microphone hears (see [Live music](play-it.md#live-music)). |
 | Public page | **Let visitors start shows**, which adds the **Public page** tab (see [The public page](public-page.md#the-public-page)). |
 | AI | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](#setting-up-the-ai)). |
 | Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
@@ -84,9 +85,9 @@ phone has its own. It holds:
 
 **Setup → Settings → Your data** puts everything HA-liday Show saves in one file, and back:
 
-- **Export…** downloads a `.zip` of your lights (with their parts), shows (archived ones too),
-  palettes, presets, playlists and their schedules, settings (the public page's too), what
-  **Detect** found in each song and your notes on it, the house photo and where each light is traced
+- **Export…** downloads a `.zip` of your lights (with their parts and groups), shows (archived ones
+  too), scenes, palettes, presets, playlists and their schedules, settings (the public page's and your
+  song folders too), the Music editor's drafts, what **Detect** found in each song and your notes on it, the house photo and where each light is traced
   on it, and the public page's own picture. Your songs stay in your songs folder and aren't in it.
   It's the same on every install, so you can move your shows to another Home Assistant, or between
   HA-liday Show and a Docker or pipx install.
@@ -102,6 +103,26 @@ setup guide without losing anything: **Start afresh…**, try it, then **Put bac
 fresh start* (or **Import…** your export).
 
 Home Assistant's own backups include all of this too, as the app's config folder.
+
+## Moving from Govee Light Show
+
+This app used to be called **Govee Light Show**. Home Assistant treats the renamed app as a new
+one, so you install **HA-liday Show** alongside the old one:
+
+1. Stop **Govee Light Show**, so only one app drives your lights.
+2. Install **HA-liday Show** and start it. The first time it starts, it copies your shows, lights,
+   palettes, presets, settings, house photo and songs across from the old app. The old app's
+   copy isn't changed.
+3. In **HA-liday Show**'s **Configuration** tab, paste your **Claude API key** again if you use one,
+   and turn on **Show in sidebar** and **Start on boot**.
+4. If you use MQTT, the old **Govee Light Show** entities are removed and new **HA-liday Show** ones
+   appear (for example `select.ha_liday_show_show`). Point your automations at the new ones, and
+   change the app in any `hassio.app_stdin` (or older `hassio.addon_stdin`) action to **HA-liday Show**.
+5. Once your shows play as before, uninstall **Govee Light Show**. Your songs stay in
+   `/media/govee_show` until you delete them; the new app uses its own copies in
+   `/media/haliday_show`.
+
+The copy only happens once, and only if **HA-liday Show** has no lights or shows of its own yet.
 
 ## Setting up the AI
 
