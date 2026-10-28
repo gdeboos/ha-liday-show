@@ -31,7 +31,7 @@ const LOOKS = {
   ],
   mid: [
     { effect: "trio", label: "Marquee on the beat", params: (bps) => ({ layout: "alternate", size: 1, speed: bps }) },
-    { effect: "chase", label: "Chase, a lap a bar", params: (bps, n) => ({ width: Math.max(1, Math.round(n / 5)), speed: bps / 4 }) },
+    { effect: "chase", label: "Chase, a lap a bar", params: (bps, n) => ({ width: Math.min(50, Math.max(1, Math.round(n / 5))), speed: bps / 4 }) },
     { effect: "comet", label: "Comet, a lap a bar", params: (bps, n) => ({ length: Math.max(2, Math.round(n / 3)), speed: bps / 4 }) },
     { effect: "scanner", label: "Scanner, a sweep a bar", params: (bps, n) => ({ width: Math.max(1, n / 8), speed: bps / 4 }) },
     { effect: "cycle", label: "Colour change each beat", params: (bps) => ({ rate: bps, blend: "step" }) },
