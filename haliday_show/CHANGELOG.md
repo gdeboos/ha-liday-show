@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.202
+
+- Coming back to HA-liday Show from elsewhere in Home Assistant now opens where you left it, instead of
+  on **Library**: the same page, with the same show, song, draft or playlist open. Reloading does the
+  same. If what you had open has gone, you get that editor's list.
+
 ## 0.2.201
 
 - The **Music editor**'s **Playback** panel has **⏮** (back to the start), **⏪** and **⏩** (back or on a bar,
