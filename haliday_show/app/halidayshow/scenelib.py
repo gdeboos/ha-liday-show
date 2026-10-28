@@ -8,10 +8,11 @@ A light with no entry stays off. An Advanced scene, edited in the Show editor, i
   {"name", "mode": "advanced", "loop": 20, "tracks": [...]}, its tracks as a show's (the House lane
   as device "@house"), going round every `loop` seconds. The editor bakes the scene's frames, one seamless time round, into
 house-scenes/<id>.gshow (the same layout as a show's), and the player plays them round and round.
+Either kind may have a "schedule", as a playlist's (playlists.clean_schedule; schedule.py runs it).
 """
 import math
 
-from .playlists import _EFFECT, _clean_params
+from .playlists import _EFFECT, _clean_params, clean_schedule
 
 MODES = ("basic", "advanced")
 MAX_LIGHTS = 200
@@ -103,8 +104,8 @@ def clean_scene(body) -> dict:
         if not isinstance(loop, (int, float)) or isinstance(loop, bool) or not math.isfinite(loop) \
                 or not 0.5 <= loop <= MAX_LOOP_S:
             raise SceneError(f"a scene loops every 0.5 to {MAX_LOOP_S} seconds")
-        return {"name": clean_name(body.get("name")), "mode": mode, "loop": round(float(loop), 3),
-                "tracks": _clean_tracks(body.get("tracks", []), loop)}
+        return _with_schedule(body, {"name": clean_name(body.get("name")), "mode": mode, "loop": round(float(loop), 3),
+                                     "tracks": _clean_tracks(body.get("tracks", []), loop)})
     out = {"name": clean_name(body.get("name")), "mode": mode, "lights": {}}
     for light_id, look in lights.items():
         # Light ids can be IP addresses or Govee device codes, so only their size is checked.
@@ -113,4 +114,13 @@ def clean_scene(body) -> dict:
         out["lights"][light_id] = _clean_look(look)
     if body.get("all") is not None:
         out["all"] = _clean_look(body["all"])
+    return _with_schedule(body, out)
+
+
+def _with_schedule(body: dict, out: dict) -> dict:
+    if body.get("schedule") is not None:
+        schedule = clean_schedule(body["schedule"])
+        if schedule is None:
+            raise SceneError("the scene's schedule isn't right")
+        out["schedule"] = schedule
     return out

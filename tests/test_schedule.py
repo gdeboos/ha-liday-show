@@ -337,3 +337,67 @@ def test_taking_a_deleted_show_out_keeps_the_pauses_tidy():
     blocks = [{"type": "show", "id": "a"}, {"type": "off", "id": "x", "seconds": 1},
               {"type": "show", "id": "b"}, {"type": "pause", "id": "p", "seconds": 1}]
     assert [x["id"] for x in playlists.without_show(blocks, "b")] == ["a", "x", "p"]
+
+
+# Scenes on a schedule ---------------------------------------------------------------------------
+def scene(storage, sid, schedule):
+    storage.save_scene(sid, {"name": sid.title(), "mode": "basic", "lights": {}, "schedule": schedule})
+    storage.save_scene_baked(sid, baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 4))
+
+
+SUNSET_TO_MIDNIGHT_ISH = {"on": True, "start": "16:00", "end": "00:00", "days": list(range(7)), "from": "", "to": ""}
+
+
+async def test_a_scene_comes_on_at_its_start_and_goes_off_at_its_end(setup):
+    storage, runner, sched = setup
+    scene(storage, "glow", SUNSET_TO_MIDNIGHT_ISH)
+    await sched.tick(at(15, 59))
+    assert runner.scene is None
+    await sched.tick(at(16))
+    assert runner.scene_playing and runner.scene["id"] == "glow"
+    assert sched.state(at(16))["scene_scheduled"] == "glow"
+    await sched.tick(at(23, 59))
+    assert runner.scene_playing
+    await sched.tick(at(0, 0, day=26))
+    assert runner.scene is None and not runner.player.playing
+
+
+async def test_a_playlist_takes_over_and_the_scene_comes_back(setup):
+    storage, runner, sched = setup
+    scene(storage, "glow", SUNSET_TO_MIDNIGHT_ISH)
+    save(storage, pl("night", {**EVENINGS, "start": "18:00", "end": "20:00"}))
+    await sched.tick(at(16))
+    assert runner.scene_playing
+    await sched.tick(at(18))
+    await started(runner)
+    assert runner.status()["playlist"]["id"] == "night" and not runner.scene_playing
+    assert runner.scene["id"] == "glow"  # waiting to come back
+    await sched.tick(at(19))  # still the scene's time: nothing changes
+    assert runner.scene["id"] == "glow"
+
+
+async def test_a_scene_due_during_a_show_waits_for_it(setup):
+    storage, runner, sched = setup
+    scene(storage, "glow", SUNSET_TO_MIDNIGHT_ISH)
+    await runner.play("one")
+    await sched.tick(at(16))
+    assert runner.player.show_id == "one" and runner.scene["id"] == "glow" and not runner.scene_playing
+
+
+async def test_a_scene_you_turn_off_stays_off_until_its_next_start(setup):
+    storage, runner, sched = setup
+    scene(storage, "glow", SUNSET_TO_MIDNIGHT_ISH)
+    await sched.tick(at(16))
+    await runner.stop_scene()
+    await sched.tick(at(17))
+    assert runner.scene is None
+    await sched.tick(at(16, 0, day=26))
+    assert runner.scene_playing
+
+
+async def test_a_scene_schedule_is_checked_like_a_playlists():
+    from halidayshow import scenelib
+    s = scenelib.clean_scene({"name": "Glow", "lights": {}, "schedule": SUNSET_TO_MIDNIGHT_ISH})
+    assert s["schedule"]["start"] == "16:00"
+    with pytest.raises(scenelib.SceneError):
+        scenelib.clean_scene({"name": "Glow", "lights": {}, "schedule": {"on": True, "start": "25:00"}})

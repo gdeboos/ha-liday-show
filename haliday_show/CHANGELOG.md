@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.211
+
+- Scenes can come on by themselves. Under **When it plays** in the Scene editor (or **When it plays…**
+  for an Advanced scene), turn on **Comes on by itself on a schedule** and pick times, days and dates, as
+  for a playlist. A start can be at sunset.
+- The scene comes on at its start (after the show that's on, if one is) and goes off at its end. Shows
+  and playlists in between take over and hand back, so a scene from sunset to midnight with your show
+  playlist at six just works.
+- **Your scenes** says when each scene comes on.
+
 ## 0.2.210
 
 - Your scenes are in **Home Assistant** (with the MQTT broker app set up). Each scene has its own scene

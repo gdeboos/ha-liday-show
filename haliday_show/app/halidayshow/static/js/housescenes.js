@@ -120,7 +120,8 @@ const fmtLoop = (s) => (s >= 60 && s % 60 === 0 ? `${s / 60} min` : `${Math.roun
 
 // Basic → Advanced: each light's look becomes one effect running the whole loop, ready to cut up.
 export function toAdvanced(scene, lights, loop = ADVANCED_LOOP_S) {
-  return { name: scene.name, mode: "advanced", loop, tracks: sceneShow(scene, lights, loop).tracks };
+  return { name: scene.name, mode: "advanced", loop, tracks: sceneShow(scene, lights, loop).tracks,
+    ...(scene.schedule ? { schedule: scene.schedule } : {}) };
 }
 
 // Advanced → Basic is only offered when nothing would be lost: no House lane effects, and each light
@@ -144,5 +145,5 @@ export function toBasic(scene) {
     const { start, end, effect, ...params } = c;
     lights[t.device] = { effect, params };
   }
-  return { name: scene.name, mode: "basic", lights };
+  return { name: scene.name, mode: "basic", lights, ...(scene.schedule ? { schedule: scene.schedule } : {}) };
 }

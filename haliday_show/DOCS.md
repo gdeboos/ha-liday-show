@@ -1215,6 +1215,20 @@ works as in a show. Each light's look becomes one effect across the whole timeli
 - **Switch to Basic** goes back to a row per light. It's only offered while nothing would be lost: each
   light with one effect across the whole loop, played on the whole light, and nothing on the House lane.
 
+**When it plays** (at the foot of the Scene editor, or **When it plays…** in the banner for an Advanced
+scene) turns a scene on and off by itself: turn on **Comes on by itself on a schedule** and pick the times,
+days and dates, as for a playlist (see [Playlists](#playlists)). A start can be at sunset.
+
+- At its start the scene comes on. If a show or playlist is playing, the scene waits for it to finish.
+- At its end it goes off.
+- If you turn it off, or put another scene on, before then, it's left that way until its next start.
+- For example: **Candy cane** from sunset to midnight, and your show playlist from 18:00 to 20:00. The
+  lights glow from sunset, the shows take over at six, the scene comes back once they've finished, and
+  everything goes off at midnight.
+- Only one scene comes on by itself at a time. Where two scenes' times overlap, the first by name wins.
+
+**Your scenes** says when each scene comes on by itself.
+
 Scenes are also in Home Assistant, as a scene each and one light whose brightness dims them (see
 [With MQTT](#with-mqtt)).
 
