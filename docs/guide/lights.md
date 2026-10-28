@@ -185,11 +185,12 @@ light's parts kept together under it.
 Press **+ Add a light** and pick **Plan a light**. Pick the model, give it a name and press **Add planned
 light**, then build shows with it straight away. The model can be a Govee one (for example `H706A`), or
 **WLED**, **DDP**, **E1.31**, **HA** or **Twinkly** for the other kinds, with **Segments** set to the
-number of LEDs. For Govee models, the badge next to a model says what we've
-found on real lights: **✓ works** (tested, works on Realtime), **⚠ limited** (tested, only partly works;
-point at the badge to see what it can do) or **? untested** (not tried with HA-liday Show yet: most
+number of LEDs. For Govee models, a badge next to the model flags anything we've
+found on real lights that you should know: **⚠ limited** (tested, only partly works; point at the badge
+to see what it can do) or **? untested** (not tried with HA-liday Show yet: most
 Govee lights with LAN Control work, so add one and press **Test** before buying more; the badge's
-tooltip says whether Govee lists the model as having LAN Control). A tested model
+tooltip says whether Govee lists the model as having LAN Control). A model with no badge has been tested
+and works on Realtime. A tested model
 starts with the settings that suit it, such as 44 segments for the 30 m Christmas String Lights 2
 (as many as it lights in realtime), both when you plan it and when you add it from **Scan network** (under **+ Add a light → Govee light**). Lights you've already
 added keep their settings. Otherwise 15 segments is a guess until you test the real
