@@ -37,6 +37,9 @@ async function start() {
   const hours = signHours(view.hours);
   $("hours").textContent = hours;
   $("hours").hidden = !hours;
+  // Your wording from the Words tab, else the one it starts with.
+  const said = Object.fromEntries((view.word_groups || []).flatMap((g) => g.words).map((x) => [x.key, x.text]));
+  $("scan").textContent = view.words?.sign_scan || said.sign_scan || "Scan to start a light show";
   $("message").textContent = look.sign_text || "";
   $("message").hidden = !look.sign_text;
   $("link").textContent = link;

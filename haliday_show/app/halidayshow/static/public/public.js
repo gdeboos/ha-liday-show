@@ -9,6 +9,17 @@ const ordinal = (n) => {
   return `${n}${["th", "st", "nd", "rd"][n % 10] || "th"}`;
 };
 
+// The words come with each answer from HA-liday Show (yours where you've changed them, on the Public
+// page tab). Until the first answer arrives, only "can't reach the lights" might be needed.
+const BEFORE_FIRST_ANSWER = { offline: "Can't reach the lights right now. Trying again…" };
+
+// A word with its {name}-style parts filled in.
+export function fill(text, vars = {}) {
+  return String(text ?? "").replace(/\{(\w+)\}/g, (all, k) => (k in vars ? String(vars[k]) : all));
+}
+
+const say_ = (w, key, vars) => fill(w?.[key] ?? BEFORE_FIRST_ANSWER[key] ?? "", vars);
+
 const minutes = (s) => {
   const m = Math.max(1, Math.round(s / 60));
   return `${m} minute${m === 1 ? "" : "s"}`;
@@ -33,53 +44,57 @@ export function clockText(hhmm) {
 }
 
 // When the page opens again, from HA-liday Show's clock ("YYYY-MM-DDTHH:MM", no time zone).
-export function comeBackText(hours) {
+export function comeBackText(hours, w) {
   if (!hours || hours.open) return "";
-  if (!hours.next) return "We're not open at the moment. Come back another time!";
+  if (!hours.next) return say_(w, "not_open");
   const day = (iso) => Date.UTC(...iso.slice(0, 10).split("-").map((v, i) => Number(v) - (i === 1 ? 1 : 0))) / 86400000;
   const ahead = day(hours.next) - day(hours.now);
   const at = clockText(hours.next.slice(11, 16));
   const d = new Date(`${hours.next.slice(0, 10)}T00:00Z`);
   const when = ahead === 0 ? `at ${at}` : ahead === 1 ? `tomorrow at ${at}`
     : ahead < 7 ? `on ${DAY_NAMES[d.getUTCDay()]} at ${at}` : `on ${dayText(hours.next.slice(0, 10))} at ${at}`;
-  return `Shows start ${when}. Come back then!`;
+  return say_(w, "come_back", { when });
 }
 
 // What to tell a visitor about one of their requests.
-export function waitText(r) {
-  if (r.playing) return "Playing now. Enjoy the show!";
-  if (r.place === 1 && r.wait < 20) return "Starting in a moment…";
-  if (r.place === 1) return `You're next, starting in about ${minutes(r.wait)}.`;
-  return `You're ${ordinal(r.place)} in the queue, starting in about ${minutes(r.wait)}.`;
+export function waitText(r, w) {
+  if (r.playing) return say_(w, "playing");
+  if (r.place === 1 && r.wait < 20) return say_(w, "starting");
+  if (r.place === 1) return say_(w, "next", { minutes: minutes(r.wait) });
+  return say_(w, "queued", { place: ordinal(r.place), minutes: minutes(r.wait) });
 }
 
 // Everything the page shows, worked out from api/state.
 export function describe(st) {
-  const soon = (st.soon || []).map((c) => ({ ...c, detail: `${c.kind === "playlist" ? "Playlist · from" : "From"} ${dayText(c.starts)}` }));
+  const w = st.words;
+  const soon = (st.soon || []).map((c) => ({ ...c, detail: say_(w, c.kind === "playlist" ? "soon_from_playlist" : "soon_from", { day: dayText(c.starts) }) }));
   if (!st.open) {
     return { closed: true, now: "", mine: [], choices: [], soon: [], coming: "", block: "" };
   }
   // Nothing to pick yet: say when the first one starts.
-  const coming = !st.choices.length && soon.length ? `Coming soon on ${dayText(soon[0].starts)}` : "";
+  const coming = !st.choices.length && soon.length ? say_(w, "soon_page", { day: dayText(soon[0].starts) }) : "";
   const waiting = st.mine.filter((r) => !r.playing).length;
   let block = "";
   if (waiting >= st.per_phone) {
-    block = st.per_phone === 1 ? "You can pick another show once yours starts."
-      : `You've got ${waiting} shows waiting, the most for one phone.`;
+    block = st.per_phone === 1 ? say_(w, "one_waiting") : say_(w, "many_waiting", { count: waiting });
   } else if (st.full) {
-    block = "The queue is full. Try again in a few minutes.";
+    block = say_(w, "full");
   }
-  let now = "Nothing's on right now. Pick a show to start it.";
-  if (st.now) now = `On now: ${st.now.name || "a show"}`;
-  if (st.now && !st.mine.some((r) => r.playing) && st.waiting) {
-    now += ` · ${st.waiting} waiting`;
+  let now = say_(w, "idle");
+  if (st.now) {
+    const name = st.now.name || "…";
+    now = !st.mine.some((r) => r.playing) && st.waiting
+      ? say_(w, "on_now_waiting", { name, count: st.waiting }) : say_(w, "on_now", { name });
   }
+  const showLength = st.look?.show_length !== false;
   return {
     closed: false,
     now,
-    mine: st.mine.map((r) => ({ id: r.id, name: r.name, text: waitText(r), cancel: !r.playing })),
+    mine: st.mine.map((r) => ({ id: r.id, name: r.name, text: waitText(r, w), cancel: !r.playing })),
     choices: st.choices.map((c) => ({
-      ...c, detail: c.kind === "playlist" ? `Playlist · about ${minutes(c.minutes * 60)}` : `About ${minutes(c.minutes * 60)}`,
+      ...c,
+      detail: !showLength ? "" : say_(w, c.kind === "playlist" ? "length_playlist" : "length",
+        { minutes: minutes(c.minutes * 60) }),
     })),
     block,
     soon,
@@ -167,23 +182,28 @@ export function locationProblem(err) {
 
 // What to say about where the phone is, and whether to offer Try again. "far" and "closed" carry the
 // server's own words.
-export function whereText(where) {
+export function whereText(where, w) {
   switch (where.state) {
     case "checking":
-      return { text: "Checking you're by the lights… Your phone may ask to share your location. It's only used for this and isn't kept.", retry: false };
+      return { text: say_(w, "checking"), retry: false };
     case "far":
     case "closed":
       return { text: where.text, retry: where.state === "far" };
     case "denied":
-      return { text: "To start a show, let this page use your location: it's only used to check you're by the lights. Allow it in your browser's settings, then press Try again.", retry: true };
     case "slow":
-      return { text: "Your phone took too long to find where you are.", retry: true };
     case "unknown":
-      return { text: "Your phone couldn't tell where you are.", retry: true };
+      return { text: say_(w, where.state), retry: true };
     default:
       return { text: "", retry: false };
   }
 }
+
+// The flashing lights warning: shown at the top for "note" and "accept"; with "accept", Start only
+// appears once the visitor has pressed the button under it.
+export const warningShown = (look) => look?.warning === "note" || look?.warning === "accept";
+export const mustAccept = (look, accepted) => look?.warning === "accept" && !accepted;
+
+const ACCEPTED_KEY = "halidayshow.publicAccepted";
 
 // Start buttons only show to phones that could use them.
 export const canStart = (needsLocation, where) => !needsLocation || where.state === "near";
@@ -207,6 +227,9 @@ export function start() {
   const key = preview ? "" : code();
   let busy = false;
   let needsLocation = false;
+  let w = null; // the words from the latest answer
+  let accepted = false;
+  try { accepted = sessionStorage.getItem(ACCEPTED_KEY) === "1"; } catch { /* private browsing */ }
   const snow = makeSnow($("pp-snow"));
   let pictureShown = 0;
 
@@ -256,7 +279,7 @@ export function start() {
   function setWhere(state, text = "") {
     where.state = state;
     where.text = text;
-    const words = whereText(where);
+    const words = whereText(where, w);
     $("pp-where-text").textContent = words.text;
     $("pp-retry").hidden = !words.retry;
     $("pp-where").hidden = !words.text;
@@ -335,14 +358,25 @@ export function start() {
   };
 
   function render(st) {
+    w = st.words || w;
     applyLook(st.look);
+    $("pp-locked-text").textContent = say_(w, "locked");
+    $("pp-locked-hint").textContent = say_(w, "locked_hint");
     $("pp-locked").hidden = !st.locked;
     if (st.locked) {
-      $("pp-closed").hidden = $("pp-open").hidden = true;
+      $("pp-closed").hidden = $("pp-open").hidden = $("pp-warning").hidden = true;
       return;
     }
     last = st;
-    const closed = comeBackText(st.hours);
+    for (const [id, key] of [["pp-closed-text", "closed"], ["pp-closed-hint", "closed_hint"], ["pp-retry", "try_again"],
+      ["pp-soon-head", "soon_head"], ["pp-none", "no_shows"], ["pp-warning-text", "warning"], ["pp-accept", "accept"]]) {
+      $(id).textContent = say_(w, key);
+    }
+    $("pp-where-text").textContent = whereText(where, w).text;
+    // The flashing lights warning, and (if you ask for it) a press to accept it before Start.
+    $("pp-warning").hidden = !st.open || !warningShown(st.look);
+    $("pp-accept").hidden = !mustAccept(st.look, accepted);
+    const closed = comeBackText(st.hours, w);
     $("pp-hours").textContent = closed;
     $("pp-hours").hidden = !closed;
     needsLocation = !!st.needs_location;
@@ -353,7 +387,7 @@ export function start() {
       Object.assign(where, { state: "idle", text: "", pos: null });
     }
     if (!needsLocation) $("pp-where").hidden = true;
-    const startable = !closed && canStart(needsLocation, where);
+    const startable = !closed && canStart(needsLocation, where) && !mustAccept(st.look, accepted);
     const view = describe(st);
     $("pp-closed").hidden = !view.closed;
     $("pp-open").hidden = view.closed;
@@ -366,7 +400,7 @@ export function start() {
       text.append(el("div", "pp-name", r.name), el("div", "pp-hint", r.text));
       row.append(text);
       if (r.cancel) {
-        const b = el("button", "", "Cancel");
+        const b = el("button", "", say_(w, "cancel"));
         b.type = "button";
         b.addEventListener("click", () => send("api/cancel", { id: r.id }));
         row.append(b);
@@ -389,16 +423,18 @@ export function start() {
       row.append(text);
       return row;
     }));
+    $("pp-pick-hint").textContent = say_(w, "pick_hint");
     $("pp-pick-hint").hidden = !startable;
-    $("pp-pick-head").textContent = startable ? "Pick a show" : "Shows";
+    $("pp-pick-head").textContent = say_(w, startable ? "pick_head" : "shows_head");
     $("pp-block").hidden = !view.block || !startable;
     $("pp-choices").replaceChildren(...view.choices.map((c) => {
       const row = el("div", "pp-row");
       const text = el("div", "pp-text");
-      text.append(el("div", "pp-name", c.name), el("div", "pp-hint", c.detail));
+      text.append(el("div", "pp-name", c.name));
+      if (c.detail) text.append(el("div", "pp-hint", c.detail));
       row.append(text);
       if (startable) {
-        const b = el("button", "primary", "▶ Start");
+        const b = el("button", "primary", say_(w, "start"));
         b.type = "button";
         b.disabled = !!view.block || busy;
         b.setAttribute("aria-label", `Start ${c.name}`);
@@ -416,7 +452,7 @@ export function start() {
       render(await res.json());
       if ($("pp-message").dataset.kind === "offline") say("");
     } catch {
-      say("Can't reach the lights right now. Trying again…");
+      say(say_(w, "offline"));
       $("pp-message").dataset.kind = "offline";
     }
   }
@@ -450,6 +486,11 @@ export function start() {
   }
 
   $("pp-retry").addEventListener("click", watchWhere);
+  $("pp-accept").addEventListener("click", () => {
+    accepted = true;
+    try { sessionStorage.setItem(ACCEPTED_KEY, "1"); } catch { /* kept for this visit */ }
+    if (last) render(last);
+  });
   // The editor asks the preview to catch up as soon as something's saved.
   if (preview) addEventListener("message", (e) => { if (e.origin === location.origin && e.data === "refresh") refresh(); });
   refresh();

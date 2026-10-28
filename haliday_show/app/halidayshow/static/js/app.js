@@ -4328,6 +4328,73 @@ function renderPublicQueue(view) {
   $("pub-address").hidden = !$("pub-address").textContent;
 }
 
+// The Public page tab's own tabs: Access, Shows, Look, Words, Queue. The last one open is remembered.
+function openPublicSection(tab) {
+  const tabs = [...document.querySelectorAll(".pub-tab")];
+  if (!tabs.some((t) => t.dataset.pubtab === tab)) tab = "access";
+  for (const t of tabs) {
+    const on = t.dataset.pubtab === tab;
+    t.setAttribute("aria-selected", String(on));
+    t.tabIndex = on ? 0 : -1;
+    $(`pub-panel-${t.dataset.pubtab}`).hidden = !on;
+  }
+  prefs.set("public.tab", tab);
+}
+
+// Words: every message visitors read, by group, each with the wording it starts with.
+function renderPublicWords() {
+  const view = publicView, list = $("pub-word-list");
+  const groups = view.word_groups || [];
+  if (!list.children.length || list.dataset.keys !== groups.flatMap((g) => g.words.map((w) => w.key)).join()) {
+    list.dataset.keys = groups.flatMap((g) => g.words.map((w) => w.key)).join();
+    list.replaceChildren(...groups.flatMap((g) => {
+      const head = document.createElement("p");
+      head.className = "pub-word-group";
+      head.textContent = g.group;
+      return [head, ...g.words.map((w) => {
+        const row = document.createElement("label");
+        row.className = "pub-word";
+        const name = document.createElement("span");
+        name.textContent = w.label;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.maxLength = 300;
+        input.dataset.word = w.key;
+        input.dataset.default = w.text;
+        input.placeholder = w.text;
+        const reset = document.createElement("button");
+        reset.type = "button";
+        reset.className = "ghost pub-word-reset";
+        reset.textContent = "Reset";
+        reset.title = `Back to "${w.text}"`;
+        reset.addEventListener("click", (e) => {
+          e.preventDefault();
+          input.value = w.text;
+          savePublic();
+        });
+        row.append(name, input, reset);
+        return row;
+      })];
+    }));
+  }
+  for (const input of list.querySelectorAll("input[data-word]")) {
+    const mine = view.words?.[input.dataset.word];
+    if (document.activeElement !== input) input.value = mine ?? input.dataset.default;
+    input.nextElementSibling.hidden = mine === undefined;
+  }
+  $("pub-words-reset").disabled = !Object.keys(view.words || {}).length;
+}
+
+// Your own wording, only where it differs from the default (an emptied box goes back to the default).
+function publicWords() {
+  const out = {};
+  for (const input of document.querySelectorAll("#pub-word-list input[data-word]")) {
+    const text = input.value.trim();
+    if (text && text !== input.dataset.default) out[input.dataset.word] = text;
+  }
+  return out;
+}
+
 function renderPublicLook() {
   const view = publicView, look = view.look;
   const keep = (id, value) => { if (document.activeElement !== $(id)) $(id).value = value; };
@@ -4351,6 +4418,8 @@ function renderPublicLook() {
   $("pub-size").value = look.size;
   $("pub-borders").checked = look.borders;
   $("pub-snow").checked = look.snow;
+  $("pub-show-length").checked = look.show_length !== false;
+  $("pub-warning").value = look.warning || "off";
   for (const r of document.querySelectorAll("input[name=pub-picture]")) {
     r.checked = r.value === look.picture;
     if (r.value === "house") r.disabled = !view.has_house_photo;
@@ -4424,6 +4493,7 @@ function renderPublicItems() {
   renderPublicGuard();
   renderPublicHours();
   renderPublicLook();
+  renderPublicWords();
   const dayPick = (k, key, label) => {
     const it = view.items[k];
     const day = document.createElement("select"), month = document.createElement("select");
@@ -4573,19 +4643,22 @@ function savePublic() {
       sign_text: $("pub-sign-text").value,
       spacing: $("pub-spacing").value, corners: $("pub-corners").value, size: $("pub-size").value,
       borders: $("pub-borders").checked,
+      show_length: $("pub-show-length").checked,
+      warning: $("pub-warning").value,
       colours: Object.fromEntries([...document.querySelectorAll("#pub-colours input[data-colour]")]
         .map((i) => [i.dataset.colour, i.value])),
     };
   }
+  if (shownPage === "public" && $("pub-word-list").children.length) publicView.words = publicWords();
   if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);
   if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue, address, nearby, distance, look, hours } = publicView;
+    const { on, items, per_phone, queue, address, nearby, distance, look, hours, words } = publicView;
     try {
       const view = await api("api/public", {
-        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours },
+        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words },
       });
       if (pubPending === 1) {
         publicView = view;
@@ -4612,6 +4685,25 @@ function wirePublic() {
   }
   $("pub-hours-card").addEventListener("change", () => savePublic());
   $("pub-look").addEventListener("change", (e) => { if (e.target.id !== "pub-picture-file") savePublic(); });
+  $("pub-showing").addEventListener("change", () => savePublic());
+  $("pub-word-list").addEventListener("change", () => savePublic());
+  $("pub-words-reset").addEventListener("click", () => {
+    if (!confirm("Put every word on the public page back to how it started? Your title, welcome and link stay.")) return;
+    for (const input of document.querySelectorAll("#pub-word-list input[data-word]")) input.value = input.dataset.default;
+    savePublic();
+  });
+  const tabs = [...document.querySelectorAll(".pub-tab")];
+  for (const t of tabs) {
+    t.addEventListener("click", () => openPublicSection(t.dataset.pubtab));
+    // Left and right arrows move between the tabs, as in any tab list.
+    t.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const next = tabs[(tabs.indexOf(t) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      openPublicSection(next.dataset.pubtab);
+      next.focus();
+    });
+  }
+  openPublicSection(prefs.get("public.tab", "access"));
   $("pub-picture-file").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     e.target.value = "";

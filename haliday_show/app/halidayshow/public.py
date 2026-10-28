@@ -16,6 +16,7 @@ networks put many phones behind one internet address.
 import copy
 import io
 import ipaddress
+import json
 import logging
 import math
 import os
@@ -90,6 +91,31 @@ def _item(x) -> dict | None:
     return {"kind": x["kind"], "id": iid, "from": frm, "to": to}
 
 
+# Everything visitors read, with the wording it starts with (static/public/words.json, which the
+# editor's Words tab and the tests read too).
+WORDS_FILE = PAGE / "words.json"
+WORD_GROUPS = json.loads(WORDS_FILE.read_text(encoding="utf-8"))["groups"]
+DEFAULT_WORDS = {w["key"]: w["text"] for g in WORD_GROUPS for w in g["words"]}
+MAX_WORD = 300
+WARNINGS = ("off", "note", "accept")
+
+
+def clean_words(x) -> dict:
+    """Your own wording, by key: only words the page has, and only where it differs from the default."""
+    x = x if isinstance(x, dict) else {}
+    out = {}
+    for key, default in DEFAULT_WORDS.items():
+        text = " ".join(str(x.get(key) or "").split())[:MAX_WORD]
+        if text and text != default:
+            out[key] = text
+    return out
+
+
+def words(p: dict) -> dict:
+    """Every word the page shows: yours where you've changed it, else the default."""
+    return {**DEFAULT_WORDS, **p["words"]}
+
+
 def clean(p) -> dict:
     """The public settings as stored; anything missing or wrong falls back to the defaults.
 
@@ -122,7 +148,8 @@ def clean(p) -> dict:
             "distance": min(max(distance, MIN_DISTANCE_M), MAX_DISTANCE_M),
             "address": address if len(address) <= 200 and _ADDRESS.match(address) else "",
             "look": clean_look(p.get("look")),
-            "hours": clean_hours(p.get("hours"))}
+            "hours": clean_hours(p.get("hours")),
+            "words": clean_words(p.get("words"))}
 
 
 DEFAULT_HOURS = {"on": False, "start": "17:00", "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""}
@@ -176,6 +203,8 @@ def clean_look(x) -> dict:
             "sign_text": text("sign_text", 120),
             "spacing": pick("spacing", SPACINGS), "corners": pick("corners", CORNERS), "size": pick("size", SIZES),
             "borders": x.get("borders") is not False,
+            "show_length": x.get("show_length") is not False,
+            "warning": pick("warning", WARNINGS),
             "colours": {k: (c[k].lower() if isinstance(c := x.get("colours"), dict) and isinstance(c.get(k), str)
                             and _HEX.match(c[k]) else v) for k, v in DEFAULT_COLOURS.items()}}
 
@@ -339,18 +368,20 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
           needs_location: bool = False, where=None, now: datetime | None = None) -> dict:
     p = load(storage) or clean(None)
     look = p["look"]
+    said = words(p)
     if p["on"] and not _code_ok(p, code):
         # Only the colours without the code: the title, words and picture are for visitors.
         return {"open": True, "locked": True,
-                "look": {k: look[k] for k in ("theme", "mode", "spacing", "corners", "size", "borders", "colours")}}
+                "look": {k: look[k] for k in ("theme", "mode", "spacing", "corners", "size", "borders", "colours")},
+                "words": {k: said[k] for k in ("locked", "locked_hint", "offline")}}
     picks = choices(storage) if p["on"] else []
     st = runner.status()
     waits = runner.queue_waits()
     mine = []
     if ticket:
-        now = runner.public_now
-        if now and now["ticket"] == ticket:
-            mine.append({"id": now["id"], "name": now["name"], "playing": True})
+        theirs = runner.public_now
+        if theirs and theirs["ticket"] == ticket:
+            mine.append({"id": theirs["id"], "name": theirs["name"], "playing": True})
         for place, (r, wait) in enumerate(zip(runner.requests, waits), start=1):
             if r["ticket"] == ticket:
                 mine.append({"id": r["id"], "name": r["name"], "place": place, "wait": wait})
@@ -369,8 +400,9 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "needs_location": needs_location,
         "hours": hours_now(p, where, now),
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
-                                         "corners", "size", "borders", "colours")},
+                                         "corners", "size", "borders", "colours", "show_length", "warning")},
                  "picture": picture_version(storage, look)},
+        "words": said,
     }
 
 
@@ -396,17 +428,29 @@ def _code_ok(p: dict, code) -> bool:
             and secrets.compare_digest(code.lower().encode(), p["code"].lower().encode()))
 
 
+class NotNear(Exception):
+    """Why a phone can't start a show from where it is: "far", "location" or "closed"."""
+
+    def __init__(self, why: str, word: str):
+        super().__init__(why)
+        self.why, self.word = why, word
+
+
 def _check_near(request, p: dict, body: dict):
-    """Refuses (403) a phone that isn't by the lights, or can't say where it is."""
+    """Raises NotNear for a phone that isn't by the lights, or can't say where it is."""
     if request.app[WHERE]() is None:
-        raise web.HTTPForbidden(text="Shows can't be started from here right now. Ask at the house.")
+        raise NotNear("closed", "ask_house")
     try:
         here = (float(body["lat"]), float(body["lon"]))
         leeway = min(max(float(body.get("accuracy") or 0), 0), MAX_LEEWAY_M)
     except (KeyError, TypeError, ValueError):
-        raise web.HTTPForbidden(text="Turn on location so we can check you're by the lights.")
+        raise NotNear("location", "location_needed")
     if not all(map(math.isfinite, (*here, leeway))) or metres(here, request.app[WHERE]()) - leeway > p["distance"]:
-        raise web.HTTPForbidden(text="You're too far away to start a show. Come and see the lights!")
+        raise NotNear("far", "too_far")
+
+
+def _said(storage: Storage, key: str) -> str:
+    return words(load(storage) or clean(None))[key]
 
 
 def _needs_location(request, p: dict) -> bool:
@@ -528,7 +572,7 @@ def _limit_client(request, kind: str, limit: int):
     times = [t for t in seen.get(key, ()) if now - t < 60]
     if len(times) >= limit:
         seen[key] = times
-        raise web.HTTPTooManyRequests(text="That's a lot of asking. Wait a minute and try again.")
+        raise web.HTTPTooManyRequests(text=_said(request.app[STORAGE], "busy"))
     if key not in seen and len(seen) >= MAX_CLIENTS:
         # Forget the half not heard from for longest, rather than everyone's counts at once.
         for k in sorted(seen, key=lambda k: seen[k][-1] if seen[k] else 0)[:len(seen) // 2]:
@@ -541,7 +585,7 @@ def _throttle(app, key=POSTS, limit=MAX_POSTS_PER_MIN):
     now, posts = time.monotonic(), app[key]
     posts[:] = [t for t in posts if now - t < 60]
     if len(posts) >= limit:
-        raise web.HTTPTooManyRequests(text="Lots of people are asking right now. Try again in a minute.")
+        raise web.HTTPTooManyRequests(text=_said(app[STORAGE], "busy"))
     posts.append(now)
 
 
@@ -561,27 +605,30 @@ async def post_request(request):
     ticket = _ticket(body.get("ticket"))
     storage, runner = request.app[STORAGE], request.app[RUNNER]
     p = load(storage) or clean(None)
+    said = words(p)
     if not p["on"]:
-        raise web.HTTPConflict(text="There are no shows right now.")
+        raise web.HTTPConflict(text=said["closed"])
     if not _code_ok(p, body.get("code")):
-        raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
+        raise web.HTTPForbidden(text=said["locked"])
     # Only requests with the code count towards everyone's limit, so guessing can't lock visitors out.
     _throttle(request.app)
     if not hours_now(p, request.app[WHERE]())["open"]:
-        raise web.HTTPConflict(text="Shows can't be started right now. Come back when we're open.")
+        raise web.HTTPConflict(text=said["not_open_now"])
     if _needs_location(request, p):
-        _check_near(request, p, body)
+        try:
+            _check_near(request, p, body)
+        except NotNear as e:
+            raise web.HTTPForbidden(text=said[e.word])
     pick = next((c for c in choices(storage) if c["available"] and c["kind"] == body.get("kind")
                  and c["id"] == body.get("id")), None)
     if pick is None:
-        raise web.HTTPNotFound(text="That show isn't available any more.")
+        raise web.HTTPNotFound(text=said["gone"])
     yours = sum(r["ticket"] == ticket for r in runner.requests)
     if yours >= p["per_phone"]:
-        raise web.HTTPConflict(text="You've already got a show waiting. You can pick another once it starts."
-                               if p["per_phone"] == 1 else
-                               f"You've already got {yours} shows waiting, the most for one phone.")
+        raise web.HTTPConflict(text=said["one_waiting"] if p["per_phone"] == 1 else
+                               said["many_waiting"].replace("{count}", str(yours)))
     if len(runner.requests) >= p["queue"]:
-        raise web.HTTPConflict(text="The queue is full. Try again in a few minutes.")
+        raise web.HTTPConflict(text=said["full"])
     runner.add_request({"id": secrets.token_hex(6), "ticket": ticket, "kind": pick["kind"], "ref": pick["id"],
                         "name": pick["name"], "shows": pick["shows"], "gap": pick.get("gap", 0)})
     log.info("public page: %s %s requested (%d waiting)", pick["kind"], pick["id"], len(runner.requests))
@@ -595,15 +642,14 @@ async def post_near(request):
     body = await _body(request)
     p = load(request.app[STORAGE]) or clean(None)
     if not _code_ok(p, body.get("code")):
-        raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
+        raise web.HTTPForbidden(text=words(p)["locked"])
     _throttle(request.app, NEAR, MAX_NEAR_PER_MIN)
     if _needs_location(request, p):
         try:
             _check_near(request, p, body)
-        except web.HTTPForbidden as e:
+        except NotNear as e:
             # "far" can change as they walk; "closed" (nothing to measure from) and "location" can't by themselves.
-            why = "far" if "too far" in e.text else "location" if "location" in e.text else "closed"
-            return _no_store(web.json_response({"near": False, "why": why, "text": e.text}))
+            return _no_store(web.json_response({"near": False, "why": e.why, "text": words(p)[e.word]}))
     return _no_store(web.json_response({"near": True}))
 
 
@@ -611,8 +657,9 @@ async def post_cancel(request):
     _limit_client(request, "post", MAX_POSTS_PER_CLIENT_MIN)
     body = await _body(request)
     ticket = _ticket(body.get("ticket"))
-    if not _code_ok(load(request.app[STORAGE]) or clean(None), body.get("code")):
-        raise web.HTTPForbidden(text="Scan the code on the sign to start a show.")
+    p = load(request.app[STORAGE]) or clean(None)
+    if not _code_ok(p, body.get("code")):
+        raise web.HTTPForbidden(text=words(p)["locked"])
     _throttle(request.app)
     request.app[RUNNER].cancel_request(str(body.get("id", "")), ticket)
     return _no_store(web.json_response(_state(request, ticket, body.get("code"))))
