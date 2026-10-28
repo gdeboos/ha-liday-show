@@ -883,7 +883,14 @@
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-devices"/></svg>Groups</h2>
     <p class="hint">Lights and parts a show can give one effect, such as the roof's icicles. Each group gets its own lane
       under <b>House</b> in the Show editor.</p>
-    <div id="group-list" class="show-list" role="list" aria-label="Your light groups"></div>
+    <p id="group-none" class="hint">No groups yet.</p>
+    <div class="table-scroll">
+    <table class="devices device-list" id="group-table" hidden>
+      <thead><tr><th title="Drag to reorder. Group lanes in the Show editor follow this order."></th><th>Name</th>
+        <th>Lights and parts</th><th>Segments</th><th></th></tr></thead>
+      <tbody id="group-rows"></tbody>
+    </table>
+    </div>
     <p><button type="button" id="btn-new-group">+ New group</button></p>
   </section>
 </main>
