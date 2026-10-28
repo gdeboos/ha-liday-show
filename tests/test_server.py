@@ -1214,6 +1214,27 @@ async def test_song_folders_round_trip_and_validation(client):
         assert (await client.put("/api/song-folders", json=bad)).status == 400
 
 
+async def test_library_folders_per_list_round_trip_and_validation(client):
+    empty = await (await client.get("/api/library-folders")).json()
+    assert empty == {"shows": [], "scenes": [], "playlists": [], "palettes": [], "presets": []}
+    resp = await client.put("/api/library-folders", json={"kind": "shows", "folders": [
+        {"id": "xmas", "name": " Christmas  shows ", "items": ["a", "a", "b"]},
+        {"id": "old", "name": "Old", "items": ["b", "c"]}]})
+    assert resp.status == 200
+    got = await (await client.get("/api/library-folders")).json()
+    assert got["shows"] == [{"id": "xmas", "name": "Christmas shows", "items": ["a", "b"]},
+                            {"id": "old", "name": "Old", "items": ["c"]}]
+    assert got["palettes"] == []
+    await client.put("/api/library-folders", json={"kind": "palettes", "folders": [{"id": "mine", "name": "Mine", "items": ["Ice"]}]})
+    got = await (await client.get("/api/library-folders")).json()
+    assert got["shows"][0]["id"] == "xmas" and got["palettes"][0]["items"] == ["Ice"]
+    for bad in [{"kind": "songs", "folders": []}, {"kind": "shows", "folders": {}},
+                {"kind": "shows", "folders": [{"id": "Bad Id", "name": "x", "items": []}]},
+                {"kind": "shows", "folders": [{"id": "a", "name": "x", "items": []}, {"id": "b", "name": "X", "items": []}]},
+                {"kind": "shows", "folders": [{"id": "a", "name": "x", "items": [3]}]}]:
+        assert (await client.put("/api/library-folders", json=bad)).status == 400, bad
+
+
 async def test_sample_folders_are_kept_apart_from_song_folders(client):
     assert await (await client.get("/api/sample-folders")).json() == []
     sample = {"source": "media", "path": "haliday_show/Samples/ho-ho-ho.wav"}

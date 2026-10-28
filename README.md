@@ -389,6 +389,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/lightgroups.js                   Light groups: members, names, which lanes a selection's effect goes on
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
+    js/libfolders.js                    Folders for the Library's lists: shows, scenes, playlists, palettes, presets
     js/palettepicker.js                 The window for picking a palette by its colours
     js/showpalette.js                   A show's own palette: followed by name, with a copy of its colours
     js/schedule.js                      Schedule entries in words, and small helpers for them

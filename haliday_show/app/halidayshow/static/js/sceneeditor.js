@@ -73,6 +73,7 @@ export class SceneEditor {
         continue;
       }
       box.replaceChildren(...this.scenes.map((s) => this.row(s, lights)));
+      this.d.afterList?.(box);
     }
   }
 
