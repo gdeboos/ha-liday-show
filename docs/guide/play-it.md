@@ -60,6 +60,20 @@ while it's on), **Edit** and **Remove…**.
 - **▶ Play on lights** plays it on your real lights, round and round. Change it while it plays and
   the lights follow.
 
+**Advanced** (beside the scene's name) opens the scene in the **Show editor**, for a scene that changes
+over time or runs across the house: effects can start and stop on the timeline, and the **House** lane
+works as in a show. Each light's look becomes one effect across the whole timeline to start with.
+
+- The timeline is one time round. The banner under the Show panel's title says how long:
+  **Goes round every** 20 seconds to start with, up to 10 minutes. Making it shorter cuts effects at the
+  new end; dragging an effect past the end makes it longer.
+- There's no song, so the song, beats, ✨ **Generate** and **⚙ Show settings…** are hidden, and
+  **Loop** is on. **▶ Play** plays the scene on your lights from the playhead; **⏸ Pause** turns it off.
+- It saves as you go, like a show. **← All scenes** goes back to the list, where **Edit** opens it in
+  the Show editor again.
+- **Switch to Basic** goes back to a row per light. It's only offered while nothing would be lost: each
+  light with one effect across the whole loop, played on the whole light, and nothing on the House lane.
+
 While a scene is on, starting a show or a playlist (from an editor, an automation, a schedule or a
 visitor) takes the lights over. When it finishes, or you stop it, the scene comes back after a
 couple of seconds, and its row says **Comes back after the show** meanwhile. To turn the lights off,

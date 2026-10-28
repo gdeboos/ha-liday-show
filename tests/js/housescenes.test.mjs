@@ -73,3 +73,25 @@ test("picking another effect keeps a light's colours and brightness", async () =
   assert.deepEqual(changeEffect(look, "twinkle").params, { color: "#ff0000", brightness: 70 });
   assert.deepEqual(changeEffect(null, "rainbow"), { effect: "rainbow", params: {} });
 });
+
+test("Basic to Advanced and back, while nothing would be lost", async () => {
+  const { toAdvanced, canBasic, toBasic } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const basic = { name: "Glow", mode: "basic", lights: { roof: { effect: "chase", params: { color: "#ff0000" } } } };
+  const adv = toAdvanced(basic, lights, 20);
+  assert.equal(adv.mode, "advanced");
+  assert.equal(adv.loop, 20);
+  assert.deepEqual(adv.tracks.map((t) => [t.device, t.clips[0].start, t.clips[0].end]), [["roof", 0, 20]]);
+  assert.ok(canBasic(adv, lights));
+  assert.deepEqual(toBasic(adv).lights.roof.effect, "chase");
+  assert.equal(toBasic(adv).lights.roof.params.color, "#ff0000");
+  // Cut in two, or a House lane effect: Basic can't hold it.
+  const cut = structuredClone(adv);
+  cut.tracks[0].clips = [{ ...adv.tracks[0].clips[0], end: 10 }, { ...adv.tracks[0].clips[0], start: 10 }];
+  assert.ok(!canBasic(cut, lights));
+  const house = structuredClone(adv);
+  house.tracks.push({ device: "@house", clips: [{ effect: "sweep", start: 0, end: 20 }] });
+  assert.ok(!canBasic(house, lights));
+  assert.match(sceneSummary(adv, lights), /^Advanced · goes round every 20 s · Chase$/);
+  assert.deepEqual(sceneColours(adv, lights), ["#ff0000"]);
+  assert.equal(sceneLoop(adv, lights, 40), 20);
+});

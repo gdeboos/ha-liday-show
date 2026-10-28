@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.207
+
+- Scenes have an **Advanced** mode. Press **Advanced** beside a scene's name and it opens in the
+  **Show editor**, with no song: put effects on the timeline, use the **House** lane, and the timeline
+  goes round and round. Set how long under **Goes round every**. **▶ Play** shows it on your lights from
+  the playhead.
+- **Switch to Basic** goes back to a row per light, while each light still has one effect across the
+  whole loop. In **Your scenes**, an Advanced scene says how often it goes round, and **Edit** opens it
+  in the Show editor.
+
 ## 0.2.206
 
 - Fixed: **Your scenes** could say "Couldn't load your scenes" if you'd ever used Govee's own scenes in a
