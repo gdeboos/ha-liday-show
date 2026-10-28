@@ -1,12 +1,23 @@
 # Changelog
 
-## 0.2.219
+## 0.2.220
 
 - Fixed: on **Setup → House**, a light set to **Icicle** could look like a plain line, with no drops
   hanging from it. That happened when **Drops** was more than the light's bulbs, which the old starting
   number often was. Drops now always hang below the line.
 - A light you switch to **Icicle** now starts with one drop for about every five bulbs, instead of three
   drops a segment. Lights you've already set keep their number: lower **Drops** if yours look crowded.
+
+## 0.2.219
+
+- **Light groups.** Under **Groups** on **Setup → Devices**, press **+ New group**, name it (such as Roof)
+  and pick its lights and parts.
+- Each group gets its own lane in the Show editor, under **House**. Effects on it either run **along the
+  group as if its lights were one strip** (a chase flows from one icicle strip into the next) or **across
+  the group by where its lights are on the house photo** (Sweep, House wipe and Rainbow wave, measured
+  across just those lights).
+- While a group's effect runs it takes over (or, for the house-photo kind, goes over) its lights; the rest of
+  the time each light plays its own.
 
 ## 0.2.218
 

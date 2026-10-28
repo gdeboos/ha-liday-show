@@ -63,6 +63,7 @@ export const HELP = {
         `Zoom with <b>−</b> and <b>+</b>, the ${k("+")} and ${k("−")} keys, or ${k("Ctrl")} + wheel round the pointer.`,
         "Click a light's name to copy or recolour all its effects.",
         "Coloured flags on the beat lane are the song's marks, made in the Music editor. Clips snap to them.",
+        "A group's lane, under <b>House</b>, plays its effects along the group's lights as one strip, or House effects across just those lights.",
       ] },
       { id: "selection", title: "Adding and changing effects", guide: ["build-a-show.md", "adding-effects"], tips: [
         "Select a stretch, then press <b>＋ Add effect…</b> to pick one. Each button plays it on that light first.",
@@ -262,6 +263,11 @@ export const HELP = {
         "<b>Test</b> on a line tests the real light. Press anywhere else on the line to open its settings.",
         "Drag a light by its ⠿ handle to change the order every show and the house use.",
         "<b>Split into parts…</b> in a light's window gives different stretches their own effects.",
+      ] },
+      { id: "groups", title: "Groups", guide: ["lights.md", "light-groups"], tips: [
+        "<b>+ New group</b> puts lights and parts together, such as the roof's icicles, so a show can give them one effect.",
+        "Each group gets a lane under <b>House</b> in the Show editor. Effects run along its lights in this tab's order.",
+        "A light can be in as many groups as you like.",
       ] },
     ],
   },

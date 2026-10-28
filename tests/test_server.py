@@ -1201,6 +1201,21 @@ async def test_song_folders_round_trip_and_validation(client):
         assert (await client.put("/api/song-folders", json=bad)).status == 400
 
 
+async def test_light_groups_round_trip_and_validation(client):
+    assert await (await client.get("/api/light-groups")).json() == []
+    mine = [{"id": "roof", "name": "  Roof  ", "members": ["icicles-left", "icicles-right", "icicles-left"]},
+            {"id": "front", "name": "Front", "members": ["pillars#left", "192.168.2.155"]}]
+    assert (await client.put("/api/light-groups", json=mine)).status == 200
+    saved = await (await client.get("/api/light-groups")).json()
+    assert saved == [{"id": "roof", "name": "Roof", "members": ["icicles-left", "icicles-right"]},
+                     {"id": "front", "name": "Front", "members": ["pillars#left", "192.168.2.155"]}]
+    for bad in ({"id": "x"}, [{"id": "Bad Id", "name": "A", "members": []}],
+                [{"id": "a", "name": "A", "members": []}, {"id": "b", "name": "a", "members": []}],
+                [{"id": "a", "name": "A", "members": [3]}], [{"id": "a", "name": "A", "members": ["x\ny"]}],
+                [{"id": f"g{k}", "name": f"G{k}", "members": []} for k in range(51)]):
+        assert (await client.put("/api/light-groups", json=bad)).status == 400
+
+
 async def test_scenes_are_made_saved_baked_played_and_deleted(client):
     resp = await client.post("/api/house-scenes", json={"name": "Candy cane"})
     scene_id = (await resp.json())["id"]

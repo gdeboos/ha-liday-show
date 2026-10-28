@@ -240,6 +240,16 @@ On the timeline a split light's tracks (when there's more than one) are grouped:
 and its parts, the parts are indented under it, and a heavier line marks where the group starts and
 ends.
 
+### Light groups
+
+A group is a set of lights, or parts of lights, that a show can give one effect: the two strips of
+roof icicles, say, or the left part of each pillar. Under **Groups**, below your lights on the
+**Devices** tab, press **+ New group**, give it a name and turn on the lights and parts to put in it, then
+press **Add group**. A part is in automatically when its whole light is. **Edit…** changes a group and
+**Delete…** removes it. A light can be in as many groups as you like.
+
+Each group gets its own lane in the Show editor, under **House** (see [Group lanes](effects.md#group-lanes)).
+
 ---
 
 [← Getting started](getting-started.md) · [Contents](README.md) · [Speakers →](speakers.md)
