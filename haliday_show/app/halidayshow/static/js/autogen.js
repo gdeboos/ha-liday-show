@@ -24,6 +24,10 @@ const LOOKS = {
     { effect: "twinkle", label: "Gentle twinkle", params: () => ({ density: 20, rate: 2, background: "#000000" }) },
     { effect: "duo", label: "Still blocks", params: () => ({ layout: "split", speed: 0 }) },
     { effect: "cycle", label: "Slow colour fade", params: (bps) => ({ rate: bps / 8, blend: "fade" }) },
+    { effect: "fairy", label: "Fairy lights", params: (bps) => ({ rate: bps / 8, density: 70, background: "#000000" }) },
+    { effect: "ocean", label: "Gentle waves", params: () => ({ speed: 0.4, size: 1 }) },
+    { effect: "aurora", label: "Aurora", params: () => ({ speed: 0.4, background: "#000000" }) },
+    { effect: "flow", label: "Flowing colours", params: (bps, n) => ({ speed: 0.15, size: Math.max(4, Math.round(n / 3)) }) },
   ],
   mid: [
     { effect: "trio", label: "Marquee on the beat", params: (bps) => ({ layout: "alternate", size: 1, speed: bps }) },
@@ -32,6 +36,10 @@ const LOOKS = {
     { effect: "scanner", label: "Scanner, a sweep a bar", params: (bps, n) => ({ width: Math.max(1, n / 8), speed: bps / 4 }) },
     { effect: "cycle", label: "Colour change each beat", params: (bps) => ({ rate: bps, blend: "step" }) },
     { effect: "gradient", label: "Flowing gradient", params: () => ({ count: "3", speed: 0.5 }) },
+    { effect: "theatre", label: "Theatre chase on the beat", params: (bps) => ({ every: 3, speed: bps, background: "#000000" }) },
+    { effect: "juggle", label: "Juggle", params: (bps) => ({ speed: bps / 2, trail: 0.6, background: "#000000" }) },
+    { effect: "dissolve", label: "Dissolve each bar", params: (bps) => ({ seconds: 2 / bps, background: "#000000" }) },
+    { effect: "lighthouse", label: "Beam each bar", params: (bps) => ({ rate: bps / 4, glow: 15, background: "#000000" }) },
   ],
   high: [
     { effect: "cycle", label: "Colour flash each beat", params: (bps) => ({ rate: bps, blend: "step" }) },
@@ -40,6 +48,10 @@ const LOOKS = {
     { effect: "twinkle", label: "Sparkle storm", params: () => ({ density: 60, rate: 10, background: "#000000" }) },
     { effect: "pulse", label: "Pulse each beat", params: (bps) => ({ rate: bps, background: "#000000" }) },
     { effect: "trio", label: "Wide fast marquee", params: (bps) => ({ layout: "alternate", size: 2, speed: bps * 2 }) },
+    { effect: "fireworks", label: "Fireworks on the beat", params: (bps, n) => ({ rate: bps, size: Math.max(3, Math.round(n / 6)), background: "#000000" }) },
+    { effect: "ripple", label: "Ripples on the beat", params: (bps, n) => ({ rate: bps, speed: Math.max(5, n / 2), background: "#000000" }) },
+    { effect: "theatre", label: "Fast theatre chase", params: (bps) => ({ every: 3, speed: bps * 2, background: "#000000" }) },
+    { effect: "bounce", label: "Bouncing on the beat", params: (bps) => ({ balls: 4, speed: bps / 2, background: "#000000" }) },
   ],
 };
 
@@ -179,6 +191,12 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
         direction: si % 2 ? "left to right" : "out from centre",
       });
       houseClips.push(sweep);
+    } else if (house && si > 0 && unison && bars.length >= 2) {
+      // When every light comes in together, a ring of colour bursts across the house over the first bar.
+      const ring = newClip("shockwave", round(sec.start), round(bars[1]));
+      Object.assign(ring, { color: colors[(si + 1) % colors.length], outside: "lights' own effects", rings: 1, width: 0.15,
+        y: 100, mix: "add" });
+      houseClips.push(ring);
     }
     prevTier = t;
   });
@@ -201,6 +219,31 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
       list = [...keep(list), Object.assign(newClip("fade", from, round(duration)), { from: colors[0], to: "#000000" })];
     }
     clips[light.id] = list;
+  }
+
+  // Changes at a section's start crossfade (two beats in a quiet section, one otherwise), and a light
+  // coming on after being dark fades in, and one going dark fades out, over a beat. Phrase changes within
+  // a section stay on the beat.
+  const beat = 1 / bps;
+  const startsAt = (t) => sections.find((sec) => Math.abs(sec.start - t) < 0.05 && sec.start > 0.05);
+  for (const light of lights) {
+    const list = clips[light.id];
+    list.forEach((c, k) => {
+      if (c.effect === "fade") return; // the opening and closing fades
+      const prev = list[k - 1], next = list[k + 1];
+      const len = c.end - c.start;
+      const sec = startsAt(c.start);
+      const joined = prev && Math.abs(prev.end - c.start) < 0.02;
+      if (sec || (!joined && c.start > 0.05)) {
+        const quiet = sec && tier(sec.energy ?? 0.5, style) === "low";
+        c.transIn = "fade";
+        c.transInSecs = round(Math.min(beat * (quiet ? 2 : 1), len / 3));
+      }
+      if (!(next && Math.abs(next.start - c.end) < 0.02) && c.end < duration - 0.05) {
+        c.transOut = "fade";
+        c.transOutSecs = round(Math.min(beat, len / 3));
+      }
+    });
   }
   return { clips, house: houseClips };
 }

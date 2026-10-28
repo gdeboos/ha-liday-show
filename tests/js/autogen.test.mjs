@@ -235,3 +235,33 @@ test("the cap holds with building up, and every light still gets used", () => {
   const loose = generateShow({ ...analysis, bars: [], beats: [] }, lights, colors, { maxBars: 2 });
   for (const c of Object.values(loose.clips).flat()) assert.ok(c.end - c.start <= 4 + 1e-6, `${c.end - c.start}s with 2 s blocks`);
 });
+
+test("generated shows crossfade at section changes, fade lights in and out, and still build up", () => {
+  const beats = Array.from({ length: 240 }, (_, i) => i * 0.5);
+  const analysis = { tempo: 120, beats, bars: beats.filter((_, i) => i % 4 === 0), duration: 120,
+    sections: [{ start: 0, end: 30, label: "Intro", energy: 0.2 }, { start: 30, end: 60, label: "Verse", energy: 0.5 },
+      { start: 60, end: 90, label: "Chorus", energy: 0.9 }, { start: 90, end: 120, label: "Outro", energy: 0.2 }] };
+  const lights = Array.from({ length: 6 }, (_, i) => ({ id: `l${i}`, segments: 40 }));
+  const { clips, house } = generateShow(analysis, lights, ["#ff0000", "#00ff00", "#0000ff"], { build: true, house: true });
+  const all = Object.values(clips).flat();
+  // Every clip starting at the chorus (all lights) crossfades in over a beat.
+  const atChorus = all.filter((c) => c.start === 60);
+  assert.equal(atChorus.length, 6);
+  for (const c of atChorus) assert.deepEqual([c.transIn, c.transInSecs], ["fade", 0.5]);
+  // Fewer lights in the quiet intro than in the chorus.
+  const lit = (t) => Object.values(clips).filter((list) => list.some((c) => c.start <= t && c.end > t)).length;
+  assert.ok(lit(15) < lit(75), `${lit(15)} ${lit(75)}`);
+  // A clip that ends before a gap fades out.
+  for (const list of Object.values(clips)) {
+    list.forEach((c, k) => {
+      const next = list[k + 1];
+      if (c.effect !== "fade" && c.end < 119.9 && !(next && Math.abs(next.start - c.end) < 0.02)) assert.equal(c.transOut, "fade");
+    });
+  }
+  // The chorus brings a sweep (lifting from the verse) across the house; a later all-lights section
+  // that isn't a lift gets a ring instead.
+  assert.ok(house.some((c) => c.effect === "sweep" && c.start === 60));
+  const again = generateShow({ ...analysis, sections: [...analysis.sections.slice(0, 3), { start: 90, end: 120, label: "Chorus", energy: 0.9 }] },
+    lights, ["#ff0000"], { build: true, house: true });
+  assert.ok(again.house.some((c) => c.effect === "shockwave" && c.start === 90));
+});
