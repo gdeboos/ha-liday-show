@@ -17,7 +17,6 @@ the Home Assistant sidebar.
 
 **Reference:** [Arrange the editor](editor-and-settings.md#arrange-the-editor) · [Settings](editor-and-settings.md#settings) ·
 [Your data](editor-and-settings.md#your-data) · [Setting up the AI](editor-and-settings.md#setting-up-the-ai) · [Packet lab](labs.md#packet-lab) ·
-[Govee scenes](labs.md#experimental-govee-scenes) ·
 [Troubleshooting](troubleshooting.md#troubleshooting) · [Where things are stored](troubleshooting.md#where-things-are-stored) ·
 [Running without Home Assistant](without-home-assistant.md#running-without-home-assistant)
 

@@ -105,6 +105,6 @@ Thank you!
   razer `BB … B0 <flag> <n> <rgb…>` means it's the known protocol; then compare `<n>`, the flag and the
   length field against what's in `govee-protocols.md` (the 44-bulb window). A different command byte, a
   set-up message just after "sync on", or a different port is the prize.
-- `ptReal` with `33 05 15` (App segments) means the sync box is only colouring segments.
+- `ptReal` with `33 05 15` (the app's segment colour command) means the sync box is only colouring segments.
 - The half-and-half screen tells per-segment from whole-string at a glance in the video.
 - Record whatever we learn in `govee-protocols.md`, including "it was Bluetooth" or "it was segments".

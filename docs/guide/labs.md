@@ -46,14 +46,6 @@ colours, for about 45 seconds. **Try app modes first** switches the light into t
 turn, each followed by a frame in its colour, for about a minute and a half; the light goes plain white
 between steps. For either, watch for a colour lighting more than the first bulbs.
 
-### Per bulb speed test
-
-For lights on **Per bulb (experimental)**: **Run speed test** changes the picture for six seconds,
-at the number of **Pictures a second** you pick. **First 10 bulbs** flips them between red and blue;
-**Every bulb** moves a red, green and blue pattern along the whole light one bulb at a time. Set
-**Segments** to the light's number of bulbs. If the light changes every time, it keeps up at that
-rate; if it skips or stalls, it doesn't.
-
 ## Listen for Govee traffic
 
 Some Govee features drive lights in more detail than HA-liday Show can. In **Scene Stage**, for example,
@@ -66,20 +58,6 @@ Govee traffic** helps work out how, so HA-liday Show can learn to do the same:
    an issue on HA-liday Show's GitHub page.
 
 If it hears nothing, the lights are talking to each other directly, where Home Assistant can't hear.
-
-## Experimental: Govee scenes
-
-For Govee lights only. Turn on **Settings → Experimental → Govee scenes** to add a **Govee scene**
-effect. Its clip hands the light to one of the scenes built into the Govee app (the app's Scenes list, not your own saved
-snapshots or DIYs) for as long as the clip lasts, then the show takes the light back.
-
-- Pick the scene in the clip's settings. The list comes from Govee's public scene library for the
-  light's model, so the light needs a model (scan for it on the Devices tab) and Home Assistant
-  needs internet access the first time. The list is then cached for a week.
-- It sends the light the same commands the Govee app sends over Bluetooth, through the LAN API's
-  unofficial `ptReal` command. Not every light accepts it.
-- The preview shows a purple shimmer where a scene runs, because the editor can't know what the
-  scene looks like. The light may blink as it switches in and out of a scene.
 
 ---
 

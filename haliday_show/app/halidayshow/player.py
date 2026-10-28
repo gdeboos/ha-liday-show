@@ -62,7 +62,10 @@ class Player:
         for t in baked.tracks:
             d = devices.get(t.device)
             if d:
-                self.output.claim(address(d), t.segments, reverse=d.get("reverse", False),
+                # Never more than the light has now: a bake from before its count went down (0.2.207
+                # cut Per bulb lights to their realtime reach) would otherwise overrun it.
+                segments = min(t.segments, int(d.get("segments") or t.segments))
+                self.output.claim(address(d), segments, reverse=d.get("reverse", False),
                                   gradient=d.get("gradient", False),
                                   protocol=d.get("protocol", "standard"),
                                   brightness=d.get("brightness", 100))
@@ -108,16 +111,11 @@ class Player:
             elif idx >= b.frames:
                 break
             if idx >= 0 and idx != last:
-                for k, t in enumerate(b.tracks):
+                for t in b.tracks:
                     d = self.devices.get(t.device)
                     if d:
                         dev = self.output.devices.get(address(d))
                         if dev:
-                            scene = next((s for s in b.scenes if s.track == k and s.start <= idx < s.end), None)
-                            if scene:
-                                dev.play_scene(scene.code, scene.param)
-                            else:
-                                dev.end_scene()
                             dev.update(b.track_frame(t, idx))
                 last = idx
             await asyncio.sleep(frame_s / 4)

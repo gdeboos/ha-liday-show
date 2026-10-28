@@ -584,9 +584,9 @@ function lightFields(d) {
     } else {
       const proto = document.createElement("select");
       for (const [v, label] of Object.entries(PROTOCOLS)) proto.add(new Option(label, v, false, v === (d.protocol || "standard")));
-      proto.title = "How colours are sent. If Test only turns the light on, try the next one.";
+      proto.title = "How colours are sent. If Test only turns the light on, try Whole light (one colour).";
       proto.addEventListener("change", () => { d.protocol = proto.value; saveDevices(); });
-      cell(proto, "Protocol", "How colours are sent. If <b>Test</b> only turns the light on, try the next one.");
+      cell(proto, "Protocol", "How colours are sent. If <b>Test</b> only turns the light on, try <b>Whole light (one colour)</b>.");
     }
     return out;
 }
@@ -1046,7 +1046,7 @@ function addController(ip, leds, kind = "ddp") {
   return `Added ${segments} LEDs on ${ip}, starting at ${where}. Press Test to check them.`;
 }
 // Protocols that aren't limited to 255 segments a light.
-const LONG_PROTOCOLS = ["whole", "segments", "pixels", "ddp", "e131"];
+const LONG_PROTOCOLS = ["whole", "ddp", "e131"];
 
 // Asks a WLED light for its name, LED count and segments (server.py wled_info).
 async function wledInfo(ip) {
@@ -1083,11 +1083,7 @@ async function useWledSegments(d) {
 // Lights accept different forms of the realtime packet. See protocol.py.
 const PROTOCOLS = {
   standard: "Realtime",
-  razer: "Realtime (Razer)",
-  v2: "Realtime v2",
-  whole: "Whole light only",
-  segments: "App segments (experimental)",
-  pixels: "Per bulb (experimental)",
+  whole: "Whole light (one colour)",
 };
 
 const skuOf = (text) => (text || "").trim().split(/\s+/)[0].toUpperCase();
@@ -1389,7 +1385,7 @@ const isHouse = (i) => app.show.tracks[i]?.device === HOUSE;
 // House effects go on the House lane and nowhere else; light effects everywhere but.
 const fitsTrack = (effect, i) => !!EFFECTS[effect]?.house === isHouse(i);
 
-// Whether clips suit their lights (compat.js). A long show on a Per bulb light takes a while to
+// Whether clips suit their lights (compat.js). A long show on a slow light takes a while to
 // check, so the timeline and effect chooser get theirs in the background (pass `then`), and every
 // answer is remembered until the clip or the light changes. Nothing is saved with the show.
 const ALLOW_UNFIT = "allowUnfit";
@@ -1529,7 +1525,7 @@ function physicalFrame(light, time, pos) {
     showLevel(app.show, light.id));
 }
 
-// What a physical light shows now: stepped (and on Whole light only, one colour) as on the real light.
+// What a physical light shows now: stepped (and on Whole light, one colour) as on the real light.
 const shownFrame = (light, pos) => asShown(light, app.time, (t) => physicalFrame(light, t, pos));
 
 // What a preview row shows: for a split light and its parts, their share of what the light
@@ -2018,13 +2014,9 @@ async function stopLightPreview() {
 }
 
 // effects and inspector -------------------------------------------------------
-// Experimental effects (Govee scenes) only appear once switched on in Settings. `keep` stays listed
-// regardless, so a clip that already uses one can still be edited.
-const experimentalOn = () => prefs.get("experimental.scenes", false);
 const labsOn = () => prefs.get("labs", false);
 // house: true for the House lane's effects, false for lights', undefined for both.
-const visibleEffects = (keep, house) => Object.entries(EFFECTS).filter(([k, fx]) =>
-  (!fx.experimental || experimentalOn() || k === keep) && (house === undefined || !!fx.house === house));
+const visibleEffects = (keep, house) => Object.entries(EFFECTS).filter(([, fx]) => house === undefined || !!fx.house === house);
 
 // Previews in the effect chooser: each strip loops its effect for as long as the clip or selection
 // (within reason) on the light's own segments.
@@ -2291,7 +2283,6 @@ function renderInspector() {
 
   for (const p of EFFECTS[clip.effect].params) {
     target = p.type === "color" ? groups.colours : p.type === "range" ? groups.brightness : groups.settings;
-    if (p.type === "scene") { field(p.label, scenePicker(clip, dev)); continue; }
     let el;
     if (p.type === "select") {
       el = document.createElement("select");
@@ -2347,38 +2338,6 @@ function renderInspector() {
   }
   actions.append(button("Delete clip", deleteSelected, "ghost danger"));
   box.append(actions);
-}
-
-// Experimental Govee scenes: the list comes from Govee's scene library for the light's model.
-const sceneLists = {};
-function scenePicker(clip, dev) {
-  const sel = document.createElement("select");
-  const sku = dev?.sku;
-  if (!sku) {
-    sel.add(new Option("Scan for this light to learn its model"));
-    sel.disabled = true;
-    return sel;
-  }
-  sel.add(new Option(clip.scene || "Loading scenes…", ""));
-  (sceneLists[sku] ||= api(`api/scenes?sku=${encodeURIComponent(sku)}`)).then((list) => {
-    sel.replaceChildren(new Option(list.length ? "Pick a scene" : `No scenes listed for ${sku}`, ""));
-    const groups = {};
-    list.forEach((s, i) => {
-      const g = groups[s.category] ||= sel.appendChild(Object.assign(document.createElement("optgroup"), { label: s.category || "Scenes" }));
-      g.append(new Option(s.name, i, false, s.code === clip.code && s.name === clip.scene));
-    });
-    sel.addEventListener("change", () => {
-      const s = list[Number(sel.value)];
-      if (!s) return;
-      Object.assign(clip, { scene: s.name, code: s.code, param: s.param });
-      app.changed();
-    });
-  }).catch((e) => {
-    delete sceneLists[sku];
-    sel.replaceChildren(new Option(`Couldn't load scenes: ${e.message}`));
-    sel.disabled = true;
-  });
-  return sel;
 }
 
 // copy and paste ----------------------------------------------------------------
@@ -2578,7 +2537,7 @@ function savePresetFrom(clip) {
     if (!label) return;
     const params = {};
     for (const p of fx.params) {
-      if (p.type === "scene" || (p.type === "color" && !colours.checked)) continue;
+      if (p.type === "color" && !colours.checked) continue;
       params[p.key] = clip[p.key] ?? p.default;
     }
     const finalName = freePresetName(clip.effect, label);
@@ -2843,7 +2802,6 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
   }
   const colourKeys = [];
   for (const q of fx.params) {
-    if (q.type === "scene") continue;
     if (q.type === "color" && !(q.key in preset.params)) continue;
     if (q.type === "color") colourKeys.push(q.key);
     const target = q.type === "color" ? groups.colours : q.type === "range" ? groups.brightness : groups.settings;
@@ -7934,7 +7892,7 @@ function renderLab() {
   // The lab speaks Govee's LAN protocol, so it only offers Govee lights.
   lights.replaceChildren(...app.deviceList.filter((d) => d.ip && (d.kind || "govee") === "govee").map((d) => new Option(`${d.name} (${d.ip})`, d.ip)));
   if (keep) lights.value = keep;
-  for (const id of ["btn-lab-send", "btn-lab-sweep", "btn-lab-start-sweep", "btn-lab-flag-sweep", "btn-lab-mode-sweep", "btn-lab-speed"]) {
+  for (const id of ["btn-lab-send", "btn-lab-sweep", "btn-lab-start-sweep", "btn-lab-flag-sweep", "btn-lab-mode-sweep"]) {
     $(id).disabled = !lights.options.length;
   }
 }
@@ -7950,15 +7908,6 @@ function fillLab() {
   $("lab-interval").value = t.interval ?? 100;
   $("lab-on").checked = !!t.realtimeOn;
   $("lab-help").textContent = LAB_HELP[t.kind];
-}
-
-async function labSpeed() {
-  const json = { ip: $("lab-light").value, bulbs: Number($("lab-n").value) || 300,
-    small: $("lab-speed-size").value === "small", per_second: Number($("lab-speed-rate").value) };
-  try {
-    await api("api/lab/speed", { method: "POST", json });
-  } catch (e) { status(`Not sent: ${e.message}`, true); return; }
-  labWatch(true);
 }
 
 async function labSend(sweep = null) {
@@ -8000,7 +7949,6 @@ function wireLab() {
     if (d) { $("lab-n").value = d.segments; fillLab(); }
   });
   $("btn-lab-send").addEventListener("click", () => labSend());
-  $("btn-lab-speed").addEventListener("click", labSpeed);
   for (const [id, sweep] of [["btn-lab-sweep", windowSweep], ["btn-lab-start-sweep", startSweep],
     ["btn-lab-flag-sweep", flagSweep], ["btn-lab-mode-sweep", modeSweep]]) {
     $(id).addEventListener("click", () => {
@@ -8045,6 +7993,21 @@ async function listenForTraffic() {
   poll();
 }
 
+// 0.2.207 took out Govee scenes and the App segments, Per bulb, Razer and v2 protocols. Says once, in
+// each browser, what that changed here.
+async function tellRetired() {
+  const r = (await api("api/info").catch(() => null))?.retired;
+  if (!r || prefs.get("retiredSeen", 0) === r.at) return;
+  prefs.set("retiredSeen", r.at);
+  const said = [];
+  const list = (names) => names.length > 3 ? `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`
+    : names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names.join("");
+  if (r.lights?.length) said.push(`${list(r.lights)} ${r.lights.length === 1 ? "is" : "are"} now on Realtime`);
+  if (r.clips) said.push(`${r.clips} Govee scene clip${r.clips === 1 ? " was" : "s were"} taken out of ${list(r.shows)}`);
+  if (r.blocks) said.push(`${r.blocks} Govee scene block${r.blocks === 1 ? " is" : "s are"} now Off in your playlists`);
+  if (said.length) status(`Govee scenes, App segments and Per bulb are gone: ${said.join("; ")}.`);
+}
+
 async function init() {
   wire();
   $("btn-listen").addEventListener("click", listenForTraffic);
@@ -8076,12 +8039,6 @@ async function init() {
     prefs.set("labs", e.target.checked);
     $("tab-labs").hidden = !e.target.checked;
     if (!e.target.checked && sectionPage.setup === "labs") sectionPage.setup = "settings";
-  });
-  $("exp-scenes").checked = experimentalOn();
-  $("exp-scenes").addEventListener("change", (e) => {
-    prefs.set("experimental.scenes", e.target.checked);
-    if (!e.target.checked && EFFECTS[app.paletteEffect]?.experimental) app.paletteEffect = "solid";
-    renderInspector();
   });
   try {
     await loadDevices();
@@ -8116,6 +8073,7 @@ async function init() {
     window.addEventListener("popstate", pageFromHistory);
     // A fresh install opens the setup guide, once.
     if (!app.deviceList.length && !shows.length && !prefs.get("wizard.done", false)) openWizard();
+    tellRetired();
   } catch (e) {
     status(`Couldn't reach HA-liday Show: ${e.message}`, true);
   }

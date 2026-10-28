@@ -8,8 +8,6 @@ A light with no entry stays off. An Advanced scene, edited in the Show editor, i
   {"name", "mode": "advanced", "loop": 20, "tracks": [...]}, its tracks as a show's (the House lane
   as device "@house"), going round every `loop` seconds. The editor bakes the scene's frames, one seamless time round, into
 house-scenes/<id>.gshow (the same layout as a show's), and the player plays them round and round.
-
-(scenes.py is Govee's own scene library, which is something else.)
 """
 import math
 

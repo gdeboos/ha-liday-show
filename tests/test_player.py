@@ -35,31 +35,27 @@ def test_tiny_drift_is_ignored_and_a_seek_jumps():
     assert abs(p.position() - 30.0) < 0.01
 
 
-class RecordingDevice:
+class ClaimingOutput:
     def __init__(self):
-        self.calls = []
+        self.devices, self.claims = {}, []
 
-    def play_scene(self, code, param):
-        self.calls.append(("scene", code))
+    def claim(self, ip, segments, **kw):
+        self.claims.append((ip, segments))
 
-    def end_scene(self):
-        self.calls.append(("end",))
+    def release(self, ip):
+        pass
 
-    def update(self, rgb):
+    def release_all(self):
         pass
 
 
-async def test_player_hands_a_light_to_a_scene_for_its_frames():
+async def test_a_bake_longer_than_the_light_is_played_at_the_lights_length():
+    # Baked when Pillars was on Per bulb with 300 segments; it's 44 now, on Realtime.
     from halidayshow import baked
-    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\0\0\0"] * 4,
-                        scenes=[{"track": 0, "start": 1, "end": 3, "code": 7, "param": ""}])
-    dev = RecordingDevice()
-    out = FakeOutput()
-    out.devices = {"1.2.3.4": dev}
-    out.release_all = lambda: None
+    b = baked.decode(baked.encode(10, [{"device": "p", "segments": 300}, {"device": "w", "segments": 10}],
+                                  [bytes(930)]))
+    out = ClaimingOutput()
     p = player.Player(out)
-    p.baked, p.devices, p.offset = baked.decode(blob), {"a": {"ip": "1.2.3.4"}}, 0.0
-    p.start = time.monotonic()
-    await p._run()
-    assert ("scene", 7) in dev.calls
-    assert dev.calls.index(("scene", 7)) < max(i for i, c in enumerate(dev.calls) if c == ("end",))
+    await p.play("x", b, {"p": {"ip": "10.0.0.2", "segments": 44}, "w": {"ip": "10.0.0.3", "segments": 60}})
+    await p.stop()
+    assert out.claims == [("10.0.0.2", 44), ("10.0.0.3", 10)]

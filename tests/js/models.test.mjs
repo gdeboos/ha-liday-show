@@ -9,7 +9,7 @@ const by = Object.fromEntries(models.map((m) => [m.sku, m]));
 
 test("a new light starts with its model's settings", () => {
   const light = newLight(by.H70C5, { id: "1.2.3.4", name: "Tree", ip: "1.2.3.4", sku: "H70C5" });
-  assert.deepEqual(light, { segments: 300, reverse: false, gradient: false, protocol: "pixels", brightness: 100,
+  assert.deepEqual(light, { segments: 44, reverse: false, gradient: false, protocol: "standard", brightness: 100,
     bulbs: 300, id: "1.2.3.4", name: "Tree", ip: "1.2.3.4", sku: "H70C5" });
   assert.equal(newLight(by.H618A, {}).segments, 15);
 });

@@ -20,11 +20,11 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, public, scenelib, scenes, schedule, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, public, scenelib, schedule, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
-                  Step as LabStep, build as lab_build, pixel_speed_steps)
+                  Step as LabStep, build as lab_build)
 from .listen import Listener
 from .mqtt import MqttBridge
 from .output import PROBE_MAX, LivePreview, Output, address, linked, run_hold, run_probe, run_test_pattern
@@ -133,7 +133,9 @@ async def no_cache_static(request, response):
 
 async def info(request):
     return web.json_response({"version": __version__, "ha": request.app[HA].available,
-                              "mqtt": request.app[MQTT].client is not None})
+                              "mqtt": request.app[MQTT].client is not None,
+                              # what 0.2.207's Govee clear-out changed, for the editor to say once
+                              "retired": migrate.retired(request.app[STORAGE].config_dir)})
 
 
 # diagnostics -------------------------------------------------------------
@@ -225,29 +227,6 @@ async def lab_send(request):
     app[OUTPUT].release(ip)
     app[LAB].start(ip, steps)
     return web.json_response({"ok": True, "steps": len(steps)})
-
-
-async def lab_speed(request):
-    """Per-bulb speed test: red and blue pictures in turn on one of your lights, at a set rate."""
-    body = await request.json()
-    if not isinstance(body, dict):
-        raise web.HTTPBadRequest(text="expected an object")
-    app = request.app
-    ip = str(body.get("ip", ""))
-    if not ip or ip not in _govee_ips(app):
-        raise web.HTTPBadRequest(text="pick one of your lights")
-    try:
-        bulbs, per_second = int(body.get("bulbs", 300)), float(body.get("per_second", 2))
-    except (TypeError, ValueError):
-        raise web.HTTPBadRequest(text="bulbs and per_second must be numbers")
-    if not 1 <= bulbs <= MAX_SEGMENTS or not 0.5 <= per_second <= 20:
-        raise web.HTTPBadRequest(text=f"bulbs must be 1-{MAX_SEGMENTS} and per_second 0.5-20")
-    await app[RUNNER].stop(keep_scene=True)
-    if (old := app[TESTS].pop(ip, None)):
-        old.cancel()
-    app[OUTPUT].release(ip)
-    app[LAB].start(ip, pixel_speed_steps(bulbs, bool(body.get("small")), per_second))
-    return web.json_response({"ok": True})
 
 
 async def lab_stop(request):
@@ -543,16 +522,6 @@ async def preview_device(request):
     live.show(rgb, d["segments"], reverse=d["reverse"], gradient=d["gradient"], protocol=d["protocol"],
               brightness=d["brightness"])
     return web.json_response({"ok": True})
-
-
-async def get_scenes(request):
-    """Experimental: Govee's built-in scenes for a model, for scene clips."""
-    try:
-        found = await scenes.scenes_for(request.query.get("sku", ""),
-                                        request.app[STORAGE].config_dir / "scenes")
-    except scenes.SceneError as e:
-        raise web.HTTPBadGateway(text=str(e))
-    return web.json_response(found)
 
 
 async def stop_tests(app):
@@ -2026,6 +1995,7 @@ async def _replace_data(app, reason: str, data: bytes | None) -> dict:
     else:
         restored = backup.restore(config, data)
         migrate.fill_device_kinds(app[STORAGE])  # an export from before lights had a kind
+        migrate.retire_govee_extras(app[STORAGE])  # or from before 0.2.207's Govee clear-out
     app[MQTT].refresh()
     await app[PUBLIC].apply()
     return {"ok": True, "kept": kept, "restored": restored}
@@ -2084,6 +2054,10 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         migrate.fill_device_kinds(app[STORAGE])
     except OSError as e:
         logging.getLogger(__name__).error("couldn't mark saved lights as Govee: %s", e)
+    try:
+        migrate.retire_govee_extras(app[STORAGE])
+    except OSError as e:
+        logging.getLogger(__name__).error("couldn't move lights off the old Govee protocols: %s", e)
     app[TESTS] = {}
     app[UPLOADING] = set()
     app[PREVIEWS] = {}
@@ -2137,7 +2111,6 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/diagnostics/listen", listening_status)
     r.add_post("/api/lab/send", lab_send)
     r.add_post("/api/lab/stop", lab_stop)
-    r.add_post("/api/lab/speed", lab_speed)
     r.add_get("/api/lab", lab_status)
     r.add_get("/api/shows", list_shows)
     r.add_get("/api/shows/archived", list_archived_shows)  # before /api/shows/{id}
@@ -2177,7 +2150,6 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/speakers/test", test_speaker)
     r.add_post("/api/speakers/remove", remove_speaker)
     r.add_get("/api/palettes", get_palettes)
-    r.add_get("/api/scenes", get_scenes)
     r.add_put("/api/palettes", put_palettes)
     r.add_get("/api/presets", get_presets)
     r.add_put("/api/presets", put_presets)

@@ -28,7 +28,7 @@ what "linked" means everywhere now, in Python and the editor.
   second, the one that has waited longest since its last change going next. Hue bridges take about 10
   commands a second in all, and Zigbee networks similar; past that they queue and lag.
 - The snapshot's state read and `scene.create` run at the same time, so the light joins the show sooner.
-- Govee scenes on these tracks are ignored. The Test rainbow on a one-segment light cycles colours.
+- The Test rainbow on a one-segment light cycles colours.
 
 Editor: `lightspeed.js` lists `ha_light` (4 changes a second) and `ha_switch` (1) as slow, so clips that
 are too fast are marked. `asShown` previews a switch as white or dark (`switchOn`, the same 128

@@ -15,7 +15,6 @@ the Home Assistant sidebar.
 
 **Reference:** [Arrange the editor](#arrange-the-editor) · [Settings](#settings) ·
 [Your data](#your-data) · [Setting up the AI](#setting-up-the-ai) · [Packet lab](#packet-lab) ·
-[Govee scenes](#experimental-govee-scenes) ·
 [Troubleshooting](#troubleshooting) · [Where things are stored](#where-things-are-stored) ·
 [Running without Home Assistant](#running-without-home-assistant)
 
@@ -185,17 +184,12 @@ picks up the change straight away, so you don't need to press **Test** again aft
 
 #### Test only turns the light on?
 
-Lights accept different forms of the realtime command. Change
-**Protocol** and press **Test** again:
+Not every Govee light has a realtime mode. Change **Protocol** and press **Test** again:
 
 | Protocol | When to use it |
 | --- | --- |
 | Realtime | The default, the same packets OpenRGB sends. Works for most strips and outdoor lights. |
-| Realtime (Razer) | The fixed-size packet Razer Chroma sends. Try it next. |
-| Realtime v2 | The newer DreamView form some recent lights use. |
-| Whole light only | For lights with no realtime mode. The whole light shows the average colour of its segments, at up to 10 changes a second, and each change fades a little. |
-| Per bulb (experimental) | For lights whose app has **Finger sketch**, such as the Christmas String Lights 2 and the icicle lights, when their realtime mode doesn't reach every bulb. Sends a picture with a colour for every bulb, as Finger sketch does, so set **Segments** to the number of bulbs (300 on the 30 m Christmas String Lights 2). How fast it changes depends on the picture: about 6 times a second when most of the light is one colour (fades, flashes, a few bulbs moving over a background), down to about once or twice a second when every bulb is different (a rainbow). Similar colours are merged when a picture has a lot of them. **Find** doesn't work with it. |
-| App segments (experimental) | For lights whose realtime mode doesn't reach every bulb. Colours the light the way the Govee Home app does, in the app's own segments, so set **Segments** to the number the app shows. It sends a few segments at a time, the biggest changes first, so the light keeps up rather than lagging behind; slow looks suit it better than fast chases. **Find** doesn't work with it. |
+| Whole light (one colour) | For lights with no realtime mode, or whose realtime mode only reaches part of the light. The whole light shows the average colour of its segments, at up to 10 changes a second, and each change fades a little. |
 
 ### WLED strips
 
@@ -307,8 +301,8 @@ found on real lights: **✓ works** (tested, works on Realtime), **⚠ limited**
 point at the badge to see what it can do) or **? untested** (not tried with HA-liday Show yet: most
 Govee lights with LAN Control work, so add one and press **Test** before buying more; the badge's
 tooltip says whether Govee lists the model as having LAN Control). A tested model
-starts with the settings that suit it, such as **Per bulb** with 300 segments for the 30 m Christmas
-String Lights 2, both when you plan it and when you add it from **Scan network** (under **+ Add a light → Govee light**). Lights you've already
+starts with the settings that suit it, such as 44 segments for the 30 m Christmas String Lights 2
+(as many as it lights in realtime), both when you plan it and when you add it from **Scan network** (under **+ Add a light → Govee light**). Lights you've already
 added keep their settings. Otherwise 15 segments is a guess until you test the real
 light. Planned lights appear in the previews but nothing is sent to them. When the light arrives, type
 its IP into the planned light's window (or pick it, for a Home Assistant light). For a Govee light you can
@@ -927,7 +921,7 @@ each time, and the parts of a split light (like **Pillars · Left** and **Pillar
 off together. A song that hasn't been analysed into parts fills every light. Turn it off to fill every
 light all the way through. It works for the **AI** too.
 
-Lights on **Per bulb**, **App segments** or **Whole light only** can only change a few times a second,
+Lights on **Whole light (one colour)**, and Home Assistant lights and switches, can only change a few times a second,
 so Generate gives them looks that suit that: colour changes, fades and pulses of the whole light, still
 blocks and slow gradients, never faster than once a beat. The AI is told the same, and the effect ideas
 in the **Selection** panel follow suit for those lights.
@@ -966,26 +960,24 @@ straight away. To swap the effect, press the **Effect** button: it opens the sam
 chooser used to add one, playing on that light for the clip's length, with the current effect
 outlined. Changing effect keeps the clip's colours and brightness.
 
-Previews show what the real light will do. A light using **Per bulb**, **App segments** or **Whole
-light only** can only change a few times a second, so its previews (the timeline, **Preview**, the
-house photo, the Selection strip and the effect chooser) step at that pace rather than moving smoothly,
-and a **Whole light only** light shows the single colour it really will.
+Previews show what the real light will do. A light on **Whole light (one colour)**, or a Home
+Assistant light or switch, can only change a few times a second, so its previews (the timeline,
+**Preview**, the house photo, the Selection strip and the effect chooser) step at that pace rather than
+moving smoothly, and a **Whole light (one colour)** light shows the single colour it really will.
 
-On a light using **Per bulb**, **App segments** or **Whole light only**, which can only change a few
-times a second, the Selection panel warns **⚠ Too fast for this light** when a clip's effect changes
+On one of these slow lights, the Selection panel warns **⚠ Too fast for this light** when a clip's effect changes
 faster than that, such as a quick chase, sparkle or strobe. It would look steppy on the real light.
 Slow the effect down, or use a fade, pulse or colour change instead.
 
 House lane effects are checked the same way, light by light: the warning names each slow light the
-effect is too fast for, such as **⚠ Too fast for Pillars · Left (Per bulb)**. Realtime lights in the
+effect is too fast for, such as **⚠ Too fast for Porch (a Home Assistant light)**. Realtime lights in the
 same sweep or wave are fine.
 
 ### Effects a light can't show
 
-Not every effect works on every light. A light set to **Whole light only** shows one colour at a
+Not every effect works on every light. A light set to **Whole light (one colour)** shows one colour at a
 time, so a chase, comet or two-colour blocks come out as one steady colour. A light with only a few
-segments can't show a chase wider than itself. A Govee scene needs a light that is linked and has
-its model set.
+segments can't show a chase wider than itself.
 
 - In the effect chooser, effects that won't work on the light are greyed out. Click one to see why.
   Turn on **Allow effects that won't work** to pick them anyway.
@@ -1660,7 +1652,7 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 | Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
 | Setup guide | **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](#quick-start)). |
 | Demo | **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](#the-demo)). |
-| Experimental | **Govee scenes** (below), and **Show the Labs tab**. |
+| Experimental | **Show the Labs tab**. |
 
 **Labs** is a tab under **Setup** for working out new ways to drive Govee lights. It's hidden until you
 turn on **Show the Labs tab** under **Experimental**; that's saved in this browser, so each computer or
@@ -1755,14 +1747,6 @@ colours, for about 45 seconds. **Try app modes first** switches the light into t
 turn, each followed by a frame in its colour, for about a minute and a half; the light goes plain white
 between steps. For either, watch for a colour lighting more than the first bulbs.
 
-### Per bulb speed test
-
-For lights on **Per bulb (experimental)**: **Run speed test** changes the picture for six seconds,
-at the number of **Pictures a second** you pick. **First 10 bulbs** flips them between red and blue;
-**Every bulb** moves a red, green and blue pattern along the whole light one bulb at a time. Set
-**Segments** to the light's number of bulbs. If the light changes every time, it keeps up at that
-rate; if it skips or stalls, it doesn't.
-
 ## Listen for Govee traffic
 
 Some Govee features drive lights in more detail than HA-liday Show can. In **Scene Stage**, for example,
@@ -1776,20 +1760,6 @@ Govee traffic** helps work out how, so HA-liday Show can learn to do the same:
 
 If it hears nothing, the lights are talking to each other directly, where Home Assistant can't hear.
 
-## Experimental: Govee scenes
-
-For Govee lights only. Turn on **Settings → Experimental → Govee scenes** to add a **Govee scene**
-effect. Its clip hands the light to one of the scenes built into the Govee app (the app's Scenes list, not your own saved
-snapshots or DIYs) for as long as the clip lasts, then the show takes the light back.
-
-- Pick the scene in the clip's settings. The list comes from Govee's public scene library for the
-  light's model, so the light needs a model (scan for it on the Devices tab) and Home Assistant
-  needs internet access the first time. The list is then cached for a week.
-- It sends the light the same commands the Govee app sends over Bluetooth, through the LAN API's
-  unofficial `ptReal` command. Not every light accepts it.
-- The preview shows a purple shimmer where a scene runs, because the editor can't know what the
-  scene looks like. The light may blink as it switches in and out of a scene.
-
 ## Troubleshooting
 
 | Problem | Try |
@@ -1797,7 +1767,7 @@ snapshots or DIYs) for as long as the clip lasts, then the show takes the light 
 | Scan finds no Govee lights | Check **LAN Control** is on for each light in the Govee Home app, and that Home Assistant and the lights are on the same network with multicast allowed. Add the light by IP instead. |
 | Scan finds no WLED strips | Check they're switched on and on the same network. Add the strip by IP instead (it's on the WLED app's **Info** page). |
 | Test only turns a Govee light on | Change **Protocol** on the Devices tab and test again. |
-| Only the first part of a Govee light lights up | Some Govee lights only accept a few segments in realtime mode. The 30 m Christmas String Lights 2 (H70C5) stops at 44 bulbs. Set **Protocol** to **Per bulb (experimental)** and **Segments** to the number of bulbs (300 for the H70C5). **App segments (experimental)** and **Whole light only** also light the whole string, more coarsely. |
+| Only the first part of a Govee light lights up | Some Govee lights only accept a few segments in realtime mode. The 30 m Christmas String Lights 2 (H70C5) stops at 44 bulbs. **Whole light (one colour)** lights the whole string, one colour at a time. |
 | Only part of a WLED strip lights up | In WLED, open **Config → Sync Interfaces** and untick **Use main segment only**. |
 | A pixel controller doesn't light | For DDP, check DDP is switched on in the controller's settings. For E1.31, check it takes E1.31 as **unicast** and that **universe** and **channel** in the light's window match the controller's set-up. Then check **Segments** matches the number of LEDs. |
 | A Home Assistant light lags behind the music | They change at most 4 times a second (a switch once a second), so fast effects look steppy. Use fades, colour changes and pulses on them. |
@@ -1817,7 +1787,7 @@ own picture and settings live in the app's config folder (`/addon_configs/<slug>
 they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` (samples to its
 `Samples` folder) so media
 players can play them. The editor layout, the editing speaker, the song volume, the Show player's light offset,
-**Govee scenes**, **Show the Labs tab** and a few other editor choices (such as **Snap**, zoom and **Loop**) are kept in each browser.
+**Show the Labs tab** and a few other editor choices (such as **Snap**, zoom and **Loop**) are kept in each browser.
 
 ## Running without Home Assistant
 

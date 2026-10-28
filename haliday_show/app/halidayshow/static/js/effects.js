@@ -203,18 +203,6 @@ export const EFFECTS = {
       return mix(hexToRgb(p.background), hexToRgb(p.color), filled - pos);
     },
   },
-  // Experimental: hands the light to one of Govee's own built-in scenes (picked per clip, stored
-  // as code and param). The add-on can't know what the scene looks like, so the preview shows a
-  // slow purple shimmer to mark where it runs.
-  scene: {
-    label: "Govee scene",
-    experimental: true,
-    params: [{ key: "scene", label: "Scene", type: "scene", default: "" }],
-    render: (p, t, dur, n, i) => {
-      const v = 0.45 + 0.3 * Math.sin(((i / n) * 2 - t * 0.5) * Math.PI * 2);
-      return [140 * v, 70 * v, 255 * v];
-    },
-  },
 };
 
 // House effects colour a segment by where it sits on the house photo: u runs 0 to 1 from the
@@ -292,7 +280,7 @@ Object.assign(EFFECTS, {
 // Every effect gets a Brightness slider, applied after it renders. Rainbow had its own with the
 // same key, so its older clips keep their level.
 const BRIGHTNESS = { key: "brightness", label: "Brightness %", type: "range", default: 100, min: 0, max: 100, step: 1 };
-for (const fx of Object.values(EFFECTS)) if (!fx.experimental) fx.params.push(BRIGHTNESS);
+for (const fx of Object.values(EFFECTS)) fx.params.push(BRIGHTNESS);
 
 // Presets: named starting points for an effect's settings, since one effect covers many looks
 // (three colours can sit still, alternate, or run as a marquee). A preset sets only the settings it
@@ -532,20 +520,6 @@ export function bake(show, devices, fps = FPS, positions = {}) {
     frames: Math.ceil(showDuration(show) * fps),
     tracks: lights.map((l) => ({ device: l.id, segments: l.segments })),
   };
-  // Govee scene clips: the player hands those lights (the whole light, for a part) to the scene
-  // between these frames.
-  const scenes = [];
-  lights.forEach((l, k) => {
-    for (const id of [l.id, ...(l.parts || []).map((p) => `${l.id}#${p.id}`)]) {
-      for (const c of trackOf(id)?.clips || []) {
-        if (c.effect === "scene" && c.code) {
-          scenes.push({ track: k, start: Math.max(0, Math.round(c.start * fps)), end: Math.round(c.end * fps),
-            code: c.code, param: c.param || "" });
-        }
-      }
-    }
-  });
-  if (scenes.length) header.scenes = scenes;
   const headerBytes = new TextEncoder().encode(JSON.stringify(header));
   const stride = header.tracks.reduce((s, t) => s + t.segments * 3, 0);
   const out = new Uint8Array(9 + headerBytes.length + header.frames * stride);

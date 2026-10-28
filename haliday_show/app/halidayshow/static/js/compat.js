@@ -8,12 +8,12 @@
 import { EFFECTS, applyHouse, renderTrack } from "./effects.js";
 import { clipPace, switchOn } from "./lightspeed.js";
 
-export const REALTIME_PROTOCOLS = ["standard", "razer", "v2"];
+export const REALTIME_PROTOCOLS = ["standard"];
 const SAMPLES = 48;
 const STEADY = 24; // out of 255, per channel: closer than this counts as the same colour (as lightspeed.js)
 const LONG_LIGHT = 50;
 
-// What a light shows of a clip, sampled across it. On Whole light only that's one average colour.
+// What a light shows of a clip, sampled across it. On Whole light that's one average colour.
 function shown(clip, n, whole) {
   const dur = clip.end - clip.start, frames = [];
   for (let k = 0; k < SAMPLES; k++) {
@@ -54,11 +54,6 @@ export function clipFit(clip, dev, { house = null } = {}) {
   if (!fx) return result("ok");
   if (house) return houseFit(clip, house.lights);
   if (!dev) return result("ok");
-  if (clip.effect === "scene") {
-    if (!dev.ip && !dev.entity) return result("no", "This light isn't linked yet, so it can't play a Govee scene.");
-    if (!dev.sku) return result("no", "Set this light's model under Setup → Devices to play a Govee scene.");
-    return result("ok");
-  }
   if (dev.protocol === "ha_switch") {
     // A switch only goes on and off with how bright the show is there, so colours don't show at all.
     const frames = shown(clip, 1, false), states = frames.map(switchOn);
@@ -77,7 +72,7 @@ export function clipFit(clip, dev, { house = null } = {}) {
   // It comes out as one steady colour here, but moves or has more than one colour on a long realtime light.
   if ((whole || n < LONG_LIGHT) && steady(shown(clip, n, whole)) && !steady(shown(clip, LONG_LIGHT, false))) {
     return result("no", whole
-      ? "On Whole light only the light shows one colour at a time, the average of this effect, and that hardly changes."
+      ? "On Whole light the light shows one colour at a time, the average of this effect, and that hardly changes."
       : dev.protocol === "ha_light"
         ? "A Home Assistant light shows one colour at a time, and this effect hardly changes it."
         : `With ${n} segment${n === 1 ? "" : "s"} this light is too short for these settings, so it shows one steady colour.`);
@@ -131,6 +126,6 @@ export function reachNote(light, model) {
   return {
     short: `first ${model.reach} bulbs only`,
     text: `In realtime mode this light only lights its first ${model.reach} bulbs${light.bulbs ? ` of ${light.bulbs}` : ""}. `
-      + "Per bulb or App segments (Setup → Devices) reach the whole light.",
+      + "Whole light (one colour) under Setup → Devices lights all of it, one colour at a time.",
   };
 }

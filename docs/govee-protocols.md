@@ -6,7 +6,14 @@ worked out on the owner's real lights in October 2026, mostly in issue #74. Code
 
 ## The ways the add-on can drive a light
 
-Each light picks one **Protocol** on Setup → Devices (`PROTOCOLS` in `protocol.py`):
+Each light picks one **Protocol** on Setup → Devices (`PROTOCOLS` in `protocol.py`). Since **0.2.207**
+only `standard` (**Realtime**) and `whole` (**Whole light (one colour)**) are offered. The other four were
+taken out once the owner moved his string lights to WLED: `razer` and `v2` never helped on his lights,
+and `segments` and `pixels` were slow, experimental workarounds for the H70C5's 44-bulb window. Lights
+saved on them move to `standard` at start-up (`migrate.retire_govee_protocols`, which also cuts a
+light down to its model's realtime `reach` or 255 segments). Govee scenes (`ptReal` `33 05 04`, from
+Govee's public scene library) went at the same time. **The code for them is in git history (0.2.206)**,
+and the findings below are kept so nobody repeats the work. The table is how they stood:
 
 | Protocol | Wire format | Speed | Notes |
 | --- | --- | --- | --- |
@@ -92,7 +99,7 @@ names came from SignalRGB's data;
 defaults (`static/js/models.js`); `reach` (bulbs its realtime mode lights) drives the timeline warning
 (`compat.js`). Add to it when the owner tests a light.
 
-## Per bulb: the Finger sketch picture
+## Per bulb: the Finger sketch picture (removed in 0.2.207)
 
 The Govee app's **Finger sketch** colours any bulb on these lights. Its format, from a decrypted
 Bluetooth capture and confirmed by replaying it over the LAN (`pixel_picture()` / `pixel_packets()`):
@@ -137,7 +144,7 @@ pictures a second for mostly-one-colour looks, about 1.5 for a full 300-bulb rai
 verdict: "ok but not amazing"; it's the light's processing, not the transport, so a faster link won't
 help. Fast chases look steppy; fades, colour changes and beat flashes look good.
 
-## App segments: 33 05 15
+## App segments: 33 05 15 (removed in 0.2.207)
 
 `33 05 15 01 <r g b> 00 00 00 00 00 <segment mask LE, bit 0 = segment 1>` colours the app's own
 segments (10 on the H70C5). Separate datagrams sent back-to-back get dropped, so commands are bundled

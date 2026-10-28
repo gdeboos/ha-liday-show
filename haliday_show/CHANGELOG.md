@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.207
+## 0.2.208
 
 - Scenes have an **Advanced** mode. Press **Advanced** beside a scene's name and it opens in the
   **Show editor**, with no song: put effects on the timeline, use the **House** lane, and the timeline
@@ -9,6 +9,22 @@
 - **Switch to Basic** goes back to a row per light, while each light still has one effect across the
   whole loop. In **Your scenes**, an Advanced scene says how often it goes round, and **Edit** opens it
   in the Show editor.
+
+## 0.2.207
+
+- A clear-out of the Govee options that never quite worked. **Govee scenes**, and the **Per bulb**,
+  **App segments**, **Realtime (Razer)** and **Realtime v2** protocols, are gone.
+- **Protocol** on **Setup → Devices** now offers **Realtime** and **Whole light (one colour)** (the old
+  **Whole light only**).
+- Lights that were on a protocol that's gone move to **Realtime** when you update. A light with more
+  segments than Realtime can send is cut down to fit (44 for the 30 m Christmas String Lights 2, as
+  that's all it lights in realtime), and its parts, such as **Left**, **Center** and **Right**, keep
+  their share of it.
+- Govee scene clips are taken out of your shows, and playlist blocks that used one become **Off**.
+  The rest of each show stays as it was, and plays straight away without re-saving.
+- The first time you open HA-liday Show after updating, the status bar says which lights moved and how
+  many scene clips came out.
+- **Setup → Labs** loses the **Per bulb speed test** and the App segments and Razer test messages.
 
 ## 0.2.206
 
