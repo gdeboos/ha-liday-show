@@ -204,6 +204,10 @@ export const HELP = {
         "<b>▶ Play on lights</b> plays it round and round on your real lights. Change it while it plays and the lights follow.",
         "<b>← All scenes</b> goes back to the list.",
       ] },
+      { id: "when", title: "When it plays", tips: [
+        "Turn on <b>Comes on by itself on a schedule</b> and pick the times and days, as for a playlist. A start can be at sunset.",
+        "If a show or playlist is on at the start, the scene waits for it, then comes on. At the end it goes off.",
+      ] },
       { id: "advanced", title: "Advanced", tips: [
         "<b>Advanced</b> opens the scene in the Show editor, so effects can change over time and use the <b>House</b> lane.",
         "The timeline is one time round: set how long under <b>Goes round every</b>.",

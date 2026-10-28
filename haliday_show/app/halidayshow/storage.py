@@ -224,7 +224,7 @@ class Storage:
                 continue
             out.append({"id": p.stem, "name": scene.get("name", p.stem), "mode": scene.get("mode", "basic"),
                         "lights": scene.get("lights", {}), "all": scene.get("all"),
-                        "loop": scene.get("loop"), "tracks": scene.get("tracks"),
+                        "loop": scene.get("loop"), "tracks": scene.get("tracks"), "schedule": scene.get("schedule"),
                         "baked": (self.scenes_dir / f"{p.stem}.gshow").exists(),
                         "modified": int(p.stat().st_mtime)})
         return out

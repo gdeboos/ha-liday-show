@@ -1488,6 +1488,7 @@ const sceneEd = new SceneEditor({
   lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
   palettes: () => allPalettes(), presetsFor: (effect) => presetsFor(effect),
   positions: () => housePositions(), editAdvanced: (id) => openSceneInEditor(id),
+  scheduleEditor: (holder, id, onChange) => sceneScheduleEditor(holder, id, onChange),
   opened: () => { app.sceneChosen = true; showView("scene"); },
   closed: () => { app.sceneChosen = false; showView("scene"); },
 });
@@ -3320,22 +3321,34 @@ function scheduleNote(pl) {
   return `Next starts ${whenNext(next, scheduleState.now)}.`;
 }
 
-// The schedule part of a playlist's card: times, days and (optionally) dates.
-function scheduleEditor(pl) {
+// When a scene plays, for its schedule editor: on now, or its next start.
+function sceneScheduleNote(id, s) {
+  if (!s?.on) return "";
+  if (scheduleState.scene_scheduled === id) return `On now on its schedule (${describeSchedule(s)}).`;
+  if (s.start === "sunset" && !scheduleState.location) return "To know when sunset is, it needs where you are: add it under a playlist's When it plays.";
+  const next = scheduleState.scenes?.[id];
+  if (!next || !scheduleState.now) return s.days.length ? "" : "Pick at least one day.";
+  return `Next comes on ${whenNext(next, scheduleState.now)}.`;
+}
+
+// The schedule part of a playlist's card (or a scene's): times, days and (optionally) dates.
+// `onChange` saves it; `noteFor` says when it next plays.
+function scheduleEditor(pl, { onChange = savePlaylists, noteFor = scheduleNote, label = " Play on a schedule" } = {}) {
   const box = document.createElement("div");
   const on = document.createElement("input");
   on.type = "checkbox";
   on.checked = !!pl.schedule?.on;
   const onLabel = document.createElement("label");
-  onLabel.append(on, " Play on a schedule");
+  onLabel.append(on, label);
   const body = document.createElement("div");
   body.className = "playlist-schedule";
   const note = document.createElement("p");
   note.className = "hint playlist-next";
   const changed = () => {
-    savePlaylists();
-    note.textContent = scheduleNote(pl);
-    setTimeout(refreshPlaylistStatus, 700); // after the save, for the new next start
+    onChange();
+    note.textContent = noteFor(pl);
+    // After the save, for the new next start.
+    setTimeout(async () => { await refreshPlaylistStatus(); note.textContent = noteFor(pl); }, 1500);
   };
   const draw = () => {
     body.hidden = !pl.schedule?.on;
@@ -3463,9 +3476,14 @@ function scheduleEditor(pl) {
     draw();
   });
   draw();
-  note.textContent = scheduleNote(pl);
+  note.textContent = noteFor(pl);
   box.append(onLabel, body, note);
   return box;
+}
+
+// A scene's schedule editor (sceneeditor.js and the Advanced banner): `holder` has the schedule.
+function sceneScheduleEditor(holder, id, onChange) {
+  return scheduleEditor(holder, { onChange, noteFor: (h) => sceneScheduleNote(id, h.schedule), label: " Comes on by itself on a schedule" });
 }
 
 let savePlaylistsTimer = null;
@@ -6321,6 +6339,7 @@ async function openSceneInEditor(id) {
   app.show = { name: scene.name, audio: null, duration: scene.loop, beats: [], bars: [], sections: [],
     tracks: structuredClone(scene.tracks || []) };
   app.sceneId = id;
+  app.sceneSchedule = scene.schedule || null; // kept as it is; edited under When it plays…
   app.history = [];
   ensureTracks();
   commit();
@@ -6352,8 +6371,17 @@ const sceneNow = () => {
   const loop = Math.min(Math.round(app.duration() * 1000) / 1000, MAX_SCENE_LOOP_S);
   const tracks = app.show.tracks.map((t) => ({ device: t.device,
     clips: t.clips.filter((c) => c.start < loop).map((c) => (c.end > loop ? { ...c, end: loop } : c)) }));
-  return { name: app.show.name, mode: "advanced", loop, tracks };
+  return { name: app.show.name, mode: "advanced", loop, tracks, ...(app.sceneSchedule ? { schedule: app.sceneSchedule } : {}) };
 };
+
+// When it plays, for the Advanced scene open in the Show editor.
+function openSceneWhen() {
+  const holder = { schedule: app.sceneSchedule };
+  const w = editWindow("When it plays");
+  w.body.append(sceneScheduleEditor(holder, app.sceneId, () => { app.sceneSchedule = holder.schedule; app.changed(); }));
+  w.foot.append(button("Done", () => w.dlg.close(), "primary"));
+  w.dlg.showModal();
+}
 
 async function saveScene() {
   const scene = sceneNow(), edits = app.edits, id = app.sceneId;
@@ -7785,6 +7813,7 @@ function wire() {
   $("sc-same").addEventListener("change", (e) => sceneEd.setSame(e.target.checked));
   $("sc-advanced").addEventListener("click", () => sceneEd.toAdvanced());
   $("sb-back").addEventListener("click", () => leaveScene());
+  $("sb-when").addEventListener("click", openSceneWhen);
   $("sb-basic").addEventListener("click", () => leaveScene(true));
   $("sb-loop").addEventListener("change", (e) => {
     const v = Math.min(Math.max(Math.round(Number(e.target.value)) || 20, 1), 600);

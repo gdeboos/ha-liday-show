@@ -8,6 +8,7 @@ import {
   toAdvanced,
 } from "./housescenes.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
+import { describeSchedule } from "./schedule.js";
 import { PART, sendParts } from "./upload.js";
 
 const SAVE_AFTER_MS = 600;
@@ -30,7 +31,8 @@ export class SceneEditor {
   // part), lightsKey(), house (for the preview), asShown, palettes(), presetsFor(effect), prefs,
   // positions() (where each light is on the house, for an Advanced scene's House lane),
   // opened() (after a scene opens, to show the editor page), closed() (back to the list),
-  // editAdvanced(id) (an Advanced scene opens in the Show editor)
+  // editAdvanced(id) (an Advanced scene opens in the Show editor),
+  // scheduleEditor(holder, id, onChange) (the playlists' When it plays, for a scene)
   constructor(deps) {
     this.d = deps;
     this.scenes = [];
@@ -84,7 +86,8 @@ export class SceneEditor {
     if (playing) head.append(el("span", { class: "show-last" }, "▶ Playing now"));
     if (waiting) head.append(el("span", { class: "show-last" }, "Comes back after the show"));
     if (!s.baked) head.append(el("span", { class: "badge warn", title: "Open it once so it's ready to play" }, "⚠ Not ready yet"));
-    const main = el("div", { class: "show-main" }, head, el("div", { class: "hint" }, sceneSummary(s, lights)));
+    const when = s.schedule?.on ? ` · comes on ${describeSchedule(s.schedule)}` : "";
+    const main = el("div", { class: "show-main" }, head, el("div", { class: "hint" }, sceneSummary(s, lights) + when));
     const play = playing
       ? el("button", { type: "button", class: "primary", onclick: () => this.stop(s.id), "aria-label": `Stop ${s.name}` }, "■ Stop")
       : el("button", { type: "button", class: "primary", onclick: () => this.play(s.id), disabled: !s.baked,
@@ -268,6 +271,7 @@ export class SceneEditor {
         else delete s.lights[d.id];
       })));
     }
+    $("sc-when").replaceChildren(this.d.scheduleEditor(this.scene, this.id, () => this.changed()));
     this.drawPlayButton();
     this.startPreview();
   }
