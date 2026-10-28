@@ -357,7 +357,14 @@ async def put_devices(request):
     body = await request.json()
     if not isinstance(body, list):
         raise web.HTTPBadRequest(text="expected a list")
-    devices = [_clean_device(d) for d in body]
+    devices = []
+    for d in body:
+        try:
+            devices.append(_clean_device(d))
+        except web.HTTPBadRequest as e:
+            # The whole list is saved at once, so say which light is wrong.
+            name = str(d.get("name") or d.get("id") or "") if isinstance(d, dict) else ""
+            raise web.HTTPBadRequest(text=f"{name}: {e.text}" if name else e.text) from None
     if len({d["id"] for d in devices}) != len(devices):
         raise web.HTTPBadRequest(text="duplicate device id")
     request.app[STORAGE].save_devices(devices)
