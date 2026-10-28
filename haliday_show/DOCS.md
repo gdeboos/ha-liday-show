@@ -21,14 +21,15 @@ the Home Assistant sidebar.
 
 ## Finding your way
 
-Five tabs run along the top, and a sixth, **Public page**, once you've turned it on. HA-liday Show
-opens on **Library**; the three editors sit together after it, under **Editors**, as **Show**,
-**Music** and **Playlist**:
+Six tabs run along the top, and a seventh, **Public page**, once you've turned it on. HA-liday Show
+opens on **Library**; the four editors sit together after it, under **Editors**, as **Show**,
+**Scene**, **Music** and **Playlist**:
 
 | Tab | What's there |
 | --- | --- |
-| **Library** | In two groups. **Shows**: **Shows** (all of yours) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
+| **Library** | In two groups. **Shows**: **Shows** (all of yours), **Scenes** (one-tap looks for every light) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
 | **Show** (the **Show editor**) | Where shows are made: the timeline, previews and effect settings. |
+| **Scene** (the **Scene editor**) | Where scenes are made: an effect, colours, speed and brightness for each light (see [Scenes](#scenes)). |
 | **Music** (the **Music editor**) | Where songs are cut, shortened, joined and detected. |
 | **Playlist** (the **Playlist editor**) | Where you drag shows into playlists and set when they play. |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
@@ -1172,6 +1173,35 @@ started from an automation or the MQTT Play button. Leave it on **Default** to u
 speaker from the Speakers tab, or pick a speaker for this show only. So you can design on a speaker
 indoors and the real show still plays outside. With no show speaker and no default, the lights play
 on their own.
+
+### Scenes
+
+A scene sets every light at once, like the one-tap scenes in the Govee app, and plays until you
+choose something else. Use one for the hours your lights are on between shows.
+
+Open the **Scene** tab (the **Scene editor**). It starts on **Your scenes**, the same list as
+**Library → Scenes**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
+while it's on), **Edit** and **Remove…**.
+
+- **+ New scene** asks for a name. Every light starts on a steady warm white, so it does something
+  the moment you play it.
+- In the editor, each light has its own row: an **Effect** (or **Off**), a **Style** and **Colours**
+  from your presets and palettes, a colour box for each of its colours, and **Speed** and
+  **Brightness** sliders. A light split into parts plays the scene across the whole light.
+- **Same for every light** puts one row in charge of all your lights. Turn it off again and each
+  light starts from that look, ready to change one at a time.
+- The **Preview** shows the scene moving on your house photo. Changes save as you make them.
+- **▶ Play on lights** plays it on your real lights, round and round. Change it while it plays and
+  the lights follow.
+
+While a scene is on, starting a show or a playlist (from an editor, an automation, a schedule or a
+visitor) takes the lights over. When it finishes, or you stop it, the scene comes back after a
+couple of seconds, and its row says **Comes back after the show** meanwhile. To turn the lights off,
+press **■ Stop** on the scene, or **Stop** while only the scene is playing. **Remove…** deletes a
+scene for good, keeping a copy of all your data first under **Setup → Settings → Your data**.
+
+Scenes are made for the lights you have when you edit them. If you add or change lights, open
+HA-liday Show and scenes are made again for the new lights.
 
 ### Playlists
 

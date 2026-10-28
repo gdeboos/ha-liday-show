@@ -182,6 +182,12 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Copy and paste effects between lights, play and loop just a region, undo and redo
 - A **Playlist editor**: drag shows into a running order, with building blocks between them (a pause,
   one colour, lights off or an effect), and a bar showing how long each plays
+- **Scenes**: one-tap looks for the whole house, like the Govee app's, that play until you choose
+  something else and come back after a show. Build them in the **Scene editor**, light by light or
+  the same for every light
+- **Scenes**: one-tap looks for the whole house, like the Govee app's, that play until you choose
+  something else and come back after a show. Build them in the **Scene editor**, light by light or
+  the same for every light
 - Playlists: several shows back to back, round and round, by hand or on a schedule (times or
   sunset, days and dates), with a Show player page to play the music on any computer with speakers
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
@@ -336,6 +342,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/public.py               The public page on its own port: visitors' choices and their queue
   app/halidayshow/imagemeta.py            Takes the GPS location and other hidden details out of photos visitors see
   app/halidayshow/scenes.py               Govee scene library lookup (experimental scenes)
+  app/halidayshow/scenelib.py             Your scenes (Scene editor): checking them as they're saved
+  app/halidayshow/scenelib.py             Your scenes (Scene editor): checking them as they're saved
   app/halidayshow/storage.py              Shows, settings, songs and the house photo on disk
   app/halidayshow/backup.py               Export, import and start afresh, with copies kept first
   app/halidayshow/archive.py              Archiving, restoring and deleting shows and songs
@@ -366,6 +374,9 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/palettes.js                      Colour palette presets
     js/schedule.js                      A playlist's schedule in words
     js/playlisteditor.js                Playlist editor: where a dragged card lands, running time, building blocks
+    js/sceneeditor.js                   Scene editor and Your scenes: rows per light, preview, saving and baking
+    js/housescenes.js                   A scene's sums: what each light plays, its loop, its row's colours
+    js/showbright.js                    Show settings → Brightness: the whole show and each light in it
     js/publicsettings.js                The Public page tab: its address, dates and queue in words
     js/sectionnotes.js                  Notes for song sections, from what each sounds like
     js/showplayer.js                    Show player: plays songs of shows started with no speaker

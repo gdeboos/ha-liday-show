@@ -182,6 +182,30 @@ export const HELP = {
       ] },
     ],
   },
+  scenes: {
+    title: "Your scenes", guide: ["play-it.md", "scenes"],
+    topics: [
+      { id: "list", title: "Your scenes", tips: [
+        "A scene sets every light at once and plays until you choose something else, like a one-tap scene in the Govee app.",
+        "<b>▶ Play</b> puts it on your lights; <b>■ Stop</b> turns it off. <b>Edit</b> changes it.",
+        "A show or playlist takes the lights over, then the scene comes back once it's finished.",
+      ] },
+    ],
+  },
+  scene: {
+    title: "Scene editor", guide: ["play-it.md", "scenes"],
+    topics: [
+      { id: "lights", title: "Lights", tips: [
+        "Each light has its own row: pick an <b>Effect</b> (or <b>Off</b>), a <b>Style</b>, <b>Colours</b>, <b>Speed</b> and <b>Brightness</b>.",
+        "<b>Same for every light</b> puts one row in charge of all of them.",
+        "Changes save as you make them, and the <b>Preview</b> shows the scene on your house photo.",
+      ] },
+      { id: "play", title: "Playing it", tips: [
+        "<b>▶ Play on lights</b> plays it round and round on your real lights. Change it while it plays and the lights follow.",
+        "<b>← All scenes</b> goes back to the list.",
+      ] },
+    ],
+  },
   playlists: {
     title: "Your playlists", guide: ["play-it.md", "playlists"],
     topics: [
@@ -307,7 +331,7 @@ export const HELP = {
 };
 
 // Pages that show the same help: the editors' lists are the Library's pages.
-const SAME = { showlist: "shows", songlist: "songs", playlistlist: "playlists" };
+const SAME = { showlist: "shows", songlist: "songs", playlistlist: "playlists", scenelist: "scenes" };
 export const helpPageFor = (view) => (HELP[SAME[view] || view] ? SAME[view] || view : null);
 
 export const guideUrl = ([file, anchor]) => `${GUIDE}${file}${anchor ? `#${anchor}` : ""}`;
