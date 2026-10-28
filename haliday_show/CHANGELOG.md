@@ -1,12 +1,22 @@
 # Changelog
 
-## 0.2.229
+## 0.2.231
 
 - New **Schedule** tab at the top, between **Library** and **Setup**: everything that plays by itself, in one list. Each row plays a playlist, a show (round and round) or a scene at its times, days and dates, as schedules did before.
 - The same playlist, show or scene can now be on the schedule more than once, such as 17:00 to 22:00 on weekdays and until 23:00 at weekends. A playlist with two rows back to back carries straight on.
 - Where times overlap, the row higher in the list plays first. Drag ⠿, or press **↑** and **↓**, to change the order. A scene can still be on alongside a playlist or show, and comes back after.
 - Your existing playlist and scene schedules have moved to the **Schedule** tab for you, unchanged.
 - **When it plays** in the Playlist and Scene editors now says what the schedule does with them, with **+ Add to schedule** and **Open Schedule**. The sunset location is at the bottom of the **Schedule** tab.
+## 0.2.230
+
+- In the Scene editor, pressing a light's effect opens the same effect window as the Show editor, with each effect moving in that light's colours. Tick **Show presets** there to pick a preset. **Off**, beside the effect, turns that light off in the scene.
+- Scenes can now set each part of a split light. Turn on **Each part on its own** under the light's name to give every part its own effect. A light that only plays as parts has a row for each part.
+
+## 0.2.229
+
+- Adding a Home Assistant light or switch is much easier. Instead of one long drop-down, the window has a **Find** box and a list you can narrow to **Colour lights**, **Other lights** or **Switches**. Colour lights come first.
+- Tick as many as you like and press **Add** to add them all at once. Ones you've already added are greyed out.
+- In a Home Assistant light's own window, the drop-down is now split into the same three kinds.
 
 ## 0.2.228
 

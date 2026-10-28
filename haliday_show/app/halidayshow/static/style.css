@@ -195,6 +195,21 @@ input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline
 /* Windows' high-contrast mode draws its own controls; a hand-drawn switch would vanish there. */
 @media (forced-colors: active) { input[type="checkbox"] { appearance: auto; -webkit-appearance: checkbox; width: auto; height: auto; }
   input[type="checkbox"]::after { content: none; } }
+/* Home Assistant lights and switches to add: found by typing, picked by pressing a row (several at once). */
+.ha-pick { gap: 8px; }
+.ha-list { display: flex; flex-direction: column; gap: 4px; max-height: min(320px, 45vh); overflow-y: auto;
+  padding: 2px; }
+.ha-row { display: grid; grid-template-columns: 20px 1fr; column-gap: 8px; align-items: center; text-align: left;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-md, 6px); background: var(--panel); }
+.ha-row::before { content: ""; grid-row: 1 / span 2; width: 16px; height: 16px; border: 1px solid var(--muted);
+  border-radius: 4px; }
+.ha-row[aria-pressed="true"] { border-color: var(--accent); background: var(--track-alt); }
+.ha-row[aria-pressed="true"]::before { content: "✓"; background: var(--accent); border-color: var(--accent);
+  color: var(--accent-text); font-size: 12px; font-weight: 700; line-height: 16px; text-align: center; }
+.ha-row:disabled::before { border-style: dashed; }
+.ha-row b, .ha-row span { grid-column: 2; overflow-wrap: anywhere; }
+.ha-row span { font-size: 12px; color: var(--muted); }
+
 /* Picking from a set, such as days of the week: pill buttons that fill, with a ✓, when picked. */
 .day-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .day-chips label { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px;
@@ -204,9 +219,9 @@ input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline
 .day-chips label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .day-chips label:has(input:checked)::before { content: "✓"; font-weight: 700; }
 .day-chips label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.day-chips input[type="checkbox"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0;
+.day-chips input:is([type="checkbox"], [type="radio"]) { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0;
   border-radius: 999px; }
-@media (forced-colors: active) { .day-chips input[type="checkbox"] { position: static; opacity: 1; width: auto; height: auto; } }
+@media (forced-colors: active) { .day-chips input:is([type="checkbox"], [type="radio"]) { position: static; opacity: 1; width: auto; height: auto; } }
 input[type="range"] { padding: 0; border: 0; background: none; accent-color: var(--accent); }
 input[type="color"] { padding: 0 2px; width: 44px; height: 30px; }
 input[type="number"] { width: 6em; }
@@ -1101,6 +1116,12 @@ a.button { text-decoration: none; }
 .sc-row { padding: 6px 0; border-top: 1px solid var(--line); }
 .sc-light { font-weight: 600; overflow-wrap: anywhere; }
 .sc-off { grid-column: 3 / -1; }
+.sc-fx { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.sc-effect { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A light split into parts: its name and the switch, then the whole light or each part, set in. */
+.sc-split { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 0 0; border-top: 1px solid var(--line); }
+.sc-row.nested { border-top: 0; padding-top: 0; }
+.sc-row.nested .sc-light { padding-left: 16px; font-weight: 500; }
 .sc-colours { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sc-swatches { display: inline-flex; gap: 4px; }
 .sc-swatches input[type=color] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 3px;

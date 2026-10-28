@@ -10,7 +10,7 @@ neither, a sunset entry doesn't play. The dates are optional and come round ever
 "to" wraps over New Year (1 Dec to 6 Jan). An end before the start runs past midnight, counted as part
 of the day it started. Times are HA-liday Show's own clock (the TZ setting Home Assistant gives apps).
 
-Until 0.2.229 each playlist and scene had one "schedule" of its own. The first time there's no
+Until 0.2.231 each playlist and scene had one "schedule" of its own. The first time there's no
 "schedule" list, one is made from those (playlists in list order, then scenes by name), and the old
 fields are left where they are, unused, so an older version still finds them.
 
@@ -109,6 +109,7 @@ def next_start(s: dict, now: datetime, where: Where = None) -> datetime | None:
 
 
 MAX_ENTRIES = 100
+MAX_ID = 64
 KINDS = ("playlist", "show", "scene")
 
 
@@ -133,9 +134,11 @@ def _from_old(storage: Storage) -> list[dict]:
         times = playlists.clean_schedule(item.get("schedule"))
         if times is None:
             return
-        eid, n = f"{kind}-{item['id']}", 2
+        # Ids are at most 64 characters (storage.valid_id), so a long name is cut to fit.
+        base = f"{kind}-{item['id']}"[:MAX_ID - 4].rstrip("-")
+        eid, n = base, 2
         while eid in used:
-            eid, n = f"{kind}-{item['id']}-{n}", n + 1
+            eid, n = f"{base}-{n}", n + 1
         used.add(eid)
         out.append({"id": eid, "play": {"type": kind, "id": item["id"]}, **times})
 

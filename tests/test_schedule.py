@@ -502,3 +502,15 @@ def test_entries_are_checked():
     assert clean_entry({**good, "play": {"type": "song", "id": "x"}}) is None
     assert clean_entry({**good, "id": "Not An Id"}) is None
     assert clean_entry({**good, "end": "17:00"}) is None
+
+
+async def test_a_long_scene_id_still_moves_across(setup):
+    storage, runner, sched = setup
+    from halidayshow.schedule import load_entries
+    from halidayshow.storage import valid_id
+    long_id = "a" * 64
+    storage.save_scene(long_id, {"name": "A" * 64, "mode": "basic", "lights": {}, "schedule": EVENINGS})
+    storage.save_scene("a" * 63, {"name": "Twin", "mode": "basic", "lights": {}, "schedule": EVENINGS})
+    entries = load_entries(storage)
+    assert sorted(e["play"]["id"] for e in entries) == sorted([long_id, "a" * 63])
+    assert all(valid_id(e["id"]) for e in entries) and len({e["id"] for e in entries}) == 2

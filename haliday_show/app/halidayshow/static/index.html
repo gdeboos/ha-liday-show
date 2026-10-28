@@ -804,8 +804,13 @@
         <label class="field" id="add-leds-field" hidden>LEDs
           <input id="add-leds" type="number" min="1" max="1000" value="50">
           <span class="hint">How many LEDs this light has on the controller. Check it afterwards with <b>Test</b>.</span></label>
-        <label class="field" id="add-entity-field" hidden>Light or switch
-          <select id="add-entity"></select></label>
+        <div class="field ha-pick" id="add-entity-field" hidden>
+          <label for="ha-find">Find a light or switch</label>
+          <input id="ha-find" type="search" placeholder="e.g. porch, tree or projector" autocomplete="off" aria-controls="ha-list">
+          <div class="day-chips" id="ha-kinds" role="radiogroup" aria-label="Show"></div>
+          <div id="ha-list" class="ha-list" role="group" aria-label="Lights and switches"></div>
+          <span class="hint" id="ha-count" aria-live="polite"></span>
+        </div>
         <div id="add-plan-fields" hidden>
           <label class="field">Kind of light
             <select id="plan-kind">

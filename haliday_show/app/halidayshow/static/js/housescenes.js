@@ -39,6 +39,46 @@ export function newScene(name, lights) {
 
 export const lookFor = (scene, lightId) => scene.all || scene.lights?.[lightId] || null;
 
+// A light split into parts can have a look on each part instead, keyed "light#part". A light played
+// only as parts always goes by part; its older scenes kept one look under the light's own id, which
+// then plays on every part.
+export const partKey = (d, p) => `${d.id}#${p.id}`;
+const hasPartLooks = (scene, d) => !!d.parts?.some((p) => scene.lights?.[partKey(d, p)]);
+export const byParts = (scene, d) => !scene.all && !!d.parts?.length && (d.whole === false || hasPartLooks(scene, d));
+export function partLook(scene, d, p) {
+  if (scene.all) return scene.all;
+  return hasPartLooks(scene, d) ? scene.lights[partKey(d, p)] || null : scene.lights?.[d.id] || null;
+}
+// Every look a light has in the scene.
+export const looksOf = (scene, d) => (byParts(scene, d) ? d.parts.map((p) => partLook(scene, d, p)) : [lookFor(scene, d.id)]).filter(Boolean);
+
+// Setting one part's look (null for off).
+export function setPartLook(scene, d, p, look) {
+  if (!hasPartLooks(scene, d)) {
+    const whole = scene.lights[d.id];
+    for (const q of d.parts) if (whole) scene.lights[partKey(d, q)] = structuredClone(whole);
+    delete scene.lights[d.id];
+  }
+  if (look) scene.lights[partKey(d, p)] = look;
+  else delete scene.lights[partKey(d, p)];
+  return scene;
+}
+
+// Each part on its own, starting on the light's look (all off if it was off), or the whole light
+// again, on the first part's look.
+export function setByParts(scene, d, on) {
+  if (on) {
+    const whole = scene.lights[d.id];
+    if (whole) for (const p of d.parts) scene.lights[partKey(d, p)] = structuredClone(whole);
+    delete scene.lights[d.id];
+  } else {
+    const first = d.parts.map((p) => scene.lights[partKey(d, p)]).find(Boolean);
+    for (const p of d.parts) delete scene.lights[partKey(d, p)];
+    if (first) scene.lights[d.id] = first;
+  }
+  return scene;
+}
+
 // The setting a row's Speed slider moves: the effect's speed, or its rate.
 export const speedParam = (effect) => EFFECTS[effect]?.params.find((p) => p.key === "speed" || p.key === "rate") || null;
 
@@ -50,11 +90,11 @@ export const clipFor = (look, start, end) => ({ ...defaultParams(look.effect), .
 export function sceneShow(scene, lights, loop) {
   if (scene.mode === "advanced") return { duration: scene.loop, tracks: scene.tracks || [] };
   const tracks = [];
+  const push = (device, look) => { if (look && EFFECTS[look.effect]) tracks.push({ device, clips: [clipFor(look, 0, loop)] }); };
   for (const d of lights) {
-    const look = lookFor(scene, d.id);
-    if (!look || !EFFECTS[look.effect]) continue;
-    const ids = d.parts?.length && d.whole === false ? d.parts.map((p) => `${d.id}#${p.id}`) : [d.id];
-    for (const id of ids) tracks.push({ device: id, clips: [clipFor(look, 0, loop)] });
+    if (byParts(scene, d) || (scene.all && d.parts?.length && d.whole === false)) {
+      for (const p of d.parts) push(partKey(d, p), partLook(scene, d, p));
+    } else push(d.id, lookFor(scene, d.id));
   }
   return { duration: loop, tracks };
 }
@@ -76,7 +116,7 @@ export function sceneColours(scene, lights) {
   const out = [];
   const looks = scene.mode === "advanced"
     ? (scene.tracks || []).flatMap((t) => t.clips).map(({ start, end, effect, ...params }) => ({ effect, params }))
-    : scene.all ? [scene.all] : lights.map((d) => scene.lights?.[d.id]).filter(Boolean);
+    : scene.all ? [scene.all] : lights.flatMap((d) => looksOf(scene, d));
   for (const look of looks) {
     const clip = clipFor(look, 0, 1);
     for (const k of paletteKeys(look.effect)) {
@@ -96,9 +136,9 @@ export function sceneSummary(scene, lights) {
     return `Advanced · goes round every ${fmtLoop(scene.loop)}${shown ? ` · ${shown}` : ""}`;
   }
   if (scene.all) return `Every light · ${label(scene.all)}`;
-  const on = lights.filter((d) => scene.lights?.[d.id]);
+  const on = lights.filter((d) => looksOf(scene, d).length);
   if (!on.length) return "No lights on yet";
-  const effects = [...new Set(on.map((d) => label(scene.lights[d.id])))];
+  const effects = [...new Set(on.flatMap((d) => looksOf(scene, d).map(label)))];
   const shown = effects.slice(0, 3).join(", ") + (effects.length > 3 ? "…" : "");
   return `${on.length} light${on.length === 1 ? "" : "s"} · ${shown}`;
 }
@@ -107,7 +147,7 @@ export function sceneSummary(scene, lights) {
 // gives each light that look, to change one at a time.
 export function setSame(scene, on, lights) {
   if (on && !scene.all) {
-    const first = lights.map((d) => scene.lights?.[d.id]).find(Boolean) || newLook();
+    const first = lights.flatMap((d) => looksOf(scene, d))[0] || newLook();
     scene.all = structuredClone(first);
   } else if (!on && scene.all) {
     scene.lights = Object.fromEntries(lights.map((d) => [d.id, structuredClone(scene.all)]));
@@ -124,11 +164,14 @@ export function toAdvanced(scene, lights, loop = ADVANCED_LOOP_S) {
     ...(scene.schedule ? { schedule: scene.schedule } : {}) };
 }
 
-// Advanced → Basic is only offered when nothing would be lost: no House lane effects, and each light
-// (whole, not by parts) with at most one effect running the whole loop.
+// Advanced → Basic is only offered when nothing would be lost: no House lane or group effects, each
+// light or part with at most one effect running the whole loop, and no light with effects both on
+// itself and on its parts.
 export function canBasic(scene, lights) {
   if (scene.mode !== "advanced") return false;
-  const ids = new Set(lights.map((d) => d.id));
+  const ids = new Set(lights.flatMap((d) => [d.id, ...(d.parts || []).map((p) => partKey(d, p))]));
+  const used = new Set((scene.tracks || []).filter((t) => t.clips.length).map((t) => t.device));
+  if (lights.some((d) => used.has(d.id) && d.parts?.some((p) => used.has(partKey(d, p))))) return false;
   return (scene.tracks || []).every((t) => {
     if (!t.clips.length) return true;
     if (t.device === HOUSE || !ids.has(t.device) || t.clips.length > 1) return false;

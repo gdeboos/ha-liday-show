@@ -22,6 +22,7 @@ import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDem
 import { Layout } from "./layout.js";
 import { groupShares, groupSegments, memberChoices, membersText, nameProblem as groupNameProblem, newGroupId, rangeTakes, tidyMembers }
   from "./lightgroups.js";
+import { HA_KINDS, findEntities, haKind, kindCounts } from "./hapicker.js";
 import { countLabel, countText, isHa, isPixels, showBulbs, sizeText, unitWord } from "./lightwords.js";
 import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
@@ -1307,15 +1308,76 @@ async function loadHaEntities() {
 
 // The add functions below are used by the Add a light window: each returns what to tell the user,
 // or throws with the reason it couldn't be added.
-function addHaLight(entity) {
-  const found = (haEntities || []).find((e) => e.entity === entity);
-  if (!found) throw new Error("Pick a light or switch first");
-  if (app.deviceList.some((d) => d.entity === entity)) throw new Nudge(`${found.name} is already on the list`);
-  app.deviceList.push({ id: `ha-${entity}`, kind: "ha", name: found.name, ip: "", entity, sku: "",
-    protocol: entity.startsWith("switch.") ? "ha_switch" : "ha_light", segments: 1, bulbs: 1,
-    reverse: false, gradient: false, brightness: 100 });
+function addHaLights(entities) {
+  const found = (haEntities || []).filter((e) => entities.includes(e.entity) && !app.deviceList.some((d) => d.entity === e.entity));
+  if (!found.length) throw new Error("Pick a light or switch first");
+  for (const { entity, name } of found) {
+    app.deviceList.push({ id: `ha-${entity}`, kind: "ha", name, ip: "", entity, sku: "",
+      protocol: entity.startsWith("switch.") ? "ha_switch" : "ha_light", segments: 1, bulbs: 1,
+      reverse: false, gradient: false, brightness: 100 });
+  }
   saveDevices();
-  return `Added ${found.name}. ${entity.startsWith("switch.") ? "It turns on when the show is bright there, at most once a second." : "It takes the show's colour a few times a second."}`;
+  if (found.length > 1) return `Added ${found.map((e) => e.name).join(", ")}.`;
+  return `Added ${found[0].name}. ${found[0].entity.startsWith("switch.") ? "It turns on when the show is bright there, at most once a second." : "It takes the show's colour a few times a second."}`;
+}
+
+// The Add a light window's list of Home Assistant lights and switches: type to find, press rows to pick.
+const haPick = { picked: new Set(), kind: "" };
+async function openHaPick() {
+  haPick.picked.clear();
+  haPick.kind = "";
+  $("ha-find").value = "";
+  $("ha-list").replaceChildren(Object.assign(document.createElement("p"), { className: "hint", textContent: "Loading…" }));
+  $("ha-kinds").replaceChildren();
+  $("ha-count").textContent = "";
+  try {
+    await loadHaEntities();
+  } catch (e) {
+    $("ha-list").replaceChildren(Object.assign(document.createElement("p"), { className: "hint warn",
+      textContent: `Couldn't list Home Assistant's lights: ${e.message}` }));
+    return;
+  }
+  drawHaPick();
+}
+
+function drawHaPick() {
+  const all = haEntities || [], counts = kindCounts(all);
+  $("ha-kinds").replaceChildren(...[{ id: "", label: "All" }, ...HA_KINDS].filter((k) => !k.id || counts[k.id]).map((k) => {
+    const l = document.createElement("label"), r = document.createElement("input");
+    Object.assign(r, { type: "radio", name: "ha-kind", checked: haPick.kind === k.id });
+    r.addEventListener("change", () => { haPick.kind = k.id; drawHaPick(); });
+    l.append(r, `${k.label} ${counts[k.id]}`);
+    return l;
+  }));
+  const shown = findEntities(all, $("ha-find").value, haPick.kind);
+  const added = new Set(app.deviceList.map((d) => d.entity).filter(Boolean));
+  $("ha-list").replaceChildren(...shown.map((e) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "ha-row";
+    const kind = HA_KINDS.find((k) => k.id === haKind(e)).one;
+    row.append(Object.assign(document.createElement("b"), { textContent: e.name }),
+      Object.assign(document.createElement("span"), { textContent: `${added.has(e.entity) ? "Already added" : kind} · ${e.entity}` }));
+    row.disabled = added.has(e.entity);
+    row.setAttribute("aria-pressed", String(haPick.picked.has(e.entity)));
+    row.addEventListener("click", () => {
+      if (haPick.picked.has(e.entity)) haPick.picked.delete(e.entity); else haPick.picked.add(e.entity);
+      row.setAttribute("aria-pressed", String(haPick.picked.has(e.entity)));
+      haPicked();
+    });
+    // A double-click adds just that one.
+    row.addEventListener("dblclick", () => { haPick.picked = new Set([e.entity]); haPicked(); addLightNow(); });
+    return row;
+  }));
+  if (!shown.length) $("ha-list").append(Object.assign(document.createElement("p"), { className: "hint",
+    textContent: all.length ? "Nothing matches. Try fewer letters, or All." : "Home Assistant has no lights or switches." }));
+  $("ha-count").textContent = shown.length === all.length ? `${all.length} in Home Assistant` : `${shown.length} of ${all.length}`;
+  haPicked();
+}
+
+function haPicked() {
+  const n = haPick.picked.size;
+  if (addFlow.kind === "ha") $("add-go").textContent = n > 1 ? `Add ${n}` : "Add";
 }
 
 async function fillHaPicker(select, current = "") {
@@ -1323,7 +1385,12 @@ async function fillHaPicker(select, current = "") {
   try {
     const list = await loadHaEntities();
     select.replaceChildren(new Option(current ? "Not linked" : "Pick a light or switch", ""),
-      ...list.map((e) => new Option(`${e.name} (${e.entity})`, e.entity, false, e.entity === current)));
+      ...HA_KINDS.map((k) => {
+        const g = document.createElement("optgroup");
+        g.label = k.label;
+        g.append(...findEntities(list, "", k.id).map((e) => new Option(`${e.name} (${e.entity})`, e.entity, false, e.entity === current)));
+        return g;
+      }).filter((g) => g.children.length));
     if (current && !list.some((e) => e.entity === current)) select.add(new Option(`${current} (not found)`, current, false, true));
   } catch (e) {
     select.replaceChildren(new Option(current || "Home Assistant isn't reachable", current));
@@ -1492,7 +1559,7 @@ const ADD_KINDS = {
   e131: { title: "Pixel controller (E1.31)", ip: true, leds: true,
     help: "Set the controller to take E1.31 (sACN) as <b>unicast</b>. Add each string separately; the next one starts just after the last, and you can change its <b>universe</b> and <b>channel</b> in its row." },
   ha: { title: "Home Assistant light or switch", entity: true,
-    help: "Any light, or a switch such as a smart plug for an inflatable. Lights take the show's colour a few times a second; switches turn on when the show is bright, at most once a second. They go back as they were afterwards." },
+    help: "Lights take the show's colour. Switches, such as a smart plug on an inflatable, turn on when the show is bright there. Both go back as they were afterwards. Pick as many as you like." },
   twinkly: { title: "Twinkly (experimental)", ip: true,
     help: "Type the light's IP (it's in the Twinkly app under <b>Device settings</b>). Twinkly support hasn't been tried on a real light yet, so press <b>Test</b> once it's added." },
   plan: { title: "Plan a light", plan: true, help: "" },
@@ -1520,9 +1587,9 @@ function addStep(step) {
   $("add-plan-fields").hidden = !k.plan;
   $("add-go").textContent = addFlow.kind === "plan" ? "Add planned light" : "Add";
   $("scan-results").replaceChildren();
-  if (k.entity) fillHaPicker($("add-entity"));
+  if (k.entity) openHaPick();
   if (k.plan) planKindChanged();
-  const first = k.plan ? $("plan-kind") : k.entity ? $("add-entity") : $("add-ip");
+  const first = k.plan ? $("plan-kind") : k.entity ? $("ha-find") : $("add-ip");
   setTimeout(() => first.focus(), 0);
 }
 
@@ -1550,7 +1617,7 @@ async function addLightNow() {
       wled: () => addWled(ip),
       ddp: () => addController(ip, Number($("add-leds").value), "ddp"),
       e131: () => addController(ip, Number($("add-leds").value), "e131"),
-      ha: () => addHaLight($("add-entity").value),
+      ha: () => addHaLights([...haPick.picked]),
       twinkly: () => addTwinkly(ip),
       plan: () => addPlanned(),
     }[addFlow.kind]();
@@ -1562,6 +1629,7 @@ async function addLightNow() {
   } finally {
     go.disabled = false;
     go.textContent = addFlow.kind === "plan" ? "Add planned light" : "Add";
+    if (addFlow.kind === "ha") haPicked();
   }
 }
 
@@ -1732,7 +1800,9 @@ const sceneEd = new SceneEditor({
   lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
   palettes: () => allPalettes(), presetsFor: (effect) => presetsFor(effect),
   positions: () => housePositionsAll(), groups: () => app.groups, editAdvanced: (id) => openSceneInEditor(id),
-  scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => scheduleLine(scheduleState.entries || [], "scene", id, scheduleState),
+  scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => (entriesFor(scheduleState.entries || [], "scene", id).length
+    ? scheduleLine(scheduleState.entries, "scene", id, scheduleState) : ""),
+  chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }),
   opened: () => { app.sceneChosen = true; showView("scene"); },
   closed: () => { app.sceneChosen = false; showView("scene"); },
 });
@@ -2435,7 +2505,7 @@ function chosenParams(effect, preset, from = null) {
 // fit(clip, then), when given, says whether a choice suits the light (as fitFor does): ones that won't
 // work are greyed out unless "Allow effects that won't work" is ticked, and the current one never is.
 function chooseEffect({ title, groups, dev = null, length = 3, from = null, current = null, currentPreset = null,
-  suggested = null, fit = null, onPick }) {
+  suggested = null, fit = null, only = null, paramsFor = null, onPick }) {
   const dlg = document.createElement("dialog");
   dlg.className = "effect-dialog";
   const head = document.createElement("div");
@@ -2484,7 +2554,8 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     const span = document.createElement("span");
     span.textContent = label;
     b.append(strip, span);
-    const params = chosenParams(effect, preset, from);
+    const base = paramsFor?.(effect);
+    const params = base ? (preset ? { ...base, ...presetParams(preset, base) } : base) : chosenParams(effect, preset, from);
     pickerPreview.items.push({ canvas: strip, clip: { effect, start: 0, end: len, ...params }, dev });
     const mark = (r) => {
       if (!r || r.level === "ok") return;
@@ -2520,7 +2591,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         sh.textContent = heading;
         body.append(sh);
       }
-      const effects = visibleEffects(current ?? undefined, house);
+      const effects = visibleEffects(current ?? undefined, house).filter(([key]) => !only || only.includes(key));
       if (!toggle.checked) {
         const row = document.createElement("div");
         row.className = "effect-picker";
@@ -6876,7 +6947,7 @@ const sceneNow = () => {
 // The schedule, for the Advanced scene open in the Show editor: what it does with the scene, and a
 // way to the Schedule tab (the scene stays open, under ↩ in the top bar).
 function openSceneWhen() {
-  const w = editWindow("When it plays");
+  const w = editWindow("Schedule");
   w.body.append(scheduleLink("scene", app.sceneId));
   w.body.addEventListener("click", (e) => { if (e.target.closest("button")) w.dlg.close(); });
   w.foot.append(button("Done", () => w.dlg.close(), "primary"));
@@ -8474,6 +8545,15 @@ function wire() {
   $("btn-zoom-out").addEventListener("click", () => timeline.zoom(1 / 1.5));
 
   $("btn-scan").addEventListener("click", () => (addFlow.kind === "wled" ? scanWled() : scan()));
+  $("ha-find").addEventListener("input", drawHaPick);
+  $("ha-find").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    // Enter picks the only match, and adds what's picked.
+    const rows = [...$("ha-list").querySelectorAll(".ha-row:not(:disabled)")];
+    if (!haPick.picked.size && rows.length === 1) rows[0].click();
+    if (haPick.picked.size) addLightNow();
+  });
   $("btn-add-light").addEventListener("click", openAddLight);
   $("btn-add-speaker").addEventListener("click", openAddSpeaker);
   $("btn-demo").addEventListener("click", tryDemo);

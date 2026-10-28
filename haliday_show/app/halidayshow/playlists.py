@@ -8,7 +8,7 @@ length. Playlists from before blocks have only "shows" and "gap", read as each s
 pause. "shows" and "gap" are still kept, worked out from the items, for older versions and for
 visitors' picks on the public page.
 
-Kept in settings with the palettes and presets. A playlist's own "schedule" is from before 0.2.229 and
+Kept in settings with the palettes and presets. A playlist's own "schedule" is from before 0.2.231 and
 unused now: schedule.py has the schedule's entries. A show that's been deleted stays in the list and is
 skipped when the playlist plays, so putting it back (from an export, say) brings it back.
 """
