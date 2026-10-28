@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.217
+
+- The **Public page** tab is now in five tabs: **Access**, **Shows**, **Look**, **Words** and **Queue**,
+  with a big **▶ Open the page** button above them. The preview stays beside them, and the tab you had
+  open last is remembered.
+- New **Words** tab: every message visitors read, from "Pick a show" to "You're too far away", in
+  boxes you can change. **Reset** puts one back, **Put every word back** resets them all. The sign's
+  "Scan to start a light show" is there too.
+- New on the **Shows** tab:
+  - **Show how long each lasts** (on to start with), to hide the "About 3 minutes" under each show.
+  - **Flashing lights warning**: **Off**, **A note at the top**, or **Ask visitors to accept it before
+    Start** (an **I understand** button first). Its words are on the **Words** tab.
+- Fixed: with opening hours on, the visitors' page could stop updating while a visitor's show was
+  playing.
+
 ## 0.2.216
 
 - **Setup → Settings** has a new **Live music** card. It shows what a WLED light with a microphone hears:

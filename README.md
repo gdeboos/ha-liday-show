@@ -228,6 +228,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     show or playlist can also have dates every year, and shows as coming soon until then
   - Guides for putting it online with Cloudflare Tunnel, Tailscale Funnel or your own proxy, or
     keeping it to your Wi-Fi
+  - Every word visitors read can be changed, and an optional flashing lights warning (a note, or
+    one to accept before Start)
   - Your own title, welcome, picture, colour theme or your own colours (with a readability check),
     spacing, corners, text size, falling snow and a link, with a live preview beside the settings
   - Kept safe: only the visitors' page is on its port, each phone has its own request limit, and
@@ -354,7 +356,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     sign.html, js/sign.js               The printable sign with the QR code (made by segno)
     public/                             The public page visitors see (the only files served on its port):
                                         index.html, public.js and public.css; colours.js has the
-                                        readability sums shared with the editor
+                                        readability sums shared with the editor; words.json is every
+                                        message visitors read, with its starting wording
     js/app.js                           Editor state, panels, inspector and playback
     js/effects.js                       Effect definitions, House lane effects and the baker
     js/timeline.js                      Timeline canvas: waveform, clips, selection, zoom

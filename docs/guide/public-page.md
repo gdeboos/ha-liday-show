@@ -17,9 +17,19 @@ on a sign outside. They see the shows and playlists you've picked, and nothing e
    your home Wi-Fi. It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
 
-The tab is in five parts, with a **Preview** beside them (below them on a narrower screen). The
-preview shows the page as visitors with your code see it, and catches up as soon as you change
-something. Its buttons don't start anything.
+At the top of the tab, **▶ Open the page** opens your real visitors' link in a new tab. Under it are
+five tabs, and the last one you had open is remembered:
+
+| Tab | What's there |
+| --- | --- |
+| **Access** | [Who can start shows](#who-can-start-shows) and [Opening hours](#opening-hours) |
+| **Shows** | [What visitors can pick](#what-visitors-can-pick), and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
+| **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom |
+| **Words** | [Every message visitors read](#words), to change to your own |
+| **Queue** | [The visitors' queue](#visitors-queue) and its limits |
+
+Beside them (below them on a narrower screen) the **Preview** shows the page as visitors with your
+code see it, and catches up as soon as you change something. Its buttons don't start anything.
 
 ### Who can start shows
 
@@ -80,8 +90,8 @@ hours.
 
 ### How the page looks
 
-The settings come in four groups: **Words**, **Picture at the top**, **Colours and style** and **Link at
-the bottom**. The preview beside them shows each change as you make it.
+On the **Look** tab, in four groups: **Title and welcome**, **Picture at the top**, **Colours and
+style** and **Link at the bottom**. The preview beside them shows each change as you make it.
 
 - **Title** replaces "🎄 Light show" at the top, and **Welcome** adds a line or two under it.
 - **Picture at the top**: **None**, **Your house photo** (from **Setup → House**), or **Your own
@@ -102,8 +112,7 @@ the bottom**. The preview beside them shows each change as you make it.
 - **Link at the bottom**: its **Web address** and **Its words**, for a charity, donation or social page, if
   you like.
 
-The **open the page** link under the heading opens your real visitors' link. The title, words and picture only show to people
-with your code.
+The title, words and picture only show to people with your code.
 
 ### What visitors can pick
 
@@ -117,6 +126,37 @@ with your code.
   the day it starts ("From 1 December"). When nothing can be picked yet, the page says when the first
   one starts: "Coming soon on 1 December".
 - **Remove** takes something off the public page; the show or playlist itself stays.
+
+### On the page
+
+Also on the **Shows** tab:
+
+- **Show how long each lasts** (on to start with) puts "About 3 minutes" under each show's name,
+  worked out from the show. Turn it off for just the names.
+- **Flashing lights warning**, for shows with strobes or fast flashes:
+  - **Off** (to start with).
+  - **A note at the top**: a boxed warning above the shows, always there.
+  - **Ask visitors to accept it before Start**: the same note with an **I understand** button, and no
+    **▶ Start** buttons until it's pressed. It's asked once per visit.
+
+  The warning's words, and the button's, are on the **Words** tab.
+
+### Words
+
+Every message visitors read is on the **Words** tab, in groups: the top of the page, the list of
+shows, a visitor's own pick, opening hours, **Nearby only**, the flashing lights warning, the closed
+and "scan the code" pages, and the sign's "Scan to start a light show". (Your title and welcome are
+on the **Look** tab.)
+
+- Each box starts with the wording shown. Type your own and it's saved when you leave the box; the
+  preview shows it straight away.
+- Parts in curly brackets are filled in as the page runs: `{name}` (a show), `{count}`, `{minutes}`
+  ("2 minutes"), `{place}` ("3rd"), `{day}` ("1 December") and `{when}` ("at 5pm", "tomorrow at
+  4:32pm"). Keep them where you'd like them, or leave them out.
+- **Reset**, next to a word you've changed, puts it back. Emptying a box does the same. **Put every
+  word back** resets them all; your title, welcome and link stay.
+- The same words are used when HA-liday Show itself turns a request down ("The queue is full…",
+  "You're too far away…"), so visitors see your wording there too.
 
 ### Visitors' queue
 

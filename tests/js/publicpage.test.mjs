@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dayText, describe, waitText } from "../../haliday_show/app/halidayshow/static/public/public.js";
+import { readFileSync } from "node:fs";
+import * as page from "../../haliday_show/app/halidayshow/static/public/public.js";
+
+// The words the page starts with, as HA-liday Show sends them.
+const W = Object.fromEntries(JSON.parse(readFileSync(new URL(
+  "../../haliday_show/app/halidayshow/static/public/words.json", import.meta.url))).groups
+  .flatMap((g) => g.words).map((x) => [x.key, x.text]));
+const { dayText, describe } = page;
+const waitText = (r) => page.waitText(r, W);
 
 const st = (extra = {}) => ({
   open: true, choices: [{ kind: "show", id: "party", name: "Party", minutes: 3 },
     { kind: "playlist", id: "eve", name: "Christmas Eve", minutes: 12 }],
-  now: null, waiting: 0, full: false, per_phone: 1, mine: [], ...extra,
+  now: null, waiting: 0, full: false, per_phone: 1, mine: [], words: W, ...extra,
 });
 
 test("visitors are told where they are in the queue", () => {
@@ -61,7 +69,8 @@ test("the code comes from the QR code's link and is kept for next time", async (
 });
 
 test("Start only shows to phones by the lights, and the page says why not", async () => {
-  const { canStart, whereText } = await import("../../haliday_show/app/halidayshow/static/public/public.js");
+  const { canStart } = page;
+  const whereText = (x) => page.whereText(x, W);
   assert.equal(canStart(false, { state: "idle" }), true); // your own Wi-Fi
   assert.equal(canStart(true, { state: "checking" }), false);
   assert.equal(canStart(true, { state: "far" }), false);
@@ -81,7 +90,8 @@ test("the footer link says your words, or the site's name", async () => {
 });
 
 test("outside opening hours visitors are told when to come back", async () => {
-  const { clockText, comeBackText } = await import("../../haliday_show/app/halidayshow/static/public/public.js");
+  const { clockText } = page;
+  const comeBackText = (h) => page.comeBackText(h, W);
   assert.equal(clockText("17:00"), "5pm");
   assert.equal(clockText("16:32"), "4:32pm");
   assert.equal(clockText("09:05"), "9:05am");
@@ -93,4 +103,20 @@ test("outside opening hours visitors are told when to come back", async () => {
   assert.equal(comeBackText({ open: false, now, next: "2026-10-31T17:00" }), "Shows start on Saturday at 5pm. Come back then!");
   assert.equal(comeBackText({ open: false, now, next: "2026-12-01T17:00" }), "Shows start on 1 December at 5pm. Come back then!");
   assert.match(comeBackText({ open: false, now, next: null }), /not open at the moment/);
+});
+
+test("your own words, the length switch and the flashing lights warning", () => {
+  const mine = { ...W, start: "Go!", length: "{minutes} long", idle: "All quiet" };
+  const view = describe(st({ words: mine }));
+  assert.equal(view.now, "All quiet");
+  assert.equal(view.choices[0].detail, "3 minutes long");
+  assert.equal(describe(st({ look: { show_length: false } })).choices[0].detail, "");
+  assert.equal(page.fill("On now: {name} · {count} waiting", { name: "Party", count: 2 }), "On now: Party · 2 waiting");
+  assert.equal(page.fill("Keep {unknown}", {}), "Keep {unknown}");
+  assert.equal(describe(st({ now: { name: "Party" }, waiting: 2 })).now, "On now: Party · 2 waiting");
+  assert.equal(page.warningShown({ warning: "off" }), false);
+  assert.equal(page.warningShown({ warning: "note" }), true);
+  assert.equal(page.mustAccept({ warning: "note" }, false), false);
+  assert.equal(page.mustAccept({ warning: "accept" }, false), true);
+  assert.equal(page.mustAccept({ warning: "accept" }, true), false);
 });

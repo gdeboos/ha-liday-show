@@ -97,7 +97,7 @@ async def test_one_request_per_phone_and_a_full_queue(client):
     status, st, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
     assert status == 200 and st["mine"][0]["place"] == 1 and 5 <= st["mine"][0]["wait"] <= 10
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
-    assert status == 409 and "already got a show waiting" in text
+    assert status == 409 and "pick another show once yours starts" in text
     await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
     status, text, _ = await _visitor(client, "/api/request", {"ticket": "c" * 20, "kind": "show", "id": "party"})
     assert status == 409 and "queue is full" in text
@@ -124,7 +124,7 @@ async def test_bad_tickets_and_turning_visitors_off(client):
     await client.put("/api/public", json={"on": False, "shows": ["party"]})
     assert runner.requests == []  # switched off: nobody's left waiting for a show that won't come
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
-    assert status == 409 and "no shows right now" in text
+    assert status == 409 and "no shows right now" in text.lower()
 
 
 def test_settings_are_cleaned():
@@ -134,7 +134,7 @@ def test_settings_are_cleaned():
                                                 {"kind": "show", "id": "c", "from": "02-30", "to": "03-01"}],
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
-        "look": public.clean_look(None), "hours": public.DEFAULT_HOURS,
+        "look": public.clean_look(None), "hours": public.DEFAULT_HOURS, "words": {},
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -206,7 +206,8 @@ async def test_visitors_need_the_code_from_the_sign(client):
     code = public.load(client.app[server.STORAGE])["code"]
     assert len(code) == 8 and code != "mine123"  # made by the app, not taken from the editor
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", code=False)
-    assert st["locked"] and set(st) == {"open", "locked", "look"}
+    assert st["locked"] and set(st) == {"open", "locked", "look", "words"}
+    assert set(st["words"]) == {"locked", "locked_hint", "offline"}  # nothing else of the page
     assert set(st["look"]) == {"theme", "mode", "spacing", "corners", "size", "borders", "colours"}  # no words or picture
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party", "code": "nope1234"},
                                      code=False)
@@ -543,3 +544,52 @@ async def test_the_editor_is_told_when_the_picture_changes(client):
     pic = client.app[server.STORAGE].public_picture()
     os.utime(pic, (first + 60, first + 60))  # as if a new one came a minute later
     assert (await (await client.get("/api/public")).json())["picture_v"] == first + 60
+
+
+
+def test_words_keep_only_your_own_changes():
+    default = public.DEFAULT_WORDS["start"]
+    assert public.clean_words({"start": "  ▶  Go!  ", "idle": public.DEFAULT_WORDS["idle"], "made_up": "x",
+                               "full": "", "next": 5}) == {"start": "▶ Go!", "next": "5"}
+    assert public.words(public.clean({"words": {"start": "Go"}}))["start"] == "Go"
+    assert public.words(public.clean({}))["start"] == default
+    assert len(public.clean_words({"start": "x" * 1000})["start"]) == public.MAX_WORD
+    # Every key the page and server use is in the list.
+    for key in ("locked", "too_far", "full", "one_waiting", "many_waiting", "busy", "not_open_now", "gone",
+                "ask_house", "location_needed", "warning", "accept", "sign_scan", "come_back", "length"):
+        assert key in public.DEFAULT_WORDS, key
+
+
+async def test_visitors_get_your_words_and_the_server_uses_them(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "per_phone": 1,
+                                          "words": {"start": "Go!", "one_waiting": "Patience, one at a time."},
+                                          "look": {"show_length": False, "warning": "accept"}})
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert st["words"]["start"] == "Go!" and st["words"]["pick_head"] == public.DEFAULT_WORDS["pick_head"]
+    assert st["look"]["show_length"] is False and st["look"]["warning"] == "accept"
+    runner = client.app[server.RUNNER]
+    await runner.play("quiet")
+    await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    assert status == 409 and text == "Patience, one at a time."
+    view = await (await client.get("/api/public")).json()
+    assert view["words"] == {"start": "Go!", "one_waiting": "Patience, one at a time."}
+    assert view["word_groups"][0]["words"][0]["key"] == "idle"
+
+
+async def test_a_visitors_show_with_opening_hours_on_doesnt_break_the_page(client):
+    # The page's own clock and the visitor's show playing used to share a name, so this was an error.
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
+                                          "hours": {"on": True, "start": "00:00", "end": "23:59", "days": list(range(7))}})
+    await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    assert await _until(lambda: client.app[server.RUNNER].public_now is not None)
+    status, st, _ = await _visitor(client, f"/api/state?ticket={T2}")
+    assert status == 200 and "hours" in st
+
+
+async def _until(check, tries=100):
+    for _ in range(tries):
+        if check():
+            return True
+        await asyncio.sleep(0.05)
+    return False

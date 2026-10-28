@@ -1086,6 +1086,18 @@
 </div>
 <main id="view-public" class="view pub-view" hidden>
   <div class="pub-settings">
+  <div class="pub-top">
+    <a id="pub-open-page" class="button primary pub-open-big" target="_blank" rel="noopener">▶ Open the page</a>
+    <span class="hint">Opens your visitors' link in a new tab, as people outside will see it.</span>
+  </div>
+  <div class="pub-tabs" role="tablist" aria-label="Public page settings">
+    <button type="button" role="tab" class="pub-tab" id="pub-tab-access" data-pubtab="access" aria-controls="pub-panel-access"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Access</button>
+    <button type="button" role="tab" class="pub-tab" id="pub-tab-shows" data-pubtab="shows" aria-controls="pub-panel-shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg>Shows</button>
+    <button type="button" role="tab" class="pub-tab" id="pub-tab-look" data-pubtab="look" aria-controls="pub-panel-look"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg>Look</button>
+    <button type="button" role="tab" class="pub-tab" id="pub-tab-words" data-pubtab="words" aria-controls="pub-panel-words"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg>Words</button>
+    <button type="button" role="tab" class="pub-tab" id="pub-tab-queue" data-pubtab="queue" aria-controls="pub-panel-queue"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Queue</button>
+  </div>
+  <div class="pub-panel" id="pub-panel-access" role="tabpanel" aria-labelledby="pub-tab-access" hidden>
   <section class="card pub-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Who can start shows</h2>
     <p class="hint">Visitors need the link with your code in it, the one the QR code on your sign will hold. Opening
@@ -1133,12 +1145,37 @@
     </div>
     <p class="hint pub-note" id="pub-hours-hint" aria-live="polite"></p>
   </section>
+  </div>
+  <div class="pub-panel" id="pub-panel-shows" role="tabpanel" aria-labelledby="pub-tab-shows" hidden>
+  <section class="card pub-card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>What visitors can pick</h2>
+    <p class="hint">People passing by pick one of these on their phone, and it plays on your lights and the show's
+      speaker. Give one dates to have it show as coming soon until then.</p>
+    <p class="hint pub-note" id="pub-address"></p>
+    <div id="pub-items" class="pub-items"></div>
+    <div class="pub-inline" id="pub-add-row"><select id="pub-add-pick" aria-label="Show or playlist to add"></select>
+      <button id="pub-add" class="primary">+ Add</button></div>
+    <p class="hint" id="pub-all-added" hidden>Every saved show and playlist is on the list. Archived shows, and
+      playlists made only of them, aren't offered.</p>
+  </section>
+  <section class="card pub-card" id="pub-showing">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg>On the page</h2>
+    <label class="check"><input id="pub-show-length" type="checkbox"> Show how long each lasts</label>
+    <p class="hint">"About 3 minutes" under each show's name, worked out from the show.</p>
+    <label class="field">Flashing lights warning <select id="pub-warning">
+        <option value="off">Off</option>
+        <option value="note">A note at the top</option>
+        <option value="accept">Ask visitors to accept it before Start</option></select>
+      <span class="hint">For shows with strobes or fast flashes. Change its words on the <b>Words</b> tab.</span></label>
+  </section>
+  </div>
+  <div class="pub-panel" id="pub-panel-look" role="tabpanel" aria-labelledby="pub-tab-look" hidden>
   <section class="card pub-card" id="pub-look">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg>How the page looks</h2>
     <p class="hint">What visitors see at the top and bottom of the page, and its colours. The preview shows it as you
-      go, or <a id="pub-open-page" target="_blank" rel="noopener">open the page</a>.</p>
+      go. Every other word on the page is on the <b>Words</b> tab.</p>
 
-    <h3 class="pub-sub">Words</h3>
+    <h3 class="pub-sub">Title and welcome</h3>
     <label class="field">Title <input id="pub-title" type="text" maxlength="60" placeholder="🎄 Light show"></label>
     <label class="field">Welcome
       <textarea id="pub-welcome" rows="3" maxlength="300" class="pub-welcome"
@@ -1202,17 +1239,18 @@
         placeholder="Enjoying the lights? Donate to …"></label>
     </div>
   </section>
-  <section class="card pub-card">
-    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>What visitors can pick</h2>
-    <p class="hint">People passing by pick one of these on their phone, and it plays on your lights and the show's
-      speaker. Give one dates to have it show as coming soon until then.</p>
-    <p class="hint pub-note" id="pub-address"></p>
-    <div id="pub-items" class="pub-items"></div>
-    <div class="pub-inline" id="pub-add-row"><select id="pub-add-pick" aria-label="Show or playlist to add"></select>
-      <button id="pub-add" class="primary">+ Add</button></div>
-    <p class="hint" id="pub-all-added" hidden>Every saved show and playlist is on the list. Archived shows, and
-      playlists made only of them, aren't offered.</p>
+  </div>
+  <div class="pub-panel" id="pub-panel-words" role="tabpanel" aria-labelledby="pub-tab-words" hidden>
+  <section class="card pub-card" id="pub-words">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg>Words</h2>
+    <p class="hint">Everything visitors read, apart from your title and welcome (on the <b>Look</b> tab). Each starts
+      with the wording shown; change any you like. Parts in curly brackets, such as {minutes}, are filled in as the
+      page runs, in English ("2 minutes", "tomorrow at 5pm").</p>
+    <div id="pub-word-list" class="pub-word-list"></div>
+    <div><button id="pub-words-reset" class="ghost">Put every word back</button></div>
   </section>
+  </div>
+  <div class="pub-panel" id="pub-panel-queue" role="tabpanel" aria-labelledby="pub-tab-queue" hidden>
   <section class="card pub-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Visitors' queue</h2>
     <p class="hint">If something's already on, a visitor's pick plays after the show that's on, then your playlist
@@ -1226,6 +1264,7 @@
         <span class="hint">How many can wait in all.</span></label>
     </div>
   </section>
+  </div>
   </div>
   <aside class="pub-preview" aria-label="Preview of the visitors' page">
     <p class="pub-preview-head"><b>Preview</b> <span class="hint">as visitors with your code see it</span></p>
