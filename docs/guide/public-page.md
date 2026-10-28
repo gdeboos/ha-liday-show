@@ -17,10 +17,11 @@ on a sign outside. They see the shows and playlists you've picked, and nothing e
    your home Wi-Fi. It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
 
-At the top of the tab, **▶ Open the page** opens your real visitors' link in a new tab. Under it are
-five tabs, and the last one you had open is remembered:
+Down the left (along the top on a phone) is a list of five pages, as in **Library** and **Setup**, and
+the last one you had open is remembered. **▶ Open the page**, at the top, opens your real visitors'
+link in a new tab.
 
-| Tab | What's there |
+| Page | What's there |
 | --- | --- |
 | **Access** | [Who can start shows](#who-can-start-shows) and [Opening hours](#opening-hours) |
 | **Shows** | [What visitors can pick](#what-visitors-can-pick), and [On the page](#on-the-page): how long each lasts and the flashing lights warning |

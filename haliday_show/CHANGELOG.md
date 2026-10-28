@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.228
+
+- The **Public page** now has a list down the left, the same as **Library** and **Setup**: **Access**, **Shows**, **Look**, **Words** and **Queue**, each with a line saying what's in it. On a phone the list runs along the top.
+
 ## 0.2.227
 
 - Lights now use the right word for their size. WLED strips, Twinkly and pixel controllers say **LEDs** (in their window, their parts, the timeline and the group list), and only Govee lights say **Segments**.

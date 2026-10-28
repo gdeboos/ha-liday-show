@@ -4671,13 +4671,14 @@ function renderPublicQueue(view) {
   $("pub-address").hidden = !$("pub-address").textContent;
 }
 
-// The Public page tab's own tabs: Access, Shows, Look, Words, Queue. The last one open is remembered.
+// The Public page's side list: Access, Shows, Look, Words, Queue. The last one open is remembered.
 function openPublicSection(tab) {
   const tabs = [...document.querySelectorAll(".pub-tab")];
   if (!tabs.some((t) => t.dataset.pubtab === tab)) tab = "access";
   for (const t of tabs) {
     const on = t.dataset.pubtab === tab;
     t.setAttribute("aria-selected", String(on));
+    t.classList.toggle("active", on);
     t.tabIndex = on ? 0 : -1;
     $(`pub-panel-${t.dataset.pubtab}`).hidden = !on;
   }
@@ -5038,10 +5039,11 @@ function wirePublic() {
   const tabs = [...document.querySelectorAll(".pub-tab")];
   for (const t of tabs) {
     t.addEventListener("click", () => openPublicSection(t.dataset.pubtab));
-    // Left and right arrows move between the tabs, as in any tab list.
+    // The arrow keys move between them, as in any tab list.
     t.addEventListener("keydown", (e) => {
       const i = tabs.indexOf(t);
       const to = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i + tabs.length - 1) % tabs.length,
+        ArrowDown: (i + 1) % tabs.length, ArrowUp: (i + tabs.length - 1) % tabs.length,
         Home: 0, End: tabs.length - 1 }[e.key];
       if (to === undefined) return;
       e.preventDefault();
@@ -8138,7 +8140,7 @@ function showView(view, { push = true } = {}) {
     t.classList.toggle("active", t.dataset.view === lit);
     if (t.dataset.view === lit) t.scrollIntoView({ block: "nearest", inline: "nearest" }); // on a phone the tab row scrolls
   }
-  for (const t of document.querySelectorAll(".subtab")) t.classList.toggle("active", t.dataset.view === page);
+  for (const t of document.querySelectorAll(".subtab[data-view]")) t.classList.toggle("active", t.dataset.view === page);
   for (const k of Object.keys(SECTIONS)) $(`section-${k}`).hidden = k !== top;
   for (const v of ["editor", "music", "playlist", "scene", "public", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
   if (page === "songs") $("view-songs").append($("songs-block"));
@@ -8260,7 +8262,7 @@ function wire() {
   // Windows live at the top of the page, so they can open over any tab (the setup guide opens
   // Add a light and Add a speaker from the editor).
   for (const d of document.querySelectorAll(".view dialog")) document.body.append(d);
-  for (const tab of document.querySelectorAll(".tab, .subtab")) tab.addEventListener("click", () => showView(tab.dataset.view));
+  for (const tab of document.querySelectorAll(".tab, .subtab[data-view]")) tab.addEventListener("click", () => showView(tab.dataset.view));
   $("btn-new-group").addEventListener("click", () => openGroupWindow(null));
   $("btn-resume").addEventListener("click", () => lastEditor && showView(lastEditor));
 
