@@ -5,11 +5,11 @@
 // scene, edited in the Show editor, is {name, mode: "advanced", loop, tracks} instead: a show's tracks
 // (House lane included) going round every `loop` seconds.
 
-export const ADVANCED_LOOP_S = 20;
-
 import { EFFECTS, HOUSE, composeLight, defaultParams } from "./effects.js";
 import { paletteKeys } from "./palettes.js";
 import { BLOCK_EFFECTS, loopLength } from "./playlisteditor.js";
+
+export const ADVANCED_LOOP_S = 20;
 
 // Effects a scene can use: the playlist's Effect block ones (they look right however long they run),
 // with Solid first for a still colour.

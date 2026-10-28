@@ -6275,8 +6275,14 @@ function leaveSceneMode() {
   $("loop").checked = app.loop;
 }
 
-const sceneNow = () => ({ name: app.show.name, mode: "advanced", loop: Math.round(app.duration() * 1000) / 1000,
-  tracks: app.show.tracks.map((t) => ({ device: t.device, clips: t.clips })) });
+// A scene goes round every 10 minutes at most: anything dragged past that is cut there.
+const MAX_SCENE_LOOP_S = 600;
+const sceneNow = () => {
+  const loop = Math.min(Math.round(app.duration() * 1000) / 1000, MAX_SCENE_LOOP_S);
+  const tracks = app.show.tracks.map((t) => ({ device: t.device,
+    clips: t.clips.filter((c) => c.start < loop).map((c) => (c.end > loop ? { ...c, end: loop } : c)) }));
+  return { name: app.show.name, mode: "advanced", loop, tracks };
+};
 
 async function saveScene() {
   const scene = sceneNow(), edits = app.edits, id = app.sceneId;
@@ -7513,7 +7519,8 @@ function frame() {
       if (app.loop && !app.remote) {
         app.seek(app.region ? app.region.start : 0);
         // The add-on's player stops at the end of the show, so start it again for the next lap.
-        if (!app.region && lightsOn()) {
+        // A scene goes round on the lights by itself.
+        if (!app.region && lightsOn() && !app.sceneId) {
           api("api/player/play", { method: "POST", json: { show: app.showId, position: 0, offset: offset() } })
             .catch(() => {});
         }
@@ -7804,7 +7811,10 @@ function wire() {
   $("lights").checked = prefs.get("lights", true);
   $("lights").addEventListener("change", (e) => {
     prefs.set("lights", e.target.checked);
-    if (!e.target.checked && app.playing) api("api/player/stop", { method: "POST", json: { show: app.showId || "" } }).catch(() => {});
+    if (!e.target.checked && app.playing) {
+      (app.sceneId ? api(`api/house-scenes/${encodeURIComponent(app.sceneId)}/stop`, { method: "POST" })
+        : api("api/player/stop", { method: "POST", json: { show: app.showId || "" } })).catch(() => {});
+    }
   });
   $("offset").addEventListener("change", offsetChanged);
   $("output-select").addEventListener("change", async (e) => {
