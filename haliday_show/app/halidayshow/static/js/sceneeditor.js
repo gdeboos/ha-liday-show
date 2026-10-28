@@ -8,6 +8,7 @@ import {
   sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
+import { pickPalette } from "./palettepicker.js";
 import { PART, sendParts } from "./upload.js";
 
 const SAVE_AFTER_MS = 600;
@@ -346,11 +347,11 @@ export class SceneEditor {
     const none = () => el("span", { class: "sc-none hint", "aria-hidden": "true" }, "—");
     const keys = paletteKeys(look.effect).filter((k) => !unusedColour(look.effect, k, clip));
     if (keys.length) {
-      const colours = el("select", { class: "sc-palette", "aria-label": `Colours for ${full} from a palette`, title: "Use one of your palettes" });
-      colours.add(new Option("Palette…", ""));
-      this.d.palettes().forEach((p, k) => colours.add(new Option(p.name, String(k))));
-      colours.addEventListener("change", () => {
-        const p = this.d.palettes()[Number(colours.value)];
+      const colours = el("button", { type: "button", class: "ghost small sc-palette", "aria-label": `Colours for ${full} from a palette`,
+        title: "Use one of your palettes" }, "Palette…");
+      colours.addEventListener("click", async () => {
+        const name = await pickPalette({ title: `Colours for ${full}`, groups: [["Palettes", this.d.palettes()]] });
+        const p = this.d.palettes().find((q) => q.name === name);
         if (!p) return;
         const c = { effect: look.effect, ...look.params };
         applyPalette(c, p.colors);

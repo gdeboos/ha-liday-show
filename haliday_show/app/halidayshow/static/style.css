@@ -643,8 +643,17 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .insp-curve-to { display: inline-flex; gap: 6px; align-items: center; }
 .insp-curve-to[hidden] { display: none; }
 .insp-curve-to input { width: 5em; }
-.show-palette-bar { margin: -4px 0 8px; }
-.show-palette-bar:empty { display: none; }
+/* The palette window (palettepicker.js): colour bars to pick from, and the button that opens it. */
+.palette-picker { width: min(720px, calc(100vw - 32px)); }
+.palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.palette-choice { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px; text-align: left; }
+.palette-choice.active { outline: 2px solid var(--accent); outline-offset: 1px; }
+.palette-choice .palette-bar { height: 22px; }
+.palette-choice small { color: var(--muted); }
+.palette-none { background: repeating-linear-gradient(45deg, var(--line) 0 4px, transparent 4px 8px); }
+.palette-button { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; }
+.palette-bar-small { display: inline-flex; width: 72px; height: 16px; flex: none; }
+.palette-label { display: inline-flex; align-items: center; gap: 6px; }
 .insp-trans { display: inline-flex; gap: 6px; align-items: center; }
 .insp-trans input { width: 5em; }
 .effect-dialog-kind { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 4px; }
