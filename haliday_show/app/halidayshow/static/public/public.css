@@ -88,3 +88,6 @@ h1, h2 { color: var(--head, var(--text)); }
 :root[data-theme="custom"] { --muted: color-mix(in srgb, var(--text) 72%, var(--bg));
   --line: color-mix(in srgb, var(--text) 18%, var(--bg)); }
 .pp-hours { margin: 0 0 calc(8px * var(--s)); }
+.pp-warning { margin: 0 0 calc(10px * var(--s)); border: max(var(--bw), 2px) solid var(--warn); }
+.pp-warning p { margin: 0; font-weight: 600; }
+.pp-warning button { margin-top: calc(12px * var(--s)); }

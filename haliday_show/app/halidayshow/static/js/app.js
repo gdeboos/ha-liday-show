@@ -3495,6 +3495,59 @@ function scheduleNote(pl) {
   return `Next starts ${whenNext(next, scheduleState.now)}.`;
 }
 
+// Setup → Settings → Live music (livemusic.py) ---------------------------------------
+// While the page is open it asks a few times a second what the chosen WLED hears.
+let liveTimer = null, liveView = null;
+function startLiveMusic() {
+  if (liveTimer) return;
+  if (!$("lm-bands").children.length) for (let i = 0; i < 16; i++) $("lm-bands").append(document.createElement("span"));
+  const tick = async () => {
+    try { renderLiveMusic(await api("api/live-music")); } catch { /* next time */ }
+  };
+  tick();
+  liveTimer = setInterval(tick, 250);
+}
+function stopLiveMusic() { clearInterval(liveTimer); liveTimer = null; }
+
+function renderLiveMusic(v) {
+  liveView = v;
+  const sel = $("lm-source");
+  if (document.activeElement !== sel) {
+    const opts = [["any", "Any WLED that sends sound"], ...v.sending.map((s) => [s.ip, `${s.name}${s.name === s.ip ? "" : ` · ${s.ip}`}`])];
+    if (v.settings.source !== "any" && !opts.some(([ip]) => ip === v.settings.source)) opts.push([v.settings.source, `${v.settings.source} (not heard lately)`]);
+    const key = JSON.stringify(opts);
+    if (sel.dataset.key !== key) {
+      sel.replaceChildren(...opts.map(([value, label]) => new Option(label, value)));
+      sel.dataset.key = key;
+    }
+    sel.value = v.settings.source;
+  }
+  if (document.activeElement !== $("lm-from")) $("lm-from").value = v.settings.from;
+  const old = v.sending.filter((s) => s.old);
+  const note = !v.listening ? `HA-liday Show couldn't listen for sound: ${v.error || "unknown reason"}.`
+    : !v.now && old.length ? `${old[0].name} sends sound in an older format. Update its WLED to 0.14 or later.`
+      : !v.now ? "Not hearing any WLED yet. On the WLED with the microphone, turn on sending its sound to other devices (see the guide)."
+        : "";
+  $("lm-note").hidden = !note;
+  $("lm-note-text").textContent = note;
+  $("lm-badge").hidden = !v.now;
+  $("lm-badge").textContent = v.music ? "✓ Hearing music" : "✓ Hearing sound, quieter than music";
+  $("lm-levels").classList.toggle("is-quiet", !v.now);
+  const n = v.now || {};
+  for (const k of ["loud", "bass", "mid", "treble"]) {
+    const val = n[k === "loud" ? "loudness" : k];
+    $(`lm-${k}`).style.width = `${val ?? 0}%`;
+    $(`lm-${k}-n`).value = val == null ? "—" : `${val}%`;
+  }
+  $("lm-beat").classList.toggle("on", !!n.beat);
+  [...$("lm-bands").children].forEach((b, i) => { b.style.height = `${n.bands?.[i] ?? 0}%`; });
+}
+
+async function saveLiveMusic(change) {
+  try { renderLiveMusic(await api("api/live-music", { method: "PUT", json: change })); status("Live music saved", "saved", "live"); }
+  catch (e) { status(`Couldn't save Live music: ${e.message}`, true, "live"); }
+}
+
 // When a scene plays, for its schedule editor: on now, or its next start.
 function sceneScheduleNote(id, s) {
   if (!s?.on) return "";
@@ -4499,6 +4552,73 @@ function renderPublicQueue(view) {
   $("pub-address").hidden = !$("pub-address").textContent;
 }
 
+// The Public page tab's own tabs: Access, Shows, Look, Words, Queue. The last one open is remembered.
+function openPublicSection(tab) {
+  const tabs = [...document.querySelectorAll(".pub-tab")];
+  if (!tabs.some((t) => t.dataset.pubtab === tab)) tab = "access";
+  for (const t of tabs) {
+    const on = t.dataset.pubtab === tab;
+    t.setAttribute("aria-selected", String(on));
+    t.tabIndex = on ? 0 : -1;
+    $(`pub-panel-${t.dataset.pubtab}`).hidden = !on;
+  }
+  prefs.set("public.tab", tab);
+}
+
+// Words: every message visitors read, by group, each with the wording it starts with.
+function renderPublicWords() {
+  const view = publicView, list = $("pub-word-list");
+  const groups = view.word_groups || [];
+  if (!list.children.length || list.dataset.keys !== groups.flatMap((g) => g.words.map((w) => w.key)).join()) {
+    list.dataset.keys = groups.flatMap((g) => g.words.map((w) => w.key)).join();
+    list.replaceChildren(...groups.flatMap((g) => {
+      const head = document.createElement("p");
+      head.className = "pub-word-group";
+      head.textContent = g.group;
+      return [head, ...g.words.map((w) => {
+        const row = document.createElement("label");
+        row.className = "pub-word";
+        const name = document.createElement("span");
+        name.textContent = w.label;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.maxLength = 300;
+        input.dataset.word = w.key;
+        input.dataset.default = w.text;
+        input.placeholder = w.text;
+        const reset = document.createElement("button");
+        reset.type = "button";
+        reset.className = "ghost pub-word-reset";
+        reset.textContent = "Reset";
+        reset.title = `Back to "${w.text}"`;
+        reset.addEventListener("click", (e) => {
+          e.preventDefault();
+          input.value = w.text;
+          savePublic();
+        });
+        row.append(name, input, reset);
+        return row;
+      })];
+    }));
+  }
+  for (const input of list.querySelectorAll("input[data-word]")) {
+    const mine = view.words?.[input.dataset.word];
+    if (document.activeElement !== input) input.value = mine ?? input.dataset.default;
+    input.nextElementSibling.hidden = mine === undefined;
+  }
+  $("pub-words-reset").disabled = !Object.keys(view.words || {}).length;
+}
+
+// Your own wording, only where it differs from the default (an emptied box goes back to the default).
+function publicWords() {
+  const out = {};
+  for (const input of document.querySelectorAll("#pub-word-list input[data-word]")) {
+    const text = input.value.trim();
+    if (text && text !== input.dataset.default) out[input.dataset.word] = text;
+  }
+  return out;
+}
+
 function renderPublicLook() {
   const view = publicView, look = view.look;
   const keep = (id, value) => { if (document.activeElement !== $(id)) $(id).value = value; };
@@ -4522,6 +4642,8 @@ function renderPublicLook() {
   $("pub-size").value = look.size;
   $("pub-borders").checked = look.borders;
   $("pub-snow").checked = look.snow;
+  $("pub-show-length").checked = look.show_length !== false;
+  $("pub-warning").value = look.warning || "off";
   for (const r of document.querySelectorAll("input[name=pub-picture]")) {
     r.checked = r.value === look.picture;
     if (r.value === "house") r.disabled = !view.has_house_photo;
@@ -4595,6 +4717,7 @@ function renderPublicItems() {
   renderPublicGuard();
   renderPublicHours();
   renderPublicLook();
+  renderPublicWords();
   const dayPick = (k, key, label) => {
     const it = view.items[k];
     const day = document.createElement("select"), month = document.createElement("select");
@@ -4744,19 +4867,22 @@ function savePublic() {
       sign_text: $("pub-sign-text").value,
       spacing: $("pub-spacing").value, corners: $("pub-corners").value, size: $("pub-size").value,
       borders: $("pub-borders").checked,
+      show_length: $("pub-show-length").checked,
+      warning: $("pub-warning").value,
       colours: Object.fromEntries([...document.querySelectorAll("#pub-colours input[data-colour]")]
         .map((i) => [i.dataset.colour, i.value])),
     };
   }
+  if (shownPage === "public" && $("pub-word-list").children.length) publicView.words = publicWords();
   if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);
   if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue, address, nearby, distance, look, hours } = publicView;
+    const { on, items, per_phone, queue, address, nearby, distance, look, hours, words } = publicView;
     try {
       const view = await api("api/public", {
-        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours },
+        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words },
       });
       if (pubPending === 1) {
         publicView = view;
@@ -4783,6 +4909,29 @@ function wirePublic() {
   }
   $("pub-hours-card").addEventListener("change", () => savePublic());
   $("pub-look").addEventListener("change", (e) => { if (e.target.id !== "pub-picture-file") savePublic(); });
+  $("pub-showing").addEventListener("change", () => savePublic());
+  $("pub-word-list").addEventListener("change", () => savePublic());
+  $("pub-words-reset").addEventListener("click", () => {
+    if (!confirm("Put every word on the public page back to how it started? Your title, welcome and link stay.")) return;
+    for (const input of document.querySelectorAll("#pub-word-list input[data-word]")) input.value = input.dataset.default;
+    savePublic();
+  });
+  const tabs = [...document.querySelectorAll(".pub-tab")];
+  for (const t of tabs) {
+    t.addEventListener("click", () => openPublicSection(t.dataset.pubtab));
+    // Left and right arrows move between the tabs, as in any tab list.
+    t.addEventListener("keydown", (e) => {
+      const i = tabs.indexOf(t);
+      const to = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i + tabs.length - 1) % tabs.length,
+        Home: 0, End: tabs.length - 1 }[e.key];
+      if (to === undefined) return;
+      e.preventDefault();
+      const next = tabs[to];
+      openPublicSection(next.dataset.pubtab);
+      next.focus();
+    });
+  }
+  openPublicSection(prefs.get("public.tab", "access"));
   $("pub-picture-file").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     e.target.value = "";
@@ -7884,7 +8033,7 @@ function showView(view, { push = true } = {}) {
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
-  if (page === "settings") { renderCopies(); loadPublic(); }
+  if (page === "settings") { renderCopies(); loadPublic(); startLiveMusic(); } else stopLiveMusic();
   if (page === "public") {
     loadPublic({ items: true });
     const frame = $("pub-preview-frame");
@@ -8036,6 +8185,8 @@ function wire() {
   $("sc-name").addEventListener("change", (e) => sceneEd.rename(e.target.value));
   $("sc-same").addEventListener("change", (e) => sceneEd.setSame(e.target.checked));
   $("sc-advanced").addEventListener("click", () => sceneEd.toAdvanced());
+  $("lm-source").addEventListener("change", (e) => saveLiveMusic({ source: e.target.value }));
+  $("lm-from").addEventListener("change", (e) => saveLiveMusic({ from: Number(e.target.value) }));
   $("sb-back").addEventListener("click", () => leaveScene());
   $("sb-when").addEventListener("click", openSceneWhen);
   $("sb-basic").addEventListener("click", () => leaveScene(true));

@@ -433,6 +433,23 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 .pl-swatch-scene { background: #e9b949; }
 .pl-block.pl-block-scene { background: #e9b949; }
 .pl-disabled { opacity: .5; }
+/* Setup → Settings → Live music: what a WLED with a microphone hears. */
+.lm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.lm-row label { font-weight: 600; }
+.lm-row input[type=range] { flex: 1 1 200px; max-width: 320px; accent-color: var(--accent); }
+.lm-levels { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--bg);
+  display: flex; flex-direction: column; gap: 10px; margin: 8px 0; }
+.lm-levels.is-quiet { opacity: .5; }
+.lm-grid { display: grid; grid-template-columns: 90px minmax(0, 1fr) 48px; align-items: center; gap: 8px 12px; }
+.lm-grid output { font: 12px ui-monospace, monospace; color: var(--muted); text-align: right; }
+.lm-bar { height: 12px; border-radius: 6px; background: var(--track-alt); overflow: hidden; }
+.lm-bar > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+.lm-beat { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--track-alt);
+  border: 1px solid var(--line); }
+.lm-beat.on { background: var(--beat); }
+.lm-bands { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
+.lm-bands span { flex: 1 1 0; border-radius: 2px 2px 0 0; background: var(--wave); min-height: 2px; }
+.lm-ends { display: flex; justify-content: space-between; }
 .pl-swatch-colour { background: linear-gradient(135deg, #e53935, #fdd835, #43a047, #1e88e5); }
 .pl-swatch-effect { background: repeating-linear-gradient(90deg, #1e88e5 0 4px, #fff 4px 6px, #8e24aa 6px 10px); }
 #pl-order .pl-block-card { border-left: 6px solid var(--line); background: var(--track); }
@@ -1093,6 +1110,31 @@ a.button { text-decoration: none; }
 .scene-banner input[type=number] { width: 5em; }
 body.editing-scene :is([data-panel=song], [data-panel=beats], [data-panel=ai], #btn-all-shows, #btn-show-settings,
   #btn-generate, #output-select, #volume-wrap) { display: none !important; }
+/* Public page tab: a big button to open the page, then tabs over the settings. */
+.pub-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.pub-open-big { font-size: 16px; font-weight: 600; padding: 10px 22px; border-radius: 10px;
+  background: var(--accent); color: var(--accent-text); border: 1px solid var(--accent); }
+.pub-open-big:hover { filter: brightness(1.1); }
+.pub-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.pub-tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px;
+  border: 1px solid transparent; background: none; color: var(--muted); font-weight: 600; }
+.pub-tab .ico { width: 16px; height: 16px; }
+.pub-tab:hover { background: var(--track); color: var(--text); }
+.pub-tab[aria-selected="true"] { background: var(--panel); border-color: var(--line); color: var(--text);
+  box-shadow: inset 0 -2px var(--accent); }
+.pub-panel { display: flex; flex-direction: column; gap: 10px; }
+@media (max-width: 720px) {
+  .pub-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .pub-tab { flex: none; }
+}
+.pub-word-list { display: flex; flex-direction: column; gap: 4px; }
+.pub-word-group { margin: 18px 0 4px; padding-top: 12px; border-top: 1px solid var(--line); font-weight: 600; }
+.pub-word-group:first-child { margin-top: 4px; padding-top: 0; border-top: 0; }
+.pub-word { display: grid; grid-template-columns: minmax(0, 14em) minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+.pub-word input { width: 100%; }
+.pub-word .pub-word-reset[hidden] { display: inline-block !important; visibility: hidden; }
+@media (max-width: 720px) { .pub-word { grid-template-columns: minmax(0, 1fr) auto; }
+  .pub-word > span:first-child { grid-column: 1 / -1; } }
 
 /* Light groups on the Devices tab, and their window's list of lights and parts. */
 .light-groups { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
