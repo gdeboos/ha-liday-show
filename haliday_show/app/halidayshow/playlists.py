@@ -23,7 +23,7 @@ MAX_GAP_S = 600
 MAX_OFFSET_MIN = 180
 MAX_ITEMS = 200
 MAX_BLOCK_S = 3600
-BLOCKS = ("pause", "off", "colour", "effect")
+BLOCKS = ("pause", "off", "colour", "effect", "scene")  # a scene block plays one of your scenes (scenelib.py)
 
 _TIME = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _COLOUR = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -107,6 +107,10 @@ def clean_item(it) -> dict | None:
         if not isinstance(it.get("effect"), str) or not _EFFECT.match(it["effect"]) or params is None:
             return None
         out["effect"], out["params"] = it["effect"], params
+    if kind == "scene":
+        if not isinstance(it.get("scene"), str) or not valid_id(it["scene"]):
+            return None
+        out["scene"] = it["scene"]
     return out
 
 

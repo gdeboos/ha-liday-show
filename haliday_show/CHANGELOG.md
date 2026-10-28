@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.214
+
+- Playlists have a **Scene** building block: one of your scenes for a set time between shows, going
+  round as it does on its own, at your scenes' brightness. Pick the scene on the block's card in
+  **Running order**. If you delete the scene later, the block says so and is skipped.
+
 ## 0.2.213
 
 - **Setup → Devices** no longer shows **✓ works** next to lights that work as they should. Only

@@ -133,3 +133,12 @@ test("a block's frames need baking again only when what they show changes", () =
   assert.notEqual(bakeKey(e, "L"), bakeKey({ ...e, seconds: 30 }, "L"));
   assert.equal(bakeKey({ ...e, seconds: 120 }, "L"), bakeKey({ ...e, seconds: 600 }, "L"));
 });
+
+test("a Scene block is named after its scene", async () => {
+  const { blockLabel, newBlock, strip } = await import("../../haliday_show/app/halidayshow/static/js/playlisteditor.js");
+  const b = { ...newBlock("scene", 1), scene: "glow" };
+  assert.equal(b.seconds, 60);
+  assert.equal(blockLabel(b, { glow: "Candy cane" }), "Scene: Candy cane · 1 min");
+  assert.equal(blockLabel(b), "Scene: a scene that's gone · 1 min");
+  assert.equal(strip([b], {}, { glow: "Candy cane" }).blocks[0].name, "Scene: Candy cane · 1 min");
+});

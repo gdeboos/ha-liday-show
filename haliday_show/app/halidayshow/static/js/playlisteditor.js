@@ -17,6 +17,7 @@ export const BLOCKS = {
   colour: { label: "Colour", hint: "Every light one colour", seconds: 10 },
   off: { label: "Off", hint: "Every light dark", seconds: 5 },
   effect: { label: "Effect", hint: "An effect on every light", seconds: 30 },
+  scene: { label: "Scene", hint: "One of your scenes", seconds: 60 },
 };
 
 // Effects a block can play: ones that look the same however long they run (not Fade or Wipe, which
@@ -29,6 +30,7 @@ const rand = () => Math.random().toString(36).slice(2, 8);
 export function newBlock(type, now = Date.now()) {
   const b = { type, id: `${type}-${now.toString(36)}-${rand()}`, seconds: BLOCKS[type].seconds };
   if (type === "colour") b.colour = "#ff0000";
+  if (type === "scene") b.scene = "";
   if (type === "effect") Object.assign(b, { effect: "twinkle", params: { ...defaultParams("twinkle"), ...PRESETS.twinkle[1].params } });
   return b;
 }
@@ -84,14 +86,17 @@ export function seconds(s) {
   return r ? `${m} min ${r} s` : `${m} min`;
 }
 
-export function blockLabel(b) {
-  const what = b.type === "effect" ? `${BLOCKS.effect.label}: ${EFFECTS[b.effect]?.label || b.effect}` : BLOCKS[b.type]?.label || b.type;
+// `scenes` maps a scene's id to its name, for a Scene block.
+export function blockLabel(b, scenes = {}) {
+  const what = b.type === "effect" ? `${BLOCKS.effect.label}: ${EFFECTS[b.effect]?.label || b.effect}`
+    : b.type === "scene" ? `${BLOCKS.scene.label}: ${scenes[b.scene] || "a scene that's gone"}`
+      : BLOCKS[b.type]?.label || b.type;
   return `${what} · ${seconds(b.seconds)}`;
 }
 
 // What plays: each item's place on the playlist's strip, as fractions of one time round. Shows that
 // won't play (not saved, archived or deleted) are left out, as the player skips them.
-export function strip(items, byId) {
+export function strip(items, byId, scenes = {}) {
   const playing = items.map((x, k) => ({ x, k, show: x.type === "show" ? byId[x.id] : null }))
     .filter((e) => (e.x.type === "show" ? e.show?.baked : true));
   const len = (e) => Math.max(0, e.x.type === "show" ? e.show.duration || 0 : e.x.seconds || 0);
@@ -99,7 +104,7 @@ export function strip(items, byId) {
   let at = 0;
   const blocks = playing.map((e) => {
     const l = len(e);
-    const b = { k: e.k, type: e.x.type, id: e.x.id, name: e.x.type === "show" ? e.show.name : blockLabel(e.x),
+    const b = { k: e.k, type: e.x.type, id: e.x.id, name: e.x.type === "show" ? e.show.name : blockLabel(e.x, scenes),
       seconds: l, start: total ? at / total : 0, width: total ? l / total : 0 };
     if (e.x.type === "colour") b.colour = e.x.colour;
     at += l;

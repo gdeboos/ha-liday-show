@@ -240,7 +240,7 @@ export const HELP = {
       ] },
       { id: "shows", title: "Shows and building blocks", tips: [
         "Drag a show from <b>Your shows</b>, or press <b>+</b> to add it at the end. The same show can go in more than once.",
-        "<b>Building blocks</b> go between shows: a <b>Pause</b>, one <b>Colour</b>, <b>Off</b> or an <b>Effect</b>, each with its own length.",
+        "<b>Building blocks</b> go between shows: a <b>Pause</b>, one <b>Colour</b>, <b>Off</b>, an <b>Effect</b> or one of your <b>Scenes</b>, each with its own length.",
       ] },
       { id: "when", title: "When it plays", guide: ["play-it.md", "playlists"], tips: [
         "Turn on <b>Play on a schedule</b> and pick the times and days. A start time can be at sunset.",

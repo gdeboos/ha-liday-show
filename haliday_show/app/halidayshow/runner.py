@@ -88,7 +88,7 @@ class Runner:
                 "playlist": {"id": playlist["id"], "name": playlist["name"], "finishing": self.finishing}
                 if playlist else None,
                 "song": self.song if st["playing"] else None, "started": self.started,
-                "block": {k: block[k] for k in ("type", "id", "seconds", "effect") if k in block} if block else None,
+                "block": {k: block[k] for k in ("type", "id", "seconds", "effect", "scene") if k in block} if block else None,
                 "scene": scene}
 
     async def play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
@@ -358,7 +358,9 @@ class Runner:
         if item["type"] == "pause":  # the lights as they normally are
             await asyncio.sleep(item["seconds"])
             return False
-        blob = self.storage.load_block(item["id"])
+        # A scene block plays the scene's own frames (baked by the Scene editor), dimmed as scenes are.
+        scene = item["type"] == "scene"
+        blob = self.storage.load_scene_baked(item["scene"]) if scene else self.storage.load_block(item["id"])
         if blob is None:  # not baked yet: the editor bakes it when the playlist's opened
             log.warning("playlist block %s (%s) has no frames yet; skipping it", item["id"], item["type"])
             return False
@@ -370,6 +372,8 @@ class Runner:
         async with self._lock:
             await self._stop()
             self.block = item
+            if scene:
+                self.player.set_level(self.scene_level())
             await self.player.play(None, baked, self.storage.devices_by_id(), length=item["seconds"])
         while self.player.playing and self.block is item:
             await asyncio.sleep(0.1)
