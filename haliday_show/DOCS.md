@@ -1044,6 +1044,9 @@ a preset sets just the settings it names. When adding an effect it uses the effe
 when changing a clip your colours stay. The Effect button shows the preset a clip matches, such as
 **Three colours · Wide marquee**. The chooser remembers whether presets were showing.
 
+Some presets come from WLED's favourites: **Heartbeat** (Pulse), **Meteor** (Comet), **Twin scanner** (Scanner)
+and **Dark sparkle** (Twinkle: lit all over in your colour, with bulbs blinking out).
+
 ### Your own presets
 
 Get a clip looking right, then press **Save as preset…** under its settings.
@@ -1086,7 +1089,7 @@ the colour field you last clicked, or press **Apply palette** to fill them all i
 light's name to **Recolour this light** or **Recolour all lights**: each light steps through the
 palette effect by effect, so the lights stay matched (backgrounds are left alone). **Library →
 Palettes** lists your palettes, each with **Edit…**, **Duplicate** and **Delete…**, then the built-in
-ones. **Edit…** opens a window to rename the palette and change its colours: pick each colour, move it
+ones (seasonal ones, plus looks such as **Classic C9 bulbs**, **Lava**, **Aurora** and **Ice and fire**). **Edit…** opens a window to rename the palette and change its colours: pick each colour, move it
 up with **↑**, take it out with **✕**, or **+ Add a colour** (up to 12). **Save** keeps the changes.
 **+ New palette**, or **Copy…** on a built-in one, opens the same window for a new palette. Or describe some colours in the box above, such as
 "frosty winter night" or "tropical sunset", and press **✨ Make palettes**: the AI suggests up to three, each
@@ -1137,14 +1140,14 @@ Ctrl+Z undoes and Ctrl+Shift+Z (or Ctrl+Y) redoes, even after a change has been 
 | --- | --- |
 | Solid | One colour |
 | Two colours, Three colours | Solid colours side by side. **Split** divides the light into halves or thirds; **Alternate** repeats them along it, **Segments per colour** wide. **Move** slides them along like marquee lights (negative numbers go the other way). |
-| Pulse | Breathes between a colour and the background |
+| Pulse | Breathes between a colour and the background. **Shape: heartbeat** beats twice, lub-dub, like a heart |
 | Gradient | Blends two or three colours along the light; **Move** slides it back and forth |
 | Colour cycle | The whole light changes through two to four colours, fading or stepping |
 | Fade | Fades from one colour to another over the clip; fade to a darker colour for a gentle dim |
 | Chase | A block of colour running along the light |
 | Rainbow | A moving rainbow |
-| Comet | A bright head with a fading tail running along the light |
-| Scanner | A dot bouncing from end to end |
+| Comet | A bright head with a fading tail running along the light. **Tail: sparkly** breaks the tail up as it fades, like a meteor |
+| Scanner | A dot bouncing from end to end. **Eyes: two** sends two dots from opposite ends, crossing in the middle |
 | Flicker | Candle or fire flicker between two colours |
 | Lightning | Random bright flashes over a dark background |
 | Strobe | Flashes on and off |

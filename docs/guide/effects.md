@@ -13,14 +13,14 @@
 | --- | --- |
 | Solid | One colour |
 | Two colours, Three colours | Solid colours side by side. **Split** divides the light into halves or thirds; **Alternate** repeats them along it, **Segments per colour** wide. **Move** slides them along like marquee lights (negative numbers go the other way). |
-| Pulse | Breathes between a colour and the background |
+| Pulse | Breathes between a colour and the background. **Shape: heartbeat** beats twice, lub-dub, like a heart |
 | Gradient | Blends two or three colours along the light; **Move** slides it back and forth |
 | Colour cycle | The whole light changes through two to four colours, fading or stepping |
 | Fade | Fades from one colour to another over the clip; fade to a darker colour for a gentle dim |
 | Chase | A block of colour running along the light |
 | Rainbow | A moving rainbow |
-| Comet | A bright head with a fading tail running along the light |
-| Scanner | A dot bouncing from end to end |
+| Comet | A bright head with a fading tail running along the light. **Tail: sparkly** breaks the tail up as it fades, like a meteor |
+| Scanner | A dot bouncing from end to end. **Eyes: two** sends two dots from opposite ends, crossing in the middle |
 | Flicker | Candle or fire flicker between two colours |
 | Lightning | Random bright flashes over a dark background |
 | Strobe | Flashes on and off |

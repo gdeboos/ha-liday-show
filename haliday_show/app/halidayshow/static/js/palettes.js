@@ -22,6 +22,14 @@ export const PRESET_PALETTES = [
   { name: "Forest", colors: ["#00a000", "#60ff00", "#c0ff40", "#ffb000"] },
   { name: "Party", colors: ["#ff00ff", "#00ffff", "#ffff00", "#00ff00"] },
   { name: "Warm white", colors: ["#ffd8a0", "#ffb060", "#ffffff"] },
+  { name: "Classic C9 bulbs", colors: ["#ff0000", "#ff7000", "#00b000", "#0030ff", "#ffd000"] },
+  { name: "Retro clown", colors: ["#ffa000", "#ff3060", "#a000ff"] },
+  { name: "Lava", colors: ["#c00000", "#ff0000", "#ff6000", "#ffd060"] },
+  { name: "Aurora", colors: ["#00ff40", "#00ffa0", "#0060ff", "#a000ff"] },
+  { name: "Ice and fire", colors: ["#0040ff", "#00c0ff", "#ffffff", "#ff8000", "#ff0000"] },
+  { name: "Autumn", colors: ["#ff3000", "#ff8000", "#ffc000", "#c04000"] },
+  { name: "Sakura", colors: ["#ff2060", "#ff60a0", "#ffffff"] },
+  { name: "Orange and teal", colors: ["#ff7000", "#00c0a0"] },
 ];
 
 // The preset palette for the time of year, if one is in season: Halloween through October, then

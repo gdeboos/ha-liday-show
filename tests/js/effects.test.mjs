@@ -261,3 +261,27 @@ test("bake plays group lanes and leaves them out of the lights", async () => {
   assert.deepEqual(header.tracks.map((t) => t.device), ["a"]);
   assert.equal(out[9 + len + 1], 255);
 });
+
+test("WLED-style shapes: heartbeat, twin scanner and sparkly tail", async () => {
+  const { PRESETS, matchesPreset } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const at = (clip, t, n, i) => EFFECTS[clip.effect].render({ ...newClip(clip.effect, 0, 9), ...clip }, t, 9, n, i);
+  // Heartbeat: full at the first beat, a softer second beat, dark in between and before the next.
+  const beat = { effect: "pulse", color: "#ff0000", rate: 1, shape: "heartbeat" };
+  assert.equal(Math.round(at(beat, 0, 1, 0)[0]), 255);
+  const second = at(beat, 0.21, 1, 0)[0];
+  assert.ok(second > 120 && second < 230, String(second));
+  assert.ok(at(beat, 0.6, 1, 0)[0] < 5);
+  // Twin scanner: mirrored, so the ends match.
+  const twin = { effect: "scanner", eyes: "two", width: 2, speed: 0.3 };
+  for (const t of [0, 0.4, 1.1]) for (let i = 0; i < 20; i++) assert.deepEqual(at(twin, t, 20, i).map(Math.round), at(twin, t, 20, 19 - i).map(Math.round));
+  // Sparkly tail: the head stays full, the tail never brighter than a smooth one, and the same twice.
+  const smooth = { effect: "comet", length: 6, speed: 0.1 }, sparkly = { ...smooth, trail: "sparkly" };
+  for (let i = 0; i < 30; i++) {
+    assert.ok(at(sparkly, 2, 30, i)[0] <= at(smooth, 2, 30, i)[0] + 1e-9);
+    assert.deepEqual(at(sparkly, 2, 30, i), at(sparkly, 2, 30, i));
+  }
+  // A clip saved before Shape existed still counts as Steady beat.
+  const old = { effect: "pulse", start: 0, end: 1, color: "#ff0000", background: "#000000", rate: 1.2, brightness: 100 };
+  assert.ok(matchesPreset(PRESETS.pulse.find((p) => p.label === "Steady beat"), old));
+  assert.ok(!matchesPreset(PRESETS.pulse.find((p) => p.label === "Heartbeat"), old));
+});

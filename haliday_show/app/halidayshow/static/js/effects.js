@@ -82,8 +82,14 @@ export const EFFECTS = {
   pulse: {
     label: "Pulse",
     params: [color("color", "Colour", "#ff0000"), color("background", "Background", "#000000"),
-      num("rate", "Pulses per second", 1, 0.05, 10, 0.05)],
-    render: (p, t) => mix(hexToRgb(p.background), hexToRgb(p.color), (1 - Math.cos(2 * Math.PI * t * p.rate)) / 2),
+      num("rate", "Pulses per second", 1, 0.05, 10, 0.05), choice("shape", "Shape", "smooth", ["smooth", "heartbeat"])],
+    render: (p, t) => {
+      if (p.shape !== "heartbeat") return mix(hexToRgb(p.background), hexToRgb(p.color), (1 - Math.cos(2 * Math.PI * t * p.rate)) / 2);
+      // Lub-dub: a strong beat, then a softer one a fifth of the way through, each with a quick fall.
+      const ph = mod(t * p.rate, 1);
+      const beat = (at) => (ph >= at ? Math.exp(-(ph - at) / 0.05) : 0);
+      return mix(hexToRgb(p.background), hexToRgb(p.color), Math.min(1, beat(0) + 0.7 * beat(0.2)));
+    },
   },
   gradient: {
     label: "Gradient",
@@ -138,22 +144,29 @@ export const EFFECTS = {
   comet: {
     label: "Comet",
     params: [color("color", "Colour", "#ffffff"), color("background", "Background", "#000000"),
-      num("length", "Tail (segments)", 5, 1, 100, 1), num("speed", "Laps per second", 1, 0.05, 10, 0.05), direction],
+      num("length", "Tail (segments)", 5, 1, 100, 1), num("speed", "Laps per second", 1, 0.05, 10, 0.05), direction,
+      choice("trail", "Tail", "smooth", ["smooth", "sparkly"])],
     render: (p, t, dur, n, i) => {
       const head = mod(t * p.speed * n, n);
       const pos = p.direction === "reverse" ? n - 1 - i : i;
       const behind = mod(head - pos, n);
-      return behind < p.length ? mix(hexToRgb(p.background), hexToRgb(p.color), 1 - behind / p.length)
-        : hexToRgb(p.background);
+      if (behind >= p.length) return hexToRgb(p.background);
+      let u = 1 - behind / p.length;
+      // A sparkly tail (WLED's Meteor) breaks up as it fades: each segment of it flickers on its own.
+      if (p.trail === "sparkly" && behind >= 1) u *= 0.25 + 0.75 * hash01(i + 1, Math.floor(t * 15));
+      return mix(hexToRgb(p.background), hexToRgb(p.color), u);
     },
   },
   scanner: {
     label: "Scanner",
     params: [color("color", "Colour", "#ff0000"), color("background", "Background", "#000000"),
-      num("width", "Width (segments)", 2, 1, 50, 0.5), num("speed", "Sweeps per second", 0.5, 0.05, 10, 0.05)],
+      num("width", "Width (segments)", 2, 1, 50, 0.5), num("speed", "Sweeps per second", 0.5, 0.05, 10, 0.05),
+      choice("eyes", "Eyes", "one", ["one", "two"])],
     render: (p, t, dur, n, i) => {
       const head = bounce(t * p.speed) * (n - 1);
-      return mix(hexToRgb(p.background), hexToRgb(p.color), Math.max(0, 1 - Math.abs(i - head) / p.width));
+      // Two eyes mirror each other, crossing in the middle.
+      const d = Math.min(Math.abs(i - head), p.eyes === "two" ? Math.abs(i - (n - 1 - head)) : Infinity);
+      return mix(hexToRgb(p.background), hexToRgb(p.color), Math.max(0, 1 - d / p.width));
     },
   },
   flicker: {
@@ -306,7 +319,8 @@ export const PRESETS = {
   trio: MULTI_PRESETS,
   pulse: [
     { label: "Slow breathe", params: { rate: 0.3 } },
-    { label: "Heartbeat", params: { rate: 1.2 } },
+    { label: "Steady beat", params: { rate: 1.2, shape: "smooth" } },
+    { label: "Heartbeat", params: { rate: 1.1, shape: "heartbeat" } },
     { label: "Fast pulse", params: { rate: 3 } },
   ],
   gradient: [
@@ -339,11 +353,13 @@ export const PRESETS = {
     { label: "Shooting star", params: { length: 6, speed: 1.5 } },
     { label: "Long and slow", params: { length: 12, speed: 0.4 } },
     { label: "Short and fast", params: { length: 3, speed: 2.5 } },
+    { label: "Meteor", params: { length: 15, speed: 0.6, trail: "sparkly" } },
   ],
   scanner: [
     { label: "Slow", params: { width: 2, speed: 0.3 } },
     { label: "Knight Rider", params: { width: 3, speed: 0.8 } },
     { label: "Fast and narrow", params: { width: 1, speed: 2 } },
+    { label: "Twin scanner", params: { width: 3, speed: 0.5, eyes: "two" } },
   ],
   flicker: [
     { label: "Embers", params: { rate: 2 } },
@@ -364,6 +380,8 @@ export const PRESETS = {
     { label: "Gentle", params: { density: 15, rate: 2 } },
     { label: "Starry", params: { density: 30, rate: 4 } },
     { label: "Sparkle storm", params: { density: 60, rate: 10 } },
+    // Lit all over, with segments blinking out: the clip's colour becomes the background.
+    { label: "Dark sparkle", params: { background: (p) => nonBlack(p, ["color", "background"]), color: "#000000", density: 20, rate: 4 } },
   ],
   wipe: [
     { label: "Forward", params: { direction: "forward" } },
@@ -396,6 +414,8 @@ export function presetParams(preset, p) {
 
 // Whether a clip's settings already match a preset.
 export function matchesPreset(preset, p) {
+  // A clip saved before a setting existed has that setting's default.
+  if (EFFECTS[p.effect]) p = { ...defaultParams(p.effect), ...p };
   return Object.entries(presetParams(preset, p)).every(([k, v]) => String(p[k]) === String(v));
 }
 

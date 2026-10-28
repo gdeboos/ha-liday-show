@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.235
+
+- New presets, borrowed from WLED's favourites. Tick **Show presets** in the effect window to find them:
+  - **Pulse · Heartbeat** now beats twice, lub-dub, like a real heart. The old steady one is called **Steady beat**, and clips that used it are unchanged.
+  - **Comet · Meteor**: a long tail that breaks up and sparkles as it fades.
+  - **Scanner · Twin scanner**: two dots from opposite ends, crossing in the middle.
+  - **Twinkle · Dark sparkle**: the light lit all over in your colour, with bulbs blinking out.
+- Three new settings make these work, and you can use them on any clip: **Shape** on Pulse, **Tail** on Comet and **Eyes** on Scanner.
+- Eight new built-in palettes: **Classic C9 bulbs** (old-style big Christmas bulbs), **Retro clown**, **Lava**, **Aurora**, **Ice and fire**, **Autumn**, **Sakura** and **Orange and teal**.
+
 ## 0.2.234
 
 - **Library → Samples** has folders. Press **+ New folder**, then pick a folder on each sample. Folders fold away and can be renamed or deleted (their samples stay). The sample files don't move, so nothing that uses them breaks.
