@@ -48,7 +48,9 @@ House lane. They sit on top of each light's own effects.
 
 #### Group lanes
 
-Each [light group](lights.md#light-groups) has a lane under **House**, named after it. Select a stretch of it and
+Each [light group](lights.md#light-groups) has a lane under **House**, named after it. Press the **▸** before **House** to fold
+all the group lanes away under it, and **▾** to bring them back. Folding is remembered in your browser, and
+a stretch selected across lights leaves folded tracks out. Select a stretch of it and
 press **＋ Add effect…**, and the chooser has two kinds:
 
 - **Along the group, as if its lights were one strip**: any light effect, running through the group's

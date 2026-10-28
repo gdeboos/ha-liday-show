@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.222
+
+- The Show editor's timeline folds: press **▸** before **House** to tuck all the group lanes away under it,
+  or before a split light's name to tuck its parts away. **▾** brings them back, and the timeline remembers
+  what you folded.
+
 ## 0.2.221
 
 - Groups on **Setup → Devices** have **↑** and **↓** to change their order, which is the order of their

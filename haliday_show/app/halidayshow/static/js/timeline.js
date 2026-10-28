@@ -48,14 +48,50 @@ export class Timeline {
   get scrollX() { return this.scroll.scrollLeft; }
   x(t) { return HEADER_W + t * this.app.pps - this.scrollX; }
   t(x) { return (x - HEADER_W + this.scrollX) / this.app.pps; }
+  // Folding: the group lanes fold away under the House lane, and a split light's parts under its own
+  // track. app.folded is a Set of "@groups" and light ids; app.foldChanged() keeps it.
+  foldKey(i) {
+    const tr = this.app.show.tracks[i];
+    if (!tr) return null;
+    if (tr.device === HOUSE) return this.app.show.tracks.some((t) => isGroupTrack(t.device)) ? "@groups" : null;
+    const d = this.app.devices[tr.device];
+    return d?.light?.parts?.length && this.app.show.tracks.some((t) => this.app.devices[t.device]?.parent === d.light.id) ? d.light.id : null;
+  }
+
+  hidden(i) {
+    const tracks = this.app.show.tracks, folded = this.app.folded;
+    if (!folded?.size) return false;
+    const tr = tracks[i];
+    if (isGroupTrack(tr.device)) return folded.has("@groups");
+    const parent = this.app.devices[tr.device]?.parent;
+    // Only under the light's own track: a parts-only light keeps its parts showing.
+    return !!parent && folded.has(parent) && tracks.some((t) => t.device === parent);
+  }
+
+  // The tracks on show, top to bottom, as indices into show.tracks.
+  rows() {
+    const out = [];
+    this.app.show.tracks.forEach((_, i) => { if (!this.hidden(i)) out.push(i); });
+    return out;
+  }
+
+  yOf(i, rows = this.rows()) { return TOP + rows.indexOf(i) * TRACK_H; }
+
   trackAt(y) {
-    const i = Math.floor((y - TOP) / TRACK_H);
-    return y >= TOP && i < this.app.show.tracks.length ? i : -1;
+    const rows = this.rows(), r = Math.floor((y - TOP) / TRACK_H);
+    return y >= TOP && r < rows.length ? rows[r] : -1;
+  }
+
+  toggleFold(key) {
+    const f = this.app.folded;
+    if (f.has(key)) f.delete(key); else f.add(key);
+    this.app.foldChanged?.();
+    this.layout();
   }
 
   layout() {
     const w = this.scroll.clientWidth;
-    const h = TOP + Math.max(this.app.show?.tracks.length || 0, 1) * TRACK_H;
+    const h = TOP + Math.max(this.app.show ? this.rows().length : 0, 1) * TRACK_H;
     this.inner.style.width = `${HEADER_W + this.duration * this.app.pps + 40}px`;
     this.inner.style.height = `${h}px`;
     // The stage must be only as wide as the view, or it has no room to stick and scrolls away.
@@ -102,9 +138,11 @@ export class Timeline {
     ctx.clearRect(0, 0, w, h);
 
     // tracks
-    this.app.show.tracks.forEach((tr, i) => {
-      const y = TOP + i * TRACK_H;
-      ctx.fillStyle = col(i % 2 ? "--track-alt" : "--track");
+    const rows = this.rows();
+    rows.forEach((i, row) => {
+      const tr = this.app.show.tracks[i];
+      const y = TOP + row * TRACK_H;
+      ctx.fillStyle = col(row % 2 ? "--track-alt" : "--track");
       ctx.fillRect(HEADER_W, y, w - HEADER_W, TRACK_H);
       const dev = this.app.devices[tr.device];
       tr.clips.forEach((clip) => this.drawClip(clip, y, dev, col, this.app.clipFit?.(clip, i)));
@@ -151,19 +189,23 @@ export class Timeline {
     const sizes = {};
     tracks.forEach((_, k) => { const g = lightOf(k); if (g) sizes[g] = (sizes[g] || 0) + 1; });
     const groupOf = (k) => { const g = lightOf(k); return g && sizes[g] > 1 ? g : null; };
-    tracks.forEach((tr, i) => {
+    // Neighbours on screen, past folded tracks.
+    const above = (i) => rows[rows.indexOf(i) - 1], below = (i) => rows[rows.indexOf(i) + 1];
+    rows.forEach((i, row) => {
       const g = groupOf(i);
       if (!g) return;
-      const y = TOP + i * TRACK_H;
+      const y = TOP + row * TRACK_H;
       ctx.fillStyle = col("--accent");
       ctx.globalAlpha = 0.07;
       ctx.fillRect(0, y, HEADER_W, TRACK_H);
       ctx.globalAlpha = 0.8;
-      ctx.fillRect(0, y + (groupOf(i - 1) === g ? 0 : 4), 4, TRACK_H - (groupOf(i - 1) === g ? 0 : 4) - (groupOf(i + 1) === g ? 0 : 4));
+      const joinUp = groupOf(above(i)) === g, joinDown = groupOf(below(i)) === g;
+      ctx.fillRect(0, y + (joinUp ? 0 : 4), 4, TRACK_H - (joinUp ? 0 : 4) - (joinDown ? 0 : 4));
       ctx.globalAlpha = 1;
     });
-    tracks.forEach((tr, i) => {
-      const y = TOP + i * TRACK_H;
+    rows.forEach((i, row) => {
+      const tr = tracks[i];
+      const y = TOP + row * TRACK_H;
       const dev = this.app.devices[tr.device];
       if (this.app.selected?.track === i && !this.app.selected.clip && !this.app.selected.range) {
         ctx.fillStyle = col("--accent");
@@ -174,8 +216,15 @@ export class Timeline {
       const house = tr.device === HOUSE;
       const lane = isGroupTrack(tr.device) && (this.app.groupFor?.(tr.device) || { name: "Deleted group", gone: true });
       // A part under its light's own track (or another part) shows just its own name, indented.
-      const nested = dev?.parent && groupOf(i - 1) === dev.parent;
-      const x = nested ? 26 : 10;
+      const nested = dev?.parent && groupOf(above(i)) === dev.parent;
+      // A track that folds others away has its arrow in front of the name.
+      const fold = this.foldKey(i), folded = fold && this.app.folded?.has(fold);
+      const x = nested ? 26 : fold ? 22 : 10;
+      if (fold) {
+        ctx.fillStyle = col("--muted");
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.fillText(folded ? "▸" : "▾", 9, y + 20);
+      }
       if (nested) {
         ctx.strokeStyle = col("--muted");
         ctx.globalAlpha = 0.6;
@@ -196,15 +245,20 @@ export class Timeline {
         : `${dev.segments} segments${dev.ip || dev.entity ? "" : " · planned"}`;
       const note = !house && !lane && dev && this.app.trackNote?.(dev);
       if (note) ctx.fillStyle = WARN;
-      ctx.fillText(clipText(ctx, note ? `⚠ ${note}` : sub, HEADER_W - x - 6), x, y + 36);
+      // Folded, it says what's tucked away under it instead.
+      const count = (n, what) => `${n} ${what}${n === 1 ? "" : "s"} folded`;
+      const line = !folded ? sub : fold === "@groups" ? count(tracks.filter((t) => isGroupTrack(t.device)).length, "group")
+        : count(tracks.filter((t) => this.app.devices[t.device]?.parent === fold).length, "part");
+      ctx.fillText(clipText(ctx, note ? `⚠ ${note}` : line, HEADER_W - x - 6), x, y + 36);
     });
     this.drawRange(col);
     ctx.strokeStyle = col("--line");
     ctx.beginPath(); ctx.moveTo(HEADER_W + 0.5, 0); ctx.lineTo(HEADER_W + 0.5, h); ctx.stroke();
-    for (let i = 0; i <= this.app.show.tracks.length; i++) {
-      const y = TOP + i * TRACK_H + 0.5;
+    for (let row = 0; row <= rows.length; row++) {
+      const y = TOP + row * TRACK_H + 0.5;
       // A heavier line where a group of a split light's tracks starts or ends.
-      const edge = groupOf(i) !== groupOf(i - 1) && (groupOf(i) || groupOf(i - 1));
+      const now = groupOf(rows[row]), before = groupOf(rows[row - 1]);
+      const edge = now !== before && (now || before);
       ctx.lineWidth = edge ? 2 : 1;
       ctx.strokeStyle = col(edge ? "--muted" : "--line");
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
@@ -275,7 +329,9 @@ export class Timeline {
     const { ctx, w } = this;
     const x0 = Math.max(this.x(r.start), HEADER_W), x1 = Math.min(this.x(r.end), w);
     if (x1 <= x0) return;
-    const y0 = TOP + r.tracks[0] * TRACK_H, y1 = TOP + (r.tracks.at(-1) + 1) * TRACK_H;
+    const rows = this.rows(), shown = r.tracks.filter((t) => rows.includes(t));
+    if (!shown.length) return;
+    const y0 = this.yOf(shown[0], rows), y1 = this.yOf(shown.at(-1), rows) + TRACK_H;
     ctx.fillStyle = col("--accent");
     ctx.globalAlpha = 0.22;
     ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
@@ -447,8 +503,10 @@ export class Timeline {
   down(e) {
     const [x, y] = this.pos(e);
     if (x < HEADER_W) {
-      // Clicking a light's name selects the whole light, for copying its effects.
+      // The arrow folds or unfolds; clicking a light's name selects the whole light, for copying its effects.
       const ti = this.trackAt(y);
+      const fold = ti >= 0 && this.foldKey(ti);
+      if (fold && x < 20) { this.toggleFold(fold); return; }
       if (ti >= 0) this.app.select({ track: ti, clip: null });
       return;
     }
@@ -491,8 +549,9 @@ export class Timeline {
   }
 
   setRange(a, b, start, end) {
-    const tracks = [];
-    for (let i = Math.min(a, b); i <= Math.max(a, b); i++) tracks.push(i);
+    // The tracks on show between the two, not folded ones.
+    const rows = this.rows(), ra = rows.indexOf(a), rb = rows.indexOf(b);
+    const tracks = ra < 0 || rb < 0 ? [a] : rows.slice(Math.min(ra, rb), Math.max(ra, rb) + 1);
     this.app.selected = { track: tracks[0], clip: null, range: { tracks, start, end } };
     this.draw();
   }

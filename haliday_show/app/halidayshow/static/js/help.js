@@ -62,6 +62,7 @@ export const HELP = {
         "Click a clip to edit it: drag it to move, drag its edges to resize.",
         `Zoom with <b>−</b> and <b>+</b>, the ${k("+")} and ${k("−")} keys, or ${k("Ctrl")} + wheel round the pointer.`,
         "Click a light's name to copy or recolour all its effects.",
+        "<b>▸</b> before <b>House</b> folds the group lanes away; before a split light, its parts.",
         "Coloured flags on the beat lane are the song's marks, made in the Music editor. Clips snap to them.",
         "A group's lane, under <b>House</b>, plays its effects along the group's lights as one strip, or House effects across just those lights.",
       ] },

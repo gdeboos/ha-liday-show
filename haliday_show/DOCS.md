@@ -373,7 +373,7 @@ own track goes away (or, if it has effects on it, is marked *Not played: parts o
 
 On the timeline a split light's tracks (when there's more than one) are grouped: a coloured bar runs down the left of the light
 and its parts, the parts are indented under it, and a heavier line marks where the group starts and
-ends.
+ends. Press the **▸** before the light's name to fold its parts away under it, and **▾** to bring them back.
 
 ### Light groups
 
@@ -1169,7 +1169,9 @@ House lane. They sit on top of each light's own effects.
 
 #### Group lanes
 
-Each [light group](#light-groups) has a lane under **House**, named after it. Select a stretch of it and
+Each [light group](#light-groups) has a lane under **House**, named after it. Press the **▸** before **House** to fold
+all the group lanes away under it, and **▾** to bring them back. Folding is remembered in your browser, and
+a stretch selected across lights leaves folded tracks out. Select a stretch of it and
 press **＋ Add effect…**, and the chooser has two kinds:
 
 - **Along the group, as if its lights were one strip**: any light effect, running through the group's
