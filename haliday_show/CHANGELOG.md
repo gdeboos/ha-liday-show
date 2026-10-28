@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.249
+
+- The AI (**Describe it** and **Generate with AI**) knows what every effect looks like, including all the new ones, so it picks them by look.
+- It can now use transitions (fading or wiping clips in and out, and crossfading between them), settings that change over a clip (a chase speeding up into the chorus), and how a House lane effect mixes with the lights' own effects.
+- A whole new show from the AI still builds up: fewer lights in quiet parts, all of them only for the biggest moments. House lane effects count as lighting everything, so the AI keeps them for big moments or has them recolour only the lights that are on.
+
 ## 0.2.248
 
 - Eight new effects for the House lane and group lanes, made for layering with **Lights' own effects** (Add, Brighter of the two, Only where they're lit):
