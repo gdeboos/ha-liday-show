@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.209
+
+- **Convert to WLED…**: moved a Govee light over to a WLED controller? Press **Edit** on it in
+  **Setup → Devices**, then **Convert to WLED…**, and give it the WLED's IP address (or **Scan network**).
+  The light keeps its name, its tracks in every show and its place on the house photo. Its **Segments**
+  become the WLED's LEDs, and its parts keep their share of the light, so **Left**, **Center** and
+  **Right** still cover the same stretches.
+- Shows that use the light are updated as soon as it's converted, so they play on every LED from
+  playlists, schedules and Home Assistant without opening them.
+
 ## 0.2.208
 
 - Scenes have an **Advanced** mode. Press **Advanced** beside a scene's name and it opens in the

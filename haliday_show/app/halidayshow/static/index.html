@@ -865,6 +865,22 @@
       <button type="button" class="primary" data-light="close">Done</button>
     </div>
   </dialog>
+  <dialog id="convert-dialog" class="effect-dialog form-dialog" aria-labelledby="convert-title">
+    <div class="effect-dialog-head"><h3 id="convert-title">Convert to WLED</h3>
+      <button class="ghost" data-convert="close" aria-label="Close">✕</button></div>
+    <div class="form-dialog-body">
+      <p>For a light now run by a WLED controller. It keeps its name, its tracks in your shows and its place
+        on the house photo. Its parts are stretched to the WLED's number of LEDs.</p>
+      <p><label>WLED's IP address <input id="convert-ip" placeholder="192.168.1.50" size="15" inputmode="decimal"></label>
+        <button type="button" class="ghost" data-convert="scan">Scan network</button></p>
+      <div id="convert-found"></div>
+    </div>
+    <div class="form-dialog-foot">
+      <button type="button" class="ghost" data-convert="close">Cancel</button>
+      <span class="spacer"></span>
+      <button type="button" class="primary" data-convert="go">Convert</button>
+    </div>
+  </dialog>
   <dialog id="finder" class="effect-dialog form-dialog finder-dialog" aria-labelledby="finder-title">
     <div class="effect-dialog-head"><h3 id="finder-title">Find segments</h3>
       <span id="finder-progress" class="hint"></span>

@@ -117,7 +117,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Govee** lights, found on the network, with a test pattern and a few yes or no questions to set
   their segments
 - **WLED** strips, found on the network or added by IP, with their LED count and WLED segments filled
-  in for you
+  in for you; a Govee light rewired to WLED converts in one step, keeping its shows and parts
 - **Pixel controllers** over DDP (Falcon Player, ESPixelStick, ESPHome, Tasmota, ESP32) or E1.31/sACN
   (Falcon, Kulp, xLights set-ups), with several lights on one controller
 - Any **Home Assistant** light or switch (Zigbee, Hue, LIFX bulbs, smart plugs for inflatables), put
@@ -395,6 +395,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/sharing.js                       Share and Import show: the .halidayshow file, light suggestions, tracks
     js/upload.js                        Sends big songs and baked shows in pieces, under ingress's 16 MB limit
     js/models.js                        Reads models.json: each Govee model's tested status and settings
+    js/convert.js                       Convert to WLED: a Govee light becomes a WLED light, parts stretched
     js/addsong.js                       The Add a song window's names and messages
     js/lightspeed.js                    How fast each protocol can change a light, and previews at that pace
     js/compat.js                        Whether a clip's effect can show on its light, for marking and blocking

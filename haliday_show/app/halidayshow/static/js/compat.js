@@ -126,6 +126,7 @@ export function reachNote(light, model) {
   return {
     short: `first ${model.reach} bulbs only`,
     text: `In realtime mode this light only lights its first ${model.reach} bulbs${light.bulbs ? ` of ${light.bulbs}` : ""}. `
-      + "Whole light (one colour) under Setup → Devices lights all of it, one colour at a time.",
+      + "Whole light (one colour) under Setup → Devices lights all of it, one colour at a time. "
+      + "Run from a WLED controller, every bulb can be lit: use Convert to WLED… in its Edit window.",
   };
 }
