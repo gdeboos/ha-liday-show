@@ -25,9 +25,10 @@ export function toWled(light, ip, leds) {
     parts: stretchParts(light.parts || [], light.segments, leds) };
 }
 
-// Why `ip` can't take this light, or "" if it can.
+// Why `ip` can't take this light, or "" if it can. No IP makes it a planned WLED light.
 export function convertProblem(light, ip, lights) {
-  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip || "")) return "Type the WLED's IP address, or pick it from the list";
+  if (!ip) return "";
+  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return "That isn't an IP address. Leave it blank if the controller isn't on yet";
   const other = lights.find((d) => d.id !== light.id && d.ip === ip);
   return other ? `${ip} is already ${other.name}` : "";
 }

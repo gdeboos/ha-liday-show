@@ -879,6 +879,10 @@
       <p><label>WLED's IP address <input id="convert-ip" placeholder="192.168.1.50" size="15" inputmode="decimal"></label>
         <button type="button" class="ghost" data-convert="scan">Scan network</button></p>
       <div id="convert-found"></div>
+      <p><label>LEDs <input id="convert-leds" type="number" min="1" max="1000" size="6"></label></p>
+      <p class="hint">Controller not plugged in yet? Leave the IP blank and set how many LEDs it will have. The
+        light becomes a planned WLED light: its shows are ready, and once the controller is on you type its
+        IP into the light's window. With an IP, the LEDs are read from the WLED itself.</p>
     </div>
     <div class="form-dialog-foot">
       <button type="button" class="ghost" data-convert="close">Cancel</button>

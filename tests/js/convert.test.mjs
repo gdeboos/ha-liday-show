@@ -25,9 +25,10 @@ test("a converted light keeps its id, name, parts and settings, and becomes a WL
   assert.deepEqual(w.parts.map((p) => p.id), ["p1", "p2", "p3"]); // clips on parts stay with them
 });
 
-test("the IP must be one and not another light's", () => {
+test("the IP is optional, but must be one and not another light's", () => {
   const porch = { id: "porch", name: "Porch", ip: "192.168.2.20" };
-  assert.match(convertProblem(pillars, "", [pillars, porch]), /IP address/);
+  assert.equal(convertProblem(pillars, "", [pillars, porch]), ""); // planned: the controller isn't on yet
+  assert.match(convertProblem(pillars, "192.168.2", [pillars, porch]), /isn't an IP address/);
   assert.match(convertProblem(pillars, "192.168.2.20", [pillars, porch]), /already Porch/);
   assert.equal(convertProblem(pillars, "192.168.2.155", [pillars, porch]), ""); // the WLED kept the old address
   assert.equal(convertProblem(pillars, "192.168.2.160", [pillars, porch]), "");
@@ -37,4 +38,11 @@ test("shows using the light or one of its parts are found", () => {
   assert.equal(showUses({ tracks: [{ device: "porch" }, { device: "192.168.2.155#p2" }] }, "192.168.2.155"), true);
   assert.equal(showUses({ tracks: [{ device: "192.168.2.15" }] }, "192.168.2.155"), false);
   assert.equal(showUses(null, "x"), false);
+});
+
+test("with no IP the light becomes a planned WLED light", () => {
+  const w = toWled(pillars, "", 300);
+  assert.equal(w.ip, "");
+  assert.equal(w.kind, "wled");
+  assert.equal(w.segments, 300);
 });

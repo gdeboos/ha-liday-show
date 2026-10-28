@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.211
+## 0.2.212
 
 - Scenes can come on by themselves. Under **When it plays** in the Scene editor (or **When it plays…**
   for an Advanced scene), turn on **Comes on by itself on a schedule** and pick times, days and dates, as
@@ -9,6 +9,13 @@
   and playlists in between take over and hand back, so a scene from sunset to midnight with your show
   playlist at six just works.
 - **Your scenes** says when each scene comes on.
+
+## 0.2.211
+
+- **Convert to WLED…** works before the controller is plugged in. Leave the IP blank, set **LEDs** to
+  how many it will have, and the light becomes a planned WLED light, with its shows and parts ready.
+  Type its IP into the light's window once it's on.
+- If a WLED doesn't answer, the message now says you can convert it as a planned light instead.
 
 ## 0.2.210
 
