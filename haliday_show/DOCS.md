@@ -501,10 +501,11 @@ Your shows are under **Library → Shows**, and nothing changes in a show until 
 one you were last editing has a **Last edited** badge.
 
 - **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
-  1. a **Name** and a **Song** (or **+ Add a song…**, or **No song, lights only** with its length). The
-     name fills in from the song until you type your own, and each show needs its own name.
+  1. a **Name**, a **Song** (or **+ Add a song…**, or **No song, lights only** with its length) and a
+     **Palette** (see [The show's palette](#the-shows-palette)). The name fills in from the song until
+     you type your own, and each show needs its own name.
   2. with an AI set up, how it starts: **Start empty**, or **Generate with AI**, which needs a song
-     and at least one light and shows the same choices as **✨ Generate** (**Colours**, **Style**,
+     and at least one light and shows the same choices as **✨ Generate** (in the show's palette: **Style**,
      **Build up**, **Longest effect** and, with lights traced on the house photo, the sweep across the
      house). Without an AI, the show starts empty straight after step 1. For a quick draft
      made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
@@ -520,8 +521,18 @@ one you were last editing has a **Last edited** badge.
   [Finding your way](#finding-your-way)).
 
 The Show panel shows the open show's name beside **← All shows**; to switch to another show, go back
-to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Show speaker**
+to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Palette** (below), its **Show speaker**
 (below), **Brightness** (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
+
+#### The show's palette
+
+Each show can have its own palette, picked in the **New show** window and changed in **⚙ Show
+settings…**. Effects you add take its colours, and the effect chooser previews every effect in them.
+The palette picker under a clip's colours starts on it too; picking another palette there is just for
+colouring that clip. Change the show's palette later and you're asked whether to recolour the effects
+already in the show; say no and only new effects use it. **None** keeps each effect's own colours, as
+shows made before this had. If you edit one of your palettes, shows using it follow; if you delete it,
+they keep the colours it had.
 
 **Brightness** in **⚙ Show settings…** dims this show without changing any of its effects:
 

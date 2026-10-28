@@ -178,6 +178,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   sunrise, theatre chase, juggle, ripple, dissolve, bouncing balls, lighthouse, stacking blocks and
   fill to a level, and xLights' morph and VU meter, which follows the song's loudness) with live, segment-level previews, built-in presets for each, and your own
   presets saved from any clip
+- A palette for each show: new effects take its colours and the effect chooser previews in them
 - Transitions on any clip (fade, wipe, from the middle or dissolve, in and out), with crossfades
   between clips back to back
 - Settings that change over a clip, like xLights' value curves: speed up a chase into the chorus,

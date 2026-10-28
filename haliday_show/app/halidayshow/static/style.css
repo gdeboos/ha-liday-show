@@ -643,6 +643,8 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .insp-curve-to { display: inline-flex; gap: 6px; align-items: center; }
 .insp-curve-to[hidden] { display: none; }
 .insp-curve-to input { width: 5em; }
+.show-palette-bar { margin: -4px 0 8px; }
+.show-palette-bar:empty { display: none; }
 .insp-trans { display: inline-flex; gap: 6px; align-items: center; }
 .insp-trans input { width: 5em; }
 .effect-dialog-kind { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 4px; }

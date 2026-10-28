@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.244
+
+- **A palette for each show.** Pick one in the **New show** window (it starts on the palette in season), or change it in **⚙ Show settings…**. Effects you add take its colours, and the effect chooser previews every effect in them.
+- Change a show's palette and you're asked whether to recolour the effects already in it.
+- The palette picker under a clip's colours starts on the show's palette. Picking another there is just for that clip.
+- Your existing shows have no palette until you pick one, so nothing about them changes. The demo uses Christmas.
+
 ## 0.2.243
 
 - **Mixing lanes with the lights**, after xLights' layer blending. A clip on the House lane or a group lane has a new **Lights' own effects** setting under **Clip**:
