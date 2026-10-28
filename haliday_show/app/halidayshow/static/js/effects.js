@@ -285,7 +285,7 @@ export const EFFECTS = {
 // leftmost traced light to the rightmost, v from the highest to the lowest. renderAt returns a
 // colour, with an optional 4th value for how much of it to lay over the light's own effects
 // (0 to 1), or null to leave them be. On a plain strip (the clip's thumbnail, the effect picker)
-// render() shows the effect as if the strip ran left to right across the house.
+// render() shows the effect as if the strip ran left to right across the house, sloping gently down.
 const DIRECTIONS = ["left to right", "right to left", "top to bottom", "bottom to top", "out from centre",
   "in to centre"];
 const houseDirection = choice("direction", "Direction", "left to right", DIRECTIONS);
@@ -313,8 +313,9 @@ function houseEffect(fx) {
     ...fx,
     house: true,
     render: (p, t, dur, n, i) => {
+      // A gentle slant through the house, so patterns in squares (chequerboard, dots) still show.
       const u = n > 1 ? i / (n - 1) : 0.5;
-      const c = fx.renderAt(p, t, dur, u, u);
+      const c = fx.renderAt(p, t, dur, u, 0.25 + 0.5 * u);
       return !c ? [0, 0, 0] : c.length > 3 ? c.slice(0, 3).map((v) => v * c[3]) : c;
     },
   };
