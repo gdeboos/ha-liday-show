@@ -246,8 +246,8 @@ class Runner:
             await self._end_playlist()
             async with self._lock:
                 await self._stop()
+                self.player.set_level(self.scene_level())  # before the first frame goes out
                 await self.player.play(None, baked, self.storage.devices_by_id(), position=position, length=math.inf)
-                self.player.set_level(self.scene_level())
                 self.scene = {"id": scene_id, "name": scene.get("name", scene_id)}
                 self.scene_playing = True
         settings = self.storage.load_settings()

@@ -309,3 +309,14 @@ async def test_automations_turn_scenes_on_and_off(runner):
     assert runner.scene is None
     with pytest.raises(ValueError):
         await commands.handle(runner, "scene Nope")
+
+
+async def test_mqtt_only_plays_scenes_that_are_yours(runner):
+    from halidayshow import mqtt
+    _scene(runner.storage)
+    bridge = mqtt.MqttBridge(runner)
+    bridge.client = FakeClient()
+    await bridge._publish_all()
+    await bridge._on_message("haliday_show/scene/../settings/set", b"ON")
+    await bridge._on_message("haliday_show/scene/gone/set", b"ON")
+    assert runner.scene is None

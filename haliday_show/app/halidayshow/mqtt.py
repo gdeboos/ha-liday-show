@@ -252,6 +252,8 @@ class MqttBridge:
                 await self._light_command(text)
             elif topic.startswith(f"{BASE}/scene/") and topic.endswith("/set"):
                 scene_id = topic[len(f"{BASE}/scene/"):-len("/set")]
+                if scene_id not in self.scene_options.values():  # only one of yours, never a path
+                    raise ValueError(f"no scene '{scene_id}'")
                 await self.runner.want_scene(scene_id)
                 await self._publish_status()
             elif topic == f"{BASE}/stop":
