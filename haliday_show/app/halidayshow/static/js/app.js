@@ -3302,6 +3302,8 @@ function deletePreset(preset) {
   if (!confirm(`Delete the preset ${preset.name}? Clips using its settings keep them.`)) return false;
   app.myPresets.splice(app.myPresets.indexOf(preset), 1);
   savePresets();
+  const key = `${preset.effect}:${preset.name}`; // so a new one of the same name starts in no folder
+  if (folderOfItem(libFoldersOf("presets"), key)) saveLibraryFolders("presets", moveItem(libFoldersOf("presets"), key, null), "Folders kept");
   renderPresetsTab();
   return true;
 }
@@ -3633,6 +3635,7 @@ function deletePalette(p) {
   if (!confirm(`Delete the palette ${p.name}? Effects already coloured with it keep their colours.`)) return false;
   app.palettes.splice(app.palettes.indexOf(p), 1);
   savePalettes();
+  if (folderOfItem(libFoldersOf("palettes"), p.name)) saveLibraryFolders("palettes", moveItem(libFoldersOf("palettes"), p.name, null), "Folders kept");
   renderPalettes();
   return true;
 }

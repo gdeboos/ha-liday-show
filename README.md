@@ -209,6 +209,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   and previews step at a slow light's own pace so they look like the real thing
 - **Library → Shows**: your shows, to open in the Show editor, duplicate or rename; the editors all open from the Library, with a **↩** button in the top bar back to what you were editing
 - **Library → Songs**: every song, whether it's detected and which shows use it, with a search, your own folders, and Edit in the Music editor
+- **Folders** for every Library list: shows, scenes, playlists, your palettes and presets, as well as songs and samples
 - **Archive or delete** shows and songs, with a way back: archived ones can be restored, and shows using a song can take another one
 - Add a song in one window (name it, upload it, detect it); big songs go up in pieces, so files over
   Home Assistant's 16 MB limit upload fine
