@@ -4697,8 +4697,12 @@ function wirePublic() {
     t.addEventListener("click", () => openPublicSection(t.dataset.pubtab));
     // Left and right arrows move between the tabs, as in any tab list.
     t.addEventListener("keydown", (e) => {
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const next = tabs[(tabs.indexOf(t) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      const i = tabs.indexOf(t);
+      const to = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i + tabs.length - 1) % tabs.length,
+        Home: 0, End: tabs.length - 1 }[e.key];
+      if (to === undefined) return;
+      e.preventDefault();
+      const next = tabs[to];
       openPublicSection(next.dataset.pubtab);
       next.focus();
     });

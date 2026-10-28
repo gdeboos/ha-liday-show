@@ -437,7 +437,7 @@ export function start() {
         const b = el("button", "primary", say_(w, "start"));
         b.type = "button";
         b.disabled = !!view.block || busy;
-        b.setAttribute("aria-label", `Start ${c.name}`);
+        b.setAttribute("aria-label", `${say_(w, "start").replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
         b.addEventListener("click", () => send("api/request", { kind: c.kind, id: c.id }));
         row.append(b);
       }
