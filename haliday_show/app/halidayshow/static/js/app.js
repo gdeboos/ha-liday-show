@@ -1055,9 +1055,31 @@ function renderGroups() {
     picture.textContent = "▦";
     const del = button("Delete…", () => deleteGroup(g), "ghost danger");
     del.setAttribute("aria-label", `Delete the group ${g.name}`);
+    // Up and down set the order of the groups' lanes in the Show editor.
+    const k = app.groups.indexOf(g);
+    const move = (by) => {
+      const next = [...app.groups];
+      [next[k], next[k + by]] = [next[k + by], next[k]];
+      saveGroups(next, `Moved ${g.name} ${by < 0 ? "up" : "down"}`, { rebake: false })
+        .then(() => {
+          const row = $("group-list").querySelectorAll(".show-row")[k + by];
+          const same = row?.querySelector(`[data-move="${by}"]`);
+          (same && !same.disabled ? same : row?.querySelector(`[data-move="${-by}"]`))?.focus();
+        });
+    };
+    const up = button("↑", () => move(-1), "ghost");
+    up.dataset.move = "-1";
+    up.disabled = k === 0;
+    up.setAttribute("aria-label", `Move ${g.name} up`);
+    up.title = "Earlier: its lane goes higher in the Show editor";
+    const down = button("↓", () => move(1), "ghost");
+    down.dataset.move = "1";
+    down.disabled = k === app.groups.length - 1;
+    down.setAttribute("aria-label", `Move ${g.name} down`);
+    down.title = "Later: its lane goes lower in the Show editor";
     const n = groupSegments(g.members, app.deviceList);
     return itemRow({ picture, name: g.name, detail: `${membersText(g.members, app.deviceList)}${n ? ` · ${n} segments` : ""}`,
-      edit: () => openGroupWindow(g), extra: [del], label: "the group" });
+      edit: () => openGroupWindow(g), extra: [up, down, del], label: "the group" });
   }));
   if (!app.groups.length) {
     box.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "No groups yet." }));
@@ -1138,7 +1160,7 @@ async function showsWith(uses) {
   return out;
 }
 
-async function saveGroups(next, what) {
+async function saveGroups(next, what, { rebake = true } = {}) {
   try {
     app.groups = await api("api/light-groups", { method: "PUT", json: next });
   } catch (e) {
@@ -1151,7 +1173,8 @@ async function saveGroups(next, what) {
   renderInspector();
   status(what, "saved", "groups");
   // Shows with effects on group lanes play the new groups from automations and playlists straight away.
-  await rebakeShowsFor(null, (show) => show.tracks?.some((t) => isGroupTrack(t.device) && t.clips.length));
+  // (Their order only moves the lanes in the editor.)
+  if (rebake) await rebakeShowsFor(null, (show) => show.tracks?.some((t) => isGroupTrack(t.device) && t.clips.length));
   return true;
 }
 

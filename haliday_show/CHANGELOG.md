@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.221
+
+- Groups on **Setup → Devices** have **↑** and **↓** to change their order, which is the order of their
+  lanes in the Show editor.
+
 ## 0.2.220
 
 - Fixed: on **Setup → House**, a light set to **Icicle** could look like a plain line, with no drops
