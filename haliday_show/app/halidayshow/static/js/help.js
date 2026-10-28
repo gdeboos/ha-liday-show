@@ -309,6 +309,11 @@ export const HELP = {
       { id: "ai", title: "The AI", guide: ["editor-and-settings.md", "setting-up-the-ai"], tips: [
         "The ✨ features use Claude with your own API key, or an AI Task set up in Home Assistant, including a local one.",
       ] },
+      { id: "live", title: "Live music", guide: ["play-it.md", "live-music"], tips: [
+        "Shows what a WLED light with a microphone hears, once that WLED is set to send its sound.",
+        "<b>Listen to</b> picks the WLED; with <b>Any WLED that sends sound</b>, the loudest one is used.",
+        "<b>Counts as music from</b> sets how loud is music rather than chatter.",
+      ] },
       { id: "data", title: "Your data", tips: [
         "<b>Export…</b> saves your lights, shows, palettes, presets, settings and house photo in one file. Songs aren't in it.",
         "Before an import or a fresh start, a copy of what you had is kept here, so you can put it back.",

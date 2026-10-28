@@ -26,6 +26,7 @@ from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
                   Step as LabStep, build as lab_build)
 from .listen import Listener
+from .livemusic import LiveMusic
 from .mqtt import MqttBridge
 from .output import PROBE_MAX, LivePreview, Output, address, linked, run_hold, run_probe, run_test_pattern
 from .player import Player
@@ -54,6 +55,7 @@ RUNNER = web.AppKey("runner", Runner)
 SCHEDULER = web.AppKey("scheduler", schedule.Scheduler)
 MQTT = web.AppKey("mqtt", MqttBridge)
 BACKGROUND = web.AppKey("background", list)
+LIVE = web.AppKey("live", LiveMusic)
 ALLOW_ALL = web.AppKey("allow_all", bool)
 PASSWORD = web.AppKey("password", str)
 # {"listener": the latest Listener or None, "options": Listener options (tests use spare ports)}
@@ -1440,6 +1442,52 @@ async def play_playlist(request):
     return web.json_response(request.app[RUNNER].status())
 
 
+# live music (livemusic.py) --------------------------------------------------------
+def live_settings(storage) -> dict:
+    """Setup → Settings → Live music: which WLED listens ("any", or its IP), and how loud counts as music."""
+    s = storage.load_settings().get("live_music") or {}
+    source = s.get("source") if isinstance(s.get("source"), str) and s.get("source") else "any"
+    level = s.get("from") if isinstance(s.get("from"), int) and 0 <= s.get("from") <= 100 else 15
+    return {"source": source, "from": level}
+
+
+async def get_live_music(request):
+    live, cfg = request.app[LIVE], live_settings(request.app[STORAGE])
+    now = live.now(cfg["source"])
+    return web.json_response({"listening": live.listening, "error": live.error, "settings": cfg,
+                              "sending": live.sending(), "now": now,
+                              "music": bool(now and now["loudness"] >= cfg["from"])})
+
+
+async def put_live_music(request):
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text="expected the live music settings")
+    storage = request.app[STORAGE]
+    cfg = live_settings(storage)
+    if "source" in body:
+        src = body["source"]
+        try:
+            ok = src == "any" or (isinstance(src, str) and ipaddress.ip_address(src).version == 4)
+        except ValueError:
+            ok = False
+        if not ok:
+            raise web.HTTPBadRequest(text="listen to any WLED, or one by its IP address")
+        cfg["source"] = src
+    if "from" in body:
+        level = body["from"]
+        if not isinstance(level, int) or isinstance(level, bool) or not 0 <= level <= 100:
+            raise web.HTTPBadRequest(text="how loud counts as music goes from 0 to 100")
+        cfg["from"] = level
+    settings = storage.load_settings()
+    settings["live_music"] = cfg
+    storage.save_settings(settings)
+    return await get_live_music(request)
+
+
 # scenes (scenelib.py) -------------------------------------------------------------
 def _scene_id(request) -> str:
     scene_id = request.match_info["id"]
@@ -2079,6 +2127,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[MQTT] = MqttBridge(app[RUNNER])
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
         app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run()), asyncio.create_task(app[RUNNER].watch_scene())]
+        app[LIVE] = LiveMusic(lambda: {d["ip"]: d.get("name") for d in app[STORAGE].load_devices() if d.get("ip")})
+        await app[LIVE].start()
         app[PUBLIC] = public.PublicSite(app[STORAGE], app[RUNNER], lambda: app[SCHEDULER].where()[0])
         await app[PUBLIC].apply()
         if read_stdin:
@@ -2091,6 +2141,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         for task in app[BACKGROUND]:
             task.cancel()
         await app[PUBLIC].close()
+        app[LIVE].close()
         await stop_tests(app)
         await app[RUNNER].close()
         await app[OUTPUT].close()
@@ -2163,6 +2214,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/playlists", get_playlists)
     r.add_put("/api/playlists", put_playlists)
     r.add_post("/api/playlists/{id}/play", play_playlist)
+    r.add_get("/api/live-music", get_live_music)
+    r.add_put("/api/live-music", put_live_music)
     r.add_get("/api/house-scenes", list_scenes)
     r.add_post("/api/house-scenes", create_scene)
     r.add_get("/api/house-scenes/{id}", get_scene)

@@ -185,6 +185,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   the same for every light, or switch one to **Advanced** to give it a timeline and the House lane in
   the Show editor. In Home Assistant each scene is a scene entity, and one light turns them on and off
   and dims them. Scenes can come on and go off by themselves, at set times or from sunset
+- **Live music**: see what a WLED with a microphone hears (loudness, beats, bass to treble) in Settings
 - Playlists: several shows back to back, round and round, by hand or on a schedule (times or
   sunset, days and dates), with a Show player page to play the music on any computer with speakers
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
@@ -339,6 +340,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/public.py               The public page on its own port: visitors' choices and their queue
   app/halidayshow/imagemeta.py            Takes the GPS location and other hidden details out of photos visitors see
   app/halidayshow/scenelib.py             Your scenes (Scene editor): checking them as they're saved
+  app/halidayshow/livemusic.py            Live music: listens for WLED's sound sync (what its microphone hears)
   app/halidayshow/storage.py              Shows, settings, songs and the house photo on disk
   app/halidayshow/backup.py               Export, import and start afresh, with copies kept first
   app/halidayshow/archive.py              Archiving, restoring and deleting shows and songs

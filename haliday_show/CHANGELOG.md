@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.216
+## 0.2.217
 
 - The **Public page** tab is now in five tabs: **Access**, **Shows**, **Look**, **Words** and **Queue**,
   with a big **▶ Open the page** button above them. The preview stays beside them, and the tab you had
@@ -14,6 +14,14 @@
     Start** (an **I understand** button first). Its words are on the **Words** tab.
 - Fixed: with opening hours on, the visitors' page could stop updating while a visitor's show was
   playing.
+
+## 0.2.216
+
+- **Setup → Settings** has a new **Live music** card. It shows what a WLED light with a microphone hears:
+  how loud it is, each beat, and the bass, middle and treble, as it happens. Set that WLED's
+  AudioReactive sound sync to **Send** (the guide has the steps) and it appears under **Listen to**.
+  **Counts as music from** sets how loud counts as music rather than chatter.
+- Nothing on your lights changes yet: scenes that react to it come next.
 
 ## 0.2.215
 
