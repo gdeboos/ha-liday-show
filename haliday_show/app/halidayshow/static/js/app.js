@@ -11,6 +11,7 @@ import {
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
+import { canBasic, toBasic } from "./housescenes.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
 import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
@@ -191,6 +192,7 @@ const app = {
       renderInspector();
       renderSongSummary();
       scheduleAutoSave();
+      if (app.sceneId) renderSceneBanner();
     }
   },
 };
@@ -1372,6 +1374,7 @@ const sceneEd = new SceneEditor({
   api, status, house, asShown, prefs,
   lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
   palettes: () => allPalettes(), presetsFor: (effect) => presetsFor(effect),
+  positions: () => housePositions(), editAdvanced: (id) => openSceneInEditor(id),
   opened: () => { app.sceneChosen = true; showView("scene"); },
   closed: () => { app.sceneChosen = false; showView("scene"); },
 });
@@ -6122,11 +6125,11 @@ async function confirmDiscard() {
 const AUTOSAVE_MS = 2000;
 let autoSaveTimer = null, saving = null;
 const autoSaveOn = () => $("autosave").checked;
-const worthSaving = () => !!app.showId || app.show.tracks.some((t) => t.clips.length);
+const worthSaving = () => !!app.showId || !!app.sceneId || app.show.tracks.some((t) => t.clips.length);
 
 function renderSaveState(text) {
   $("show-title").textContent = app.show.name;
-  $("save-state").textContent = text ?? (app.dirty ? (autoSaveOn() && worthSaving() ? "Unsaved changes…" : "Unsaved changes") : app.showId ? "All changes saved" : "");
+  $("save-state").textContent = text ?? (app.dirty ? (autoSaveOn() && worthSaving() ? "Unsaved changes…" : "Unsaved changes") : app.showId || app.sceneId ? "All changes saved" : "");
 }
 
 function scheduleAutoSave() {
@@ -6146,7 +6149,7 @@ async function autoSave() {
   if (!app.dirty) return;
   renderSaveState("Saving…");
   saving = save().finally(() => { saving = null; });
-  try { await saving; status("Show saved", "saved", "show"); } finally {
+  try { await saving; status(app.sceneId ? "Scene saved" : "Show saved", "saved", "show"); } finally {
     renderSaveState();
     if (app.dirty) scheduleAutoSave(); // edited while saving
   }
@@ -6157,6 +6160,7 @@ async function autoSave() {
 async function openShow(id, { chosen = true } = {}) {
   await stop();
   clearTimeout(autoSaveTimer);
+  leaveSceneMode();
   if (id) {
     app.show = await api(`api/shows/${encodeURIComponent(id)}`);
     app.show.beats ||= [];
@@ -6192,6 +6196,87 @@ async function openShow(id, { chosen = true } = {}) {
   if (chosen && !$("view-showlist").hidden) showView("editor");
 }
 
+// Advanced scenes (sceneeditor.js) open here, in the Show editor with no song: the timeline is one
+// time round, and saving goes to the scene. app.sceneId says one is open.
+async function openSceneInEditor(id) {
+  let scene;
+  try {
+    scene = await api(`api/house-scenes/${encodeURIComponent(id)}`);
+  } catch (e) { status(`Couldn't open the scene: ${e.message}`, true); return; }
+  if (!(await confirmDiscard())) return;
+  await openShow(null, { chosen: false });
+  app.show = { name: scene.name, audio: null, duration: scene.loop, beats: [], bars: [], sections: [],
+    tracks: structuredClone(scene.tracks || []) };
+  app.sceneId = id;
+  app.history = [];
+  ensureTracks();
+  commit();
+  document.body.classList.add("editing-scene");
+  $("sb-loop").value = Math.round(scene.loop);
+  app.loop = true; // a scene goes round; not kept as your Loop setting
+  $("loop").checked = true;
+  app.chosen = true;
+  renderSceneBanner();
+  renderSaveState();
+  renderInspector();
+  app.seek(0);
+  layoutPreview();
+  timeline.layout();
+  showView("editor");
+}
+
+function leaveSceneMode() {
+  if (!app.sceneId) return;
+  app.sceneId = null;
+  document.body.classList.remove("editing-scene");
+  app.loop = prefs.get("loop", false);
+  $("loop").checked = app.loop;
+}
+
+// A scene goes round every 10 minutes at most: anything dragged past that is cut there.
+const MAX_SCENE_LOOP_S = 600;
+const sceneNow = () => {
+  const loop = Math.min(Math.round(app.duration() * 1000) / 1000, MAX_SCENE_LOOP_S);
+  const tracks = app.show.tracks.map((t) => ({ device: t.device,
+    clips: t.clips.filter((c) => c.start < loop).map((c) => (c.end > loop ? { ...c, end: loop } : c)) }));
+  return { name: app.show.name, mode: "advanced", loop, tracks };
+};
+
+async function saveScene() {
+  const scene = sceneNow(), edits = app.edits, id = app.sceneId;
+  await api(`api/house-scenes/${encodeURIComponent(id)}`, { method: "PUT", json: scene });
+  if (app.edits === edits) app.dirty = false;
+  await sceneEd.bakeAndSend(id, scene);
+  renderSceneBanner();
+}
+
+function renderSceneBanner() {
+  const on = !!app.sceneId;
+  $("scene-banner").hidden = !on;
+  if (!on) return;
+  const ok = canBasic(sceneNow(), app.deviceList || []);
+  $("sb-basic").disabled = !ok;
+  // A clip dragged past the end makes the loop longer.
+  if (document.activeElement !== $("sb-loop")) $("sb-loop").value = Math.round(app.duration());
+}
+
+async function leaveScene(toBasicMode = false) {
+  const id = app.sceneId;
+  if (!id) return;
+  await stop();
+  try {
+    if (saving) await saving;
+    if (toBasicMode) {
+      await api(`api/house-scenes/${encodeURIComponent(id)}`, { method: "PUT", json: toBasic(sceneNow()) });
+      app.dirty = false;
+    } else if (app.dirty) await save();
+  } catch (e) { status(`Couldn't save the scene: ${e.message}`, true); return; }
+  await openShow(null, { chosen: false });
+  app.chosen = false;
+  if (toBasicMode) await sceneEd.open(id);
+  else { app.sceneChosen = false; showView("scene"); }
+}
+
 // Once a show is open, says how many of its clips won't work on their lights (worked out in the
 // background). They stay in the show and play as they always did; the timeline marks them.
 function reportUnfit() {
@@ -6211,6 +6296,7 @@ function reportUnfit() {
 }
 
 async function save() {
+  if (app.sceneId) return saveScene();
   if (!app.showId) {
     const { id } = await api("api/shows", { method: "POST", json: { name: app.show.name } });
     app.showId = id;
@@ -6602,7 +6688,7 @@ async function startPlaying() {
   const r = app.region;
   if (r && !speaker() && (app.time < r.start || app.time >= r.end - 0.01)) app.seek(r.start);
   else if (app.time >= app.duration() - 0.01) app.seek(0);
-  if (speaker()) {
+  if (speaker() && !app.sceneId) {
     if (!app.show.audio) { status("Pick a song to play on a speaker", "hint"); return; }
     try {
       status("Starting the speaker…");
@@ -6625,7 +6711,8 @@ async function startPlaying() {
       status("Preparing lights…");
       await save();
       await api("api/player/play", {
-        method: "POST", json: { show: app.showId, position: app.time, offset: offset() },
+        method: "POST", json: app.sceneId ? { scene: app.sceneId, position: app.time }
+          : { show: app.showId, position: app.time, offset: offset() },
       });
       status("", "info", "play");
     } catch (e) {
@@ -6652,8 +6739,12 @@ async function stop() {
   audio.pause();
   $("btn-play").textContent = "▶ Play";
   if (wasPlaying) {
-    // Only its own show: a scene that has come back since is left on.
-    try { await api("api/player/stop", { method: "POST", json: { show: app.showId || "" } }); } catch { /* nothing to stop */ }
+    // Only its own show: a scene that has come back since is left on. An Advanced scene being
+    // edited is turned off.
+    try {
+      if (app.sceneId) await api(`api/house-scenes/${encodeURIComponent(app.sceneId)}/stop`, { method: "POST" });
+      else await api("api/player/stop", { method: "POST", json: { show: app.showId || "" } });
+    } catch { /* nothing to stop */ }
   }
 }
 
@@ -7386,7 +7477,8 @@ function frame() {
       if (app.loop && !app.remote) {
         app.seek(app.region ? app.region.start : 0);
         // The add-on's player stops at the end of the show, so start it again for the next lap.
-        if (!app.region && lightsOn()) {
+        // A scene goes round on the lights by itself.
+        if (!app.region && lightsOn() && !app.sceneId) {
           api("api/player/play", { method: "POST", json: { show: app.showId, position: 0, offset: offset() } })
             .catch(() => {});
         }
@@ -7428,7 +7520,9 @@ function showView(view, { push = true } = {}) {
   if (page === "scene" && !app.sceneChosen) page = "scenelist";
   const top = section || view;
   for (const t of document.querySelectorAll(".tab")) {
-    t.classList.toggle("active", t.dataset.view === ({ showlist: "editor", songlist: "music", playlistlist: "playlist", scenelist: "scene" }[top] || top));
+    // An Advanced scene open in the Show editor still belongs to the Scene tab.
+    const lit = top === "editor" && app.sceneId ? "scene" : top;
+    t.classList.toggle("active", t.dataset.view === ({ showlist: "editor", songlist: "music", playlistlist: "playlist", scenelist: "scene" }[lit] || lit));
     if (t.dataset.view === top) t.scrollIntoView({ block: "nearest", inline: "nearest" }); // on a phone the tab row scrolls
   }
   for (const t of document.querySelectorAll(".subtab")) t.classList.toggle("active", t.dataset.view === page);
@@ -7471,7 +7565,7 @@ function rememberPlace() {
   if (!shownPage) return;
   const ref = music.base && { source: music.base.source, path: music.base.path };
   prefs.set("place", { page: shownPage, playlist: openPlaylistId, draft: music.draft?.id || null, song: ref || null,
-    scene: sceneEd.id || null });
+    scene: sceneEd.id || null, editScene: app.sceneId || null });
 }
 addEventListener("pagehide", rememberPlace);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") rememberPlace(); });
@@ -7573,6 +7667,20 @@ function wire() {
   $("sc-back").addEventListener("click", () => sceneEd.close());
   $("sc-name").addEventListener("change", (e) => sceneEd.rename(e.target.value));
   $("sc-same").addEventListener("change", (e) => sceneEd.setSame(e.target.checked));
+  $("sc-advanced").addEventListener("click", () => sceneEd.toAdvanced());
+  $("sb-back").addEventListener("click", () => leaveScene());
+  $("sb-basic").addEventListener("click", () => leaveScene(true));
+  $("sb-loop").addEventListener("change", (e) => {
+    const v = Math.min(Math.max(Math.round(Number(e.target.value)) || 20, 1), 600);
+    e.target.value = v;
+    // Effects past the new end are cut to it, so the scene goes round where you said.
+    for (const t of app.show.tracks) {
+      t.clips = t.clips.filter((c) => c.start < v);
+      for (const c of t.clips) c.end = Math.min(c.end, v);
+    }
+    app.show.duration = v;
+    app.changed();
+  });
   for (const b of document.querySelectorAll("[data-show-new]")) {
     b.addEventListener("click", openNewShow);
   }
@@ -7661,7 +7769,10 @@ function wire() {
   $("lights").checked = prefs.get("lights", true);
   $("lights").addEventListener("change", (e) => {
     prefs.set("lights", e.target.checked);
-    if (!e.target.checked && app.playing) api("api/player/stop", { method: "POST", json: { show: app.showId || "" } }).catch(() => {});
+    if (!e.target.checked && app.playing) {
+      (app.sceneId ? api(`api/house-scenes/${encodeURIComponent(app.sceneId)}/stop`, { method: "POST" })
+        : api("api/player/stop", { method: "POST", json: { show: app.showId || "" } })).catch(() => {});
+    }
   });
   $("offset").addEventListener("change", offsetChanged);
   $("output-select").addEventListener("change", async (e) => {
@@ -7954,6 +8065,7 @@ async function init() {
       if (same && wanted === "editor" && shows.some((x) => x.id === last)) { await openShow(last, { chosen: false }); app.chosen = true; }
       if (same && wanted === "playlist" && place.playlist) { openPlaylistId = place.playlist; app.playlistChosen = true; }
       if (same && wanted === "scene" && place.scene) await sceneEd.open(place.scene);
+      if (same && wanted === "editor" && place.editScene) await openSceneInEditor(place.editScene);
       if (same && wanted === "music" && place.draft) await openDraft(place.draft);
       else if (same && wanted === "music" && place.song) await reopenSong(place.song);
       else showView(wanted, { push: false });

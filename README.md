@@ -182,7 +182,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   one colour, lights off or an effect), and a bar showing how long each plays
 - **Scenes**: one-tap looks for the whole house, like the Govee app's, that play until you choose
   something else and come back after a show. Build them in the **Scene editor**, light by light or
-  the same for every light
+  the same for every light, or switch one to **Advanced** to give it a timeline and the House lane in
+  the Show editor
 - **Scenes**: one-tap looks for the whole house, like the Govee app's, that play until you choose
   something else and come back after a show. Build them in the **Scene editor**, light by light or
   the same for every light

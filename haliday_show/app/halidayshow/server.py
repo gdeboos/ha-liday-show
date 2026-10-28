@@ -1915,6 +1915,16 @@ async def player_status(request):
 
 async def player_play(request):
     body = await request.json()
+    if body.get("scene"):  # an Advanced scene from the Show editor, from its playhead
+        scene_id = str(body["scene"])
+        if not valid_id(scene_id):
+            raise web.HTTPBadRequest(text="bad scene id")
+        await stop_tests(request.app)
+        try:
+            await request.app[RUNNER].play_scene(scene_id, position=max(float(body.get("position", 0)), 0.0))
+        except RunnerError as e:
+            raise web.HTTPConflict(text=str(e))
+        return web.json_response(request.app[RUNNER].status())
     show_id = str(body.get("show", ""))
     if not valid_id(show_id):
         raise web.HTTPBadRequest(text="bad show id")

@@ -1082,3 +1082,12 @@ a.button { text-decoration: none; }
   .sc-off { grid-column: 1 / -1; }
   .sc-mini { display: block; }
 }
+.sc-mode { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.sc-mode button { border: 0; border-radius: 0; }
+.sc-mode button + button { border-left: 1px solid var(--line); }
+.sc-mode button[aria-pressed=true] { background: var(--accent); color: var(--accent-text); }
+/* An Advanced scene open in the Show editor: the scene banner, and nothing about songs or speakers. */
+.scene-banner { margin-top: 6px; }
+.scene-banner input[type=number] { width: 5em; }
+body.editing-scene :is([data-panel=song], [data-panel=beats], [data-panel=ai], #btn-all-shows, #btn-show-settings,
+  #btn-generate, #output-select, #volume-wrap) { display: none !important; }

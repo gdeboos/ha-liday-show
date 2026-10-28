@@ -5,6 +5,7 @@
 import { EFFECTS, FPS, bake, composeLight, matchesPreset, presetParams } from "./effects.js";
 import {
   SCENE_EFFECTS, changeEffect, clipFor, newScene, sceneColours, sceneLoop, sceneShow, sceneSummary, setSame, speedParam,
+  toAdvanced,
 } from "./housescenes.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
 import { PART, sendParts } from "./upload.js";
@@ -27,7 +28,9 @@ function el(tag, props = {}, ...kids) {
 export class SceneEditor {
   // deps: api, status(msg, kind), lights() (Devices tab order), devices() (track id -> light or
   // part), lightsKey(), house (for the preview), asShown, palettes(), presetsFor(effect), prefs,
-  // opened() (after a scene opens, to show the editor page), closed() (back to the list)
+  // positions() (where each light is on the house, for an Advanced scene's House lane),
+  // opened() (after a scene opens, to show the editor page), closed() (back to the list),
+  // editAdvanced(id) (an Advanced scene opens in the Show editor)
   constructor(deps) {
     this.d = deps;
     this.scenes = [];
@@ -203,6 +206,11 @@ export class SceneEditor {
       this.d.status(`Couldn't open the scene: ${e.message}`, true);
       return;
     }
+    if (this.scene.mode === "advanced") {
+      this.scene = null;
+      await this.d.editAdvanced(id);
+      return;
+    }
     this.id = id;
     this.d.prefs.set("lastScene", id);
     $("sc-name").value = this.scene.name;
@@ -224,7 +232,25 @@ export class SceneEditor {
 
   bakeKey(scene = this.scene) {
     const { name, ...look } = scene;
-    return JSON.stringify([look, this.d.lightsKey()]);
+    // An Advanced scene's House lane also depends on where the lights are on the house.
+    return JSON.stringify([look, this.d.lightsKey(), scene.mode === "advanced" ? this.d.positions() : null]);
+  }
+
+  // Basic → Advanced: each light's look becomes one effect across the loop, in the Show editor.
+  async toAdvanced() {
+    await this.flush();
+    const id = this.id, scene = toAdvanced(this.scene, this.d.lights());
+    try {
+      await this.d.api(`api/house-scenes/${encodeURIComponent(id)}`, { method: "PUT", json: scene });
+      await this.bakeAndSend(id, scene);
+    } catch (e) {
+      this.d.status(`Couldn't switch ${scene.name} to Advanced: ${e.message}`, true);
+      return;
+    }
+    this.id = null;
+    this.scene = null;
+    this.stopPreview();
+    await this.d.editAdvanced(id);
   }
 
   draw() {
@@ -362,7 +388,7 @@ export class SceneEditor {
     const lights = this.d.lights();
     if (!lights.length) return;
     const loop = sceneLoop(scene, lights, FPS);
-    const blob = bake(sceneShow(scene, lights, loop), this.d.devices(), FPS);
+    const blob = bake(sceneShow(scene, lights, loop), this.d.devices(), FPS, scene.mode === "advanced" ? this.d.positions() : {});
     const path = `api/house-scenes/${encodeURIComponent(id)}/baked`;
     if (blob.byteLength > PART) await sendParts(this.d.api, `${path}/part`, new Blob([blob]));
     else await this.d.api(path, { method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" } });
@@ -377,7 +403,9 @@ export class SceneEditor {
       const list = await this.d.api("api/house-scenes");
       const made = this.d.prefs.get("sceneBakes", {});
       for (const row of list) {
-        const scene = { name: row.name, mode: row.mode, lights: row.lights, ...(row.all ? { all: row.all } : {}) };
+        const scene = row.mode === "advanced"
+          ? { name: row.name, mode: "advanced", loop: row.loop, tracks: row.tracks || [] }
+          : { name: row.name, mode: row.mode, lights: row.lights, ...(row.all ? { all: row.all } : {}) };
         if (!row.baked || made[row.id] !== this.bakeKey(scene)) await this.bakeAndSend(row.id, scene);
       }
       for (const id of Object.keys(made)) if (!list.some((s) => s.id === id)) delete made[id];
