@@ -382,8 +382,13 @@ async function saveDevices() {
     keepBlocksReady();
     sceneEd.keepReady();
     status("Lights saved", "saved", "lights");
-  } catch (e) { status(`Couldn't save your lights: ${e.message}`, true, "lights"); return; }
+  } catch (e) {
+    app.saveError = e.message;
+    status(`Couldn't save your lights: ${e.message}`, true, "lights");
+    return false;
+  }
   for (const d of app.deviceList) retestLight(d);
+  return true;
 }
 
 // Tests running on the Devices tab, by light id. A light that changes while its test is still on
@@ -1197,9 +1202,6 @@ async function loadModels() {
     app.models = Object.fromEntries(models.map((m) => [m.sku, m]));
     const list = $("model-list");
     for (const m of models) list.append(new Option(`${m.sku} ${m.name}${m.status ? "" : " (untested)"}`, m.sku));
-    list.append(new Option("WLED strip", "WLED"), new Option("Pixel controller (DDP)", "DDP"),
-      new Option("Pixel controller (E1.31)", "E1.31"), new Option("Home Assistant light or switch", "HA"),
-      new Option("Twinkly (experimental)", "Twinkly"));
     renderDevices();
     timeline.draw(); // lights' notes on the timeline come from the models
   } catch { /* the picker is a convenience; manual entry still works */ }
@@ -1337,27 +1339,64 @@ function modelBadge(sku) {
   return span;
 }
 
-function addPlanned() {
+// What each kind of planned light asks for, and what to do when it arrives.
+const PLAN_KINDS = {
+  govee: { count: "Segments",
+    help: "Pick the <b>model</b> if you know it: it fills in the settings that suit it, and a badge flags a model that's limited or untested, so <b>Test</b> one before buying more. When it arrives, choose <b>+ Add a light → Govee light → Scan network</b> and <b>Link to</b>, or type its IP into its row." },
+  wled: { count: "LEDs",
+    help: "Set <b>LEDs</b> to how many it has. When it arrives, type its IP into its row." },
+  ddp: { count: "LEDs",
+    help: "Set <b>LEDs</b> to how many are on this string. When it arrives, type the controller's IP into its row." },
+  e131: { count: "LEDs",
+    help: "Set <b>LEDs</b> to how many are on this string. When it arrives, type the controller's IP into its row, and set its <b>universe</b> and <b>channel</b> there." },
+  ha: { help: "Just give it a name. Once it's set up in Home Assistant, pick it in its row." },
+  twinkly: { count: "LEDs",
+    help: "Set <b>LEDs</b> to how many it has. When it arrives, type its IP into its row and press <b>Test</b>: Twinkly support hasn't been tried on a real light yet." },
+};
+// Older versions took the kind as a "model": still accept those typed in.
+const TYPED_KINDS = { WLED: "wled", DDP: "ddp", "E1.31": "e131", HA: "ha", TWINKLY: "twinkly" };
+
+function planKindChanged() {
+  const kind = $("plan-kind").value, k = PLAN_KINDS[kind];
+  $("add-help").innerHTML = `Build shows with it now. ${k.help}`;
+  $("plan-model-field").hidden = kind !== "govee";
+  $("plan-segments-field").hidden = !k.count;
+  $("plan-segments-label").textContent = k.count || "";
+  if (kind === "govee") planModelChanged();
+  else $("plan-segments").max = 1000;
+}
+
+async function addPlanned() {
   const name = $("plan-name").value.trim();
   if (!name) throw new Error("Give it a name, as it'll appear on the timeline");
   const base = `planned-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "light"}`;
   let id = base;
   for (let n = 2; app.devices[id]; n++) id = `${base}-${n}`;
-  const model = app.models[skuOf($("plan-model").value)];
+  const kind = $("plan-kind").value;
+  const model = kind === "govee" ? app.models[skuOf($("plan-model").value)] : undefined;
   const segments = Math.max(1, Math.round(Number($("plan-segments").value)) || 15);
-  const kind = { WLED: "wled", DDP: "ddp", "E1.31": "e131", HA: "ha", TWINKLY: "twinkly" }[skuOf($("plan-model").value)];
+  const most = Number($("plan-segments").max) || 255;
+  if (PLAN_KINDS[kind].count && segments > most) {
+    throw new Error(`${PLAN_KINDS[kind].count} can be at most ${most}${kind === "govee" ? " for a Govee light on Realtime" : ""}`);
+  }
   if (kind === "ha") {
     app.deviceList.push({ id, name, kind, ip: "", entity: "", sku: "", protocol: "ha_light", segments: 1, bulbs: 1,
       reverse: false, gradient: false, brightness: 100 });
-  } else if (kind) {
+  } else if (kind !== "govee") {
     const where = { ddp: { first: 1 }, e131: { universe: 1, channel: 1 } }[kind] || {};
     app.deviceList.push({ id, name, kind, ip: "", sku: "", protocol: { e131: "e131", twinkly: "twinkly" }[kind] || "ddp", segments,
       bulbs: segments, reverse: false, gradient: false, brightness: 100, ...where });
   } else {
     app.deviceList.push(newLight(model, { id, name, ip: "", sku: model ? model.sku : "", segments }));
   }
-  saveDevices();
-  return `Added ${name} as a planned light. Build shows with it now; when it arrives, type its IP into its row.`;
+  if (!await saveDevices()) {
+    // Not saved: take it off again, so it doesn't stop your other lights saving.
+    app.deviceList = app.deviceList.filter((d) => d.id !== id);
+    throw new Error(`Couldn't add ${name}: ${app.saveError}`);
+  }
+  return kind === "ha"
+    ? `Added ${name} as a planned light. Build shows with it now; once it's in Home Assistant, pick it in its row.`
+    : `Added ${name} as a planned light. Build shows with it now; when it arrives, type its IP into its row.`;
 }
 
 // The Add a light window: pick what kind of light, then fill in what that kind needs, then done.
@@ -1374,8 +1413,7 @@ const ADD_KINDS = {
     help: "Any light, or a switch such as a smart plug for an inflatable. Lights take the show's colour a few times a second; switches turn on when the show is bright, at most once a second. They go back as they were afterwards." },
   twinkly: { title: "Twinkly (experimental)", ip: true,
     help: "Type the light's IP (it's in the Twinkly app under <b>Device settings</b>). Twinkly support hasn't been tried on a real light yet, so press <b>Test</b> once it's added." },
-  plan: { title: "Plan a light", plan: true,
-    help: "Build shows with it now. Pick the <b>model</b> if you know it: ✓ means it's known to work, ? that it's untested, so Test one before buying more. Segment counts aren't published, so 15 is a guess. When it arrives, scan and choose <b>Link to</b>, or type its IP into its row." },
+  plan: { title: "Plan a light", plan: true, help: "" },
 };
 const addFlow = { kind: null };
 
@@ -1401,13 +1439,15 @@ function addStep(step) {
   $("add-go").textContent = addFlow.kind === "plan" ? "Add planned light" : "Add";
   $("scan-results").replaceChildren();
   if (k.entity) fillHaPicker($("add-entity"));
-  const first = k.plan ? $("plan-model") : k.entity ? $("add-entity") : $("add-ip");
+  if (k.plan) planKindChanged();
+  const first = k.plan ? $("plan-kind") : k.entity ? $("add-entity") : $("add-ip");
   setTimeout(() => first.focus(), 0);
 }
 
 function openAddLight() {
   addFlow.kind = null;
   for (const id of ["add-ip", "plan-name", "plan-model"]) $(id).value = "";
+  $("plan-kind").value = "govee";
   $("plan-segments").value = 15;
   $("plan-segments").max = 255;
   $("plan-info").replaceChildren();
@@ -1444,19 +1484,17 @@ async function addLightNow() {
 }
 
 function planModelChanged() {
+  const typed = TYPED_KINDS[skuOf($("plan-model").value)];
+  if (typed) {
+    $("plan-model").value = "";
+    $("plan-kind").value = typed;
+    planKindChanged();
+    return;
+  }
   const m = app.models[skuOf($("plan-model").value)];
   const info = $("plan-info");
   info.replaceChildren();
-  if (skuOf($("plan-model").value) === "HA") {
-    info.append(" A Home Assistant light or plug: pick it in its row once it's set up in Home Assistant.");
-    return;
-  }
-  if (["WLED", "DDP", "E1.31", "TWINKLY"].includes(skuOf($("plan-model").value))) {
-    $("plan-segments").max = 1000;
-    const what = { WLED: "WLED strip", TWINKLY: "Twinkly light (experimental)" }[skuOf($("plan-model").value)] || "pixel controller light";
-    info.append(` A ${what}: set Segments to its number of LEDs.`);
-    return;
-  }
+  $("plan-segments").max = 255;
   if (!m) return;
   if (!$("plan-name").value) $("plan-name").value = m.name.replace(/^Govee\s+/, "");
   const light = newLight(m, {});
@@ -1464,7 +1502,7 @@ function planModelChanged() {
   if (m.segments) $("plan-segments").value = m.segments;
   info.append(modelBadge(m.sku), m.segments
     ? ` Starts on ${PROTOCOLS[light.protocol]} with ${m.segments} segments.`
-    : " Segment count unknown: 15 is a guess, check it with Test when it arrives.");
+    : " Govee doesn't publish segment counts, so 15 is a guess: check it with Test when it arrives.");
   if (m.note) info.append(` ${m.note}`);
 }
 
@@ -8375,6 +8413,7 @@ function wire() {
     openPaletteWindow(null, { name: uniqueName("My palette"), colors: ["#ff0000", "#00ff00", "#0000ff"] });
   });
   $("plan-model").addEventListener("change", planModelChanged);
+  $("plan-kind").addEventListener("change", planKindChanged);
 
 
   document.addEventListener("keydown", (e) => {

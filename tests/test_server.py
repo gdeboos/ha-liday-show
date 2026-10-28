@@ -135,6 +135,10 @@ async def test_devices_round_trip_and_validation(client):
     assert (await client.put("/api/devices", json=[{"ip": "1.2.3.4", "protocol": "dmx"}])).status == 400
     assert (await client.put("/api/devices", json=[{"ip": "nope"}])).status == 400
     assert (await client.put("/api/devices", json=[{"ip": "1.2.3.4", "segments": 0}])).status == 400
+    # The whole list saves at once, so the error names the light that's wrong.
+    resp = await client.put("/api/devices", json=[{"id": "t1", "name": "Test 1"},
+                                                     {"id": "p", "name": "Pillars", "segments": 300}])
+    assert resp.status == 400 and (await resp.text()).startswith("Pillars: segments must be 1-255")
 
 
 async def test_device_parts_validation(client):
