@@ -214,8 +214,8 @@ left off. WLED's own brightness still applies, on top of **Brightness %** here. 
 strip lights up during a show, open WLED's **Config → Sync Interfaces** and untick **Use main segment
 only**.
 
-To plan a WLED strip before it arrives, pick **Plan a light**, type **WLED** as the model and set
-**Segments** to its number of LEDs.
+To plan a WLED strip before it arrives, pick **Plan a light**, choose **WLED strip** as the **Kind of
+light** and set **LEDs** to how many it has.
 
 #### Moving a Govee light to WLED
 
@@ -251,8 +251,8 @@ light starts in the controller's LED order, so you can set it to match how you'v
 lights on one controller share LEDs, their line says *Shares LEDs with…*. You can also add the whole
 controller as one long light and split it into **parts** instead.
 
-To plan one before it arrives, pick **Plan a light**, type **DDP** as the model and set
-**Segments** to its number of LEDs.
+To plan one before it arrives, pick **Plan a light**, choose **Pixel controller (DDP)** as the **Kind
+of light** and set **LEDs** to how many are on the string.
 
 ### E1.31 controllers
 
@@ -268,7 +268,8 @@ again for the next string and it starts just after the last one. Lights on one c
 universe without blanking each other, and their line says *Shares LEDs with…* if two overlap.
 
 When a show or test stops, HA-liday Show tells the controller, so it goes straight back to what it was
-doing. To plan one before it arrives, pick **Plan a light** and type **E1.31** as the model.
+doing. To plan one before it arrives, pick **Plan a light** and choose **Pixel controller (E1.31)** as the
+**Kind of light**.
 
 ### Home Assistant lights and switches
 
@@ -295,7 +296,7 @@ fall behind. Just before a show or test starts, HA-liday Show remembers how each
 puts it back when it ends.
 
 Running HA-liday Show without Home Assistant? These need `HA_URL` and `HA_TOKEN` set (see **Running
-without Home Assistant**). To plan one, pick **Plan a light** and type **HA** as the model.
+without Home Assistant**). To plan one, pick **Plan a light** and choose **Home Assistant light or switch** as the **Kind of light**.
 
 ### Twinkly lights (experimental)
 
@@ -317,10 +318,11 @@ light's parts kept together under it.
 
 ### Lights not delivered yet?
 
-Press **+ Add a light** and pick **Plan a light**. Pick the model, give it a name and press **Add planned
-light**, then build shows with it straight away. The model can be a Govee one (for example `H706A`), or
-**WLED**, **DDP**, **E1.31**, **HA** or **Twinkly** for the other kinds, with **Segments** set to the
-number of LEDs. For Govee models, a badge next to the model flags anything we've
+Press **+ Add a light** and pick **Plan a light**. Choose the **Kind of light** (a Govee light, a WLED
+strip, a pixel controller, a Home Assistant light or switch, or a Twinkly), give it a name and press
+**Add planned light**, then build shows with it straight away. Each kind only asks for what it needs: a
+Govee light its **Model** (for example `H706A`, optional) and **Segments**, the strips, pixel controllers
+and Twinkly their **LEDs**, and a Home Assistant light just a name. For Govee models, a badge next to the model flags anything we've
 found on real lights that you should know: **⚠ limited** (tested, only partly works; point at the badge
 to see what it can do) or **? untested** (not tried with HA-liday Show yet: most
 Govee lights with LAN Control work, so add one and press **Test** before buying more; the badge's

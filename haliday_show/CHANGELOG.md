@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.217
+
+- **Plan a light** now starts by asking what kind of light it is: a Govee light, a WLED strip, a pixel
+  controller (DDP or E1.31), a Home Assistant light or switch, or a Twinkly. Each only asks for what it
+  needs: a Govee light its model and **Segments**, the strips and controllers their **LEDs**, and a Home
+  Assistant one just a name. The help in the window says what to do when that kind arrives.
+- If a planned light can't be saved, the window now says why and doesn't add it, instead of saying it
+  was added. That stops one bad light from blocking every save after it.
+- When your lights can't be saved, the message now names the light that's the problem.
+
 ## 0.2.216
 
 - **Setup → Settings** has a new **Live music** card. It shows what a WLED light with a microphone hears:
