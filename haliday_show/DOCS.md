@@ -447,7 +447,7 @@ Each light has a **Style**:
 | Style | For | How to set it up |
 | --- | --- | --- |
 | Line | Strips, string lights, eaves lights | Trace along it, as above. |
-| Icicle | Icicle lights | Trace the line the icicles hang from, then set **Drops** to how many drops it has and **Length** to how far the longest one hangs on the photo. The drops are staggered, each in its segment's colour, with the light's **Bulbs** shared between them. |
+| Icicle | Icicle lights | Trace the line the icicles hang from, then set **Drops** to how many drops it has and **Length** to how far the longest one hangs on the photo. The drops are staggered, each in its segment's colour, with the light's **Bulbs** shared between them. It starts with one drop for about every five bulbs, and never shows more drops than bulbs. |
 | Spots | Spotlights | Press **Trace** and click where each spotlight sits, starting nearest the plug. Each one shines a soft wash of colour; drag its round handle to aim it, and use **Beam** for how wide the beams are. A spot covering several segments shows them blended. |
 
 ### Photo taken at an angle

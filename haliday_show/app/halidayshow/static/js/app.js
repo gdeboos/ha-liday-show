@@ -16,7 +16,7 @@ import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./control
 import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
-import { House, partRgb } from "./house.js";
+import { House, defaultDrops, partRgb } from "./house.js";
 import { placeOnSample } from "./samplehouse.js";
 import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
 import { Layout } from "./layout.js";
@@ -1945,7 +1945,7 @@ function houseStyleControls(d) {
   sel.value = style?.style || "line";
   sel.addEventListener("change", () => {
     house.setStyle(d.id, {
-      icicle: { style: "icicle", drops: Math.max(d.segments * 3, 10), length: 0.06 },
+      icicle: { style: "icicle", drops: defaultDrops(d), length: 0.06 },
       spots: { style: "spots", beam: 0.5, aims: [] },
     }[sel.value] || null);
     house.stretch = null;

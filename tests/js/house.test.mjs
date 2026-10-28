@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { arcNearest, bulbLayout, bulbPositions, bulbSegment, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
+import { arcNearest, bulbLayout, bulbPositions, bulbSegment, defaultDrops, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
   from "../../haliday_show/app/halidayshow/static/js/house.js";
 
 const close = (a, b) => a.every((p, i) => Math.abs(p[0] - b[i][0]) < 1e-9 && Math.abs(p[1] - b[i][1]) < 1e-9);
@@ -43,6 +43,16 @@ test("icicle drops spread along the line with staggered lengths", () => {
   assert.ok(close(drops.slice(0, 2).map((d) => d.top), [[0, 0], [1, 0]]));
   assert.equal(drops[0].f, 1);
   assert.ok(drops[1].f < 1 && drops[1].n < drops[0].n);
+});
+
+test("never more drops than bulbs, and a new icicle light gets about five bulbs a drop", () => {
+  // 603 drops asked of 201 bulbs: one bulb each, and only 201 drops.
+  const drops = icicleDrops([[0, 0], [1, 0]], 603, 201);
+  assert.equal(drops.length, 201);
+  assert.ok(drops.every((d) => d.n === 1));
+  assert.equal(defaultDrops({ segments: 201, bulbs: 201 }), 40);
+  assert.equal(defaultDrops({ segments: 15 }), 12); // 4 bulbs a segment when the count isn't set
+  assert.equal(defaultDrops({ segments: 1, bulbs: 2 }), 1);
 });
 
 test("each spot shows its share of the segments, blended", () => {
