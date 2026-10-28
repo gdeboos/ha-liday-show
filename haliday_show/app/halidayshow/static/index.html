@@ -232,9 +232,8 @@
         <button class="ghost" value="close" aria-label="Close">✕</button></div>
       <div class="form-dialog-body">
         <label class="field">Name <input id="show-name" placeholder="Show name" maxlength="80"></label>
-        <label class="field">Palette <select id="show-palette"></select>
-          <span class="hint">Effects you add take these colours, and the effect chooser shows them.</span></label>
-        <div id="show-palette-bar" class="show-palette-bar"></div>
+        <div class="field"><span>Palette</span> <span id="show-palette"></span>
+          <span class="hint">Effects you add take these colours, and the effect chooser shows them.</span></div>
         <label class="field">Show speaker <select id="show-speaker"></select>
           <span class="hint">Where the song plays when an automation or the MQTT Play button starts this show.
             Editing uses the speaker in the Playback panel.</span></label>
@@ -310,9 +309,8 @@
           <div id="ns-songs" class="song-list" role="radiogroup" aria-labelledby="ns-song-label"></div></div>
         <label id="ns-length-wrap" class="field">Length with no song
           <span><input id="ns-length" type="number" step="1" value="60"> s</span></label>
-        <label class="field">Palette <select id="ns-palette"></select>
-          <span class="hint">Effects you add take these colours, and the effect chooser shows them. You can change it in <b>Show settings</b>.</span></label>
-        <div id="ns-palette-bar" class="show-palette-bar"></div>
+        <div class="field"><span>Palette</span> <span id="ns-palette"></span>
+          <span class="hint">Effects you add take these colours, and the effect chooser shows them. You can change it in <b>Show settings</b>.</span></div>
       </div>
       <div class="form-dialog-body" id="ns-step-2" hidden>
         <p class="hint ns-step">Step 2 of 2: how should it start?</p>

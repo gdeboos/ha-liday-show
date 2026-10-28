@@ -1130,7 +1130,8 @@ Effects scale to each light's segment count. **D** duplicates the selected clip.
 
 ### Colour palettes
 
-An effect's settings include a **Palette** picker. Click a colour to put it in
+An effect's settings include a **Palette** button showing the palette's colours: press it to pick
+another from a window of colour bars (built-in ones first, then yours). Click a colour to put it in
 the colour field you last clicked, or press **Apply palette** to fill them all in order. Click a
 light's name to **Recolour this light** or **Recolour all lights**: each light steps through the
 palette effect by effect, so the lights stay matched (backgrounds are left alone). **Library →

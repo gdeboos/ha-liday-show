@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.245
+
+- Picking a palette is now visual: wherever you choose one (a clip's colours, **Show settings**, **New show**, **✨ Generate**, playlist blocks and the Scene editor), press the button showing its colours and pick from a window of colour bars instead of a list of names.
+
 ## 0.2.244
 
 - **A palette for each show.** Pick one in the **New show** window (it starts on the palette in season), or change it in **⚙ Show settings…**. Effects you add take its colours, and the effect chooser previews every effect in them.
