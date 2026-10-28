@@ -13,7 +13,7 @@ own arrangement:
 | --- | --- | --- |
 | Show | Show, Song, Playback, Beats, Describe it, Preview, House, Timeline and Selection | Timeline |
 | Music | Song (with **Make song file**), Playback, Waveform (with the **Mixer**), Selection, Beats and sections, Edit, Splice and Smoothing | Waveform |
-| Playlist | Playlist (its name, **▶ Play** and **Delete playlist**), Building blocks, Your shows, Running order and When it plays | Running order |
+| Playlist | Playlist (its name, **▶ Play** and **Delete playlist**), Building blocks, Your shows, Running order and When it plays (what the schedule does with it) | Running order |
 
 The Music editor's **Selection** panel is where you change whatever you clicked: a section, a ⚑ mark, a
 clip on a layer or a ✂ join, and the **EQ** faders. If it's folded, clicking one opens it; if you've
@@ -86,7 +86,7 @@ phone has its own. It holds:
 **Setup → Settings → Your data** puts everything HA-liday Show saves in one file, and back:
 
 - **Export…** downloads a `.zip` of your lights (with their parts and groups), shows (archived ones
-  too), scenes, palettes, presets, playlists and their schedules, settings (the public page's and your
+  too), scenes, palettes, presets, playlists, the schedule, settings (the public page's and your
   song folders too), the Music editor's drafts, what **Detect** found in each song and your notes on it, the house photo and where each light is traced
   on it, and the public page's own picture. Your songs stay in your songs folder and aren't in it.
   It's the same on every install, so you can move your shows to another Home Assistant, or between

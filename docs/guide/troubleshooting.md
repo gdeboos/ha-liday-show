@@ -25,7 +25,7 @@
 
 ## Where things are stored
 
-Shows, scenes, devices and their groups, palettes, your presets, playlists with their schedules and
+Shows, scenes, devices and their groups, palettes, your presets, playlists, the schedule and
 building blocks, each song's beats, parts, notes and marks, your song folders, the Music editor's
 drafts, the house photo, the public page's own picture and settings live in the app's config folder (`/addon_configs/<slug>_haliday_show/`), so
 they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` (samples to its

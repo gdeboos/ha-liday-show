@@ -37,6 +37,7 @@
   <symbol id="i-swatches" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
   <symbol id="i-presets" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></symbol>
   <symbol id="i-scenes" viewBox="0 0 24 24"><path d="M10 3.5l1.6 4.4 4.4 1.6-4.4 1.6L10 15.5l-1.6-4.4L4 9.5l4.4-1.6z"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></symbol>
+  <symbol id="i-schedule" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v3l2 1.5"/></symbol>
   <symbol id="i-playlists" viewBox="0 0 24 24"><path d="M3 6h12M3 12h12M3 18h7"/><path d="m15 15 6 3.5-6 3.5z"/></symbol>
   <symbol id="i-timing" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-automations" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></symbol>
@@ -53,8 +54,9 @@
   <h1><img class="brand" src="static/favicon.svg" alt="" width="26" height="26">HA-liday Show</h1>
   <nav>
     <!-- Your things (where the app opens, and where shows, songs, scenes and playlists are opened in
-         their editors), then setting up the house. Each holds several pages, picked from its side menu. -->
+         their editors), when they play by themselves, then setting up the house. Each holds several pages, picked from its side menu. -->
     <button class="tab active" data-view="library"><svg class="ico" aria-hidden="true"><use href="#i-library"/></svg><span>Library</span></button>
+    <button class="tab" data-view="schedule"><svg class="ico" aria-hidden="true"><use href="#i-schedule"/></svg><span>Schedule</span></button>
     <button class="tab" data-view="setup"><svg class="ico" aria-hidden="true"><use href="#i-setup"/></svg><span>Setup</span></button>
     <button class="tab" data-view="public" id="tab-public" hidden><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><span>Public page</span></button>
   </nav>
@@ -111,7 +113,7 @@
   </section>
   <section class="card">
     <h3 class="section-label">When it plays</h3>
-    <div id="sc-when" class="pl-when"></div>
+    <div id="sc-when" class="sched-link"></div>
   </section>
 </main>
 
@@ -133,7 +135,7 @@
         <label>Goes round every <input id="sb-loop" type="number" min="1" max="600" step="1"> s</label>
         <button type="button" id="sb-basic" class="ghost"
           title="Back to one effect per light. Only while each light has one effect across the whole loop and the House lane is empty">Switch to Basic</button>
-        <button type="button" id="sb-when" class="ghost">When it plays…</button>
+        <button type="button" id="sb-when" class="ghost">Schedule…</button>
         <button type="button" id="sb-back" class="ghost">← All scenes</button>
       </div>
     </section>
@@ -401,17 +403,7 @@
   <div class="dock" data-dock="bottom">
     <section class="panel pl-when" data-panel="when" data-wide>
       <div class="panel-head"><span class="section-label">When it plays</span></div>
-    <div id="pl-schedule"></div>
-    <p id="playlist-clock" class="hint"></p>
-    <form id="sun-place" class="sun-place" hidden>
-      <p id="sun-place-text" class="hint"></p>
-      <div class="row">
-        <label>Latitude <input id="sun-lat" inputmode="decimal" placeholder="e.g. 51.5074"></label>
-        <label>Longitude <input id="sun-lon" inputmode="decimal" placeholder="e.g. -0.1278"></label>
-        <button class="primary" type="submit">Save</button>
-        <button id="sun-place-clear" class="ghost" type="button">Use Home Assistant's</button>
-      </div>
-    </form>
+    <div id="pl-schedule" class="sched-link"></div>
     <p class="hint">For shows with no speaker, open the <a href="player" target="_blank" rel="noopener">Show player</a>
       on a computer connected to speakers and leave it open: the songs play there.</p>
     </section>
@@ -742,6 +734,29 @@
 </main>
   </div>
 </div>
+<main id="view-schedule" class="view sched-page" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-schedule"/></svg>Schedule</h2>
+  <p class="hint">Playlists, shows and scenes that play by themselves at set times, even with this page closed.
+    Where times overlap, the one higher in the list plays first; drag ⠿ (or use ↑ ↓) to change the order.
+    A scene can be on at the same time as a playlist or show: it comes back when they finish.</p>
+  <p class="playlist-now" data-playlist-now></p>
+  <div id="sched-list" class="sched-list" role="list" aria-label="Schedule"></div>
+  <p class="group">
+    <button type="button" id="sched-add" class="primary">+ Add to schedule</button>
+  </p>
+  <p id="playlist-clock" class="hint"></p>
+  <form id="sun-place" class="sun-place" hidden>
+  <p id="sun-place-text" class="hint"></p>
+  <div class="row">
+    <label>Latitude <input id="sun-lat" inputmode="decimal" placeholder="e.g. 51.5074"></label>
+    <label>Longitude <input id="sun-lon" inputmode="decimal" placeholder="e.g. -0.1278"></label>
+    <button class="primary" type="submit">Save</button>
+    <button id="sun-place-clear" class="ghost" type="button">Use Home Assistant's</button>
+  </div>
+  </form>
+  <p class="hint">For shows with no speaker, open the <a href="player" target="_blank" rel="noopener">Show player</a>
+    on a computer connected to speakers and leave it open: the songs play there.</p>
+</main>
 <div id="section-setup" class="section" hidden>
   <nav class="subnav" aria-label="Setup">
     <button class="subtab" data-view="devices"><svg class="ico" aria-hidden="true"><use href="#i-devices"/></svg><b>Devices</b><span>Find, test and plan lights</span></button>

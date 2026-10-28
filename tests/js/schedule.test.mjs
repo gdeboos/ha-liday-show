@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { describeSchedule, describeStart, whenNext } from "../../haliday_show/app/halidayshow/static/js/schedule.js";
+import { describeSchedule, describeStart, entriesFor, newEntry, nextFor, scheduleLine, whenNext } from "../../haliday_show/app/halidayshow/static/js/schedule.js";
 
 test("when a playlist next starts, in words", () => {
   assert.equal(whenNext("2026-10-25T17:00", "2026-10-25T13:55"), "today at 17:00");
@@ -27,4 +27,25 @@ test("a sunset start in words", () => {
   assert.equal(describeStart({ ...s, offset: -120 }), "2 hours before sunset");
   assert.equal(describeStart({ ...s, offset: 1 }), "1 minute after sunset");
   assert.equal(describeSchedule({ ...s, end: "01:00" }), "sunset to 01:00 (the next day) every day");
+});
+
+test("schedule entries: finding them, new ones and their line", () => {
+  const eve = { on: true, start: "17:00", end: "22:00", days: [0, 1, 2, 3, 4, 5, 6], from: "", to: "" };
+  const entries = [
+    { id: "a", play: { type: "playlist", id: "night" }, ...eve },
+    { id: "b", play: { type: "playlist", id: "night" }, ...eve, days: [5, 6], end: "23:00" },
+    { id: "c", play: { type: "scene", id: "glow" }, ...eve, on: false },
+  ];
+  assert.deepEqual(entriesFor(entries, "playlist", "night").map((e) => e.id), ["a", "b"]);
+  const e = newEntry("show", "one", [{ id: "x" }]);
+  assert.equal(e.play.type, "show");
+  assert.ok(e.on && e.days.length === 7 && e.id.startsWith("e-"));
+  const state = { now: "2026-10-25T13:00", next: { a: "2026-10-26T17:00", b: "2026-10-25T17:00" } };
+  assert.equal(nextFor(entries, "playlist", "night", state), "2026-10-25T17:00");
+  assert.equal(scheduleLine(entries, "playlist", "night", state), "On the schedule 2×. Next starts today at 17:00");
+  assert.equal(scheduleLine(entries, "playlist", "night", { ...state, scheduled: "b" }), "On now, on the schedule");
+  assert.equal(scheduleLine(entries, "scene", "glow", state), "On the schedule, switched off");
+  assert.equal(scheduleLine(entries, "show", "one", state), "Not on the schedule");
+  assert.equal(scheduleLine([entries[0]], "playlist", "night", { now: state.now, next: { a: "2026-10-26T17:00" } }),
+    "On the schedule: 17:00 to 22:00 every day. Next starts tomorrow at 17:00");
 });

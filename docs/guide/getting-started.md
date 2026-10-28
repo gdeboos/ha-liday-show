@@ -6,12 +6,13 @@
 
 ## Finding your way
 
-Two tabs run along the top, **Library** and **Setup**, and a third, **Public page**, once you've turned
-it on. HA-liday Show opens on **Library**:
+Three tabs run along the top, **Library**, **Schedule** and **Setup**, and a fourth, **Public page**, once
+you've turned it on. HA-liday Show opens on **Library**:
 
 | Tab | What's there |
 | --- | --- |
-| **Library** | In two groups. **Shows**: **Shows** (all of yours), **Scenes** (one-tap looks for every light) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
+| **Library** | In two groups. **Shows**: **Shows** (all of yours), **Scenes** (one-tap looks for every light) and **Playlists** (shows back to back). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
+| **Schedule** | What plays by itself, and when: playlists, shows and scenes (see [Schedule](play-it.md#schedule)). |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 | **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](public-page.md#the-public-page)). |
 
@@ -82,9 +83,9 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 4. **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Play it by itself: put it in a [playlist](play-it.md#playlists) under **Library → Playlists** and turn on
-   **Play on a schedule** (at set times or from sunset), or start it from an automation with the MQTT
-   **Play** button or the `hassio.app_stdin` action.
+5. Play it by itself: on the [Schedule](play-it.md#schedule) tab press **+ Add to schedule** and pick it (or a
+   [playlist](play-it.md#playlists) it's in) and the times, or start it from an automation with the MQTT **Play**
+   button or the `hassio.app_stdin` action.
 
 > **Just want to see it working?** On a fresh install, press **Try the demo** under **Setup → Devices**
 > (or **Setup → Settings → Demo**). See [The demo](#the-demo).

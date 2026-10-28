@@ -470,6 +470,20 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 .playlist-schedule .row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .playlist-schedule select, .playlist-schedule input[type=time] { width: auto; }
 .playlist-next { margin: 0; }
+/* The Schedule tab: one card per entry, highest priority first. */
+.sched-page { max-width: 900px; }
+.sched-list { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+.sched-entry { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 8px; }
+.sched-entry.playing { border-color: var(--accent); }
+.sched-entry.missing { opacity: .6; }
+.sched-entry.dragging { opacity: .4; }
+.sched-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sched-head select { flex: 1 1 10em; min-width: 0; max-width: 24em; font-weight: 600; }
+.sched-grip { cursor: grab; touch-action: none; user-select: none; padding: 2px 4px; color: var(--muted, inherit); }
+.sched-kind { font-size: .8em; text-transform: uppercase; letter-spacing: .04em; opacity: .7; min-width: 4.5em; }
+.sched-actions { display: inline-flex; gap: 6px; margin-left: auto; }
+.sched-link-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
 .sun-place { margin: 10px 0; }
 .sun-place .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sun-place input { width: 9em; margin-left: 6px; }

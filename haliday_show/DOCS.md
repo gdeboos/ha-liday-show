@@ -21,12 +21,13 @@ the Home Assistant sidebar.
 
 ## Finding your way
 
-Two tabs run along the top, **Library** and **Setup**, and a third, **Public page**, once you've turned
-it on. HA-liday Show opens on **Library**:
+Three tabs run along the top, **Library**, **Schedule** and **Setup**, and a fourth, **Public page**, once
+you've turned it on. HA-liday Show opens on **Library**:
 
 | Tab | What's there |
 | --- | --- |
-| **Library** | In two groups. **Shows**: **Shows** (all of yours), **Scenes** (one-tap looks for every light) and **Playlists** (shows back to back, by hand or on a schedule). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
+| **Library** | In two groups. **Shows**: **Shows** (all of yours), **Scenes** (one-tap looks for every light) and **Playlists** (shows back to back). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
+| **Schedule** | What plays by itself, and when: playlists, shows and scenes (see [Schedule](#schedule)). |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
 | **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](#the-public-page)). |
 
@@ -97,9 +98,9 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 4. **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Play it by itself: put it in a [playlist](#playlists) under **Library → Playlists** and turn on
-   **Play on a schedule** (at set times or from sunset), or start it from an automation with the MQTT
-   **Play** button or the `hassio.app_stdin` action.
+5. Play it by itself: on the [Schedule](#schedule) tab press **+ Add to schedule** and pick it (or a
+   [playlist](#playlists) it's in) and the times, or start it from an automation with the MQTT **Play**
+   button or the `hassio.app_stdin` action.
 
 > **Just want to see it working?** On a fresh install, press **Try the demo** under **Setup → Devices**
 > (or **Setup → Settings → Demo**). See [The demo](#the-demo).
@@ -1250,19 +1251,9 @@ works as in a show. Each light's look becomes one effect across the whole timeli
 - **Switch to Basic** goes back to a row per light. It's only offered while nothing would be lost: each
   light with one effect across the whole loop, played on the whole light, and nothing on the House lane.
 
-**When it plays** (at the foot of the Scene editor, or **When it plays…** in the banner for an Advanced
-scene) turns a scene on and off by itself: turn on **Comes on by itself on a schedule** and pick the times,
-days and dates, as for a playlist (see [Playlists](#playlists)). A start can be at sunset.
-
-- At its start the scene comes on. If a show or playlist is playing, the scene waits for it to finish.
-- At its end it goes off.
-- If you turn it off, or put another scene on, before then, it's left that way until its next start.
-- For example: **Candy cane** from sunset to midnight, and your show playlist from 18:00 to 20:00. The
-  lights glow from sunset, the shows take over at six, the scene comes back once they've finished, and
-  everything goes off at midnight.
-- Only one scene comes on by itself at a time. Where two scenes' times overlap, the first by name wins.
-
-**Library → Scenes** says when each scene comes on by itself.
+Scenes come on and off by themselves from the [Schedule](#schedule) tab. **When it plays** at the foot
+of the Scene editor (or **Schedule…** in the banner for an Advanced scene) says what the schedule does
+with the scene, with **+ Add to schedule** and **Open Schedule**. **Library → Scenes** says it too.
 
 Scenes are also in Home Assistant, as a scene each and one light whose brightness dims them (see
 [With MQTT](#with-mqtt)).
@@ -1359,7 +1350,7 @@ when a playlist, its schedule or an automation starts it. Without Home Assistant
 To hear the music too, use the **Show player**:
 
 1. On a computer or tablet connected to your speakers, open the **Show player** link under
-   **When it plays** in the Playlist editor. Without Home Assistant, the address is `http://<HA-liday Show's address>:8099/player`.
+   the **Schedule** tab. Without Home Assistant, the address is `http://<HA-liday Show's address>:8099/player`.
 2. Press **▶ Start the Show player** (browsers only play sound after a press on the page).
 3. Leave it open. Each song plays there from the right point, and your lights follow it.
 
@@ -1367,42 +1358,69 @@ Keep that computer from going to sleep while your shows run. If the lights are a
 make **Light offset** bigger; if they're behind, make it smaller. Shows you play from the editor, or
 on a speaker, don't play in the Show player, so you never hear a song twice.
 
-#### Playing on a schedule
+### Schedule
 
-Turn on **Play on a schedule** under **When it plays**, in the Playlist editor, to have a playlist start
-and stop by itself:
+The **Schedule** tab is where playlists, shows and scenes play by themselves at set times, even with
+the page closed. Each row is one entry: what it plays, then its times, days and dates.
+
+- Press **+ Add to schedule**, then pick what it plays: a playlist, a show (it plays round and round
+  for the whole time) or a scene. **+ Add to schedule** under **When it plays**, in the Playlist editor
+  or the Scene editor, adds that playlist or scene.
+- The same thing can be on the schedule more than once, such as your playlist 17:00 to 22:00 on
+  weekdays and 16:00 to 23:00 at weekends.
+- Untick **On** to pause an entry without losing its times. **Delete** takes it off the schedule.
+- An entry whose playlist, show or scene you delete stays, greyed out, and is skipped.
+
+Times work like this:
 
 - **From** and **to** set the times, such as 17:00 to 22:00. An end time earlier than the start runs
   past midnight: 20:00 to 01:00 on a Saturday plays until 1 in the morning on Sunday.
 - To start when it gets dark, change **From** to **sunset**. You can start up to 3 hours before or
-  after it, such as 15 **minutes after**. Sunset moves through the year, so the playlist does too.
+  after it, such as 15 **minutes after**. Sunset moves through the year, so the entry does too.
   An end time in the morning (before 12:00), such as 01:00, is the next morning. On an evening the sun
   sets after the end time (21:00 in midsummer, say), it doesn't play.
 - Press the days it shouldn't play to turn them off.
 - Turn on **Only between** to play just between two dates, such as 25 Oct and 31 Oct. They come round
   every year, and can run over New Year (1 Dec and 6 Jan).
 
-Under the schedule it says when the playlist next starts. At the start time it starts, even if
-something else is playing. At the end time the show that's on finishes, then it stops (a building block that's on stops
-straight away). If you press
+Each entry says when it next starts. At the start time a playlist or show starts, even if something else
+is playing. At the end time the show that's on finishes, then it stops (a building block that's on
+stops straight away), unless another entry for the same thing carries straight on. If you press
 **■ Stop**, pause the song on the speaker or play something else in between, it stays off until its
-next start time. If HA-liday Show restarts during the scheduled time (after an update, say), the
-playlist starts again, and so does one whose schedule you turn on during its time. Changing the
-times while it plays just moves when it stops.
+next start time. If HA-liday Show restarts during the scheduled time (after an update, say), it
+starts again, and so does an entry you turn on during its time. Changing the times while it plays
+just moves when it stops.
+
+A scene entry puts the scene on at its start and off at its end. If a show or playlist is playing,
+the scene waits for it to finish. If you turn it off, or put another scene on, before then, it's left
+that way until its next start.
+
+#### When times overlap
+
+Playlists and shows take turns, and so do scenes; a scene can be on alongside a playlist or show.
+
+- Where two playlists' or shows' times overlap, the entry higher up the list plays first, and the
+  other starts once it's finished. The same goes for two scenes. Drag ⠿ (or press **↑** and **↓**) to
+  change the order.
+- A playlist or show takes the lights over from a scene, and the scene comes back once it's finished.
+  For example: **Candy cane** from sunset to midnight, and your show playlist from 18:00 to 20:00. The
+  lights glow from sunset, the shows take over at six, the scene comes back once they've finished, and
+  everything goes off at midnight.
+
+#### Sunset and the clock
 
 Sunset times are worked out for Home Assistant's location (**Settings → System → General** in Home
 Assistant). Without Home Assistant, or to use another place, type your latitude and longitude in the
-boxes that appear under the schedule once a playlist starts at sunset, and press **Save**. **Use Home
-Assistant's** goes back to Home Assistant's location. On Google Maps, right-click your
-house and click the numbers at the top to copy them, then paste them into the first box. Sunset is
-worked out to within a couple of minutes. The page shows today's sunset next to the clock.
+boxes at the bottom of the **Schedule** tab (they appear once an entry starts at sunset), and press
+**Save**. **Use Home Assistant's** goes back to Home Assistant's location. On Google Maps, right-click
+your house and click the numbers at the top to copy them, then paste them into the first box. Sunset
+is worked out to within a couple of minutes. The page shows today's sunset next to the clock.
 
-Only one playlist plays at a time. If two playlists' times overlap, the one higher up **Library → Playlists** plays
-first, and the other starts once it's finished.
-
-Schedules go by HA-liday Show's own clock, which the Playlist editor shows under the schedule. The app uses
-Home Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
+The schedule goes by HA-liday Show's own clock, which the **Schedule** tab shows. The app uses Home
+Assistant's time zone. With Docker, set `TZ` in `docker-compose.yml` to your time zone (such as
 `Europe/London`); with Python, it uses your computer's clock.
+
+Schedules you'd set on a playlist or scene before 0.2.229 were moved to the **Schedule** tab for you.
 
 ### The public page
 
@@ -1461,7 +1479,7 @@ without the code just says "Scan the code on the sign to start a show".
     one set up on the Home Assistant machine itself. (With Docker, keep the host networking from the
     example `docker-compose.yml`, so HA-liday Show sees which phone is which.)
   - Your house is your home location in Home Assistant (**Settings → System → General**), or the one
-    you typed in for sunset under **When it plays** in the Playlist editor. Without either, visitors
+    you typed in for sunset on the **Schedule** tab. Without either, visitors
     through the internet can't start shows at all until you set one, and the tab says so.
   - The distance is measured generously: a phone that isn't sure where it is gets up to 150 m extra.
     The check stops casual use from afar, but a determined person could fake where their phone is,
@@ -1761,7 +1779,7 @@ own arrangement:
 | --- | --- | --- |
 | Show | Show, Song, Playback, Beats, Describe it, Preview, House, Timeline and Selection | Timeline |
 | Music | Song (with **Make song file**), Playback, Waveform (with the **Mixer**), Selection, Beats and sections, Edit, Splice and Smoothing | Waveform |
-| Playlist | Playlist (its name, **▶ Play** and **Delete playlist**), Building blocks, Your shows, Running order and When it plays | Running order |
+| Playlist | Playlist (its name, **▶ Play** and **Delete playlist**), Building blocks, Your shows, Running order and When it plays (what the schedule does with it) | Running order |
 
 The Music editor's **Selection** panel is where you change whatever you clicked: a section, a ⚑ mark, a
 clip on a layer or a ✂ join, and the **EQ** faders. If it's folded, clicking one opens it; if you've
@@ -1834,7 +1852,7 @@ phone has its own. It holds:
 **Setup → Settings → Your data** puts everything HA-liday Show saves in one file, and back:
 
 - **Export…** downloads a `.zip` of your lights (with their parts and groups), shows (archived ones
-  too), scenes, palettes, presets, playlists and their schedules, settings (the public page's and your
+  too), scenes, palettes, presets, playlists, the schedule, settings (the public page's and your
   song folders too), the Music editor's drafts, what **Detect** found in each song and your notes on it, the house photo and where each light is traced
   on it, and the public page's own picture. Your songs stay in your songs folder and aren't in it.
   It's the same on every install, so you can move your shows to another Home Assistant, or between
@@ -1967,7 +1985,7 @@ If it hears nothing, the lights are talking to each other directly, where Home A
 
 ## Where things are stored
 
-Shows, scenes, devices and their groups, palettes, your presets, playlists with their schedules and
+Shows, scenes, devices and their groups, palettes, your presets, playlists, the schedule and
 building blocks, each song's beats, parts, notes and marks, your song folders, the Music editor's
 drafts, the house photo, the public page's own picture and settings live in the app's config folder (`/addon_configs/<slug>_haliday_show/`), so
 they are included in Home Assistant backups. Uploaded songs go to `/media/haliday_show/` (samples to its
@@ -1989,8 +2007,8 @@ It works the same as the Home Assistant app, with a few differences:
   Or set `HALIDAY_SHOW_ALLOW_ALL=1` to let anyone on your home network in without one.
 - It must be on the same network as your lights, with full network access (for Docker, host
   networking), as the app is.
-- There's no `hassio.app_stdin` action. Use the MQTT entities in automations instead, or a playlist
-  with [a schedule](#playing-on-a-schedule).
+- There's no `hassio.app_stdin` action. Use the MQTT entities in automations instead, or the
+  [Schedule](#schedule).
 - There's no Home Assistant speaker unless you connect one (below). For music with scheduled shows,
   leave the [Show player](#music-with-no-speaker-the-show-player) open on a computer with speakers.
 
@@ -2004,7 +2022,7 @@ You set everything with these settings (environment variables). All are optional
 | `HALIDAY_SHOW_MEDIA` | The folder your songs are kept in. |
 | `HALIDAY_SHOW_PORT` | The web port, `8099` unless you change it. |
 | `HALIDAY_SHOW_PUBLIC_PORT` | The [public page](#the-public-page)'s port, `18099` unless you change it. It only opens once you've set up the public page. |
-| `TZ` | Your time zone, such as `Europe/London`, for playlist schedules. Docker only; with Python it uses your computer's. |
+| `TZ` | Your time zone, such as `Europe/London`, for the schedule. Docker only; with Python it uses your computer's. |
 | `HA_URL`, `HA_TOKEN` | Your Home Assistant address (e.g. `http://homeassistant.local:8123`) and a long-lived access token (your profile in Home Assistant → **Security**). Needed for speakers, Home Assistant's AI, and Home Assistant lights and switches in shows. |
 | `ANTHROPIC_API_KEY` | A Claude API key for the AI, instead of Home Assistant's. |
 | `HALIDAY_SHOW_AI_TASK_ENTITY` | Which Home Assistant AI Task to use, if you have several. |

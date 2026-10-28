@@ -61,7 +61,7 @@ without the code just says "Scan the code on the sign to start a show".
     one set up on the Home Assistant machine itself. (With Docker, keep the host networking from the
     example `docker-compose.yml`, so HA-liday Show sees which phone is which.)
   - Your house is your home location in Home Assistant (**Settings → System → General**), or the one
-    you typed in for sunset under **When it plays** in the Playlist editor. Without either, visitors
+    you typed in for sunset on the **Schedule** tab. Without either, visitors
     through the internet can't start shows at all until you set one, and the tab says so.
   - The distance is measured generously: a phone that isn't sure where it is gets up to 150 m extra.
     The check stops casual use from afar, but a determined person could fake where their phone is,

@@ -18,8 +18,8 @@ It works the same as the Home Assistant app, with a few differences:
   Or set `HALIDAY_SHOW_ALLOW_ALL=1` to let anyone on your home network in without one.
 - It must be on the same network as your lights, with full network access (for Docker, host
   networking), as the app is.
-- There's no `hassio.app_stdin` action. Use the MQTT entities in automations instead, or a playlist
-  with [a schedule](play-it.md#playing-on-a-schedule).
+- There's no `hassio.app_stdin` action. Use the MQTT entities in automations instead, or the
+  [Schedule](play-it.md#schedule).
 - There's no Home Assistant speaker unless you connect one (below). For music with scheduled shows,
   leave the [Show player](play-it.md#music-with-no-speaker-the-show-player) open on a computer with speakers.
 
@@ -33,7 +33,7 @@ You set everything with these settings (environment variables). All are optional
 | `HALIDAY_SHOW_MEDIA` | The folder your songs are kept in. |
 | `HALIDAY_SHOW_PORT` | The web port, `8099` unless you change it. |
 | `HALIDAY_SHOW_PUBLIC_PORT` | The [public page](public-page.md#the-public-page)'s port, `18099` unless you change it. It only opens once you've set up the public page. |
-| `TZ` | Your time zone, such as `Europe/London`, for playlist schedules. Docker only; with Python it uses your computer's. |
+| `TZ` | Your time zone, such as `Europe/London`, for the schedule. Docker only; with Python it uses your computer's. |
 | `HA_URL`, `HA_TOKEN` | Your Home Assistant address (e.g. `http://homeassistant.local:8123`) and a long-lived access token (your profile in Home Assistant → **Security**). Needed for speakers, Home Assistant's AI, and Home Assistant lights and switches in shows. |
 | `ANTHROPIC_API_KEY` | A Claude API key for the AI, instead of Home Assistant's. |
 | `HALIDAY_SHOW_AI_TASK_ENTITY` | Which Home Assistant AI Task to use, if you have several. |

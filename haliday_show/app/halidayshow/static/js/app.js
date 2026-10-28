@@ -28,7 +28,8 @@ import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor } from "./music.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette } from "./palettes.js";
-import { DAYS, DEFAULT_SCHEDULE, MONTHS, describeSchedule, whenNext } from "./schedule.js";
+import { DAYS, DEFAULT_SCHEDULE, MONTHS, entriesFor, scheduleLine, whenNext } from "./schedule.js";
+import { SchedulePage } from "./schedulepage.js";
 import { readability } from "../public/colours.js";
 import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLink } from "./publicsettings.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
@@ -1731,7 +1732,7 @@ const sceneEd = new SceneEditor({
   lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
   palettes: () => allPalettes(), presetsFor: (effect) => presetsFor(effect),
   positions: () => housePositionsAll(), groups: () => app.groups, editAdvanced: (id) => openSceneInEditor(id),
-  scheduleEditor: (holder, id, onChange) => sceneScheduleEditor(holder, id, onChange),
+  scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => scheduleLine(scheduleState.entries || [], "scene", id, scheduleState),
   opened: () => { app.sceneChosen = true; showView("scene"); },
   closed: () => { app.sceneChosen = false; showView("scene"); },
 });
@@ -3494,7 +3495,55 @@ function openPaletteWindow(palette, draft = null) {
 // Shows played back to back by HA-liday Show itself, so they carry on with the editor closed.
 let playlists = [], playlistShows = [], playlistArchived = [], playlistPlaying = null, playlistWatch = null;
 let playlistsLoaded = false; // never save over the stored playlists before they've been read
-let scheduleState = { now: null, next: {}, scheduled: null }; // HA-liday Show's clock and next starts
+let scheduleState = { now: null, next: {}, scheduled: null, entries: [] }; // the schedule, its clock and next starts
+
+// The Schedule tab (schedulepage.js).
+const schedPage = new SchedulePage({
+  api, status,
+  timesEditor: (holder, opts) => scheduleEditor(holder, opts),
+  targets: () => ({
+    playlist: playlists.map((p) => ({ id: p.id, name: p.name })),
+    show: playlistShows.map((x) => ({ id: x.id, name: x.name })),
+    scene: playlistScenes.map((x) => ({ id: x.id, name: x.name })),
+  }),
+  stateChanged: (st) => { scheduleState = st; renderSunPlace(); updateScheduleLinks(); },
+});
+
+// For a playlist or scene: what the schedule does with it, and a way to the Schedule tab.
+function scheduleLink(type, id) {
+  const box = document.createElement("p");
+  box.className = "sched-link-line";
+  box.dataset.schedType = type;
+  box.dataset.schedId = id;
+  const text = document.createElement("span");
+  text.className = "hint playlist-next";
+  const open = button("Open Schedule", () => showView("schedule"), "ghost sched-open");
+  const add = button("+ Add to schedule", async () => {
+    await flushPlaylists();
+    if (type === "scene") await sceneEd.flush?.();
+    showView("schedule");
+    await schedReady;
+    await schedPage.add(type, id);
+  }, "ghost sched-add");
+  box.append(text, " ", add, " ", open);
+  fillScheduleLink(box);
+  return box;
+}
+function fillScheduleLink(box) {
+  const { schedType: type, schedId: id } = box.dataset;
+  const on = entriesFor(scheduleState.entries || [], type, id).length > 0;
+  box.querySelector(".playlist-next").textContent = `${scheduleLine(scheduleState.entries || [], type, id, scheduleState)}.`;
+  box.querySelector(".sched-open").hidden = !on;
+}
+function updateScheduleLinks() {
+  for (const box of document.querySelectorAll(".sched-link-line")) fillScheduleLink(box);
+  for (const row of document.querySelectorAll("[data-playlist-list] .show-row")) {
+    const next = row.querySelector(".playlist-next");
+    const line = playlistScheduleNote(row.dataset.playlistId);
+    if (next) next.textContent = line;
+  }
+}
+let schedReady = Promise.resolve();
 
 // Your scenes, for Scene blocks: their names, and the first one for a new block.
 let playlistScenes = [];
@@ -3533,7 +3582,12 @@ async function refreshPlaylistStatus() {
     $("playlist-clock").textContent = `Schedules go by HA-liday Show's clock, which says ${t} on ${d.split("-").reverse().join("/")}.`
       + (scheduleState.sunset ? ` Sunset today is at ${scheduleState.sunset}.` : "");
   }
+  if (scheduleState.entries) {
+    schedPage.state = scheduleState;
+    schedPage.notes();
+  }
   renderSunPlace();
+  updateScheduleLinks();
   const now = st.playlist ? { ...st.playlist, show: st.playing ? st.show : null, block: st.block || null, name: st.playlist.name } : null;
   playlistPlaying = now;
   const nowText = !now ? ""
@@ -3553,9 +3607,6 @@ function markPlaylistPlaying() {
     const play = row.querySelector(".playlist-play");
     play.textContent = playing ? "■ Stop" : "▶ Play";
     play.disabled = !playing && play.dataset.empty === "1";
-    const next = row.querySelector(".playlist-next");
-    const pl = playlists.find((x) => x.id === row.dataset.playlistId);
-    if (pl) next.textContent = scheduleNote(pl);
   }
   const pl = openPlaylist();
   if (!pl || $("view-playlist").hidden) return;
@@ -3569,14 +3620,12 @@ function markPlaylistPlaying() {
   play.textContent = playing ? "■ Stop" : "▶ Play";
   play.disabled = !playing && empty;
   play.title = !playing && empty ? "Add a saved show first" : "";
-  const next = document.querySelector("#pl-schedule .playlist-next");
-  if (next) next.textContent = scheduleNote(pl);
 }
 
 // Where sunset is worked out for: shown once a playlist starts at sunset.
 function renderSunPlace() {
   const form = $("sun-place");
-  const usesSunset = playlists.some((p) => p.schedule?.on && p.schedule.start === "sunset");
+  const usesSunset = (scheduleState.entries || []).some((e) => e.on && e.start === "sunset");
   const loc = scheduleState.location;
   form.hidden = !usesSunset && !(loc?.source === "you");
   if (form.hidden || form.contains(document.activeElement)) return;
@@ -3604,14 +3653,10 @@ async function saveSunPlace(e) {
   refreshPlaylistStatus();
 }
 
-function scheduleNote(pl) {
-  const s = pl.schedule;
-  if (!s?.on) return "";
-  if (scheduleState.scheduled === pl.id) return `Playing now on its schedule (${describeSchedule(s)}).`;
-  const next = scheduleState.next?.[pl.id];
-  if (s.start === "sunset" && !scheduleState.location) return "To know when sunset is, it needs where you are: add it under When it plays.";
-  if (!next || !scheduleState.now) return s.days.length ? "" : "Pick at least one day.";
-  return `Next starts ${whenNext(next, scheduleState.now)}.`;
+// A playlist's line in Your playlists: what the schedule does with it (empty when it isn't on it).
+function playlistScheduleNote(id) {
+  const entries = scheduleState.entries || [];
+  return entriesFor(entries, "playlist", id).length ? `${scheduleLine(entries, "playlist", id, scheduleState)}.` : "";
 }
 
 // Setup → Settings → Live music (livemusic.py) ---------------------------------------
@@ -3667,19 +3712,9 @@ async function saveLiveMusic(change) {
   catch (e) { status(`Couldn't save Live music: ${e.message}`, true, "live"); }
 }
 
-// When a scene plays, for its schedule editor: on now, or its next start.
-function sceneScheduleNote(id, s) {
-  if (!s?.on) return "";
-  if (scheduleState.scene_scheduled === id) return `On now on its schedule (${describeSchedule(s)}).`;
-  if (s.start === "sunset" && !scheduleState.location) return "To know when sunset is, it needs where you are: add it under a playlist's When it plays.";
-  const next = scheduleState.scenes?.[id];
-  if (!next || !scheduleState.now) return s.days.length ? "" : "Pick at least one day.";
-  return `Next comes on ${whenNext(next, scheduleState.now)}.`;
-}
-
-// The schedule part of a playlist's card (or a scene's): times, days and (optionally) dates.
-// `onChange` saves it; `noteFor` says when it next plays.
-function scheduleEditor(pl, { onChange = savePlaylists, noteFor = scheduleNote, label = " Play on a schedule" } = {}) {
+// A schedule entry's times, days and (optionally) dates, for the Schedule tab: `pl.schedule` is the
+// entry. `onChange` saves it; `noteFor` says when it next plays.
+function scheduleEditor(pl, { onChange, noteFor, label = " On" }) {
   const box = document.createElement("div");
   const on = document.createElement("input");
   on.type = "checkbox";
@@ -3827,11 +3862,6 @@ function scheduleEditor(pl, { onChange = savePlaylists, noteFor = scheduleNote, 
   return box;
 }
 
-// A scene's schedule editor (sceneeditor.js and the Advanced banner): `holder` has the schedule.
-function sceneScheduleEditor(holder, id, onChange) {
-  return scheduleEditor(holder, { onChange, noteFor: (h) => sceneScheduleNote(id, h.schedule), label: " Comes on by itself on a schedule" });
-}
-
 let savePlaylistsTimer = null;
 function savePlaylists() {
   if (!playlistsLoaded) return;
@@ -3940,6 +3970,7 @@ function renderPlaylistLists() {
     box.setAttribute("aria-label", "Your playlists");
     box.replaceChildren(...rows.map(playlistRow));
   }
+  updateScheduleLinks();
 }
 
 function playlistRow(r) {
@@ -4025,7 +4056,7 @@ function renderPlaylistEditor() {
   renderBlockPalette();
   renderPlaylistBin();
   renderPlaylistOrder();
-  $("pl-schedule").replaceChildren(scheduleEditor(pl)); // the list was just read again, so a new pl
+  $("pl-schedule").replaceChildren(scheduleLink("playlist", pl.id));
 }
 
 const showHue = (k) => (k * 67 + 200) % 360; // each place in the order has its own colour, on the strip too
@@ -6807,7 +6838,7 @@ async function openSceneInEditor(id) {
   app.show = { name: scene.name, audio: null, duration: scene.loop, beats: [], bars: [], sections: [],
     tracks: structuredClone(scene.tracks || []) };
   app.sceneId = id;
-  app.sceneSchedule = scene.schedule || null; // kept as it is; edited under When it plays…
+  app.sceneSchedule = scene.schedule || null; // from before the Schedule tab: kept as it is, unused
   app.history = [];
   ensureTracks();
   commit();
@@ -6842,11 +6873,12 @@ const sceneNow = () => {
   return { name: app.show.name, mode: "advanced", loop, tracks, ...(app.sceneSchedule ? { schedule: app.sceneSchedule } : {}) };
 };
 
-// When it plays, for the Advanced scene open in the Show editor.
+// The schedule, for the Advanced scene open in the Show editor: what it does with the scene, and a
+// way to the Schedule tab (the scene stays open, under ↩ in the top bar).
 function openSceneWhen() {
-  const holder = { schedule: app.sceneSchedule };
   const w = editWindow("When it plays");
-  w.body.append(sceneScheduleEditor(holder, app.sceneId, () => { app.sceneSchedule = holder.schedule; app.changed(); }));
+  w.body.append(scheduleLink("scene", app.sceneId));
+  w.body.addEventListener("click", (e) => { if (e.target.closest("button")) w.dlg.close(); });
   w.foot.append(button("Done", () => w.dlg.close(), "primary"));
   w.dlg.showModal();
 }
@@ -8142,7 +8174,7 @@ function showView(view, { push = true } = {}) {
   }
   for (const t of document.querySelectorAll(".subtab[data-view]")) t.classList.toggle("active", t.dataset.view === page);
   for (const k of Object.keys(SECTIONS)) $(`section-${k}`).hidden = k !== top;
-  for (const v of ["editor", "music", "playlist", "scene", "public", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
+  for (const v of ["editor", "music", "playlist", "scene", "public", "schedule", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
   if (page === "songs") $("view-songs").append($("songs-block"));
   if (page === "shows") renderShowLists();
   // Going back to the shows (← All shows, or the browser's Back) puts the show away, so it stops too.
@@ -8160,7 +8192,11 @@ function showView(view, { push = true } = {}) {
     const frame = $("pub-preview-frame");
     if (!frame.src) frame.src = "public-preview/";
   }
-  if (["playlists", "playlist"].includes(page)) loadPlaylists(); else stopPlaylistWatch();
+  if (page === "scenes" || page === "scene") api("api/schedule").then((st) => { scheduleState = st; updateScheduleLinks(); sceneEd.drawLists?.(); }).catch(() => {});
+  if (page === "schedule") {
+    schedReady = loadPlaylists().then(() => schedPage.load()).then(() => schedPage.draw());
+  } else schedPage.flush();
+  if (["playlists", "playlist", "schedule"].includes(page)) { if (page !== "schedule") loadPlaylists(); } else stopPlaylistWatch();
   if (page === "editor") { layoutPreview(); timeline.layout(); loadSongMarks(); }
   rememberPage(page, push);
   helpPageChanged();
@@ -8658,6 +8694,7 @@ async function init() {
   wireWizard();
   wireData();
   wirePublic();
+  $("sched-add").addEventListener("click", () => schedPage.addAny());
   new Layout(() => { layoutPreview(); timeline.layout(); }, "show", $("view-editor"));
   const musicLayout = new Layout(null, "music", $("view-music"));
   // Clicking a section, mark, clip or join opens a folded Selection panel, so the change shows.

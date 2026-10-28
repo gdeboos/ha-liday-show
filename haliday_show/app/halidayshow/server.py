@@ -1448,9 +1448,35 @@ async def put_block_part(request):
     return _save_block(request, block_id, blob)
 
 
+def _schedule_view(app) -> dict:
+    return {**app[SCHEDULER].state(), "entries": schedule.load_entries(app[STORAGE])}
+
+
 async def get_schedule(request):
-    """HA-liday Show's clock, and when each scheduled playlist next starts."""
-    return web.json_response(request.app[SCHEDULER].state())
+    """The schedule's entries, HA-liday Show's clock, and when each entry next starts."""
+    return web.json_response(_schedule_view(request.app))
+
+
+async def put_schedule(request):
+    """The whole schedule, highest priority first (schedule.py)."""
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    if not isinstance(body, list) or len(body) > schedule.MAX_ENTRIES:
+        raise web.HTTPBadRequest(text=f"expected a list of up to {schedule.MAX_ENTRIES} schedule entries")
+    clean = [schedule.clean_entry(e) for e in body]
+    if not all(clean):
+        raise web.HTTPBadRequest(text="each entry needs an id, a playlist, show or scene to play, a start "
+                                      "and an end that differ, and days")
+    if len({e["id"] for e in clean}) != len(clean):
+        raise web.HTTPBadRequest(text="each entry needs its own id")
+    storage = request.app[STORAGE]
+    schedule.load_entries(storage)  # move any old schedules across first, so they aren't made again
+    settings = storage.load_settings()
+    settings["schedule"] = clean
+    storage.save_settings(settings)
+    return web.json_response(_schedule_view(request.app))
 
 
 async def put_location(request):
@@ -1474,7 +1500,7 @@ async def put_location(request):
             raise web.HTTPBadRequest(text="latitude goes from -90 to 90 and longitude from -180 to 180")
         settings["location"] = {"lat": round(lat, 4), "lon": round(lon, 4)}
     storage.save_settings(settings)
-    return web.json_response(request.app[SCHEDULER].state())
+    return web.json_response(_schedule_view(request.app))
 
 
 async def play_playlist(request):
@@ -2278,6 +2304,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/blocks/{id}/baked", put_block)
     r.add_post("/api/blocks/{id}/baked/part", put_block_part)
     r.add_get("/api/schedule", get_schedule)
+    r.add_put("/api/schedule", put_schedule)
     r.add_get("/api/public", get_public)
     r.add_put("/api/public", put_public)
     r.add_post("/api/public/clear", clear_public_queue)
