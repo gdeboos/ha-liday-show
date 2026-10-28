@@ -38,3 +38,12 @@ test("a group's size names each kind of cell", () => {
   assert.equal(sizeText(groupShares(["a#r", "b", "c"], lights)), "60 LEDs, 15 segments and 1 one-colour light");
   assert.equal(sizeText([]), "");
 });
+
+test("a Govee light with a segment for every bulb counts bulbs", () => {
+  const pillars = { kind: "govee", segments: 300, bulbs: 300 };
+  assert.equal(countText(pillars), "300 bulbs");
+  assert.equal(unitWord(pillars, 1), "bulb");
+  assert.equal(rangeText(pillars, 1, 100), "Bulbs 1–100");
+  assert.equal(showBulbs(pillars), true);
+  assert.equal(sizeText([{ light: pillars, n: 100 }, { light: govee, n: 15 }]), "100 bulbs and 15 segments");
+});
