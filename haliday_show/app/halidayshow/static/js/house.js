@@ -3,6 +3,7 @@
 // colours. The House tab sets it up; the House panel in the editor plays the show on it.
 
 import { SAMPLE_HOUSE } from "./samplehouse.js";
+import { unitWord } from "./lightwords.js";
 
 const BULBS_PER_SEGMENT = 4; // the guess when a light's bulb count isn't set on the Devices tab
 const MAX_BULBS = 2000;
@@ -719,7 +720,7 @@ export class House {
         const s = bulbSegment(j, bulbs.length, dev.segments, dev.reverse) + (dev.from || 1);
         const part = dev.parts?.find((x) => x.from <= s && s <= x.to);
         const where = !dev.parts?.length ? "" : part ? ` · ${part.name}` : " · unused, off";
-        best = { x: q[0], y: q[1], text: `${dev.name}: segment ${s}${where}` };
+        best = { x: q[0], y: q[1], text: `${dev.name}: ${unitWord(dev, 1)} ${s}${where}` };
       });
     }
     return best;

@@ -35,6 +35,18 @@ export function membersText(members, lights, max = 3) {
   return names.length <= max ? names.join(", ") : `${names.slice(0, max).join(", ")} and ${names.length - max} more`;
 }
 
+// What each light brings to a group: [{light, n}], n being how many of its segments are in.
+export function groupShares(members, lights) {
+  const want = new Set(members), out = [];
+  for (const d of lights) {
+    let n = 0;
+    if (!d.parts?.length) { if (want.has(d.id)) n = d.segments; }
+    else for (const p of d.parts) if (want.has(d.id) || want.has(`${d.id}#${p.id}`)) n += p.to - p.from + 1;
+    if (n) out.push({ light: d, n });
+  }
+  return out;
+}
+
 // How many segments a group's strip has.
 export function groupSegments(members, lights) {
   const want = new Set(members);

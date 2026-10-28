@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.227
+
+- Lights now use the right word for their size. WLED strips, Twinkly and pixel controllers say **LEDs** (in their window, their parts, the timeline and the group list), and only Govee lights say **Segments**.
+- **Bulbs** now only shows on Govee lights, where it can differ. On LED lights it follows **LEDs** by itself. A Home Assistant light no longer shows a count at all, as it's one colour.
+- The **Size** column on **Setup → Devices** and in **Groups** says what's in each, such as "200 LEDs" or "90 LEDs and 15 segments". Nothing about your saved lights or shows has changed.
+
 ## 0.2.226
 
 - WLED now comes first. **+ Add a light** and **Plan a light** list **WLED strip** first, then the pixel

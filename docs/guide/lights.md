@@ -13,20 +13,23 @@ WLED strip or a Govee light, press **Scan network** and **Add** each light it fi
 doesn't show up. When it's added, press **Add another**
 for the next one, or **Done**.
 
-The list shows one line per light: its name, IP, model and a bar of its segments, with each part in its
-colour and a count of its segments and parts. Press **Test** on a line to test the light. Press anywhere
+The list shows one line per light: its name, IP, model and its **Size**, a bar with each part in its
+colour and how many LEDs (or segments, on a Govee light) and parts it has. Press **Test** on a line to test the light. Press anywhere
 else on the line (or **Edit**) to open the light's window, which has all its settings and its parts.
 **Remove light** is at the bottom of that window. The settings are:
 
 | Setting | What it does |
 | --- | --- |
 | Name | How the light is labelled in the editor and on the House tab. |
-| Segments | How many separately controllable sections it has. For WLED, Twinkly and pixel controllers it's the number of LEDs, filled in or typed when you add it; a Home Assistant light has one. Govee doesn't report it, so set it with **Find** or **Test** (see [Govee lights](#govee-lights)); most Govee strips and outdoor lights have 10 to 15. |
-| Bulbs | The real number of bulbs, so the House view draws each one. Leave blank to draw 4 per segment. |
+| LEDs | WLED, Twinkly and pixel controllers: how many LEDs it has, filled in or typed when you add it. |
+| Segments | Govee only: how many separately controllable sections it has. Govee doesn't report it, so set it with **Find** or **Test** (see [Govee lights](#govee-lights)); most Govee strips and outdoor lights have 10 to 15. |
+| Bulbs | Govee only: the real number of bulbs, so the House view draws each one. Leave blank to draw 4 per segment. On other lights the House view draws one bulb per LED. |
 | Brightness % | Caps the light in every show, handy when one string is much brighter than the rest. It applies straight away, to previews too, without re-saving shows. |
 | Reverse | Turn it on if effects run from the wrong end. |
 | Blend | Govee only: asks the light to blend smoothly between neighbouring segments. |
 | Protocol | Govee only: how colours are sent (see [Govee lights](#govee-lights)). Other kinds show how they're driven, such as **DDP** or **E1.31**. |
+
+A Home Assistant light has neither **LEDs** nor **Segments**: it shows one colour at a time.
 
 Some kinds have a little more in their window: **first LED** for a pixel controller over DDP, **universe**
 and **channel** for one over E1.31, and the light or switch for a Home Assistant one.
@@ -35,7 +38,7 @@ and **channel** for one over E1.31, and the light or switch for a Home Assistant
 
 WLED strips work like any other light. Press **+ Add a light**, pick **WLED strip** and press
 **Scan network** to find it, or type its IP address (it's on the WLED app's **Info** page) and press **Add**. HA-liday Show asks the
-strip for its name and number of LEDs, so there's nothing to work out: every LED is its own segment,
+strip for its name and number of LEDs, so there's nothing to work out: its **LEDs** are filled in,
 up to 1000 a strip. **Find**, **Blend** and **Protocol** don't apply to WLED, so they're not shown.
 
 WLED has its own way of splitting a strip, **segments** in the WLED app. If you've set some up, they
@@ -66,7 +69,7 @@ work on its shows straight away. Once the controller is on, type its IP into the
 press **Test**.
 
 - The light keeps its name, its tracks in every show and its place on the house photo.
-- **Segments** becomes the WLED's number of LEDs, and its parts keep their share of the light: on a
+- **LEDs** is set to the WLED's number of LEDs, and its parts keep their share of the light: on a
   44-segment light split into thirds, **Left**, **Center** and **Right** become thirds of the new length.
 - Shows that use the light are updated straight away, so playlists, schedules and Home Assistant play
   them on every LED.
@@ -205,12 +208,12 @@ to any number of segments.
 
 A long light can run where you only want part of it in the show,
 or you may want different effects on different stretches, like a roof line that goes round the
-whole house. Press the light's line to open its window, then **Split into parts…**. The first part covers every
-segment; set its first and last segment, then press **+ Add part** for the next stretch (it starts
+whole house. Press the light's line to open its window, then **Split into parts…**. The first part covers the whole
+light; set its first and last LED (segment, on a Govee light), then press **+ Add part** for the next stretch (it starts
 just after the last part). For example, a 150-LED WLED strip round the roof could be **Front roof**
-1–60, **Side** 61–100 and **Back** 101–150. Segments are counted the way effects run, so with
-**Reverse** on, segment 1 is the far end. Parts are listed one per line, each with its colour,
-and the bar above them maps the light's segments: each part in its colour, unused ones grey.
+1–60, **Side** 61–100 and **Back** 101–150. They're counted the way effects run, so with
+**Reverse** on, LED 1 is the far end. Parts are listed one per line, each with its colour,
+and the bar above them maps the light: each part in its colour, unused ones grey.
 
 To check where a part really is, press **Test** on its line: the real light shows just that part,
 in its colour, with its first segment white, for a minute. Change its first or last segment while

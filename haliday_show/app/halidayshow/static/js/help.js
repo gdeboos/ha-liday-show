@@ -54,7 +54,7 @@ export const HELP = {
         "It needs an AI, set up under <b>Setup → Settings → AI</b>.",
       ] },
       { id: "preview", title: "Preview and House", guide: ["house.md", "3-your-house"], tips: [
-        "<b>Preview</b> shows each light's segments as they'll look at the playhead.",
+        "<b>Preview</b> shows each light's LEDs (or a Govee light's segments) as they'll look at the playhead.",
         "<b>House</b> plays the show on your house photo. Trace your lights on it under <b>Setup → House</b>.",
       ] },
       { id: "timeline", title: "The timeline", guide: ["build-a-show.md", "the-timeline"], tips: [
