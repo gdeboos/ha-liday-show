@@ -1201,11 +1201,12 @@ const PROTOCOLS = {
 
 const skuOf = (text) => (text || "").trim().split(/\s+/)[0].toUpperCase();
 
-// A small marker saying what we know about the model on real lights (models.js).
+// A small marker for what we know about the model on real lights (models.js). Working is what's
+// expected, so only a limit or an untested model gets one.
 function modelBadge(sku) {
   const m = app.models[skuOf(sku)];
   const span = document.createElement("span");
-  if (!m) return span;
+  if (!m || statusOf(m) === "works") return span;
   const s = STATUS[statusOf(m)];
   span.className = `badge ${s.cls}`;
   span.textContent = s.badge;
