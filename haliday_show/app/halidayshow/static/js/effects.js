@@ -706,9 +706,50 @@ Object.assign(EFFECTS, {
   }),
 });
 
+// The song's loudness for the Music level effect: show.loudness ({fps, values 0-100}). bake() uses
+// the show's own; the editor sets the open show's with setMusicLevels(). Until one is set (say, in
+// Library → Presets) previews make up a lively level so the effect can be seen.
+let musicLevels;
+export function setMusicLevels(levels) { musicLevels = levels && Array.isArray(levels.values) ? levels : null; }
+function levelAt(time) {
+  if (musicLevels === undefined) return 0.45 + 0.3 * Math.sin(time * 5.1) * Math.sin(time * 1.3) + 0.2 * Math.max(0, Math.sin(time * 12.6));
+  const v = musicLevels?.values;
+  if (!v?.length) return 0;
+  const x = Math.max(time, 0) * (musicLevels.fps || 10), k = Math.floor(x);
+  const a = v[Math.min(k, v.length - 1)] ?? 0, b = v[Math.min(k + 1, v.length - 1)] ?? a;
+  return (a + (b - a) * (x - k)) / 100;
+}
+
+// After xLights' VU meter.
+Object.assign(EFFECTS, {
+  vumeter: {
+    label: "Music level", group: "music", music: true,
+    params: [color("color", "Quiet", "#00ff00"), color("color2", "Middle", "#ffff00"), color("color3", "Loud", "#ff0000"),
+      color("background", "Background", "#000000"), choice("from", "Rises from", "the start", ["the start", "the middle"]),
+      num("boost", "Sensitivity %", 100, 25, 400, 5), choice("peak", "Peak marker", "on", ["on", "off"]), direction],
+    render: (p, t, dur, n, i) => {
+      // The light fills to the song's loudness at this moment, green to red, with the last second's
+      // peak marked by a dot that falls back.
+      const song = (Number(p.start) || 0) + t, gain = p.boost / 100;
+      const level = Math.min(levelAt(song) * gain, 1);
+      let pos = p.direction === "reverse" ? n - 1 - i : i, len = n;
+      if (p.from === "the middle") { pos = Math.abs(i - (n - 1) / 2) * 2; len = n; }
+      const x = (pos + 0.5) / Math.max(len, 1);
+      const colour = blendList([p.color, p.color2, p.color3].map(hexToRgb), x);
+      if (x <= level) return colour;
+      if (p.peak === "on") {
+        let peak = 0;
+        for (let j = 1; j <= 10; j++) peak = Math.max(peak, Math.min(levelAt(song - j * 0.1) * gain, 1) - j * 0.02);
+        if (Math.abs(x - peak) < 0.5 / Math.max(len, 1) + 0.005 && peak > level) return colour;
+      }
+      return hexToRgb(p.background);
+    },
+  },
+});
+
 // Headings in the effect window, in order. House lane effects all go under "Across the house".
 export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
-  ["calm", "Calm"], ["house", "Across the house"]];
+  ["calm", "Calm"], ["music", "Follows the music"], ["house", "Across the house"]];
 const GROUP_OF = { solid: "basics", duo: "basics", trio: "basics", pulse: "basics", gradient: "basics", cycle: "basics",
   fade: "basics", strobe: "basics", chase: "movement", rainbow: "movement", comet: "movement", scanner: "movement",
   wipe: "movement", flicker: "festive", lightning: "festive", twinkle: "festive" };
@@ -917,6 +958,11 @@ export const PRESETS = {
     { label: "Slow and big", params: { speed: 0.15, size: 2.5 } },
     { label: "Busy", params: { speed: 1.5, size: 0.5 } },
   ],
+  vumeter: [
+    { label: "From the middle", params: { from: "the middle" } },
+    { label: "Sensitive", params: { boost: 180 } },
+    { label: "One colour", params: { color: "#00c0ff", color2: "#00c0ff", color3: "#ffffff" } },
+  ],
   snow: [
     { label: "Light snow", params: { density: 5, speed: 4 } },
     { label: "Blizzard", params: { density: 30, speed: 25, length: 2 } },
@@ -1116,6 +1162,12 @@ export function dim(rgb, level) {
 // the light groups ({id, members}) for the group lanes; their strips run in the show's track order,
 // which is the Devices tab's.
 export function bake(show, devices, fps = FPS, positions = {}, groups = []) {
+  const before = musicLevels;
+  musicLevels = show.loudness?.values ? show.loudness : null; // a show without a song's loudness has a silent meter
+  try { return bakeFrames(show, devices, fps, positions, groups); } finally { musicLevels = before; }
+}
+
+function bakeFrames(show, devices, fps, positions, groups) {
   const tracks = show.tracks || [];
   const houseClips = tracks.find((tr) => tr.device === HOUSE)?.clips || [];
   const byId = new Map(tracks.map((tr) => [tr.device, tr]));

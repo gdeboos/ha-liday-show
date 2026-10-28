@@ -172,11 +172,11 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Effect suggestions for the selected part of the song, timed to its tempo
 - Timeline editor with the song's waveform, one track per light, beat markers and snapping, and
   smooth zoom (+/−, Ctrl+wheel or pinch) and scroll
-- 35 effects on each light (solid, two and three colours, pulse, gradient, colour cycle, fade, chase,
+- 36 effects on each light (solid, two and three colours, pulse, gradient, colour cycle, fade, chase,
   rainbow, comet, scanner, flicker, lightning, strobe, twinkle, wipe, and more after WLED's:
   Halloween eyes, fireworks, drip, candles, snow, fairy lights, ocean waves, aurora, flowing colours,
   sunrise, theatre chase, juggle, ripple, dissolve, bouncing balls, lighthouse, stacking blocks and
-  fill to a level, and xLights' morph) with live, segment-level previews, built-in presets for each, and your own
+  fill to a level, and xLights' morph and VU meter, which follows the song's loudness) with live, segment-level previews, built-in presets for each, and your own
   presets saved from any clip
 - A **House** lane for effects that run across all your lights by where they are on the photo, like
   xLights' model effects: sweeps, wipes and rainbow waves in any direction, shockwaves, pinwheels,
@@ -391,6 +391,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/sectionnotes.js                  Notes for song sections, from what each sounds like
     js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music editor: cutting, trimming and splicing songs
+    js/musiclevel.js                    The song's loudness over time, saved with a show for Music level
     js/cutfinder.js                     Suggest cuts: where whole bars can go without the join being heard
     js/drafts.js                        Keeps the Music editor's drafts on the server as you edit
     js/loudness.js                      How loud a song is, and evening it out (Make song file)
