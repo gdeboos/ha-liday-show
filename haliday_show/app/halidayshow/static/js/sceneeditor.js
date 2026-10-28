@@ -43,6 +43,8 @@ export class SceneEditor {
     this.saving = Promise.resolve();
     this.raf = 0;
     this.status = null; // the player's status, for ▶/■ and badges
+    // Split lights switched to Each part on its own while open, so they stay that way with every part off.
+    this.byParts = new Set();
   }
 
   // Lists -------------------------------------------------------------------------
@@ -216,6 +218,7 @@ export class SceneEditor {
       return;
     }
     this.id = id;
+    this.byParts.clear();
     this.d.prefs.set("lastScene", id);
     $("sc-name").value = this.scene.name;
     this.draw();
@@ -280,16 +283,21 @@ export class SceneEditor {
   lightRows(s, d) {
     const whole = (look) => { if (look) s.lights[d.id] = look; else delete s.lights[d.id]; };
     if (!d.parts?.length) return [this.lookRow(d.name, s.lights[d.id] || null, whole, d.id)];
-    const split = byParts(s, d);
+    const split = byParts(s, d) || this.byParts.has(d.id);
     const box = el("input", { type: "checkbox", checked: split, disabled: d.whole === false });
-    box.addEventListener("change", () => { setByParts(s, d, box.checked); this.changed(); this.draw(); });
+    box.addEventListener("change", () => {
+      setByParts(s, d, box.checked);
+      if (box.checked) this.byParts.add(d.id); else this.byParts.delete(d.id);
+      this.changed();
+      this.draw();
+    });
     const head = el("div", { class: "sc-split", role: "group", "aria-label": d.name }, el("span", { class: "sc-light" }, d.name),
       el("label", { class: "sc-same", title: d.whole === false
         ? "This light only plays as parts. To light it as one too, turn on Also play as one under Setup → Devices."
         : "Give each part its own effect" }, box, " Each part on its own"));
     if (!split) return [head, this.lookRow("Whole light", s.lights[d.id] || null, whole, d.id, d.name)];
     return [head, ...d.parts.map((p) => this.lookRow(p.name, partLook(s, d, p),
-      (look) => setPartLook(s, d, p, look), partKey(d, p), `${d.name} · ${p.name}`))];
+      (look) => { setPartLook(s, d, p, look); this.byParts.add(d.id); }, partKey(d, p), `${d.name} · ${p.name}`))];
   }
 
   // One light's row: effect (or Off), style, colours, speed and brightness. `devId` is what the
@@ -304,7 +312,12 @@ export class SceneEditor {
       "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: "Pick an effect, with a preview of each" }, `${fxName} ▾`);
     eff.addEventListener("click", () => this.d.chooseEffect({
       title: `Effect for ${full}`, dev: this.d.devices()[devId] || null, length: 6,
-      current: look?.effect ?? null, from: look ? clipFor(look, 0, 1) : null, only: SCENE_EFFECTS,
+      current: look?.effect ?? null, only: SCENE_EFFECTS,
+      // Each effect previews as it would be picked: this light's colours carried over.
+      paramsFor: (key) => {
+        const { start, end, effect, ...params } = clipFor(changeEffect(look, key), 0, 1);
+        return params;
+      },
       onPick: (key, preset) => {
         const next = changeEffect(look, key);
         if (preset) next.params = { ...next.params, ...presetParams(preset, clipFor(next, 0, 1)) };

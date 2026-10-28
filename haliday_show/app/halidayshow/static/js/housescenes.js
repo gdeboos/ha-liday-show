@@ -64,12 +64,12 @@ export function setPartLook(scene, d, p, look) {
   return scene;
 }
 
-// Each part on its own, starting on the light's look (warm white if it was off), or the whole light
+// Each part on its own, starting on the light's look (all off if it was off), or the whole light
 // again, on the first part's look.
 export function setByParts(scene, d, on) {
   if (on) {
-    const whole = scene.lights[d.id] || newLook();
-    for (const p of d.parts) scene.lights[partKey(d, p)] = structuredClone(whole);
+    const whole = scene.lights[d.id];
+    if (whole) for (const p of d.parts) scene.lights[partKey(d, p)] = structuredClone(whole);
     delete scene.lights[d.id];
   } else {
     const first = d.parts.map((p) => scene.lights[partKey(d, p)]).find(Boolean);

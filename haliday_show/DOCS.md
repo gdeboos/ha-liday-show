@@ -1236,7 +1236,7 @@ while it's on), **Edit** and **Remove…**.
   with every effect moving in the light's own colours (tick **Show presets** to pick a preset).
   **Off** beside it turns the light off in this scene.
 - A light split into parts plays one look across the whole light. Turn on **Each part on its own**
-  under its name to give every part its own row instead. A light set to play only as parts always
+  under its name to give every part its own row instead, each starting on the light's look. A light set to play only as parts always
   has a row for each part.
 - **Same for every light** puts one row in charge of all your lights. Turn it off again and each
   light starts from that look, ready to change one at a time.

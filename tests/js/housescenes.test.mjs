@@ -136,3 +136,14 @@ test("a split light's parts each get their own look, or the whole light one", as
   adv.tracks.push({ device: "arch", clips: [{ effect: "solid", start: 0, end: 20 }] });
   assert.equal(canBasic(adv, [both]), false);
 });
+
+test("a light that was off stays off when split into parts, and parts-only scenes read right", async () => {
+  const { setByParts } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const both = { ...split, id: "arch", whole: true };
+  const s = { name: "x", mode: "basic", lights: {} };
+  setByParts(s, both, true);
+  assert.deepEqual(s.lights, {});
+  const old = { name: "x", mode: "basic", lights: { pillars: { effect: "twinkle", params: { color: "#00ff00" } } } };
+  assert.equal(sceneSummary(old, [split]), "1 light · Twinkle");
+  assert.deepEqual(sceneColours(old, [split]), ["#00ff00"]);
+});
