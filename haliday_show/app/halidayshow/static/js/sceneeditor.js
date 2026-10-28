@@ -4,8 +4,8 @@
 
 import { EFFECTS, FPS, bake, composeLight, matchesPreset, presetParams } from "./effects.js";
 import {
-  SCENE_EFFECTS, changeEffect, clipFor, newScene, sceneColours, sceneLoop, sceneShow, sceneSummary, setSame, speedParam,
-  toAdvanced,
+  SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, sceneColours, sceneLoop, sceneShow,
+  sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
 import { describeSchedule } from "./schedule.js";
@@ -32,7 +32,8 @@ export class SceneEditor {
   // positions() (where each light is on the house, for an Advanced scene's House lane),
   // opened() (after a scene opens, to show the editor page), closed() (back to the list),
   // editAdvanced(id) (an Advanced scene opens in the Show editor),
-  // scheduleEditor(holder, id, onChange) (the playlists' When it plays, for a scene)
+  // scheduleEditor(holder, id, onChange) (the playlists' When it plays, for a scene),
+  // chooseEffect(options) (the Show editor's effect window, with its moving previews)
   constructor(deps) {
     this.d = deps;
     this.scenes = [];
@@ -268,26 +269,55 @@ export class SceneEditor {
     } else if (s.all) {
       rows.replaceChildren(this.lookRow("Every light", s.all, (look) => { s.all = look; }));
     } else {
-      rows.replaceChildren(...lights.map((d) => this.lookRow(d.name, s.lights[d.id] || null, (look) => {
-        if (look) s.lights[d.id] = look;
-        else delete s.lights[d.id];
-      })));
+      rows.replaceChildren(...lights.flatMap((d) => this.lightRows(s, d)));
     }
     $("sc-when").replaceChildren(this.d.scheduleEditor(this.scene, this.id, () => this.changed()));
     this.drawPlayButton();
     this.startPreview();
   }
 
-  // One light's row: effect (or Off), style, colours, speed and brightness.
-  lookRow(label, look, set) {
+  // A light's rows: one, or for a light split into parts, the whole light or each part.
+  lightRows(s, d) {
+    const whole = (look) => { if (look) s.lights[d.id] = look; else delete s.lights[d.id]; };
+    if (!d.parts?.length) return [this.lookRow(d.name, s.lights[d.id] || null, whole, d.id)];
+    const split = byParts(s, d);
+    const box = el("input", { type: "checkbox", checked: split, disabled: d.whole === false });
+    box.addEventListener("change", () => { setByParts(s, d, box.checked); this.changed(); this.draw(); });
+    const head = el("div", { class: "sc-split", role: "group", "aria-label": d.name }, el("span", { class: "sc-light" }, d.name),
+      el("label", { class: "sc-same", title: d.whole === false
+        ? "This light only plays as parts. To light it as one too, turn on Also play as one under Setup → Devices."
+        : "Give each part its own effect" }, box, " Each part on its own"));
+    if (!split) return [head, this.lookRow("Whole light", s.lights[d.id] || null, whole, d.id, d.name)];
+    return [head, ...d.parts.map((p) => this.lookRow(p.name, partLook(s, d, p),
+      (look) => setPartLook(s, d, p, look), partKey(d, p), `${d.name} · ${p.name}`))];
+  }
+
+  // One light's row: effect (or Off), style, colours, speed and brightness. `devId` is what the
+  // effect window previews on; `name` the light's full name for its title, when `label` is a part's.
+  lookRow(label, look, set, devId = null, name = null) {
     const changed = (redraw) => { this.changed(); if (redraw) this.draw(); };
-    const row = el("div", { class: "sc-row", role: "group", "aria-label": label });
-    const eff = el("select", { "aria-label": `Effect for ${label}` });
-    if (label !== "Every light") eff.add(new Option("Off", ""));
-    for (const k of SCENE_EFFECTS) eff.add(new Option(EFFECTS[k].label, k, false, k === look?.effect));
-    if (!look) eff.value = "";
-    eff.addEventListener("change", () => { set(eff.value ? changeEffect(look, eff.value) : null); changed(true); });
-    row.append(el("span", { class: "sc-light" }, label), eff);
+    const nested = !!name;
+    const full = name || label;
+    const row = el("div", { class: `sc-row${nested ? " nested" : ""}`, role: "group", "aria-label": full });
+    const fxName = look ? EFFECTS[look.effect]?.label || look.effect : "Off";
+    const eff = el("button", { type: "button", class: "sc-effect", "aria-haspopup": "dialog",
+      "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: "Pick an effect, with a preview of each" }, `${fxName} ▾`);
+    eff.addEventListener("click", () => this.d.chooseEffect({
+      title: `Effect for ${full}`, dev: this.d.devices()[devId] || null, length: 6,
+      current: look?.effect ?? null, from: look ? clipFor(look, 0, 1) : null, only: SCENE_EFFECTS,
+      onPick: (key, preset) => {
+        const next = changeEffect(look, key);
+        if (preset) next.params = { ...next.params, ...presetParams(preset, clipFor(next, 0, 1)) };
+        set(next);
+        changed(true);
+      },
+    }));
+    const fx = el("span", { class: "sc-fx" }, eff);
+    if (look && label !== "Every light") {
+      fx.append(el("button", { type: "button", class: "ghost small", "aria-label": `Turn ${full} off in this scene`,
+        title: "Off in this scene", onclick: () => { set(null); changed(true); } }, "Off"));
+    }
+    row.append(el("span", { class: "sc-light" }, label), fx);
     if (!look) {
       row.append(el("span", { class: "hint sc-off" }, "Off in this scene"));
       return row;

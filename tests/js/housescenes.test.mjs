@@ -103,3 +103,36 @@ test("switching modes keeps the scene's schedule", async () => {
   assert.deepEqual(adv.schedule, schedule);
   assert.deepEqual(toBasic(adv).schedule, schedule);
 });
+
+test("a split light's parts each get their own look, or the whole light one", async () => {
+  const { byParts, partLook, setByParts, setPartLook, canBasic, toAdvanced, toBasic } =
+    await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const both = { ...split, id: "arch", whole: true };
+  const red = { effect: "solid", params: { color: "#ff0000" } }, blue = { effect: "solid", params: { color: "#0000ff" } };
+  const s = { name: "x", mode: "basic", lights: { arch: red } };
+  assert.equal(byParts(s, both), false);
+  assert.deepEqual(sceneShow(s, [both], 1).tracks.map((t) => t.device), ["arch"]);
+  setByParts(s, both, true);
+  assert.deepEqual(Object.keys(s.lights), ["arch#l", "arch#r"]);
+  setPartLook(s, both, both.parts[1], blue);
+  assert.deepEqual(sceneShow(s, [both], 1).tracks.map((t) => [t.device, t.clips[0].color]), [["arch#l", "#ff0000"], ["arch#r", "#0000ff"]]);
+  assert.equal(sceneSummary(s, [both]), "1 light · Solid");
+  setPartLook(s, both, both.parts[0], null);
+  assert.deepEqual(sceneShow(s, [both], 1).tracks.map((t) => t.device), ["arch#r"]);
+  setByParts(s, both, false);
+  assert.deepEqual(s.lights, { arch: blue });
+
+  // A parts-only light's older single look plays on each part, until one part is changed.
+  const old = { name: "x", mode: "basic", lights: { pillars: red } };
+  assert.equal(byParts(old, split), true);
+  assert.deepEqual(partLook(old, split, split.parts[1]), red);
+  setPartLook(old, split, split.parts[0], blue);
+  assert.deepEqual(old.lights, { "pillars#l": blue, "pillars#r": red });
+
+  // By parts goes to Advanced and back.
+  const adv = toAdvanced(s.lights.arch ? setByParts(s, both, true) : s, [both], 20);
+  assert.equal(canBasic(adv, [both]), true);
+  assert.deepEqual(Object.keys(toBasic(adv).lights), ["arch#l", "arch#r"]);
+  adv.tracks.push({ device: "arch", clips: [{ effect: "solid", start: 0, end: 20 }] });
+  assert.equal(canBasic(adv, [both]), false);
+});
