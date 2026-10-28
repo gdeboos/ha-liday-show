@@ -132,6 +132,9 @@ const app = {
   devices: {},
   groups: [], // light groups (lightgroups.js), each with a lane in every show
   pps: prefs.get("pps", 60),
+  // Folded on the timeline in this browser: "@groups" (the group lanes) and split lights' ids (their parts).
+  folded: new Set(prefs.get("timelineFolded", [])),
+  foldChanged: () => prefs.set("timelineFolded", [...app.folded]),
   time: 0,
   playing: false,
   // {track, clip}; clip is null when a whole light is selected, and range is set
