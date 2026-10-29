@@ -120,7 +120,9 @@ The title, words and picture only show to people with your code.
 - **+ Add** offers your saved shows and playlists. Archived shows aren't offered, nor are playlists
   made only of archived shows, and visitors never see them. A show you archive later disappears from
   the public page straight away, and from inside any playlist visitors pick. The tab still lists it,
-  marked as archived, so it comes back if you restore it.
+  marked as archived, so it comes back if you restore it. A show whose lights' frames were never made
+  (it was saved before they reached HA-liday Show, say) is made ready when the tab opens; if that
+  can't be done it's listed greyed out, and opening and saving it fixes it.
 - **Only from … until … every year**: each show or playlist is available all year until you turn on
   **Only from** and pick the first and last day, such as 1 Dec until 6 Jan. The dates come round every
   year, and can run over New Year. Outside them, visitors see it greyed out under **Coming soon** with

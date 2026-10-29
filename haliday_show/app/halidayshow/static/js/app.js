@@ -1269,6 +1269,28 @@ async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
   return { done, failed, open };
 }
 
+// Saved shows with no frames on the server (saved before their frames got there, say) are made ready
+// in the background, so the public page, playlists, schedules and Home Assistant can play them.
+let showsReadying = null;
+function keepShowsReady() {
+  showsReadying ||= (async () => {
+    let list;
+    try { list = await api("api/shows"); } catch { return; }
+    const pos = housePositionsAll();
+    let made = 0;
+    for (const s of list.filter((x) => !x.baked)) {
+      if (s.id === app.showId && app.dirty) continue; // the open show's are made when it saves
+      try {
+        const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
+        await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
+        made++;
+      } catch { /* tried again next time */ }
+    }
+    if (made) await refreshShows();
+  })().finally(() => { showsReadying = null; });
+  return showsReadying;
+}
+
 $("convert-dialog").addEventListener("click", (e) => {
   const what = e.target.closest("[data-convert]")?.dataset.convert;
   if (what === "close") $("convert-dialog").close();
@@ -4931,7 +4953,7 @@ function wireData() {
 // The Public page: switched on under Setup → Settings, set up on its own tab. What visitors can pick
 // (shows and playlists, each with optional dates every year) and the queue they're waiting in.
 let publicView = null;
-let publicNames = { show: {}, playlist: {}, archived: {}, empty: new Set() };
+let publicNames = { show: {}, playlist: {}, archived: {}, unready: {}, empty: new Set() };
 
 function showPublicTab(on) {
   $("tab-public").hidden = !on;
@@ -5194,6 +5216,11 @@ function renderPublicItems() {
         group.append(new Option(name, `${kind}:${id}`));
       }
     }
+    if (kind === "show") {
+      for (const [id, name] of Object.entries(publicNames.unready || {})) {
+        if (!added.has(`show:${id}`)) group.append(Object.assign(new Option(`${name} (open it and save to offer it)`, ""), { disabled: true }));
+      }
+    }
     if (group.children.length) pick.append(group);
   }
   $("pub-add-row").hidden = !pick.options.length;
@@ -5209,11 +5236,14 @@ async function loadPublic({ items = false } = {}) {
     renderPublicQueue(view);
     $("pub-on").checked = view.on;
     if (!items) return;
+    await keepShowsReady();
     const [shows, lists, archived] = await Promise.all([api("api/shows"), api("api/playlists"),
       api("api/shows/archived").catch(() => [])]);
     // Archived shows aren't offered: visitors can't see them until they're restored.
     publicNames = {
       show: Object.fromEntries(shows.filter((s) => s.baked).map((s) => [s.id, s.name])),
+      // Shows that still couldn't be made ready, offered greyed out with what to do.
+      unready: Object.fromEntries(shows.filter((s) => !s.baked).map((s) => [s.id, s.name])),
       playlist: Object.fromEntries(lists.map((p) => [p.id, p.name])),
       archived: Object.fromEntries(archived.map((s) => [s.id, s.name])),
     };
@@ -9358,7 +9388,7 @@ async function init() {
     loadLibraryFolders();
     loadAiStatus();
     await loadPublic();
-    house.load().then(renderHouseLights);
+    house.load().then(() => { renderHouseLights(); keepShowsReady(); });
     const shows = await api("api/shows");
     await openShow(null, { chosen: false });
     // Reloaded, bookmarked, or back in the app after a while: open the page you were on, with what
