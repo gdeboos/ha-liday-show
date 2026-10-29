@@ -30,7 +30,7 @@ export async function uploadSong(api, file, name = file.name, progress = () => {
 
 // Sends `blob` to `url` in pieces; `last` is added to the last piece's query (a song's name, say).
 // Returns what the last piece's answer says.
-export async function sendParts(api, url, blob, last = {}, progress = () => {}) {
+export async function sendParts(api, url, blob, last = {}, progress = null) {
   const id = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, "0")).join("");
   let reply = null;
   for (const p of parts(blob.size)) {
@@ -39,7 +39,7 @@ export async function sendParts(api, url, blob, last = {}, progress = () => {}) 
     reply = await api(`${url}?${q}`, {
       method: "POST", body: blob.slice(p.start, p.end), headers: { "Content-Type": "application/octet-stream" },
     });
-    progress(p.end / blob.size);
+    progress?.(p.end / blob.size);
   }
   return reply;
 }

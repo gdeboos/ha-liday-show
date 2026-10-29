@@ -7483,7 +7483,7 @@ async function save({ stage = null } = {}) {
     if (stage) { stage("Preparing…"); await drawn(); }
     const blob = bake(app.show, app.devices, FPS, pos, app.groups);
     stage?.("Sending…");
-    await uploadBake(app.showId, blob, stage && ((f) => stage(`Sending… ${Math.round(f * 100)}%`)), bakeNoteFor(pos));
+    await uploadBake(app.showId, blob, stage ? (f) => stage(`Sending… ${Math.round(f * 100)}%`) : undefined, bakeNoteFor(pos));
     app.bakedKey = key;
   }
   await refreshShows();
