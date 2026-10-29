@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.254
+
+- Fixed **Save failed: progress is not a function** when saving a long show (one big enough to be sent in pieces). This came in with 0.2.252.
+
 ## 0.2.253
 
 - **Play starts straight away when you open a show again.** Before, the first **▶ Play** after opening a show got your lights ready all over again, even when nothing had changed, which could take a while on a phone. Now HA-liday Show remembers which lights the show was last got ready for, and only does it again after you change the show or your lights (or update the app).

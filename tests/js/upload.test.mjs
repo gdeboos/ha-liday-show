@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PART, parts, uploadSong } from "../../haliday_show/app/halidayshow/static/js/upload.js";
+import { PART, parts, sendParts, uploadSong } from "../../haliday_show/app/halidayshow/static/js/upload.js";
 
 test("a song is split into pieces under Home Assistant's 16 MB limit", () => {
   assert.ok(PART < 16 * 1024 * 1024);
@@ -24,4 +24,16 @@ test("a big song goes up in order, naming the file on the last piece", async () 
   const small = []; // a small song goes in one go, as before
   await uploadSong(async (path, opts) => { small.push(path); return {}; }, new Blob([new Uint8Array(10)]), "a.mp3");
   assert.deepEqual(small, ["api/audio"]);
+});
+
+test("a big upload with no progress to show still goes up", async () => {
+  const sent = [];
+  const api = async (url) => { sent.push(url); return { ok: true }; };
+  const blob = new Blob([new Uint8Array(PART + 10)]);
+  for (const progress of [undefined, null]) {
+    sent.length = 0;
+    assert.deepEqual(await sendParts(api, "api/x/part", blob, { key: "k" }, progress), { ok: true });
+    assert.equal(sent.length, 2);
+    assert.match(sent[1], /done=1&key=k/);
+  }
 });
