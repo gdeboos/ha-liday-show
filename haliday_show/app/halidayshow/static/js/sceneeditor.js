@@ -9,6 +9,7 @@ import {
 } from "./housescenes.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
 import { pickPalette } from "./palettepicker.js";
+import { withMore } from "./rowmenu.js";
 import { PART, sendParts } from "./upload.js";
 
 const SAVE_AFTER_MS = 600;
@@ -101,6 +102,7 @@ export class SceneEditor {
     const actions = el("div", { class: "group show-actions" }, play,
       el("button", { type: "button", class: "ghost", onclick: () => this.open(s.id), "aria-label": `Edit ${s.name}` }, "Edit"),
       el("button", { type: "button", class: "ghost", onclick: () => this.remove(s), "aria-label": `Remove ${s.name}` }, "Remove…"));
+    withMore(actions, 2);
     const row = el("div", { class: `show-row scene-row${playing ? " playing" : ""}`, role: "listitem" }, sw, main, actions);
     row.dataset.sceneId = s.id;
     return row;

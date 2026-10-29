@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.256
+
+- Rows in the Library are shorter. Each keeps its main button (**Open** on a show, **▶ Play** and **Edit** on a scene, **Edit** on a song, and so on) and puts the rest under **⋯**: **Duplicate**, **Rename**, **Share**, the row's **Folder**, and **Remove…** last.
+
 ## 0.2.255
 
 - Fixed **Save failed: too many uploads at once** after saves of a long show had failed (the problem fixed in 0.2.254). Each failed save left a half-sent copy behind, and enough of those blocked new saves for up to an hour. Now any that have stopped arriving are cleared as soon as they get in the way.
