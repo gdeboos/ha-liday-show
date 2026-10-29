@@ -781,6 +781,7 @@ async def upload_audio(request):
 # appears until the last part arrives.
 MAX_PART = 12 * 1024 * 1024
 MAX_OPEN_UPLOADS = 8  # unfinished uploads at once, so they can't fill the disk
+PART_IDLE_S = 120  # an unfinished upload nothing has been added to for this long has stopped
 _UPLOAD_ID = re.compile(r"[0-9a-f]{16,64}")
 UPLOADING = web.AppKey("uploading", set)
 
@@ -804,6 +805,10 @@ async def _receive_part(request, folder: Path) -> tuple[Path, int, bool]:
     try:
         if offset == 0:
             _clear_old_parts(folder)
+            if len(list(folder.glob(".upload-*.part"))) >= MAX_OPEN_UPLOADS:
+                # Full: let go of any that have stopped arriving (a save that failed part-way, say).
+                # One still going grows every few seconds.
+                _clear_old_parts(folder, PART_IDLE_S)
             if len(list(folder.glob(".upload-*.part"))) >= MAX_OPEN_UPLOADS:
                 raise web.HTTPServiceUnavailable(text="too many uploads at once; try again in a minute")
             part.write_bytes(b"")
