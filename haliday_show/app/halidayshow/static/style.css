@@ -742,6 +742,8 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* A button whose job is still going (Play getting the lights ready, Open fetching the song). */
+button.busy { cursor: progress; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 
 /* Parts: a light split into pieces, under its row on the Devices tab. */
