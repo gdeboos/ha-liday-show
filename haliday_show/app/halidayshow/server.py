@@ -618,7 +618,8 @@ def _clean_bake_key(request) -> str | None:
 
 
 async def get_baked_key(request):
-    key = request.app[STORAGE].baked_key(_show_id(request), __version__)
+    # It reads the whole bake to check it's the same one, so off the loop that streams the lights.
+    key = await asyncio.to_thread(request.app[STORAGE].baked_key, _show_id(request), __version__)
     return web.json_response({"key": key})
 
 

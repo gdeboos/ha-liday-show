@@ -1259,7 +1259,7 @@ async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
     try {
       const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
       if (!uses(show)) continue;
-      await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos));
+      await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
       if (s.id === app.showId) app.bakedKey = showBakeKey(pos);
       done++;
     } catch { failed++; }
@@ -7464,9 +7464,13 @@ async function save({ stage = null } = {}) {
   const key = showBakeKey(pos);
   if (refreshShowPalette(app.show, allPalettes())) app.dirty = true;
   // Opened again with nothing changed since: the bake already on the server is the one Play needs.
-  // (Unless its length has changed, a different song file, say: saving puts that right.)
+  // (Unless its length has changed, a different song file, say: saving puts that right.) Asked again
+  // now, as another browser may have changed the show, or be part way through sending its bake.
   if (app.bakedKey === null && !app.dirty && app.serverBakeNote && app.serverBakeNote === bakeNoteFor(pos)
-    && Math.abs((app.show.duration || 0) - app.duration()) < 0.01) app.bakedKey = key;
+    && Math.abs((app.show.duration || 0) - app.duration()) < 0.01) {
+    const now = (await api(`api/shows/${encodeURIComponent(app.showId)}/baked/key`).catch(() => null))?.key;
+    if (now === app.serverBakeNote) app.bakedKey = key;
+  }
   if (app.dirty || app.bakedKey === null) {
     app.show.duration = app.duration();
     const edits = app.edits;
@@ -7488,9 +7492,10 @@ async function save({ stage = null } = {}) {
 
 // What a show's bake depends on besides the show: the lights, the groups and where they are on the house.
 const showBakeKey = (pos) => JSON.stringify([app.deviceList.map((d) => [d.id, d.segments, d.parts]), app.groups, pos]);
-// The same, kept with the bake on the server for when the show is next opened. Every setting of every
-// light goes in (not just the ones above), so a change made since, here or elsewhere, bakes again.
-const bakeNoteFor = (pos) => bakeNote([app.deviceList, app.groups, pos, FPS]);
+// The same, kept with the bake on the server for when the show is next opened. The show itself and
+// every setting of every light go in (not just the ones above), so a change made since, here or in
+// another browser, bakes again.
+const bakeNoteFor = (pos, show = app.show) => bakeNote([show, app.deviceList, app.groups, pos, FPS]);
 
 // note: what it was baked for (bakeNoteFor), kept with it on the server.
 async function uploadBake(showId, blob, progress = undefined, note = null) {
