@@ -1,6 +1,8 @@
 import asyncio
 import base64
 import json
+import os
+import time
 
 import pytest
 
@@ -1154,6 +1156,13 @@ async def test_upload_parts_one_at_a_time_and_capped(client, tmp_path, monkeypat
     assert (await client.post(f"/api/audio/part?upload={0:016x}&offset=1&done=1&name=Same.mp3", data=b"y")).status == 200
     assert (tmp_path / "media" / "haliday_show" / "Same.mp3").read_bytes() == b"xy"
     assert (await client.post(f"/api/audio/part?upload={9:016x}&offset=0", data=b"x")).status == 200
+    # Full again, but one has stopped arriving (a save that failed part-way): it makes room.
+    assert (await client.post(f"/api/audio/part?upload={7:016x}&offset=0", data=b"x")).status == 503
+    stalled = next(p for p in (tmp_path / "media" / "haliday_show").glob(".upload-*.part") if p.name.startswith(f".upload-{9:016x}"))
+    old = time.time() - server.PART_IDLE_S - 5
+    os.utime(stalled, (old, old))
+    assert (await client.post(f"/api/audio/part?upload={7:016x}&offset=0", data=b"x")).status == 200
+    assert not stalled.exists()
 
 
 async def test_public_page_settings_are_checked(client):

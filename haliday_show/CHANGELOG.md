@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.255
+
+- Fixed **Save failed: too many uploads at once** after saves of a long show had failed (the problem fixed in 0.2.254). Each failed save left a half-sent copy behind, and enough of those blocked new saves for up to an hour. Now any that have stopped arriving are cleared as soon as they get in the way.
+
 ## 0.2.254
 
 - Fixed **Save failed: progress is not a function** when saving a long show (one big enough to be sent in pieces). This came in with 0.2.252.
