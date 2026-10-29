@@ -55,6 +55,7 @@ import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, save
 import { Timeline, fmtTime } from "./timeline.js";
 import { convertProblem, showUses, toWled } from "./convert.js";
 import { PART, putWithProgress, sendParts, uploadSong } from "./upload.js";
+import { bakeNote } from "./bakekey.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -135,6 +136,7 @@ const app = {
   dirty: false,
   edits: 0, // counts changes, so a save only marks the show clean if nothing changed meanwhile
   bakedKey: null,
+  serverBakeNote: null, // what the server's bake of the open show was made for (bakeNote), when known
   deviceList: [],
   devices: {},
   groups: [], // light groups (lightgroups.js), each with a lane in every show
@@ -1257,7 +1259,7 @@ async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
     try {
       const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
       if (!uses(show)) continue;
-      await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups));
+      await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
       if (s.id === app.showId) app.bakedKey = showBakeKey(pos);
       done++;
     } catch { failed++; }
@@ -7303,8 +7305,10 @@ async function openShow(id, { chosen = true } = {}) {
   await stop();
   clearTimeout(autoSaveTimer);
   leaveSceneMode();
+  app.serverBakeNote = null;
   if (id) {
     app.show = await api(`api/shows/${encodeURIComponent(id)}`);
+    app.serverBakeNote = (await api(`api/shows/${encodeURIComponent(id)}/baked/key`).catch(() => null))?.key || null;
     app.show.beats ||= [];
     app.show.bars ||= [];
     app.show.sections ||= [];
@@ -7459,18 +7463,27 @@ async function save({ stage = null } = {}) {
   const pos = housePositions();
   const key = showBakeKey(pos);
   if (refreshShowPalette(app.show, allPalettes())) app.dirty = true;
+  // Opened again with nothing changed since: the bake already on the server is the one Play needs.
+  // (Unless its length has changed, a different song file, say: saving puts that right.) Asked again
+  // now, as another browser may have changed the show, or be part way through sending its bake.
+  if (app.bakedKey === null && !app.dirty && app.serverBakeNote && app.serverBakeNote === bakeNoteFor(pos)
+    && Math.abs((app.show.duration || 0) - app.duration()) < 0.01) {
+    const now = (await api(`api/shows/${encodeURIComponent(app.showId)}/baked/key`).catch(() => null))?.key;
+    if (now === app.serverBakeNote) app.bakedKey = key;
+  }
   if (app.dirty || app.bakedKey === null) {
     app.show.duration = app.duration();
     const edits = app.edits;
     await api(`api/shows/${app.showId}`, { method: "PUT", json: app.show });
     if (app.edits === edits) app.dirty = false;
     app.bakedKey = null;  // saving the show clears the server's bake
+    app.serverBakeNote = null;
   }
   if (app.bakedKey !== key) {
     if (stage) { stage("Preparing…"); await drawn(); }
     const blob = bake(app.show, app.devices, FPS, pos, app.groups);
     stage?.("Sending…");
-    await uploadBake(app.showId, blob, stage && ((f) => stage(`Sending… ${Math.round(f * 100)}%`)));
+    await uploadBake(app.showId, blob, stage && ((f) => stage(`Sending… ${Math.round(f * 100)}%`)), bakeNoteFor(pos));
     app.bakedKey = key;
   }
   await refreshShows();
@@ -7479,13 +7492,19 @@ async function save({ stage = null } = {}) {
 
 // What a show's bake depends on besides the show: the lights, the groups and where they are on the house.
 const showBakeKey = (pos) => JSON.stringify([app.deviceList.map((d) => [d.id, d.segments, d.parts]), app.groups, pos]);
+// The same, kept with the bake on the server for when the show is next opened. The show itself and
+// every setting of every light go in (not just the ones above), so a change made since, here or in
+// another browser, bakes again.
+const bakeNoteFor = (pos, show = app.show) => bakeNote([show, app.deviceList, app.groups, pos, FPS]);
 
-async function uploadBake(showId, blob, progress = undefined) {
+// note: what it was baked for (bakeNoteFor), kept with it on the server.
+async function uploadBake(showId, blob, progress = undefined, note = null) {
+  const q = note ? `?key=${encodeURIComponent(note)}` : "";
   // A long show on many bulbs is more than Home Assistant passes on in one go, so it goes in pieces.
-  if (blob.byteLength > PART) await sendParts(api, `api/shows/${showId}/baked/part`, new Blob([blob]), {}, progress);
-  else if (progress) await putWithProgress(`api/shows/${showId}/baked`, blob, progress);
+  if (blob.byteLength > PART) await sendParts(api, `api/shows/${showId}/baked/part`, new Blob([blob]), note ? { key: note } : {}, progress);
+  else if (progress) await putWithProgress(`api/shows/${showId}/baked${q}`, blob, progress);
   else {
-    await api(`api/shows/${showId}/baked`, {
+    await api(`api/shows/${showId}/baked${q}`, {
       method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" },
     });
   }
