@@ -49,6 +49,7 @@ import {
   itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
 } from "./playlisteditor.js";
 import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
+import { addToMore, withMore } from "./rowmenu.js";
 import { addFolder, deleteFolder, folderNameProblem, folderOf, inFolders, itemsInFolders, moveSong, renameFolder } from "./songfolders.js";
 import { addLibraryFolder, deleteLibraryFolder, folderOfItem, groupByFolder, moveItem, renameItem, renameLibraryFolder } from "./libfolders.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
@@ -3216,6 +3217,7 @@ function itemRow({ picture, name, detail, edit, extra = [], label, key = null })
   const e = button("Edit…", edit, "primary");
   e.setAttribute("aria-label", `Edit ${label} ${name}`);
   actions.append(e, ...extra);
+  withMore(actions);
   row.append(picture, main, actions);
   return row;
 }
@@ -4248,6 +4250,7 @@ function playlistRow(r) {
   }, "ghost");
   del.setAttribute("aria-label", `Delete ${r.name}`);
   actions.append(open, play, del);
+  withMore(actions, 2);
   row.append(main, actions);
   return row;
 }
@@ -5667,6 +5670,7 @@ function showRow(r) {
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   rm.dataset.act = "remove";
   actions.append(open, dup, ren, share, rm);
+  withMore(actions);
   row.append(main, actions);
   return row;
 }
@@ -6360,6 +6364,7 @@ function songKid(kind, icon, name, badge, lines, actions) {
   const acts = document.createElement("div");
   acts.className = "group show-actions";
   acts.append(...actions);
+  if (actions.length > 2) withMore(acts);
   row.append(mark, main, acts);
   return row;
 }
@@ -6441,7 +6446,6 @@ function songRow(r) {
   actions.className = "group show-actions";
   const edit = button("Edit", () => editSong(r.ref), "primary");
   edit.setAttribute("aria-label", `Edit ${r.name} in the Music editor`);
-  if (songFolders.length && foldersLoaded) actions.append(folderPicker(r));
   actions.append(edit);
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
@@ -6450,6 +6454,8 @@ function songRow(r) {
     rm.title = "Only songs in HA-liday Show's own folder (haliday_show in your media folder) can be archived or deleted here";
   }
   actions.append(rm);
+  withMore(actions);
+  if (songFolders.length && foldersLoaded) addToMore(actions, folderPicker(r));
   row.append(main, actions);
   // The length is read once the row is on screen; a redraw starts over with new rows.
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
@@ -6684,7 +6690,7 @@ function foldLibraryList(kind, box) {
       saveLibraryFolders(kind, moveItem(folders, key, sel.value), f ? `Moved ${name} into ${f.name}` : `${name} is in no folder now`);
     });
     const actions = row.querySelector(".show-actions");
-    if (actions) actions.insertBefore(sel, actions.lastElementChild);
+    if (actions) addToMore(actions, sel);
   }
   const byKey = new Map(rows.map((r) => [lib.key(r), r]));
   const { groups } = groupByFolder([...byKey.keys()], folders);
@@ -6893,7 +6899,8 @@ function sampleRow(s) {
     } catch (e) { status(`Couldn't delete ${name}: ${e.message}`, true, "samples"); }
   }, "ghost danger");
   del.setAttribute("aria-label", `Delete ${name}`);
-  actions.append(play);
+  actions.append(play, del);
+  withMore(actions);
   if (sampleFolders.length && sampleFoldersLoaded) {
     const sel = document.createElement("select");
     sel.className = "song-folder-pick";
@@ -6908,9 +6915,8 @@ function sampleRow(s) {
       const f = sampleFolders.find((x) => x.id === sel.value);
       saveSampleFolders(moveSong(sampleFolders, ref, sel.value), f ? `Moved ${name} into ${f.name}` : `${name} is in no folder now`);
     });
-    actions.append(sel);
+    addToMore(actions, sel);
   }
-  actions.append(del);
   row.append(main, actions);
   return row;
 }

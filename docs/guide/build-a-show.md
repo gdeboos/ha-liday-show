@@ -44,6 +44,9 @@ folder. Folders only sort the list, and they're saved with your settings, so the
      made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
 
   **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.
+- Each show's row has **Open**, and **⋯** for the rest: **Duplicate**, **Rename**, **Share**, its
+  **Folder** (once you have folders) and, last, **Remove…**. Rows elsewhere in the Library work the same
+  way: their main button, then **⋯**.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
   Each show needs its own name. An automation that starts the show by its name needs the new name.
@@ -645,8 +648,8 @@ only** narrows the chooser to them.
 
 ### The Presets tab
 
-**Library → Presets** lists your presets by effect, each with a live preview, and **Edit…**,
-**Duplicate** and **Delete…**. **Edit…** opens the preset in a window with a larger preview (choose
+**Library → Presets** lists your presets by effect, each with a live preview, **Edit…**, and
+**Duplicate** and **Delete…** under **⋯**. **Edit…** opens the preset in a window with a larger preview (choose
 which light's segments with **Preview on**). Rename it, change its **Effect** (or start again from one
 of that effect's presets), turn **Include colours** on or off, and change its colours (palettes work
 here too), settings and brightness; the preview follows every change. **Save** keeps the changes and
@@ -677,7 +680,7 @@ another from a window of colour bars (built-in ones first, then yours). Click a 
 the colour field you last clicked, or press **Apply palette** to fill them all in order. Click a
 light's name to **Recolour this light** or **Recolour all lights**: each light steps through the
 palette effect by effect, so the lights stay matched (backgrounds are left alone). **Library →
-Palettes** lists your palettes, each with **Edit…**, **Duplicate** and **Delete…**, then the built-in
+Palettes** lists your palettes, each with **Edit…**, and **Duplicate** and **Delete…** under **⋯**, then the built-in
 ones (seasonal ones, plus looks such as **Classic C9 bulbs**, **Lava**, **Aurora** and **Ice and fire**). **Edit…** opens a window to rename the palette and change its colours: pick each colour, move it
 up with **↑**, take it out with **✕**, or **+ Add a colour** (up to 12). **Save** keeps the changes.
 **+ New palette**, or **Copy…** on a built-in one, opens the same window for a new palette. Or describe some colours in the box above, such as

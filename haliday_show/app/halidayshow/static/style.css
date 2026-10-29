@@ -1206,3 +1206,18 @@ body.editing-scene :is([data-panel=song], [data-panel=beats], [data-panel=ai], #
 .group-members { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; padding: 2px; }
 .group-member { display: flex; align-items: center; gap: 8px; }
 .group-member.part { padding-left: 28px; }
+
+/* A list row's ⋯ menu (rowmenu.js): its less-used actions, Remove last under a line. */
+.row-more { position: relative; display: inline-flex; }
+.row-more-btn { min-width: 34px; padding-left: 8px; padding-right: 8px; font-weight: 700; letter-spacing: 1px; }
+.row-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 200px; display: flex;
+  flex-direction: column; gap: 2px; padding: 6px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); }
+.row-menu[hidden] { display: none; }
+.row-menu.up { top: auto; bottom: calc(100% + 4px); }
+.row-menu.left { right: auto; left: 0; }
+.row-menu > button { width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 6px; }
+.row-menu > button:hover:not(:disabled), .row-menu > button:focus-visible { background: var(--track); }
+.row-menu hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.row-menu-field { display: flex; align-items: center; gap: 8px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
+.row-menu-field select { flex: 1; min-width: 0; max-width: none; }
