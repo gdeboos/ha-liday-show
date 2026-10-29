@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.253
+
+- **Play starts straight away when you open a show again.** Before, the first **▶ Play** after opening a show got your lights ready all over again, even when nothing had changed, which could take a while on a phone. Now HA-liday Show remembers which lights the show was last got ready for, and only does it again after you change the show or your lights (or update the app).
+
 ## 0.2.252
 
 - **Play shows that it's getting ready.** The first press of **▶ Play** after opening a show gets your lights ready, which can take a while on a phone. The button now says **Preparing…**, then **Sending…** with how far it's got, instead of looking like nothing happened.

@@ -1320,3 +1320,38 @@ async def test_a_scene_with_a_bad_schedule_is_turned_down(client):
     scene_id = (await (await client.post("/api/house-scenes", json={"name": "Glow"})).json())["id"]
     bad = {"name": "Glow", "mode": "basic", "lights": {}, "schedule": {"on": True, "start": "25:00", "end": "22:00"}}
     assert (await client.put(f"/api/house-scenes/{scene_id}", json=bad)).status == 400
+
+
+async def test_a_bake_remembers_what_it_was_made_for_until_it_changes(client, monkeypatch):
+    show_id = (await (await client.post("/api/shows", json={"name": "Kept"})).json())["id"]
+    show = {"name": "Kept", "fps": 40, "duration": 1, "tracks": []}
+    await client.put(f"/api/shows/{show_id}", json=show)
+    key_url = f"/api/shows/{show_id}/baked/key"
+    assert await (await client.get(key_url)).json() == {"key": None}
+    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"] * 40)
+    assert (await client.put(f"/api/shows/{show_id}/baked?key=abc-123", data=blob)).status == 200
+    assert await (await client.get(key_url)).json() == {"key": "abc-123"}
+    assert (await client.put(f"/api/shows/{show_id}/baked?key=no%20spaces", data=blob)).status == 400
+    assert (await client.put(f"/api/shows/{show_id}/baked?key={'x' * 65}", data=blob)).status == 400
+    # A bake sent without one forgets the old one.
+    await client.put(f"/api/shows/{show_id}/baked", data=blob)
+    assert (await (await client.get(key_url)).json())["key"] is None
+    # So does saving the show, which drops its bake.
+    await client.put(f"/api/shows/{show_id}/baked?key=abc", data=blob)
+    await client.put(f"/api/shows/{show_id}", json=show)
+    assert (await (await client.get(key_url)).json())["key"] is None
+    # A bake swapped some other way, or one made by another version, isn't taken for it.
+    await client.put(f"/api/shows/{show_id}/baked?key=abc", data=blob)
+    storage = client.server.app[server.STORAGE]
+    (storage.shows_dir / f"{show_id}.gshow").write_bytes(baked.encode(40, [{"device": "a", "segments": 1}], [bytes(3)] * 40))
+    assert (await (await client.get(key_url)).json())["key"] is None
+    await client.put(f"/api/shows/{show_id}/baked?key=abc", data=blob)
+    monkeypatch.setattr(server, "__version__", "9.9.9")
+    assert (await (await client.get(key_url)).json())["key"] is None
+    monkeypatch.undo()
+    # The last part of a bake sent in parts carries it too.
+    url = f"/api/shows/{show_id}/baked/part?upload=00112233445566778899aabb"
+    await client.post(f"{url}&offset=0&done=1&key=parts", data=blob)
+    assert (await (await client.get(key_url)).json())["key"] == "parts"
+    assert (await client.delete(f"/api/shows/{show_id}")).status == 200
+    assert not (storage.shows_dir / f"{show_id}.bakekey").exists()

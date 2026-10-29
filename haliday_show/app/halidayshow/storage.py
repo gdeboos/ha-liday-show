@@ -183,9 +183,33 @@ class Storage:
         _write_atomic(self.shows_dir / f"{show_id}.json", json.dumps(show, indent=1).encode())
         # The bake is stale until the editor uploads a new one.
         (self.shows_dir / f"{show_id}.gshow").unlink(missing_ok=True)
+        (self.shows_dir / f"{show_id}.bakekey").unlink(missing_ok=True)
 
-    def save_baked(self, show_id: str, blob: bytes):
+    def save_baked(self, show_id: str, blob: bytes, key: str | None = None, version: str = ""):
+        """key: what the editor baked it for (its lights and their places), so opening the show again
+        needn't bake it again. Kept beside the bake with the bake's own hash and the app's version,
+        so a bake replaced some other way (or made by older effects) isn't taken for it."""
         _write_atomic(self.shows_dir / f"{show_id}.gshow", blob)
+        note = self.shows_dir / f"{show_id}.bakekey"
+        if key:
+            info = {"key": key, "version": version, "sha1": hashlib.sha1(blob).hexdigest()}
+            _write_atomic(note, json.dumps(info).encode())
+        else:
+            note.unlink(missing_ok=True)
+
+    def baked_key(self, show_id: str, version: str = "") -> str | None:
+        """The key the show's bake was made for, if that bake is still the one there."""
+        try:
+            info = json.loads((self.shows_dir / f"{show_id}.bakekey").read_text())
+            blob = (self.shows_dir / f"{show_id}.gshow").read_bytes()
+        except (OSError, ValueError):
+            return None
+        if not isinstance(info, dict) or info.get("version") != version:
+            return None
+        if info.get("sha1") != hashlib.sha1(blob).hexdigest():
+            return None
+        key = info.get("key")
+        return key if isinstance(key, str) else None
 
     def load_baked(self, show_id: str) -> bytes | None:
         try:
@@ -294,7 +318,7 @@ class Storage:
         return True
 
     def delete_show(self, show_id: str):
-        for ext in ("json", "gshow"):
+        for ext in ("json", "gshow", "bakekey"):
             (self.shows_dir / f"{show_id}.{ext}").unlink(missing_ok=True)
 
     # song drafts: Music editor edits kept as recipes (which parts of which songs), no audio --------

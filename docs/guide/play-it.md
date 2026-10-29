@@ -13,10 +13,11 @@ needed). With **Auto save** on in the show's settings (the default), the show al
 after each change and when you switch shows; the note next to it says whether everything is saved.
 A new show is saved once it has its first effect. Auto save waits while a show is playing.
 
-The first time you press **▶ Play** after opening a show with **Lights** on, it gets the lights
-ready first, which can take a little while on a phone or for a long show. The button says what it's
-doing meanwhile (**Preparing…**, then **Sending…** with how far it's got) and turns to **⏸ Pause**
-once the show starts. Likewise **Open** in **Library → Shows** says **Opening…** while the show's song
+When you've changed a show (or your lights) and press **▶ Play** with **Lights** on, it gets the
+lights ready first, which can take a little while on a phone or for a long show. The button says what
+it's doing meanwhile (**Preparing…**, then **Sending…** with how far it's got) and turns to
+**⏸ Pause** once the show starts. A show you open again with nothing changed since starts straight
+away: HA-liday Show remembers which lights it was last got ready for. Likewise **Open** in **Library → Shows** says **Opening…** while the show's song
 arrives.
 
 Whenever something saves (a show, your lights, palettes, presets, playlists or the house photo), the

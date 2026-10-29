@@ -604,15 +604,34 @@ async def put_show(request):
     return web.json_response({"ok": True})
 
 
+_BAKE_KEY = re.compile(r"[A-Za-z0-9_-]{1,64}")
+
+
+def _clean_bake_key(request) -> str | None:
+    """?key= on a bake upload: what the editor baked it for (see Storage.save_baked)."""
+    key = request.query.get("key")
+    if key is None or key == "":
+        return None
+    if not _BAKE_KEY.fullmatch(key):
+        raise web.HTTPBadRequest(text="bad bake key")
+    return key
+
+
+async def get_baked_key(request):
+    key = request.app[STORAGE].baked_key(_show_id(request), __version__)
+    return web.json_response({"key": key})
+
+
 async def put_baked(request):
     show_id = _show_id(request)
     _not_archived(request, show_id)
+    key = _clean_bake_key(request)
     blob = await request.read()
     try:
         decode(blob)
     except BakedError as e:
         raise web.HTTPBadRequest(text=str(e))
-    request.app[STORAGE].save_baked(show_id, blob)
+    request.app[STORAGE].save_baked(show_id, blob, key, __version__)
     request.app[MQTT].refresh()
     return web.json_response({"ok": True, "bytes": len(blob)})
 
@@ -823,6 +842,7 @@ async def put_baked_part(request):
     show_id = _show_id(request)
     _not_archived(request, show_id)
     storage = request.app[STORAGE]
+    key = _clean_bake_key(request)
     part, size, done = await _receive_part(request, storage.shows_dir)
     if not done:
         return web.json_response({"received": size})
@@ -832,7 +852,7 @@ async def put_baked_part(request):
         decode(blob)
     except BakedError as e:
         raise web.HTTPBadRequest(text=str(e))
-    storage.save_baked(show_id, blob)
+    storage.save_baked(show_id, blob, key, __version__)
     request.app[MQTT].refresh()
     return web.json_response({"ok": True, "bytes": len(blob)})
 
@@ -2312,6 +2332,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/shows/{id}", put_show)
     r.add_delete("/api/shows/{id}", delete_show)
     r.add_put("/api/shows/{id}/baked", put_baked)
+    r.add_get("/api/shows/{id}/baked/key", get_baked_key)
     r.add_post("/api/shows/{id}/baked/part", put_baked_part)
     r.add_post("/api/shows/{id}/duplicate", duplicate_show)
     r.add_post("/api/shows/{id}/rename", rename_show)
