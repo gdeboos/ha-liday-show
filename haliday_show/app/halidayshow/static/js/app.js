@@ -54,7 +54,7 @@ import { addLibraryFolder, deleteLibraryFolder, folderOfItem, groupByFolder, mov
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
 import { convertProblem, showUses, toWled } from "./convert.js";
-import { PART, sendParts, uploadSong } from "./upload.js";
+import { PART, putWithProgress, sendParts, uploadSong } from "./upload.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -5650,7 +5650,7 @@ function showRow(r) {
   main.append(head, details);
   const actions = document.createElement("div");
   actions.className = "group show-actions";
-  const open = button("Open", () => openFromList(r.id), "primary");
+  const open = button("Open", () => openFromList(r.id, open), "primary");
   open.setAttribute("aria-label", `Open ${r.name}`);
   const dup = button("Duplicate", () => duplicateShow(r), "ghost");
   dup.setAttribute("aria-label", `Duplicate ${r.name}`);
@@ -7177,10 +7177,12 @@ function focusRow(id, act) {
   box?.querySelector(`.show-row[data-show-id="${CSS.escape(id)}"] [data-act="${act}"]`)?.focus();
 }
 
-async function openFromList(id) {
+async function openFromList(id, btn = null) {
   if (id !== app.showId) {
     if (!(await confirmDiscard())) return;
-    await openShow(id);
+    // Its song can take a while to arrive on a phone, so the button says it's working meanwhile.
+    const done = btn ? busyButton(btn, "Opening…") : () => {};
+    try { await openShow(id); } finally { done(); }
   }
   app.chosen = true;
   showView("editor");
@@ -7446,7 +7448,8 @@ function reportUnfit() {
   }
 }
 
-async function save() {
+// stage(text), if given, hears what's happening while the lights are got ready (Play shows it).
+async function save({ stage = null } = {}) {
   if (app.sceneId) return saveScene();
   if (!app.showId) {
     const { id } = await api("api/shows", { method: "POST", json: { name: app.show.name } });
@@ -7464,7 +7467,10 @@ async function save() {
     app.bakedKey = null;  // saving the show clears the server's bake
   }
   if (app.bakedKey !== key) {
-    await uploadBake(app.showId, bake(app.show, app.devices, FPS, pos, app.groups));
+    if (stage) { stage("Preparing…"); await drawn(); }
+    const blob = bake(app.show, app.devices, FPS, pos, app.groups);
+    stage?.("Sending…");
+    await uploadBake(app.showId, blob, stage && ((f) => stage(`Sending… ${Math.round(f * 100)}%`)));
     app.bakedKey = key;
   }
   await refreshShows();
@@ -7474,9 +7480,10 @@ async function save() {
 // What a show's bake depends on besides the show: the lights, the groups and where they are on the house.
 const showBakeKey = (pos) => JSON.stringify([app.deviceList.map((d) => [d.id, d.segments, d.parts]), app.groups, pos]);
 
-async function uploadBake(showId, blob) {
+async function uploadBake(showId, blob, progress = undefined) {
   // A long show on many bulbs is more than Home Assistant passes on in one go, so it goes in pieces.
-  if (blob.byteLength > PART) await sendParts(api, `api/shows/${showId}/baked/part`, new Blob([blob]));
+  if (blob.byteLength > PART) await sendParts(api, `api/shows/${showId}/baked/part`, new Blob([blob]), {}, progress);
+  else if (progress) await putWithProgress(`api/shows/${showId}/baked`, blob, progress);
   else {
     await api(`api/shows/${showId}/baked`, {
       method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" },
@@ -7845,11 +7852,17 @@ function renderRegion() {
 async function play() {
   if (app.playing || app.starting) return;
   app.starting = true;
+  // Getting the lights ready can take a while (much longer on a phone), so Play says so meanwhile.
+  const done = busyButton($("btn-play"), "Starting…");
+  app.playStage = done.say;
   try {
     await stopLightPreview();
     await startPlaying();
   } finally {
     app.starting = false;
+    app.playStage = null;
+    done();
+    if (!app.playing) $("btn-play").textContent = "▶ Play";
   }
 }
 
@@ -7861,7 +7874,7 @@ async function startPlaying() {
     if (!app.show.audio) { status("Pick a song to play on a speaker", "hint"); return; }
     try {
       status("Starting the speaker…");
-      await save();
+      await save({ stage: app.playStage });
       const st = await api("api/player/play", {
         method: "POST", json: { show: app.showId, position: app.time, media_player: speaker() },
       });
@@ -7878,7 +7891,7 @@ async function startPlaying() {
   if (lightsOn()) {
     try {
       status("Preparing lights…");
-      await save();
+      await save({ stage: app.playStage });
       await api("api/player/play", {
         method: "POST", json: app.sceneId ? { scene: app.sceneId, position: app.time }
           : { show: app.showId, position: app.time, offset: offset() },
@@ -7888,6 +7901,7 @@ async function startPlaying() {
       status(`Lights unavailable: ${e.message}`, true, "play");
     }
   }
+  app.playStage?.("Starting…");
   if (hasAudio()) {
     audio.currentTime = app.time;
     try { await audio.play(); } catch (e) { status(`Can't play audio: ${e.message}`, true); return; }
@@ -8649,6 +8663,26 @@ async function describe(request, selectionFor, { replaceAll = false, what = "you
   done(placed.length ? `✓ ${message}` : message, !placed.length);
   status(message, placed.length ? "info" : "hint");
 }
+
+// A button showing that what it started is still going: a spinner and `label` (changed with the
+// returned function's .say(label)) until the returned function is called. It ignores presses meanwhile.
+function busyButton(btn, label) {
+  const was = btn.innerHTML;
+  const say = (text) => { btn.innerHTML = `<span class="spinner" aria-hidden="true"></span> ${text}`; };
+  btn.classList.add("busy");
+  btn.setAttribute("aria-busy", "true");
+  say(label);
+  const done = () => {
+    btn.classList.remove("busy");
+    btn.removeAttribute("aria-busy");
+    if (btn.innerHTML.includes('class="spinner"')) btn.innerHTML = was;
+  };
+  done.say = say;
+  return done;
+}
+
+// Lets the browser draw (a busy button, say) before something that keeps it busy, like baking.
+const drawn = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r)));
 
 // Shows that the AI is working (a spinner and a running count of seconds in the panel) until the
 // returned function is called with the outcome to leave there.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.252
+
+- **Play shows that it's getting ready.** The first press of **▶ Play** after opening a show gets your lights ready, which can take a while on a phone. The button now says **Preparing…**, then **Sending…** with how far it's got, instead of looking like nothing happened.
+- **Open** in **Library → Shows** says **Opening…** while the show's song loads.
+
 ## 0.2.251
 
 - **Folders everywhere in the Library**, like Songs and Samples: **Shows**, **Scenes**, **Playlists**, your **Palettes** and **Presets**. Press **+ New folder** beside the **+ New …** button, then pick a folder under **Folder** on each row. Folders fold away, and can be renamed or deleted (what's in them stays).

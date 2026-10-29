@@ -43,3 +43,22 @@ export async function sendParts(api, url, blob, last = {}, progress = () => {}) 
   }
   return reply;
 }
+
+// PUTs `blob` to `url` like the editor's api() does, but tells progress(fraction) as it goes up
+// (fetch can't): a long show takes a while to send from a phone.
+export function putWithProgress(url, blob, progress) {
+  return new Promise((resolve, reject) => {
+    const req = new XMLHttpRequest();
+    req.open("PUT", url);
+    req.setRequestHeader("Content-Type", "application/octet-stream");
+    req.upload.onprogress = (e) => { if (e.lengthComputable) progress(e.loaded / e.total); };
+    req.onload = () => {
+      if (req.status >= 200 && req.status < 300) { resolve(req.responseText); return; }
+      const err = new Error(req.responseText || `${req.status} ${req.statusText}`);
+      err.status = req.status;
+      reject(err);
+    };
+    req.onerror = () => reject(new TypeError("Failed to fetch"));
+    req.send(blob);
+  });
+}
