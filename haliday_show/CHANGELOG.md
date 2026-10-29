@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.257
+
+- Fixed shows going missing from the **Public page**'s list (and being skipped by playlists and schedules). A show saved before its lights' frames reached HA-liday Show wasn't ready to play, so it was quietly left out. Such shows are now made ready in the background when you open HA-liday Show, and again when you open the **Public page**. Any that still can't be are listed greyed out, saying to open and save them.
+
 ## 0.2.256
 
 - Rows in the Library are shorter. Each keeps its main button (**Open** on a show, **▶ Play** and **Edit** on a scene, **Edit** on a song, and so on) and puts the rest under **⋯**: **Duplicate**, **Rename**, **Share**, the row's **Folder**, and **Remove…** last.
