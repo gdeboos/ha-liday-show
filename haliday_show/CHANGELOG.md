@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.263
+
+- No more browser pop-ups. Naming a new folder, renaming things, and every "Are you sure?" question now use HA-liday Show's own windows, in its own colours. A name that's already taken says so under the box, rather than in a separate pop-up.
+- Buttons in these windows say what they do (**Delete**, **Replace**, **Make folder**), and the ones that remove something are red.
+
 ## 0.2.262
 
 - Folders are now real folders you go into, in every Library list (shows, scenes, playlists, songs, samples, palettes and presets). A list shows its folders first, then what's in no folder; press a folder to see only what's in it. The path at the top (**Songs › Rock › Arctic Monkeys**) and the browser's **Back** take you back up.

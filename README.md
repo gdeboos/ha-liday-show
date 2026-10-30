@@ -378,6 +378,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
                                         readability sums shared with the editor; words.json is every
                                         message visitors read, with its starting wording
     js/app.js                           Editor state, panels, inspector and playback
+    js/ask.js                           HA-liday Show's own question and name windows, in place of the browser's
     js/effects.js                       Effect definitions, House lane effects and the baker
     js/timeline.js                      Timeline canvas: waveform, clips, selection, zoom
     js/help.js                          The Help drawer's words: tips per page and panel, search

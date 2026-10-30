@@ -12,6 +12,7 @@ import { evenOut, loudness } from "./loudness.js";
 import { MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, MAX_CHANGES, applyEq, eqAt, faderText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { stretch } from "./tempo.js";
+import { askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
 import { flatTree, fromSongFolders, itemsIn, keyOfRef, pathTo } from "./folders.js";
@@ -500,7 +501,7 @@ export class MusicEditor {
   async open(ref, { asked = false } = {}) {
     if (!asked) {
       await this.flush();
-      if (this.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Open another song anyway?")) {
+      if (this.unsaved && !(await askYes("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Open another song anyway?", { yes: "Leave anyway" }))) {
         this.fillSongLists();
         return;
       }
@@ -786,9 +787,9 @@ export class MusicEditor {
     this.host.status(`Added Layer ${n}. Pick a sample or song under it to put a clip at the playhead`, "hint");
   }
 
-  removeLayer(i) {
+  async removeLayer(i) {
     const n = this.layers[i].clips.length;
-    if (n && !confirm(`Remove "${this.layers[i].name}" and its ${n} clip${n === 1 ? "" : "s"}? Ctrl+Z brings it back.`)) return;
+    if (n && !(await askYes(`Remove "${this.layers[i].name}" and its ${n} clip${n === 1 ? "" : "s"}? Ctrl+Z brings it back.`, { yes: "Remove", danger: true }))) return;
     // The open EQ and a picked change stay with their layers as the ones after it move up.
     if (this.eqCh === i) this.eqCh = null;
     else if (typeof this.eqCh === "number" && this.eqCh > i) this.eqCh--;
@@ -1444,12 +1445,12 @@ export class MusicEditor {
     if (!this.sel || !this.rendered) return;
     const { start, end } = this.sel;
     const song = nameOf(this.base || { path: "song" }).replace(/\.[^.]+$/, "");
-    const typed = prompt("Name the sample", `${song} ${fmtTime(start, false).replace(":", ".")}`)?.trim();
+    const typed = await askText("Save as sample", { value: `${song} ${fmtTime(start, false).replace(":", ".")}`, max: 120, yes: "Save" });
     if (!typed) return;
     const name = `${typed.replace(/\.wav$/i, "")}.wav`;
     const have = await this.host.api("api/samples").catch(() => []);
     if (have.some((s) => s.path.split("/").pop().toLowerCase() === name.toLowerCase())
-        && !confirm(`There's already a sample called ${name}. Replace it?`)) return;
+        && !(await askYes(`There's already a sample called ${name}. Replace it?`, { yes: "Replace" }))) return;
     // As it sounds in the edit, layers and all.
     const rate = this.audio.sampleRate, a = Math.round(start * rate), b = Math.round(end * rate);
     const channels = this.rendered.map((ch) => ch.slice(a, b));
@@ -1770,7 +1771,7 @@ export class MusicEditor {
       if (!how) return;
       file = how === "replace" ? nameOf(made) : freshFileName(name, taken);
     } else if (taken.some((p) => nameOf({ path: p }).toLowerCase() === file.toLowerCase())
-        && !confirm(`${file} already exists. Replace it?`)) return;
+        && !(await askYes(`${file} already exists. Replace it?`, { yes: "Replace" }))) return;
     // The spliced-in songs' info as it is now, so none of their marks are missed or out of date.
     const mainKey = this.base && keyOf(this.base);
     await Promise.all([...new Set(this.pieces.map((p) => p.src))].filter((k) => k !== mainKey && this.refs[k])

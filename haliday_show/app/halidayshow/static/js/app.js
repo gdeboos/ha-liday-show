@@ -50,6 +50,7 @@ import {
 } from "./playlisteditor.js";
 import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
+import { askText, askYes } from "./ask.js";
 import {
   addFolder, childrenOf, countIn, deleteFolder, flatTree, folderOf, fromSongFolders, moveFolder, moveItems, moveProblem,
   nameProblem, pathText, pathTo, renameFolder, toSongFolders, within,
@@ -989,7 +990,7 @@ $("light-dialog").addEventListener("click", async (e) => {
   if (what === "close" || !d) $("light-dialog").close();
   else if (what === "test") { if (await testLight(d)) status(`Testing ${d.name} for 20 seconds`); }
   else if (what === "remove") {
-    if (!confirm(`Remove ${d.name}? Its clips stay in your shows.`)) return;
+    if (!(await askYes(`Remove ${d.name}? Its clips stay in your shows.`, { yes: "Remove", danger: true }))) return;
     $("light-dialog").close();
     app.deviceList = app.deviceList.filter((x) => x.id !== d.id);
     saveDevices();
@@ -1219,7 +1220,7 @@ function openGroupWindow(group) {
 async function deleteGroup(g) {
   const used = await showsWith((show) => show.tracks?.some((t) => t.device === GROUP + g.id && t.clips.length)).catch(() => []);
   const where = used.length ? ` Its effects in ${used.length === 1 ? used[0] : `${used.length} shows`} stop playing, and stay on its lane until you clear it.` : "";
-  if (!confirm(`Delete the group ${g.name}?${where}`)) return;
+  if (!(await askYes(`Delete the group ${g.name}?${where}`, { yes: "Delete", danger: true }))) return;
   await saveGroups(app.groups.filter((x) => x !== g), `Deleted the group ${g.name}`);
 }
 
@@ -1492,7 +1493,7 @@ async function useWledSegments(d) {
   try {
     const w = await wledInfo(d.ip);
     if (!w.parts.length) { status(`${d.name} has only one segment in WLED, so there's nothing to split`, "hint"); return; }
-    if (d.parts?.length && !confirm(`Replace ${d.name}'s parts with its ${w.parts.length} WLED segments? Clips on parts that disappear stay in your shows.`)) return;
+    if (d.parts?.length && !(await askYes(`Replace ${d.name}'s parts with its ${w.parts.length} WLED segments? Clips on parts that disappear stay in your shows.`, { yes: "Replace" }))) return;
     d.segments = w.leds;
     d.parts = w.parts;
     saveDevices();
@@ -2286,8 +2287,8 @@ function renderHouseLights() {
     if (house.active === d.id) {
       actions.append(button("Done", () => { house.active = null; renderHouseLights(); }, "primary"));
     } else {
-      actions.append(button(pts ? "Retrace" : "Trace", () => {
-        if (pts && !confirm(`Trace ${d.name} again from the start?`)) return;
+      actions.append(button(pts ? "Retrace" : "Trace", async () => {
+        if (pts && !(await askYes(`Trace ${d.name} again from the start?`, { yes: "Trace again" }))) return;
         delete house.paths[d.id];
         delete house.pins[d.id];
         if (house.styles[d.id]?.aims) house.styles[d.id].aims = [];
@@ -2298,8 +2299,8 @@ function renderHouseLights() {
       }, pts ? "" : "primary"));
     }
     if (pts) {
-      actions.append(button("Clear", () => {
-        if (!confirm(`Remove ${d.name} from the photo?`)) return;
+      actions.append(button("Clear", async () => {
+        if (!(await askYes(`Remove ${d.name} from the photo?`, { yes: "Remove", danger: true }))) return;
         delete house.paths[d.id];
         delete house.pins[d.id];
         if (house.active === d.id) house.active = null;
@@ -2377,7 +2378,7 @@ function wireHouse() {
     // Lines drawn for the sample house won't match a real photo.
     const wasSample = house.sample && Object.keys(house.paths).length;
     await house.upload(file);
-    if (wasSample && !house.sample && confirm("Clear the lights you put on the sample house, so you can trace them on your photo?")) {
+    if (wasSample && !house.sample && (await askYes("Clear the lights you put on the sample house, so you can trace them on your photo?", { yes: "Clear", danger: true }))) {
       house.paths = {};
       house.pins = {};
       house.save();
@@ -2385,7 +2386,7 @@ function wireHouse() {
     renderHouseLights();
   });
   $("house-remove").addEventListener("click", async () => {
-    if (!confirm("Remove the house photo? Your traced lights are kept for the next photo.")) return;
+    if (!(await askYes("Remove the house photo? Your traced lights are kept for the next photo.", { yes: "Remove", danger: true }))) return;
     await house.removePhoto();
     renderHouseLights();
   });
@@ -3094,9 +3095,9 @@ function renderTrackInspector(i) {
   // can be taken out of the show, with its effects.
   if (!isHouse(i) && !(isGroup(i) && g) && !playingDev(app.show.tracks[i])) {
     const dead = app.show.tracks.filter((t) => t.device !== HOUSE && !groupById(t.device) && !playingDev(t));
-    const remove = (tracks) => {
+    const remove = async (tracks) => {
       const n = tracks.reduce((s, t) => s + t.clips.length, 0);
-      if (n && !confirm(`Remove ${tracks.length === 1 ? "this track" : `${tracks.length} tracks`} and ${n} effect${n === 1 ? "" : "s"} from the show?`)) return;
+      if (n && !(await askYes(`Remove ${tracks.length === 1 ? "this track" : `${tracks.length} tracks`} and ${n} effect${n === 1 ? "" : "s"} from the show?`, { yes: "Remove", danger: true }))) return;
       app.show.tracks = app.show.tracks.filter((t) => !tracks.includes(t));
       app.select(null);
       app.changed();
@@ -3330,8 +3331,8 @@ function renderPresetsTab() {
   presetEditing = null;
 }
 
-function deletePreset(preset) {
-  if (!confirm(`Delete the preset ${preset.name}? Clips using its settings keep them.`)) return false;
+async function deletePreset(preset) {
+  if (!(await askYes(`Delete the preset ${preset.name}? Clips using its settings keep them.`, { yes: "Delete", danger: true }))) return false;
   app.myPresets.splice(app.myPresets.indexOf(preset), 1);
   savePresets();
   const key = `${preset.effect}:${preset.name}`; // so a new one of the same name starts in no folder
@@ -3372,7 +3373,7 @@ function openPresetWindow(preset, draft = null) {
   }, "primary");
   const spacer = document.createElement("span");
   spacer.className = "spacer";
-  if (preset) w.foot.append(button("Delete…", () => { if (deletePreset(preset)) w.dlg.close(); }, "ghost danger"));
+  if (preset) w.foot.append(button("Delete…", async () => { if (await deletePreset(preset)) w.dlg.close(); }, "ghost danger"));
   w.foot.append(spacer, button("Cancel", () => w.dlg.close()), save);
   w.dlg.addEventListener("close", () => { presetDialogPreview.items = []; });
   w.body.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.classList.contains("preset-name")) save.click(); });
@@ -3666,8 +3667,8 @@ function paletteBar(colors) {
   return bar;
 }
 
-function deletePalette(p) {
-  if (!confirm(`Delete the palette ${p.name}? Effects already coloured with it keep their colours.`)) return false;
+async function deletePalette(p) {
+  if (!(await askYes(`Delete the palette ${p.name}? Effects already coloured with it keep their colours.`, { yes: "Delete", danger: true }))) return false;
   app.palettes.splice(app.palettes.indexOf(p), 1);
   savePalettes();
   if (folderOf(foldersOf("palettes"), p.name)) saveFolders("palettes", moveItems(foldersOf("palettes"), [p.name], ""), "Folders kept");
@@ -3763,7 +3764,7 @@ function openPaletteWindow(palette, draft = null) {
   name.addEventListener("keydown", (e) => { if (e.key === "Enter") save.click(); });
   const spacer = document.createElement("span");
   spacer.className = "spacer";
-  if (palette) w.foot.append(button("Delete…", () => { if (deletePalette(palette)) w.dlg.close(); }, "ghost danger"));
+  if (palette) w.foot.append(button("Delete…", async () => { if (await deletePalette(palette)) w.dlg.close(); }, "ghost danger"));
   w.foot.append(spacer, button("Cancel", () => w.dlg.close()), save);
   w.dlg.showModal();
   name.focus();
@@ -4287,15 +4288,12 @@ function playlistRow(r) {
     status(`Made ${copy.name}`, "saved", "playlists");
   }, "ghost");
   dup.setAttribute("aria-label", `Duplicate ${r.name}`);
-  const ren = button("Rename…", () => {
+  const ren = button("Rename…", async () => {
     const pl = playlists.find((x) => x.id === r.id);
     if (!pl || !playlistsLoaded) return;
-    const name = prompt("Rename the playlist", pl.name)?.trim().replace(/\s+/g, " ");
+    const name = await askText("Rename the playlist", { value: pl.name,
+      check: (v) => (playlists.some((x) => x !== pl && x.name.toLowerCase() === v.toLowerCase()) ? `There's already a playlist called ${v}` : "") });
     if (!name || name === pl.name) return;
-    if (playlists.some((x) => x !== pl && x.name.toLowerCase() === name.toLowerCase())) {
-      status(`There's already a playlist called ${name}. Give this one its own name`, "hint", "playlists");
-      return;
-    }
     pl.name = name.slice(0, 80);
     savePlaylists();
     renderPlaylists();
@@ -4332,7 +4330,7 @@ async function togglePlaylist(pl) {
 }
 
 async function deletePlaylist(pl) {
-  if (!confirm(`Delete the playlist "${pl.name}"? Its shows are kept.`)) return false;
+  if (!(await askYes(`Delete the playlist "${pl.name}"? Its shows are kept.`, { yes: "Delete", danger: true }))) return false;
   if (playlistPlaying?.id === pl.id) await api("api/player/stop", { method: "POST" }).catch(() => {});
   playlists = playlists.filter((x) => x !== pl);
   savePlaylists();
@@ -4919,7 +4917,7 @@ async function makeShow(name, file, colors, palette = null) {
 }
 
 async function removeDemo() {
-  if (!confirm("Remove the demo's lights and its show? Your own shows and songs are kept.")) return;
+  if (!(await askYes("Remove the demo's lights and its show? Your own shows and songs are kept.", { yes: "Remove", danger: true }))) return;
   const shows = await api("api/shows");
   for (const s of shows.filter((x) => x.name === DEMO_SHOW)) {
     await api(`api/shows/${encodeURIComponent(s.id)}`, { method: "DELETE" });
@@ -4950,7 +4948,7 @@ async function renderCopies() {
 
 // Import, put back or start afresh: the add-on keeps a copy first, then the page reloads with the new data.
 async function replaceData(url, body, question) {
-  if (!confirm(question)) return;
+  if (!(await askYes(question))) return;
   clearTimeout(autoSaveTimer);
   await stop();
   try {
@@ -5376,8 +5374,8 @@ function wirePublic() {
   $("pub-look").addEventListener("change", (e) => { if (e.target.id !== "pub-picture-file") savePublic(); });
   $("pub-showing").addEventListener("change", () => savePublic());
   $("pub-word-list").addEventListener("change", () => savePublic());
-  $("pub-words-reset").addEventListener("click", () => {
-    if (!confirm("Put every word on the public page back to how it started? Your title, welcome and link stay.")) return;
+  $("pub-words-reset").addEventListener("click", async () => {
+    if (!(await askYes("Put every word on the public page back to how it started? Your title, welcome and link stay.", { yes: "Put them back" }))) return;
     for (const input of document.querySelectorAll("#pub-word-list input[data-word]")) input.value = input.dataset.default;
     savePublic();
   });
@@ -5423,7 +5421,7 @@ function wirePublic() {
     }
   });
   $("pub-new-code").addEventListener("click", async () => {
-    if (!confirm("Make a new code? The old link, and any QR code you've printed, stop working.")) return;
+    if (!(await askYes("Make a new code? The old link, and any QR code you've printed, stop working.", { yes: "Make a new code", danger: true }))) return;
     try {
       await pubSaving;
       const view = await api("api/public/code", { method: "POST" });
@@ -6236,7 +6234,7 @@ async function reopenSong(ref) {
 }
 
 async function renameDraft(d) {
-  const name = prompt("Rename the draft", d.name)?.trim();
+  const name = await askText("Rename the draft", { value: d.name });
   if (!name || name === d.name) return;
   if (music.draft?.id === d.id) {
     $("music-name").value = name;
@@ -6292,7 +6290,7 @@ async function duplicateSongFile(ref, sample = false) {
 
 async function renameSample(ref) {
   const stem = ref.path.split("/").pop().replace(/\.[^.]+$/, "");
-  const name = prompt("Rename the sample", stem)?.trim();
+  const name = await askText("Rename the sample", { value: stem, max: 120 });
   if (!name || name === stem) return;
   if (!(await letGoInMusic(ref.path))) return;
   try {
@@ -6306,7 +6304,7 @@ async function renameSample(ref) {
 // Renames a song file in HA-liday Show's folder; shows, drafts and folders that use it follow.
 async function renameSongFile(r) {
   const was = r.ref.path, stem = was.split("/").pop().replace(/\.[^.]+$/, "");
-  const name = prompt("Rename the song file", stem)?.trim();
+  const name = await askText("Rename the song file", { value: stem, max: 120 });
   if (!name || name === stem) return;
   if (!(await letGoInMusic(was))) return;
   try {
@@ -6321,7 +6319,7 @@ async function renameSongFile(r) {
 
 async function deleteDraft(d) {
   const made = d.made ? ` The song file it made (${d.made.path.split("/").pop()}) stays.` : "";
-  if (!confirm(`Delete the draft "${d.name}"? The song it started from isn't changed.${made}`)) return;
+  if (!(await askYes(`Delete the draft "${d.name}"? The song it started from isn't changed.${made}`, { yes: "Delete", danger: true }))) return;
   // Forgotten first, so a save on its way (or waiting to be tried again) can't make it again.
   music.keeper.forgetId(d.id);
   try {
@@ -6513,7 +6511,7 @@ function songRow(r) {
 async function editSong(ref) {
   // Ask before leaving the open draft, rather than after.
   await music.flush();
-  if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) return;
+  if (music.unsaved && !(await askYes("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?", { yes: "Leave anyway" }))) return;
   app.songChosen = true;
   showView("music");
   await refreshAudio().catch(() => {});
@@ -6744,19 +6742,13 @@ function placeBeside(kind, from, key) {
 }
 
 function askFolderName(title, current, place, folders, except = null) {
-  for (;;) {
-    const name = prompt(title, current);
-    if (name === null) return null;
-    const problem = nameProblem(folders, name, place, except);
-    if (!problem) return name.trim();
-    alert(problem);
-    current = name;
-  }
+  return askText(title, { value: current, max: 60, yes: current ? "Rename" : "Make folder",
+    check: (v) => nameProblem(folders, v, place, except) });
 }
 
-function newFolder(kind, thenMove = null) {
+async function newFolder(kind, thenMove = null) {
   const at = folderAt(kind), folders = foldersOf(kind);
-  const name = askFolderName("Name the new folder", "", at, folders);
+  const name = await askFolderName("New folder", "", at, folders);
   if (name === null) return;
   const made = addFolder(folders, name, at);
   saveFolders(kind, thenMove ? moveItems(made.folders, [thenMove], made.id) : made.folders,
@@ -6854,14 +6846,14 @@ function folderRow(kind, f, keys) {
   open.lastChild.append(Object.assign(document.createElement("b"), { className: "show-name", textContent: f.name }),
     Object.assign(document.createElement("span"), { className: "hint", textContent: count }));
   open.setAttribute("aria-label", `Open the folder ${f.name}: ${count}`);
-  const ren = button("Rename…", () => {
-    const name = askFolderName("Rename the folder", f.name, f.parent || "", folders, f.id);
+  const ren = button("Rename…", async () => {
+    const name = await askFolderName("Rename the folder", f.name, f.parent || "", folders, f.id);
     if (name !== null && name !== f.name) saveFolders(kind, renameFolder(folders, f.id, name), "Folder renamed");
   }, "ghost");
   const mv = button("Move to…", () => moveToWindow(kind, { folder: f.id, name: f.name }), "ghost");
-  const del = button("Delete…", () => {
+  const del = button("Delete…", async () => {
     const up = f.parent ? folders.find((x) => x.id === f.parent)?.name : null;
-    if (!confirm(`Delete the folder ${f.name}? Nothing in it is deleted: it moves up to ${up ? `the folder ${up}` : `the top of ${lib.top}`}.`)) return;
+    if (!(await askYes(`Delete the folder ${f.name}? Nothing in it is deleted: it moves up to ${up ? `the folder ${up}` : `the top of ${lib.top}`}.`, { yes: "Delete", danger: true }))) return;
     saveFolders(kind, deleteFolder(folders, f.id), `Folder ${f.name} deleted`);
   }, "ghost danger");
   const actions = document.createElement("div");
@@ -7033,7 +7025,7 @@ function sampleRow(s) {
   play.dataset.play = "1";
   play.setAttribute("aria-label", `Play ${name}`);
   const del = button("Delete…", async () => {
-    if (!confirm(`Delete the sample "${name}"? It's removed from HA-liday Show's Samples folder for good.`)) return;
+    if (!(await askYes(`Delete the sample "${name}"? It's removed from HA-liday Show's Samples folder for good.`, { yes: "Delete", danger: true }))) return;
     try {
       if (samplePlaying === s.path) stopSample();
       await api(`api/samples?path=${encodeURIComponent(s.path)}`, { method: "DELETE" });
@@ -7056,7 +7048,7 @@ function sampleRow(s) {
 async function addSamples(files) {
   const have = new Set((await api("api/samples").catch(() => [])).map((s) => s.path.split("/").pop().toLowerCase()));
   for (const f of files) {
-    if (have.has(f.name.toLowerCase()) && !confirm(`There's already a sample called ${f.name}. Replace it?`)) continue;
+    if (have.has(f.name.toLowerCase()) && !(await askYes(`There's already a sample called ${f.name}. Replace it?`, { yes: "Replace" }))) continue;
     try {
       const ref = await uploadSong(api, f, f.name, (done) => { $("sample-progress").textContent = `Adding ${f.name}… ${Math.round(done * 100)}%`; }, { sample: true });
       if (ref?.path) placeNew("samples", songKey(ref));
@@ -7162,7 +7154,7 @@ async function openRemoveSong(r) {
 async function doRemove(forGood) {
   const r = removing;
   if (!r) return;
-  if (forGood && !confirm(`Delete ${r.name} for good?`)) return;
+  if (forGood && !(await askYes(`Delete ${r.name} for good?`, { yes: "Delete", danger: true }))) return;
   try {
     if (r.kind === "show") {
       if (r.id === app.showId) {
@@ -7270,7 +7262,7 @@ async function renderArchivedShows() {
     }, "ghost");
     restore.setAttribute("aria-label", `Restore ${r.name}`);
     const del = button("Delete for good…", async () => {
-      if (!confirm(`Delete ${r.name} for good? It's also taken out of any playlists.`)) return;
+      if (!(await askYes(`Delete ${r.name} for good? It's also taken out of any playlists.`, { yes: "Delete", danger: true }))) return;
       try {
         await api(`api/shows/${encodeURIComponent(r.id)}?archived=1`, { method: "DELETE" });
         status(`Deleted ${r.name}`, "saved", "shows");
@@ -7297,7 +7289,7 @@ async function renderArchivedSongs() {
     }, "ghost");
     restore.setAttribute("aria-label", `Restore ${name}`);
     const del = button("Delete for good…", async () => {
-      if (!confirm(`Delete ${name} for good? The song file can't be brought back.`)) return;
+      if (!(await askYes(`Delete ${name} for good? The song file can't be brought back.`, { yes: "Delete", danger: true }))) return;
       try {
         await api("api/songs/delete", { method: "POST", json: { path: x.path, archived: true } });
         status(`Deleted ${name}`, "saved", "songs");
@@ -7400,7 +7392,7 @@ async function confirmDiscard() {
   if (autoSaveOn() && worthSaving()) {
     try { await autoSave(); return true; } catch { /* fall through to asking */ }
   }
-  return confirm("You have unsaved changes. Discard them?");
+  return (await askYes("You have unsaved changes. Discard them?", { yes: "Discard", danger: true }));
 }
 
 // auto save -------------------------------------------------------------------
@@ -8143,7 +8135,7 @@ async function importSongInfo({ quiet = true } = {}) {
     return;
   }
   const has = app.show.beats.length || app.show.sections?.length;
-  if (has && !confirm("Replace this show's beat markers and sections with the ones saved for this song?")) return;
+  if (has && !(await askYes("Replace this show's beat markers and sections with the ones saved for this song?", { yes: "Replace" }))) return;
   applySongInfo(info);
   app.changed();
   status(`Using the song's ${info.beats.length} beats and ${info.sections.length} sections`);
@@ -8153,7 +8145,7 @@ async function importSongInfo({ quiet = true } = {}) {
 async function detectBeats() {
   if (!songBuffer) { status("Choose a song first", "hint"); return; }
   if ((app.show.beats.length || app.show.sections?.length)
-      && !confirm("Replace the beat markers and sections with ones found in the song?")) return;
+      && !(await askYes("Replace the beat markers and sections with ones found in the song?", { yes: "Replace" }))) return;
   const r = await analyseSong({ ai: true });
   if (!r) return;
   app.changed();
@@ -8261,14 +8253,14 @@ function renderShowPalette() {
     { title: "The show's palette", none: PALETTE_NONE, colors: editorPalette()?.colors }));
 }
 
-function changeShowPalette(name) {
+async function changeShowPalette(name) {
   const palette = name ? allPalettes().find((p) => p.name === name) : null;
   if (name && !palette) return;
   setShowPalette(app.show, palette);
   app.changed();
   renderShowPalette();
   const tracks = app.show.tracks.map((_, i) => i).filter((i) => app.show.tracks[i].clips.length);
-  if (palette && tracks.length && confirm(`Recolour the effects already in this show with ${palette.name}?`)) recolour(tracks, palette);
+  if (palette && tracks.length && (await askYes(`Recolour the effects already in this show with ${palette.name}?`, { yes: "Recolour", no: "Leave them" }))) recolour(tracks, palette);
   renderInspector();
 }
 
@@ -9037,7 +9029,7 @@ async function pageFromHistory(e) {
     }
     if (back && shownPage === "music" && page === "songs") {
       await music.flush();
-      if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) { refuse(); return; }
+      if (music.unsaved && !(await askYes("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?", { yes: "Leave anyway" }))) { refuse(); return; }
       app.songChosen = false;
     }
     if (back && shownPage === "playlist" && page === "playlists") app.playlistChosen = false;
@@ -9085,7 +9077,7 @@ function wire() {
   $("add-song-dialog").addEventListener("cancel", (e) => { if (addSong.busy) e.preventDefault(); });
   $("btn-all-songs").addEventListener("click", async () => {
     await music.flush();
-    if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) return;
+    if (music.unsaved && !(await askYes("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?", { yes: "Leave anyway" }))) return;
     if (!music.unsaved) await music.putAway();
     app.songChosen = false;
     showView("music");
@@ -9197,8 +9189,8 @@ function wire() {
   $("ai-form").addEventListener("submit", describeIt);
   $("ai-preset-form").addEventListener("submit", describePresets);
   $("ai-palette-form").addEventListener("submit", describePalettes);
-  $("btn-clear-beats").addEventListener("click", () => {
-    if ((app.show.beats.length || app.show.sections?.length) && confirm("Remove all beat markers and sections?")) {
+  $("btn-clear-beats").addEventListener("click", async () => {
+    if ((app.show.beats.length || app.show.sections?.length) && (await askYes("Remove all beat markers and sections?", { yes: "Remove", danger: true }))) {
       Object.assign(app.show, { beats: [], bars: [], sections: [] });
       app.changed();
     }

@@ -2,6 +2,7 @@
 // priority first. Each entry's times are edited with the app's schedule editor (the one playlists had);
 // this draws the list, keeps the order, and saves the whole list as you go.
 
+import { askYes } from "./ask.js";
 import { KIND_NAMES, describeSchedule, newEntry, whenNext } from "./schedule.js";
 
 const SAVE_AFTER_MS = 600;
@@ -182,8 +183,8 @@ export class SchedulePage {
         "aria-label": `Move ${label} up`, title: "Higher: plays first where times overlap" }, "↑"),
       el("button", { type: "button", class: "ghost sched-down", disabled: k === this.entries.length - 1,
         onclick: () => move(k + 1), "aria-label": `Move ${label} down` }, "↓"),
-      el("button", { type: "button", class: "ghost", "aria-label": `Delete this entry for ${label}`, onclick: () => {
-        if (!confirm(`Take ${label} (${describeSchedule(e)}) off the schedule?`)) return;
+      el("button", { type: "button", class: "ghost", "aria-label": `Delete this entry for ${label}`, onclick: async () => {
+        if (!(await askYes(`Take ${label} (${describeSchedule(e)}) off the schedule?`, { yes: "Take it off" }))) return;
         this.entries = this.entries.filter((x) => x !== e);
         this.changed();
         this.draw();
