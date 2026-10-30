@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.277
+
+- When **✨ Generate** uses the AI, an **Anything else?** box lets you tell it more about how the take should look, such as "no strobes, save the big colours for the last chorus". What you type is kept with the show, ready for your next take.
+
 ## 0.2.276
 
 - The play region (the green stretch you drag along the time ruler) can be generated too: press **✨ Generate here…** beside its times in the **Playback** panel, or pick **The play region** under **Fill** in **✨ Generate**. Every light is filled there, and the rest of the show stays as it was.

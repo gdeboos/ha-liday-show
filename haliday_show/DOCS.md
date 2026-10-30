@@ -999,6 +999,11 @@ comes in together. It runs **Detect** first if the song hasn't been analysed. It
 different take, then edit whatever you like. The colours start on the show's palette, or else the one for the time of year
 (Halloween in October, Christmas in December…) when there is one.
 
+**Anything else?** appears when **Made by** is the AI: tell it anything else about how this take should
+look, such as "keep the pillars steady white, save the big colours for the last chorus, no strobes". It's
+kept with the show, so it's there next time you generate. Notes for each part of the song still go on its
+sections in the Music editor.
+
 **Generating just part of a show:** **Fill** picks what to fill: **The whole song**, one of the song's
 sections (such as **Chorus: 0:45 to 1:05**, on every light), **The play region** (the green stretch you
 drag along the time ruler, on every light), or **The selection** when you've dragged across some lights
