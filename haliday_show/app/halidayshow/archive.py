@@ -343,3 +343,57 @@ def delete_song(st: Storage, rel: str, archived: bool = False, replacement=None)
     st._song_info_file("media", rel).unlink(missing_ok=True)
     changed, _ = _rehome(st, rel, replacement)
     return {"shows": changed}
+
+
+def _relink(data, old: dict, new: dict) -> bool:
+    """Points every {source, path} in data at `old` to `new`, in place. Whether anything changed."""
+    changed = False
+    if isinstance(data, dict):
+        if data.get("source") == old["source"] and data.get("path") == old["path"]:
+            data["path"] = new["path"]
+            changed = True
+        for v in data.values():
+            changed = _relink(v, old, new) or changed
+    elif isinstance(data, list):
+        for v in data:
+            changed = _relink(v, old, new) or changed
+    return changed
+
+
+def rename_song(st: Storage, rel: str, name: str) -> dict:
+    """Renames a song file in HA-liday Show's own folder, keeping its folder and type, and moves every
+    show, draft and song folder that uses it to the new name. Returns {path, shows: [ids]}."""
+    src = _song_file(st, rel)
+    if src is None:
+        raise ArchiveError("only songs in HA-liday Show's own folder can be renamed here")
+    clean = " ".join(name.split()).strip(". ")
+    if not clean or len(clean) > 120 or any(c in clean for c in '/\\:*?"<>|') or not clean.isprintable():
+        raise ArchiveError("give it a name without / \\ : * ? \" < > |")
+    dest = src.with_name(clean + src.suffix)
+    if dest == src:
+        return {"path": rel, "shows": []}
+    if dest.exists() and dest.resolve() != src.resolve():
+        raise ArchiveError(f"there's already a song called {clean}")
+    info_old = st._song_info_file("media", rel)
+    os.replace(src, dest)  # the file moves first, so a failure leaves everything pointing at the old one
+    new_rel = dest.relative_to(st.media_dir).as_posix()
+    old, new = {"source": "media", "path": rel}, {"source": "media", "path": new_rel}
+    if info_old.exists():
+        os.replace(info_old, st._song_info_file("media", new_rel))
+    shows = []
+    for s in st.list_shows():
+        show = st.load_show(s["id"])
+        if show is not None and _relink(show, old, new):
+            _write_atomic(st.shows_dir / f"{s['id']}.json", json.dumps(show, indent=1).encode())
+            shows.append(s["id"])
+    for p in sorted(st.drafts_dir.glob("*.json")) if st.drafts_dir.is_dir() else []:
+        try:
+            draft = json.loads(p.read_text())
+        except (OSError, ValueError):
+            continue
+        if _relink(draft, old, new):
+            _write_atomic(p, json.dumps(draft, indent=1).encode())
+    settings = st.load_settings()
+    if _relink(settings.get("song_folders"), old, new):
+        st.save_settings(settings)
+    return {"path": new_rel, "shows": shows}
