@@ -5733,10 +5733,79 @@ function showRow(r) {
   const rm = button("Remove…", () => openRemoveShow(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   rm.dataset.act = "remove";
-  actions.append(open, dup, ren, share, rm);
-  withMore(actions);
+  const pv = button("▶ Preview", () => previewShow(r), "ghost");
+  pv.setAttribute("aria-label", `Preview ${r.name} on your house`);
+  pv.title = "Watch it on your house photo, with its song; nothing is sent to your lights";
+  actions.append(open, pv, dup, ren, share, rm);
+  withMore(actions, 2);
   row.append(main, actions);
   return row;
+}
+
+// ▶ Preview on a show's row: the show playing on your house photo, with its song, in a window. Nothing
+// is sent to your lights, and the show open in the editor isn't touched.
+async function previewShow(r) {
+  let show;
+  try { show = r.id === app.showId ? structuredClone(app.show) : await api(`api/shows/${encodeURIComponent(r.id)}`); }
+  catch (e) { status(`Couldn't open ${r.name}: ${e.message}`, true); return; }
+  const w = editWindow(`Preview: ${r.name}`);
+  w.dlg.classList.add("preview-dialog");
+  const canvas = document.createElement("canvas");
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", `${r.name} on your house photo`);
+  const time = Object.assign(document.createElement("p"), { className: "hint" });
+  time.setAttribute("aria-live", "off");
+  const note = Object.assign(document.createElement("p"), { className: "hint",
+    innerHTML: "Your lights show here once they're on the photo under <b>Setup → House</b>." });
+  note.hidden = Object.keys(house.paths || {}).length > 0;
+  w.body.append(Object.assign(document.createElement("div"), { className: "im-preview-frame" }), time, note);
+  w.body.firstChild.append(canvas);
+  const audio = show.audio ? new Audio(audioUrl(show.audio)) : null;
+  if (audio) audio.volume = volume.gain ?? 1;
+  const end = show.duration || 60;
+  let start = performance.now(), raf = 0, playing = false;
+  const byId = new Map((show.tracks || []).map((t) => [t.device, t]));
+  const trackOf = (id) => byId.get(id);
+  const play = button("■ Stop", () => (playing ? stopIt() : startIt()), "primary");
+  const edit = button("Edit", () => { w.dlg.close(); openFromList(r.id); });
+  w.foot.append(play, Object.assign(document.createElement("span"), { className: "spacer" }), edit, button("Close", () => w.dlg.close()));
+  const frame = () => {
+    const t = audio && !audio.paused ? audio.currentTime : (performance.now() - start) / 1000;
+    if (t >= end || audio?.ended) { stopIt(); return; }
+    const pos = housePositionsAll(), houseFx = byId.get(HOUSE)?.clips || [];
+    const plans = planGroups(app.groups, app.deviceList, trackOf, pos);
+    const frames = new Map();
+    const full = (light) => {
+      if (!frames.has(light.id)) {
+        frames.set(light.id, asShown(light, t, (at) => dim(composeLight(light, trackOf, at, pos, houseFx, undefined, plans), showLevel(show, light.id))));
+      }
+      return frames.get(light.id);
+    };
+    house.paint(canvas, Math.min(window.innerHeight * 0.5, 420), (dev) => {
+      if (!dev.parent) return full(app.lights[dev.id] || dev);
+      return full(app.lights[dev.parent]).slice((dev.from - 1) * 3, dev.to * 3);
+    });
+    time.textContent = `${fmtTime(t, false)} of ${fmtTime(end, false)} · nothing is sent to your lights`;
+    raf = requestAnimationFrame(frame);
+  };
+  function startIt() {
+    playing = true;
+    play.textContent = "■ Stop";
+    if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
+    start = performance.now();
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(frame);
+  }
+  function stopIt() {
+    playing = false;
+    play.textContent = "▶ Play again";
+    audio?.pause();
+    cancelAnimationFrame(raf);
+  }
+  w.dlg.addEventListener("close", () => { cancelAnimationFrame(raf); audio?.pause(); });
+  w.dlg.showModal();
+  startIt();
+  play.focus();
 }
 
 // Sharing shows (sharing.js) ------------------------------------------------------
