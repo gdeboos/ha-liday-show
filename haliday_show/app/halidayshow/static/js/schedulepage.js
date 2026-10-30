@@ -3,7 +3,7 @@
 // this draws the list, keeps the order, and saves the whole list as you go.
 
 import { askYes } from "./ask.js";
-import { KIND_NAMES, describeSchedule, newEntry, whenNext } from "./schedule.js";
+import { KIND_NAMES, PICK_TABS, describeSchedule, newEntry, pickList, whenNext } from "./schedule.js";
 
 const SAVE_AFTER_MS = 600;
 const $ = (id) => document.getElementById(id);
@@ -92,15 +92,54 @@ export class SchedulePage {
     $(`sched-${e.id}`)?.scrollIntoView({ block: "center" });
   }
 
-  // + Add to schedule on the tab: the first playlist (else show, else scene), to change in its row.
-  addAny() {
+  // + Add to schedule on the tab: pick what it plays, then set its times in its row.
+  async addAny() {
     const t = this.d.targets();
-    const type = ["playlist", "show", "scene"].find((k) => t[k]?.length);
-    if (!type) {
+    if (!PICK_TABS.some(([k]) => t[k]?.length)) {
       this.d.status("Make a playlist, show or scene first", "hint", "schedule");
       return;
     }
-    this.add(type, t[type][0].id);
+    const picked = await this.choose(null, "Add to the schedule");
+    if (picked) this.add(picked.type, picked.id);
+  }
+
+  // A window to pick a playlist, show or scene: a tab for each, and a box to find one by name.
+  // Resolves with {type, id}, or null when closed.
+  choose(current, title = "What it plays") {
+    return new Promise((resolve) => {
+      const targets = this.d.targets();
+      let tab = current?.type || PICK_TABS.find(([k]) => targets[k]?.length)?.[0] || "playlist";
+      let result = null;
+      const dlg = el("dialog", { class: "effect-dialog form-dialog sched-pick", "aria-label": title });
+      const find = el("input", { type: "search", placeholder: "Find by name", autocomplete: "off", "aria-label": "Find by name" });
+      const tabs = el("div", { class: "sched-tabs", role: "tablist", "aria-label": "Playlists, shows or scenes" });
+      const list = el("div", { class: "song-list sched-pick-list", role: "listbox", "aria-label": title });
+      const pick = (x) => { result = { type: x.type, id: x.id }; dlg.close(); };
+      const draw = () => {
+        const words = find.value.trim();
+        tabs.replaceChildren(...PICK_TABS.map(([k, label]) => el("button", { type: "button", role: "tab",
+          class: "sched-tab", "aria-selected": String(!words && k === tab), disabled: !targets[k]?.length,
+          onclick: () => { tab = k; find.value = ""; draw(); } }, `${label} (${targets[k]?.length || 0})`)));
+        const items = pickList(targets, tab, words);
+        list.replaceChildren(...(items.length ? items.map((x) => {
+          const on = current && x.type === current.type && x.id === current.id;
+          return el("button", { type: "button", role: "option", "aria-selected": String(!!on),
+            class: `song-row${on ? " picked" : ""}`, onclick: () => pick(x) },
+          el("span", {}, el("b", {}, x.name), words ? el("span", { class: "hint" }, KIND_NAMES[x.type]) : null));
+        }) : [el("p", { class: "hint" }, words ? `Nothing called ${words}.` : "None yet.")]));
+      };
+      find.addEventListener("input", draw);
+      dlg.append(
+        el("div", { class: "effect-dialog-head" }, el("h3", {}, title),
+          el("button", { type: "button", class: "ghost", "aria-label": "Close", onclick: () => dlg.close() }, "✕")),
+        el("div", { class: "form-dialog-body" }, tabs, el("div", { class: "ns-find" }, find), list));
+      dlg.addEventListener("close", () => { dlg.remove(); resolve(result); });
+      document.body.append(dlg);
+      draw();
+      dlg.showModal();
+      (list.querySelector(".picked") || find).focus();
+      list.querySelector(".picked")?.scrollIntoView({ block: "center" });
+    });
   }
 
   // Drawing ---------------------------------------------------------------------------
@@ -144,25 +183,20 @@ export class SchedulePage {
     this.notes();
   }
 
+  // What the entry plays: its name on a button that opens the picker.
   picker(e) {
-    const targets = this.d.targets();
-    const sel = el("select", { "aria-label": "What it plays" });
-    for (const [type, label] of [["playlist", "Playlists"], ["show", "Shows"], ["scene", "Scenes"]]) {
-      const items = targets[type] || [];
-      if (!items.length) continue;
-      const g = el("optgroup", { label });
-      for (const x of items) g.append(new Option(x.name, `${type}:${x.id}`));
-      sel.append(g);
-    }
-    if (!this.name(e)) sel.prepend(new Option(`(deleted ${KIND_NAMES[e.play.type]}: ${e.play.id})`, `${e.play.type}:${e.play.id}`));
-    sel.value = `${e.play.type}:${e.play.id}`;
-    sel.addEventListener("change", () => {
-      const [type, ...rest] = sel.value.split(":");
-      e.play = { type, id: rest.join(":") };
-      this.changed();
-      this.draw();
-    });
-    return sel;
+    const name = this.name(e) || `Deleted ${KIND_NAMES[e.play.type]}`;
+    return el("button", { type: "button", class: "picker-button sched-what", "aria-haspopup": "dialog",
+      "aria-label": `Plays ${name}. Change…`, title: "Pick a playlist, show or scene",
+      onclick: async () => {
+        const picked = await this.choose(e.play);
+        if (!picked || (picked.type === e.play.type && picked.id === e.play.id)) return;
+        e.play = picked;
+        this.changed();
+        this.draw();
+        $(`sched-${e.id}`)?.querySelector(".sched-what")?.focus();
+      } },
+    el("span", { class: "picker-name" }, name), el("span", { class: "picker-change", "aria-hidden": "true" }, "Change…"));
   }
 
   row(e, k) {

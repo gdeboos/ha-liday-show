@@ -494,7 +494,15 @@ body.pl-drag-on, body.pl-drag-on * { cursor: grabbing !important; }
 .sched-entry.missing { opacity: .6; }
 .sched-entry.dragging { opacity: .4; }
 .sched-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.sched-head select { flex: 1 1 10em; min-width: 0; max-width: 24em; font-weight: 600; }
+.sched-head .sched-what { flex: 1 1 10em; min-width: 0; max-width: 24em; font-weight: 600; }
+/* The schedule's picker: a tab each for playlists, shows and scenes, and a box to find one. */
+.sched-pick { width: min(560px, calc(100vw - 24px)); }
+.sched-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.sched-tab { border-radius: 999px; }
+.sched-tab[aria-selected=true] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.sched-pick-list { max-height: min(50vh, 420px); overflow-y: auto; }
+.sched-pick-list .song-row { width: 100%; text-align: left; }
+.sched-pick-list .song-row span { display: flex; flex-direction: column; }
 .sched-grip { cursor: grab; touch-action: none; user-select: none; padding: 2px 4px; color: var(--muted, inherit); }
 .sched-kind { font-size: .8em; text-transform: uppercase; letter-spacing: .04em; opacity: .7; min-width: 4.5em; }
 .sched-actions { display: inline-flex; gap: 6px; margin-left: auto; }

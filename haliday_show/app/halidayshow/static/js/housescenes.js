@@ -3,10 +3,11 @@
 // {name, mode: "basic", lights: {lightId: {effect, params}}, all?: {effect, params}}: with `all`,
 // every light plays that; otherwise each light its own, and a light with none stays off. An Advanced
 // scene, edited in the Show editor, is {name, mode: "advanced", loop, tracks} instead: a show's tracks
-// (House lane included) going round every `loop` seconds.
+// (House lane included) going round every `loop` seconds. Either may have a `palette`, {name, colors}
+// as a show's (showpalette.js): effects picked for a light that's off take its colours.
 
 import { EFFECTS, HOUSE, composeLight, defaultParams } from "./effects.js";
-import { paletteKeys, usedColourKeys } from "./palettes.js";
+import { applyPalette, paletteKeys, usedColourKeys } from "./palettes.js";
 import { BLOCK_EFFECTS, loopLength } from "./playlisteditor.js";
 
 export const ADVANCED_LOOP_S = 20;
@@ -22,9 +23,10 @@ export const newLook = (effect = "solid") => ({
 });
 
 // A light's look with a different effect, keeping the colours it had where the new effect has room.
-export function changeEffect(look, effect) {
+// A light that was off takes the scene's palette, when it has one.
+export function changeEffect(look, effect, palette = null) {
   const next = newLook(effect);
-  if (!look) return next;
+  if (!look) return palette?.colors?.length ? withPalette(next, palette.colors) : next;
   const old = clipFor(look, 0, 1);
   const colours = usedColourKeys(look.effect, old).map((k) => old[k]).filter(Boolean);
   paletteKeys(effect).forEach((k, i) => { if (i < colours.length) next.params[k] = colours[i]; });
@@ -34,9 +36,30 @@ export function changeEffect(look, effect) {
   return next;
 }
 
-// A new scene: every light a steady warm white, so it does something the moment it's played.
-export function newScene(name, lights) {
-  return { name, mode: "basic", lights: Object.fromEntries(lights.map((d) => [d.id, newLook()])) };
+// A look recoloured from a palette's colours, starting `offset` colours in.
+export function withPalette(look, colors, offset = 0) {
+  const clip = { ...clipFor(look, 0, 1) };
+  applyPalette(clip, colors, offset);
+  for (const k of [...paletteKeys(look.effect), "count"]) if (k in clip && (k !== "count" || EFFECTS[look.effect]?.list)) look.params[k] = clip[k];
+  return look;
+}
+
+// A new scene: every light a steady colour, so it does something the moment it's played. That's
+// warm white, or with a palette, its colours in turn from light to light.
+export function newScene(name, lights, palette = null) {
+  const colors = palette?.colors?.length ? palette.colors : null;
+  const scene = { name, mode: "basic", lights: Object.fromEntries(lights.map((d, i) => [d.id,
+    colors ? { effect: "solid", params: { color: colors[i % colors.length] } } : newLook()])) };
+  if (colors) scene.palette = { name: palette.name, colors: [...colors] };
+  return scene;
+}
+
+// Every light's colours from a palette, each light starting one colour on from the one before.
+export function recolourScene(scene, lights, colors) {
+  let k = 0;
+  const looks = scene.all ? [scene.all] : lights.flatMap((d) => looksOf(scene, d));
+  for (const look of new Set(looks)) if (paletteKeys(look.effect).length) withPalette(look, colors, k++);
+  return k;
 }
 
 export const lookFor = (scene, lightId) => scene.all || scene.lights?.[lightId] || null;
@@ -163,7 +186,7 @@ const fmtLoop = (s) => (s >= 60 && s % 60 === 0 ? `${s / 60} min` : `${Math.roun
 // Basic → Advanced: each light's look becomes one effect running the whole loop, ready to cut up.
 export function toAdvanced(scene, lights, loop = ADVANCED_LOOP_S) {
   return { name: scene.name, mode: "advanced", loop, tracks: sceneShow(scene, lights, loop).tracks,
-    ...(scene.schedule ? { schedule: scene.schedule } : {}) };
+    ...(scene.palette ? { palette: scene.palette } : {}), ...(scene.schedule ? { schedule: scene.schedule } : {}) };
 }
 
 // Advanced → Basic is only offered when nothing would be lost: no House lane or group effects, each
@@ -190,5 +213,6 @@ export function toBasic(scene) {
     const { start, end, effect, ...params } = c;
     lights[t.device] = { effect, params };
   }
-  return { name: scene.name, mode: "basic", lights, ...(scene.schedule ? { schedule: scene.schedule } : {}) };
+  return { name: scene.name, mode: "basic", lights, ...(scene.palette ? { palette: scene.palette } : {}),
+    ...(scene.schedule ? { schedule: scene.schedule } : {}) };
 }

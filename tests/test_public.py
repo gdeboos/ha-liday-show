@@ -610,3 +610,10 @@ async def test_shows_in_progress_are_never_offered(client):
     assert (await client.post("/api/shows/quiet/mark", json={"in_progress": False})).status == 200
     public._CHOICES.clear()
     assert [c["id"] for c in public.choices(client.app[server.STORAGE])] == ["party", "quiet", "eve"]
+
+
+def test_the_visitors_page_wraps_long_words():
+    # A phone zooms the whole page out when one line is wider than the screen, as a show named with
+    # underscores did in "On now: …". Every line wraps instead.
+    css = (public.PAGE / "public.css").read_text()
+    assert ".pp { overflow-wrap: anywhere; }" in css

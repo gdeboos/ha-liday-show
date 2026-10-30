@@ -106,6 +106,7 @@
   <section class="card">
     <div class="sc-head">
       <h3 class="section-label">Lights</h3>
+      <span class="palette-label sc-pal">Palette <span id="sc-palette"></span></span>
       <label class="sc-same"><input type="checkbox" id="sc-same"> Same for every light</label>
     </div>
     <div class="sc-cols" aria-hidden="true"><span>Light</span><span>Effect</span><span>Colours</span><span>Speed</span><span>Brightness</span></div>
@@ -135,6 +136,7 @@
         <label>Goes round every <input id="sb-loop" type="number" min="1" max="600" step="1"> s</label>
         <button type="button" id="sb-basic" class="ghost"
           title="Back to one effect per light. Only while each light has one effect across the whole loop and the House lane is empty">Switch to Basic</button>
+        <span class="palette-label">Palette <span id="sb-palette"></span></span>
         <button type="button" id="sb-when" class="ghost">Schedule…</button>
         <button type="button" id="sb-back" class="ghost">← All scenes</button>
       </div>

@@ -147,3 +147,22 @@ test("a light that was off stays off when split into parts, and parts-only scene
   assert.equal(sceneSummary(old, [split]), "1 light · Twinkle");
   assert.deepEqual(sceneColours(old, [split]), ["#00ff00"]);
 });
+
+test("a scene's palette: new scenes take its colours in turn, and lights that were off take it too", async () => {
+  const { changeEffect, recolourScene, toAdvanced, toBasic } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const palette = { name: "Candy", colors: ["#ff0000", "#ffffff"] };
+  const s = newScene("Candy", lights, palette);
+  assert.deepEqual(s.palette, palette);
+  assert.deepEqual(Object.values(s.lights).map((l) => l.params.color), ["#ff0000", "#ffffff", "#ff0000"]);
+  assert.ok(!("palette" in newScene("Plain", lights)));
+  // Off → an effect: the palette's colours. A light already on keeps its own.
+  assert.equal(changeEffect(null, "chase", palette).params.color, "#ff0000");
+  assert.equal(changeEffect({ effect: "solid", params: { color: "#00ff00" } }, "chase", palette).params.color, "#00ff00");
+  assert.deepEqual(changeEffect(null, "rainbow", palette), { effect: "rainbow", params: {} });
+  // Recolouring goes through every light, one colour on each time.
+  const r = newScene("R", [roof, tree]);
+  assert.equal(recolourScene(r, [roof, tree], ["#111111", "#222222"]), 2);
+  assert.deepEqual([r.lights.roof.params.color, r.lights[tree.id].params.color], ["#111111", "#222222"]);
+  // Switching modes keeps it.
+  assert.deepEqual(toBasic(toAdvanced(s, lights, 20)).palette, palette);
+});

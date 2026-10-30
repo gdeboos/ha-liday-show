@@ -1,10 +1,38 @@
 # Changelog
 
-## 0.2.270
+## 0.2.274
 
 - Shows can be marked **In progress** or finished. New shows (and copies) start in progress, with a badge on their row in **Library → Shows**; **Mark as finished** in the show's **⋯** menu, or **In progress** in **⚙ Show settings…**, changes it. Your existing shows all count as finished.
 - Shows in progress aren't offered on the **Public page**, and visitors don't see them, even inside a playlist, so you can take one back to work on it without losing its place. **+ Add shows or playlists…** leaves them out unless you tick **Show in-progress shows too**.
 - The Playlist editor says how many of a playlist's shows are still in progress, and **Your shows** marks them.
+## 0.2.273
+
+- On the **Schedule** tab, picking what a row plays now opens a window instead of one long list, with
+  tabs for **Playlists**, **Shows** and **Scenes** and a **Find by name** box that looks through all
+  three. **+ Add to schedule** opens it first, so you pick what to add straight away. Press a row's name
+  to change it.
+
+## 0.2.272
+
+- **+ New scene** now takes three steps, like **+ New show**: a name, a palette, and **Basic** or
+  **Advanced**. Each light starts on a colour from the palette in turn (it starts on the season's, or the
+  one you last used); pick **None** for warm white as before. **Advanced** opens the
+  new scene straight in the Show editor.
+- Scenes have their own **Palette**, as shows do. It's above the lights in the Scene editor (and in the
+  banner for an Advanced scene). Lights you turn on from **Off** take its colours, and changing it offers
+  to recolour the lights already on.
+
+## 0.2.271
+
+- Fixed: the **Preview** in the Scene editor could show the scene you had open before, after opening
+  another one. It now always shows the scene you're editing, from the moment it opens.
+
+## 0.2.270
+
+- Fixed: the public page could open zoomed out on phones. A show whose name has no spaces (underscores
+  instead, like a file name) made the "On now" line wider than the screen. Every line on the page now
+  wraps long words, including your own words and links, and a button too long to fit beside a show's
+  name goes underneath it.
 
 ## 0.2.269
 

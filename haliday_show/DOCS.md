@@ -1381,8 +1381,14 @@ Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Sc
 while it's on), **Edit**, and under **⋯**, **Rename…**, **Duplicate** (a copy called "… copy", ready to play
 and not on the schedule) and **Remove…**.
 
-- **+ New scene** asks for a name. Every light starts on a steady warm white, so it does something
-  the moment you play it.
+- **+ New scene** takes three steps, like **+ New show**: its name, its colours, then **Basic** (a row
+  per light, below) or **Advanced** (straight into the Show editor, further down). The palette starts on
+  the season's, or the one you last used. Each light starts on a steady colour from it, one colour after
+  another along your lights. Pick **None** and every light starts on a warm white instead. Either way it does something the moment you play it.
+- **Palette**, above the lights, is the scene's palette, as a show has one. A light you turn on from
+  **Off** takes its colours, and the effect window shows every effect in them. Change it and you're
+  asked whether to recolour the lights already on. A light that's on keeps its own colours when you
+  change its effect.
 - In the editor, each light has its own row: its **Effect**, its **Colours** (a colour box for each,
   and **Palette…** to use one of your palettes), and **Speed** and **Brightness** sliders. Press the
   effect to change it: the same window as the Show editor's opens, with every effect moving in the
@@ -1401,7 +1407,9 @@ and not on the schedule) and **Remove…**.
 over time or runs across the house: effects can start and stop on the timeline, and the **House** lane
 works as in a show. Each light's look becomes one effect across the whole timeline to start with.
 
-- The timeline is one time round. The banner under the Show panel's title says how long:
+- The banner under the Show panel's title has the scene's **Palette**, which works as a show's does:
+  effects you add take its colours.
+- The timeline is one time round. The banner says how long:
   **Goes round every** 20 seconds to start with, up to 10 minutes. Making it shorter cuts effects at the
   new end; dragging an effect past the end makes it longer.
 - There's no song, so the song, beats, ✨ **Generate** and **⚙ Show settings…** are hidden, and
@@ -1528,7 +1536,8 @@ The **Schedule** tab is where playlists, shows and scenes play by themselves at 
 the page closed. Each row is one thing it plays, then its times, days and dates.
 
 - Press **+ Add to schedule**, then pick what it plays: a playlist, a show (it plays round and round
-  for the whole time) or a scene. **+ Add to schedule** under **When it plays**, in the Playlist editor
+  for the whole time) or a scene. The window has a tab for each, and **Find by name** looks through all
+  three. To change what a row plays, press its name. **+ Add to schedule** under **When it plays**, in the Playlist editor
   or the Scene editor, adds that playlist or scene.
 - The same thing can be on the schedule more than once, such as your playlist 17:00 to 22:00 on
   weekdays and 16:00 to 23:00 at weekends.

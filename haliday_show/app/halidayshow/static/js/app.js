@@ -1853,11 +1853,16 @@ house.hiddenLights = new Set(prefs.get("house.hiddenLights", []));
 const sceneEd = new SceneEditor({
   api, status, house, asShown, prefs,
   lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
-  palettes: () => allPalettes(), presetsFor: (effect) => presetsFor(effect), afterList: (box) => foldLibraryList("scenes", box),
+  palettes: () => allPalettes(), askYes, presetsFor: (effect) => presetsFor(effect), afterList: (box) => foldLibraryList("scenes", box),
   positions: () => housePositionsAll(), groups: () => app.groups, editAdvanced: (id) => openSceneInEditor(id),
   scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => (entriesFor(scheduleState.entries || [], "scene", id).length
     ? scheduleLine(scheduleState.entries, "scene", id, scheduleState) : ""),
   chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }),
+  palettePicker: (name, onPick, opts) => palettePicker(name, onPick, { none: PALETTE_NONE, ...opts }),
+  paletteRows: () => [{ value: "", label: "None", detail: "Each light starts on a warm white" },
+    ...allPalettes().map((p) => ({ value: p.name, label: p.name, detail: `${p.colors.length} colours`, picture: paletteBar(p.colors) }))],
+  radioRows: (...a) => nsRadioRows(...a),
+  firstPalette: () => (seasonalPalette() || allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0]).name,
   placeNew: (id) => placeNew("scenes", id), placeBeside: (from, id) => placeBeside("scenes", from, id),
   opened: () => { app.sceneChosen = true; showView("scene"); },
   closed: () => { app.sceneChosen = false; showView("scene"); },
@@ -3528,8 +3533,8 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
 
 // colour palettes ---------------------------------------------------------------
 const allPalettes = () => [...PRESET_PALETTES, ...app.palettes];
-// The open show's palette (null for none, or while a scene is open in the editor).
-const editorPalette = () => (app.show && !app.sceneId ? showPalette(app.show, allPalettes()) : null);
+// The open show's palette, or the Advanced scene's (null for none).
+const editorPalette = () => (app.show ? showPalette(app.show, allPalettes()) : null);
 // The palette a picker uses: one just picked in that picker (`owner` is what it colours: a clip, a
 // track's row, a preset), else the show's, else the last one picked (remembered in this browser).
 // A pick in one picker never leaks into another, or into the show's own colours.
@@ -7744,7 +7749,7 @@ async function openSceneInEditor(id) {
   if (!(await confirmDiscard())) return;
   await openShow(null, { chosen: false });
   app.show = { name: scene.name, audio: null, duration: scene.loop, beats: [], bars: [], sections: [],
-    tracks: structuredClone(scene.tracks || []) };
+    tracks: structuredClone(scene.tracks || []), ...(scene.palette ? { palette: scene.palette } : {}) };
   app.sceneId = id;
   app.sceneSchedule = scene.schedule || null; // from before the Schedule tab: kept as it is, unused
   app.history = [];
@@ -7778,7 +7783,8 @@ const sceneNow = () => {
   const loop = Math.min(Math.round(app.duration() * 1000) / 1000, MAX_SCENE_LOOP_S);
   const tracks = app.show.tracks.map((t) => ({ device: t.device,
     clips: t.clips.filter((c) => c.start < loop).map((c) => (c.end > loop ? clipPiece(c, c.start, loop) : c)) }));
-  return { name: app.show.name, mode: "advanced", loop, tracks, ...(app.sceneSchedule ? { schedule: app.sceneSchedule } : {}) };
+  return { name: app.show.name, mode: "advanced", loop, tracks, ...(app.show.palette ? { palette: app.show.palette } : {}),
+    ...(app.sceneSchedule ? { schedule: app.sceneSchedule } : {}) };
 };
 
 // The schedule, for the Advanced scene open in the Show editor: what it does with the scene, and a
@@ -7805,6 +7811,8 @@ function renderSceneBanner() {
   if (!on) return;
   const ok = canBasic(sceneNow(), app.deviceList || []);
   $("sb-basic").disabled = !ok;
+  $("sb-palette").replaceChildren(palettePicker(app.show.palette?.name || "", changeShowPalette,
+    { title: "The scene's palette", none: PALETTE_NONE, colors: editorPalette()?.colors }));
   // A clip dragged past the end makes the loop longer.
   if (document.activeElement !== $("sb-loop")) $("sb-loop").value = Math.round(app.duration());
 }
@@ -8521,6 +8529,7 @@ async function changeShowPalette(name) {
   setShowPalette(app.show, palette);
   app.changed();
   renderShowPalette();
+  if (app.sceneId) renderSceneBanner();
   const tracks = app.show.tracks.map((_, i) => i).filter((i) => app.show.tracks[i].clips.length);
   if (palette && tracks.length && (await askYes(`Recolour the effects already in this show with ${palette.name}?`, { yes: "Recolour", no: "Leave them" }))) recolour(tracks, palette);
   renderInspector();
