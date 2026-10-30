@@ -1278,3 +1278,8 @@ button.song-row.ns-folder:hover { border-color: var(--accent); }
 .preview-vol { width: 80px; accent-color: var(--accent); }
 .preview-time { font-variant-numeric: tabular-nums; min-width: 88px; text-align: right; }
 .preview-volume { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Symbols on buttons, drawn as icons by glyphs.js so they never turn into emoji. */
+button .ico.glyph { width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
+.preview-volume .ico.glyph { color: var(--muted); }
+label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }

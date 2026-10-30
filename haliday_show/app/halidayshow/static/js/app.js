@@ -51,6 +51,7 @@ import {
 import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
 import { askText, askYes } from "./ask.js";
+import { glyphIcon, watchButtons } from "./glyphs.js";
 import {
   addFolder, childrenOf, countIn, deleteFolder, flatTree, folderOf, fromSongFolders, moveFolder, moveItems, moveProblem,
   nameProblem, pathText, pathTo, renameFolder, toSongFolders, within,
@@ -61,6 +62,9 @@ import { Timeline, fmtTime } from "./timeline.js";
 import { convertProblem, showUses, toWled } from "./convert.js";
 import { PART, putWithProgress, sendParts, uploadSong } from "./upload.js";
 import { bakeNote } from "./bakekey.js";
+
+// Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
+watchButtons();
 
 const $ = (id) => document.getElementById(id);
 
@@ -5786,7 +5790,7 @@ async function previewShow(r) {
   vol.hidden = !audio;
   vol.addEventListener("input", () => { if (audio) audio.volume = Number(vol.value); });
   const volBox = Object.assign(document.createElement("span"), { className: "preview-volume" });
-  volBox.append(Object.assign(document.createElement("span"), { textContent: "🔊", ariaHidden: "true" }), vol);
+  volBox.append(glyphIcon("🔊"), vol);
   const controls = Object.assign(document.createElement("div"), { className: "preview-controls" });
   controls.append(toStart, back, play, fwd, bar, time, ...(audio ? [volBox] : []));
   w.body.insertBefore(controls, w.body.children[1]);
