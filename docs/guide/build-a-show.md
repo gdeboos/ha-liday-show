@@ -30,7 +30,7 @@ one you were last editing has a **Last edited** badge.
 and **Presets**: press **+ New folder** beside the **+ New …** button and name it, then pick it under
 **Folder** on a row. Each folder folds away (press its name) and remembers whether you left it open;
 what's in no folder is listed after them, under **Not in a folder** (presets there stay grouped by
-effect). **Rename…** and **Delete…** are on each folder; deleting one leaves what was in it, just in no
+effect). **Rename…** and **Delete…** are under each folder's **⋯**; deleting one leaves what was in it, just in no
 folder. Folders only sort the list, and they're saved with your settings, so they're in **Export…** too.
 
 - **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
@@ -148,8 +148,8 @@ how many songs, edits and drafts there are.
 **Folders** sort your songs, such as **Christmas**, **Halloween** or **Party**. Press **+ New folder**
 under the list and name it, then pick it under **Folder** on a song; the song's edits and drafts go
 with it. Each folder folds away (press its name), and remembers whether you left it open; songs in no
-folder are listed after them, under **Not in a folder**. **Rename…** and **Delete…** are on each
-folder; deleting one leaves its songs, just in no folder. Folders only sort the list: the song files
+folder are listed after them, under **Not in a folder**. **Rename…** and **Delete…** are under each
+folder's **⋯**; deleting one leaves its songs, just in no folder. Folders only sort the list: the song files
 stay where they are, so shows and speakers still find them. They're saved with your settings, so
 they're in **Export…** too.
 
@@ -215,7 +215,7 @@ remove it for good.
 
 To sort them, press **+ New folder** and give it a name, then pick the folder under **Folder** on each
 sample (or pick **New folder…** there). A folder's title folds it away, and **Rename…** and
-**Delete…** sit beside it; deleting a folder keeps its samples, which move to **Not in a folder**. The
+**Delete…** are under its **⋯**; deleting a folder keeps its samples, which move to **Not in a folder**. The
 files themselves stay where they are, so songs that use them still find them. In the Music editor, a
 layer's **+ Add a clip** list shows the samples under their folders.
 

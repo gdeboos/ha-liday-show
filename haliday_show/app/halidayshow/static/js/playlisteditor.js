@@ -181,3 +181,15 @@ export function bakeKey(block, lightsKey) {
   const len = block.type === "effect" ? Math.min(s, LOOP_MAX_S + 1) : 0;
   return JSON.stringify([rest, len, lightsKey]);
 }
+
+// A copy of a playlist to change on its own: a free name ("Party copy", "Party copy 2"), a new id,
+// and new ids for its blocks so their frames are made for the copy. It isn't on any schedule.
+export function copyPlaylist(p, taken, now = Date.now()) {
+  const names = new Set(taken.map((n) => n.toLowerCase()));
+  let name = `${p.name} copy`;
+  for (let k = 2; names.has(name.toLowerCase()); k++) name = `${p.name} copy ${k}`;
+  const { schedule, ...rest } = structuredClone(p);
+  const items = itemsOf(rest).map((it) => (it.type && it.type !== "show"
+    ? { ...it, id: `${it.type}-${now.toString(36)}-${rand()}` } : it));
+  return { ...rest, id: `pl-${now.toString(36)}${rand().slice(0, 3)}`, name: name.slice(0, 80), items };
+}

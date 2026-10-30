@@ -46,10 +46,10 @@ import {
 import {
   BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
   MAX_SHOWS as PLAYLIST_MAX, bakeKey, blockLabel as playlistBlockLabel, blockShow, dropIndex, fits as fitsPlaylist, inserted,
-  itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
+  copyPlaylist, itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
 } from "./playlisteditor.js";
 import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
-import { addToMore, withMore } from "./rowmenu.js";
+import { addToMore, moreMenu, withMore } from "./rowmenu.js";
 import { addFolder, deleteFolder, folderNameProblem, folderOf, inFolders, itemsInFolders, moveSong, renameFolder } from "./songfolders.js";
 import { addLibraryFolder, deleteLibraryFolder, folderOfItem, groupByFolder, moveItem, renameItem, renameLibraryFolder } from "./libfolders.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
@@ -4266,12 +4266,22 @@ function playlistRow(r) {
   const play = button("▶ Play", () => { const pl = playlists.find((x) => x.id === r.id); if (pl) togglePlaylist(pl); }, "ghost playlist-play");
   play.dataset.empty = r.playable ? "0" : "1";
   if (!r.playable) play.title = "Add a saved show first";
-  const del = button("Delete", async () => {
+  const dup = button("Duplicate", () => {
+    const pl = playlists.find((x) => x.id === r.id);
+    if (!pl || !playlistsLoaded) return;
+    const copy = copyPlaylist(pl, playlists.map((x) => x.name));
+    playlists.splice(playlists.indexOf(pl) + 1, 0, copy);
+    savePlaylists();
+    renderPlaylists();
+    status(`Made ${copy.name}`, "saved", "playlists");
+  }, "ghost");
+  dup.setAttribute("aria-label", `Duplicate ${r.name}`);
+  const del = button("Delete…", async () => {
     const pl = playlists.find((x) => x.id === r.id);
     if (pl && await deletePlaylist(pl)) renderPlaylists();
   }, "ghost");
   del.setAttribute("aria-label", `Delete ${r.name}`);
-  actions.append(open, play, del);
+  actions.append(open, play, dup, del);
   withMore(actions, 2);
   row.append(main, actions);
   return row;
@@ -6267,7 +6277,7 @@ function songFolderSections(fams, filtered) {
     ren.setAttribute("aria-label", `Rename the folder ${folder.name}`);
     const del = button("Delete…", () => deleteSongFolder(folder), "ghost danger");
     del.setAttribute("aria-label", `Delete the folder ${folder.name}`);
-    head.append(fold, ren, del);
+    head.append(fold, moreMenu(`More for the folder ${folder.name}`, ren, del));
     const body = families.length ? list(families, `Songs in ${folder.name}`)
       : Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in it yet. Pick it under Folder on a song." });
     body.classList.add("song-folder-body");
@@ -6745,7 +6755,7 @@ function foldLibraryList(kind, box) {
       saveLibraryFolders(kind, deleteLibraryFolder(folders, folder.id), `Folder ${folder.name} deleted`);
     }, "ghost danger");
     del.setAttribute("aria-label", `Delete the folder ${folder.name}`);
-    head.append(fold, ren, del);
+    head.append(fold, moreMenu(`More for the folder ${folder.name}`, ren, del));
     let body;
     if (keys.length) {
       body = document.createElement("div");
@@ -6842,7 +6852,7 @@ function drawSamples() {
       saveSampleFolders(deleteFolder(sampleFolders, folder.id), `Folder ${folder.name} deleted`);
     }, "ghost danger");
     del.setAttribute("aria-label", `Delete the folder ${folder.name}`);
-    head.append(fold, ren, del);
+    head.append(fold, moreMenu(`More for the folder ${folder.name}`, ren, del));
     const body = items.length ? list(items, `Samples in ${folder.name}`)
       : Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in it yet. Pick it under Folder on a sample." });
     body.hidden = !open;
