@@ -295,6 +295,12 @@ def _baked(storage: Storage, show_id: str) -> bool:
     return (storage.shows_dir / f"{show_id}.gshow").is_file()
 
 
+def _offered(storage: Storage, show_id: str, show: dict | None = None) -> bool:
+    """Visitors only get shows that are ready to play and not marked in progress."""
+    show = show if show is not None else storage.load_show(show_id)
+    return show is not None and show.get("in_progress") is not True and _baked(storage, show_id)
+
+
 def available(item: dict, today: date) -> bool:
     return not item["from"] or schedule.in_dates(item, today)
 
@@ -340,12 +346,12 @@ def _choices(storage: Storage, today: date) -> list[dict]:
     for it in p["items"]:
         if it["kind"] == "show":
             show = storage.load_show(it["id"])
-            if show is None or not _baked(storage, it["id"]):
+            if not _offered(storage, it["id"], show):
                 continue
             pick = {"kind": "show", "id": it["id"], "name": show.get("name") or it["id"], "shows": [it["id"]]}
         else:
             pl = by_id.get(it["id"])
-            shows = [s for s in pl["shows"] if _baked(storage, s)] if pl else []
+            shows = [s for s in pl["shows"] if _offered(storage, s)] if pl else []
             if not shows:
                 continue
             pick = {"kind": "playlist", "id": it["id"], "name": pl["name"], "shows": shows, "gap": pl["gap"]}

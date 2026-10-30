@@ -69,7 +69,13 @@ songs. They're saved with your settings, so they're in **Export…** too.
   Nothing is sent to your lights. Under the house are the player controls: **⏮** back to the start, **⏪** and
   **⏩** back and on 5 seconds, **▶**/**⏸** to play and pause, a bar to jump to any point, and the volume. On a
   keyboard, Space plays and pauses, the arrow keys move 5 seconds and Home goes back to the start. **Edit** opens it.
-- **Duplicate** makes a copy called "… copy", ready to play straight away.
+- **In progress** or finished: a new show starts **In progress**, shown by a badge on its row, until you
+  mark it finished with **Mark as finished** in its **⋯** menu (or untick **In progress** in
+  **⚙ Show settings…**). **Mark as in progress** puts it back. Shows in progress still play everywhere
+  you play them, but they aren't offered on the public page and visitors don't see them, even inside a
+  playlist, so you can take one back to work on it without losing its place there. Shows you made before
+  this existed count as finished.
+- **Duplicate** makes a copy called "… copy", ready to play straight away. The copy starts in progress.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
   Each show needs its own name. An automation that starts the show by its name needs the new name.
 - **Share** downloads the show as a file you can send to anyone with HA-liday Show (see [Sharing shows](#sharing-shows)).
@@ -79,7 +85,7 @@ songs. They're saved with your settings, so they're in **Export…** too.
   [Finding your way](getting-started.md#finding-your-way)).
 
 The Show panel shows the open show's name beside **← All shows**; to switch to another show, go back
-to the list. **⚙ Show settings…** opens the show's settings: its **Name**, its **Palette** (below), its **Show speaker**
+to the list. **⚙ Show settings…** opens the show's settings: its **Name**, **In progress** (see [Shows](#shows)), its **Palette** (below), its **Show speaker**
 (below), **Brightness** (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
 
 #### The show's palette

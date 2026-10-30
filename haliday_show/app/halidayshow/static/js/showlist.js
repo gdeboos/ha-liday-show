@@ -33,6 +33,7 @@ export function showRows(shows, last, now = new Date()) {
       id: s.id,
       name: s.name,
       last: s.id === last,
+      inProgress: s.in_progress === true,
       details: [songName(s.song) || "No song yet", length(s.duration), `changed ${changed(s.modified, now)}`].join(" · "),
     }));
 }
