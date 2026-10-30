@@ -52,6 +52,7 @@ import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
 import { askText, askYes } from "./ask.js";
 import { glyphIcon, watchButtons } from "./glyphs.js";
+import { browse, folderButton, pathNav } from "./folderbrowse.js";
 import {
   addFolder, childrenOf, countIn, deleteFolder, flatTree, folderOf, fromSongFolders, moveFolder, moveItems, moveProblem,
   nameProblem, pathText, pathTo, renameFolder, toSongFolders, within,
@@ -4440,11 +4441,28 @@ function renderBlockPalette() {
 function renderPlaylistBin() {
   const pl = openPlaylist();
   if (!pl) return;
-  const q = $("pl-filter").value.trim().toLowerCase();
-  const shows = [...playlistShows].sort((a, b) => a.name.localeCompare(b.name))
-    .filter((s) => !q || s.name.toLowerCase().includes(q));
-  $("pl-bin").replaceChildren(...shows.map((s) => {
+  // Your shows go into their Library folders, like Library → Shows; finding looks in every folder.
+  const folders = foldersOf("shows");
+  const byId = new Map(playlistShows.map((s) => [s.id, s]));
+  const view = browse({ folders, keys: [...byId.keys()], at: prefs.get("folderAt.playlistShows", ""),
+    find: $("pl-filter").value, nameOf: (id) => byId.get(id).name });
+  const go = (id) => {
+    prefs.set("folderAt.playlistShows", id);
+    renderPlaylistBin();
+    $("pl-bin").querySelector(".folder-go, .link-button, .pl-add")?.focus();
+  };
+  const shows = view.items.map(({ key }) => byId.get(key)).sort((a, b) => a.name.localeCompare(b.name));
+  const path = document.createElement("li");
+  path.className = "pl-bin-path";
+  pathNav(Object.assign(path.appendChild(document.createElement("nav")), { className: "folder-path" }), view.trail, "Shows", go);
+  path.hidden = !view.trail.length;
+  const subs = view.subs.map((sub) => folderButton(sub, "show", go, "li"));
+  $("pl-bin").replaceChildren(path, ...subs, ...shows.map((s) => {
     const li = showCard(s, s.id);
+    if (view.finding) {
+      const where = pathText(folders, s.id);
+      if (where) li.querySelector(".hint")?.after(Object.assign(document.createElement("span"), { className: "hint", textContent: `in ${where}` }));
+    }
     const add = button("+", () => changeOrder(inserted(openPlaylist().items, { type: "show", id: s.id }), true), "ghost pl-add");
     add.title = "Add at the end";
     add.setAttribute("aria-label", `Add ${s.name} at the end`);
@@ -4452,8 +4470,10 @@ function renderPlaylistBin() {
     li.addEventListener("pointerdown", (e) => dragCard(e, li, () => ({ type: "show", id: s.id }), null));
     return li;
   }));
-  if (!shows.length) {
-    $("pl-bin").innerHTML = `<li class="hint pl-empty">${playlistShows.length ? "No shows match that." : "No shows yet. Make one in the Show editor first."}</li>`;
+  if (!shows.length && !subs.length) {
+    $("pl-bin").append(Object.assign(document.createElement("li"), { className: "hint pl-empty",
+      textContent: !playlistShows.length ? "No shows yet. Make one in the Show editor first."
+        : view.finding ? "No shows match that." : "No shows in this folder." }));
   }
   markFull();
 }
@@ -5243,28 +5263,107 @@ function renderPublicItems() {
     rows.push(p);
   }
   $("pub-items").replaceChildren(...rows);
-  const pick = $("pub-add-pick");
-  const added = new Set(view.items.map((it) => `${it.kind}:${it.id}`));
-  pick.replaceChildren();
-  for (const kind of ["show", "playlist"]) {
-    const group = document.createElement("optgroup");
-    group.label = kind === "show" ? "Shows" : "Playlists";
-    for (const [id, name] of Object.entries(publicNames[kind]).sort((a, b) => a[1].localeCompare(b[1]))) {
-      if (!added.has(`${kind}:${id}`) && !(kind === "playlist" && publicNames.empty.has(id))) {
-        group.append(new Option(name, `${kind}:${id}`));
-      }
-    }
-    if (kind === "show") {
-      for (const [id, name] of Object.entries(publicNames.unready || {})) {
-        if (!added.has(`show:${id}`)) group.append(Object.assign(new Option(`${name} (open it and save to offer it)`, ""), { disabled: true }));
-      }
-    }
-    if (group.children.length) pick.append(group);
-  }
-  $("pub-add-row").hidden = !pick.options.length;
-  $("pub-all-added").hidden = !!pick.options.length;
+  const left = Object.values(publicOffer()).some((list) => list.some((x) => !x.why));
+  $("pub-add-row").hidden = !left;
+  $("pub-all-added").hidden = left;
   $("pub-per-phone").value = view.per_phone;
   $("pub-queue").value = view.queue;
+}
+
+// What could still go on the public page: {show: [{id, name, why?}], playlist: […]}. A show that isn't
+// ready is listed with why it can't be picked yet.
+function publicOffer() {
+  const added = new Set((publicView?.items || []).map((it) => `${it.kind}:${it.id}`));
+  const out = { show: [], playlist: [] };
+  for (const kind of ["show", "playlist"]) {
+    for (const [id, name] of Object.entries(publicNames[kind] || {})) {
+      if (!added.has(`${kind}:${id}`) && !(kind === "playlist" && publicNames.empty.has(id))) out[kind].push({ id, name });
+    }
+  }
+  for (const [id, name] of Object.entries(publicNames.unready || {})) {
+    if (!added.has(`show:${id}`)) out.show.push({ id, name, why: "Open it and save it to offer it" });
+  }
+  return out;
+}
+
+// + Add shows or playlists…: a window to pick any number from either list, going into their folders.
+function pickForPublic() {
+  const offer = publicOffer();
+  const kinds = ["show", "playlist"].filter((k) => offer[k].length);
+  if (!kinds.length) return;
+  const LIST = { show: { folders: "shows", one: "show", top: "Shows" }, playlist: { folders: "playlists", one: "playlist", top: "Playlists" } };
+  const st = { kind: kinds[0], at: { show: "", playlist: "" }, picked: new Set() };
+  const { dlg, body, foot } = editWindow("Add to the public page");
+  dlg.classList.add("pick-dialog");
+  const chips = Object.assign(document.createElement("div"), { className: "day-chips" });
+  chips.setAttribute("role", "radiogroup");
+  chips.setAttribute("aria-label", "Show");
+  for (const k of kinds) {
+    const label = document.createElement("label");
+    const r = Object.assign(document.createElement("input"), { type: "radio", name: "pub-pick-kind", checked: k === st.kind });
+    r.addEventListener("change", () => { st.kind = k; find.value = ""; draw(); });
+    label.append(r, ` ${LIST[k].top}`);
+    chips.append(label);
+  }
+  const find = Object.assign(document.createElement("input"), { type: "search", placeholder: "Find in any folder", autocomplete: "off" });
+  find.setAttribute("aria-label", "Find");
+  find.addEventListener("input", () => draw());
+  const nav = Object.assign(document.createElement("nav"), { className: "folder-path" });
+  nav.setAttribute("aria-label", "Folder");
+  const subs = Object.assign(document.createElement("div"), { className: "song-list ns-folders" });
+  const list = Object.assign(document.createElement("div"), { className: "song-list" });
+  list.setAttribute("role", "group");
+  const findBox = Object.assign(document.createElement("div"), { className: "ns-find" });
+  findBox.append(find);
+  body.append(...(kinds.length > 1 ? [chips] : []), findBox, nav, subs, list);
+  const count = Object.assign(document.createElement("span"), { className: "hint" });
+  count.setAttribute("aria-live", "polite");
+  const add = button("Add", () => {
+    for (const key of st.picked) {
+      const [kind, ...id] = key.split(":");
+      publicView.items.push({ kind, id: id.join(":"), from: "", to: "" });
+    }
+    dlg.close();
+    savePublic();
+  }, "primary");
+  foot.append(count, Object.assign(document.createElement("span"), { className: "spacer" }), button("Cancel", () => dlg.close()), add);
+  const go = (id) => { st.at[st.kind] = id; find.value = ""; draw(); subs.querySelector("button")?.focus() || list.querySelector("input")?.focus(); };
+  function draw() {
+    const k = st.kind, L = LIST[k];
+    const byId = new Map(offer[k].map((x) => [x.id, x]));
+    const folders = foldersOf(L.folders);
+    const view = browse({ folders, keys: [...byId.keys()], at: st.at[k], find: find.value, nameOf: (id) => byId.get(id).name });
+    st.at[k] = view.at;
+    pathNav(nav, view.trail, L.top, go);
+    subs.replaceChildren(...view.subs.map((sub) => folderButton(sub, L.one, go)));
+    subs.hidden = !view.subs.length;
+    const rows = view.items.map(({ key }) => byId.get(key)).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+      .map((x) => {
+        const key = `${k}:${x.id}`;
+        const row = Object.assign(document.createElement("label"), { className: `song-row${st.picked.has(key) ? " picked" : ""}${x.why ? " disabled" : ""}` });
+        const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: st.picked.has(key), disabled: !!x.why });
+        box.addEventListener("change", () => { if (box.checked) st.picked.add(key); else st.picked.delete(key); row.classList.toggle("picked", box.checked); tally(); });
+        const where = view.finding ? pathText(folders, x.id) : "";
+        const text = document.createElement("span");
+        text.append(Object.assign(document.createElement("b"), { textContent: x.name }));
+        if (where) text.append(Object.assign(document.createElement("span"), { className: "hint", textContent: `in ${where}` }));
+        if (x.why) text.append(Object.assign(document.createElement("span"), { className: "hint why", textContent: x.why }));
+        row.append(box, text);
+        return row;
+      });
+    list.replaceChildren(...(rows.length ? rows : [Object.assign(document.createElement("p"), { className: "hint",
+      textContent: find.value.trim() ? "Nothing matches that." : view.subs.length ? "" : `No ${L.one}s here.` })]));
+    tally();
+  }
+  function tally() {
+    const n = st.picked.size;
+    count.textContent = n ? `${n} picked` : "Tick what to add";
+    add.textContent = n > 1 ? `Add ${n}` : "Add";
+    add.disabled = !n;
+  }
+  draw();
+  dlg.showModal();
+  find.focus();
 }
 
 async function loadPublic({ items = false } = {}) {
@@ -5437,12 +5536,7 @@ function wirePublic() {
     }
   });
   $("pub-queue").addEventListener("change", savePublic);
-  $("pub-add").addEventListener("click", () => {
-    const [kind, id] = $("pub-add-pick").value.split(":");
-    if (!kind || !publicView) return;
-    publicView.items.push({ kind, id, from: "", to: "" });
-    savePublic();
-  });
+  $("pub-add").addEventListener("click", () => { if (publicView) pickForPublic(); });
   $("pub-clear").addEventListener("click", async () => {
     try {
       renderPublicQueue(await api("api/public/clear", { method: "POST" }));

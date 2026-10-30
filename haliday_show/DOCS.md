@@ -1455,9 +1455,11 @@ schedule) and **Delete…**. Press
 **+ New playlist**, or **Edit** one:
 
 - **Building blocks**, at the left to start with, go between your shows (see below). Drag one in like a show.
-- **Your shows**, below them, lists every show. Drag one by its card into **Running order** and let
-  go where it should play; a blue line shows where it will land. Or press **+** to add it at the end.
-  **Find a show** narrows the list. The same show can go in more than once.
+- **Your shows**, below them, lists every show, in the same folders as **Library → Shows**: press a folder
+  to go into it, and a name in the path above the list to go back up. Drag one by its card into
+  **Running order** and let go where it should play; a blue line shows where it will land. Or press **+**
+  to add it at the end. **Find a show** looks in every folder, and says which folder each match is in.
+  The same show can go in more than once.
 - In **Running order**, drag a show or block up or down to change when it plays, or drag it out of
   **Running order** (back to **Your shows**, say) to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
   by the dots (⠿) at the left of a card, so the page still scrolls; there, **Running order** comes
@@ -1584,8 +1586,8 @@ on a sign outside. They see the shows and playlists you've picked, and nothing e
 
 1. Open **Setup → Settings** and turn on **Let visitors start shows** under **Public page**. A **Public
    page** tab appears along the top.
-2. On the **Public page** tab, open **Shows** and, under **What visitors can pick**, choose a show or
-   playlist next to **+ Add** and press it. Add as many as you like.
+2. On the **Public page** tab, open **Shows** and, under **What visitors can pick**, press
+   **+ Add shows or playlists…**. Tick as many as you like and press **Add**.
 3. To try it, open the **Visitors' link** (on **Access**, under **Who can start shows**) on your phone, connected to
    your home Wi-Fi. It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
@@ -1690,7 +1692,9 @@ The title, words and picture only show to people with your code.
 
 #### What visitors can pick
 
-- **+ Add** offers your saved shows and playlists. Archived shows aren't offered, nor are playlists
+- **+ Add shows or playlists…** opens a window of your saved shows, with **Playlists** beside them. Go into
+  your folders as in the Library, or type in **Find in any folder**, tick everything you want and press
+  **Add**. Archived shows aren't offered, nor are playlists
   made only of archived shows, and visitors never see them. A show you archive later disappears from
   the public page straight away, and from inside any playlist visitors pick. The tab still lists it,
   marked as archived, so it comes back if you restore it. A show whose lights' frames were never made

@@ -243,7 +243,7 @@ export const HELP = {
         "The coloured bar shows one time through, and its total length is next to the title.",
       ] },
       { id: "shows", title: "Shows and building blocks", tips: [
-        "Drag a show from <b>Your shows</b>, or press <b>+</b> to add it at the end. The same show can go in more than once.",
+        "Drag a show from <b>Your shows</b>, or press <b>+</b> to add it at the end. Press a folder to go into it. The same show can go in more than once.",
         "<b>Building blocks</b> go between shows: a <b>Pause</b>, one <b>Colour</b>, <b>Off</b>, an <b>Effect</b> or one of your <b>Scenes</b>, each with its own length.",
       ] },
       { id: "when", title: "When it plays", guide: ["play-it.md", "schedule"], tips: [
@@ -361,7 +361,7 @@ export const HELP = {
     title: "Public page", guide: ["public-page.md", "the-public-page"],
     topics: [
       { id: "start", title: "Getting it going", tips: [
-        "Under <b>What visitors can pick</b>, choose a show or playlist next to <b>+ Add</b> and press it.",
+        "Under <b>What visitors can pick</b>, press <b>+ Add shows or playlists…</b>, tick what you want (from any folder) and press <b>Add</b>.",
         "Open the <b>Visitors' link</b> on your phone, on your home Wi-Fi, to try it. Print the QR code for a sign outside.",
         "<b>Opening hours</b> and <b>Nearby only</b> limit when and where visitors can start shows.",
       ] },
