@@ -23,6 +23,15 @@
 :root[data-borders="off"] { --bw: 0px; }
 body { margin: 0; background: var(--bg); color: var(--text);
   font: var(--fs)/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+/* Every line wraps a word too long for the screen (a show named with underscores, a long link, words
+   you've typed), anywhere if it must. One line wider than the screen makes a phone zoom the whole
+   page out to fit it. */
+.pp { overflow-wrap: anywhere; }
+.pp button { max-width: 100%; }
+/* A show's name keeps room to read; a button too long to sit beside it goes underneath. */
+.pp-row { flex-wrap: wrap; }
+.pp-row .pp-text { flex: 1 1 10em; }
+.pp img, .pp-snow { max-width: 100%; }
 .pp { max-width: 32em; margin: 0 auto; padding: calc(20px * var(--s)) 16px calc(40px * var(--s)); }
 h1 { font-size: 1.5em; margin: 0 0 calc(12px * var(--s)); }
 h2 { font-size: 1.125em; margin: calc(28px * var(--s)) 0 calc(10px * var(--s)); }

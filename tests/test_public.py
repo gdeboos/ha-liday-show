@@ -593,3 +593,10 @@ async def _until(check, tries=100):
             return True
         await asyncio.sleep(0.05)
     return False
+
+
+def test_the_visitors_page_wraps_long_words():
+    # A phone zooms the whole page out when one line is wider than the screen, as a show named with
+    # underscores did in "On now: …". Every line wraps instead.
+    css = (public.PAGE / "public.css").read_text()
+    assert ".pp { overflow-wrap: anywhere; }" in css

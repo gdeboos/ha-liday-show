@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.270
+
+- Fixed: the public page could open zoomed out on phones. A show whose name has no spaces (underscores
+  instead, like a file name) made the "On now" line wider than the screen. Every line on the page now
+  wraps long words, including your own words and links, and a button too long to fit beside a show's
+  name goes underneath it.
+
 ## 0.2.269
 
 - In the Playlist editor, an **Effect** block picks its effect in the same window as the Show editor, with moving previews and presets, instead of two drop-down lists. Its colours carry over when you change effect.
