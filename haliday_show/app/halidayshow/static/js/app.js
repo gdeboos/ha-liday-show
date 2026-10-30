@@ -6254,6 +6254,21 @@ async function duplicateDraft(id) {
   } catch (e) { status(`Couldn't duplicate the draft: ${e.message}`, true, "songs"); }
 }
 
+// A file about to be renamed that the Music editor has open (left with the top bar, say): the song there
+// is put away first, once its last change is kept. Whether it's free.
+async function letGoInMusic(path) {
+  const uses = JSON.stringify([music.base, music.draft, music.pieces, music.layers]).includes(JSON.stringify(path));
+  if (!uses) return true;
+  if (await music.putAway()) {
+    app.songChosen = false;
+    if (lastEditor === "music") lastEditor = null;
+    showResume();
+    return true;
+  }
+  status("Your last change in the Music editor couldn't be kept yet, so it can't be renamed. Try again in a moment", true, "songs");
+  return false;
+}
+
 // A copy of a song (or sample) file beside it: "name copy".
 async function duplicateSongFile(ref, sample = false) {
   try {
@@ -6266,12 +6281,9 @@ async function duplicateSongFile(ref, sample = false) {
 
 async function renameSample(ref) {
   const stem = ref.path.split("/").pop().replace(/\.[^.]+$/, "");
-  if (JSON.stringify([music.draft, music.layers]).includes(JSON.stringify(ref.path))) {
-    status("It's used in the song open in the Music editor. Press ← All songs there first, then rename it", "hint", "samples");
-    return;
-  }
   const name = prompt("Rename the sample", stem)?.trim();
   if (!name || name === stem) return;
+  if (!(await letGoInMusic(ref.path))) return;
   try {
     const out = await api("api/songs/rename", { method: "POST", json: { path: ref.path, name, sample: true } });
     if (samplePlaying === ref.path) stopSample();
@@ -6283,10 +6295,9 @@ async function renameSample(ref) {
 // Renames a song file in HA-liday Show's folder; shows, drafts and folders that use it follow.
 async function renameSongFile(r) {
   const was = r.ref.path, stem = was.split("/").pop().replace(/\.[^.]+$/, "");
-  const inMusic = JSON.stringify([music.base, music.draft, music.pieces, music.layers]).includes(JSON.stringify(was));
-  if (inMusic) { status("It's open in the Music editor. Press ← All songs there first, then rename it", "hint", "songs"); return; }
   const name = prompt("Rename the song file", stem)?.trim();
   if (!name || name === stem) return;
+  if (!(await letGoInMusic(was))) return;
   try {
     const out = await api("api/songs/rename", { method: "POST", json: { path: was, name } });
     // The open show follows too, so its next save keeps the new name.
@@ -9082,6 +9093,7 @@ function wire() {
   $("btn-all-songs").addEventListener("click", async () => {
     await music.flush();
     if (music.unsaved && !confirm("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?")) return;
+    if (!music.unsaved) await music.putAway();
     app.songChosen = false;
     showView("music");
   });

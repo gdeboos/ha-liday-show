@@ -144,8 +144,8 @@ Each song you added is one card, marked **Original**. Inside it, under **Edits o
 - **✎ Draft · no file yet** (amber, dashed): a draft that hasn't made a song file, so shows can't use
   it yet. **Edit** it, or under **⋯**, **Rename…**, **Duplicate** or **Delete…** it.
 - Songs in HA-liday Show's own folder have **Rename…** and **Duplicate** (a copy of the file,
-  "… copy") under **⋯** too. Renaming one while it's open in
-  the Music editor isn't allowed: press **← All songs** there first.
+  "… copy") under **⋯** too. Renaming one that's still open in
+  the Music editor puts it away there first, once your last change is kept.
 
 **All**, **Originals**, **Edits** and **Drafts**, beside **Find**, show just those, and the count says
 how many songs, edits and drafts there are.
