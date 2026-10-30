@@ -57,9 +57,9 @@ while it's on), **Edit**, and under **⋯**, **Rename…**, **Duplicate** (a cop
 and not on the schedule) and **Remove…**.
 
 - **+ New scene** takes three steps, like **+ New show**: its name, its colours, then **Basic** (a row
-  per light, below) or **Advanced** (straight into the Show editor, further down). Pick a palette and
-  each light starts on a steady colour from it, one colour after another along your lights. Pick
-  **None** and every light starts on a warm white. Either way it does something the moment you play it.
+  per light, below) or **Advanced** (straight into the Show editor, further down). The palette starts on
+  the season's, or the one you last used. Each light starts on a steady colour from it, one colour after
+  another along your lights. Pick **None** and every light starts on a warm white instead. Either way it does something the moment you play it.
 - **Palette**, above the lights, is the scene's palette, as a show has one. A light you turn on from
   **Off** takes its colours, and the effect window shows every effect in them. Change it and you're
   asked whether to recolour the lights already on. A light that's on keeps its own colours when you
