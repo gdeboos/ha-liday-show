@@ -101,6 +101,7 @@ export class SceneEditor {
         "aria-label": `Play ${s.name}`, title: s.baked ? `Play ${s.name} on your lights` : "Open it once so it's ready to play" }, "▶ Play");
     const actions = el("div", { class: "group show-actions" }, play,
       el("button", { type: "button", class: "ghost", onclick: () => this.open(s.id), "aria-label": `Edit ${s.name}` }, "Edit"),
+      el("button", { type: "button", class: "ghost", onclick: () => this.renameRow(s), "aria-label": `Rename ${s.name}` }, "Rename…"),
       el("button", { type: "button", class: "ghost", onclick: () => this.duplicate(s), "aria-label": `Duplicate ${s.name}` }, "Duplicate"),
       el("button", { type: "button", class: "ghost", onclick: () => this.remove(s), "aria-label": `Remove ${s.name}` }, "Remove…"));
     withMore(actions, 2);
@@ -179,6 +180,27 @@ export class SceneEditor {
     document.body.append(dlg);
     dlg.showModal();
     input.select();
+  }
+
+  // Renaming from the list. Saving a scene clears its frames, so they're made again straight away.
+  async renameRow(s) {
+    const name = prompt("Rename the scene", s.name)?.trim().replace(/\s+/g, " ");
+    if (!name || name === s.name) return;
+    if (this.scenes.some((x) => x.id !== s.id && x.name.toLowerCase() === name.toLowerCase())) {
+      this.d.status(`There's already a scene called ${name}. Give this one its own name`, "hint");
+      return;
+    }
+    if (s.id === this.id) { $("sc-name").value = name; this.rename(name); await this.flush(); return; }
+    try {
+      const scene = await this.d.api(`api/house-scenes/${encodeURIComponent(s.id)}`);
+      scene.name = name.slice(0, 80);
+      await this.d.api(`api/house-scenes/${encodeURIComponent(s.id)}`, { method: "PUT", json: scene });
+      await this.bakeAndSend(s.id, scene);
+      this.d.status("Scene renamed", "saved");
+    } catch (e) {
+      this.d.status(`Couldn't rename ${s.name}: ${e.message}`, true);
+    }
+    await this.refresh();
   }
 
   // A copy under a free name ("Evening copy"), ready to play: its frames are made straight away. It

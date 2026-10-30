@@ -1393,3 +1393,24 @@ async def test_renaming_an_edit_moves_its_shows_drafts_and_folder(client, tmp_pa
     for bad in ({"path": "haliday_show/Bells short.wav", "name": "taken"}, {"path": "haliday_show/Bells short.wav", "name": "a/b"},
                 {"path": "../etc/passwd", "name": "x"}, {"path": "haliday_show/Bells short.wav"}):
         assert (await client.post("/api/songs/rename", json=bad)).status == 400
+
+
+async def test_duplicating_songs_and_samples_and_renaming_a_sample(client, tmp_path):
+    media = tmp_path / "media" / "haliday_show"
+    (media / "Samples").mkdir(parents=True, exist_ok=True)
+    (media / "carol.mp3").write_bytes(b"ID3 carol")
+    (media / "Samples" / "ho.wav").write_bytes(b"RIFF ho")
+    r = await client.post("/api/songs/duplicate", json={"path": "haliday_show/carol.mp3"})
+    assert await r.json() == {"path": "haliday_show/carol copy.mp3"}
+    r = await client.post("/api/songs/duplicate", json={"path": "haliday_show/carol.mp3"})
+    assert await r.json() == {"path": "haliday_show/carol copy 2.mp3"}
+    assert (media / "carol copy 2.mp3").read_bytes() == b"ID3 carol"
+    # Samples go through the same calls with sample: true, and only within the Samples folder.
+    r = await client.post("/api/songs/duplicate", json={"path": "haliday_show/Samples/ho.wav", "sample": True})
+    assert await r.json() == {"path": "haliday_show/Samples/ho copy.wav"}
+    await client.put("/api/sample-folders", json=[{"id": "v", "name": "Voices", "songs": [{"source": "media", "path": "haliday_show/Samples/ho.wav"}]}])
+    r = await client.post("/api/songs/rename", json={"path": "haliday_show/Samples/ho.wav", "name": "Ho ho ho", "sample": True})
+    assert (await r.json())["path"] == "haliday_show/Samples/Ho ho ho.wav"
+    assert (await (await client.get("/api/sample-folders")).json())[0]["songs"][0]["path"] == "haliday_show/Samples/Ho ho ho.wav"
+    assert (await client.post("/api/songs/duplicate", json={"path": "haliday_show/carol.mp3", "sample": True})).status == 400
+    assert (await client.post("/api/songs/rename", json={"path": "haliday_show/Samples/ho copy.wav", "name": "x"})).status == 400

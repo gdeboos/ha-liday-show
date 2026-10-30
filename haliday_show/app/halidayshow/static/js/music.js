@@ -2633,6 +2633,17 @@ export class MusicEditor {
   }
 
   hide() { this.stop(); }
+
+  // Puts the open song away once its last change is kept, so nothing still refers to its files (they
+  // can be renamed) and the next song opens fresh. Whether it was put away.
+  async putAway() {
+    await this.flush();
+    if (this.unsaved) return false;
+    this.stop();
+    this.keeper.forget();
+    Object.assign(this, { base: null, pieces: [], layers: [], eq: null, info: null, sources: {}, sel: null, clipSel: null });
+    return true;
+  }
 }
 
 // Loudest sample in each block of BLOCK samples, across channels.

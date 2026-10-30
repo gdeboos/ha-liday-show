@@ -14,6 +14,7 @@ take another song instead, or be left without one. Shows keep their own beats ei
 """
 import json
 import os
+import shutil
 from pathlib import Path
 
 from . import playlists
@@ -360,12 +361,42 @@ def _relink(data, old: dict, new: dict) -> bool:
     return changed
 
 
-def rename_song(st: Storage, rel: str, name: str) -> dict:
-    """Renames a song file in HA-liday Show's own folder, keeping its folder and type, and moves every
-    show, draft and song folder that uses it to the new name. Returns {path, shows: [ids]}."""
-    src = _song_file(st, rel)
+def _own_file(st: Storage, rel: str, sample: bool) -> Path | None:
+    """A song in HA-liday Show's own folder (not archived), or a sample in the Samples folder."""
+    if not sample:
+        return _song_file(st, rel)
+    if not _plain(rel):
+        return None
+    p = st.media_dir / rel
+    return p if p.is_file() and p.suffix.lower() in AUDIO_EXT and _inside(p.resolve(), st.samples_dir.resolve()) else None
+
+
+def copy_song(st: Storage, rel: str, sample: bool = False) -> dict:
+    """A copy of a song (or sample) file beside it, "name copy.ext" ("name copy 2.ext"…). {path}"""
+    src = _own_file(st, rel, sample)
     if src is None:
-        raise ArchiveError("only songs in HA-liday Show's own folder can be renamed here")
+        raise ArchiveError(f"only {'samples' if sample else 'songs'} in HA-liday Show's own folder can be copied here")
+    dest = src.with_name(f"{src.stem} copy{src.suffix}")
+    for n in range(2, 1000):
+        if not dest.exists():
+            break
+        dest = src.with_name(f"{src.stem} copy {n}{src.suffix}")
+    else:
+        raise ArchiveError("too many copies with that name")
+    shutil.copy2(src, dest)
+    new_rel = dest.relative_to(st.media_dir).as_posix()
+    info = st._song_info_file("media", rel)
+    if info.exists():  # its beats and sections, so it needn't be detected again
+        shutil.copy2(info, st._song_info_file("media", new_rel))
+    return {"path": new_rel}
+
+
+def rename_song(st: Storage, rel: str, name: str, sample: bool = False) -> dict:
+    """Renames a song file in HA-liday Show's own folder (or a sample), keeping its folder and type, and
+    moves every show, draft and folder that uses it to the new name. Returns {path, shows: [ids]}."""
+    src = _own_file(st, rel, sample)
+    if src is None:
+        raise ArchiveError(f"only {'samples' if sample else 'songs'} in HA-liday Show's own folder can be renamed here")
     clean = " ".join(name.split()).strip(". ")
     if not clean or len(clean) > 120 or any(c in clean for c in '/\\:*?"<>|') or not clean.isprintable():
         raise ArchiveError("give it a name without / \\ : * ? \" < > |")
@@ -394,6 +425,6 @@ def rename_song(st: Storage, rel: str, name: str) -> dict:
         if _relink(draft, old, new):
             _write_atomic(p, json.dumps(draft, indent=1).encode())
     settings = st.load_settings()
-    if _relink(settings.get("song_folders"), old, new):
+    if _relink([settings.get("song_folders"), settings.get("sample_folders")], old, new):
         st.save_settings(settings)
     return {"path": new_rel, "shows": shows}
