@@ -49,3 +49,13 @@ test("schedule entries: finding them, new ones and their line", () => {
   assert.equal(scheduleLine([entries[0]], "playlist", "night", { now: state.now, next: { a: "2026-10-26T17:00" } }),
     "On the schedule: 17:00 to 22:00 every day. Next starts tomorrow at 17:00");
 });
+
+test("the schedule's picker shows one tab, or finds by name across all three", async () => {
+  const { pickList } = await import("../../haliday_show/app/halidayshow/static/js/schedule.js");
+  const targets = { playlist: [{ id: "p", name: "Christmas" }], show: [{ id: "s", name: "Carol of the Bells" }],
+    scene: [{ id: "c", name: "Christmas - Twinkly - White" }] };
+  assert.deepEqual(pickList(targets, "show"), [{ type: "show", id: "s", name: "Carol of the Bells" }]);
+  assert.deepEqual(pickList(targets, "show", " christmas ").map((x) => x.type), ["playlist", "scene"]);
+  assert.deepEqual(pickList(targets, "show", "twinkly white").map((x) => x.id), ["c"]);
+  assert.deepEqual(pickList({}, "scene"), []);
+});

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.273
+
+- On the **Schedule** tab, picking what a row plays now opens a window instead of one long list, with
+  tabs for **Playlists**, **Shows** and **Scenes** and a **Find by name** box that looks through all
+  three. **+ Add to schedule** opens it first, so you pick what to add straight away. Press a row's name
+  to change it.
+
 ## 0.2.272
 
 - **+ New scene** now takes three steps, like **+ New show**: a name, a palette, and **Basic** or
