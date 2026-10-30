@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.272
+
+- **+ New scene** now takes three steps, like **+ New show**: a name, a palette, and **Basic** or
+  **Advanced**. With a palette, each light starts on a colour from it in turn. **Advanced** opens the
+  new scene straight in the Show editor.
+- Scenes have their own **Palette**, as shows do. It's above the lights in the Scene editor (and in the
+  banner for an Advanced scene). Lights you turn on from **Off** take its colours, and changing it offers
+  to recolour the lights already on.
+
 ## 0.2.271
 
 - Fixed: the **Preview** in the Scene editor could show the scene you had open before, after opening

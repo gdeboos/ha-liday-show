@@ -67,10 +67,23 @@ def test_clean_scene_keeps_what_the_editor_needs():
     {"name": "x", "lights": {"a": {"effect": "Bad Effect"}}},
     {"name": "x", "lights": {"a": {"effect": "solid", "params": {"x": [1]}}}},
     {"name": "x", "all": {"effect": "solid", "params": "no"}},
+    {"name": "x", "palette": "Christmas"}, {"name": "x", "palette": {"name": "", "colors": ["#ff0000"]}},
+    {"name": "x", "palette": {"name": "P", "colors": []}}, {"name": "x", "palette": {"name": "P", "colors": ["red"]}},
+    {"name": "x", "palette": {"name": "P", "colors": ["#ff0000"] * 13}},
 ])
 def test_clean_scene_turns_down_odd_scenes(body):
     with pytest.raises(scenelib.SceneError):
         scenelib.clean_scene(body)
+
+
+def test_a_scene_keeps_its_palette_in_either_mode():
+    palette = {"name": " Candy ", "colors": ["#FF0000", "#ffffff"]}
+    basic = scenelib.clean_scene({"name": "x", "lights": {}, "palette": palette})
+    assert basic["palette"] == {"name": "Candy", "colors": ["#ff0000", "#ffffff"]}
+    advanced = scenelib.clean_scene({"name": "x", "mode": "advanced", "loop": 20, "tracks": [], "palette": palette})
+    assert advanced["palette"] == basic["palette"]
+    # Scenes from before palettes have none.
+    assert "palette" not in scenelib.clean_scene({"name": "x", "lights": {}})
 
 
 def test_storage_lists_saves_and_deletes_scenes(tmp_path):
