@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.268
+
+- On the **Public page**, **+ Add shows or playlists…** opens a window instead of a drop-down list. Go into your folders as in the Library, or find a show in any folder, and tick as many shows and playlists as you like to add them in one go.
+- In the Playlist editor, **Your shows** now uses your folders from **Library → Shows**: press a folder to go into it, and the path above the list to go back up. **Find a show** still looks everywhere, and says which folder each match is in.
+
 ## 0.2.267
 
 - Buttons no longer show emoji. Symbols such as play, pause, back, on, stop, volume, **Generate**'s sparkle, **Show settings**' cog and the scissors are now drawn as simple line icons in the button's own colour, so they look the same on every computer and phone (Windows used to show some as blue boxes).

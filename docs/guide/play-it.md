@@ -136,9 +136,11 @@ schedule) and **Delete…**. Press
 **+ New playlist**, or **Edit** one:
 
 - **Building blocks**, at the left to start with, go between your shows (see below). Drag one in like a show.
-- **Your shows**, below them, lists every show. Drag one by its card into **Running order** and let
-  go where it should play; a blue line shows where it will land. Or press **+** to add it at the end.
-  **Find a show** narrows the list. The same show can go in more than once.
+- **Your shows**, below them, lists every show, in the same folders as **Library → Shows**: press a folder
+  to go into it, and a name in the path above the list to go back up. Drag one by its card into
+  **Running order** and let go where it should play; a blue line shows where it will land. Or press **+**
+  to add it at the end. **Find a show** looks in every folder, and says which folder each match is in.
+  The same show can go in more than once.
 - In **Running order**, drag a show or block up or down to change when it plays, or drag it out of
   **Running order** (back to **Your shows**, say) to take it out. **↑**, **↓** and **✕** do the same with a press. On a phone or tablet, drag
   by the dots (⠿) at the left of a card, so the page still scrolls; there, **Running order** comes
