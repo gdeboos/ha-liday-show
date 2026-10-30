@@ -142,3 +142,17 @@ test("a Scene block is named after its scene", async () => {
   assert.equal(blockLabel(b), "Scene: a scene that's gone · 1 min");
   assert.equal(strip([b], {}, { glow: "Candy cane" }).blocks[0].name, "Scene: Candy cane · 1 min");
 });
+
+test("a copied playlist gets a free name, new ids for itself and its blocks, and no schedule", async () => {
+  const { copyPlaylist } = await import("../../haliday_show/app/halidayshow/static/js/playlisteditor.js");
+  const p = { id: "pl-a", name: "Party", shows: ["s1"], gap: 0, schedule: { on: true },
+    items: [{ type: "show", id: "s1" }, { type: "colour", id: "colour-x", seconds: 5, colour: "#ff0000" }] };
+  const c = copyPlaylist(p, ["Party", "Party copy"], 1000);
+  assert.equal(c.name, "Party copy 2");
+  assert.notEqual(c.id, p.id);
+  assert.equal(c.schedule, undefined);
+  assert.deepEqual(c.items[0], { type: "show", id: "s1" });
+  assert.notEqual(c.items[1].id, "colour-x");
+  assert.equal(c.items[1].colour, "#ff0000");
+  assert.equal(p.items[1].id, "colour-x");
+});

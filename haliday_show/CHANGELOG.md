@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.258
+
+- Scenes and playlists can be copied: **Duplicate** is under each one's **⋯** in **Library → Scenes** and **Library → Playlists**. The copy is called "… copy", plays straight away and isn't on the schedule.
+- Folders in every Library list (shows, scenes, playlists, songs, samples, palettes and presets) keep **Rename…** and **Delete…** under a **⋯** beside their name.
+
 ## 0.2.257
 
 - Fixed shows going missing from the **Public page**'s list (and being skipped by playlists and schedules). A show saved before its lights' frames reached HA-liday Show wasn't ready to play, so it was quietly left out. Such shows are now made ready in the background when you open HA-liday Show, and again when you open the **Public page**. Any that still can't be are listed greyed out, saying to open and save them.

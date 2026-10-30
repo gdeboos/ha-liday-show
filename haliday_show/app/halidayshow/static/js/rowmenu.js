@@ -39,7 +39,7 @@ function place(menu, node) {
   menu.insertBefore(item, line);
 }
 
-function moreFor(actions) {
+function moreFor(actions, label = null) {
   let menu = actions.querySelector(":scope > .row-more > .row-menu");
   if (menu) return menu;
   const wrap = document.createElement("span");
@@ -49,7 +49,7 @@ function moreFor(actions) {
   btn.className = "ghost row-more-btn";
   btn.textContent = "⋯";
   const name = actions.closest(".show-row, .song-kid")?.querySelector(".show-name")?.textContent;
-  btn.setAttribute("aria-label", name ? `More for ${name}` : "More");
+  btn.setAttribute("aria-label", label || (name ? `More for ${name}` : "More"));
   btn.title = "More";
   btn.setAttribute("aria-haspopup", "true");
   btn.setAttribute("aria-expanded", "false");
@@ -83,6 +83,15 @@ export function withMore(actions, keep = 1) {
   if (!rest.length) return actions;
   const menu = moreFor(actions);
   for (const n of rest) place(menu, n);
+  return actions;
+}
+
+// A ⋯ menu on its own, holding all of `nodes` (a folder's Rename… and Delete…, say).
+export function moreMenu(label, ...nodes) {
+  const actions = document.createElement("span");
+  actions.className = "group row-more-only";
+  const menu = moreFor(actions, label);
+  for (const n of nodes) place(menu, n);
   return actions;
 }
 

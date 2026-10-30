@@ -101,6 +101,7 @@ export class SceneEditor {
         "aria-label": `Play ${s.name}`, title: s.baked ? `Play ${s.name} on your lights` : "Open it once so it's ready to play" }, "▶ Play");
     const actions = el("div", { class: "group show-actions" }, play,
       el("button", { type: "button", class: "ghost", onclick: () => this.open(s.id), "aria-label": `Edit ${s.name}` }, "Edit"),
+      el("button", { type: "button", class: "ghost", onclick: () => this.duplicate(s), "aria-label": `Duplicate ${s.name}` }, "Duplicate"),
       el("button", { type: "button", class: "ghost", onclick: () => this.remove(s), "aria-label": `Remove ${s.name}` }, "Remove…"));
     withMore(actions, 2);
     const row = el("div", { class: `show-row scene-row${playing ? " playing" : ""}`, role: "listitem" }, sw, main, actions);
@@ -178,6 +179,26 @@ export class SceneEditor {
     document.body.append(dlg);
     dlg.showModal();
     input.select();
+  }
+
+  // A copy under a free name ("Evening copy"), ready to play: its frames are made straight away. It
+  // isn't on the schedule.
+  async duplicate(s) {
+    if (s.id === this.id) await this.flush();
+    const taken = new Set(this.scenes.map((x) => x.name.toLowerCase()));
+    let name = `${s.name} copy`;
+    for (let k = 2; taken.has(name.toLowerCase()); k++) name = `${s.name} copy ${k}`;
+    try {
+      const { schedule, ...scene } = await this.d.api(`api/house-scenes/${encodeURIComponent(s.id)}`);
+      scene.name = name.slice(0, 80);
+      const { id } = await this.d.api("api/house-scenes", { method: "POST", json: { name: scene.name } });
+      await this.d.api(`api/house-scenes/${encodeURIComponent(id)}`, { method: "PUT", json: scene });
+      await this.bakeAndSend(id, scene);
+      this.d.status(`Made ${scene.name}`, "saved");
+    } catch (e) {
+      this.d.status(`Couldn't duplicate ${s.name}: ${e.message}`, true);
+    }
+    await this.refresh();
   }
 
   remove(s) {
