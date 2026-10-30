@@ -8651,7 +8651,15 @@ function generateDialog({ fill = "all" } = {}) {
   notesHint.className = "hint";
   notesHint.textContent = noted ? `${noted} section${noted === 1 ? " has" : "s have"} notes from the Music editor; the AI follows them.`
     : "Add notes to the song's sections in the Music editor to tell the AI what happens in each part.";
-  const showNotes = () => { notesHint.hidden = maker.value !== "ai"; };
+  // Anything else for the AI to go on, kept with the show so it can be tweaked between takes.
+  const note = Object.assign(document.createElement("textarea"), { rows: 2, maxLength: 500,
+    value: typeof app.show.generate_note === "string" ? app.show.generate_note : "",
+    placeholder: "e.g. keep the pillars steady white, save the big colours for the last chorus, no strobes" });
+  const nl = document.createElement("label");
+  nl.className = "field gen-note";
+  nl.append("Anything else?", note, Object.assign(document.createElement("span"), { className: "hint",
+    textContent: "Tell the AI anything else about how this take should look. It's kept with the show." }));
+  const showNotes = () => { notesHint.hidden = nl.hidden = maker.value !== "ai"; };
   maker.addEventListener("change", showNotes);
   showNotes();
   const actions = document.createElement("div");
@@ -8661,11 +8669,21 @@ function generateDialog({ fill = "all" } = {}) {
   const cancel = button("Cancel", () => dlg.close(), "ghost");
   cancel.type = "button";
   actions.append(go, cancel);
-  form.append(h, hint, wl, ml, notesHint, ...controls.nodes, actions);
+  form.append(h, hint, wl, ml, notesHint, nl, ...controls.nodes, actions);
   dlg.append(form);
   form.addEventListener("submit", () => {
     if (!ml.hidden) prefs.set("genMaker", maker.value);
     const opts = { ...controls.read(), part: parts.find((p) => p.value === where.value)?.part || null };
+    if (maker.value === "ai") {
+      const said = note.value.trim().replace(/\s+/g, " ");
+      if (said !== (app.show.generate_note || "")) {
+        if (said) app.show.generate_note = said;
+        else delete app.show.generate_note;
+        app.dirty = true;
+        scheduleAutoSave();
+      }
+      opts.note = said;
+    }
     if (maker.value === "ai") generateWithAI(opts);
     else generate(opts);
   });
@@ -8910,7 +8928,7 @@ async function generate({ colors, style, house, build, maxBars = prefs.get("genM
 }
 
 // Generate with the AI: the whole show from the song, its sections and their notes, in one request.
-async function generateWithAI({ colors, paletteName, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null }) {
+async function generateWithAI({ colors, paletteName, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null, note = "" }) {
   // A window over the editor while the AI works, so it's plain it's busy and nothing is changed
   // underneath it; Cancel (or Esc) stops waiting and leaves the show as it was.
   if (!aiLights().some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
@@ -8929,7 +8947,8 @@ async function generateWithAI({ colors, paletteName, style, house, build, maxBar
     + (build ? " Build it up as a person would: in quiet sections use only one or a few lights and leave the rest "
       + "dark; bring more lights in as the music builds, adding them on bar lines; use every light together only "
       + "in the loudest sections and the chorus. Keep the parts of one light (named Light · Part) on or off together." : "")
-    + (house ? " Add sweeps across the house as the music lifts into louder sections." : "");
+    + (house ? " Add sweeps across the house as the music lifts into louder sections." : "")
+    + (note ? ` Also, from the person making the show: ${note}` : "");
   // Clips longer than Longest effect are cut at bar lines here, rather than asking the AI for more,
   // shorter clips, which could run past how much it may write in one reply.
   // For a part, only what lands inside it is kept, and only the part is cleared first.

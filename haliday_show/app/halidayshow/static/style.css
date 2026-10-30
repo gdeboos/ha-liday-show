@@ -1310,3 +1310,8 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 /* A show still being worked on: not offered to visitors. */
 .show-wip { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; color: var(--text);
   background: color-mix(in srgb, var(--warn) 16%, var(--panel)); border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--panel)); }
+
+/* Generate's "Anything else?" for the AI. */
+.save-preset-dialog .gen-note, .gen-note { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; margin: 0; }
+.gen-note textarea { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 10px; resize: vertical; min-height: 3.5em; width: 100%; box-sizing: border-box; }
