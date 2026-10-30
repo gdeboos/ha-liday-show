@@ -1,6 +1,6 @@
 // Folders you go into, in every Library list: [{id, name, parent?, items: [key]}]. A folder with no
 // parent is at the top; items are the keys of what's in it (a show's id, a song's "media:path"…).
-// Nothing moves on disk. Worked out here, without the page, so it can be tested; folderview.js draws.
+// Nothing moves on disk. Worked out here, without the page, so it can be tested; app.js (folderize) draws them.
 
 export const MAX_DEPTH = 8;
 const tidy = (name) => name.split(/\s+/).filter(Boolean).join(" ");

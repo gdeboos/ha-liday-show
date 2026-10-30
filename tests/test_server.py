@@ -1435,3 +1435,11 @@ async def test_folders_inside_folders(client):
     assert (await (await client.get("/api/library-folders")).json())["shows"][1] == {"id": "eve", "name": "Eve", "items": ["b"], "parent": "xmas"}
     lib["folders"][0]["parent"] = "eve"
     assert (await client.put("/api/library-folders", json=lib)).status == 400
+
+
+async def test_sample_folders_inside_folders_are_checked_too(client):
+    assert (await client.put("/api/sample-folders", json=[{"id": "a", "name": "A", "parent": "b", "songs": []},
+                                                         {"id": "b", "name": "B", "parent": "a", "songs": []}])).status == 400
+    assert (await client.put("/api/sample-folders", json=[{"id": "a", "name": "A", "parent": "nope", "songs": []}])).status == 400
+    assert (await client.put("/api/sample-folders", json=[{"id": "a", "name": "A", "songs": []},
+                                                         {"id": "b", "name": "B", "parent": "a", "songs": []}])).status == 200

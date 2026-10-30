@@ -3335,7 +3335,7 @@ function deletePreset(preset) {
   app.myPresets.splice(app.myPresets.indexOf(preset), 1);
   savePresets();
   const key = `${preset.effect}:${preset.name}`; // so a new one of the same name starts in no folder
-  if (folderOf(libFoldersOf("presets"), key)) saveLibraryFolders("presets", moveItems(libFoldersOf("presets"), [key], ""), "Folders kept");
+  if (folderOf(foldersOf("presets"), key)) saveFolders("presets", moveItems(foldersOf("presets"), [key], ""), "Folders kept");
   renderPresetsTab();
   return true;
 }
@@ -3359,7 +3359,7 @@ function openPresetWindow(preset, draft = null) {
     work.name = work.label = freePresetName(work.effect, name, preset);
     if (preset) {
       const was = `${preset.effect}:${preset.name}`, now = `${work.effect}:${work.name}`;
-      if (was !== now && folderOf(libFoldersOf("presets"), was)) saveLibraryFolders("presets", renameItem(libFoldersOf("presets"), was, now), "Folders kept");
+      if (was !== now && folderOf(foldersOf("presets"), was)) saveFolders("presets", renameItem(foldersOf("presets"), was, now), "Folders kept");
       Object.assign(preset, { name: work.name, label: work.name, effect: work.effect, params: work.params });
     }
     else { app.myPresets.push(work); placeNew("presets", `${work.effect}:${work.name}`); }
@@ -3670,7 +3670,7 @@ function deletePalette(p) {
   if (!confirm(`Delete the palette ${p.name}? Effects already coloured with it keep their colours.`)) return false;
   app.palettes.splice(app.palettes.indexOf(p), 1);
   savePalettes();
-  if (folderOf(libFoldersOf("palettes"), p.name)) saveLibraryFolders("palettes", moveItems(libFoldersOf("palettes"), [p.name], ""), "Folders kept");
+  if (folderOf(foldersOf("palettes"), p.name)) saveFolders("palettes", moveItems(foldersOf("palettes"), [p.name], ""), "Folders kept");
   renderPalettes();
   return true;
 }
@@ -3747,8 +3747,8 @@ function openPaletteWindow(palette, draft = null) {
       if (app.colourPalette === palette.name) { app.colourPalette = v; prefs.set("colourPalette", v); }
       // The open show follows a renamed palette (others keep the colours they last saved).
       if (app.show?.palette?.name === palette.name && v !== palette.name) { app.show.palette.name = v; app.changed(); }
-      if (v !== palette.name && folderOf(libFoldersOf("palettes"), palette.name)) {
-        saveLibraryFolders("palettes", renameItem(libFoldersOf("palettes"), palette.name, v), "Folders kept");
+      if (v !== palette.name && folderOf(foldersOf("palettes"), palette.name)) {
+        saveFolders("palettes", renameItem(foldersOf("palettes"), palette.name, v), "Folders kept");
       }
       Object.assign(palette, { name: v, colors: work.colors });
     } else {
@@ -6666,7 +6666,6 @@ const FOLDER_LISTS = {
 const folderData = Object.fromEntries(Object.keys(FOLDER_LISTS).map((k) => [k, []]));
 const folderLoaded = {}, folderSaving = {}, folderChains = {};
 const foldersOf = (kind) => folderData[kind] || [];
-const libFoldersOf = foldersOf;
 
 // Read from the server: songs and samples keep {source, path}, the rest keys. A save on its way wins
 // over what was read before it; a failed read keeps folders from being saved over.
@@ -6716,7 +6715,6 @@ function saveFolders(kind, next, what) {
   });
   return true;
 }
-const saveLibraryFolders = saveFolders;
 
 // The folder open in each list ("" for the top), remembered across visits.
 function folderAt(kind) {
@@ -6835,14 +6833,10 @@ function moveToWindow(kind, what) {
   };
   choice(`${lib.top}, in no folder`, "");
   for (const { folder, depth } of flatTree(folders)) choice(folder.name, folder.id, depth + 1);
-  const make = button("+ New folder…", () => {
-    w.dlg.close();
-    if (what.folder) { newFolder(kind); return; }
-    newFolder(kind, what.key);
-  }, "ghost");
-  make.title = "A new folder in the one you're in, with this moved into it";
+  const make = what.folder ? null : button("+ New folder…", () => { w.dlg.close(); newFolder(kind, what.key); }, "ghost");
+  if (make) make.title = "A new folder in the one you're in, with this moved into it";
   w.body.append(list);
-  w.foot.append(make, Object.assign(document.createElement("span"), { className: "spacer" }), button("Cancel", () => w.dlg.close()));
+  w.foot.append(...(make ? [make] : []), Object.assign(document.createElement("span"), { className: "spacer" }), button("Cancel", () => w.dlg.close()));
   w.dlg.showModal();
   list.querySelector("button:not(:disabled)")?.focus();
 }
@@ -9004,7 +8998,8 @@ function rememberPage(page, push) {
   rememberPlace();
   try {
     if (push && !first) history.pushState({ page, n: (shownN += 1) }, "", `#${page}`); // drops any Forward
-    else history.replaceState({ page, n: shownN }, "", `#${page}`);
+    // Coming back to a list keeps which of its folders this step was in, for Forward and Back.
+    else history.replaceState({ page, n: shownN, ...(history.state?.page === page && "folder" in history.state ? { folder: history.state.folder } : {}) }, "", `#${page}`);
   } catch { /* a sandboxed frame may refuse; the pages still work */ }
 }
 
