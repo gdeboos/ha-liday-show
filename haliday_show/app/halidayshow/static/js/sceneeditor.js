@@ -270,6 +270,8 @@ export class SceneEditor {
       return;
     }
     this.id = id;
+    // The preview is worked out again for this scene, not left on the one open before.
+    this.previewShow = null;
     this.byParts.clear();
     this.d.prefs.set("lastScene", id);
     $("sc-name").value = this.scene.name;
@@ -285,6 +287,7 @@ export class SceneEditor {
     this.flush();
     this.id = null;
     this.scene = null;
+    this.previewShow = null;
     this.stopPreview();
     this.d.closed();
   }

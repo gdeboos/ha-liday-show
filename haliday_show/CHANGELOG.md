@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.271
+
+- Fixed: the **Preview** in the Scene editor could show the scene you had open before, after opening
+  another one. It now always shows the scene you're editing, from the moment it opens.
+
 ## 0.2.270
 
 - Fixed: the public page could open zoomed out on phones. A show whose name has no spaces (underscores
