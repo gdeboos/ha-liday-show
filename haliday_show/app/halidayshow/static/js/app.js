@@ -5753,25 +5753,47 @@ async function previewShow(r) {
   const canvas = document.createElement("canvas");
   canvas.setAttribute("role", "img");
   canvas.setAttribute("aria-label", `${r.name} on your house photo`);
-  const time = Object.assign(document.createElement("p"), { className: "hint" });
-  time.setAttribute("aria-live", "off");
+  const time = Object.assign(document.createElement("span"), { className: "hint preview-time" });
   const note = Object.assign(document.createElement("p"), { className: "hint",
-    innerHTML: "Your lights show here once they're on the photo under <b>Setup → House</b>." });
-  note.hidden = Object.keys(house.paths || {}).length > 0;
-  w.body.append(Object.assign(document.createElement("div"), { className: "im-preview-frame" }), time, note);
+    innerHTML: Object.keys(house.paths || {}).length ? "Nothing is sent to your lights."
+      : "Nothing is sent to your lights. Your lights show here once they're on the photo under <b>Setup → House</b>." });
+  w.body.append(Object.assign(document.createElement("div"), { className: "im-preview-frame" }), note);
   w.body.firstChild.append(canvas);
   const audio = show.audio ? new Audio(audioUrl(show.audio)) : null;
   if (audio) audio.volume = volume.gain ?? 1;
   const end = show.duration || 60;
-  let start = performance.now(), raf = 0, playing = false;
+  // The time: the song's own when there is one, else a clock that can be paused and moved.
+  let base = 0, since = performance.now(), playing = false, raf = 0;
+  const now = () => (audio ? audio.currentTime : playing ? base + (performance.now() - since) / 1000 : base);
   const byId = new Map((show.tracks || []).map((t) => [t.device, t]));
   const trackOf = (id) => byId.get(id);
-  const play = button("■ Stop", () => (playing ? stopIt() : startIt()), "primary");
+  const ctl = (text, label, fn, cls = "ghost") => {
+    const b = button(text, fn, cls);
+    b.setAttribute("aria-label", label);
+    b.title = label;
+    return b;
+  };
+  const toStart = ctl("⏮", "Back to the start", () => seek(0));
+  const back = ctl("⏪", "Back 5 seconds", () => seek(now() - 5));
+  const play = ctl("▶", "Play", () => (playing ? pause() : resume()), "primary preview-play");
+  const fwd = ctl("⏩", "On 5 seconds", () => seek(now() + 5));
+  const bar = Object.assign(document.createElement("input"), { type: "range", min: 0, max: end, step: 0.1, value: 0, className: "preview-seek" });
+  bar.setAttribute("aria-label", "Where in the show");
+  bar.addEventListener("input", () => seek(Number(bar.value)));
+  const vol = Object.assign(document.createElement("input"), { type: "range", min: 0, max: 1, step: 0.05, value: volume.gain ?? 1, className: "preview-vol" });
+  vol.setAttribute("aria-label", "Volume");
+  vol.title = "Volume";
+  vol.hidden = !audio;
+  vol.addEventListener("input", () => { if (audio) audio.volume = Number(vol.value); });
+  const volBox = Object.assign(document.createElement("span"), { className: "preview-volume" });
+  volBox.append(Object.assign(document.createElement("span"), { textContent: "🔊", ariaHidden: "true" }), vol);
+  const controls = Object.assign(document.createElement("div"), { className: "preview-controls" });
+  controls.append(toStart, back, play, fwd, bar, time, ...(audio ? [volBox] : []));
+  w.body.insertBefore(controls, w.body.children[1]);
   const edit = button("Edit", () => { w.dlg.close(); openFromList(r.id); });
-  w.foot.append(play, Object.assign(document.createElement("span"), { className: "spacer" }), edit, button("Close", () => w.dlg.close()));
-  const frame = () => {
-    const t = audio && !audio.paused ? audio.currentTime : (performance.now() - start) / 1000;
-    if (t >= end || audio?.ended) { stopIt(); return; }
+  w.foot.append(Object.assign(document.createElement("span"), { className: "spacer" }), edit, button("Close", () => w.dlg.close()));
+  const paint = () => {
+    const t = Math.min(now(), end);
     const pos = housePositionsAll(), houseFx = byId.get(HOUSE)?.clips || [];
     const plans = planGroups(app.groups, app.deviceList, trackOf, pos);
     const frames = new Map();
@@ -5785,26 +5807,53 @@ async function previewShow(r) {
       if (!dev.parent) return full(app.lights[dev.id] || dev);
       return full(app.lights[dev.parent]).slice((dev.from - 1) * 3, dev.to * 3);
     });
-    time.textContent = `${fmtTime(t, false)} of ${fmtTime(end, false)} · nothing is sent to your lights`;
+    if (document.activeElement !== bar) bar.value = t;
+    time.textContent = `${fmtTime(t, false)} / ${fmtTime(end, false)}`;
+  };
+  const frame = () => {
+    if (now() >= end || audio?.ended) { pause(); seek(end); return; }
+    paint();
     raf = requestAnimationFrame(frame);
   };
-  function startIt() {
+  function resume() {
+    if (now() >= end - 0.05) seek(0);
     playing = true;
-    play.textContent = "■ Stop";
-    if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
-    start = performance.now();
+    play.textContent = "⏸";
+    play.setAttribute("aria-label", "Pause");
+    play.title = "Pause";
+    since = performance.now();
+    audio?.play().catch(() => {});
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(frame);
   }
-  function stopIt() {
+  function pause() {
+    base = now();
     playing = false;
-    play.textContent = "▶ Play again";
+    play.textContent = "▶";
+    play.setAttribute("aria-label", "Play");
+    play.title = "Play";
     audio?.pause();
     cancelAnimationFrame(raf);
+    paint();
   }
+  function seek(t) {
+    t = Math.max(0, Math.min(end, t));
+    if (audio) audio.currentTime = t;
+    base = t;
+    since = performance.now();
+    paint();
+  }
+  // Space plays and pauses, the arrows move 5 seconds, Home goes to the start.
+  w.dlg.addEventListener("keydown", (e) => {
+    if (e.target === bar || e.target === vol) return;
+    if (e.key === " ") { e.preventDefault(); (playing ? pause : resume)(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); seek(now() - 5); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); seek(now() + 5); }
+    else if (e.key === "Home") { e.preventDefault(); seek(0); }
+  });
   w.dlg.addEventListener("close", () => { cancelAnimationFrame(raf); audio?.pause(); });
   w.dlg.showModal();
-  startIt();
+  resume();
   play.focus();
 }
 

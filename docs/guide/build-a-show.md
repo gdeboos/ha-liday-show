@@ -66,7 +66,9 @@ songs. They're saved with your settings, so they're in **Export…** too.
   **Move to…** (see [Folders](#folders)) and, last, **Remove…**. Rows elsewhere in the Library work the same
   way: their main button, then **⋯**.
 - **▶ Preview**, beside **Edit**, plays the show on your house photo in a window, with its song.
-  Nothing is sent to your lights. **▶ Play again** starts it over and **Edit** opens it.
+  Nothing is sent to your lights. Under the house are the player controls: **⏮** back to the start, **⏪** and
+  **⏩** back and on 5 seconds, **▶**/**⏸** to play and pause, a bar to jump to any point, and the volume. On a
+  keyboard, Space plays and pauses, the arrow keys move 5 seconds and Home goes back to the start. **Edit** opens it.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
   Each show needs its own name. An automation that starts the show by its name needs the new name.
