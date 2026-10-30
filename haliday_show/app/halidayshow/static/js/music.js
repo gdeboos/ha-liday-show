@@ -14,7 +14,7 @@ import { BANDS, EQ_MAX, EQ_MIN, MAX_CHANGES, applyEq, eqAt, faderText, flatEq, i
 import { stretch } from "./tempo.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
-import { itemsInFolders } from "./songfolders.js";
+import { flatTree, fromSongFolders, itemsIn, keyOfRef, pathTo } from "./folders.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 
@@ -1074,9 +1074,12 @@ export class MusicEditor {
           add.append(g);
         };
         // Samples by their folders (Library → Samples), then those in none.
-        const { groups, loose } = itemsInFolders(samples, this.sampleFolders || []);
-        for (const g of groups) group(`Samples · ${g.folder.name}`, g.items);
-        group(groups.length ? "Samples · not in a folder" : "Samples", loose);
+        const folders = fromSongFolders(this.sampleFolders || []), keyed = new Map(samples.map((r) => [keyOfRef(r), r]));
+        const inPlace = (at) => itemsIn([...keyed.keys()], folders, at).map((k) => keyed.get(k));
+        group("Samples", inPlace(""));
+        for (const { folder } of flatTree(folders)) {
+          group(`Samples › ${pathTo(folders, folder.id).map((f) => f.name).join(" › ")}`, inPlace(folder.id));
+        }
         group("Songs", songs);
         add.addEventListener("change", () => { const v = add.value; add.value = ""; if (v) this.addClip(i, JSON.parse(v)); });
         const remove = el("button", { type: "button", className: "ghost", textContent: "Remove" });

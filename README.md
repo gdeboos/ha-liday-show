@@ -391,7 +391,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/layout.js                        Movable panel layout
     js/palettes.js                      Colour palette presets
     js/bakekey.js                       A short note of which lights a show was baked for, kept with the bake so reopening it needn't bake again
-    js/libfolders.js                    Folders for the Library's lists: shows, scenes, playlists, palettes, presets
+    js/folders.js                       Folders you go into, in every Library list: the tree, moving, deleting, finding
+    js/libfolders.js                    The Library lists that keep their folders together, and keeping a renamed item in its folder
     js/palettepicker.js                 The window for picking a palette by its colours
     js/showpalette.js                   A show's own palette: followed by name, with a copy of its colours
     js/schedule.js                      Schedule entries in words, and small helpers for them
@@ -416,7 +417,6 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/statusline.js                    The message spot in the top bar: saved, settled and error states
     js/showlist.js                      Your shows: the rows of the show list (sorting, details, copy names)
     js/songlist.js                      Library → Songs: the rows of the song list and its search
-    js/songfolders.js                   Your songs' folders: which songs are in which, and making, renaming and deleting them
     js/analysis.js                      Song analysis: tempo, beats, bars and sections
     js/analysis-worker.js               Runs the analysis off the main thread
     js/autogen.js                       Generates a draft show from the analysis

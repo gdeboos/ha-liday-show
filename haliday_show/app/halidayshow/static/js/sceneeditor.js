@@ -166,6 +166,7 @@ export class SceneEditor {
       make.disabled = true;
       try {
         const { id } = await this.d.api("api/house-scenes", { method: "POST", json: { name } });
+        this.d.placeNew?.(id);
         await this.d.api(`api/house-scenes/${encodeURIComponent(id)}`, { method: "PUT", json: newScene(name, this.d.lights()) });
         dlg.close();
         await this.open(id);
@@ -214,6 +215,7 @@ export class SceneEditor {
       const { schedule, ...scene } = await this.d.api(`api/house-scenes/${encodeURIComponent(s.id)}`);
       scene.name = name.slice(0, 80);
       const { id } = await this.d.api("api/house-scenes", { method: "POST", json: { name: scene.name } });
+      this.d.placeBeside?.(s.id, id);
       await this.d.api(`api/house-scenes/${encodeURIComponent(id)}`, { method: "PUT", json: scene });
       await this.bakeAndSend(id, scene);
       this.d.status(`Made ${scene.name}`, "saved");
