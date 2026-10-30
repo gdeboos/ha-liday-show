@@ -26,12 +26,28 @@ Your shows are under **Library → Shows**, and nothing changes in a show until 
 **Show editor**. Each show is listed with its song, its length and when it last changed, newest first, and the
 one you were last editing has a **Last edited** badge.
 
-**Folders** sort your shows, and the same works in **Scenes**, **Playlists**, **Palettes** (your own)
-and **Presets**: press **+ New folder** beside the **+ New …** button and name it, then pick it under
-**Folder** on a row. Each folder folds away (press its name) and remembers whether you left it open;
-what's in no folder is listed after them, under **Not in a folder** (presets there stay grouped by
-effect). **Rename…** and **Delete…** are under each folder's **⋯**; deleting one leaves what was in it, just in no
-folder. Folders only sort the list, and they're saved with your settings, so they're in **Export…** too.
+#### Folders
+
+Every Library list (**Shows**, **Scenes**, **Playlists**, **Songs**, **Samples**, **Palettes** and
+**Presets**) has folders you go into, and folders can hold folders.
+
+- A list shows its folders first, each with how much is in it, then what's in no folder. Press a
+  folder to go into it; only what's in it shows. The path at the top (**Songs › Rock › Arctic
+  Monkeys**) takes you back up, and so does the browser's **Back**. The list remembers the folder you
+  were in.
+- **+ New folder** (beside **+ New …**) makes a folder inside the one you're in. Anything you add or
+  make while a folder is open (a new show, an uploaded song) goes in it, and a **Duplicate** goes in the
+  same folder as the original.
+- To move something, press **⋯ → Move to…** on it and pick a folder (or the top of the list), or drag
+  its row onto a folder, or onto a name in the path to move it up. Folders move the same way, though
+  never into themselves, and they go at most 8 deep.
+- A folder's **⋯** has **Rename…**, **Move to…** and **Delete…**. Deleting a folder deletes nothing in
+  it: what it held moves up a level.
+- **Find** (on **Songs**) and the **Originals**, **Edits** and **Drafts** buttons search every folder;
+  each match says which folder it's in, and pressing that goes there.
+
+Folders only sort the lists: files stay where they are on disk, so shows and speakers still find their
+songs. They're saved with your settings, so they're in **Export…** too.
 
 - **Edit** a show to change it, or press **+ New show** to start one. A short window asks for:
   1. a **Name**, a **Song** (or **+ Add a song…**, or **No song, lights only** with its length) and a
@@ -45,7 +61,7 @@ folder. Folders only sort the list, and they're saved with your settings, so the
 
   **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.
 - Each show's row has **Edit**, and **⋯** for the rest: **Duplicate**, **Rename**, **Share**, its
-  **Folder** (once you have folders) and, last, **Remove…**. Rows elsewhere in the Library work the same
+  **Move to…** (see [Folders](#folders)) and, last, **Remove…**. Rows elsewhere in the Library work the same
   way: their main button, then **⋯**.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
@@ -150,13 +166,8 @@ Each song you added is one card, marked **Original**. Inside it, under **Edits o
 **All**, **Originals**, **Edits** and **Drafts**, beside **Find**, show just those, and the count says
 how many songs, edits and drafts there are.
 
-**Folders** sort your songs, such as **Christmas**, **Halloween** or **Party**. Press **+ New folder**
-under the list and name it, then pick it under **Folder** on a song; the song's edits and drafts go
-with it. Each folder folds away (press its name), and remembers whether you left it open; songs in no
-folder are listed after them, under **Not in a folder**. **Rename…** and **Delete…** are under each
-folder's **⋯**; deleting one leaves its songs, just in no folder. Folders only sort the list: the song files
-stay where they are, so shows and speakers still find them. They're saved with your settings, so
-they're in **Export…** too.
+**Folders** sort your songs, such as **Christmas**, **Halloween** or **Party**, and work as in every
+Library list (see [Folders](#folders)). A song's edits and drafts go with it.
 
 **+ Add a song**, under the list, opens a short window:
 
@@ -218,11 +229,9 @@ They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Lib
 song list so those stay tidy. Use them on a [layer](#layers) in the Music editor. Each sample has **▶** to hear it (press **■** to stop), and under **⋯**, **Rename…**, **Duplicate**
 (a copy, "… copy") and **Delete…** to remove it for good. Layers that use a renamed sample follow it.
 
-To sort them, press **+ New folder** and give it a name, then pick the folder under **Folder** on each
-sample (or pick **New folder…** there). A folder's title folds it away, and **Rename…** and
-**Delete…** are under its **⋯**; deleting a folder keeps its samples, which move to **Not in a folder**. The
-files themselves stay where they are, so songs that use them still find them. In the Music editor, a
-layer's **+ Add a clip** list shows the samples under their folders.
+To sort them, use folders (see [Folders](#folders)). The files themselves stay where they are, so
+songs that use them still find them. In the Music editor, a layer's **+ Add a clip** list shows the
+samples under their folders.
 
 ### Editing a song
 

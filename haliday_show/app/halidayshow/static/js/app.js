@@ -50,8 +50,11 @@ import {
 } from "./playlisteditor.js";
 import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
-import { addFolder, deleteFolder, folderNameProblem, folderOf, inFolders, itemsInFolders, moveSong, renameFolder } from "./songfolders.js";
-import { addLibraryFolder, deleteLibraryFolder, folderOfItem, groupByFolder, moveItem, renameItem, renameLibraryFolder } from "./libfolders.js";
+import {
+  addFolder, childrenOf, countIn, deleteFolder, flatTree, folderOf, fromSongFolders, moveFolder, moveItems, moveProblem,
+  nameProblem, pathText, pathTo, renameFolder, toSongFolders, within,
+} from "./folders.js";
+import { LIBRARY_KINDS, renameItem } from "./libfolders.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
 import { convertProblem, showUses, toWled } from "./convert.js";
@@ -1849,6 +1852,7 @@ const sceneEd = new SceneEditor({
   scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => (entriesFor(scheduleState.entries || [], "scene", id).length
     ? scheduleLine(scheduleState.entries, "scene", id, scheduleState) : ""),
   chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }),
+  placeNew: (id) => placeNew("scenes", id), placeBeside: (from, id) => placeBeside("scenes", from, id),
   opened: () => { app.sceneChosen = true; showView("scene"); },
   closed: () => { app.sceneChosen = false; showView("scene"); },
 });
@@ -3307,6 +3311,7 @@ function renderPresetsTab() {
             const copy = asPreset({ name: freePresetName(preset.effect, `${preset.name} copy`), effect: preset.effect,
               params: structuredClone(preset.params) });
             app.myPresets.splice(app.myPresets.indexOf(preset) + 1, 0, copy);
+            placeBeside("presets", `${preset.effect}:${preset.name}`, `${copy.effect}:${copy.name}`);
             presetEditing = copy;
             savePresets();
             renderPresetsTab();
@@ -3330,7 +3335,7 @@ function deletePreset(preset) {
   app.myPresets.splice(app.myPresets.indexOf(preset), 1);
   savePresets();
   const key = `${preset.effect}:${preset.name}`; // so a new one of the same name starts in no folder
-  if (folderOfItem(libFoldersOf("presets"), key)) saveLibraryFolders("presets", moveItem(libFoldersOf("presets"), key, null), "Folders kept");
+  if (folderOf(libFoldersOf("presets"), key)) saveLibraryFolders("presets", moveItems(libFoldersOf("presets"), [key], ""), "Folders kept");
   renderPresetsTab();
   return true;
 }
@@ -3354,10 +3359,10 @@ function openPresetWindow(preset, draft = null) {
     work.name = work.label = freePresetName(work.effect, name, preset);
     if (preset) {
       const was = `${preset.effect}:${preset.name}`, now = `${work.effect}:${work.name}`;
-      if (was !== now && folderOfItem(libFoldersOf("presets"), was)) saveLibraryFolders("presets", renameItem(libFoldersOf("presets"), was, now), "Folders kept");
+      if (was !== now && folderOf(libFoldersOf("presets"), was)) saveLibraryFolders("presets", renameItem(libFoldersOf("presets"), was, now), "Folders kept");
       Object.assign(preset, { name: work.name, label: work.name, effect: work.effect, params: work.params });
     }
-    else app.myPresets.push(work);
+    else { app.myPresets.push(work); placeNew("presets", `${work.effect}:${work.name}`); }
     presetEditing = preset || work;
     savePresets();
     w.dlg.close();
@@ -3636,7 +3641,9 @@ function renderPalettes() {
     extra: [
       button("Rename…", () => { openPaletteWindow(p); document.activeElement?.select?.(); }, "ghost"),
       button("Duplicate", () => {
-        app.palettes.splice(i + 1, 0, { name: uniqueName(`${p.name} copy`), colors: [...p.colors] });
+        const copy = { name: uniqueName(`${p.name} copy`), colors: [...p.colors] };
+        app.palettes.splice(i + 1, 0, copy);
+        placeBeside("palettes", p.name, copy.name);
         savePalettes();
         renderPalettes();
       }, "ghost"),
@@ -3663,7 +3670,7 @@ function deletePalette(p) {
   if (!confirm(`Delete the palette ${p.name}? Effects already coloured with it keep their colours.`)) return false;
   app.palettes.splice(app.palettes.indexOf(p), 1);
   savePalettes();
-  if (folderOfItem(libFoldersOf("palettes"), p.name)) saveLibraryFolders("palettes", moveItem(libFoldersOf("palettes"), p.name, null), "Folders kept");
+  if (folderOf(libFoldersOf("palettes"), p.name)) saveLibraryFolders("palettes", moveItems(libFoldersOf("palettes"), [p.name], ""), "Folders kept");
   renderPalettes();
   return true;
 }
@@ -3740,12 +3747,13 @@ function openPaletteWindow(palette, draft = null) {
       if (app.colourPalette === palette.name) { app.colourPalette = v; prefs.set("colourPalette", v); }
       // The open show follows a renamed palette (others keep the colours they last saved).
       if (app.show?.palette?.name === palette.name && v !== palette.name) { app.show.palette.name = v; app.changed(); }
-      if (v !== palette.name && folderOfItem(libFoldersOf("palettes"), palette.name)) {
+      if (v !== palette.name && folderOf(libFoldersOf("palettes"), palette.name)) {
         saveLibraryFolders("palettes", renameItem(libFoldersOf("palettes"), palette.name, v), "Folders kept");
       }
       Object.assign(palette, { name: v, colors: work.colors });
     } else {
       app.palettes.push({ name: v, colors: work.colors });
+      placeNew("palettes", v);
     }
     savePalettes();
     w.dlg.close();
@@ -4273,6 +4281,7 @@ function playlistRow(r) {
     if (!pl || !playlistsLoaded) return;
     const copy = copyPlaylist(pl, playlists.map((x) => x.name));
     playlists.splice(playlists.indexOf(pl) + 1, 0, copy);
+    placeBeside("playlists", pl.id, copy.id);
     savePlaylists();
     renderPlaylists();
     status(`Made ${copy.name}`, "saved", "playlists");
@@ -4337,6 +4346,7 @@ function newPlaylist() {
   for (let k = 2; taken.has(name.toLowerCase()); k++) name = `My playlist ${k}`;
   const pl = { id: `pl-${Date.now().toString(36)}`, name, shows: [], gap: 0, items: [] };
   playlists.push(pl);
+  placeNew("playlists", pl.id);
   savePlaylists();
   openPlaylistEditor(pl.id);
 }
@@ -6108,8 +6118,7 @@ async function renderSongsPage() {
     if (mine !== songsAsked) return;
     // A save on its way wins over what was read before it; a failed read keeps folders from being saved
     // over (it would replace them all).
-    if (folders && !folderSaving) songFolders = folders;
-    if (!folderSaving) foldersLoaded = Boolean(folders);
+    foldersRead("songs", folders);
     songRowsCache = songRows(list.songs, shows);
     songDrafts = drafts;
     songsMore = list.more;
@@ -6140,7 +6149,8 @@ function drawSongRows() {
     return;
   }
   box.removeAttribute("role");
-  box.replaceChildren(...songFolderSections(fams, filtered));
+  box.replaceChildren(...songFolderSections(fams));
+  folderize("songs", box, { finding: !!filtered });
   // Drafts whose song has been archived, deleted or moved, so they can still be found and deleted.
   const keys = new Set(songRowsCache.map((r) => r.key));
   const lost = songDrafts.filter((d) => d.base && !keys.has(songKey(d.base)));
@@ -6273,6 +6283,7 @@ async function letGoInMusic(path) {
 async function duplicateSongFile(ref, sample = false) {
   try {
     const out = await api("api/songs/duplicate", { method: "POST", json: { path: ref.path, sample } });
+    placeBeside(sample ? "samples" : "songs", songKey(ref), songKey({ source: "media", path: out.path }));
     status(`Made ${out.path.split("/").pop()}`, "saved", sample ? "samples" : "songs");
     if (sample) renderSamplesPage();
     else { await refreshAudio().catch(() => {}); renderSongsPage(); }
@@ -6322,129 +6333,21 @@ async function deleteDraft(d) {
   } catch (e) { status(`Couldn't delete the draft: ${e.message}`, true, "songs"); }
 }
 
-// Folders you make (songfolders.js), each folding away, then the songs in none.
-let songFolders = [], foldersLoaded = false, folderSaving = 0, folderChain = Promise.resolve();
-function songFolderSections(fams, filtered) {
-  const list = (items, label) => {
-    const box = document.createElement("div");
-    box.className = "show-list";
-    box.setAttribute("role", "list");
-    box.setAttribute("aria-label", label);
-    box.append(...items.map(songFamilyCard));
-    return box;
-  };
-  $("btn-new-folder").disabled = !foldersLoaded;
-  $("btn-new-folder").title = foldersLoaded ? "A folder to sort your songs into; the files stay where they are"
+// All the songs as one list, each marked by its song for folderize() to sort into folders.
+function songFolderSections(fams) {
+  $("btn-new-folder").disabled = !folderLoaded.songs;
+  $("btn-new-folder").title = folderLoaded.songs ? "A folder to sort your songs into, inside the one you're in; the files stay where they are"
     : "Couldn't load your folders just now";
-  if (!songFolders.length) return [list(fams, "Your songs")];
-  const { groups, loose } = inFolders(fams, songFolders);
-  const out = [];
-  for (const { folder, families } of groups) {
-    if (filtered && !families.length) continue; // while finding, only folders with something in
-    // A folder: a header (a button that folds it, then Rename… and Delete…) over its songs.
-    const d = document.createElement("section");
-    d.className = "song-folder";
-    const open = filtered ? true : prefs.get(`songFolderOpen.${folder.id}`, true);
-    const head = document.createElement("div");
-    head.className = "song-folder-head";
-    const fold = document.createElement("button");
-    fold.type = "button";
-    fold.className = "song-folder-fold";
-    fold.setAttribute("aria-expanded", String(open));
-    const name = document.createElement("b");
-    name.textContent = folder.name;
-    const count = document.createElement("span");
-    count.className = "hint";
-    count.textContent = families.length ? familyCount(families) : "empty";
-    fold.append(name, count);
-    const ren = button("Rename…", () => renameSongFolder(folder), "ghost");
-    ren.setAttribute("aria-label", `Rename the folder ${folder.name}`);
-    const del = button("Delete…", () => deleteSongFolder(folder), "ghost danger");
-    del.setAttribute("aria-label", `Delete the folder ${folder.name}`);
-    head.append(fold, moreMenu(`More for the folder ${folder.name}`, ren, del));
-    const body = families.length ? list(families, `Songs in ${folder.name}`)
-      : Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in it yet. Pick it under Folder on a song." });
-    body.classList.add("song-folder-body");
-    body.hidden = !open;
-    fold.addEventListener("click", () => {
-      body.hidden = !body.hidden;
-      fold.setAttribute("aria-expanded", String(!body.hidden));
-      if (!filtered) prefs.set(`songFolderOpen.${folder.id}`, !body.hidden);
-    });
-    d.append(head, body);
-    out.push(d);
-  }
-  if (loose.length) {
-    const h = document.createElement("h3");
-    h.className = "item-group";
-    h.textContent = "Not in a folder";
-    out.push(h, list(loose, "Songs not in a folder"));
-  }
-  return out;
-}
-
-// Saves go one after another, each showing at once; a failed one reads the folders back afresh.
-function saveSongFolders(next, what) {
-  if (!foldersLoaded) { status("Couldn't load your folders, so they can't be changed just now. Try again in a moment", true, "songs"); return; }
-  songFolders = next;
-  folderSaving++;
-  drawSongRows();
-  folderChain = folderChain.then(async () => {
-    try {
-      await api("api/song-folders", { method: "PUT", json: next });
-      status(what, "saved", "songs");
-    } catch (e) {
-      status(`Couldn't save the folders: ${e.message}`, true, "songs");
-      try { songFolders = await api("api/song-folders"); } catch { foldersLoaded = false; }
-      drawSongRows();
-    } finally { folderSaving--; }
-  });
-}
-
-function askFolderName(title, current = "", except = null, folders = songFolders) {
-  for (;;) {
-    const name = prompt(title, current);
-    if (name === null) return null;
-    const problem = folderNameProblem(folders, name, except);
-    if (!problem) return name;
-    alert(problem);
-    current = name;
-  }
-}
-
-function newSongFolder(thenMove = null) {
-  const name = askFolderName("Name the new folder");
-  if (name === null) { drawSongRows(); return; }
-  const { folders, id } = addFolder(songFolders, name);
-  saveSongFolders(thenMove ? moveSong(folders, thenMove, id) : folders, thenMove ? `Moved into ${name.trim()}` : `Folder ${name.trim()} made`);
-}
-
-function renameSongFolder(folder) {
-  const name = askFolderName("Rename the folder", folder.name, folder.id);
-  if (name !== null && name.trim() !== folder.name) saveSongFolders(renameFolder(songFolders, folder.id, name), "Folder renamed");
-}
-
-function deleteSongFolder(folder) {
-  if (!confirm(`Delete the folder ${folder.name}? Its songs aren't deleted: they move to Not in a folder.`)) return;
-  saveSongFolders(deleteFolder(songFolders, folder.id), `Folder ${folder.name} deleted`);
-}
-
-// Which folder a song (and its edits) is in, picked on its card.
-function folderPicker(r) {
-  const sel = document.createElement("select");
-  sel.className = "song-folder-pick";
-  sel.setAttribute("aria-label", `Folder for ${r.name}`);
-  sel.title = "Which folder this song (and its edits) is in";
-  sel.add(new Option("No folder", ""));
-  for (const f of [...songFolders].sort((a, b) => a.name.localeCompare(b.name))) sel.add(new Option(f.name, f.id));
-  sel.add(new Option("New folder…", "__new__"));
-  sel.value = folderOf(songFolders, r.key);
-  sel.addEventListener("change", () => {
-    if (sel.value === "__new__") { newSongFolder(r.ref); return; }
-    const f = songFolders.find((x) => x.id === sel.value);
-    saveSongFolders(moveSong(songFolders, r.ref, sel.value), f ? `Moved ${r.name} into ${f.name}` : `${r.name} is in no folder now`);
-  });
-  return sel;
+  const box = document.createElement("div");
+  box.className = "show-list";
+  box.setAttribute("role", "list");
+  box.setAttribute("aria-label", "Your songs");
+  box.append(...fams.map((f) => {
+    const card = songFamilyCard(f);
+    card.dataset.folderKey = f.original.key;
+    return card;
+  }));
+  return [box];
 }
 
 function songFamilyCard(f) {
@@ -6600,7 +6503,6 @@ function songRow(r) {
   }
   actions.append(rm);
   withMore(actions);
-  if (songFolders.length && foldersLoaded) addToMore(actions, folderPicker(r));
   row.append(main, actions);
   // The length is read once the row is on screen; a redraw starts over with new rows.
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
@@ -6723,6 +6625,7 @@ async function asSubmit(e) {
   }
   asBusy(false);
   $("add-song-dialog").close();
+  placeNew("songs", songKey(ref));
   await refreshAudio().catch(() => {});
   renderSongsPage();
   if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
@@ -6746,171 +6649,342 @@ function stopSample() {
   for (const b of document.querySelectorAll("#samples-list [data-play]")) b.textContent = "▶";
 }
 
-// Folders for samples (songfolders.js), saved like song folders but on their own.
-// Folders for the Library's other lists (libfolders.js). Each list draws its rows as usual, then
-// foldLibraryList() sorts them into folders and gives each row a Folder picker. Rows say what they
-// are by data-key (or their own data-show-id and so on).
-const LIBRARY = {
-  shows: { noun: "show", many: "shows", newButton: "[data-show-new]", key: (row) => row.dataset.showId },
-  scenes: { noun: "scene", many: "scenes", newButton: "[data-scene-new]", key: (row) => row.dataset.sceneId },
-  playlists: { noun: "playlist", many: "playlists", newButton: "[data-playlist-new]", key: (row) => row.dataset.playlistId },
-  palettes: { noun: "palette", many: "palettes", newButton: "#btn-new-palette", key: (row) => row.dataset.key },
-  presets: { noun: "preset", many: "presets", newButton: "#btn-new-preset", key: (row) => row.dataset.key },
+// Folders you go into (folders.js), the same in every Library list. Each list draws its rows as
+// usual, each marked with data-folder-key; folderize() then keeps only what's in the open folder,
+// with the path to it and its folders first, and gives every row Move to… and dragging. While finding,
+// every match shows, each saying which folder it's in.
+const FOLDER_LISTS = {
+  songs: { noun: "song", many: "songs", top: "Songs", redraw: () => drawSongRows(),
+    stopFinding: () => { $("song-filter").value = ""; prefs.set("songShow", "all"); } },
+  samples: { noun: "sample", many: "samples", top: "Samples", redraw: () => drawSamples() },
+  shows: { noun: "show", many: "shows", top: "Shows", newButton: "[data-show-new]", redraw: () => showListCache && renderShowLists(showListCache) },
+  scenes: { noun: "scene", many: "scenes", top: "Scenes", newButton: "[data-scene-new]", redraw: () => sceneEd.drawLists?.() },
+  playlists: { noun: "playlist", many: "playlists", top: "Playlists", newButton: "[data-playlist-new]", redraw: () => renderPlaylistLists() },
+  palettes: { noun: "palette", many: "palettes", top: "Palettes", newButton: "#btn-new-palette", redraw: () => renderPalettes() },
+  presets: { noun: "preset", many: "presets", top: "Presets", newButton: "#btn-new-preset", redraw: () => renderPresetsTab() },
 };
-let libFolders = {}, libFoldersLoaded = false, libFolderChain = Promise.resolve();
+const folderData = Object.fromEntries(Object.keys(FOLDER_LISTS).map((k) => [k, []]));
+const folderLoaded = {}, folderSaving = {}, folderChains = {};
+const foldersOf = (kind) => folderData[kind] || [];
+const libFoldersOf = foldersOf;
+
+// Read from the server: songs and samples keep {source, path}, the rest keys. A save on its way wins
+// over what was read before it; a failed read keeps folders from being saved over.
+function foldersRead(kind, saved) {
+  if (folderSaving[kind]) return;
+  folderLoaded[kind] = Array.isArray(saved);
+  if (!folderLoaded[kind]) return;
+  folderData[kind] = kind === "songs" || kind === "samples" ? fromSongFolders(saved) : saved;
+}
 
 async function loadLibraryFolders() {
-  try { libFolders = await api("api/library-folders"); libFoldersLoaded = true; } catch { libFoldersLoaded = false; }
+  try {
+    const all = await api("api/library-folders");
+    for (const k of LIBRARY_KINDS) foldersRead(k, all[k] || []);
+  } catch { for (const k of LIBRARY_KINDS) folderLoaded[k] = false; }
   redrawLibraryLists();
 }
 
 function redrawLibraryLists() {
-  if (showListCache) renderShowLists(showListCache);
-  sceneEd.drawLists?.();
-  renderPlaylistLists();
-  renderPalettes();
-  renderPresetsTab();
+  for (const k of LIBRARY_KINDS) FOLDER_LISTS[k].redraw();
 }
-
-const libFoldersOf = (kind) => (Array.isArray(libFolders[kind]) ? libFolders[kind] : []);
 
 // Saves go one after another, each showing at once; a failed one reads the folders back afresh.
-function saveLibraryFolders(kind, next, what) {
-  if (!libFoldersLoaded) { status("Couldn't load your folders, so they can't be changed just now. Try again in a moment", true, "folders"); return; }
-  libFolders = { ...libFolders, [kind]: next };
-  redrawLibraryLists();
-  libFolderChain = libFolderChain.then(async () => {
+function saveFolders(kind, next, what) {
+  if (!folderLoaded[kind]) { status("Couldn't load your folders, so they can't be changed just now. Try again in a moment", true, "folders"); return false; }
+  folderData[kind] = next;
+  folderSaving[kind] = (folderSaving[kind] || 0) + 1;
+  FOLDER_LISTS[kind].redraw();
+  const send = kind === "songs" ? () => api("api/song-folders", { method: "PUT", json: toSongFolders(next) })
+    : kind === "samples" ? () => api("api/sample-folders", { method: "PUT", json: toSongFolders(next) })
+      : () => api("api/library-folders", { method: "PUT", json: { kind, folders: next } });
+  folderChains[kind] = (folderChains[kind] || Promise.resolve()).then(async () => {
     try {
-      await api("api/library-folders", { method: "PUT", json: { kind, folders: next } });
-      status(what, "saved", "folders");
+      await send();
+      if (what) status(what, "saved", "folders");
     } catch (e) {
       status(`Couldn't save the folders: ${e.message}`, true, "folders");
-      try { libFolders = await api("api/library-folders"); } catch { libFoldersLoaded = false; }
-      redrawLibraryLists();
-    }
+      folderSaving[kind]--;
+      try {
+        const back = kind === "songs" ? await api("api/song-folders") : kind === "samples" ? await api("api/sample-folders")
+          : (await api("api/library-folders"))[kind];
+        foldersRead(kind, back);
+      } catch { folderLoaded[kind] = false; }
+      folderSaving[kind]++;
+      FOLDER_LISTS[kind].redraw();
+    } finally { folderSaving[kind]--; }
   });
+  return true;
+}
+const saveLibraryFolders = saveFolders;
+
+// The folder open in each list ("" for the top), remembered across visits.
+function folderAt(kind) {
+  const id = prefs.get(`folderAt.${kind}`, "");
+  return id && foldersOf(kind).some((f) => f.id === id) ? id : "";
+}
+function goFolder(kind, id, { push = true } = {}) {
+  prefs.set(`folderAt.${kind}`, id || "");
+  // Each folder you go into is a step Back takes you out of.
+  if (push && shownPage === kind) {
+    try { history.pushState({ page: kind, n: (shownN += 1), folder: id || "" }, "", `#${kind}`); } catch { /* still works */ }
+  }
+  FOLDER_LISTS[kind].redraw();
+  $(`view-${kind}`)?.scrollIntoView?.({ block: "start" });
 }
 
-function newLibraryFolder(kind, thenMove = null) {
-  const name = askFolderName("Name the new folder", "", null, libFoldersOf(kind));
-  if (name === null) { redrawLibraryLists(); return; }
-  const { folders, id } = addLibraryFolder(libFoldersOf(kind), name);
-  saveLibraryFolders(kind, thenMove ? moveItem(folders, thenMove, id) : folders, thenMove ? `Moved into ${name.trim()}` : `Folder ${name.trim()} made`);
+// Something new made while a folder is open goes in it.
+function placeNew(kind, key) {
+  const at = folderAt(kind);
+  if (at && key && folderLoaded[kind]) saveFolders(kind, moveItems(foldersOf(kind), [key], at), null);
 }
 
-// A list's "+ New folder" button, beside its "+ New …" one.
+// A copy goes in the same folder as what it's a copy of.
+function placeBeside(kind, from, key) {
+  const id = folderOf(foldersOf(kind), from);
+  if (id && key && folderLoaded[kind]) saveFolders(kind, moveItems(foldersOf(kind), [key], id), null);
+}
+
+function askFolderName(title, current, place, folders, except = null) {
+  for (;;) {
+    const name = prompt(title, current);
+    if (name === null) return null;
+    const problem = nameProblem(folders, name, place, except);
+    if (!problem) return name.trim();
+    alert(problem);
+    current = name;
+  }
+}
+
+function newFolder(kind, thenMove = null) {
+  const at = folderAt(kind), folders = foldersOf(kind);
+  const name = askFolderName("Name the new folder", "", at, folders);
+  if (name === null) return;
+  const made = addFolder(folders, name, at);
+  saveFolders(kind, thenMove ? moveItems(made.folders, [thenMove], made.id) : made.folders,
+    thenMove ? `Moved into ${name}` : `Folder ${name} made`);
+}
+
+// The "+ New folder" button beside each list's "+ New …" one.
 function libraryFolderButtons() {
-  for (const [kind, lib] of Object.entries(LIBRARY)) {
+  for (const [kind, lib] of Object.entries(FOLDER_LISTS)) {
+    if (!lib.newButton) continue;
     for (const nb of document.querySelectorAll(lib.newButton)) {
       if (nb.nextElementSibling?.dataset.libFolder === kind) continue;
-      const b = button("+ New folder", () => newLibraryFolder(kind));
+      const b = button("+ New folder", () => newFolder(kind));
       b.type = "button";
       b.dataset.libFolder = kind;
-      b.title = `A folder to sort your ${lib.many} into; nothing moves or changes`;
       nb.after(" ", b);
     }
   }
-  for (const b of document.querySelectorAll("[data-lib-folder]")) b.disabled = !libFoldersLoaded;
+  for (const b of document.querySelectorAll("[data-lib-folder]")) {
+    const kind = b.dataset.libFolder;
+    b.disabled = !folderLoaded[kind];
+    b.title = `A folder to sort your ${FOLDER_LISTS[kind].many} into, inside the one you're in; nothing moves on disk`;
+  }
 }
 
-// Sorts a drawn list's rows into its folders, each a folding section with Rename… and Delete…, then
-// "Not in a folder"; and gives every row a Folder picker. With no folders the list is left as drawn.
-function foldLibraryList(kind, box) {
-  const lib = LIBRARY[kind], folders = libFoldersOf(kind);
-  if (!folders.length || !libFoldersLoaded) return;
-  const rows = [...box.querySelectorAll(".show-row")].filter((r) => lib.key(r));
-  for (const row of rows) {
-    const key = lib.key(row), name = row.querySelector(".show-name")?.textContent || key;
-    const sel = document.createElement("select");
-    sel.className = "song-folder-pick";
-    sel.setAttribute("aria-label", `Folder for ${name}`);
-    sel.title = `Which folder this ${lib.noun} is in`;
-    sel.add(new Option("No folder", ""));
-    for (const f of [...folders].sort((a, b) => a.name.localeCompare(b.name))) sel.add(new Option(f.name, f.id));
-    sel.add(new Option("New folder…", "__new__"));
-    sel.value = folderOfItem(folders, key);
-    sel.addEventListener("change", () => {
-      if (sel.value === "__new__") { newLibraryFolder(kind, key); return; }
-      const f = folders.find((x) => x.id === sel.value);
-      saveLibraryFolders(kind, moveItem(folders, key, sel.value), f ? `Moved ${name} into ${f.name}` : `${name} is in no folder now`);
-    });
-    const actions = row.querySelector(".show-actions");
-    if (actions) addToMore(actions, sel);
-  }
-  const byKey = new Map(rows.map((r) => [lib.key(r), r]));
-  const { groups } = groupByFolder([...byKey.keys()], folders);
-  const sections = groups.map(({ folder, keys }) => {
-    const d = document.createElement("section");
-    d.className = "song-folder";
-    const open = prefs.get(`libFolderOpen.${kind}.${folder.id}`, true);
-    const head = document.createElement("div");
-    head.className = "song-folder-head";
-    const fold = button("", () => {}, "song-folder-fold");
-    fold.type = "button";
-    fold.setAttribute("aria-expanded", String(open));
-    fold.append(Object.assign(document.createElement("b"), { textContent: folder.name }),
-      Object.assign(document.createElement("span"), { className: "hint", textContent: keys.length ? plural(keys.length, lib.noun) : "empty" }));
-    const ren = button("Rename…", () => {
-      const name = askFolderName("Rename the folder", folder.name, folder.id, folders);
-      if (name !== null && name.trim() !== folder.name) saveLibraryFolders(kind, renameLibraryFolder(folders, folder.id, name), "Folder renamed");
-    }, "ghost");
-    ren.setAttribute("aria-label", `Rename the folder ${folder.name}`);
-    const del = button("Delete…", () => {
-      if (!confirm(`Delete the folder ${folder.name}? Its ${lib.many} aren't deleted: they move to Not in a folder.`)) return;
-      saveLibraryFolders(kind, deleteLibraryFolder(folders, folder.id), `Folder ${folder.name} deleted`);
-    }, "ghost danger");
-    del.setAttribute("aria-label", `Delete the folder ${folder.name}`);
-    head.append(fold, moreMenu(`More for the folder ${folder.name}`, ren, del));
-    let body;
-    if (keys.length) {
-      body = document.createElement("div");
-      body.className = "show-list";
-      body.setAttribute("role", "list");
-      body.setAttribute("aria-label", `${lib.many[0].toUpperCase()}${lib.many.slice(1)} in ${folder.name}`);
-      body.append(...keys.map((k) => byKey.get(k)));
-    } else {
-      body = Object.assign(document.createElement("p"), { className: "hint", textContent: `Nothing in it yet. Pick it under Folder on a ${lib.noun}.` });
-    }
-    body.hidden = !open;
-    fold.addEventListener("click", () => {
-      body.hidden = !body.hidden;
-      fold.setAttribute("aria-expanded", String(!body.hidden));
-      prefs.set(`libFolderOpen.${kind}.${folder.id}`, !body.hidden);
-    });
-    d.append(head, body);
-    return d;
+const DRAG_ITEM = "application/x-haliday-item", DRAG_FOLDER = "application/x-haliday-folder";
+let dragging = null; // {kind, key} or {kind, folder}
+
+// Something dragged lands on a folder (or a part of the path): it moves there.
+function folderDrop(el, kind, to) {
+  el.addEventListener("dragover", (e) => {
+    if (!dragging || dragging.kind !== kind) return;
+    if (dragging.folder && (dragging.folder === to || moveProblem(foldersOf(kind), dragging.folder, to))) return;
+    e.preventDefault();
+    el.classList.add("drop-here");
   });
-  // What's left keeps its own layout (presets stay under their effects), under "Not in a folder".
+  el.addEventListener("dragleave", () => el.classList.remove("drop-here"));
+  el.addEventListener("drop", (e) => {
+    e.preventDefault();
+    el.classList.remove("drop-here");
+    if (!dragging || dragging.kind !== kind) return;
+    moveInto(kind, dragging, to);
+    dragging = null;
+  });
+}
+
+function moveInto(kind, what, to) {
+  const folders = foldersOf(kind), where = to ? folders.find((f) => f.id === to)?.name : "the top";
+  if (what.folder) {
+    const problem = moveProblem(folders, what.folder, to);
+    if (problem) { status(problem, "hint", "folders"); return; }
+    saveFolders(kind, moveFolder(folders, what.folder, to), `Moved the folder to ${where}`);
+  } else {
+    saveFolders(kind, moveItems(folders, [what.key], to), `Moved ${what.name || "it"} to ${where}`);
+  }
+}
+
+// Move to…: every folder in the list, indented, with where it is now marked.
+function moveToWindow(kind, what) {
+  const folders = foldersOf(kind), lib = FOLDER_LISTS[kind];
+  const here = what.folder ? (folders.find((f) => f.id === what.folder)?.parent || "") : folderOf(folders, what.key);
+  const blocked = what.folder ? within(folders, what.folder) : new Set();
+  const w = editWindow(`Move ${what.name} to`);
+  const list = document.createElement("div");
+  list.className = "move-list";
+  const choice = (label, to, depth = 0) => {
+    const b = button("", () => { w.dlg.close(); moveInto(kind, what, to); }, "move-choice");
+    b.style.paddingLeft = `${12 + depth * 18}px`;
+    b.append(Object.assign(document.createElement("span"), { className: to ? "folder-mark small" : "folder-mark small top" }),
+      Object.assign(document.createElement("span"), { textContent: label }));
+    if (to === here) { b.disabled = true; b.append(Object.assign(document.createElement("span"), { className: "hint", textContent: " (it's here)" })); }
+    else if (to && blocked.has(to)) b.disabled = true;
+    list.append(b);
+  };
+  choice(`${lib.top}, in no folder`, "");
+  for (const { folder, depth } of flatTree(folders)) choice(folder.name, folder.id, depth + 1);
+  const make = button("+ New folder…", () => {
+    w.dlg.close();
+    if (what.folder) { newFolder(kind); return; }
+    newFolder(kind, what.key);
+  }, "ghost");
+  make.title = "A new folder in the one you're in, with this moved into it";
+  w.body.append(list);
+  w.foot.append(make, Object.assign(document.createElement("span"), { className: "spacer" }), button("Cancel", () => w.dlg.close()));
+  w.dlg.showModal();
+  list.querySelector("button:not(:disabled)")?.focus();
+}
+
+function folderRow(kind, f, keys) {
+  const lib = FOLDER_LISTS[kind], folders = foldersOf(kind);
+  const row = document.createElement("div");
+  row.className = "show-row folder-row";
+  row.setAttribute("role", "listitem");
+  const open = button("", () => goFolder(kind, f.id), "folder-open");
+  const { folders: subs, items } = countIn(folders, f.id, keys);
+  const count = [items ? plural(items, lib.noun, lib.many) : "", subs ? plural(subs, "folder") : ""].filter(Boolean).join(" · ") || "Empty";
+  open.append(Object.assign(document.createElement("span"), { className: "folder-mark", ariaHidden: "true" }),
+    Object.assign(document.createElement("span"), { className: "folder-text" }));
+  open.lastChild.append(Object.assign(document.createElement("b"), { className: "show-name", textContent: f.name }),
+    Object.assign(document.createElement("span"), { className: "hint", textContent: count }));
+  open.setAttribute("aria-label", `Open the folder ${f.name}: ${count}`);
+  const ren = button("Rename…", () => {
+    const name = askFolderName("Rename the folder", f.name, f.parent || "", folders, f.id);
+    if (name !== null && name !== f.name) saveFolders(kind, renameFolder(folders, f.id, name), "Folder renamed");
+  }, "ghost");
+  const mv = button("Move to…", () => moveToWindow(kind, { folder: f.id, name: f.name }), "ghost");
+  const del = button("Delete…", () => {
+    const up = f.parent ? folders.find((x) => x.id === f.parent)?.name : null;
+    if (!confirm(`Delete the folder ${f.name}? Nothing in it is deleted: it moves up to ${up ? `the folder ${up}` : `the top of ${lib.top}`}.`)) return;
+    saveFolders(kind, deleteFolder(folders, f.id), `Folder ${f.name} deleted`);
+  }, "ghost danger");
+  const actions = document.createElement("div");
+  actions.className = "group show-actions";
+  actions.append(Object.assign(document.createElement("span"), { className: "folder-chev", ariaHidden: "true", textContent: "›" }),
+    moreMenu(`More for the folder ${f.name}`, ren, mv, del));
+  row.append(open, actions);
+  row.addEventListener("click", (e) => { if (!e.target.closest("button, .row-menu")) goFolder(kind, f.id); });
+  row.draggable = true;
+  row.addEventListener("dragstart", (e) => { dragging = { kind, folder: f.id, name: f.name }; e.dataTransfer.setData(DRAG_FOLDER, f.id); });
+  row.addEventListener("dragend", () => { dragging = null; });
+  folderDrop(row, kind, f.id);
+  return row;
+}
+
+// The path to the open folder: the list's name, then each folder down to this one.
+function folderPath(kind, at) {
+  const nav = document.createElement("nav");
+  nav.className = "folder-path";
+  nav.setAttribute("aria-label", "Folder");
+  const step = (label, id) => {
+    const b = button(label, () => goFolder(kind, id), "link-button");
+    folderDrop(b, kind, id);
+    return b;
+  };
+  nav.append(step(FOLDER_LISTS[kind].top, ""));
+  const path = pathTo(foldersOf(kind), at);
+  path.forEach((f, k) => {
+    nav.append(Object.assign(document.createElement("span"), { className: "hint", ariaHidden: "true", textContent: "›" }));
+    nav.append(k === path.length - 1 ? Object.assign(document.createElement("b"), { textContent: f.name }) : step(f.name, f.id));
+  });
+  return nav;
+}
+
+// The Library's own lists mark their rows their own way (data-show-id and so on).
+const LIB_KEY = { shows: (r) => r.dataset.showId, scenes: (r) => r.dataset.sceneId, playlists: (r) => r.dataset.playlistId,
+  palettes: (r) => r.dataset.key, presets: (r) => r.dataset.key };
+function foldLibraryList(kind, box) {
+  for (const r of box.querySelectorAll(".show-row")) {
+    const k = LIB_KEY[kind](r);
+    if (k) r.dataset.folderKey = k;
+  }
+  folderize(kind, box);
+}
+
+// box: the list's own box, drawn; rows marked data-folder-key. finding: every match shows, flat.
+function folderize(kind, box, { finding = false } = {}) {
+  const lib = FOLDER_LISTS[kind], folders = foldersOf(kind), loaded = folderLoaded[kind];
+  const rows = [...box.querySelectorAll("[data-folder-key]")];
+  const keys = rows.map((r) => r.dataset.folderKey);
+  for (const row of rows) {
+    const key = row.dataset.folderKey, name = row.querySelector(".show-name")?.textContent || key;
+    const actions = row.querySelector(".show-actions");
+    if (loaded && actions) {
+      const mv = button("Move to…", () => moveToWindow(kind, { key, name }), "ghost");
+      mv.setAttribute("aria-label", `Move ${name} to a folder`);
+      addToMore(actions, mv);
+    }
+    if (loaded && !finding) {
+      row.draggable = true;
+      row.addEventListener("dragstart", (e) => {
+        if (e.target !== row) return;
+        dragging = { kind, key, name };
+        e.dataTransfer.setData(DRAG_ITEM, key);
+      });
+      row.addEventListener("dragend", () => { dragging = null; });
+    }
+  }
+  if (!loaded || (!folders.length && !folderAt(kind))) return;
+  if (finding) {
+    for (const row of rows) {
+      const id = folderOf(folders, row.dataset.folderKey);
+      if (!id) continue;
+      const go = button(`in ${pathText(folders, row.dataset.folderKey)}`, () => { lib.stopFinding?.(); goFolder(kind, id); }, "link-button folder-where");
+      go.title = "Go to this folder";
+      row.querySelector(".show-main")?.append(go);
+    }
+    return;
+  }
+  const at = folderAt(kind);
+  for (const row of rows) if (folderOf(folders, row.dataset.folderKey) !== at) row.remove();
+  // Lists inside the box (a preset's effect, say) left empty go, with their headings.
   for (const list of box.querySelectorAll(".show-list")) {
-    if (list.children.length) continue;
+    if (list.children.length || list === box) continue;
     const h = list.previousElementSibling;
     if (h?.matches("h3.item-group")) h.remove();
     list.remove();
   }
-  const left = rows.some((r) => !r.closest(".song-folder") && r.isConnected && box.contains(r));
-  box.removeAttribute("role");
-  const loose = document.createElement("h3");
-  loose.className = "item-group";
-  loose.textContent = "Not in a folder";
-  box.prepend(...sections, ...(left ? [loose] : []));
-  if (left && box.matches(".show-list")) {
-    // A flat list's loose rows sit straight in the box: gather them under the heading.
-    const rest = document.createElement("div");
-    rest.className = "show-list";
-    rest.setAttribute("role", "list");
-    rest.setAttribute("aria-label", `${lib.many[0].toUpperCase()}${lib.many.slice(1)} not in a folder`);
-    rest.append(...[...box.children].filter((c) => c.matches(".show-row")));
-    box.append(rest);
+  for (const p of box.querySelectorAll(":scope > p.hint")) p.remove();
+  const subs = childrenOf(folders, at);
+  const head = [];
+  if (at) head.push(folderPath(kind, at));
+  if (subs.length) {
+    const list = document.createElement("div");
+    list.className = "show-list folder-list";
+    list.setAttribute("role", "list");
+    list.setAttribute("aria-label", "Folders");
+    list.append(...subs.map((f) => folderRow(kind, f, keys)));
+    head.push(list);
   }
+  const left = rows.some((r) => r.isConnected);
+  if (!left && at) {
+    head.push(Object.assign(document.createElement("p"), { className: "hint",
+      textContent: subs.length ? "" : `Nothing in here yet. Use ⋯ → Move to… on a ${lib.noun}, or drag one onto this folder's name above.` }));
+  }
+  if (head.length) box.removeAttribute("role");
+  box.prepend(...head);
 }
 
-let sampleFolders = [], sampleFoldersLoaded = false, sampleFolderChain = Promise.resolve(), samplesShown = [];
+let samplesShown = [];
 
 async function renderSamplesPage() {
   let samples;
   try {
-    [samples, sampleFolders] = await Promise.all([api("api/samples"),
-      api("api/sample-folders").then((f) => { sampleFoldersLoaded = true; return f; }).catch(() => { sampleFoldersLoaded = false; return sampleFolders; })]);
+    let saved;
+    [samples, saved] = await Promise.all([api("api/samples"), api("api/sample-folders").catch(() => null)]);
+    foldersRead("samples", saved);
   } catch (e) { status(`Couldn't list your samples: ${e.message}`, true, "samples"); return; }
   samplesShown = samples;
   drawSamples();
@@ -6918,88 +6992,18 @@ async function renderSamplesPage() {
 
 function drawSamples() {
   const box = $("samples-list"), samples = samplesShown;
-  $("btn-new-sample-folder").disabled = !sampleFoldersLoaded;
-  if (!samples.length && !sampleFolders.length) {
+  $("btn-new-sample-folder").disabled = !folderLoaded.samples;
+  if (!samples.length && !foldersOf("samples").length) {
     box.innerHTML = `<p class="hint">No samples yet. Press <b>+ Add a sample</b>, or make one from a song in the Music editor.</p>`;
     return;
   }
-  const list = (items, label) => {
-    const l = document.createElement("div");
-    l.className = "show-list";
-    l.setAttribute("role", "list");
-    l.setAttribute("aria-label", label);
-    l.append(...items.map(sampleRow));
-    return l;
-  };
-  if (!sampleFolders.length) { box.replaceChildren(list(samples, "Your samples")); return; }
-  const { groups, loose } = itemsInFolders(samples, sampleFolders);
-  const out = [];
-  for (const { folder, items } of groups) {
-    // A folder: a header that folds it, with Rename… and Delete…, over its samples.
-    const d = document.createElement("section");
-    d.className = "song-folder";
-    const open = prefs.get(`sampleFolderOpen.${folder.id}`, true);
-    const head = document.createElement("div");
-    head.className = "song-folder-head";
-    const fold = document.createElement("button");
-    fold.type = "button";
-    fold.className = "song-folder-fold";
-    fold.setAttribute("aria-expanded", String(open));
-    fold.append(Object.assign(document.createElement("b"), { textContent: folder.name }),
-      Object.assign(document.createElement("span"), { className: "hint", textContent: items.length ? plural(items.length, "sample") : "empty" }));
-    const ren = button("Rename…", () => {
-      const name = askFolderName("Rename the folder", folder.name, folder.id, sampleFolders);
-      if (name !== null && name.trim() !== folder.name) saveSampleFolders(renameFolder(sampleFolders, folder.id, name), "Folder renamed");
-    }, "ghost");
-    ren.setAttribute("aria-label", `Rename the folder ${folder.name}`);
-    const del = button("Delete…", () => {
-      if (!confirm(`Delete the folder ${folder.name}? Its samples aren't deleted: they move to Not in a folder.`)) return;
-      saveSampleFolders(deleteFolder(sampleFolders, folder.id), `Folder ${folder.name} deleted`);
-    }, "ghost danger");
-    del.setAttribute("aria-label", `Delete the folder ${folder.name}`);
-    head.append(fold, moreMenu(`More for the folder ${folder.name}`, ren, del));
-    const body = items.length ? list(items, `Samples in ${folder.name}`)
-      : Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in it yet. Pick it under Folder on a sample." });
-    body.hidden = !open;
-    fold.addEventListener("click", () => {
-      body.hidden = !body.hidden;
-      fold.setAttribute("aria-expanded", String(!body.hidden));
-      prefs.set(`sampleFolderOpen.${folder.id}`, !body.hidden);
-    });
-    d.append(head, body);
-    out.push(d);
-  }
-  if (loose.length) {
-    const h = document.createElement("h3");
-    h.className = "item-group";
-    h.textContent = "Not in a folder";
-    out.push(h, list(loose, "Samples not in a folder"));
-  }
-  box.replaceChildren(...out);
-}
-
-// Saves go one after another, each showing at once; a failed one reads the folders back afresh.
-function saveSampleFolders(next, what) {
-  if (!sampleFoldersLoaded) { status("Couldn't load your folders, so they can't be changed just now. Try again in a moment", true, "samples"); return; }
-  sampleFolders = next;
-  drawSamples();
-  sampleFolderChain = sampleFolderChain.then(async () => {
-    try {
-      await api("api/sample-folders", { method: "PUT", json: next });
-      status(what, "saved", "samples");
-    } catch (e) {
-      status(`Couldn't save the folders: ${e.message}`, true, "samples");
-      try { sampleFolders = await api("api/sample-folders"); } catch { sampleFoldersLoaded = false; }
-      drawSamples();
-    }
-  });
-}
-
-function newSampleFolder(thenMove = null) {
-  const name = askFolderName("Name the new folder", "", null, sampleFolders);
-  if (name === null) { drawSamples(); return; }
-  const { folders, id } = addFolder(sampleFolders, name);
-  saveSampleFolders(thenMove ? moveSong(folders, thenMove, id) : folders, thenMove ? `Moved into ${name.trim()}` : `Folder ${name.trim()} made`);
+  const list = document.createElement("div");
+  list.className = "show-list";
+  list.setAttribute("role", "list");
+  list.setAttribute("aria-label", "Your samples");
+  list.append(...samples.map(sampleRow));
+  box.replaceChildren(list);
+  folderize("samples", box);
 }
 
 function sampleRow(s) {
@@ -7050,22 +7054,7 @@ function sampleRow(s) {
   dup.setAttribute("aria-label", `Duplicate ${name}`);
   actions.append(play, ren, dup, del);
   withMore(actions);
-  if (sampleFolders.length && sampleFoldersLoaded) {
-    const sel = document.createElement("select");
-    sel.className = "song-folder-pick";
-    sel.setAttribute("aria-label", `Folder for ${name}`);
-    sel.title = "Which folder this sample is in";
-    sel.add(new Option("No folder", ""));
-    for (const f of [...sampleFolders].sort((a, b) => a.name.localeCompare(b.name))) sel.add(new Option(f.name, f.id));
-    sel.add(new Option("New folder…", "__new__"));
-    sel.value = folderOf(sampleFolders, songKey(ref));
-    sel.addEventListener("change", () => {
-      if (sel.value === "__new__") { newSampleFolder(ref); return; }
-      const f = sampleFolders.find((x) => x.id === sel.value);
-      saveSampleFolders(moveSong(sampleFolders, ref, sel.value), f ? `Moved ${name} into ${f.name}` : `${name} is in no folder now`);
-    });
-    addToMore(actions, sel);
-  }
+  row.dataset.folderKey = songKey(ref);
   row.append(main, actions);
   return row;
 }
@@ -7075,7 +7064,8 @@ async function addSamples(files) {
   for (const f of files) {
     if (have.has(f.name.toLowerCase()) && !confirm(`There's already a sample called ${f.name}. Replace it?`)) continue;
     try {
-      await uploadSong(api, f, f.name, (done) => { $("sample-progress").textContent = `Adding ${f.name}… ${Math.round(done * 100)}%`; }, { sample: true });
+      const ref = await uploadSong(api, f, f.name, (done) => { $("sample-progress").textContent = `Adding ${f.name}… ${Math.round(done * 100)}%`; }, { sample: true });
+      if (ref?.path) placeNew("samples", songKey(ref));
       status(`Added ${f.name} to your samples`, "saved", "samples");
     } catch (e) { status(`Couldn't add ${f.name}: ${e.message}`, true, "samples"); }
   }
@@ -7350,6 +7340,7 @@ async function duplicateShow(r) {
   const name = copyName(r.name, showListCache.map((s) => s.name));
   try {
     const { id } = await api(`api/shows/${encodeURIComponent(r.id)}/duplicate`, { method: "POST", json: { name } });
+    placeBeside("shows", r.id, id);
     status(`Made ${name}`, "saved", "shows");
     await refreshShows();
     focusRow(id, "open");
@@ -7612,6 +7603,7 @@ async function save({ stage = null } = {}) {
   if (app.sceneId) return saveScene();
   if (!app.showId) {
     const { id } = await api("api/shows", { method: "POST", json: { name: app.show.name } });
+    placeNew("shows", id);
     app.showId = id;
     prefs.set("lastShow", id);
   }
@@ -9028,6 +9020,12 @@ async function pageFromHistory(e) {
     undoing = true;
     history.go(shownN - n);
   };
+  // Back or Forward between folders of the list you're on.
+  if (page === shownPage && page in FOLDER_LISTS && !navigating) {
+    shownN = n;
+    goFolder(page, e.state?.folder || "", { push: false });
+    return;
+  }
   if (!isPage(page) || navigating || document.querySelector("dialog[open]")) {
     refuse();
     // Back while the AI is generating is how you'd stop it on a phone: it's Cancel.
@@ -9080,9 +9078,9 @@ function wire() {
   }
   $("btn-add-song").addEventListener("click", openAddSong);
   $("btn-add-sample").addEventListener("click", () => $("sample-upload").click());
-  $("btn-new-sample-folder").addEventListener("click", () => newSampleFolder());
+  $("btn-new-sample-folder").addEventListener("click", () => newFolder("samples"));
   $("sample-upload").addEventListener("change", (e) => { const files = [...e.target.files]; e.target.value = ""; if (files.length) addSamples(files); });
-  $("btn-new-folder").addEventListener("click", () => newSongFolder());
+  $("btn-new-folder").addEventListener("click", () => newFolder("songs"));
   $("as-form").addEventListener("submit", asSubmit);
   $("as-back").addEventListener("click", () => asStep(1));
   $("as-name").addEventListener("input", () => { addSong.named = true; });

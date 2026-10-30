@@ -94,8 +94,9 @@ export const HELP = {
         "<b>All</b>, <b>Originals</b>, <b>Edits</b> and <b>Drafts</b> narrow the list, and <b>Find</b> searches names, folders and shows.",
       ] },
       { id: "folders", title: "Folders", tips: [
-        "<b>+ New folder</b> makes a folder to sort songs into. The files stay where they are.",
-        "Pick a folder under <b>Folder</b> on a song to move it there. Click a folder's name to fold it away.",
+        "<b>+ New folder</b> makes a folder inside the one you're in. The files stay where they are.",
+        "Press a folder to go into it; the path at the top takes you back up.",
+        "<b>⋯ → Move to…</b> on a song moves it, or drag it onto a folder.",
       ] },
       { id: "remove", title: "Archiving and deleting", guide: ["build-a-show.md", "archiving-and-deleting"], tips: [
         "<b>Remove…</b> says where a song is used, then archives it (kept, out of the way) or deletes it for good.",

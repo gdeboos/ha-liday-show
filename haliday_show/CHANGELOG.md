@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.262
+
+- Folders are now real folders you go into, in every Library list (shows, scenes, playlists, songs, samples, palettes and presets). A list shows its folders first, then what's in no folder; press a folder to see only what's in it. The path at the top (**Songs › Rock › Arctic Monkeys**) and the browser's **Back** take you back up.
+- Folders can hold folders, up to 8 deep.
+- Move things with **⋯ → Move to…**, or drag a row onto a folder (or onto a name in the path to move it up). Folders move the same way.
+- **+ New folder** makes one inside the folder you're in, and anything you add or make there (a new show, an uploaded song) goes in it. A **Duplicate** stays in the same folder as the original.
+- Deleting a folder deletes nothing in it: what it held moves up a level.
+- **Find** on **Songs** searches every folder, and each match says which folder it's in.
+- Your folders carry over as they are.
+
 ## 0.2.261
 
 - Every Library list now has **Rename…**, **Duplicate** and remove (**Remove…** or **Delete…**) under each row's **⋯**. New ones: renaming scenes, playlists, samples, palettes and presets from the list; duplicating your own songs, older edits and samples (a copy of the file called "… copy").

@@ -1219,7 +1219,7 @@ async def test_song_folders_round_trip_and_validation(client):
                 [{"id": "a", "name": "A", "songs": []}, {"id": "b", "name": "a", "songs": []}],
                 [{"id": "a", "name": "A", "songs": []}, {"id": "a", "name": "B", "songs": []}],
                 [{"id": "a", "name": "", "songs": []}], [{"id": "a", "name": "A", "songs": [{"path": "x"}]}],
-                [{"id": f"f{k}", "name": f"F{k}", "songs": []} for k in range(101)]):
+                [{"id": f"f{k}", "name": f"F{k}", "songs": []} for k in range(201)]):
         assert (await client.put("/api/song-folders", json=bad)).status == 400
 
 
@@ -1414,3 +1414,24 @@ async def test_duplicating_songs_and_samples_and_renaming_a_sample(client, tmp_p
     assert (await (await client.get("/api/sample-folders")).json())[0]["songs"][0]["path"] == "haliday_show/Samples/Ho ho ho.wav"
     assert (await client.post("/api/songs/duplicate", json={"path": "haliday_show/carol.mp3", "sample": True})).status == 400
     assert (await client.post("/api/songs/rename", json={"path": "haliday_show/Samples/ho copy.wav", "name": "x"})).status == 400
+
+
+async def test_folders_inside_folders(client):
+    tree = [{"id": "rock", "name": "Rock", "songs": []},
+            {"id": "am", "name": "Arctic Monkeys", "parent": "rock", "songs": []},
+            {"id": "am2", "name": "Arctic Monkeys", "songs": []}]  # the same name in another place is fine
+    assert (await client.put("/api/song-folders", json=tree)).status == 200
+    assert (await (await client.get("/api/song-folders")).json())[1]["parent"] == "rock"
+    for bad in ([{"id": "a", "name": "A", "parent": "nope", "songs": []}],
+                [{"id": "a", "name": "A", "parent": "b", "songs": []}, {"id": "b", "name": "B", "parent": "a", "songs": []}],
+                [{"id": "a", "name": "A", "parent": "a", "songs": []}],
+                [{"id": "r", "name": "R", "songs": []}, {"id": "a", "name": "A", "parent": "r", "songs": []},
+                 {"id": "b", "name": "a", "parent": "r", "songs": []}],
+                [{"id": f"d{k}", "name": "D", **({"parent": f"d{k - 1}"} if k else {}), "songs": []} for k in range(9)]):
+        assert (await client.put("/api/song-folders", json=bad)).status == 400
+    lib = {"kind": "shows", "folders": [{"id": "xmas", "name": "Xmas", "items": ["a"]},
+                                        {"id": "eve", "name": "Eve", "parent": "xmas", "items": ["b"]}]}
+    assert (await client.put("/api/library-folders", json=lib)).status == 200
+    assert (await (await client.get("/api/library-folders")).json())["shows"][1] == {"id": "eve", "name": "Eve", "items": ["b"], "parent": "xmas"}
+    lib["folders"][0]["parent"] = "eve"
+    assert (await client.put("/api/library-folders", json=lib)).status == 400

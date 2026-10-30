@@ -1347,8 +1347,37 @@ async def put_palettes(request):
 # song folders -------------------------------------------------------------------
 # Folders you make in Your songs: names only, each holding the songs (by where they are) put in it.
 # The files stay where they are, so shows and speakers still find them.
-MAX_FOLDERS, MAX_FOLDER_SONGS = 100, 2000
+MAX_FOLDERS, MAX_FOLDER_SONGS, MAX_FOLDER_DEPTH = 200, 2000, 8
 _FOLDER_ID = re.compile(r"^[a-z0-9-]{1,40}$")
+
+
+def _folder_head(f, ids: set, names: set) -> tuple[str, str, str | None]:
+    """A folder's id, tidied name and parent (another folder's id, or None at the top). Ids are the
+    list's own; names only need to differ from the other folders in the same place."""
+    fid, name = str(f.get("id", "")), " ".join(str(f.get("name", "")).split())[:60]
+    parent = f.get("parent")
+    if parent is not None and (not isinstance(parent, str) or not _FOLDER_ID.match(parent) or parent == fid):
+        raise web.HTTPBadRequest(text="a folder's parent is another folder")
+    if not _FOLDER_ID.match(fid) or fid in ids or not name or (parent, name.lower()) in names:
+        raise web.HTTPBadRequest(text="each folder needs its own id, and a name of its own where it is")
+    ids.add(fid)
+    names.add((parent, name.lower()))
+    return fid, name, parent
+
+
+def _check_tree(folders: list[dict]):
+    """Folders inside folders: every parent is in the list, nothing is inside itself, and they go at
+    most MAX_FOLDER_DEPTH deep."""
+    parent = {f["id"]: f.get("parent") for f in folders}
+    for fid in parent:
+        seen, at = set(), fid
+        while at is not None:
+            if at in seen or len(seen) >= MAX_FOLDER_DEPTH:
+                raise web.HTTPBadRequest(text=f"folders go inside each other at most {MAX_FOLDER_DEPTH} deep, and never inside themselves")
+            seen.add(at)
+            if at not in parent:
+                raise web.HTTPBadRequest(text="a folder's parent is another folder")
+            at = parent[at]
 
 
 def _clean_song_folders(body) -> list[dict]:
@@ -1358,13 +1387,10 @@ def _clean_song_folders(body) -> list[dict]:
     for f in body:
         if not isinstance(f, dict):
             raise web.HTTPBadRequest(text="each folder needs an id, a name and its songs")
-        fid, name = str(f.get("id", "")), " ".join(str(f.get("name", "")).split())[:60]
         songs = f.get("songs")
-        if not _FOLDER_ID.match(fid) or fid in ids or not name or name.lower() in names \
-                or not isinstance(songs, list) or len(songs) > MAX_FOLDER_SONGS:
+        if not isinstance(songs, list) or len(songs) > MAX_FOLDER_SONGS:
             raise web.HTTPBadRequest(text="each folder needs its own id and name, and a list of songs")
-        ids.add(fid)
-        names.add(name.lower())
+        fid, name, parent = _folder_head(f, ids, names)
         kept = []
         for s in songs:
             src, path = (s.get("source"), s.get("path")) if isinstance(s, dict) else (None, None)
@@ -1374,7 +1400,8 @@ def _clean_song_folders(body) -> list[dict]:
                 continue
             placed.add((src, path))
             kept.append({"source": src, "path": path})
-        out.append({"id": fid, "name": name, "songs": kept})
+        out.append({"id": fid, "name": name, "songs": kept, **({"parent": parent} if parent else {})})
+    _check_tree(out)
     return out
 
 
@@ -1395,18 +1422,16 @@ def _clean_library_folders(body) -> tuple[str, list[dict]]:
     for f in folders:
         if not isinstance(f, dict):
             raise web.HTTPBadRequest(text="each folder needs an id, a name and what's in it")
-        fid, name = str(f.get("id", "")), " ".join(str(f.get("name", "")).split())[:60]
         items = f.get("items")
-        if not _FOLDER_ID.match(fid) or fid in ids or not name or name.lower() in names \
-                or not isinstance(items, list) or len(items) > MAX_FOLDER_ITEMS:
+        if not isinstance(items, list) or len(items) > MAX_FOLDER_ITEMS:
             raise web.HTTPBadRequest(text="each folder needs its own id and name, and a list of what's in it")
         if not all(isinstance(k, str) and 0 < len(k) <= 200 for k in items):
             raise web.HTTPBadRequest(text="what's in a folder is listed by name or id")
-        ids.add(fid)
-        names.add(name.lower())
+        fid, name, parent = _folder_head(f, ids, names)
         kept = [k for k in dict.fromkeys(items) if k not in placed]  # in one folder at most
         placed.update(kept)
-        out.append({"id": fid, "name": name, "items": kept})
+        out.append({"id": fid, "name": name, "items": kept, **({"parent": parent} if parent else {})})
+    _check_tree(out)
     return kind, out
 
 
