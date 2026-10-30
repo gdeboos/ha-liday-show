@@ -12,7 +12,7 @@ export const HELP = {
     title: "Your shows", guide: ["build-a-show.md", "shows"],
     topics: [
       { id: "list", title: "Your shows", tips: [
-        "<b>Open</b> a show to edit it. Nothing in a show changes until you open it.",
+        "<b>Edit</b> a show to change it. Nothing in a show changes until you open it.",
         "<b>+ New show</b> asks for a name and a song, and with an AI set up, whether to start empty or generate it.",
         "<b>Duplicate</b> makes a copy to try ideas on, and <b>Rename</b> changes its name.",
         "<b>Remove…</b> archives a show (out of the way, kept) or deletes it for good.",
@@ -223,7 +223,7 @@ export const HELP = {
     topics: [
       { id: "list", title: "Your playlists", tips: [
         "A playlist plays your shows one after another, then starts again from the top until you press <b>Stop</b>, even with this page closed.",
-        "<b>Open</b> one to put shows in it and set when it plays, or press <b>+ New playlist</b>.",
+        "<b>Edit</b> one to put shows in it and set when it plays, or press <b>+ New playlist</b>.",
       ] },
     ],
   },

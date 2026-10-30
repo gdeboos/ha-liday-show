@@ -19,9 +19,9 @@ you've turned it on. HA-liday Show opens on **Library**:
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
 page you last had open. Below, "the House tab" and so on mean that page.
 
-The four editors open from the Library: **Open** on a show takes you to the **Show editor** (the timeline,
+The four editors open from the Library: **Edit** on a show takes you to the **Show editor** (the timeline,
 previews and effect settings), **Edit** on a scene to the **Scene editor** (see [Scenes](play-it.md#scenes)),
-**Edit** on a song to the **Music editor** (cutting, shortening, joining and detecting) and **Open** on a
+**Edit** on a song to the **Music editor** (cutting, shortening, joining and detecting) and **Edit** on a
 playlist to the **Playlist editor** (dragging shows into order and setting when they play). **+ New
 show**, **+ New scene** and **+ New playlist** open the new one in its editor too. In an editor,
 **← All shows** (or songs, scenes or playlists) goes back to that Library page and puts it away.
@@ -80,7 +80,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
+4. **Library → Shows**: press **+ New show** (or **Edit** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
 5. Play it by itself: on the [Schedule](play-it.md#schedule) tab press **+ Add to schedule** and pick it (or a

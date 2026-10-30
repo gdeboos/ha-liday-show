@@ -34,9 +34,9 @@ you've turned it on. HA-liday Show opens on **Library**:
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
 page you last had open. Below, "the House tab" and so on mean that page.
 
-The four editors open from the Library: **Open** on a show takes you to the **Show editor** (the timeline,
+The four editors open from the Library: **Edit** on a show takes you to the **Show editor** (the timeline,
 previews and effect settings), **Edit** on a scene to the **Scene editor** (see [Scenes](#scenes)),
-**Edit** on a song to the **Music editor** (cutting, shortening, joining and detecting) and **Open** on a
+**Edit** on a song to the **Music editor** (cutting, shortening, joining and detecting) and **Edit** on a
 playlist to the **Playlist editor** (dragging shows into order and setting when they play). **+ New
 show**, **+ New scene** and **+ New playlist** open the new one in its editor too. In an editor,
 **← All shows** (or songs, scenes or playlists) goes back to that Library page and puts it away.
@@ -95,7 +95,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Library → Shows**: press **+ New show** (or **Open** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
+4. **Library → Shows**: press **+ New show** (or **Edit** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
 5. Play it by itself: on the [Schedule](#schedule) tab press **+ Add to schedule** and pick it (or a
@@ -507,7 +507,7 @@ what's in no folder is listed after them, under **Not in a folder** (presets the
 effect). **Rename…** and **Delete…** are under each folder's **⋯**; deleting one leaves what was in it, just in no
 folder. Folders only sort the list, and they're saved with your settings, so they're in **Export…** too.
 
-- **Open** a show to edit it, or press **+ New show** to start one. A short window asks for:
+- **Edit** a show to change it, or press **+ New show** to start one. A short window asks for:
   1. a **Name**, a **Song** (or **+ Add a song…**, or **No song, lights only** with its length) and a
      **Palette** (see [The show's palette](#the-shows-palette)). The name fills in from the song until
      you type your own, and each show needs its own name.
@@ -518,7 +518,7 @@ folder. Folders only sort the list, and they're saved with your settings, so the
      made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
 
   **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.
-- Each show's row has **Open**, and **⋯** for the rest: **Duplicate**, **Rename**, **Share**, its
+- Each show's row has **Edit**, and **⋯** for the rest: **Duplicate**, **Rename**, **Share**, its
   **Folder** (once you have folders) and, last, **Remove…**. Rows elsewhere in the Library work the same
   way: their main button, then **⋯**.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
@@ -614,7 +614,7 @@ Each song you added is one card, marked **Original**. Inside it, under **Edits o
   song. Edits made before drafts existed (named "… (edit)") are found by their name; **Edit** on one
   starts a new draft.
 - **✎ Draft · no file yet** (amber, dashed): a draft that hasn't made a song file, so shows can't use
-  it yet. **Open**, **Rename…** or **Delete…** it.
+  it yet. **Edit**, **Rename…** or **Delete…** it.
 
 **All**, **Originals**, **Edits** and **Drafts**, beside **Find**, show just those, and the count says
 how many songs, edits and drafts there are.
@@ -739,7 +739,7 @@ version" and a "Party mix": press **Edit** on the song again to start another.
 
 **Library → Songs** lists each song's drafts inside its card (see [Songs](#songs)): as **✎ Draft · no
 file yet** until a song file has been made from it, then with that file as **✂ Edit · song file**.
-**Open** (or **Edit draft**) carries on where you left off (**Undo** starts afresh each visit),
+**Edit** (or **Edit draft**) carries on where you left off (**Undo** starts afresh each visit),
 **Rename…** renames it, and **Delete…** deletes the draft (not the song, or any file it made).
 
 **Make song file** (Ctrl+S) writes the draft as a WAV in `/media/haliday_show/`, named after the draft,
@@ -1316,7 +1316,7 @@ When you've changed a show (or your lights) and press **▶ Play** with **Lights
 lights ready first, which can take a little while on a phone or for a long show. The button says what
 it's doing meanwhile (**Preparing…**, then **Sending…** with how far it's got) and turns to
 **⏸ Pause** once the show starts. A show you open again with nothing changed since starts straight
-away: HA-liday Show remembers which lights it was last got ready for. Likewise **Open** in **Library → Shows** says **Opening…** while the show's song
+away: HA-liday Show remembers which lights it was last got ready for. Likewise **Edit** in **Library → Shows** says **Opening…** while the show's song
 arrives.
 
 Whenever something saves (a show, your lights, palettes, presets, playlists or the house photo), the
@@ -1430,9 +1430,9 @@ through your computer's firewall.
 ### Playlists
 
 To play several shows back to back, open **Library → Playlists**. Each playlist says how many shows it has, how
-long it takes to play through once and when it plays, with **Open**, **▶ Play**, and under **⋯**, **Duplicate** (a copy called "… copy", not on the
+long it takes to play through once and when it plays, with **Edit**, **▶ Play**, and under **⋯**, **Duplicate** (a copy called "… copy", not on the
 schedule) and **Delete…**. Press
-**+ New playlist**, or **Open** one, to edit it:
+**+ New playlist**, or **Edit** one:
 
 - **Building blocks**, at the left to start with, go between your shows (see below). Drag one in like a show.
 - **Your shows**, below them, lists every show. Drag one by its card into **Running order** and let
