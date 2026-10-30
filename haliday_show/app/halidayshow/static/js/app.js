@@ -4261,8 +4261,8 @@ function playlistRow(r) {
   main.append(name, details, next);
   const actions = document.createElement("div");
   actions.className = "group show-actions";
-  const open = button("Open", () => openPlaylistEditor(r.id), "primary");
-  open.setAttribute("aria-label", `Open ${r.name}`);
+  const open = button("Edit", () => openPlaylistEditor(r.id), "primary");
+  open.setAttribute("aria-label", `Edit ${r.name}`);
   const play = button("▶ Play", () => { const pl = playlists.find((x) => x.id === r.id); if (pl) togglePlaylist(pl); }, "ghost playlist-play");
   play.dataset.empty = r.playable ? "0" : "1";
   if (!r.playable) play.title = "Add a saved show first";
@@ -5695,8 +5695,8 @@ function showRow(r) {
   main.append(head, details);
   const actions = document.createElement("div");
   actions.className = "group show-actions";
-  const open = button("Open", () => openFromList(r.id, open), "primary");
-  open.setAttribute("aria-label", `Open ${r.name}`);
+  const open = button("Edit", () => openFromList(r.id, open), "primary");
+  open.setAttribute("aria-label", `Edit ${r.name}`);
   const dup = button("Duplicate", () => duplicateShow(r), "ghost");
   dup.setAttribute("aria-label", `Duplicate ${r.name}`);
   const ren = button("Rename", () => renameInPlace(row, head, r), "ghost");
@@ -6181,8 +6181,8 @@ function draftList(r, drafts = null) {
     }
     const spacer = document.createElement("span");
     spacer.className = "spacer";
-    const open = button("Open", () => openDraft(d.id), "");
-    open.setAttribute("aria-label", `Open the draft ${d.name}`);
+    const open = button("Edit", () => openDraft(d.id), "");
+    open.setAttribute("aria-label", `Edit the draft ${d.name}`);
     const rename = button("Rename…", () => renameDraft(d), "ghost");
     rename.setAttribute("aria-label", `Rename the draft ${d.name}`);
     const del = button("Delete…", () => deleteDraft(d), "ghost danger");
@@ -6435,8 +6435,8 @@ function draftKid(d) {
   const details = document.createElement("div");
   details.className = "hint";
   details.textContent = `${d.length ? `${fmtTime(d.length, false)} · ` : ""}shows can use it once you press Make song file`;
-  const open = button("Open", () => openDraft(d.id), "primary");
-  open.setAttribute("aria-label", `Open the draft ${d.name}`);
+  const open = button("Edit", () => openDraft(d.id), "primary");
+  open.setAttribute("aria-label", `Edit the draft ${d.name}`);
   const rename = button("Rename…", () => renameDraft(d), "ghost");
   rename.setAttribute("aria-label", `Rename the draft ${d.name}`);
   const del = button("Delete…", () => deleteDraft(d), "ghost danger");

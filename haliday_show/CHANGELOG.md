@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.259
+
+- Buttons that take you into an editor now all say **Edit**: on shows, playlists and song drafts (they said **Open**), as on scenes and songs.
+
 ## 0.2.258
 
 - Scenes and playlists can be copied: **Duplicate** is under each one's **⋯** in **Library → Scenes** and **Library → Playlists**. The copy is called "… copy", plays straight away and isn't on the schedule.

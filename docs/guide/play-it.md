@@ -17,7 +17,7 @@ When you've changed a show (or your lights) and press **▶ Play** with **Lights
 lights ready first, which can take a little while on a phone or for a long show. The button says what
 it's doing meanwhile (**Preparing…**, then **Sending…** with how far it's got) and turns to
 **⏸ Pause** once the show starts. A show you open again with nothing changed since starts straight
-away: HA-liday Show remembers which lights it was last got ready for. Likewise **Open** in **Library → Shows** says **Opening…** while the show's song
+away: HA-liday Show remembers which lights it was last got ready for. Likewise **Edit** in **Library → Shows** says **Opening…** while the show's song
 arrives.
 
 Whenever something saves (a show, your lights, palettes, presets, playlists or the house photo), the
@@ -131,9 +131,9 @@ through your computer's firewall.
 ### Playlists
 
 To play several shows back to back, open **Library → Playlists**. Each playlist says how many shows it has, how
-long it takes to play through once and when it plays, with **Open**, **▶ Play**, and under **⋯**, **Duplicate** (a copy called "… copy", not on the
+long it takes to play through once and when it plays, with **Edit**, **▶ Play**, and under **⋯**, **Duplicate** (a copy called "… copy", not on the
 schedule) and **Delete…**. Press
-**+ New playlist**, or **Open** one, to edit it:
+**+ New playlist**, or **Edit** one:
 
 - **Building blocks**, at the left to start with, go between your shows (see below). Drag one in like a show.
 - **Your shows**, below them, lists every show. Drag one by its card into **Running order** and let
