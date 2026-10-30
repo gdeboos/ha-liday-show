@@ -1262,3 +1262,11 @@ body.editing-scene :is([data-panel=song], [data-panel=beats], [data-panel=ai], #
 .ask-dialog input[type="text"] { width: 100%; }
 button.danger-fill { background: var(--danger); border-color: var(--danger); color: var(--panel); font-weight: 600; }
 button.danger-fill:hover { filter: brightness(1.08); }
+
+/* New show's song step: folders to go into above the songs, and the palettes with their colours. */
+.ns-find input { width: 100%; }
+.ns-folders { max-height: none; overflow: visible; }
+button.song-row.ns-folder { width: 100%; text-align: left; background: var(--panel); font: inherit; color: inherit; cursor: pointer; }
+button.song-row.ns-folder:hover { border-color: var(--accent); }
+.ns-folder .folder-text { flex: 1; }
+.song-row .palette-bar { flex: none; width: 96px; height: 16px; }

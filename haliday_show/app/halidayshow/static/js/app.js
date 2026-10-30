@@ -8357,9 +8357,10 @@ function generateDialog() {
   dlg.showModal();
 }
 
-// New show: step 1 is its name and song, step 2 (with an AI set up) how it starts: empty, or made by
-// the AI. Nothing is made until Create show, so Cancel leaves everything as it was.
-const newShow = { step: 1, song: "", start: "empty", named: false, taken: [], gen: null };
+// New show, in steps: its song (found by folder, as in Library → Songs), its name, its colours, then
+// (with an AI set up) how it starts. Nothing is made until Create show, so Cancel leaves everything as it was.
+const newShow = { step: 1, song: "", start: "empty", named: false, taken: [], gen: null, at: "", folders: [], homeOf: new Map() };
+const NS_STEPS = ["song", "name", "colour", "start"];
 
 function nsRadioRows(box, name, rows, picked, onPick) {
   const hadFocus = box.contains(document.activeElement);
@@ -8385,21 +8386,78 @@ function nsRadioRows(box, name, rows, picked, onPick) {
       why.textContent = r.why;
       text.append(why);
     }
-    row.append(radio, text);
+    if (r.picture) row.append(radio, r.picture, text);
+    else row.append(radio, text);
     return row;
   }));
   // Redrawing would drop the keyboard focus of someone arrowing through the list.
   if (hadFocus) box.querySelector("input:checked")?.focus();
 }
 
+// Which folder each song is in: an edit sits with the song it was made from.
+async function nsLoadFolders() {
+  try {
+    const [list, shows, drafts, saved] = await Promise.all([api("api/songs"), api("api/shows"), api("api/drafts").catch(() => []),
+      api("api/song-folders").catch(() => null)]);
+    foldersRead("songs", saved);
+    newShow.folders = foldersOf("songs");
+    newShow.homeOf = new Map();
+    for (const f of songFamilies(songRows(list.songs, shows), drafts)) {
+      for (const k of [f.original.key, ...f.edits.map((e) => e.row.key)]) newShow.homeOf.set(k, f.original.key);
+    }
+  } catch { newShow.folders = []; }
+}
+
 function nsSongs() {
-  const rows = [...$("audio-select").options].map((o) => {
-    const ref = o.value ? JSON.parse(o.value) : null;
-    return { value: o.value, label: ref ? songLabel(ref) : "No song, lights only",
-      detail: ref ? `${ref.source === "media" ? "Media" : "Uploaded"}: ${ref.path}` : "Set how long the show runs" };
-  });
-  nsRadioRows($("ns-songs"), "ns-song", rows, newShow.song, (v) => { newShow.song = v; nsSongPicked(); });
+  const folders = newShow.folders, find = $("ns-find").value.trim().toLowerCase();
+  const at = folders.some((f) => f.id === newShow.at) ? newShow.at : "";
+  const where = (ref) => folderOf(folders, newShow.homeOf.get(songKey(ref)) || songKey(ref));
+  const refs = [...$("audio-select").options].filter((o) => o.value).map((o) => JSON.parse(o.value));
+  const row = (ref) => {
+    const id = where(ref);
+    return { value: JSON.stringify(ref), label: songLabel(ref),
+      detail: find && id ? `in ${pathTo(folders, id).map((f) => f.name).join(" › ")}` : ref.path.split("/").pop() };
+  };
+  let rows;
+  if (find) {
+    const words = find.split(/\s+/);
+    rows = refs.filter((r) => words.every((w) => `${songLabel(r)} ${r.path}`.toLowerCase().includes(w))).map(row);
+  } else {
+    rows = refs.filter((r) => where(r) === at).map(row);
+    if (!at) rows.unshift({ value: "", label: "No song, lights only", detail: "Set how long the show runs" });
+  }
+  // The path, and the folders in this one.
+  const path = $("ns-song-path");
+  path.hidden = !!find || !at;
+  path.replaceChildren();
+  if (at && !find) {
+    const step = (label, id) => button(label, () => { newShow.at = id; nsSongs(); }, "link-button");
+    path.append(step("Songs", ""));
+    const trail = pathTo(folders, at);
+    trail.forEach((f, k) => {
+      path.append(Object.assign(document.createElement("span"), { className: "hint", textContent: "›" }));
+      path.append(k === trail.length - 1 ? Object.assign(document.createElement("b"), { textContent: f.name }) : step(f.name, f.id));
+    });
+  }
+  const keys = refs.map((r) => newShow.homeOf.get(songKey(r)) || songKey(r));
+  $("ns-folders").replaceChildren(...(find ? [] : childrenOf(folders, at)).map((f) => {
+    const { items, folders: subs } = countIn(folders, f.id, [...new Set(keys)]);
+    const b = button("", () => { newShow.at = f.id; nsSongs(); $("ns-folders").querySelector("button")?.focus(); }, "song-row ns-folder");
+    b.append(Object.assign(document.createElement("span"), { className: "folder-mark small" }),
+      Object.assign(document.createElement("span"), { className: "folder-text" }),
+      Object.assign(document.createElement("span"), { className: "folder-chev", textContent: "›" }));
+    b.children[1].append(Object.assign(document.createElement("b"), { textContent: f.name }),
+      Object.assign(document.createElement("span"), { className: "hint",
+        textContent: [items ? plural(items, "song") : "", subs ? plural(subs, "folder") : ""].filter(Boolean).join(" · ") || "Empty" }));
+    return b;
+  }));
+  $("ns-folders").hidden = !$("ns-folders").children.length;
+  if (!rows.length) {
+    $("ns-songs").replaceChildren(Object.assign(document.createElement("p"), { className: "hint",
+      textContent: find ? "No songs match that." : "No songs in this folder." }));
+  } else nsRadioRows($("ns-songs"), "ns-song", rows, newShow.song, (v) => { newShow.song = v; nsSongPicked(); });
   $("ns-length-wrap").hidden = newShow.song !== "";
+  $("ns-picked").textContent = newShow.song ? `Picked: ${songLabel(JSON.parse(newShow.song))}` : "Picked: no song, lights only";
 }
 
 // Until you type a name of your own, the show is named after its song.
@@ -8409,6 +8467,12 @@ function nsSongPicked() {
     $("ns-name").value = freeName(ref ? songLabel(ref) : "Untitled show", newShow.taken);
   }
   nsSongs();
+}
+
+function nsPalettes() {
+  const rows = [{ value: "", label: "None", detail: "Each effect keeps its own colours" },
+    ...allPalettes().map((p) => ({ value: p.name, label: p.name, detail: `${p.colors.length} colours`, picture: paletteBar(p.colors) }))];
+  nsRadioRows($("ns-palettes"), "ns-palette", rows, newShow.palette, (v) => { newShow.palette = v; nsPalettes(); });
 }
 
 function nsStarts() {
@@ -8421,29 +8485,35 @@ function nsStarts() {
 
 function nsStep(step) {
   newShow.step = step;
-  $("ns-step-1").hidden = step !== 1;
-  $("ns-step-2").hidden = step !== 2;
-  $("ns-back").hidden = step !== 2;
+  const steps = aiVia ? NS_STEPS : NS_STEPS.slice(0, 3), name = steps[step - 1];
+  $("ns-step-1").hidden = name !== "song";
+  $("ns-step-name").hidden = name !== "name";
+  $("ns-step-colour").hidden = name !== "colour";
+  $("ns-step-2").hidden = name !== "start";
+  $("ns-back").hidden = step === 1;
   $("ns-upload-wrap").hidden = step !== 1;
-  if (step === 1) {
-    $("ns-next").textContent = aiVia ? "Next →" : "Create show";
-    $("ns-step-1-label").textContent = aiVia ? "Step 1 of 2: name and song" : "Name and song";
-    $("ns-name").focus();
-  } else {
-    nsStarts();
-    $("ns-starts").querySelector("input:checked")?.focus();
+  const label = { song: "song", name: "name", colour: "colours", start: "how should it start?" };
+  for (const [id, n] of [["ns-step-1-label", "song"], ["ns-step-name-label", "name"], ["ns-step-colour-label", "colour"]]) {
+    $(id).textContent = `Step ${steps.indexOf(n) + 1} of ${steps.length}: ${label[n]}`;
   }
+  $("ns-step-2").querySelector(".ns-step").textContent = `Step ${steps.length} of ${steps.length}: ${label.start}`;
+  $("ns-next").textContent = step < steps.length ? "Next →" : "Create show";
+  if (name === "song") ($("ns-songs").querySelector("input:checked") || $("ns-find")).focus();
+  if (name === "name") { $("ns-name").focus(); $("ns-name").select(); }
+  if (name === "colour") { nsPalettes(); $("ns-palettes").querySelector("input:checked")?.focus(); }
+  if (name === "start") { nsStarts(); $("ns-starts").querySelector("input:checked")?.focus(); }
 }
 
 async function openNewShow() {
   if (!(await confirmDiscard())) return;
   await refreshAudio().catch(() => {});
   newShow.taken = (await api("api/shows").catch(() => [])).map((s) => s.name);
-  Object.assign(newShow, { song: "", start: "empty", named: false, gen: generateControls({ paletteFrom: () => newShow.palette }) });
+  await nsLoadFolders();
+  Object.assign(newShow, { song: "", start: "empty", named: false, at: folderAt("songs"),
+    gen: generateControls({ paletteFrom: () => newShow.palette }) });
   $("ns-gen").replaceChildren(...newShow.gen.nodes);
   newShow.palette = (seasonalPalette() || allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0]).name;
-  $("ns-palette").replaceChildren(palettePicker(newShow.palette, (name) => { newShow.palette = name; },
-    { title: "The new show's palette", none: PALETTE_NONE }));
+  $("ns-find").value = "";
   nsSongPicked();
   $("ns-length").value = 60;
   $("new-show-dialog").showModal();
@@ -8452,18 +8522,18 @@ async function openNewShow() {
 
 async function nsSubmit(e) {
   e.preventDefault();
-  if (newShow.step === 1) {
-    const name = $("ns-name").value.trim();
-    if (!name) { $("ns-name").focus(); return; }
-    if (newShow.taken.some((n) => n.toLowerCase() === name.toLowerCase())) {
-      status(`There's already a show called ${name}. Give this one its own name`, "hint");
+  const steps = aiVia ? NS_STEPS : NS_STEPS.slice(0, 3), name = steps[newShow.step - 1];
+  if (name === "name") {
+    const typed = $("ns-name").value.trim();
+    if (!typed) { $("ns-name-note").textContent = "Give the show a name"; $("ns-name").focus(); return; }
+    if (newShow.taken.some((n) => n.toLowerCase() === typed.toLowerCase())) {
+      $("ns-name-note").textContent = `There's already a show called ${typed}. Give this one its own name.`;
       $("ns-name").select();
       return;
     }
-    // With no AI there's only Start empty, so there's nothing to choose in step 2.
-    if (aiVia) { nsStep(2); return; }
-    newShow.start = "empty";
   }
+  if (newShow.step < steps.length) { nsStep(newShow.step + 1); return; }
+  if (!aiVia) newShow.start = "empty";
   const show = { name: $("ns-name").value.trim(), audio: newShow.song ? JSON.parse(newShow.song) : null,
     length: Math.max(1, Number($("ns-length").value) || 60), start: newShow.start,
     palette: allPalettes().find((p) => p.name === newShow.palette) || null,
@@ -9125,8 +9195,10 @@ function wire() {
   for (const b of document.querySelectorAll("[data-im=cancel]")) b.addEventListener("click", () => $("import-dialog").close());
   $("im-add-song").addEventListener("click", () => openAddSong({ onAdded: (v) => { if (v) imp.song = v; imSongs(); } }));
   $("ns-form").addEventListener("submit", nsSubmit);
-  $("ns-back").addEventListener("click", () => nsStep(1));
-  $("ns-name").addEventListener("input", () => { newShow.named = true; });
+  $("ns-back").addEventListener("click", () => nsStep(Math.max(1, newShow.step - 1)));
+  $("ns-find").addEventListener("input", () => nsSongs());
+  $("ns-find").addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
+  $("ns-name").addEventListener("input", () => { newShow.named = true; $("ns-name-note").textContent = ""; });
   for (const b of document.querySelectorAll("[data-ns=cancel]")) b.addEventListener("click", () => $("new-show-dialog").close());
   $("ns-upload-wrap").addEventListener("click", () => openAddSong({ onAdded: (v) => { if (v) newShow.song = v; nsSongPicked(); } }));
   $("autosave").checked = prefs.get("autosave", true);

@@ -95,7 +95,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Library → Shows**: press **+ New show** (or **Edit** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
+4. **Library → Shows**: press **+ New show** (or **Edit** one of yours), pick or upload a song, name it and pick its colours, then press **Create show** (with an AI set up, a last step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
 5. Play it by itself: on the [Schedule](#schedule) tab press **+ Add to schedule** and pick it (or a
@@ -523,14 +523,16 @@ Every Library list (**Shows**, **Scenes**, **Playlists**, **Songs**, **Samples**
 Folders only sort the lists: files stay where they are on disk, so shows and speakers still find their
 songs. They're saved with your settings, so they're in **Export…** too.
 
-- **Edit** a show to change it, or press **+ New show** to start one. A short window asks for:
-  1. a **Name**, a **Song** (or **+ Add a song…**, or **No song, lights only** with its length) and a
-     **Palette** (see [The show's palette](#the-shows-palette)). The name fills in from the song until
-     you type your own, and each show needs its own name.
-  2. with an AI set up, how it starts: **Start empty**, or **Generate with AI**, which needs a song
+- **Edit** a show to change it, or press **+ New show** to start one. A short window takes you through:
+  1. the **song**: go into your song folders as in **Library → Songs**, or type in **Find a song in any
+     folder**. Pick **No song, lights only** (at the top) to set a length instead, or press
+     **+ Add a song…**.
+  2. its **name**, which fills in from the song until you type your own. Each show needs its own name.
+  3. its **colours**: a palette, shown as its colours, or **None** (see [The show's palette](#the-shows-palette)).
+  4. with an AI set up, how it starts: **Start empty**, or **Generate with AI**, which needs a song
      and at least one light and shows the same choices as **✨ Generate** (in the show's palette: **Style**,
      **Build up**, **Longest effect** and, with lights traced on the house photo, the sweep across the
-     house). Without an AI, the show starts empty straight after step 1. For a quick draft
+     house). Without an AI, there's no step 4 and the show starts empty. For a quick draft
      made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
 
   **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.264
+
+- **+ New show** now goes step by step: **song**, then **name**, then **colours**, then (with an AI set up) how it starts. **← Back** goes to the step before.
+- Picking the song uses your song folders: go into a folder as in **Library → Songs**, or use **Find a song in any folder**. It opens in the folder you last had open in **Songs**.
+- The colours step shows every palette as its colours, so you can see what you're picking.
+
 ## 0.2.263
 
 - No more browser pop-ups. Naming a new folder, renaming things, and every "Are you sure?" question now use HA-liday Show's own windows, in its own colours. A name that's already taken says so under the box, rather than in a separate pop-up.

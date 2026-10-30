@@ -303,17 +303,27 @@
       <div class="effect-dialog-head"><h3 id="ns-title">New show</h3>
         <button type="button" class="ghost" data-ns="cancel" aria-label="Close">✕</button></div>
       <div class="form-dialog-body" id="ns-step-1">
-        <p class="hint ns-step" id="ns-step-1-label">Step 1 of 2: name and song</p>
-        <label class="field">Name <input id="ns-name" type="text" maxlength="80" autocomplete="off"></label>
-        <div class="field"><span id="ns-song-label">Song</span>
-          <div id="ns-songs" class="song-list" role="radiogroup" aria-labelledby="ns-song-label"></div></div>
+        <p class="hint ns-step" id="ns-step-1-label">Step 1 of 4: song</p>
+        <div class="ns-find"><input id="ns-find" type="search" placeholder="Find a song in any folder" autocomplete="off" aria-label="Find a song"></div>
+        <nav id="ns-song-path" class="folder-path" aria-label="Song folder" hidden></nav>
+        <div id="ns-folders" class="song-list ns-folders" role="list" aria-label="Song folders"></div>
+        <div id="ns-songs" class="song-list" role="radiogroup" aria-label="Song"></div>
+        <p class="hint" id="ns-picked" aria-live="polite"></p>
         <label id="ns-length-wrap" class="field">Length with no song
           <span><input id="ns-length" type="number" step="1" value="60"> s</span></label>
-        <div class="field"><span>Palette</span> <span id="ns-palette"></span>
-          <span class="hint">Effects you add take these colours, and the effect chooser shows them. You can change it in <b>Show settings</b>.</span></div>
+      </div>
+      <div class="form-dialog-body" id="ns-step-name" hidden>
+        <p class="hint ns-step" id="ns-step-name-label">Step 2 of 4: name</p>
+        <label class="field">Name <input id="ns-name" type="text" maxlength="80" autocomplete="off">
+          <span class="hint" id="ns-name-note">Named after its song until you type your own.</span></label>
+      </div>
+      <div class="form-dialog-body" id="ns-step-colour" hidden>
+        <p class="hint ns-step" id="ns-step-colour-label">Step 3 of 4: colours</p>
+        <p class="hint">Effects you add take these colours, and the effect chooser shows them. You can change it later in <b>Show settings</b>.</p>
+        <div id="ns-palettes" class="song-list" role="radiogroup" aria-label="Palette"></div>
       </div>
       <div class="form-dialog-body" id="ns-step-2" hidden>
-        <p class="hint ns-step">Step 2 of 2: how should it start?</p>
+        <p class="hint ns-step">Step 4 of 4: how should it start?</p>
         <div id="ns-starts" class="song-list" role="radiogroup" aria-label="How the show starts"></div>
         <div id="ns-gen" class="ns-gen"></div>
       </div>
