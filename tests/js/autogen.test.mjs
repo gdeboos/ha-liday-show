@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { generateShow, barGrid, suggestLooks, tier } from "../../haliday_show/app/halidayshow/static/js/autogen.js";
+import { applyGeneratedPart, clearPart, generateShow, barGrid, partOf, suggestLooks, tier } from "../../haliday_show/app/halidayshow/static/js/autogen.js";
 import { EFFECTS, HOUSE } from "../../haliday_show/app/halidayshow/static/js/effects.js";
 import { applyGenerated, splitLong } from "../../haliday_show/app/halidayshow/static/js/autogen.js";
 
@@ -264,4 +264,29 @@ test("generated shows crossfade at section changes, fade lights in and out, and 
   const again = generateShow({ ...analysis, sections: [...analysis.sections.slice(0, 3), { start: 90, end: 120, label: "Chorus", energy: 0.9 }] },
     lights, ["#ff0000"], { build: true, house: true });
   assert.ok(again.house.some((c) => c.effect === "shockwave" && c.start === 90));
+});
+
+test("generating a part leaves everything outside it alone", () => {
+  const clip = (start, end, effect = "solid") => ({ effect, start, end });
+  // A clip across the part is cut at its edges; one inside goes; ones outside stay.
+  assert.deepEqual(clearPart([clip(0, 4), clip(5, 6), clip(9, 12), clip(2, 11)], 3, 10).map((c) => [c.start, c.end]),
+    [[0, 3], [10, 12], [2, 3], [10, 11]]);
+  assert.deepEqual(partOf([clip(0, 4), clip(5, 6), clip(9.98, 12)], 3, 10).map((c) => [c.start, c.end]), [[3, 4], [5, 6]]);
+
+  const show = { tracks: [
+    { device: "a", clips: [clip(0, 20, "old")] },
+    { device: "b", clips: [clip(0, 20, "old")] },
+    { device: "@house", clips: [clip(0, 20, "old")] },
+  ] };
+  const result = { clips: { a: [clip(0, 8, "new"), clip(8, 20, "new2")], b: [clip(0, 20, "new")] }, house: [] };
+  applyGeneratedPart(show, result, { start: 5, end: 10, tracks: new Set([0]) });
+  assert.deepEqual(show.tracks[0].clips.map((c) => [c.effect, c.start, c.end]),
+    [["old", 0, 5], ["new", 5, 8], ["new2", 8, 10], ["old", 10, 20]]);
+  // Track b wasn't picked, so it's as it was.
+  assert.deepEqual(show.tracks[1].clips.map((c) => [c.effect, c.start, c.end]), [["old", 0, 20]]);
+  // The House lane is only changed with sweeps turned on.
+  applyGeneratedPart(show, result, { start: 5, end: 10, tracks: new Set([2]) });
+  assert.equal(show.tracks[2].clips.length, 1);
+  applyGeneratedPart(show, result, { start: 5, end: 10, tracks: new Set([2]), house: true });
+  assert.deepEqual(show.tracks[2].clips.map((c) => [c.start, c.end]), [[0, 5], [10, 20]]);
 });
