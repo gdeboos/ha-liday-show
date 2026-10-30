@@ -119,7 +119,8 @@ The title, words and picture only show to people with your code.
 
 - **+ Add shows or playlists…** opens a window of your saved shows, with **Playlists** beside them. Go into
   your folders as in the Library, or type in **Find in any folder**, tick everything you want and press
-  **Add**. Archived shows aren't offered, nor are playlists
+  **Add**. Shows in progress are left out unless you tick **Show in-progress shows too**, and visitors
+  don't see them until you mark them finished. Archived shows aren't offered, nor are playlists
   made only of archived shows, and visitors never see them. A show you archive later disappears from
   the public page straight away, and from inside any playlist visitors pick. The tab still lists it,
   marked as archived, so it comes back if you restore it. A show whose lights' frames were never made

@@ -170,6 +170,7 @@ class Storage:
                         "duration": show.get("duration", 0),
                         "song": audio.get("path") if isinstance(audio, dict) else None,
                         "baked": (self.shows_dir / f"{p.stem}.gshow").exists(),
+                        "in_progress": show.get("in_progress") is True,
                         "modified": int(p.stat().st_mtime)})
         return out
 
@@ -302,6 +303,8 @@ class Storage:
             return None
         new_id = self.new_show_id(name)
         show["name"] = name
+        # A copy is something to work on, so it starts in progress.
+        show["in_progress"] = True
         _write_atomic(self.shows_dir / f"{new_id}.json", json.dumps(show, indent=1).encode())
         baked = self.load_baked(show_id)
         if baked is not None:
@@ -314,6 +317,19 @@ class Storage:
         if show is None:
             return False
         show["name"] = name
+        _write_atomic(self.shows_dir / f"{show_id}.json", json.dumps(show, indent=1).encode())
+        return True
+
+    def mark_show(self, show_id: str, in_progress: bool) -> bool:
+        """In progress or finished. Shows saved before this existed have no mark and count as finished.
+        Like a rename, the bake stays."""
+        show = self.load_show(show_id)
+        if show is None:
+            return False
+        if in_progress:
+            show["in_progress"] = True
+        else:
+            show.pop("in_progress", None)
         _write_atomic(self.shows_dir / f"{show_id}.json", json.dumps(show, indent=1).encode())
         return True
 

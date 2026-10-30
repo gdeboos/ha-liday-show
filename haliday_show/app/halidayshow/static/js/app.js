@@ -4395,7 +4395,8 @@ function showCard(show, id) {
   details.className = "hint";
   details.textContent = shelved ? "Archived, so skipped until it's restored"
     : !show ? "Skipped"
-      : [songName(show.song) || "No song", fmtLength(show.duration), show.baked ? "" : "not saved yet, so skipped"].filter(Boolean).join(" · ");
+      : [songName(show.song) || "No song", fmtLength(show.duration), show.baked ? "" : "not saved yet, so skipped",
+        show.in_progress ? "in progress" : ""].filter(Boolean).join(" · ");
   li.classList.toggle("unplayable", !show?.baked);
   text.append(name, details);
   return li;
@@ -5224,11 +5225,13 @@ function renderPublicItems() {
     const archived = it.kind === "show" && !(it.id in publicNames.show) && it.id in publicNames.archived;
     const missing = !archived && !(it.id in publicNames[it.kind]);
     const empty = it.kind === "playlist" && publicNames.empty.has(it.id);
+    const wip = it.kind === "show" && !archived && !missing && publicNames.wip?.has(it.id);
     name.textContent = publicNames[it.kind][it.id] ?? publicNames.archived[it.id] ?? it.id;
     const hint = document.createElement("div");
     hint.className = "hint";
     hint.textContent = archived ? "Archived, so visitors don't see it. Restore it under Library → Shows to show it again."
       : missing ? `Not found or not saved yet, so visitors don't see it.`
+        : wip ? "In progress, so visitors don't see it. Mark it finished in its ⋯ menu under Library → Shows."
         : empty ? "Its shows are all archived or not saved yet, so visitors don't see it."
         : itemText(it, view.today);
     const dates = document.createElement("div");
@@ -5276,11 +5279,13 @@ function publicOffer() {
   const out = { show: [], playlist: [] };
   for (const kind of ["show", "playlist"]) {
     for (const [id, name] of Object.entries(publicNames[kind] || {})) {
-      if (!added.has(`${kind}:${id}`) && !(kind === "playlist" && publicNames.empty.has(id))) out[kind].push({ id, name });
+      if (!added.has(`${kind}:${id}`) && !(kind === "playlist" && publicNames.empty.has(id))) {
+        out[kind].push(kind === "show" && publicNames.wip?.has(id) ? { id, name, wip: true } : { id, name });
+      }
     }
   }
   for (const [id, name] of Object.entries(publicNames.unready || {})) {
-    if (!added.has(`show:${id}`)) out.show.push({ id, name, why: "Open it and save it to offer it" });
+    if (!added.has(`show:${id}`)) out.show.push({ id, name, why: "Open it and save it to offer it", wip: publicNames.wip?.has(id) });
   }
   return out;
 }
@@ -5291,7 +5296,7 @@ function pickForPublic() {
   const kinds = ["show", "playlist"].filter((k) => offer[k].length);
   if (!kinds.length) return;
   const LIST = { show: { folders: "shows", one: "show", top: "Shows" }, playlist: { folders: "playlists", one: "playlist", top: "Playlists" } };
-  const st = { kind: kinds[0], at: { show: "", playlist: "" }, picked: new Set() };
+  const st = { kind: kinds[0], at: { show: "", playlist: "" }, picked: new Set(), wip: false };
   const { dlg, body, foot } = editWindow("Add to the public page");
   dlg.classList.add("pick-dialog");
   const chips = Object.assign(document.createElement("div"), { className: "day-chips" });
@@ -5307,6 +5312,12 @@ function pickForPublic() {
   const find = Object.assign(document.createElement("input"), { type: "search", placeholder: "Find in any folder", autocomplete: "off" });
   find.setAttribute("aria-label", "Find");
   find.addEventListener("input", () => draw());
+  // Shows in progress are left out unless asked for: visitors won't see them until they're finished.
+  const wipBox = Object.assign(document.createElement("input"), { type: "checkbox" });
+  wipBox.addEventListener("change", () => { st.wip = wipBox.checked; draw(); });
+  const wipLabel = document.createElement("label");
+  wipLabel.append(wipBox, " Show in-progress shows too");
+  wipLabel.hidden = !offer.show.some((x) => x.wip);
   const nav = Object.assign(document.createElement("nav"), { className: "folder-path" });
   nav.setAttribute("aria-label", "Folder");
   const subs = Object.assign(document.createElement("div"), { className: "song-list ns-folders" });
@@ -5314,7 +5325,7 @@ function pickForPublic() {
   list.setAttribute("role", "group");
   const findBox = Object.assign(document.createElement("div"), { className: "ns-find" });
   findBox.append(find);
-  body.append(...(kinds.length > 1 ? [chips] : []), findBox, nav, subs, list);
+  body.append(...(kinds.length > 1 ? [chips] : []), findBox, wipLabel, nav, subs, list);
   const count = Object.assign(document.createElement("span"), { className: "hint" });
   count.setAttribute("aria-live", "polite");
   const add = button("Add", () => {
@@ -5329,7 +5340,8 @@ function pickForPublic() {
   const go = (id) => { st.at[st.kind] = id; find.value = ""; draw(); subs.querySelector("button")?.focus() || list.querySelector("input")?.focus(); };
   function draw() {
     const k = st.kind, L = LIST[k];
-    const byId = new Map(offer[k].map((x) => [x.id, x]));
+    const byId = new Map(offer[k].filter((x) => st.wip || !x.wip).map((x) => [x.id, x]));
+    wipLabel.hidden = k !== "show" || !offer.show.some((x) => x.wip);
     const folders = foldersOf(L.folders);
     const view = browse({ folders, keys: [...byId.keys()], at: st.at[k], find: find.value, nameOf: (id) => byId.get(id).name });
     st.at[k] = view.at;
@@ -5347,6 +5359,7 @@ function pickForPublic() {
         text.append(Object.assign(document.createElement("b"), { textContent: x.name }));
         if (where) text.append(Object.assign(document.createElement("span"), { className: "hint", textContent: `in ${where}` }));
         if (x.why) text.append(Object.assign(document.createElement("span"), { className: "hint why", textContent: x.why }));
+        else if (x.wip) text.append(Object.assign(document.createElement("span"), { className: "hint why", textContent: "In progress: visitors won't see it until it's finished" }));
         row.append(box, text);
         return row;
       });
@@ -5378,13 +5391,15 @@ async function loadPublic({ items = false } = {}) {
     // Archived shows aren't offered: visitors can't see them until they're restored.
     publicNames = {
       show: Object.fromEntries(shows.filter((s) => s.baked).map((s) => [s.id, s.name])),
+      // Marked in progress: visitors don't get them until they're finished.
+      wip: new Set(shows.filter((s) => s.in_progress).map((s) => s.id)),
       // Shows that still couldn't be made ready, offered greyed out with what to do.
       unready: Object.fromEntries(shows.filter((s) => !s.baked).map((s) => [s.id, s.name])),
       playlist: Object.fromEntries(lists.map((p) => [p.id, p.name])),
       archived: Object.fromEntries(archived.map((s) => [s.id, s.name])),
     };
     // Playlists with nothing visitors could play: every show archived, deleted or not saved yet.
-    publicNames.empty = emptyPlaylists(lists, new Set(Object.keys(publicNames.show)));
+    publicNames.empty = emptyPlaylists(lists, new Set(Object.keys(publicNames.show).filter((id) => !publicNames.wip.has(id))));
     renderPublicItems();
   } catch (e) {
     status(`Couldn't load the public page settings: ${e.message}`, true, "public");
@@ -5810,6 +5825,7 @@ function showRow(r) {
     badge.textContent = "Last edited";
     head.append(badge);
   }
+  if (r.inProgress) head.append(Object.assign(document.createElement("span"), { className: "show-wip", textContent: "In progress" }));
   const details = document.createElement("div");
   details.className = "hint";
   details.textContent = r.details;
@@ -5833,10 +5849,39 @@ function showRow(r) {
   const pv = button("▶ Preview", () => previewShow(r), "ghost");
   pv.setAttribute("aria-label", `Preview ${r.name} on your house`);
   pv.title = "Watch it on your house photo, with its song; nothing is sent to your lights";
-  actions.append(open, pv, dup, ren, share, rm);
+  const mark = button(r.inProgress ? "Mark as finished" : "Mark as in progress", () => markShow(r.id, !r.inProgress), "ghost");
+  mark.title = r.inProgress ? "Finished shows can go on the public page" : "Shows in progress aren't offered to visitors";
+  actions.append(open, pv, mark, dup, ren, share, rm);
   withMore(actions, 2);
   row.append(main, actions);
   return row;
+}
+
+// In progress or finished (saved by its own route, so the show's bake stays). Shows in progress
+// aren't offered on the public page.
+async function markShow(id, inProgress) {
+  try {
+    await api(`api/shows/${encodeURIComponent(id)}/mark`, { method: "POST", json: { in_progress: inProgress } });
+  } catch (e) {
+    status(`Couldn't mark the show: ${e.message}`, true);
+    return false;
+  }
+  const s = showListCache.find((x) => x.id === id);
+  if (s) s.in_progress = inProgress;
+  if (app.showId === id) {
+    if (inProgress) app.show.in_progress = true;
+    else delete app.show.in_progress;
+    $("show-in-progress").checked = inProgress;
+  }
+  status(`${s?.name || "Show"} marked ${inProgress ? "in progress" : "finished"}`, "saved");
+  renderShowLists(showListCache);
+  if (playlistShows.some((x) => x.id === id)) {
+    const p = playlistShows.find((x) => x.id === id);
+    p.in_progress = inProgress;
+    renderPlaylistBin();
+    renderPlaylistOrder();
+  }
+  return true;
 }
 
 // ▶ Preview on a show's row: the show playing on your house photo, with its song, in a window. Nothing
@@ -7803,6 +7848,8 @@ function reportUnfit() {
 async function save({ stage = null } = {}) {
   if (app.sceneId) return saveScene();
   if (!app.showId) {
+    // A new show starts in progress, until you mark it finished.
+    app.show.in_progress = true;
     const { id } = await api("api/shows", { method: "POST", json: { name: app.show.name } });
     placeNew("shows", id);
     app.showId = id;
@@ -9429,11 +9476,18 @@ function wire() {
   $("rm-replacement").addEventListener("change", () => { document.querySelector("input[name=rm-instead][value=song]").checked = true; });
   $("btn-show-settings").addEventListener("click", () => {
     $("btn-delete").disabled = !app.showId;
+    $("show-in-progress").checked = !app.showId || app.show.in_progress === true;
+    $("show-in-progress").disabled = !app.showId;
     renderShowPalette();
     renderShowBrightness();
     $("show-dialog").showModal();
   });
   wireLevel($("show-brightness"), $("show-brightness-out"), (v) => setWholeLevel(app.show, v));
+  $("show-in-progress").addEventListener("change", async (e) => {
+    const on = e.target.checked;
+    if (!app.showId) return; // a new show is saved in progress anyway
+    if (!(await markShow(app.showId, on))) e.target.checked = !on;
+  });
   $("btn-song").addEventListener("click", () => refreshAudio().catch(() => {}).then(openSongDialog));
   $("song-dialog").addEventListener("close", () => {
     const sel = $("audio-select");

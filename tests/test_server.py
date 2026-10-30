@@ -1443,3 +1443,30 @@ async def test_sample_folders_inside_folders_are_checked_too(client):
     assert (await client.put("/api/sample-folders", json=[{"id": "a", "name": "A", "parent": "nope", "songs": []}])).status == 400
     assert (await client.put("/api/sample-folders", json=[{"id": "a", "name": "A", "songs": []},
                                                          {"id": "b", "name": "B", "parent": "a", "songs": []}])).status == 200
+
+
+async def test_shows_are_marked_in_progress_or_finished(client):
+    show_id = (await (await client.post("/api/shows", json={"name": "Wip"})).json())["id"]
+    show = {"name": "Wip", "duration": 1, "tracks": [{"device": "a", "clips": []}], "in_progress": True}
+    await client.put(f"/api/shows/{show_id}", json=show)
+    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"] * 40)
+    await client.put(f"/api/shows/{show_id}/baked", data=blob)
+    listed = lambda: client.get("/api/shows")  # noqa: E731
+    mine = lambda rows: next(s for s in rows if s["id"] == show_id)  # noqa: E731
+    assert mine(await (await listed()).json())["in_progress"] is True
+
+    assert (await client.post(f"/api/shows/{show_id}/mark", json={"in_progress": False})).status == 200
+    s = mine(await (await listed()).json())
+    assert s["in_progress"] is False and s["baked"] is True
+    assert "in_progress" not in await (await client.get(f"/api/shows/{show_id}")).json()
+
+    # An editor that loaded it as in progress doesn't undo the mark when it saves.
+    await client.put(f"/api/shows/{show_id}", json=show)
+    assert mine(await (await listed()).json())["in_progress"] is False
+
+    # A copy starts in progress.
+    copy_id = (await (await client.post(f"/api/shows/{show_id}/duplicate", json={"name": "Wip copy"})).json())["id"]
+    assert next(s for s in await (await listed()).json() if s["id"] == copy_id)["in_progress"] is True
+
+    assert (await client.post(f"/api/shows/{show_id}/mark", json={"in_progress": "yes"})).status == 400
+    assert (await client.post("/api/shows/nope/mark", json={"in_progress": True})).status == 404

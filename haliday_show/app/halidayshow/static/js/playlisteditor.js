@@ -122,7 +122,10 @@ export function summary(items, byId) {
   const what = `${shows.length} show${shows.length === 1 ? "" : "s"}${nBlocks ? `, ${nBlocks} block${nBlocks === 1 ? "" : "s"}` : ""}`;
   if (!s.playing) return `${what}, no show saved yet, so nothing plays`;
   const skipped = shows.length - s.playing;
-  return `${what} · ${length(s.seconds)} each time round${skipped ? ` · ${skipped} show${skipped === 1 ? "" : "s"} skipped` : ""}`;
+  // Shows still being worked on play here, but visitors don't get them on the public page.
+  const wip = new Set(shows.filter((id) => byId[id]?.in_progress === true)).size;
+  return `${what} · ${length(s.seconds)} each time round${skipped ? ` · ${skipped} show${skipped === 1 ? "" : "s"} skipped` : ""}`
+    + (wip ? ` · ${wip} still in progress` : "");
 }
 
 // The rows of Your playlists, in the order they're kept (which decides which goes first when two

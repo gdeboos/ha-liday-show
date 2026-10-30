@@ -87,6 +87,8 @@ test("the summary says how long one time round takes", () => {
   assert.equal(summary([show("u")], byId), "1 show, no show saved yet, so nothing plays");
   assert.equal(summary([newBlock("off")], byId), "No shows yet: add one to play");
   assert.equal(summary([], byId), "No shows yet");
+  const wip = { ...byId, w: { id: "w", duration: 60, baked: true, in_progress: true } };
+  assert.equal(summary([show("a"), show("w"), show("w")], wip), "3 shows · 3:00 each time round · 1 still in progress");
 });
 
 test("each playlist row says what's in it and when it plays", () => {

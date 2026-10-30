@@ -16,6 +16,7 @@ export const HELP = {
         "<b>+ New show</b> asks for a name and a song, and with an AI set up, whether to start empty or generate it.",
         "<b>Duplicate</b> makes a copy to try ideas on, and <b>Rename</b> changes its name.",
         "<b>Remove…</b> archives a show (out of the way, kept) or deletes it for good.",
+        "New shows start <b>In progress</b>. Press <b>Mark as finished</b> in its <b>⋯</b> menu when it's done: only finished shows go to visitors on the public page.",
       ] },
       { id: "sharing", title: "Sharing shows", guide: ["build-a-show.md", "sharing-shows"], tips: [
         "<b>Share</b> downloads a small <code>.halidayshow</code> file with the show's effects, but not the song, your photo or your lights' addresses.",

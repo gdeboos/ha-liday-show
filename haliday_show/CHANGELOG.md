@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.270
+
+- Shows can be marked **In progress** or finished. New shows (and copies) start in progress, with a badge on their row in **Library → Shows**; **Mark as finished** in the show's **⋯** menu, or **In progress** in **⚙ Show settings…**, changes it. Your existing shows all count as finished.
+- Shows in progress aren't offered on the **Public page**, and visitors don't see them, even inside a playlist, so you can take one back to work on it without losing its place. **+ Add shows or playlists…** leaves them out unless you tick **Show in-progress shows too**.
+- The Playlist editor says how many of a playlist's shows are still in progress, and **Your shows** marks them.
+
 ## 0.2.269
 
 - In the Playlist editor, an **Effect** block picks its effect in the same window as the Show editor, with moving previews and presets, instead of two drop-down lists. Its colours carry over when you change effect.

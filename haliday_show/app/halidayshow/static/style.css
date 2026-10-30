@@ -1298,3 +1298,7 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .pick-dialog .song-row input[type=checkbox]::after { content: "✓"; top: 0; left: 0; width: 100%; height: 100%; background: none;
   box-shadow: none; display: grid; place-items: center; font: 700 14px/1 var(--sans, system-ui); color: transparent; transform: none; }
 .pick-dialog .song-row input[type=checkbox]:checked::after { color: var(--accent-text); transform: none; }
+
+/* A show still being worked on: not offered to visitors. */
+.show-wip { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; color: var(--text);
+  background: color-mix(in srgb, var(--warn) 16%, var(--panel)); border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--panel)); }

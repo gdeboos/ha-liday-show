@@ -593,3 +593,20 @@ async def _until(check, tries=100):
             return True
         await asyncio.sleep(0.05)
     return False
+
+
+async def test_shows_in_progress_are_never_offered(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"},
+                                                                {"kind": "show", "id": "quiet"},
+                                                                {"kind": "playlist", "id": "eve"}]})
+    assert (await client.post("/api/shows/quiet/mark", json={"in_progress": True})).status == 200
+    public._CHOICES.clear()
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert [c["id"] for c in st["choices"]] == ["party", "eve"]
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    assert status == 404
+    assert public.choices(client.app[server.STORAGE])[1]["shows"] == ["party"]
+    # Finished again, it's back, bake and all.
+    assert (await client.post("/api/shows/quiet/mark", json={"in_progress": False})).status == 200
+    public._CHOICES.clear()
+    assert [c["id"] for c in public.choices(client.app[server.STORAGE])] == ["party", "quiet", "eve"]

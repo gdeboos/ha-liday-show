@@ -589,6 +589,16 @@ async def rename_show(request):
     return web.json_response({"ok": True, "name": name})
 
 
+async def mark_show(request):
+    body = await request.json()
+    if not isinstance(body, dict) or not isinstance(body.get("in_progress"), bool):
+        raise web.HTTPBadRequest(text="say whether the show is in progress")
+    _not_archived(request, _show_id(request))
+    if not request.app[STORAGE].mark_show(_show_id(request), body["in_progress"]):
+        raise web.HTTPNotFound()
+    return web.json_response({"ok": True, "in_progress": body["in_progress"]})
+
+
 def _not_archived(request, show_id: str):
     # A second browser still editing a show that's been archived mustn't bring a copy back to life.
     if archive.show_exists(request.app[STORAGE], show_id, archived=True):
@@ -600,7 +610,15 @@ async def put_show(request):
     show = await request.json()
     if not isinstance(show, dict) or not isinstance(show.get("tracks", []), list):
         raise web.HTTPBadRequest(text="bad show")
-    request.app[STORAGE].save_show(_show_id(request), show)
+    # In progress or finished is changed only by its own route, so an editor that loaded the show
+    # earlier can't undo a mark made since. A new show keeps the mark it's first saved with.
+    st = request.app[STORAGE]
+    before = st.load_show(_show_id(request))
+    mark = before.get("in_progress") is True if before is not None else show.get("in_progress") is True
+    show.pop("in_progress", None)
+    if mark:
+        show["in_progress"] = True
+    st.save_show(_show_id(request), show)
     return web.json_response({"ok": True})
 
 
@@ -2391,6 +2409,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/shows/{id}/baked/part", put_baked_part)
     r.add_post("/api/shows/{id}/duplicate", duplicate_show)
     r.add_post("/api/shows/{id}/rename", rename_show)
+    r.add_post("/api/shows/{id}/mark", mark_show)
     r.add_post("/api/shows/{id}/archive", archive_show)
     r.add_post("/api/shows/{id}/restore", restore_show)
     r.add_get("/api/audio", list_audio)
