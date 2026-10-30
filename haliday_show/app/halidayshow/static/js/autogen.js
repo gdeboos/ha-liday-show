@@ -4,7 +4,7 @@
 // With build, it lights the house the way a person would: a few lights in quiet parts, more as the
 // music builds, and every light together only for the loudest parts and the chorus.
 
-import { HOUSE, isGroupTrack, newClip } from "./effects.js";
+import { HOUSE, clipPiece, isGroupTrack, newClip } from "./effects.js";
 import { applyPalette } from "./palettes.js";
 
 // How a style shifts a section's energy before picking looks, and how often looks change.
@@ -269,6 +269,37 @@ export function applyGenerated(show, result) {
     else if (isGroupTrack(tr.device)) tr.clips = [];
     else if (result.clips[tr.device]) tr.clips = result.clips[tr.device];
   }
+}
+
+// Generating one part of a show (a selection, or one of the song's sections) leaves the rest alone.
+// clearPart: the clips with start–end taken out, cutting any that run across its edges.
+export function clearPart(clips, start, end) {
+  const out = [];
+  for (const c of clips) {
+    if (c.end <= start || c.start >= end) { out.push(c); continue; }
+    if (c.start < start - 0.01) out.push(clipPiece(c, c.start, start));
+    if (c.end > end + 0.01) out.push(clipPiece(c, end, c.end));
+  }
+  return out;
+}
+
+// partOf: the clips that fall in start–end, cut to it (slivers under 0.05 s are dropped).
+export function partOf(clips, start, end) {
+  return clips.filter((c) => Math.min(c.end, end) - Math.max(c.start, start) >= 0.05)
+    .map((c) => (c.start >= start && c.end <= end ? c : clipPiece(c, Math.max(c.start, start), Math.min(c.end, end))));
+}
+
+// Puts a generated take on the show for start–end only, on the tracks (indexes) given: lights get
+// the new clips there, group lanes are cleared there (they'd cover the new look), and the House lane
+// gets the take's sweeps there when `house` is on. Everything outside the part, or on other tracks,
+// stays as it was.
+export function applyGeneratedPart(show, result, { start, end, tracks, house = false }) {
+  show.tracks.forEach((tr, i) => {
+    if (!tracks.has(i)) return;
+    const fresh = tr.device === HOUSE ? (house ? result.house : null) : isGroupTrack(tr.device) ? [] : result.clips[tr.device];
+    if (!fresh) return;
+    tr.clips = [...clearPart(tr.clips, start, end), ...partOf(fresh, start, end)].sort((a, b) => a.start - b.start);
+  });
 }
 
 // Cuts any clip longer than maxBars bars into pieces at bar lines, each later piece taking the next

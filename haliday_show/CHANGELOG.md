@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.275
+
+- **✨ Generate** can fill just part of a show. **Fill** picks the whole song, one of the song's sections, or what you've selected on the timeline, and everything else stays as it was. Select a stretch and press **✨ Generate here…** in the **Selection** panel to go straight there. It works with the AI too.
+
 ## 0.2.274
 
 - Shows can be marked **In progress** or finished. New shows (and copies) start in progress, with a badge on their row in **Library → Shows**; **Mark as finished** in the show's **⋯** menu, or **In progress** in **⚙ Show settings…**, changes it. Your existing shows all count as finished.

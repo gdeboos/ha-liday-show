@@ -6,7 +6,7 @@ import { keepLevels, levelCurve, levelsFit } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
 import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
-import { STYLES, applyGenerated, generateShow, splitLong, suggestLooks } from "./autogen.js";
+import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
@@ -4794,6 +4794,10 @@ function renderRangeInspector(r) {
     actions.append(button(`Add ${EFFECTS[last.key].label}${last.preset ? ` · ${last.preset.label}` : ""} again`,
       () => addToRange(last.key, last.preset), "ghost"));
   }
+  // Or let Generate fill just this stretch, leaving the rest of the show as it is.
+  const gen = button("✨ Generate here…", () => generateDialog({ fill: "sel" }), "ghost");
+  gen.title = "Fill the selected lights from here to there with effects that follow the song";
+  actions.append(gen);
   // Adding is what a selection is for, so it comes first; clearing sits last, away from it.
   const times = document.createElement("div");
   times.className = "group";
@@ -8579,7 +8583,27 @@ function generateControls({ paletteFrom = null } = {}) {
   return { nodes: paletteFrom ? [sl, ll, bl, hl] : [pl, sl, ll, bl, hl], read };
 }
 
-function generateDialog() {
+// What Generate can fill: the whole song, the selected stretch (on its lights), or one of the song's
+// sections (on every light). [{value, label, part}], part null for the whole song.
+function generateParts() {
+  const out = [{ value: "all", label: "The whole song", part: null }];
+  const r = app.selected?.range;
+  if (r) {
+    const tracks = rangeTracks(r);
+    const lights = tracks.filter((t) => !isLane(t)).length;
+    out.push({ value: "sel", label: `The selection: ${fmtTime(r.start)} to ${fmtTime(r.end)}`
+      + (lights ? `, ${lights} light${lights === 1 ? "" : "s"}` : ""),
+      part: { start: r.start, end: r.end, tracks: new Set(tracks) } });
+  }
+  (app.show.sections || []).forEach((sec, k) => {
+    if (!(sec.end > sec.start)) return;
+    out.push({ value: `s${k}`, label: `${sec.label || `Section ${k + 1}`}: ${fmtTime(sec.start)} to ${fmtTime(sec.end)}`,
+      part: { start: sec.start, end: sec.end, tracks: null } });
+  });
+  return out;
+}
+
+function generateDialog({ fill = "all" } = {}) {
   const dlg = document.createElement("dialog");
   dlg.className = "effect-dialog save-preset-dialog";
   const form = document.createElement("form");
@@ -8588,9 +8612,25 @@ function generateDialog() {
   h.textContent = "Generate a show";
   const hint = document.createElement("p");
   hint.className = "hint";
-  hint.textContent = "Fills your lights with effects that follow the song's beats and sections: soft looks in quiet "
-    + "parts, fast ones on the beat when it gets loud, and the same looks each time a chorus comes back. It replaces "
-    + "the lights' effects; Ctrl+Z brings them back. Generate again for a different take.";
+  // Fill: the whole song, or just a part of it, leaving the rest of the show as it is.
+  const parts = generateParts();
+  const where = document.createElement("select");
+  for (const p of parts) where.add(new Option(p.label, p.value, false, p.value === fill));
+  const wl = document.createElement("label");
+  wl.append("Fill", where);
+  wl.hidden = parts.length < 2;
+  const explain = () => {
+    const part = parts.find((p) => p.value === where.value)?.part;
+    h.textContent = part ? "Generate part of the show" : "Generate a show";
+    hint.textContent = "Fills your lights with effects that follow the song's beats and sections: soft looks in quiet "
+      + "parts, fast ones on the beat when it gets loud, and the same looks each time a chorus comes back. "
+      + (part ? `It replaces the effects from ${fmtTime(part.start)} to ${fmtTime(part.end)}`
+        + (part.tracks ? " on the selected lights" : "") + " and leaves the rest of the show as it is. "
+        : "It replaces the lights' effects. ")
+      + "Ctrl+Z brings them back. Generate again for a different take.";
+  };
+  where.addEventListener("change", explain);
+  explain();
   const controls = generateControls();
   // Made by the rules (instant, the same looks every time) or by the AI, which also reads your section notes.
   const maker = document.createElement("select");
@@ -8615,11 +8655,11 @@ function generateDialog() {
   const cancel = button("Cancel", () => dlg.close(), "ghost");
   cancel.type = "button";
   actions.append(go, cancel);
-  form.append(h, hint, ml, notesHint, ...controls.nodes, actions);
+  form.append(h, hint, wl, ml, notesHint, ...controls.nodes, actions);
   dlg.append(form);
   form.addEventListener("submit", () => {
     if (!ml.hidden) prefs.set("genMaker", maker.value);
-    const opts = controls.read();
+    const opts = { ...controls.read(), part: parts.find((p) => p.value === where.value)?.part || null };
     if (maker.value === "ai") generateWithAI(opts);
     else generate(opts);
   });
@@ -8837,10 +8877,12 @@ async function createShow({ name, audio: ref, length, start, gen, palette = null
   if (start === "ai") await generateWithAI(gen);
 }
 
-async function generate({ colors, style, house, build, maxBars = prefs.get("genMaxBars", 4) }) {
+async function generate({ colors, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null }) {
   // A split light gets effects on its parts; its own track (all the parts at once) is left for you.
   // Its parts light up and go dark together when building up.
-  const lights = app.show.tracks.filter((tr) => tr.device !== HOUSE && playingDev(tr) && !playingDev(tr).light)
+  // A part of the show: only the selected lights (every light when the selection is only on lanes).
+  const picked = part?.tracks && app.show.tracks.some((tr, i) => part.tracks.has(i) && !isLane(i)) ? part.tracks : null;
+  const lights = app.show.tracks.filter((tr, i) => tr.device !== HOUSE && playingDev(tr) && !playingDev(tr).light && (!picked || picked.has(i)))
     .map((tr) => {
       const dev = app.devices[tr.device];
       return { id: tr.device, group: dev.parent || dev.id, segments: dev.segments, slow: isSlow(dev),
@@ -8851,14 +8893,18 @@ async function generate({ colors, style, house, build, maxBars = prefs.get("genM
   if (songBuffer && !app.show.beats.length && !app.show.sections?.length && !(await analyseSong())) return;
   const show = app.show;
   const result = generateShow({ ...show, duration: app.duration() }, lights, colors, { style, house, build, maxBars, seed: ++generateSeed });
-  applyGenerated(show, result);
+  if (part) {
+    const tracks = part.tracks || new Set(show.tracks.map((_, i) => i));
+    applyGeneratedPart(show, result, { start: part.start, end: part.end, tracks, house });
+  } else applyGenerated(show, result);
   app.select(null);
   app.changed();
-  status(`Generated effects for ${lights.length} light${lights.length === 1 ? "" : "s"}. Ctrl+Z to undo`);
+  status(`Generated effects for ${lights.length} light${lights.length === 1 ? "" : "s"}`
+    + (part ? ` from ${fmtTime(part.start)} to ${fmtTime(part.end)}` : "") + ". Ctrl+Z to undo");
 }
 
 // Generate with the AI: the whole show from the song, its sections and their notes, in one request.
-async function generateWithAI({ colors, paletteName, style, house, build, maxBars = prefs.get("genMaxBars", 4) }) {
+async function generateWithAI({ colors, paletteName, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null }) {
   // A window over the editor while the AI works, so it's plain it's busy and nothing is changed
   // underneath it; Cancel (or Esc) stops waiting and leaves the show as it was.
   if (!aiLights().some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
@@ -8870,7 +8916,8 @@ async function generateWithAI({ colors, paletteName, style, house, build, maxBar
   }
   const feel = { calm: "calm and gentle, with slow movement", balanced: "balanced, building with the music",
     lively: "lively, with lots of movement on the beat" }[style] || "balanced";
-  const request = `Make a complete light show for the whole song${build ? "" : " on every light"}. Use the "${paletteName}" colours `
+  const span = part ? `the part of the song from ${fmtTime(part.start)} to ${fmtTime(part.end)} only` : "the whole song";
+  const request = `Make a complete light show for ${span}${build ? "" : " on every light"}. Use the "${paletteName}" colours `
     + `(${colors.join(", ")}). Keep it ${feel}: quiet sections soft, loud sections bright and on the beat, and the `
     + "same looks each time a section comes back. Change looks on bar lines. Follow each section's notes."
     + (build ? " Build it up as a person would: in quiet sections use only one or a few lights and leave the rest "
@@ -8879,11 +8926,17 @@ async function generateWithAI({ colors, paletteName, style, house, build, maxBar
     + (house ? " Add sweeps across the house as the music lifts into louder sections." : "");
   // Clips longer than Longest effect are cut at bar lines here, rather than asking the AI for more,
   // shorter clips, which could run past how much it may write in one reply.
-  const tidy = (placed) => placed.flatMap(({ trackIndex, clip }) => splitLong([clip], {
+  // For a part, only what lands inside it is kept, and only the part is cleared first.
+  const tidy = (placed) => placed.flatMap(({ trackIndex, clip }) => splitLong(part ? partOf([clip], part.start, part.end) : [clip], {
     maxBars, colors, bars: app.show.bars || [], bps: (app.show.tempo || 120) / 60,
   }).map((c) => ({ trackIndex, clip: c })));
+  const selectionFor = part ? (lights) => {
+    const mine = part.tracks && lights.some((l) => !l.house && part.tracks.has(l.trackIndex));
+    return { start: part.start, end: part.end,
+      lights: lights.filter((l) => (l.house ? house : !mine || part.tracks.has(l.trackIndex))).map((l) => l.name) };
+  } : null;
   try {
-    await describe(request, null, { replaceAll: true, what: "the show", busy, tidy });
+    await describe(request, selectionFor, { replaceAll: !part, clearPart: part, what: part ? "this part" : "the show", busy, tidy });
   } finally {
     busy.close();
   }
@@ -9119,7 +9172,7 @@ async function describeIt(e) {
 
 // Sends a request to the AI with the show's context and puts the clips it makes on the show.
 // selectionFor(lights) gives the selection to send; replaceAll clears the lights first, as Generate does.
-async function describe(request, selectionFor, { replaceAll = false, what = "your effects", busy = null, tidy = (p) => p } = {}) {
+async function describe(request, selectionFor, { replaceAll = false, clearPart: part = null, what = "your effects", busy = null, tidy = (p) => p } = {}) {
   const lights = aiLights();
   if (!lights.some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
   const selection = selectionFor ? selectionFor(lights) : null;
@@ -9147,6 +9200,15 @@ async function describe(request, selectionFor, { replaceAll = false, what = "you
   }));
   if (placed.length) {
     if (replaceAll) for (const l of lights) show.tracks[l.trackIndex].clips = [];
+    // Generating a part: the lights it was for are cleared there, and only there, first.
+    if (part) {
+      const names = new Set(selection?.lights || []);
+      for (const l of lights) {
+        if (names.size && !names.has(l.name)) continue;
+        const tr = show.tracks[l.trackIndex];
+        tr.clips = clearPart(tr.clips, part.start, part.end);
+      }
+    }
     placeClips(show, placed);
     app.select(null);
     app.changed();
@@ -9535,7 +9597,7 @@ function wire() {
   $("btn-fill-beats").addEventListener("click", fillBeats);
   $("btn-detect").addEventListener("click", detectBeats);
   $("btn-song-beats").addEventListener("click", () => importSongInfo({ quiet: false }));
-  $("btn-generate").addEventListener("click", generateDialog);
+  $("btn-generate").addEventListener("click", () => generateDialog());
   $("ai-form").addEventListener("submit", describeIt);
   $("ai-preset-form").addEventListener("submit", describePresets);
   $("ai-palette-form").addEventListener("submit", describePalettes);

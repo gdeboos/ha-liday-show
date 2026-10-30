@@ -31,6 +31,7 @@ export const HELP = {
         `<b>Save</b> (${k("Ctrl", "S")}) stores the show and bakes it for playback. With <b>Auto save</b> on it saves itself a moment after each change.`,
         "<b>⚙ Show settings…</b> has the name, the show speaker, auto save and delete.",
         `<b>✨ Generate</b> fills every light with effects that follow the song. Press it again for a different take; ${k("Ctrl", "Z")} brings back what you had.`,
+        "To redo only part of the show, pick a section under <b>Fill</b>, or select a stretch on the timeline and press <b>✨ Generate here…</b>. The rest stays as it was.",
         "<b>← All shows</b> goes back to the list.",
       ] },
       { id: "song", title: "The song", guide: ["build-a-show.md", "songs"], tips: [
