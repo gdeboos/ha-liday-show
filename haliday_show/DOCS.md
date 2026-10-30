@@ -617,7 +617,8 @@ Each song you added is one card, marked **Original**. Inside it, under **Edits o
   starts a new draft.
 - **✎ Draft · no file yet** (amber, dashed): a draft that hasn't made a song file, so shows can't use
   it yet. **Edit** it, or under **⋯**, **Rename…**, **Duplicate** or **Delete…** it.
-- Songs in HA-liday Show's own folder have **Rename…** under **⋯** too. Renaming one while it's open in
+- Songs in HA-liday Show's own folder have **Rename…** and **Duplicate** (a copy of the file,
+  "… copy") under **⋯** too. Renaming one while it's open in
   the Music editor isn't allowed: press **← All songs** there first.
 
 **All**, **Originals**, **Edits** and **Drafts**, beside **Find**, show just those, and the count says
@@ -688,8 +689,8 @@ Christmas", ready to layer over a song in the Music editor. There are two ways t
 - **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
 
 They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Library → Songs** and a show's
-song list so those stay tidy. Use them on a [layer](#layers) in the Music editor. Each sample has **▶** to hear it (press **■** to stop) and **Delete…** to
-remove it for good.
+song list so those stay tidy. Use them on a [layer](#layers) in the Music editor. Each sample has **▶** to hear it (press **■** to stop), and under **⋯**, **Rename…**, **Duplicate**
+(a copy, "… copy") and **Delete…** to remove it for good. Layers that use a renamed sample follow it.
 
 To sort them, press **+ New folder** and give it a name, then pick the folder under **Folder** on each
 sample (or pick **New folder…** there). A folder's title folds it away, and **Rename…** and
@@ -1127,7 +1128,7 @@ only** narrows the chooser to them.
 ### The Presets tab
 
 **Library → Presets** lists your presets by effect, each with a live preview, **Edit…**, and
-**Duplicate** and **Delete…** under **⋯**. **Edit…** opens the preset in a window with a larger preview (choose
+**Rename…**, **Duplicate** and **Delete…** under **⋯**. **Edit…** opens the preset in a window with a larger preview (choose
 which light's segments with **Preview on**). Rename it, change its **Effect** (or start again from one
 of that effect's presets), turn **Include colours** on or off, and change its colours (palettes work
 here too), settings and brightness; the preview follows every change. **Save** keeps the changes and
@@ -1158,7 +1159,7 @@ another from a window of colour bars (built-in ones first, then yours). Click a 
 the colour field you last clicked, or press **Apply palette** to fill them all in order. Click a
 light's name to **Recolour this light** or **Recolour all lights**: each light steps through the
 palette effect by effect, so the lights stay matched (backgrounds are left alone). **Library →
-Palettes** lists your palettes, each with **Edit…**, and **Duplicate** and **Delete…** under **⋯**, then the built-in
+Palettes** lists your palettes, each with **Edit…**, and **Rename…**, **Duplicate** and **Delete…** under **⋯**, then the built-in
 ones (seasonal ones, plus looks such as **Classic C9 bulbs**, **Lava**, **Aurora** and **Ice and fire**). **Edit…** opens a window to rename the palette and change its colours: pick each colour, move it
 up with **↑**, take it out with **✕**, or **+ Add a colour** (up to 12). **Save** keeps the changes.
 **+ New palette**, or **Copy…** on a built-in one, opens the same window for a new palette. Or describe some colours in the box above, such as
@@ -1356,7 +1357,7 @@ A scene sets every light at once, like a preset in WLED or a one-tap scene in a 
 plays until you choose something else. Use one for the hours your lights are on between shows.
 
 Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
-while it's on), **Edit**, and under **⋯**, **Duplicate** (a copy called "… copy", ready to play
+while it's on), **Edit**, and under **⋯**, **Rename…**, **Duplicate** (a copy called "… copy", ready to play
 and not on the schedule) and **Remove…**.
 
 - **+ New scene** asks for a name. Every light starts on a steady warm white, so it does something
@@ -1434,7 +1435,7 @@ through your computer's firewall.
 ### Playlists
 
 To play several shows back to back, open **Library → Playlists**. Each playlist says how many shows it has, how
-long it takes to play through once and when it plays, with **Edit**, **▶ Play**, and under **⋯**, **Duplicate** (a copy called "… copy", not on the
+long it takes to play through once and when it plays, with **Edit**, **▶ Play**, and under **⋯**, **Rename…**, **Duplicate** (a copy called "… copy", not on the
 schedule) and **Delete…**. Press
 **+ New playlist**, or **Edit** one:
 

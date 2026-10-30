@@ -3302,6 +3302,7 @@ function renderPresetsTab() {
           + (shown ? "" : " · its settings as they come"),
         edit: () => openPresetWindow(preset),
         extra: [
+          button("Rename…", () => { openPresetWindow(preset); document.activeElement?.select?.(); }, "ghost"),
           button("Duplicate", () => {
             const copy = asPreset({ name: freePresetName(preset.effect, `${preset.name} copy`), effect: preset.effect,
               params: structuredClone(preset.params) });
@@ -3633,6 +3634,7 @@ function renderPalettes() {
     detail: `${p.colors.length} colour${p.colors.length === 1 ? "" : "s"}${p.name === app.colourPalette ? " · in use in the editor" : ""}`,
     edit: () => openPaletteWindow(p),
     extra: [
+      button("Rename…", () => { openPaletteWindow(p); document.activeElement?.select?.(); }, "ghost"),
       button("Duplicate", () => {
         app.palettes.splice(i + 1, 0, { name: uniqueName(`${p.name} copy`), colors: [...p.colors] });
         savePalettes();
@@ -4276,12 +4278,26 @@ function playlistRow(r) {
     status(`Made ${copy.name}`, "saved", "playlists");
   }, "ghost");
   dup.setAttribute("aria-label", `Duplicate ${r.name}`);
+  const ren = button("Rename…", () => {
+    const pl = playlists.find((x) => x.id === r.id);
+    if (!pl || !playlistsLoaded) return;
+    const name = prompt("Rename the playlist", pl.name)?.trim().replace(/\s+/g, " ");
+    if (!name || name === pl.name) return;
+    if (playlists.some((x) => x !== pl && x.name.toLowerCase() === name.toLowerCase())) {
+      status(`There's already a playlist called ${name}. Give this one its own name`, "hint", "playlists");
+      return;
+    }
+    pl.name = name.slice(0, 80);
+    savePlaylists();
+    renderPlaylists();
+  }, "ghost");
+  ren.setAttribute("aria-label", `Rename ${r.name}`);
   const del = button("Delete…", async () => {
     const pl = playlists.find((x) => x.id === r.id);
     if (pl && await deletePlaylist(pl)) renderPlaylists();
   }, "ghost");
   del.setAttribute("aria-label", `Delete ${r.name}`);
-  actions.append(open, play, dup, del);
+  actions.append(open, play, ren, dup, del);
   withMore(actions, 2);
   row.append(main, actions);
   return row;
@@ -6238,6 +6254,32 @@ async function duplicateDraft(id) {
   } catch (e) { status(`Couldn't duplicate the draft: ${e.message}`, true, "songs"); }
 }
 
+// A copy of a song (or sample) file beside it: "name copy".
+async function duplicateSongFile(ref, sample = false) {
+  try {
+    const out = await api("api/songs/duplicate", { method: "POST", json: { path: ref.path, sample } });
+    status(`Made ${out.path.split("/").pop()}`, "saved", sample ? "samples" : "songs");
+    if (sample) renderSamplesPage();
+    else { await refreshAudio().catch(() => {}); renderSongsPage(); }
+  } catch (e) { status(`Couldn't duplicate it: ${e.message}`, true, sample ? "samples" : "songs"); }
+}
+
+async function renameSample(ref) {
+  const stem = ref.path.split("/").pop().replace(/\.[^.]+$/, "");
+  if (JSON.stringify([music.draft, music.layers]).includes(JSON.stringify(ref.path))) {
+    status("It's used in the song open in the Music editor. Press ← All songs there first, then rename it", "hint", "samples");
+    return;
+  }
+  const name = prompt("Rename the sample", stem)?.trim();
+  if (!name || name === stem) return;
+  try {
+    const out = await api("api/songs/rename", { method: "POST", json: { path: ref.path, name, sample: true } });
+    if (samplePlaying === ref.path) stopSample();
+    status(`Renamed to ${out.path.split("/").pop()}`, "saved", "samples");
+    renderSamplesPage();
+  } catch (e) { status(`Couldn't rename it: ${e.message}`, true, "samples"); }
+}
+
 // Renames a song file in HA-liday Show's folder; shows, drafts and folders that use it follow.
 async function renameSongFile(r) {
   const was = r.ref.path, stem = was.split("/").pop().replace(/\.[^.]+$/, "");
@@ -6455,10 +6497,13 @@ function editKid(e) {
   const ren = button("Rename…", () => renameSongFile(r), "ghost");
   ren.setAttribute("aria-label", `Rename ${r.name}`);
   ren.disabled = !r.own;
-  const dup = d ? button("Duplicate", () => duplicateDraft(d.id), "ghost") : null;
+  // With a draft behind it, a copy of the draft to take another way; an older edit, a copy of its file.
+  const dup = d ? button("Duplicate", () => duplicateDraft(d.id), "ghost")
+    : r.own ? button("Duplicate", () => duplicateSongFile(r.ref), "ghost") : null;
   if (dup) {
-    dup.setAttribute("aria-label", `Duplicate the draft behind ${r.name}`);
-    dup.title = "A new draft to take another way; it makes its own song file when you're ready";
+    dup.setAttribute("aria-label", `Duplicate ${r.name}`);
+    dup.title = d ? "A new draft to take another way; it makes its own song file when you're ready"
+      : "A copy of the song file beside it";
   }
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
@@ -6531,7 +6576,10 @@ function songRow(r) {
   if (r.own) {
     const ren = button("Rename…", () => renameSongFile(r), "ghost");
     ren.setAttribute("aria-label", `Rename ${r.name}`);
-    actions.append(ren);
+    const dup = button("Duplicate", () => duplicateSongFile(r.ref), "ghost");
+    dup.setAttribute("aria-label", `Duplicate ${r.name}`);
+    dup.title = "A copy of the song file beside it, to cut a different way";
+    actions.append(ren, dup);
   }
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
@@ -6985,7 +7033,11 @@ function sampleRow(s) {
     } catch (e) { status(`Couldn't delete ${name}: ${e.message}`, true, "samples"); }
   }, "ghost danger");
   del.setAttribute("aria-label", `Delete ${name}`);
-  actions.append(play, del);
+  const ren = button("Rename…", () => renameSample(ref), "ghost");
+  ren.setAttribute("aria-label", `Rename ${name}`);
+  const dup = button("Duplicate", () => duplicateSongFile(ref, true), "ghost");
+  dup.setAttribute("aria-label", `Duplicate ${name}`);
+  actions.append(play, ren, dup, del);
   withMore(actions);
   if (sampleFolders.length && sampleFoldersLoaded) {
     const sel = document.createElement("select");

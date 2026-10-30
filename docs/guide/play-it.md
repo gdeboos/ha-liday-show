@@ -53,7 +53,7 @@ A scene sets every light at once, like a preset in WLED or a one-tap scene in a 
 plays until you choose something else. Use one for the hours your lights are on between shows.
 
 Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
-while it's on), **Edit**, and under **⋯**, **Duplicate** (a copy called "… copy", ready to play
+while it's on), **Edit**, and under **⋯**, **Rename…**, **Duplicate** (a copy called "… copy", ready to play
 and not on the schedule) and **Remove…**.
 
 - **+ New scene** asks for a name. Every light starts on a steady warm white, so it does something
@@ -131,7 +131,7 @@ through your computer's firewall.
 ### Playlists
 
 To play several shows back to back, open **Library → Playlists**. Each playlist says how many shows it has, how
-long it takes to play through once and when it plays, with **Edit**, **▶ Play**, and under **⋯**, **Duplicate** (a copy called "… copy", not on the
+long it takes to play through once and when it plays, with **Edit**, **▶ Play**, and under **⋯**, **Rename…**, **Duplicate** (a copy called "… copy", not on the
 schedule) and **Delete…**. Press
 **+ New playlist**, or **Edit** one:
 

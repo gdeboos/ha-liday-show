@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.261
+
+- Every Library list now has **Rename…**, **Duplicate** and remove (**Remove…** or **Delete…**) under each row's **⋯**. New ones: renaming scenes, playlists, samples, palettes and presets from the list; duplicating your own songs, older edits and samples (a copy of the file called "… copy").
+- Renaming a sample keeps it in its folder and in any Music editor layers that use it.
+
 ## 0.2.260
 
 - Edits and drafts in **Library → Songs** now have a **⋯** menu. **Rename…** renames an edit's song file, and the shows, drafts and folders that use it follow. **Duplicate** makes a new draft from it, so you can take it another way and make a second file. Your own songs can be renamed the same way.
