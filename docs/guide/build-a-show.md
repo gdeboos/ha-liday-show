@@ -526,10 +526,11 @@ different take, then edit whatever you like. The colours start on the show's pal
 (Halloween in October, Christmas in December…) when there is one.
 
 **Generating just part of a show:** **Fill** picks what to fill: **The whole song**, one of the song's
-sections (such as **Chorus: 0:45 to 1:05**, on every light), or **The selection** when you've dragged
-across some lights on the timeline. Only that stretch is replaced; everything before and after it, and
-every other light, stays as it was. To go straight there, select a stretch and press **✨ Generate here…**
-in the **Selection** panel. With **AI** as **Made by**, the AI makes that part only.
+sections (such as **Chorus: 0:45 to 1:05**, on every light), **The play region** (the green stretch you
+drag along the time ruler, on every light), or **The selection** when you've dragged across some lights
+on the timeline. Only that stretch is replaced; everything before and after it, and
+every other light, stays as it was. To go straight there, press **✨ Generate here…** beside the play
+region's times in the **Playback** panel, or select a stretch and press it in the **Selection** panel. With **AI** as **Made by**, the AI makes that part only.
 
 **Longest effect** sets how long one effect may run before the look changes: **2 bars**, **4 bars**
 (to start with), **8 bars** or **Any length**. A bar is four beats, so 4 bars is about 8 seconds at

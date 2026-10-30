@@ -8273,6 +8273,7 @@ function renderRegion() {
   const r = app.region;
   $("region-wrap").hidden = !r;
   if (r) $("region-label").textContent = `Region ${fmtTime(r.start)} to ${fmtTime(r.end)}`;
+  $("btn-region-generate").hidden = !!app.sceneId; // Generate is for shows
 }
 
 async function play() {
@@ -8594,6 +8595,11 @@ function generateParts() {
     out.push({ value: "sel", label: `The selection: ${fmtTime(r.start)} to ${fmtTime(r.end)}`
       + (lights ? `, ${lights} light${lights === 1 ? "" : "s"}` : ""),
       part: { start: r.start, end: r.end, tracks: new Set(tracks) } });
+  }
+  // The play region (the green stretch along the ruler), on every light.
+  if (app.region) {
+    out.push({ value: "region", label: `The play region: ${fmtTime(app.region.start)} to ${fmtTime(app.region.end)}`,
+      part: { start: app.region.start, end: Math.min(app.region.end, app.duration()), tracks: null } });
   }
   (app.show.sections || []).forEach((sec, k) => {
     if (!(sec.end > sec.start)) return;
@@ -9593,6 +9599,7 @@ function wire() {
   $("loop").checked = app.loop;
   $("loop").addEventListener("change", (e) => { app.loop = e.target.checked; prefs.set("loop", app.loop); });
   $("btn-clear-region").addEventListener("click", () => app.setRegion(null));
+  $("btn-region-generate").addEventListener("click", () => generateDialog({ fill: "region" }));
   $("btn-tap").addEventListener("click", tapBeat);
   $("btn-fill-beats").addEventListener("click", fillBeats);
   $("btn-detect").addEventListener("click", detectBeats);

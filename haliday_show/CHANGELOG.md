@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.276
+
+- The play region (the green stretch you drag along the time ruler) can be generated too: press **✨ Generate here…** beside its times in the **Playback** panel, or pick **The play region** under **Fill** in **✨ Generate**. Every light is filled there, and the rest of the show stays as it was.
+
 ## 0.2.275
 
 - **✨ Generate** can fill just part of a show. **Fill** picks the whole song, one of the song's sections, or what you've selected on the timeline, and everything else stays as it was. Select a stretch and press **✨ Generate here…** in the **Selection** panel to go straight there. It works with the AI too.
