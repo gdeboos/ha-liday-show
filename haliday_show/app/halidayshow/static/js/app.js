@@ -6224,6 +6224,37 @@ async function renameDraft(d) {
   } catch (e) { status(`Couldn't rename the draft: ${e.message}`, true, "songs"); }
 }
 
+// A copy of a draft to take another way: nothing is made until you press Make song file.
+async function duplicateDraft(id) {
+  try {
+    const d = await api(`api/drafts/${encodeURIComponent(id)}`);
+    const names = new Set(songDrafts.map((x) => x.name.toLowerCase()));
+    let name = `${d.name} copy`;
+    for (let k = 2; names.has(name.toLowerCase()); k++) name = `${d.name} copy ${k}`;
+    const { id: _, modified, ...rest } = d;
+    await api("api/drafts", { method: "POST", json: { ...rest, name: name.slice(0, 80), made: null } });
+    status(`Made the draft "${name}". Press Edit on it to change it`, "saved", "songs");
+    renderSongsPage();
+  } catch (e) { status(`Couldn't duplicate the draft: ${e.message}`, true, "songs"); }
+}
+
+// Renames a song file in HA-liday Show's folder; shows, drafts and folders that use it follow.
+async function renameSongFile(r) {
+  const was = r.ref.path, stem = was.split("/").pop().replace(/\.[^.]+$/, "");
+  const inMusic = JSON.stringify([music.base, music.draft, music.pieces, music.layers]).includes(JSON.stringify(was));
+  if (inMusic) { status("It's open in the Music editor. Press ← All songs there first, then rename it", "hint", "songs"); return; }
+  const name = prompt("Rename the song file", stem)?.trim();
+  if (!name || name === stem) return;
+  try {
+    const out = await api("api/songs/rename", { method: "POST", json: { path: was, name } });
+    // The open show follows too, so its next save keeps the new name.
+    if (app.show?.audio?.path === was && app.show.audio.source === "media") app.show.audio.path = out.path;
+    status(`Renamed to ${out.path.split("/").pop()}${out.shows.length ? `, and ${plural(out.shows.length, "show")} using it` : ""}`, "saved", "songs");
+    await refreshAudio().catch(() => {});
+    renderSongsPage();
+  } catch (e) { status(`Couldn't rename it: ${e.message}`, true, "songs"); }
+}
+
 async function deleteDraft(d) {
   const made = d.made ? ` The song file it made (${d.made.path.split("/").pop()}) stays.` : "";
   if (!confirm(`Delete the draft "${d.name}"? The song it started from isn't changed.${made}`)) return;
@@ -6404,7 +6435,7 @@ function songKid(kind, icon, name, badge, lines, actions) {
   const acts = document.createElement("div");
   acts.className = "group show-actions";
   acts.append(...actions);
-  if (actions.length > 2) withMore(acts);
+  withMore(acts);
   row.append(mark, main, acts);
   return row;
 }
@@ -6421,10 +6452,18 @@ function editKid(e) {
   uses.textContent = r.uses;
   const edit = d ? button("Edit draft", () => openDraft(d.id), "primary") : button("Edit", () => editSong(r.ref), "primary");
   edit.setAttribute("aria-label", d ? `Edit the draft ${d.name}, which made ${r.name}` : `Edit ${r.name} in the Music editor`);
+  const ren = button("Rename…", () => renameSongFile(r), "ghost");
+  ren.setAttribute("aria-label", `Rename ${r.name}`);
+  ren.disabled = !r.own;
+  const dup = d ? button("Duplicate", () => duplicateDraft(d.id), "ghost") : null;
+  if (dup) {
+    dup.setAttribute("aria-label", `Duplicate the draft behind ${r.name}`);
+    dup.title = "A new draft to take another way; it makes its own song file when you're ready";
+  }
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   rm.disabled = !r.own;
-  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, rm]);
+  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, ren, dup, rm].filter(Boolean));
   row.title = r.file;
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
@@ -6439,9 +6478,11 @@ function draftKid(d) {
   open.setAttribute("aria-label", `Edit the draft ${d.name}`);
   const rename = button("Rename…", () => renameDraft(d), "ghost");
   rename.setAttribute("aria-label", `Rename the draft ${d.name}`);
+  const dup = button("Duplicate", () => duplicateDraft(d.id), "ghost");
+  dup.setAttribute("aria-label", `Duplicate the draft ${d.name}`);
   const del = button("Delete…", () => deleteDraft(d), "ghost danger");
   del.setAttribute("aria-label", `Delete the draft ${d.name}`);
-  return songKid("draft", "✎", d.name, "Draft · no file yet", [details], [open, rename, del]);
+  return songKid("draft", "✎", d.name, "Draft · no file yet", [details], [open, rename, dup, del]);
 }
 
 function songRow(r) {
@@ -6487,6 +6528,11 @@ function songRow(r) {
   const edit = button("Edit", () => editSong(r.ref), "primary");
   edit.setAttribute("aria-label", `Edit ${r.name} in the Music editor`);
   actions.append(edit);
+  if (r.own) {
+    const ren = button("Rename…", () => renameSongFile(r), "ghost");
+    ren.setAttribute("aria-label", `Rename ${r.name}`);
+    actions.append(ren);
+  }
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   if (!r.own) {

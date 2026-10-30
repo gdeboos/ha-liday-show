@@ -135,12 +135,16 @@ or deletes one. The song you last opened in the Music editor has a **Last edited
 Each song you added is one card, marked **Original**. Inside it, under **Edits of this song**:
 
 - **✂ Edit · song file** (purple): a song file made in the Music editor from this song, with its length,
-  the shows that use it and the [draft](#drafts) it was made from. **Edit draft** reopens that draft;
-  **Remove…** archives or deletes the file (the draft stays). An edit of an edit sits under the first
+  the shows that use it and the [draft](#drafts) it was made from. **Edit draft** reopens that draft. Under **⋯**:
+  **Rename…** renames the song file (shows, drafts and folders that use it follow), **Duplicate**
+  makes a new draft from its draft, to take another way and make its own file, and **Remove…** archives
+  or deletes the file (the draft stays). An edit of an edit sits under the first
   song. Edits made before drafts existed (named "… (edit)") are found by their name; **Edit** on one
   starts a new draft.
 - **✎ Draft · no file yet** (amber, dashed): a draft that hasn't made a song file, so shows can't use
-  it yet. **Edit**, **Rename…** or **Delete…** it.
+  it yet. **Edit** it, or under **⋯**, **Rename…**, **Duplicate** or **Delete…** it.
+- Songs in HA-liday Show's own folder have **Rename…** under **⋯** too. Renaming one while it's open in
+  the Music editor isn't allowed: press **← All songs** there first.
 
 **All**, **Originals**, **Edits** and **Drafts**, beside **Find**, show just those, and the count says
 how many songs, edits and drafts there are.

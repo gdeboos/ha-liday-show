@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.260
+
+- Edits and drafts in **Library → Songs** now have a **⋯** menu. **Rename…** renames an edit's song file, and the shows, drafts and folders that use it follow. **Duplicate** makes a new draft from it, so you can take it another way and make a second file. Your own songs can be renamed the same way.
+- **⋯** menus can no longer be cut off at the edge of a song's card.
+
 ## 0.2.259
 
 - Buttons that take you into an editor now all say **Edit**: on shows, playlists and song drafts (they said **Open**), as on scenes and songs.

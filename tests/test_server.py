@@ -1364,3 +1364,32 @@ async def test_a_bake_remembers_what_it_was_made_for_until_it_changes(client, mo
     assert (await (await client.get(key_url)).json())["key"] == "parts"
     assert (await client.delete(f"/api/shows/{show_id}")).status == 200
     assert not (storage.shows_dir / f"{show_id}.bakekey").exists()
+
+
+async def test_renaming_an_edit_moves_its_shows_drafts_and_folder(client, tmp_path):
+    media = tmp_path / "media" / "haliday_show"
+    media.mkdir(parents=True, exist_ok=True)
+    (media / "bells.mp3").write_bytes(b"ID3 bells")
+    (media / "bells (edit).wav").write_bytes(b"RIFF edit")
+    (media / "taken.wav").write_bytes(b"RIFF other")
+    old = {"source": "media", "path": "haliday_show/bells (edit).wav"}
+    show_id = (await (await client.post("/api/shows", json={"name": "Xmas"})).json())["id"]
+    await client.put(f"/api/shows/{show_id}", json={"name": "Xmas", "tracks": [], "audio": old})
+    draft = {"name": "Short bells", "base": {"source": "media", "path": "haliday_show/bells.mp3"},
+             "pieces": [{"song": {"source": "media", "path": "haliday_show/bells.mp3"}, "start": 0, "end": 5}],
+             "crossfade": 0, "fadeIn": 0, "fadeOut": 0, "made": old, "length": 5}
+    draft_id = (await (await client.post("/api/drafts", json=draft)).json())["id"]
+    await client.put("/api/song-folders", json=[{"id": "xmas", "name": "Xmas", "songs": [old]}])
+
+    r = await client.post("/api/songs/rename", json={"path": old["path"], "name": "  Bells short "})
+    assert r.status == 200
+    assert await r.json() == {"path": "haliday_show/Bells short.wav", "shows": [show_id]}
+    assert (media / "Bells short.wav").read_bytes() == b"RIFF edit" and not (media / "bells (edit).wav").exists()
+    assert (await (await client.get(f"/api/shows/{show_id}")).json())["audio"]["path"] == "haliday_show/Bells short.wav"
+    assert (await (await client.get(f"/api/drafts/{draft_id}")).json())["made"]["path"] == "haliday_show/Bells short.wav"
+    folders = await (await client.get("/api/song-folders")).json()
+    assert folders[0]["songs"] == [{"source": "media", "path": "haliday_show/Bells short.wav"}]
+
+    for bad in ({"path": "haliday_show/Bells short.wav", "name": "taken"}, {"path": "haliday_show/Bells short.wav", "name": "a/b"},
+                {"path": "../etc/passwd", "name": "x"}, {"path": "haliday_show/Bells short.wav"}):
+        assert (await client.post("/api/songs/rename", json=bad)).status == 400

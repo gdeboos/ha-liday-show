@@ -702,6 +702,19 @@ async def archive_song(request):
         raise web.HTTPBadRequest(text=str(e))
 
 
+async def rename_song(request):
+    body = await request.json()
+    path, _ = _song_body(body)
+    if not isinstance(body.get("name"), str):
+        raise web.HTTPBadRequest(text="give the song a name")
+    try:
+        out = archive.rename_song(request.app[STORAGE], path, body["name"])
+    except archive.ArchiveError as e:
+        raise web.HTTPBadRequest(text=str(e))
+    request.app[MQTT].refresh()
+    return web.json_response(out)
+
+
 async def restore_song(request):
     path, _ = _song_body(await request.json())
     try:
@@ -2355,6 +2368,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/songs/users", song_users)
     r.add_post("/api/songs/archive", archive_song)
     r.add_post("/api/songs/restore", restore_song)
+    r.add_post("/api/songs/rename", rename_song)
     r.add_post("/api/songs/delete", delete_song)
     r.add_get("/api/audio/info", get_song_info)
     r.add_put("/api/audio/info", put_song_info)

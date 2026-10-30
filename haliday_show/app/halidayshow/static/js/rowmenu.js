@@ -16,6 +16,8 @@ function close(menu = openMenu, focus = false) {
 document.addEventListener("click", (e) => { if (openMenu && !openMenu.parentElement.contains(e.target)) close(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openMenu) { e.stopPropagation(); close(openMenu, true); } }, true);
 window.addEventListener("resize", () => close());
+// It stays where it opened, so scrolling the page puts it away.
+window.addEventListener("scroll", (e) => { if (openMenu && !openMenu.contains(e.target)) close(); }, true);
 
 // A folder picker (or any select) goes in with its name beside it.
 function asItem(node) {
@@ -63,12 +65,13 @@ function moreFor(actions, label = null) {
     menu.hidden = false;
     btn.setAttribute("aria-expanded", "true");
     openMenu = menu;
-    // Opens upwards when there's no room below.
-    const r = btn.getBoundingClientRect();
-    menu.classList.toggle("up", r.bottom + menu.offsetHeight + 8 > window.innerHeight);
-    // Hangs off the button's left edge when there's no room to its left (a phone's stacked buttons).
-    menu.classList.toggle("left", r.right - menu.offsetWidth < 8);
-    menu.querySelector("button:not(:disabled), select")?.focus();
+    // Placed on the page itself, so a card that clips what spills out of it can't cut it off: below the
+    // button (above when there's no room), lined up with its right edge, or its left on a phone.
+    const r = btn.getBoundingClientRect(), w = menu.offsetWidth, h = menu.offsetHeight;
+    const up = r.bottom + h + 8 > window.innerHeight && r.top - h - 4 > 0;
+    menu.style.top = `${up ? r.top - h - 4 : r.bottom + 4}px`;
+    menu.style.left = `${Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8))}px`;
+    menu.querySelector("button:not(:disabled), select")?.focus({ preventScroll: true });
   });
   // Pressing an item closes the menu, after the item has done its job.
   menu.addEventListener("click", (e) => { if (e.target.closest("button")) setTimeout(() => close(), 0); });
