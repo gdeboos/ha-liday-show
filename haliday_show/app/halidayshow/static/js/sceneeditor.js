@@ -4,9 +4,10 @@
 
 import { EFFECTS, FPS, bake, composeLight, matchesPreset, presetParams, unusedColour } from "./effects.js";
 import {
-  SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, sceneColours, sceneLoop, sceneShow,
-  sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
+  SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
+  sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
+import { setShowPalette, showPalette } from "./showpalette.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
 import { pickPalette } from "./palettepicker.js";
 import { withMore } from "./rowmenu.js";
@@ -36,7 +37,10 @@ export class SceneEditor {
   // editAdvanced(id) (an Advanced scene opens in the Show editor),
   // scheduleLink(id) (what the schedule does with a scene, and a way to the Schedule tab),
   // scheduleLine(id) (the same in words, or "" when it isn't on the schedule),
-  // chooseEffect(options) (the Show editor's effect window, with its moving previews)
+  // chooseEffect(options) (the Show editor's effect window, with its moving previews),
+  // palettePicker(name, onPick, options) (a button to pick a palette by eye), paletteRows() (the
+  // palettes as rows for radioRows(box, name, rows, picked, onPick)), firstPalette() (the one New
+  // scene starts on), askYes(text, options)
   constructor(deps) {
     this.d = deps;
     this.scenes = [];
@@ -139,42 +143,82 @@ export class SceneEditor {
   }
 
   // Making and removing -----------------------------------------------------------
+  // New scene, in three steps as New show: its name, its palette, then Basic or Advanced.
   newScene() {
     const taken = new Set(this.scenes.map((s) => s.name.toLowerCase()));
     let n = 1, guess = "My scene";
     while (taken.has(guess.toLowerCase())) guess = `My scene ${++n}`;
+    const pick = { step: 1, palette: this.d.firstPalette?.() || "", mode: "basic" };
     const dlg = el("dialog", { class: "effect-dialog form-dialog", "aria-labelledby": "nsc-title" });
     const input = el("input", { id: "nsc-name", value: guess, maxLength: 80 });
-    const note = el("span", { class: "hint", id: "nsc-note" }, "Every light starts on a steady warm white. Change any of them afterwards.");
-    const make = el("button", { type: "submit", class: "primary" }, "Create scene");
+    const note = el("span", { class: "hint", id: "nsc-note" }, "You can rename it later.");
+    const palettes = el("div", { class: "song-list", role: "radiogroup", "aria-label": "Palette" });
+    const modes = el("div", { class: "song-list", role: "radiogroup", "aria-label": "Basic or Advanced" });
+    const steps = [
+      el("div", { class: "form-dialog-body" }, el("p", { class: "hint ns-step" }, "Step 1 of 3: name"),
+        el("label", { class: "field" }, "Name", input), note),
+      el("div", { class: "form-dialog-body", hidden: true }, el("p", { class: "hint ns-step" }, "Step 2 of 3: colours"),
+        el("p", { class: "hint" }, "The lights start in these colours, a colour each, and effects you add take them. You can change it later in the Scene editor."),
+        palettes),
+      el("div", { class: "form-dialog-body", hidden: true }, el("p", { class: "hint ns-step" }, "Step 3 of 3: how should it work?"),
+        modes),
+    ];
+    const err = el("p", { class: "hint error", hidden: true, role: "alert" });
+    const back = el("button", { type: "button", class: "ghost", hidden: true }, "← Back");
+    const next = el("button", { type: "submit", class: "primary" }, "Next →");
+    const drawPalettes = () => this.d.radioRows(palettes, "nsc-palette", this.d.paletteRows(), pick.palette,
+      (v) => { pick.palette = v; drawPalettes(); });
+    const drawModes = () => this.d.radioRows(modes, "nsc-mode", [
+      { value: "basic", label: "Basic", detail: "An effect for each light, going all the time" },
+      { value: "advanced", label: "Advanced", detail: "Effects that change as it goes round, made in the Show editor" },
+    ], pick.mode, (v) => { pick.mode = v; drawModes(); });
+    const go = (step) => {
+      pick.step = step;
+      steps.forEach((box, i) => { box.hidden = i !== step - 1; });
+      back.hidden = step === 1;
+      next.textContent = step < 3 ? "Next →" : "Create scene";
+      err.hidden = true;
+      if (step === 1) input.focus();
+      if (step === 2) { drawPalettes(); palettes.querySelector("input:checked")?.focus(); }
+      if (step === 3) { drawModes(); modes.querySelector("input:checked")?.focus(); }
+    };
+    back.addEventListener("click", () => go(pick.step - 1));
     const form = el("form", { method: "dialog" },
       el("div", { class: "effect-dialog-head" }, el("h3", { id: "nsc-title" }, "New scene"),
         el("button", { type: "button", class: "ghost", "aria-label": "Close", onclick: () => dlg.close() }, "✕")),
-      el("div", { class: "form-dialog-body" },
-        el("label", { class: "field" }, "Name", input), note),
-      el("div", { class: "form-dialog-foot" }, el("span", { class: "spacer" }),
-        el("button", { type: "button", onclick: () => dlg.close() }, "Cancel"), make));
+      ...steps, err,
+      el("div", { class: "form-dialog-foot" }, back, el("span", { class: "spacer" }),
+        el("button", { type: "button", onclick: () => dlg.close() }, "Cancel"), next));
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = input.value.trim().replace(/\s+/g, " ");
-      if (!name) { input.focus(); return; }
-      if (taken.has(name.toLowerCase())) {
-        note.textContent = `There's already a scene called ${name}. Give this one its own name.`;
-        note.className = "hint warn";
-        input.select();
+      if (pick.step === 1) {
+        if (!name) { note.textContent = "Give the scene a name."; note.className = "hint warn"; input.focus(); return; }
+        if (taken.has(name.toLowerCase())) {
+          note.textContent = `There's already a scene called ${name}. Give this one its own name.`;
+          note.className = "hint warn";
+          input.select();
+          return;
+        }
+        go(2);
         return;
       }
-      make.disabled = true;
+      if (pick.step === 2) { go(3); return; }
+      next.disabled = true;
       try {
+        const palette = this.d.palettes().find((p) => p.name === pick.palette) || null;
+        let scene = newScene(name, this.d.lights(), palette);
+        if (pick.mode === "advanced") scene = toAdvanced(scene, this.d.lights());
         const { id } = await this.d.api("api/house-scenes", { method: "POST", json: { name } });
         this.d.placeNew?.(id);
-        await this.d.api(`api/house-scenes/${encodeURIComponent(id)}`, { method: "PUT", json: newScene(name, this.d.lights()) });
+        await this.d.api(`api/house-scenes/${encodeURIComponent(id)}`, { method: "PUT", json: scene });
+        if (pick.mode === "advanced") await this.bakeAndSend(id, scene);
         dlg.close();
         await this.open(id);
-      } catch (err) {
-        note.textContent = `Couldn't make the scene: ${err.message}`;
-        note.className = "hint error";
-        make.disabled = false;
+      } catch (ex) {
+        err.textContent = `Couldn't make the scene: ${ex.message}`;
+        err.hidden = false;
+        next.disabled = false;
       }
     });
     dlg.append(form);
@@ -293,7 +337,8 @@ export class SceneEditor {
   }
 
   bakeKey(scene = this.scene) {
-    const { name, ...look } = scene;
+    // The palette only colours effects as they're picked, so it doesn't change the frames.
+    const { name, palette, ...look } = scene;
     // An Advanced scene's House and group lanes also depend on where the lights are on the house, and
     // on the groups.
     const advanced = scene.mode === "advanced";
@@ -330,8 +375,36 @@ export class SceneEditor {
       rows.replaceChildren(...lights.flatMap((d) => this.lightRows(s, d)));
     }
     $("sc-when").replaceChildren(this.d.scheduleLink(this.id));
+    this.drawPalette();
     this.drawPlayButton();
     this.startPreview();
+  }
+
+  // The scene's palette, {name, colors} with the palette's colours today, or null.
+  palette() {
+    return this.scene ? showPalette(this.scene, this.d.palettes()) : null;
+  }
+
+  drawPalette() {
+    const box = $("sc-palette");
+    if (!box || !this.d.palettePicker) return;
+    box.replaceChildren(this.d.palettePicker(this.scene.palette?.name || "", (name) => this.setPalette(name),
+      { title: "The scene's palette", colors: this.palette()?.colors }));
+  }
+
+  // Changing the palette asks whether to recolour the lights that are on.
+  async setPalette(name) {
+    const palette = name ? this.d.palettes().find((p) => p.name === name) : null;
+    if (name && !palette) return;
+    const scene = this.scene;
+    setShowPalette(scene, palette);
+    this.changed();
+    this.drawPalette();
+    const lights = this.d.lights();
+    const on = scene.all || Object.keys(scene.lights || {}).length;
+    if (!palette || !on || !(await this.d.askYes?.(`Recolour the lights in this scene with ${palette.name}?`, { yes: "Recolour", no: "Leave them" }))) return;
+    if (scene !== this.scene) return;
+    if (recolourScene(scene, lights, palette.colors)) { this.changed(); this.draw(); }
   }
 
   // A light's rows: one, or for a light split into parts, the whole light or each part.
@@ -376,12 +449,13 @@ export class SceneEditor {
       title: `Effect for ${full}`, dev: this.d.devices()[devId] || null, length: 6,
       current: look?.effect ?? null, currentPreset: preset, only: SCENE_EFFECTS,
       // Each effect previews as it would be picked: this light's colours carried over.
+      palette: this.palette(),
       paramsFor: (key) => {
-        const { start, end, effect, ...params } = clipFor(changeEffect(look, key), 0, 1);
+        const { start, end, effect, ...params } = clipFor(changeEffect(look, key, this.palette()), 0, 1);
         return params;
       },
       onPick: (key, picked) => {
-        const next = changeEffect(look, key);
+        const next = changeEffect(look, key, this.palette());
         if (picked) next.params = { ...next.params, ...presetParams(picked, clipFor(next, 0, 1)) };
         set(next);
         changed(true);

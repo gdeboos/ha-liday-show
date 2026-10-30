@@ -8,10 +8,12 @@ A light with no entry stays off. An Advanced scene, edited in the Show editor, i
   {"name", "mode": "advanced", "loop": 20, "tracks": [...]}, its tracks as a show's (the House lane
   as device "@house"), going round every `loop` seconds. The editor bakes the scene's frames, one seamless time round, into
 house-scenes/<id>.gshow (the same layout as a show's), and the player plays them round and round.
-Either kind may still have a "schedule" from before 0.2.233, kept as it is; the Schedule tab's entries
+Either kind may have a "palette", {"name", "colors"} as a show's (0.2.272 on): new effects take its
+colours. Either kind may still have a "schedule" from before 0.2.233, kept as it is; the Schedule tab's entries
 (schedule.py) are what play scenes by themselves now.
 """
 import math
+import re
 
 from .playlists import _EFFECT, _clean_params, clean_schedule
 
@@ -21,6 +23,8 @@ MAX_LOOP_S = 600
 MAX_CLIPS = 4000
 MAX_LIST = 64
 MAX_NAME = 80
+MAX_COLOURS = 12
+_HEX = re.compile(r"#[0-9a-fA-F]{6}")
 
 
 class SceneError(ValueError):
@@ -119,6 +123,13 @@ def clean_scene(body) -> dict:
 
 
 def _with_schedule(body: dict, out: dict) -> dict:
+    if body.get("palette") is not None:
+        p = body["palette"]
+        name, colors = (p.get("name"), p.get("colors")) if isinstance(p, dict) else (None, None)
+        if not isinstance(name, str) or not name.strip() or len(name) > MAX_NAME or not isinstance(colors, list) \
+                or not 1 <= len(colors) <= MAX_COLOURS or not all(isinstance(c, str) and _HEX.fullmatch(c) for c in colors):
+            raise SceneError("the scene's palette needs a name and 1 to 12 colours")
+        out["palette"] = {"name": name.strip(), "colors": [c.lower() for c in colors]}
     if body.get("schedule") is not None:
         schedule = clean_schedule(body["schedule"])
         if schedule is None:
