@@ -80,7 +80,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
 2. **Setup → Speakers** (optional): press **+ Add a speaker**, **Test and add** your speaker, and pick it as the default show
    speaker.
 3. **Setup → House** (optional): upload a photo of your house and trace each light on it.
-4. **Library → Shows**: press **+ New show** (or **Edit** one of yours), name it and pick or upload a song, then press **Create show** (with an AI set up, a second step
+4. **Library → Shows**: press **+ New show** (or **Edit** one of yours), pick or upload a song, name it and pick its colours, then press **Create show** (with an AI set up, a last step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
 5. Play it by itself: on the [Schedule](play-it.md#schedule) tab press **+ Add to schedule** and pick it (or a

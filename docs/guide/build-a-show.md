@@ -49,14 +49,16 @@ Every Library list (**Shows**, **Scenes**, **Playlists**, **Songs**, **Samples**
 Folders only sort the lists: files stay where they are on disk, so shows and speakers still find their
 songs. They're saved with your settings, so they're in **Export…** too.
 
-- **Edit** a show to change it, or press **+ New show** to start one. A short window asks for:
-  1. a **Name**, a **Song** (or **+ Add a song…**, or **No song, lights only** with its length) and a
-     **Palette** (see [The show's palette](#the-shows-palette)). The name fills in from the song until
-     you type your own, and each show needs its own name.
-  2. with an AI set up, how it starts: **Start empty**, or **Generate with AI**, which needs a song
+- **Edit** a show to change it, or press **+ New show** to start one. A short window takes you through:
+  1. the **song**: go into your song folders as in **Library → Songs**, or type in **Find a song in any
+     folder**. Pick **No song, lights only** (at the top) to set a length instead, or press
+     **+ Add a song…**.
+  2. its **name**, which fills in from the song until you type your own. Each show needs its own name.
+  3. its **colours**: a palette, shown as its colours, or **None** (see [The show's palette](#the-shows-palette)).
+  4. with an AI set up, how it starts: **Start empty**, or **Generate with AI**, which needs a song
      and at least one light and shows the same choices as **✨ Generate** (in the show's palette: **Style**,
      **Build up**, **Longest effect** and, with lights traced on the house photo, the sweep across the
-     house). Without an AI, the show starts empty straight after step 1. For a quick draft
+     house). Without an AI, there's no step 4 and the show starts empty. For a quick draft
      made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
 
   **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.
