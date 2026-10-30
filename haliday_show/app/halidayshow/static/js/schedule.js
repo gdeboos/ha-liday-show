@@ -79,3 +79,13 @@ export function scheduleLine(entries, type, id, state) {
   const next = nextFor(entries, type, id, state);
   return next && state?.now ? `${what}. Next starts ${whenNext(next, state.now)}` : what;
 }
+
+// The schedule's picker: what's under one tab ("playlist", "show" or "scene"), or with words to
+// find, matches from every tab, each with its type.
+export const PICK_TABS = [["playlist", "Playlists"], ["show", "Shows"], ["scene", "Scenes"]];
+export function pickList(targets, tab, find = "") {
+  const words = find.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return (targets[tab] || []).map((x) => ({ type: tab, ...x }));
+  return PICK_TABS.flatMap(([type]) => (targets[type] || []).map((x) => ({ type, ...x })))
+    .filter((x) => words.every((w) => x.name.toLowerCase().includes(w)));
+}

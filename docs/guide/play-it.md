@@ -211,7 +211,8 @@ The **Schedule** tab is where playlists, shows and scenes play by themselves at 
 the page closed. Each row is one thing it plays, then its times, days and dates.
 
 - Press **+ Add to schedule**, then pick what it plays: a playlist, a show (it plays round and round
-  for the whole time) or a scene. **+ Add to schedule** under **When it plays**, in the Playlist editor
+  for the whole time) or a scene. The window has a tab for each, and **Find by name** looks through all
+  three. To change what a row plays, press its name. **+ Add to schedule** under **When it plays**, in the Playlist editor
   or the Scene editor, adds that playlist or scene.
 - The same thing can be on the schedule more than once, such as your playlist 17:00 to 22:00 on
   weekdays and 16:00 to 23:00 at weekends.
