@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.265
+
+- Each show in **Library → Shows** has **▶ Preview**: it plays the show on your house photo in a window, with its song, so you can see what's in a folder without opening each show. Nothing is sent to your lights.
+
 ## 0.2.264
 
 - **+ New show** now goes step by step: **song**, then **name**, then **colours**, then (with an AI set up) how it starts. **← Back** goes to the step before.

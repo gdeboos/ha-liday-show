@@ -536,9 +536,11 @@ songs. They're saved with your settings, so they're in **Export…** too.
      made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
 
   **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.
-- Each show's row has **Edit**, and **⋯** for the rest: **Duplicate**, **Rename**, **Share**, its
+- Each show's row has **Edit**, **▶ Preview**, and **⋯** for the rest: **Duplicate**, **Rename**, **Share**, its
   **Move to…** (see [Folders](#folders)) and, last, **Remove…**. Rows elsewhere in the Library work the same
   way: their main button, then **⋯**.
+- **▶ Preview**, beside **Edit**, plays the show on your house photo in a window, with its song.
+  Nothing is sent to your lights. **▶ Play again** starts it over and **Edit** opens it.
 - **Duplicate** makes a copy called "… copy", ready to play straight away.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
   Each show needs its own name. An automation that starts the show by its name needs the new name.
