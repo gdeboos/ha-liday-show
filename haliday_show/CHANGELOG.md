@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.269
+
+- In the Playlist editor, an **Effect** block picks its effect in the same window as the Show editor, with moving previews and presets, instead of two drop-down lists. Its colours carry over when you change effect.
+
 ## 0.2.268
 
 - On the **Public page**, **+ Add shows or playlists…** opens a window instead of a drop-down list. Go into your folders as in the Library, or find a show in any folder, and tick as many shows and playlists as you like to add them in one go.
