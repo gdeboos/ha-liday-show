@@ -4533,27 +4533,26 @@ function blockEditor(block) {
     box.append(c);
   }
   if (block.type === "effect") {
-    const eff = document.createElement("select");
-    eff.setAttribute("aria-label", "Effect");
-    for (const k of PLAYLIST_BLOCK_EFFECTS) eff.add(new Option(EFFECTS[k].label, k, false, k === block.effect));
-    eff.addEventListener("change", () => {
-      block.effect = eff.value;
-      block.params = defaultParams(eff.value);
-      changed(true);
-    });
-    const style = document.createElement("select");
-    style.setAttribute("aria-label", "Style");
-    const presets = presetsFor(block.effect);
+    // The Show editor's effect window, with moving previews and presets; colours carry over.
     const clip = { effect: block.effect, ...defaultParams(block.effect), ...block.params };
-    style.add(new Option("Style…", ""));
-    presets.forEach((p, k) => style.add(new Option(p.label || p.name, String(k), false, matchesPreset(p, clip))));
-    style.hidden = !presets.length;
-    style.addEventListener("change", () => {
-      const p = presets[Number(style.value)];
-      if (!p) return;
-      block.params = { ...block.params, ...presetParams(p, clip) };
-      changed();
-    });
+    const presets = presetsFor(block.effect);
+    const currentPreset = [...presets].reverse().find((pr) => matchesPreset(pr, clip)) || null;
+    const eff = pickerButton(`${EFFECTS[block.effect]?.label || block.effect}${currentPreset ? ` · ${presetLabel(currentPreset)}` : ""}`,
+      () => chooseEffect({
+        title: "Effect for this block", groups: [[null, false]], length: 6, palette: null,
+        current: block.effect, currentPreset, only: PLAYLIST_BLOCK_EFFECTS,
+        paramsFor: (key) => chosenParams(key, null, clip, null),
+        onPick: (key, preset) => {
+          if (key === block.effect) {
+            // Same effect: a preset only changes the settings it names, Default resets the rest.
+            block.params = preset ? { ...block.params, ...presetParams(preset, clip) } : chosenParams(key, null, clip, null);
+          } else {
+            block.effect = key;
+            block.params = chosenParams(key, preset, clip, null);
+          }
+          changed(true);
+        },
+      }), "Effect");
     const colours = button("Colours…", async () => {
       const name = await pickPalette({ title: "Colours for this block", ...paletteChoices() });
       const p = allPalettes().find((q) => q.name === name);
@@ -4572,7 +4571,7 @@ function blockEditor(block) {
       s.style.background = clip[k];
       sw.append(s);
     }
-    box.append(eff, style, colours, sw);
+    box.append(eff, colours, sw);
   }
   return box;
 }

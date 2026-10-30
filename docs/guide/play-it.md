@@ -159,9 +159,10 @@ hour), set on its card in **Running order**:
 - **Pause**: your lights go back to how they normally look.
 - **Colour**: every light shows one colour. Click the colour box on its card to pick it.
 - **Off**: every light goes dark.
-- **Effect**: an effect plays on every light, such as **Twinkle** or **Rainbow**. Pick the effect, then
-  a **Style** (the same ready-made settings as in the Show editor, your own presets too) and, for
-  effects with colours, **Colours** from your palettes. An effect longer than a minute repeats every
+- **Effect**: an effect plays on every light, such as **Twinkle** or **Rainbow**. Press the effect's button
+  (**Change…**) to open the same window as in the Show editor, with moving previews of each effect; tick
+  **Show presets** for its ready-made settings, your own presets too. Its colours carry over when you
+  change effect, and for effects with colours, **Colours…** picks them from your palettes. An effect longer than a minute repeats every
   minute or so, at a point where the join doesn't show.
 - **Scene**: one of your [scenes](#scenes) plays, going round as it does on its own, at your scenes'
   brightness. Pick it on the block's card. It needs at least one scene, made in the **Scene** editor. If
