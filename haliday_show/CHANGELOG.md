@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.267
+
+- Buttons no longer show emoji. Symbols such as play, pause, back, on, stop, volume, **Generate**'s sparkle, **Show settings**' cog and the scissors are now drawn as simple line icons in the button's own colour, so they look the same on every computer and phone (Windows used to show some as blue boxes).
+
 ## 0.2.266
 
 - **▶ Preview** in **Library → Shows** now has full player controls: play and pause, back to the start, back and on 5 seconds, a bar to jump to any point, the time, and volume. On a keyboard, Space plays and pauses, the arrow keys move 5 seconds and Home goes back to the start.
