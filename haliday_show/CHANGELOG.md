@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.266
+
+- **▶ Preview** in **Library → Shows** now has full player controls: play and pause, back to the start, back and on 5 seconds, a bar to jump to any point, the time, and volume. On a keyboard, Space plays and pauses, the arrow keys move 5 seconds and Home goes back to the start.
+
 ## 0.2.265
 
 - Each show in **Library → Shows** has **▶ Preview**: it plays the show on your house photo in a window, with its song, so you can see what's in a folder without opening each show. Nothing is sent to your lights.

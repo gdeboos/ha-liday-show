@@ -1270,3 +1270,11 @@ button.song-row.ns-folder { width: 100%; text-align: left; background: var(--pan
 button.song-row.ns-folder:hover { border-color: var(--accent); }
 .ns-folder .folder-text { flex: 1; }
 .song-row .palette-bar { flex: none; width: 96px; height: 16px; }
+
+/* A show's preview window: the player under the house. */
+.preview-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.preview-controls .preview-play { min-width: 44px; }
+.preview-seek { flex: 1; min-width: 140px; accent-color: var(--accent); }
+.preview-vol { width: 80px; accent-color: var(--accent); }
+.preview-time { font-variant-numeric: tabular-nums; min-width: 88px; text-align: right; }
+.preview-volume { display: inline-flex; align-items: center; gap: 4px; }
