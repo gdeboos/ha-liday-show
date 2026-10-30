@@ -10,6 +10,7 @@ import {
 import { applyPalette, paletteKeys } from "./palettes.js";
 import { pickPalette } from "./palettepicker.js";
 import { withMore } from "./rowmenu.js";
+import { askText } from "./ask.js";
 import { PART, sendParts } from "./upload.js";
 
 const SAVE_AFTER_MS = 600;
@@ -185,7 +186,8 @@ export class SceneEditor {
 
   // Renaming from the list. Saving a scene clears its frames, so they're made again straight away.
   async renameRow(s) {
-    const name = prompt("Rename the scene", s.name)?.trim().replace(/\s+/g, " ");
+    const name = await askText("Rename the scene", { value: s.name,
+      check: (v) => (this.scenes.some((x) => x.id !== s.id && x.name.toLowerCase() === v.toLowerCase()) ? `There's already a scene called ${v}` : "") });
     if (!name || name === s.name) return;
     if (this.scenes.some((x) => x.id !== s.id && x.name.toLowerCase() === name.toLowerCase())) {
       this.d.status(`There's already a scene called ${name}. Give this one its own name`, "hint");

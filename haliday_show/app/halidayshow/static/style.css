@@ -1255,3 +1255,10 @@ body.editing-scene :is([data-panel=song], [data-panel=beats], [data-panel=ai], #
   .show-row.folder-row { flex-direction: row; align-items: center; }
   .folder-row .show-actions { flex-wrap: nowrap; }
 }
+
+/* ask.js: HA-liday Show's own question and name windows, in place of the browser's. */
+.ask-dialog { width: min(440px, calc(100vw - 32px)); }
+.ask-dialog .ask-text { margin: 0; line-height: 1.5; }
+.ask-dialog input[type="text"] { width: 100%; }
+button.danger-fill { background: var(--danger); border-color: var(--danger); color: var(--panel); font-weight: 600; }
+button.danger-fill:hover { filter: brightness(1.08); }
