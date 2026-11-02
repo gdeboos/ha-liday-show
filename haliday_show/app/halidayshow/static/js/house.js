@@ -4,6 +4,7 @@
 
 import { SAMPLE_HOUSE } from "./samplehouse.js";
 import { unitWord } from "./lightwords.js";
+import { gridOf } from "./matrix.js";
 
 const BULBS_PER_SEGMENT = 4; // the guess when a light's bulb count isn't set on the Devices tab
 const MAX_BULBS = 2000;
@@ -34,6 +35,29 @@ export function bulbPositions(points, count) {
     out.push([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]);
   }
   return out;
+}
+
+// A matrix drawn as a flat panel: its LEDs in rows from the top left, spread between the four corners
+// (top left, top right, bottom right, bottom left), so a panel photographed at an angle still fits.
+export function panelBulbs([tl, tr, br, bl], w, h) {
+  const out = [];
+  for (let y = 0; y < h; y++) {
+    const v = h > 1 ? y / (h - 1) : 0.5;
+    for (let x = 0; x < w; x++) {
+      const u = w > 1 ? x / (w - 1) : 0.5;
+      out.push([0, 1].map((k) => (1 - v) * ((1 - u) * tl[k] + u * tr[k]) + v * ((1 - u) * bl[k] + u * br[k])));
+    }
+  }
+  return out;
+}
+
+// Where a new panel goes: the middle of a photo `aspect` times as wide as it is tall, the shape of its
+// grid, about a third of the photo across.
+export function defaultPanel({ w, h }, aspect = 1.6) {
+  let across = 0.3, down = (across * aspect * h) / w;
+  if (down > 0.6) { across *= 0.6 / down; down = 0.6; }
+  const [x0, x1, y0, y1] = [0.5 - across / 2, 0.5 + across / 2, 0.5 - down / 2, 0.5 + down / 2];
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 }
 
 // Where each of a light's `count` bulbs is, in order from the plug: [x, y], or null for a bulb
@@ -249,7 +273,8 @@ export class House {
   constructor({ api, status, frameFor }) {
     Object.assign(this, { api, status, frameFor });
     this.paths = {};
-    // id -> {style: "icicle", drops, length} or {style: "spots", beam, aims}; others are a line
+    // id -> {style: "icicle", drops, length}, {style: "spots", beam, aims} or {style: "panel"} (a matrix,
+    // its path the four corners); others are a line
     this.styles = {};
     this.pins = {}; // id -> {segment: how far along its path, 0 to 1} (see pinBulbs)
     this.dim = 0.5;
@@ -358,6 +383,11 @@ export class House {
     const key = `${count}:${dev.segments}:${dev.reverse}:${JSON.stringify(style)}:${JSON.stringify(points)}:${JSON.stringify(pins)}`;
     let c = this.cache.get(dev.id);
     if (c?.key !== key) {
+      const grid = style?.style === "panel" && points.length === 4 ? gridOf(dev) : null;
+      if (grid) {
+        this.cache.set(dev.id, c = { key, bulbs: panelBulbs(points, grid.w, grid.h) });
+        return c.bulbs;
+      }
       const bulbs = style?.style === "icicle" ? icicleDrops(points, style.drops, count) : bulbLayout(points, count);
       this.cache.set(dev.id, c = { key, bulbs: pinBulbs(points, bulbs, pins, dev.segments, dev.reverse) });
     }
@@ -560,7 +590,16 @@ export class House {
         }
       }
       ctx.setLineDash([]);
-      if (dev.id === this.active && this.hover) {
+      const panel = style?.style === "panel";
+      if (panel && pts.length === 4) {
+        ctx.strokeStyle = active ? "rgba(80,170,255,0.9)" : "rgba(255,255,255,0.35)";
+        ctx.lineWidth = active ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(pts[3][0] * w, pts[3][1] * h);
+        ctx.lineTo(pts[0][0] * w, pts[0][1] * h);
+        ctx.stroke();
+      }
+      if (dev.id === this.active && this.hover && !(panel && pts.length >= 4)) {
         const [x, y] = pts[pts.length - 1];
         ctx.strokeStyle = "rgba(80,170,255,0.9)";
         ctx.lineWidth = 2;
@@ -577,8 +616,8 @@ export class House {
       const [x0, y0] = pts[0];
       ctx.font = "12px system-ui, sans-serif";
       ctx.fillStyle = "#fff";
-      ctx.fillText(`${dev.name} (plug)`, x0 * w + 8, y0 * h - 8);
-      if (active) this.drawSegmentMarks(ctx, dev, w, h);
+      ctx.fillText(`${dev.name} (${panel ? "top left" : "plug"})`, x0 * w + 8, y0 * h - 8);
+      if (active && !panel) this.drawSegmentMarks(ctx, dev, w, h);
     }
     if (this.hoverBulb) {
       const { x, y, text } = this.hoverBulb;
@@ -840,6 +879,8 @@ export class House {
           onChange();
         }
       } else if (this.active) {
+        // A panel has its four corners and no more; they're moved by dragging.
+        if (this.styles[this.active]?.style === "panel" && this.paths[this.active]?.length >= 4) return;
         (this.paths[this.active] ||= []).push(p);
         this.save();
         onChange();

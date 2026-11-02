@@ -291,6 +291,9 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .fx-strip { display: block; width: 100%; min-width: 72px; height: 14px; border-radius: 3px; background: #000; }
 .clip-preview { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; width: 100%; }
 .clip-preview canvas { display: block; flex: 1 1 240px; min-width: 0; height: 22px; background: #000; border-radius: 6px; }
+.clip-preview canvas.grid { height: 120px; }
+.matrix-fields { display: flex; flex-direction: column; gap: 6px; }
+.matrix-fields .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
 .timeline-wrap { border-radius: 6px; overflow: hidden; }
 /* About a screen tall at most, so the ruler, song and beat lane stay in view over many lights. */

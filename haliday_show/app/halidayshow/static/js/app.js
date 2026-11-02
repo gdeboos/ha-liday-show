@@ -19,7 +19,8 @@ import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./control
 import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
-import { House, defaultDrops, partRgb } from "./house.js";
+import { House, defaultDrops, defaultPanel, partRgb } from "./house.js";
+import { MAX_MATRIX, RUNS, gridOf, matrixTestFrame, toWire } from "./matrix.js";
 import { placeOnSample } from "./samplehouse.js";
 import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
 import { Layout } from "./layout.js";
@@ -418,10 +419,14 @@ async function saveDevices() {
 // gets the test again, so new segment counts, parts or Reverse show on the light straight away.
 const deviceTests = {}; // id -> {what: "rainbow" | "parts" | a part's id, until, sent}
 
+// A still test frame: a matrix's wiring check, or a light's parts in their colours.
+const testFrame = (d, what) => (what === "matrix" ? toWire(matrixTestFrame(gridOf(d)), d.matrix)
+  : partsFrame(d, what === "parts" ? undefined : what));
+
 async function testLight(d, what = "rainbow") {
   const seconds = what === "rainbow" ? 20 : 60;
   const json = { ...d, seconds };
-  if (what !== "rainbow") json.rgb = toHex(partsFrame(d, what === "parts" ? undefined : what));
+  if (what !== "rainbow") json.rgb = toHex(testFrame(d, what));
   const sent = JSON.stringify({ ...json, seconds: 0 });
   try {
     await api("api/devices/test", { method: "POST", json });
@@ -437,13 +442,13 @@ async function testLight(d, what = "rainbow") {
 function retestLight(d) {
   const t = deviceTests[d.id];
   if (!t) return;
-  const gone = !["rainbow", "parts"].includes(t.what) && !(d.parts || []).some((p) => p.id === t.what);
+  const gone = t.what === "matrix" ? !gridOf(d) : !["rainbow", "parts"].includes(t.what) && !(d.parts || []).some((p) => p.id === t.what);
   if (t.until < Date.now() || !linked(d) || (d.protocol === "whole" && t.what !== "rainbow") || gone) {
     delete deviceTests[d.id];
     return;
   }
   const json = { ...d, seconds: 0 };
-  if (t.what !== "rainbow") json.rgb = toHex(partsFrame(d, t.what === "parts" ? undefined : t.what));
+  if (t.what !== "rainbow") json.rgb = toHex(testFrame(d, t.what));
   if (JSON.stringify(json) !== t.sent) testLight(d, t.what);
 }
 
@@ -526,6 +531,102 @@ function segmentPreview(d) {
   return box;
 }
 
+// A WLED light or pixel controller laid out as a grid: its size, and how its wiring runs from the
+// first LED. Changing the size changes its LED count.
+const MATRIX_KINDS = ["wled", "ddp", "e131"];
+const MATRIX_STARTS = ["top left", "top right", "bottom left", "bottom right"];
+
+function matrixControls(d) {
+  const box = document.createElement("div");
+  box.className = "matrix-fields";
+  const on = Object.assign(document.createElement("input"), { type: "checkbox", checked: !!gridOf(d) });
+  const onLabel = Object.assign(document.createElement("label"), { className: "row" });
+  onLabel.append(on, " Laid out as a grid");
+  box.append(onLabel);
+  const resize = (w, h) => {
+    d.segments = w * h;
+    d.bulbs = d.segments;
+  };
+  on.addEventListener("change", () => {
+    if (!on.checked) { delete d.matrix; saveDevices(); return; }
+    if (d.parts?.length) {
+      status(`Remove ${d.name}'s parts first: a matrix can't be split into parts yet`, "hint");
+      on.checked = false;
+      return;
+    }
+    // The nearest to square that keeps its LEDs, so a 256-LED panel starts as 16 × 16.
+    let h = Math.floor(Math.sqrt(d.segments));
+    while (d.segments % h) h--;
+    d.matrix = plainMatrix({ w: d.segments / h, h });
+    d.reverse = false;
+    resize(d.matrix.w, d.matrix.h);
+    saveDevices();
+  });
+  const m = gridOf(d) && d.matrix;
+  if (!m) return box;
+  const size = (key) => {
+    const el = Object.assign(document.createElement("input"), { type: "number", min: 1, max: MAX_MATRIX, value: m[key],
+      className: "seg-num", title: key === "w" ? "LEDs across" : "LEDs down" });
+    el.addEventListener("change", () => {
+      const v = Math.round(Number(el.value)), next = { ...m, [key]: v };
+      if (!(v >= 1) || next.w * next.h > MAX_MATRIX) {
+        status(`A matrix has up to ${MAX_MATRIX} LEDs, width times height`, "hint");
+        el.value = m[key];
+        return;
+      }
+      d.matrix = next;
+      resize(next.w, next.h);
+      saveDevices();
+    });
+    return el;
+  };
+  const pick = (key, options, labels, title) => {
+    const el = document.createElement("select");
+    options.forEach((o, k) => el.add(new Option(labels[k], o, false, o === m[key])));
+    el.title = title;
+    el.addEventListener("change", () => { d.matrix = { ...m, [key]: el.value }; saveDevices(); });
+    return el;
+  };
+  const row = (...kids) => { const r = document.createElement("div"); r.className = "row"; r.append(...kids); return r; };
+  const zig = Object.assign(document.createElement("input"), { type: "checkbox", checked: m.zigzag,
+    title: "Each row (or column) runs back the other way, as most panels are wired" });
+  zig.addEventListener("change", () => { d.matrix = { ...m, zigzag: zig.checked }; saveDevices(); });
+  const zigLabel = Object.assign(document.createElement("label"), { className: "row" });
+  zigLabel.append(zig, " Zig-zag");
+  box.append(row(size("w"), " across × ", size("h"), " down"),
+    row("Starts at ", pick("start", MATRIX_STARTS, ["Top left", "Top right", "Bottom left", "Bottom right"],
+      "Which corner the first LED is in")),
+    row("Wired in ", pick("order", ["rows", "columns"], ["Rows", "Columns"], "Whether the wiring runs across or up and down"), " ", zigLabel));
+  const buttons = row();
+  if (isWled(d) && d.ip) {
+    const read = button("Read from WLED", () => readWledMatrix(d), "ghost small");
+    read.title = "Use the size set up in WLED's 2D Configuration";
+    buttons.append(read);
+  }
+  const test = button("Test wiring", async () => {
+    if (await testLight(d, "matrix")) status(`${d.name}: the top left should be white, the top row red and the left column green`);
+  }, "ghost small");
+  test.title = linked(d) ? "Light the top row and left column, to check the wiring settings" : plannedTip(d);
+  test.disabled = !linked(d);
+  buttons.append(test);
+  box.append(buttons);
+  return box;
+}
+
+async function readWledMatrix(d) {
+  try {
+    const w = await wledInfo(d.ip);
+    if (!w.matrix) {
+      status(`${d.name} isn't set up as 2D in WLED. Set it up under Config → 2D Configuration in WLED, or type its size here.`, "hint");
+      return;
+    }
+    d.matrix = plainMatrix(w.matrix);
+    d.segments = d.bulbs = w.matrix.w * w.matrix.h;
+    saveDevices();
+    status(`${d.name} is a ${w.matrix.w} × ${w.matrix.h} matrix. WLED sorts out its wiring, so it's plain rows from the top left here.`);
+  } catch (e) { status(`Couldn't read ${d.name} from WLED: ${e.message}`, true); }
+}
+
 // The settings and parts for one light, built fresh each time the list changes.
 function lightFields(d) {
     const input = (type, key, attrs = {}) => {
@@ -603,7 +704,12 @@ function lightFields(d) {
     }
     segs.append(count);
     if (!wled) segs.append(" ", find);
-    if (!isHa(d)) cell(segs, countLabel(d), isPixels(d) ? "How many LEDs it has." : "Press <b>Find</b> to work it out with a few yes or no questions, or use <b>Test</b>.");
+    const grid = gridOf(d);
+    if (grid) Object.assign(count, { disabled: true, title: "Width times height, set under Matrix" });
+    if (!isHa(d)) cell(segs, countLabel(d), grid ? "Width times height." : isPixels(d) ? "How many LEDs it has." : "Press <b>Find</b> to work it out with a few yes or no questions, or use <b>Test</b>.");
+    if (MATRIX_KINDS.includes(d.kind)) cell(matrixControls(d), "Matrix", grid
+      ? "Plain rows from the top left if WLED is set up as 2D: it sorts out the wiring. Press <b>Test wiring</b> to check."
+      : "Turn on for a panel or a mega-tree laid out as a grid.");
     const bulbs = document.createElement("input");
     Object.assign(bulbs, { type: "number", min: 1, max: 2000, value: d.bulbs ?? "", placeholder: `${d.segments * 4}?`,
       title: "How many bulbs the light has, so the House view draws each one. Blank guesses 4 per segment." });
@@ -615,7 +721,7 @@ function lightFields(d) {
     if (showBulbs(d)) cell(bulbs, "Bulbs", isPixels(d) || isHa(d) ? "So the House view draws each one." : "So the House view draws each one. Blank guesses 4 per segment.");
     cell(input("number", "brightness", { min: 1, max: 100, title: "Caps this light in every show. 100 is full brightness." }),
       "Brightness %", "Caps this light in every show.");
-    if (!isHa(d)) cell(input("checkbox", "reverse"), "Reverse", "Turn on if Test's white dot runs the wrong way.");
+    if (!isHa(d) && !grid) cell(input("checkbox", "reverse"), "Reverse", "Turn on if Test's white dot runs the wrong way.");
     if (!wled) cell(input("checkbox", "gradient"), "Blend", "Ask the light to blend between segments.");
     if (wled) {
       const how = document.createElement("span");
@@ -666,7 +772,10 @@ function renderLightEditor() {
     grid.append(row);
   }
   body.replaceChildren(grid);
-  if (!isHa(d)) {
+  if (gridOf(d)) {
+    body.append(Object.assign(document.createElement("p"), { className: "hint light-parts",
+      textContent: "A matrix plays as one light, so it can't be split into parts yet." }));
+  } else if (!isHa(d)) {
     const parts = partsPanel(d);
     parts.classList.add("light-parts");
     body.append(parts);
@@ -1477,17 +1586,25 @@ const LONG_PROTOCOLS = ["whole", "ddp", "e131"];
 // Asks a WLED light for its name, LED count and segments (server.py wled_info).
 async function wledInfo(ip) {
   const info = await api("api/wled/info", { method: "POST", json: { ip } });
-  if (info.leds > info.max) status(`${info.name} has ${info.leds} LEDs; shows can drive the first ${info.max}`, "hint");
-  return { ...info, leds: Math.min(info.leds, info.max), all: info.leds };
+  // A WLED set up as 2D can go up to a matrix's limit; it sorts out its own wiring.
+  const m = info.matrix, grid = m && m.w * m.h <= (info.maxMatrix || MAX_MATRIX) && m.w * m.h <= info.leds ? m : null;
+  const max = grid ? m.w * m.h : info.max;
+  if (info.leds > max) status(`${info.name} has ${info.leds} LEDs; shows can drive the first ${max}`, "hint");
+  return { ...info, matrix: grid, leds: Math.min(info.leds, max), all: info.leds };
 }
+
+const plainMatrix = ({ w, h }) => ({ w, h, start: "top left", order: "rows", zigzag: false });
 
 async function addWled(ip) {
   if (app.deviceList.some((d) => d.ip === ip)) throw new Nudge(`${ip} is already on the list`);
   {
     const w = await wledInfo(ip).catch((e) => { throw new Error(`Couldn't reach a WLED light there: ${e.message}`); });
-    app.deviceList.push({ id: `wled-${ip}`, kind: "wled", name: w.name, ip, sku: "", protocol: "ddp",
-      segments: w.leds, bulbs: w.leds, reverse: false, gradient: false, brightness: 100, parts: w.parts });
+    const light = { id: `wled-${ip}`, kind: "wled", name: w.name, ip, sku: "", protocol: "ddp",
+      segments: w.leds, bulbs: w.leds, reverse: false, gradient: false, brightness: 100, parts: w.parts };
+    if (w.matrix) Object.assign(light, { matrix: plainMatrix(w.matrix), parts: [] });
+    app.deviceList.push(light);
     saveDevices();
+    if (w.matrix) return `Added ${w.name}: a ${w.matrix.w} × ${w.matrix.h} matrix.`;
     return `Added ${w.name}: ${w.leds} LEDs${w.parts.length ? `, with ${w.parts.length} parts from its WLED segments` : ""}.`;
   }
 }
@@ -2148,16 +2265,24 @@ function houseSegmentEditor(d) {
   return box;
 }
 
-// Line, Icicle (how many drops and how far the longest hangs) or Spots (how wide the beams are).
+// Line, Icicle (how many drops and how far the longest hangs) or Spots (how wide the beams are), and
+// for a matrix, Panel (its four corners).
 function houseStyleControls(d) {
   const style = house.styles[d.id];
+  const grid = gridOf(app.lights[d.id] || d);
   const sel = document.createElement("select");
   sel.title = "How the light looks on the photo";
   sel.innerHTML = `<option value="line">Line</option><option value="icicle">Icicle</option>
-    <option value="spots">Spots</option>`;
+    <option value="spots">Spots</option>${grid ? `<option value="panel">Panel</option>` : ""}`;
   sel.value = style?.style || "line";
   sel.addEventListener("change", () => {
+    if (sel.value === "panel" && house.paths[d.id]?.length !== 4) {
+      const photo = house.photo, aspect = photo?.naturalWidth && photo.naturalHeight ? photo.naturalWidth / photo.naturalHeight : 1.6;
+      house.paths[d.id] = defaultPanel(grid, aspect);
+      delete house.pins[d.id];
+    }
     house.setStyle(d.id, {
+      panel: { style: "panel" },
       icicle: { style: "icicle", drops: defaultDrops(d), length: 0.06 },
       spots: { style: "spots", beam: 0.5, aims: [] },
     }[sel.value] || null);
@@ -2168,6 +2293,10 @@ function houseStyleControls(d) {
   l0.className = "row";
   l0.append("Style ", sel);
   if (!style) return [l0];
+  if (style.style === "panel") {
+    return [l0, hint(grid ? "Drag the four corners onto the panel's corners. The white one is its top left."
+      : "Panel only fits a matrix. Turn on Matrix for this light under Setup → Devices.")];
+  }
   if (style.style === "spots") {
     const beam = document.createElement("input");
     beam.type = "range";
@@ -2434,6 +2563,7 @@ function clipPreviewRow(clip, dev) {
   row.className = "clip-preview";
   const canvas = document.createElement("canvas");
   canvas.title = "This clip on its own, looping";
+  if (gridOf(dev)) canvas.classList.add("grid");
   if (clipPreview.clip !== clip) Object.assign(clipPreview, { clip, started: performance.now() });
   clipPreview.canvas = canvas;
   row.append(canvas);
@@ -2474,8 +2604,10 @@ function drawClipPreview() {
   }
   const dev = track && app.devices[track.device];
   if (!dev) { if (clipPreview.dev) stopLightPreview(); return; }
-  const rgb = asShown(dev, t, (tt) => renderTrack([clip], Math.max(tt, clip.start), dev.segments));
-  drawStrip(c, rgb, dev.segments, (dev.brightness ?? 100) / 100);
+  const grid = gridOf(dev);
+  const rgb = asShown(dev, t, (tt) => renderTrack([clip], Math.max(tt, clip.start), dev.segments, undefined, false, grid));
+  if (grid) drawGrid(c, rgb, grid, (dev.brightness ?? 100) / 100);
+  else drawStrip(c, rgb, dev.segments, (dev.brightness ?? 100) / 100);
   const onLight = previewOnLight() && linked(dev) && !EFFECTS[clip.effect]?.experimental && !app.playing && !app.starting;
   if (onLight) sendPreview(dev, rgb);
   else if (clipPreview.dev) stopLightPreview();
@@ -2501,7 +2633,27 @@ function drawStrip(c, rgb, n, cap = 1) {
 
 // The add-on applies the light's brightness cap, so the clip's own colours are sent. A part
 // lights its own slice of the light, with the rest off.
+// A matrix's colours (rows from the top left) as a grid, as big as fits, in the middle.
+function drawGrid(c, rgb, { w: gw, h: gh }, cap = 1) {
+  const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
+    c.width = Math.round(w * dpr);
+    c.height = Math.round(h * dpr);
+  }
+  const ctx = c.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const cell = Math.min(w / gw, h / gh), gap = cell >= 4 ? 0.5 : 0;
+  const x0 = (w - cell * gw) / 2, y0 = (h - cell * gh) / 2;
+  for (let i = 0; i < gw * gh; i++) {
+    const [r, g, b] = [rgb[i * 3], rgb[i * 3 + 1], rgb[i * 3 + 2]].map((v) => Math.round(v * cap));
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(x0 + (i % gw) * cell + gap, y0 + Math.floor(i / gw) * cell + gap, Math.max(cell - gap * 2, 0.5), Math.max(cell - gap * 2, 0.5));
+  }
+}
+
 function sendPreview(dev, rgb) {
+  if (gridOf(dev)) rgb = toWire(rgb, dev.matrix); // the editor works in rows; the light wants its wiring order
   if (dev.parent) {
     const light = app.lights[dev.parent], full = new Uint8Array(light.segments * 3);
     full.set(rgb.subarray(0, dev.segments * 3), (dev.from - 1) * 3);
@@ -2549,7 +2701,7 @@ const presetsFor = (effect) => [...(PRESETS[effect] || []), ...app.myPresets.fil
 const presetLabel = (p) => (p.mine ? `★ ${p.label}` : p.label);
 
 // What a clip keeps when its effect changes: its place, and how it comes in, goes out and mixes.
-const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOut", "transOutSecs", "mix"];
+const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOut", "transOutSecs", "mix", "runs"];
 
 // What a clip becomes with `effect` and, optionally, one of its presets: the effect's defaults, the
 // colours and brightness carried over from `from` (the clip being changed), then the preset.
@@ -2832,6 +2984,18 @@ function renderInspector() {
       app.changed();
     });
     field("Lights' own effects", mix);
+  }
+  // On a matrix: how a strip effect plays across the grid. House patterns are drawn across it as they are.
+  if (gridOf(app.lights[sel.track]) && !EFFECTS[clip.effect].house) {
+    const runs = document.createElement("select");
+    const labels = { rows: "Along each row", columns: "Down each column", strip: "Whole matrix as one strip" };
+    for (const r of RUNS) runs.add(new Option(labels[r], r, false, r === (clip.runs || "rows")));
+    runs.title = "How this effect plays on the matrix";
+    runs.addEventListener("change", () => {
+      if (runs.value === "rows") delete clip.runs; else clip.runs = runs.value;
+      app.changed();
+    });
+    field("Runs", runs);
   }
 
   for (const p of EFFECTS[clip.effect].params) {
