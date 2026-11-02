@@ -822,7 +822,7 @@ export class House {
       const { w, h } = this.size || { w: 1, h: 1 };
       let best = null, bestD = HIT_PX;
       for (const [id, pts] of Object.entries(this.paths)) {
-        if (this.styles[id]?.style === "spots" || !this.shown(id)) continue; // spots have no stretches
+        if (["spots", "panel"].includes(this.styles[id]?.style) || !this.shown(id)) continue; // spots and panels have no stretches
         for (let i = 1; i < pts.length; i++) {
           const [ax, ay, bx, by] = [pts[i - 1][0] * w, pts[i - 1][1] * h, pts[i][0] * w, pts[i][1] * h];
           const [px, py] = [p[0] * w, p[1] * h];

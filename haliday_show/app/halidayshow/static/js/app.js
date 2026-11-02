@@ -707,9 +707,10 @@ function lightFields(d) {
     const grid = gridOf(d);
     if (grid) Object.assign(count, { disabled: true, title: "Width times height, set under Matrix" });
     if (!isHa(d)) cell(segs, countLabel(d), grid ? "Width times height." : isPixels(d) ? "How many LEDs it has." : "Press <b>Find</b> to work it out with a few yes or no questions, or use <b>Test</b>.");
-    if (MATRIX_KINDS.includes(d.kind)) cell(matrixControls(d), "Matrix", grid
-      ? "Plain rows from the top left if WLED is set up as 2D: it sorts out the wiring. Press <b>Test wiring</b> to check."
-      : "Turn on for a panel or a mega-tree laid out as a grid.");
+    if (MATRIX_KINDS.includes(d.kind)) cell(matrixControls(d), "Matrix", !grid
+      ? "Turn on for a panel or a mega-tree laid out as a grid."
+      : isWled(d) ? "Leave it as plain rows from the top left if WLED is set up as 2D: WLED sorts out the wiring. Press <b>Test wiring</b> to check."
+      : "Which corner the first LED is in, and which way the wiring runs. Press <b>Test wiring</b> to check.");
     const bulbs = document.createElement("input");
     Object.assign(bulbs, { type: "number", min: 1, max: 2000, value: d.bulbs ?? "", placeholder: `${d.segments * 4}?`,
       title: "How many bulbs the light has, so the House view draws each one. Blank guesses 4 per segment." });
@@ -2466,6 +2467,10 @@ function renderHouseLights() {
       card.append(hint("Click where each spotlight sits, starting nearest the plug."));
     } else if (pts && !house.active && house.styles[d.id]?.style === "spots") {
       card.append(hint("Drag a spot's round handle to aim it."));
+    } else if (house.active === d.id && house.styles[d.id]?.style === "panel") {
+      card.append(hint("Click the panel's four corners, starting at its top left and going round."));
+    } else if (house.styles[d.id]?.style === "panel") {
+      // The panel's own tip is under its Style.
     } else if (pts > 1 && !house.active) {
       card.append(hint("Click a line on the photo to mark part of it out of view. If the bulbs don't line up "
         + "with the real ones (a photo taken at an angle), drag a segment number along the line to where that "
@@ -2986,7 +2991,7 @@ function renderInspector() {
     field("Lights' own effects", mix);
   }
   // On a matrix: how a strip effect plays across the grid. House patterns are drawn across it as they are.
-  if (gridOf(app.lights[sel.track]) && !EFFECTS[clip.effect].house) {
+  if (gridOf(app.lights[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house) {
     const runs = document.createElement("select");
     const labels = { rows: "Along each row", columns: "Down each column", strip: "Whole matrix as one strip" };
     for (const r of RUNS) runs.add(new Option(labels[r], r, false, r === (clip.runs || "rows")));
