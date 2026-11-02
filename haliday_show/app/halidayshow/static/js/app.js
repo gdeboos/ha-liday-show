@@ -44,7 +44,7 @@ import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, length as fmtLength, showRows, songName } from "./showlist.js";
 import {
-  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, suggest, suggestSong,
+  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, suggest, suggestSong, withPictureIds,
 } from "./sharing.js";
 import {
   BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
@@ -6199,7 +6199,12 @@ async function previewShow(r) {
 // Sharing shows (sharing.js) ------------------------------------------------------
 // Share downloads a .halidayshow file; Import show reads one into a new show, in two steps: its
 // name and song, then which of your lights plays each of theirs.
-const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll() });
+// A picture for a share file: as saved (base64 frames), or null for one that's gone.
+const sharedPictureOf = (id) => {
+  const pic = getPicture(id);
+  return pic ? { name: pic.name, w: pic.w, h: pic.h, frames: pic.frames.map(toBase64), delays: pic.delays } : null;
+};
+const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll(), pictureOf: sharedPictureOf });
 
 function downloadText(name, text) {
   const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
@@ -6538,6 +6543,17 @@ async function imSubmit(e) {
   }
   const share = imp.share;
   $("import-dialog").close();
+  // The show's pictures go into your Pictures first, so its Picture effects point at them.
+  const ids = {};
+  for (const pic of share.pictures || []) {
+    const saved = { name: pic.name, w: pic.w, h: pic.h, frames: pic.frames, delays: pic.delays };
+    try {
+      const { id } = await api("api/pictures", { method: "POST", json: saved });
+      keepPicture(id, saved);
+      ids[pic.key] = id;
+    } catch (err) { status(`Couldn't add the picture ${pic.name}: ${err.message}`, true, "pictures"); }
+  }
+  share.tracks = withPictureIds(share.tracks, ids);
   await openShow(null);
   const { tracks, dropped } = buildTracks(share, imp.plan, imp.mine, imFits);
   Object.assign(app.show, { name, audio: imp.song ? JSON.parse(imp.song) : null, duration: share.duration,

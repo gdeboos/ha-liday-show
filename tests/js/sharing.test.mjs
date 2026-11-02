@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildTracks, lengthNote, lightType, makeShare, matchCount, myLights, partPlan, readShare, shareFileName,
-  shareLevels, suggest, suggestSong,
+  shareLevels, suggest, suggestSong, withPictureIds,
 } from "../../haliday_show/app/halidayshow/static/js/sharing.js";
 
 const models = {
@@ -51,7 +51,7 @@ test("reading a share checks it and tidies it", () => {
   assert.equal(s.lights.length, 2);
   assert.throws(() => readShare("not json"), /isn't a HA-liday Show file/);
   assert.throws(() => readShare(JSON.stringify({ format: "other" })), /isn't a HA-liday Show file/);
-  assert.throws(() => readShare(JSON.stringify({ format: "halidayshow", version: 2 })), /newer HA-liday Show/);
+  assert.throws(() => readShare(JSON.stringify({ format: "halidayshow", version: 3 })), /newer HA-liday Show/);
   const odd = readShare(JSON.stringify({ format: "halidayshow", version: 1, name: 5,
     lights: [{ key: "L1", name: "A", segments: "x" }],
     tracks: [{ light: "L1", clips: [clip(0, 1), { effect: "solid", start: 2, end: 1 }, null, { start: 0, end: 1 }] },
@@ -149,4 +149,26 @@ test("an undimmed show shares as before, and odd levels are left out", () => {
   assert.ok(r.lights.every((l) => !("brightness" in l)));
   assert.deepEqual(shareLevels(r, {}), {});
   assert.equal(readShare(JSON.stringify({ ...s, brightness: 0 })).brightness, 1);
+});
+
+
+test("a show with pictures carries them, keyed, and an older-style file is still version 1", () => {
+  const panel = { id: "panel", name: "Panel", kind: "wled", segments: 4, matrix: { w: 2, h: 2 } };
+  const pic = { name: "Star", w: 1, h: 1, frames: ["/wAA/w=="], delays: [100] };
+  const show = { name: "Pics", duration: 10, tracks: [{ device: "panel", clips: [
+    { effect: "picture", start: 0, end: 5, picture: "p123" }, { effect: "picture", start: 5, end: 10, picture: "p123" },
+    { effect: "picture", start: 2, end: 3, picture: "gone" }] }] };
+  const share = makeShare(show, [panel], { pictureOf: (id) => (id === "p123" ? pic : null) });
+  assert.equal(share.version, 2);
+  assert.deepEqual(share.pictures, [{ key: "I1", ...pic }]);
+  assert.deepEqual(share.tracks[0].clips.map((c) => c.picture), ["I1", "I1", ""]); // one copy; a gone picture is none
+  assert.equal(show.tracks[0].clips[0].picture, "p123"); // the show itself isn't changed
+  assert.equal(makeShare({ ...show, tracks: [{ device: "panel", clips: [{ effect: "solid", start: 0, end: 1 }] }] }, [panel]).version, 1);
+  // Read back, the pictures are checked; then each gets its new id on this side.
+  const back = readShare(JSON.stringify(share));
+  assert.deepEqual(back.pictures, [{ key: "I1", ...pic }]);
+  const tracks = withPictureIds(back.tracks, { I1: "pNEW" });
+  assert.deepEqual(tracks[0].clips.map((c) => c.picture), ["pNEW", "pNEW", ""]);
+  const bad = { ...share, pictures: [{ key: "I1", name: "x", w: 99, h: 1, frames: ["AAAA"], delays: [100] }, "nope"] };
+  assert.deepEqual(readShare(JSON.stringify(bad)).pictures, []);
 });

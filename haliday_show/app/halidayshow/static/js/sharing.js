@@ -4,7 +4,10 @@
 // The song never travels; only its name and length.
 
 export const SHARE_FORMAT = "halidayshow";
-export const SHARE_VERSION = 1; // later versions must keep importing version 1 files
+// Version 2 adds the pictures a show's Picture effects use; a show without any is still written as 1,
+// so older copies can import it. Later versions must keep importing version 1 and 2 files.
+export const SHARE_VERSION = 2;
+const MAX_SHARED_PICTURES = 20;
 export const SHARE_EXT = ".halidayshow";
 const HOUSE = "@house";
 const MAX_CLIPS = 50000, MAX_LIGHTS = 200;
@@ -41,7 +44,7 @@ export function whereOf(points) {
 // The share file for `show`. `lights` is the Devices tab's list, `models` Govee models by SKU,
 // `positions` each device or part id's segment positions on the house (as the House lane uses).
 // Lights with no effects in the show are left out; so are tracks whose light has gone.
-export function makeShare(show, lights, { models = {}, positions = {}, app = "" } = {}) {
+export function makeShare(show, lights, { models = {}, positions = {}, app = "", pictureOf = () => null } = {}) {
   const byId = new Map(lights.map((d) => [d.id, d]));
   const used = new Map(); // light id -> key, in the order the show uses them
   const out = { lights: [], tracks: [] };
@@ -69,15 +72,44 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "" 
     if (part) out.tracks.push({ light: key, part: part.key, clips: tr.clips });
   }
   for (const l of out.lights) delete l._parts;
+  // Pictures travel with the show, each once, with the clips pointing at them by key. pictureOf(id)
+  // gives {name, w, h, frames (base64), delays}, or null for one that's gone (those clips show nothing).
+  const pictures = [], picKeys = new Map();
+  const keyOf = (id) => {
+    if (!picKeys.has(id)) {
+      const pic = picKeys.size < MAX_SHARED_PICTURES ? pictureOf(id) : null;
+      picKeys.set(id, pic ? `I${pictures.length + 1}` : "");
+      if (pic) pictures.push({ key: picKeys.get(id), name: pic.name, w: pic.w, h: pic.h, frames: pic.frames, delays: pic.delays });
+    }
+    return picKeys.get(id);
+  };
+  out.tracks = out.tracks.map((t) => ({ ...t, clips: t.clips.map((c) => (c.effect === "picture" && c.picture ? { ...c, picture: keyOf(c.picture) } : c)) }));
   const song = show.audio?.path ? { name: songTitle(show.audio.path), length: round2(show.duration || 0) } : null;
   return {
-    format: SHARE_FORMAT, version: SHARE_VERSION, app, name: show.name || "Shared show", song,
+    format: SHARE_FORMAT, version: pictures.length ? 2 : 1, app, name: show.name || "Shared show", song,
     fps: show.fps, duration: round2(show.duration || 60), tempo: show.tempo ?? null,
     beats: show.beats || [], bars: show.bars || [], sections: show.sections || [],
     lights: out.lights, tracks: out.tracks,
     // Show settings → Brightness, only when dimmed (older copies ignore it and play at 100%).
     ...(show.brightness != null && show.brightness !== 100 ? { brightness: show.brightness } : {}),
+    ...(pictures.length ? { pictures } : {}),
   };
+}
+
+// An imported show's tracks with each picture key swapped for the id it was saved under here
+// (ids: {key: id}). A key with no picture becomes none.
+export const withPictureIds = (tracks, ids) => tracks.map((t) => ({ ...t,
+  clips: t.clips.map((c) => (c.effect === "picture" && typeof c.picture === "string" && c.picture ? { ...c, picture: ids[c.picture] || "" } : c)) }));
+
+// A shared picture as it should be: small, with frames and delays that fit; anything else is skipped.
+function sharedPicture(p) {
+  if (!p || typeof p !== "object" || typeof p.key !== "string") return null;
+  const w = p.w, h = p.h, frames = p.frames, delays = p.delays;
+  if (![w, h].every((v) => Number.isInteger(v) && v >= 1 && v <= 64)) return null;
+  if (!Array.isArray(frames) || !frames.length || frames.length > 120 || !Array.isArray(delays) || delays.length !== frames.length) return null;
+  if (!frames.every((f) => typeof f === "string" && f.length === Math.ceil((w * h * 4) / 3) * 4)) return null;
+  if (!delays.every((d) => Number.isInteger(d) && d >= 20 && d <= 10000)) return null;
+  return { key: p.key, name: typeof p.name === "string" && p.name.trim() ? p.name.slice(0, 60) : "Picture", w, h, frames, delays };
 }
 
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
@@ -134,6 +166,7 @@ export function readShare(text) {
     sections: (Array.isArray(s.sections) ? s.sections : []).filter((x) => x && Number.isFinite(x.start) && Number.isFinite(x.end)),
     lights: lights.filter((l) => tracks.some((t) => t.light === l.key)), tracks,
     ...(level(s.brightness) ? { brightness: level(s.brightness) } : {}),
+    pictures: (Array.isArray(s.pictures) ? s.pictures : []).slice(0, MAX_SHARED_PICTURES).map(sharedPicture).filter(Boolean),
   };
 }
 
