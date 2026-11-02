@@ -2637,8 +2637,19 @@ function placeLightsOnSample(lights) {
     : `Put ${n} of your lights on the sample house; there's no room left for the rest`, n < lights.length);
 }
 
+// The House tab's zoom: how far in, and which buttons can still be pressed.
+function houseZoomShown() {
+  $("house-zoom-level").textContent = `${Math.round(house.zoom * 100)}%`;
+  $("house-zoom-out").disabled = $("house-zoom-fit").disabled = house.zoom <= 1;
+  $("house-zoom-in").disabled = house.zoom >= 8;
+}
+
 function wireHouse() {
-  house.wireSetup($("house-setup"), renderHouseLights);
+  house.wireSetup($("house-setup"), () => { renderHouseLights(); houseZoomShown(); });
+  const zoomBy = (f) => { house.zoomTo($("house-setup"), f ? house.zoom * f : 1); houseZoomShown(); };
+  $("house-zoom-in").addEventListener("click", () => zoomBy(1.5));
+  $("house-zoom-out").addEventListener("click", () => zoomBy(1 / 1.5));
+  $("house-zoom-fit").addEventListener("click", () => zoomBy(0));
   $("house-upload").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     e.target.value = "";

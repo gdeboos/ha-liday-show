@@ -317,6 +317,7 @@ export class House {
     this.saveTimer = null;
     this.cache = new Map(); // id -> {key, bulbs}
     this.away = new Set(); // ids of props packed away (seasons.js), drawn dimmed
+    this.zoom = 1; // how far the House tab's photo is zoomed in, for placing lights closely
   }
 
   async load() {
@@ -381,12 +382,13 @@ export class House {
   }
 
   // Sizes the canvas to the photo's shape, as wide as its box allows and no taller than maxH.
-  fit(canvas, maxH) {
+  fit(canvas, maxH, zoom = 1) {
     const aspect = this.photo.naturalWidth / this.photo.naturalHeight;
     let w = canvas.parentElement.clientWidth, h = w / aspect;
     if (h > maxH) { h = maxH; w = h * aspect; }
-    w = Math.round(w); h = Math.round(h);
-    const dpr = window.devicePixelRatio || 1;
+    w = Math.round(w * zoom); h = Math.round(h * zoom);
+    // Zoomed right in, fewer pixels per point keeps the canvas a size the browser can draw.
+    const dpr = Math.min(window.devicePixelRatio || 1, 8192 / Math.max(w, h));
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
@@ -445,8 +447,8 @@ export class House {
 
   // The photo, darkened like dusk, with every placed light on it. `colours(dev)` gives each
   // light's segment colours; `skip(dev)` leaves a light out.
-  paint(canvas, maxH, colours, skip) {
-    const { ctx, w, h } = this.fit(canvas, maxH);
+  paint(canvas, maxH, colours, skip, zoom = 1) {
+    const { ctx, w, h } = this.fit(canvas, maxH, zoom);
     ctx.globalCompositeOperation = "source-over";
     ctx.drawImage(this.photo, 0, 0, w, h);
     ctx.fillStyle = `rgba(0,0,0,${this.dim})`;
@@ -565,7 +567,7 @@ export class House {
         out.set(hueRgb((i / dev.segments) * 0.8), s * 3);
       }
       return out;
-    }, (dev) => !this.shown(dev.id));
+    }, (dev) => !this.shown(dev.id), this.zoom);
     this.size = { w, h };
     this.marks = [];
     for (const dev of this.devices) {
@@ -826,6 +828,22 @@ export class House {
   // Pointer handling on the House tab's canvas: click adds a point to the light being drawn,
   // drag moves any point, right-click removes one. When no light is being drawn, clicking a
   // line between two points picks that stretch, to mark it out of view.
+  // Zooms the House tab's photo by `factor`, keeping the place under (x, y) on screen where it is
+  // (the middle of what's shown, without one). The photo's box scrolls to move around.
+  zoomTo(canvas, zoom, x = null, y = null) {
+    const box = canvas.parentElement, next = Math.min(Math.max(zoom, 1), 8);
+    if (!this.photo || next === this.zoom) return this.zoom;
+    const r = canvas.getBoundingClientRect(), b = box.getBoundingClientRect();
+    const cx = x ?? b.left + box.clientWidth / 2, cy = y ?? b.top + box.clientHeight / 2;
+    const fx = (cx - r.left) / r.width, fy = (cy - r.top) / r.height;
+    this.zoom = next;
+    this.drawSetup(canvas);
+    const r2 = canvas.getBoundingClientRect();
+    box.scrollLeft += r2.left + fx * r2.width - cx;
+    box.scrollTop += r2.top + fy * r2.height - cy;
+    return this.zoom;
+  }
+
   wireSetup(canvas, onChange) {
     const at = (e) => {
       const r = canvas.getBoundingClientRect();
@@ -893,8 +911,63 @@ export class House {
       this.save();
       onChange();
     });
+    // Ctrl (or ⌘) and the scroll wheel, or pinching a trackpad, zooms around the pointer; dragging with
+    // the middle button moves around the zoomed photo, as do the scroll bars.
+    canvas.addEventListener("wheel", (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      this.zoomTo(canvas, this.zoom * Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0025)), e.clientX, e.clientY);
+      onChange();
+    }, { passive: false });
+    let pan = null;
     canvas.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
+      if (e.button !== 1 || this.zoom <= 1) return;
+      e.preventDefault();
+      pan = { x: e.clientX, y: e.clientY, left: canvas.parentElement.scrollLeft, top: canvas.parentElement.scrollTop };
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!pan) return;
+      canvas.parentElement.scrollLeft = pan.left - (e.clientX - pan.x);
+      canvas.parentElement.scrollTop = pan.top - (e.clientY - pan.y);
+    });
+    canvas.addEventListener("pointerup", () => { pan = null; });
+    // On a touch screen one finger traces, and two pinch to zoom and slide to move around.
+    const touches = new Map();
+    let pinch = null;
+    const spread = () => { const [a, b] = [...touches.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    const middle = () => { const [a, b] = [...touches.values()]; return [(a.x + b.x) / 2, (a.y + b.y) / 2]; };
+    canvas.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch") return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size !== 2) return;
+      // The first finger's touch wasn't meant as a click: take back what it did.
+      if (this.lastAdd && performance.now() - this.lastAdd.at < 400) {
+        this.paths[this.lastAdd.id]?.pop();
+        if (!this.paths[this.lastAdd.id]?.length) delete this.paths[this.lastAdd.id];
+        this.save();
+      }
+      this.lastAdd = null;
+      this.drag = null;
+      const [mx, my] = middle();
+      pinch = { d: spread(), zoom: this.zoom, x: mx, y: my };
+    }, true);
+    canvas.addEventListener("pointermove", (e) => {
+      if (!touches.has(e.pointerId)) return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (!pinch || touches.size !== 2) return;
+      const [mx, my] = middle(), box = canvas.parentElement;
+      box.scrollLeft -= mx - pinch.x;
+      box.scrollTop -= my - pinch.y;
+      pinch.x = mx; pinch.y = my;
+      this.zoomTo(canvas, pinch.zoom * (spread() / pinch.d), mx, my);
+      onChange();
+    });
+    const lift = (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
+    canvas.addEventListener("pointerup", lift);
+    canvas.addEventListener("pointercancel", lift);
+    canvas.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || pinch) return; // a second finger is a pinch, not a click
       const p = at(e), found = hit(p), mark = !this.active && hitMark(p);
       if (mark) {
         // Picks the segment, and dragging it pins it where it's dropped.
@@ -916,6 +989,7 @@ export class House {
         const most = SHAPE_POINTS[this.styles[this.active]?.style];
         if (most && this.paths[this.active]?.length >= most) return;
         (this.paths[this.active] ||= []).push(p);
+        this.lastAdd = { id: this.active, at: performance.now() };
         this.save();
         onChange();
       } else {

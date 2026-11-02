@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.289
+
+- **Setup → House** can zoom in on the photo, so you can place lights exactly. Use **+**, **−** and **Fit** above the photo, or hold Ctrl (⌘ on a Mac) and scroll to zoom where you point. Scroll or drag with the middle mouse button to move around. On a phone or tablet, pinch to zoom and slide two fingers to move.
+
 ## 0.2.288
 
 - HA-liday Show now opens straight on **Library → Shows**, instead of showing an empty Show editor for a moment while it loads.
