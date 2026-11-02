@@ -514,3 +514,35 @@ async def test_a_long_scene_id_still_moves_across(setup):
     entries = load_entries(storage)
     assert sorted(e["play"]["id"] for e in entries) == sorted([long_id, "a" * 63])
     assert all(valid_id(e["id"]) for e in entries) and len({e["id"] for e in entries}) == 2
+
+
+def test_the_week_lists_each_rows_times_and_marks_where_a_higher_row_wins():
+    from datetime import date
+    from halidayshow.schedule import week
+
+    def entry(eid, kind, start, end, days=(0, 1, 2, 3, 4, 5, 6), on=True):
+        return {"id": eid, "play": {"type": kind, "id": eid}, "on": on, "start": start, "end": end,
+                "days": list(days), "from": "", "to": ""}
+
+    entries = [entry("party", "playlist", "18:00", "20:00", days=(5,)),  # Saturdays only, top row
+               entry("every", "playlist", "17:00", "22:00"),
+               entry("late", "show", "23:00", "01:00", days=(6,)),  # Sunday into Monday
+               entry("glow", "scene", "16:00", "23:30"),
+               entry("off", "playlist", "10:00", "11:00", on=False)]
+    w = week(entries, date(2026, 11, 2), None)  # a Monday
+    assert w["days"][0] == "2026-11-02" and len(w["days"]) == 7
+    slots = w["slots"]
+    assert {s["entry"] for s in slots} == {"party", "every", "late", "glow"}  # off rows aren't drawn
+    sat = [s for s in slots if s["day"] == "2026-11-07"]
+    every = next(s for s in sat if s["entry"] == "every")
+    assert (every["start"], every["end"]) == ("2026-11-07T17:00", "2026-11-07T22:00")
+    assert every["covered"] == [["2026-11-07T18:00", "2026-11-07T20:00"]]  # the party row wins then
+    assert next(s for s in sat if s["entry"] == "party")["covered"] == []
+    # A scene waits while a playlist or show plays; it isn't covered by them.
+    glow = next(s for s in sat if s["entry"] == "glow")
+    assert glow["lane"] == "scene" and glow["covered"] == [] and glow["waits"] == [["2026-11-07T17:00", "2026-11-07T22:00"]]
+    # Sunday's late show runs past midnight, and is shown on the day it starts.
+    late = next(s for s in slots if s["entry"] == "late")
+    assert (late["day"], late["end"]) == ("2026-11-08", "2026-11-09T01:00")
+    # Each stretch is drawn on the day it starts, so last Sunday's (into Monday morning) isn't listed.
+    assert all(s["day"] in w["days"] for s in slots)

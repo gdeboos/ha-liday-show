@@ -86,6 +86,41 @@ def _window(s: dict, d: date, where: Where = None) -> tuple[datetime, datetime] 
     return start, end
 
 
+def _overlaps(span: tuple[datetime, datetime], others: list[tuple[datetime, datetime]]) -> list[list[str]]:
+    """The parts of `span` that any of `others` covers, merged, as ISO minute pairs."""
+    cut = sorted((max(a, span[0]), min(b, span[1])) for a, b in others if a < span[1] and b > span[0])
+    merged: list[list[datetime]] = []
+    for a, b in cut:
+        if merged and a <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    return [[a.isoformat(timespec="minutes"), b.isoformat(timespec="minutes")] for a, b in merged]
+
+
+def week(entries: list[dict], start: date, where: Where = None) -> dict:
+    """What plays when over the 7 days from `start`, for the Schedule tab's week view: each switched-on
+    entry's stretch on the day it starts, with `covered` where a higher entry in the same lane plays
+    instead and, for scenes, `waits` where a playlist or show plays (the scene comes back after)."""
+    days = [start + timedelta(days=k) for k in range(7)]
+    spans = []  # (priority, entry, lane, (start, end), day)
+    for k, e in enumerate(entries):
+        if not e.get("on"):
+            continue
+        lane = "scene" if e["play"]["type"] == "scene" else "show"
+        for d in days:
+            if (w := _window(e, d, where)):
+                spans.append((k, e["id"], lane, w, d))
+    out = []
+    for k, eid, lane, w, d in spans:
+        higher = [x[3] for x in spans if x[2] == lane and x[0] < k]
+        shows = [x[3] for x in spans if x[2] == "show"] if lane == "scene" else []
+        out.append({"entry": eid, "lane": lane, "day": d.isoformat(),
+                    "start": w[0].isoformat(timespec="minutes"), "end": w[1].isoformat(timespec="minutes"),
+                    "covered": _overlaps(w, higher), **({"waits": _overlaps(w, shows)} if lane == "scene" else {})})
+    return {"days": [d.isoformat() for d in days], "slots": out}
+
+
 def window_at(s: dict, now: datetime, where: Where = None) -> tuple[datetime, datetime] | None:
     """The scheduled stretch going on at `now`, if any (yesterday's can run past midnight)."""
     if not s.get("on"):

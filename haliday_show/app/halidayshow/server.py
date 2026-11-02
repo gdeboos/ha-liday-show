@@ -1756,6 +1756,16 @@ async def get_schedule(request):
     return web.json_response(_schedule_view(request.app))
 
 
+async def get_schedule_week(request):
+    """What plays when over a week (?start=YYYY-MM-DD, today if left out), for the week view."""
+    try:
+        start = datetime.date.fromisoformat(request.query["start"]) if request.query.get("start") else datetime.date.today()
+    except ValueError:
+        raise web.HTTPBadRequest(text="start must be a date, like 2026-11-02")
+    where, _ = request.app[SCHEDULER].where()
+    return web.json_response(schedule.week(schedule.load_entries(request.app[STORAGE]), start, where))
+
+
 async def put_schedule(request):
     """The whole schedule, highest priority first (schedule.py)."""
     try:
@@ -2624,6 +2634,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/blocks/{id}/baked", put_block)
     r.add_post("/api/blocks/{id}/baked/part", put_block_part)
     r.add_get("/api/schedule", get_schedule)
+    r.add_get("/api/schedule/week", get_schedule_week)
     r.add_put("/api/schedule", put_schedule)
     r.add_get("/api/public", get_public)
     r.add_put("/api/public", put_public)
