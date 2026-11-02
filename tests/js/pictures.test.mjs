@@ -98,3 +98,14 @@ test("frames go to the server and back as base64, and the effect finds the frame
   forgetPicture("p1");
   assert.equal(getPicture("p1"), undefined);
 });
+
+// A real animated GIF (made by Pillow: compressed, interlaced, 3 frames of 20 x 12) and a weighted sum
+// of each frame's colours, worked out from the frames Pillow drew.
+const REAL = "R0lGODlhFAAMAIQAAP/IAMbaymLw8wbwhOmYo9B2rP1vhLSO+qmOeHma34iRP5utBUK98l6gvVOnNUS7MU12TRBl0PctsMU0irhGwaEKwIZPFZoPiU0KlkQeqh8KvTwWFwMnNwcgUQAAKAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQACAAAACwAAAAAFAAMAAAIYQA9CBxIsODACwYTGhwg0IAHABAVJoRIMaJCAQIdcKhoUeLDig0oeqAw8MDAAh8xcARAcIPADgMhSlg5cELBBwJXAljgMYKGlQw8WBhYwUOAgRliQlTggcBACAk8KkSQMCAAIfkEAQwAHwAsAAAAABQADACE/8gA1tESZdwZLPqhA/nMCtMb68IWpKpym7iHmcE1k650YaFdf4nYJLPFH7RxQ55xKKxvK7BCp1/e3nEQinM9rkCBPVeZPVd62z9Bwihbkj19ZgL0PxkjpQAcAAAoAAAACHcAPwj48IEDwYMIPwz4kMEDwgMELySc6KHCB4ceMn4AQADAwQ0QKGZ0SFACgJMJSXpgMPLgSZQBEibwYEBjAwwfIrz0SPLixZYId6o8aKGDxqAvETqgQHAB0I1JJ0544EHD0Z0AEGA82HOkhwIofyqYSBZhT4QBAQAh+QQBFAAeACwAAAAAFAAMAIT/yADW9WnW6wl/6Ml401Jd2C4x/vcX73UO9iXLs9b1w2a4eqSmXCf3T83AWwwbvv6hdpcSglaIb50jb4LAN6OGPu2ERl/HFi+ZLRJfRYh6NjNCDqYNOvYAACgAAAAAAAAIcwA9dPAgkKDBgwUZIBxYkCAHhAQdMCRowAOEAR0GAtjYIQBEghcyWpi4ceNBBRMzZjRYEoDBgQUIquyQ4GBLhAQEZtxAUADBmx4erNQ5lOXGDENTqiRYAaiGlQwXqMTwUwIClx8NTlhZciJCClkPNEAYISAAOw==";
+
+test("a GIF made by another program reads dot for dot", () => {
+  const pic = decodeGif(Uint8Array.from(atob(REAL), (c) => c.charCodeAt(0)));
+  assert.deepEqual([pic.w, pic.h, pic.delays], [20, 12, [80, 120, 200]]);
+  const sum = (f) => { let s = 0; for (let i = 0; i < 240; i++) s += (f[i * 4] + f[i * 4 + 1] + f[i * 4 + 2]) * (i + 1); return s; };
+  assert.deepEqual(pic.frames.map(sum), [5451221, 5102275, 5267503]);
+});
