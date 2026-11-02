@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.288
+
+- HA-liday Show now opens straight on **Library → Shows**, instead of showing an empty Show editor for a moment while it loads.
+
 ## 0.2.287
 
 - Scenes can **react to music** heard by a WLED with a microphone. Open a scene and switch on **React to music** under **Music** (for an Advanced scene, press **React to music…** above the timeline). The scene gets brighter as the music gets louder, flashes on each beat, and can switch to another of your scenes while the bass or treble is strong. When the music stops it glides back to normal. Which WLED it listens to is set under **Setup → Settings → Live music**.

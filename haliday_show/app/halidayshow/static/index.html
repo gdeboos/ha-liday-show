@@ -123,7 +123,7 @@
   </section>
 </main>
 
-<main id="view-editor" class="view editor panel-grid">
+<main id="view-editor" class="view editor panel-grid" hidden>
   <!-- Panels live in five docks (top, left, middle, right, bottom); layout.js moves or hides them per viewer. -->
   <div class="dock" data-dock="top">
     <section class="panel" data-panel="show">
@@ -631,11 +631,11 @@
 
 
 
-<div id="section-library" class="section" hidden>
+<div id="section-library" class="section">
   <nav class="subnav" aria-label="Library">
     <!-- What plays, then what shows are made from. -->
     <p class="subnav-group" id="lib-group-shows">Shows</p>
-    <button class="subtab" data-view="shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><b>Shows</b><span>All your shows</span></button>
+    <button class="subtab active" data-view="shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><b>Shows</b><span>All your shows</span></button>
     <button class="subtab" data-view="scenes"><svg class="ico" aria-hidden="true"><use href="#i-scenes"/></svg><b>Scenes</b><span>One tap for every light</span></button>
     <button class="subtab" data-view="playlists"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Playlists</b><span>Shows back to back</span></button>
     <p class="subnav-group" id="lib-group-blocks">Ingredients</p>
@@ -646,7 +646,7 @@
     <button class="subtab" data-view="presets"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg><b>Presets</b><span>Ready-made effect settings</span></button>
   </nav>
   <div class="section-body">
-<main id="view-shows" class="view" hidden>
+<main id="view-shows" class="view">
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg>Shows</h2>
   <p class="hint">Open a show to change it. Nothing in a show changes until you open it.</p>
   <div class="show-list" data-show-list></div>
