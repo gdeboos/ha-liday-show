@@ -90,3 +90,9 @@ def test_automatic_copies_keep_the_newest_few(tmp_path):
 
 def test_the_public_pages_picture_is_backed_up():
     assert backup._allowed("public-picture.png") and not backup._allowed("public-picture.exe")
+
+
+def test_pictures_are_kept_in_backups():
+    assert backup._allowed("pictures/p0123456789.json")
+    assert not backup._allowed("pictures/../settings.json")
+    assert not backup._allowed("pictures/p0123456789.png")
