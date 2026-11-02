@@ -1264,6 +1264,7 @@ async def put_seasons(request):
     # Props just packed away go dark straight away, even in the middle of a show or scene; props put
     # out join in from the next show or scene.
     request.app[RUNNER].player.drop(seasons.away(storage.load_devices(), clean))
+    request.app[MQTT].refresh()  # Home Assistant's season switches follow
     return web.json_response(clean)
 
 

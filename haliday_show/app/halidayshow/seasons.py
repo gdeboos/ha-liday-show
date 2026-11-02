@@ -73,3 +73,14 @@ def away(devices: list[dict], seasons: list[dict]) -> set[str]:
         if mine and not any(out_now[t] for t in mine):
             gone.add(d["id"])
     return gone
+
+
+def set_out(storage, season_id: str, out: bool) -> bool:
+    """Switches a season's props out or packed away (from Home Assistant). False if there's no such season."""
+    settings = storage.load_settings()
+    current = load(settings)
+    if not any(x["id"] == season_id for x in current):
+        return False
+    settings["seasons"] = [{**x, "out": out} if x["id"] == season_id else x for x in current]
+    storage.save_settings(settings)
+    return True
