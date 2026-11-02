@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.280
+
+- New effect for matrices, **Scrolling text**: type a message, such as "Merry Christmas", and it scrolls across your panel or round your mega-tree, in one colour or a rainbow of letters, as tall as the matrix allows. It's under the new **On a matrix** heading in the effect chooser.
+
 ## 0.2.279
 
 - A matrix can be a **Mega-tree** on the house photo: pick it under **Style** on **Setup → House**, then drag the white point to the top of your tree and the other two to the ends of its base. Each column is a string, and effects you add to the tree on the timeline start out running **Down each column**.
