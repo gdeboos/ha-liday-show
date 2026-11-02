@@ -1321,3 +1321,14 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .save-preset-dialog .gen-note, .gen-note { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; margin: 0; }
 .gen-note textarea { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line);
   border-radius: 6px; padding: 6px 10px; resize: vertical; min-height: 3.5em; width: 100%; box-sizing: border-box; }
+
+/* Setup → Devices → Seasons: a line per season with its Out / Packed away switch. */
+.season-rows { display: flex; flex-direction: column; gap: 6px; max-width: 640px; }
+.season-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 12px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.season-row .season-name { font-weight: 600; min-width: 8em; }
+.season-row .spacer { flex: 1; }
+.season-row.away .season-name { color: var(--muted); }
+.season-tag { display: inline-block; margin-left: 6px; font-size: 12px; color: var(--muted); font-weight: normal; }
+.season-tag.away { color: var(--warn); }
+.season-ticks { display: flex; flex-wrap: wrap; gap: 6px 18px; }

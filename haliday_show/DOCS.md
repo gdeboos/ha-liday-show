@@ -406,6 +406,23 @@ by its ⠿ handle (or use **↑** and **↓**) to change the order of their lane
 
 Each group gets its own lane in the Show editor, under **House** (see [Group lanes](#group-lanes)).
 
+### Seasons
+
+Some props only go up for part of the year: a Halloween ghost, a Christmas Santa. Tell HA-liday Show
+which season each belongs to, and switch a season off when its props are packed away.
+
+- **Seasons** is below **Groups** on the **Devices** tab. **Halloween** and **Christmas** are there to
+  start with. **+ New season** adds your own (Bonfire Night, Easter, a birthday), and each one has
+  **Rename…** and **Delete…**.
+- In a light's window, tick the **Seasons** it's put up for. A light with none ticked is an all-year
+  light. A light can be in more than one season, such as orange lights for Halloween and Bonfire Night.
+- Each season has a switch: **Out** while its props are up, **Packed away** when they're not. A light
+  is packed away when every season it's in is packed away. Nothing is sent to a packed-away prop:
+  shows, scenes and playlists play on everything else, and a prop packed away mid-show goes dark
+  straight away. **Test** and previews on the light are off for it, it's marked **packed away** in the
+  list, and the house view draws it dimmed.
+- Deleting a season makes its lights all-year lights again.
+
 ## 2. Speakers
 
 The song can play on any Home Assistant media player that can play files from the media folder.
