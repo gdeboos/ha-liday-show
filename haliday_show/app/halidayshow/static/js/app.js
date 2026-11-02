@@ -21,6 +21,7 @@ import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
 import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb } from "./house.js";
 import { MAX_MATRIX, RUNS, gridOf, matrixTestFrame, toWire } from "./matrix.js";
+import { awayIds, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
 import { forgetPicture, getPicture, keepPicture, pictureList, shrinkPicture, toBase64 } from "./pictures.js";
 import { placeOnSample } from "./samplehouse.js";
@@ -297,10 +298,89 @@ function restore(step) {
 
 // devices -------------------------------------------------------------------
 async function loadDevices() {
-  const [list, groups] = await Promise.all([api("api/devices"), api("api/light-groups").catch(() => [])]);
+  const [list, groups, seasons] = await Promise.all([api("api/devices"), api("api/light-groups").catch(() => []),
+    api("api/seasons").catch(() => [])]);
   app.deviceList = list;
   app.groups = groups;
+  app.seasons = seasons;
+  house.away = awayIds(list, seasons);
   indexDevices();
+}
+
+// Seasons (seasons.js): which props are packed away just now. A part goes with its light.
+const isAway = (d) => !!d && awayIds(app.deviceList, app.seasons).has(d.parent || d.light?.id || d.id);
+
+async function saveSeasons(next, what = "Seasons saved") {
+  try {
+    app.seasons = await api("api/seasons", { method: "PUT", json: next });
+    status(what, "saved", "lights");
+  } catch (e) { status(`Couldn't save your seasons: ${e.message}`, true, "lights"); }
+  house.away = awayIds(app.deviceList, app.seasons);
+  renderDevices();
+}
+
+// Setup → Devices → Seasons: a line each, with its lights and its Out / Packed away switch.
+function renderSeasons() {
+  const box = $("season-rows");
+  if (!box) return;
+  const seasons = app.seasons || [];
+  box.replaceChildren(...seasons.map((s) => {
+    const row = document.createElement("div");
+    row.className = `season-row${s.out ? "" : " away"}`;
+    const lights = app.deviceList.filter((d) => (d.seasons || []).includes(s.id));
+    const name = Object.assign(document.createElement("span"), { className: "season-name", textContent: s.name });
+    const count = Object.assign(document.createElement("span"), { className: "hint",
+      textContent: lights.length ? lights.map((d) => d.name).join(", ") : "No lights yet: tick this season in a light's window" });
+    const sw = Object.assign(document.createElement("input"), { type: "checkbox", checked: s.out });
+    sw.setAttribute("aria-label", `${s.name} props are out`);
+    const swLabel = Object.assign(document.createElement("label"), { className: "row" });
+    const state = document.createElement("span");
+    state.textContent = s.out ? "Out" : "Packed away";
+    swLabel.append(sw, " ", state);
+    swLabel.title = "Off when the props are packed away: nothing is sent to them, and shows play on everything else";
+    sw.addEventListener("change", () => saveSeasons(seasons.map((x) => (x.id === s.id ? { ...x, out: sw.checked } : x)),
+      sw.checked ? `${s.name} props are out` : `${s.name} props are packed away`));
+    const rename = button("Rename…", async () => {
+      const v = await askText("Rename the season", { value: s.name, max: 40,
+        check: (n) => (seasons.some((x) => x !== s && x.name.toLowerCase() === n.trim().toLowerCase()) ? "There's already a season with that name" : "") });
+      if (v && v !== s.name) saveSeasons(seasons.map((x) => (x.id === s.id ? { ...x, name: v } : x)));
+    }, "ghost small");
+    const del = button("Delete…", async () => {
+      if (!(await askYes(`Delete the ${s.name} season? Its lights become all-year lights.`, { yes: "Delete", danger: true }))) return;
+      // Its lights let go of it, so a new season with the same name starts with none.
+      let untagged = false;
+      for (const d of app.deviceList) {
+        if (!(d.seasons || []).includes(s.id)) continue;
+        d.seasons = d.seasons.filter((t) => t !== s.id);
+        if (!d.seasons.length) delete d.seasons;
+        untagged = true;
+      }
+      if (untagged) await saveDevices();
+      saveSeasons(seasons.filter((x) => x.id !== s.id), `${s.name} deleted`);
+    }, "ghost small danger");
+    row.append(name, swLabel, count, Object.assign(document.createElement("span"), { className: "spacer" }), rename, del);
+    return row;
+  }));
+  if (!seasons.length) box.replaceChildren(Object.assign(document.createElement("p"), { className: "hint", textContent: "No seasons. Press + New season to add one." }));
+}
+
+// Edit light window: the seasons this light is put up for.
+function seasonControls(d) {
+  const box = document.createElement("div");
+  box.className = "season-ticks";
+  for (const s of app.seasons || []) {
+    const tick = Object.assign(document.createElement("input"), { type: "checkbox", checked: (d.seasons || []).includes(s.id) });
+    tick.addEventListener("change", () => {
+      const next = (app.seasons || []).map((x) => x.id).filter((id) => (id === s.id ? tick.checked : (d.seasons || []).includes(id)));
+      if (next.length) d.seasons = next; else delete d.seasons;
+      saveDevices().then(() => { house.away = awayIds(app.deviceList, app.seasons); });
+    });
+    const l = Object.assign(document.createElement("label"), { className: "row" });
+    l.append(tick, ` ${s.name}`);
+    box.append(l);
+  }
+  if (!(app.seasons || []).length) box.append(Object.assign(document.createElement("span"), { className: "hint", textContent: "No seasons yet" }));
+  return box;
 }
 
 // A light split into parts plays as one pseudo-light per part, keyed "light#part", and its own
@@ -426,6 +506,7 @@ const testFrame = (d, what) => (what === "matrix" ? toWire(matrixTestFrame(gridO
   : partsFrame(d, what === "parts" ? undefined : what));
 
 async function testLight(d, what = "rainbow") {
+  if (isAway(d)) { status(`${d.name} is packed away. Switch its season to Out under Seasons first`, "hint"); return false; }
   const seconds = what === "rainbow" ? 20 : 60;
   const json = { ...d, seconds };
   if (what !== "rainbow") json.rgb = toHex(testFrame(d, what));
@@ -477,7 +558,12 @@ function renderDevices() {
     tr.title = `Edit ${d.name}`;
     const cell = (...kids) => { const td = document.createElement("td"); td.append(...kids); tr.append(td); return td; };
     cell(orderControls(d));
-    cell(Object.assign(document.createElement("b"), { textContent: d.name }));
+    const nameCell = cell(Object.assign(document.createElement("b"), { textContent: d.name }));
+    const inSeasons = seasonNames(d, app.seasons);
+    if (inSeasons) {
+      nameCell.append(Object.assign(document.createElement("span"), { className: `season-tag${isAway(d) ? " away" : ""}`,
+        textContent: isAway(d) ? `${inSeasons} · packed away` : inSeasons }));
+    }
     cell(Object.assign(document.createElement("span"), { className: d.ip || isHa(d) ? "" : "hint",
       textContent: isHa(d) ? (d.entity || "Not picked yet") : d.ip || "Planned" }));
     const model = document.createElement("span");
@@ -506,6 +592,7 @@ function renderDevices() {
     dropTarget(tr, d);
   }
   if ($("light-dialog").open) renderLightEditor();
+  renderSeasons();
 }
 
 // A thin bar of the light's segments, each part in its colour, plus a short summary under it.
@@ -729,6 +816,8 @@ function lightFields(d) {
     if (showBulbs(d)) cell(bulbs, "Bulbs", isPixels(d) || isHa(d) ? "So the House view draws each one." : "So the House view draws each one. Blank guesses 4 per segment.");
     cell(input("number", "brightness", { min: 1, max: 100, title: "Caps this light in every show. 100 is full brightness." }),
       "Brightness %", "Caps this light in every show.");
+    cell(seasonControls(d), "Seasons", isAway(d) ? "Packed away just now: nothing is sent to it. Switch its season to <b>Out</b> under <b>Seasons</b> below the list."
+      : "Tick the seasons it's put up for. None ticked: all year.");
     if (!isHa(d) && !grid) cell(input("checkbox", "reverse"), "Reverse", "Turn on if Test's white dot runs the wrong way.");
     if (!wled) cell(input("checkbox", "gradient"), "Blend", "Ask the light to blend between segments.");
     if (wled) {
@@ -2671,6 +2760,7 @@ function drawGrid(c, rgb, { w: gw, h: gh }, cap = 1) {
 }
 
 function sendPreview(dev, rgb) {
+  if (isAway(dev)) return; // packed away: nothing goes to it
   if (gridOf(dev)) rgb = toWire(rgb, dev.matrix); // the editor works in rows; the light wants its wiring order
   if (dev.parent) {
     const light = app.lights[dev.parent], full = new Uint8Array(light.segments * 3);
@@ -10059,6 +10149,12 @@ function wire() {
   $("sun-place-clear").addEventListener("click", async () => {
     try { scheduleState = await api("api/location", { method: "PUT", json: {} }); } catch (err) { status(err.message, true); }
     refreshPlaylistStatus();
+  });
+  $("btn-new-season").addEventListener("click", async () => {
+    const seasons = app.seasons || [];
+    const name = await askText("New season", { max: 40, yes: "Add season",
+      check: (n) => (seasons.some((x) => x.name.toLowerCase() === n.trim().toLowerCase()) ? "There's already a season with that name" : "") });
+    if (name) saveSeasons([...seasons, newSeason(seasons, name)], `${name} added`);
   });
   $("btn-add-picture").addEventListener("click", () => $("picture-upload").click());
   $("picture-upload").addEventListener("change", (e) => {

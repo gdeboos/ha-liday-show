@@ -14,6 +14,8 @@ import struct
 import wave
 from pathlib import Path
 
+from . import seasons
+
 PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 SPEAKER_TEST = "haliday-show-speaker-test.wav"  # the chime that tests a speaker; not listed as a song
 SAMPLES = "Samples"  # short sounds for the Music editor's layers, kept out of the song lists
@@ -110,7 +112,10 @@ class Storage:
         _write_atomic(self.devices_file, json.dumps(devices, indent=2).encode())
 
     def devices_by_id(self) -> dict[str, dict]:
-        return {d["id"]: d for d in self.load_devices()}
+        """The lights shows, scenes and blocks play on, by id: every light but packed-away props."""
+        devices = self.load_devices()
+        gone = seasons.away(devices, seasons.load(self.load_settings()))
+        return {d["id"]: d for d in devices if d["id"] not in gone}
 
     # settings ------------------------------------------------------------
     def load_settings(self) -> dict:

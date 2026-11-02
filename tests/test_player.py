@@ -59,3 +59,43 @@ async def test_a_bake_longer_than_the_light_is_played_at_the_lights_length():
     await p.play("x", b, {"p": {"ip": "10.0.0.2", "segments": 44}, "w": {"ip": "10.0.0.3", "segments": 60}})
     await p.stop()
     assert out.claims == [("10.0.0.2", 44), ("10.0.0.3", 10)]
+
+
+def test_a_prop_packed_away_mid_show_is_let_go_and_sent_nothing_more():
+    released = []
+
+    class Output:
+        devices = {}
+
+        def release(self, ip):
+            released.append(ip)
+
+    p = player.Player(Output())
+    p._task = Running()
+    p.devices = {"tree": {"id": "tree", "ip": "192.168.1.10"}, "ghost": {"id": "ghost", "ip": "192.168.1.11"}}
+    p.drop({"ghost", "nothing-here"})
+    assert set(p.devices) == {"tree"}
+    assert released == ["192.168.1.11"]
+
+
+
+def test_a_light_sharing_an_address_keeps_it_and_nothing_is_let_go_when_stopped():
+    released = []
+
+    class Output:
+        devices = {}
+
+        def release(self, ip):
+            released.append(ip)
+
+    p = player.Player(Output())
+    p._task = Running()
+    p.devices = {"a": {"id": "a", "ip": "10.0.0.5"}, "b": {"id": "b", "ip": "10.0.0.5"}}
+    p.drop({"a"})
+    assert set(p.devices) == {"b"} and released == []  # b still uses that address
+    p.drop({"b"})
+    assert released == ["10.0.0.5"]
+    stopped = player.Player(Output())
+    stopped.devices = {"c": {"id": "c", "ip": "10.0.0.9"}}
+    stopped.drop({"c"})
+    assert released == ["10.0.0.5"]  # nothing playing: nothing to let go

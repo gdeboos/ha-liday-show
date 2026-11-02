@@ -316,6 +316,7 @@ export class House {
     this.hiddenLights = new Set(); // ids hidden on the House tab, to get at a light traced under another
     this.saveTimer = null;
     this.cache = new Map(); // id -> {key, bulbs}
+    this.away = new Set(); // ids of props packed away (seasons.js), drawn dimmed
   }
 
   async load() {
@@ -469,7 +470,7 @@ export class House {
       if (style?.style === "spots") {
         const pts = this.paths[dev.id];
         if (!pts?.length) continue;
-        const rgb = colours(dev), cap = (dev.brightness ?? 100) / 100;
+        const rgb = colours(dev), cap = this.capOf(dev);
         pts.forEach(([x, y], i) => {
           const c = spotColour(i, pts.length, rgb, dev.segments, dev.reverse).map((v) => Math.round(v * cap));
           if (c[0] + c[1] + c[2] >= 8) this.wash(ctx, x * w, y * h, aimOf(style, i), style.beam, c, w, h);
@@ -480,7 +481,7 @@ export class House {
       const bulbs = this.bulbs(dev);
       if (!bulbs) continue;
       const rgb = colours(dev);
-      const n = dev.segments, cap = (dev.brightness ?? 100) / 100;
+      const n = dev.segments, cap = this.capOf(dev);
       const colour = (j) => {
         const s = bulbSegment(j, bulbs.length, n, dev.reverse);
         return [rgb[s * 3], rgb[s * 3 + 1], rgb[s * 3 + 2]].map((v) => Math.round(v * cap));
@@ -500,6 +501,11 @@ export class House {
     }
     ctx.globalCompositeOperation = "source-over";
     return { ctx, w, h };
+  }
+
+  // How bright a light is drawn: its Brightness %, and dim while it's packed away.
+  capOf(dev) {
+    return ((dev.brightness ?? 100) / 100) * (this.away.has(dev.parent || dev.id) ? 0.15 : 1);
   }
 
   // A spotlight's beam on the wall: a soft oval of colour from where it sits towards where it

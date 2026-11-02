@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.283
+
+- **Seasons** for props that only go up for part of the year. Under **Seasons** on **Setup → Devices** (Halloween and Christmas to start with, plus **+ New season**), each season has an **Out** / **Packed away** switch. Tick a light's seasons in its window. While a season's props are packed away nothing is sent to them, and shows, scenes and playlists play on everything else. Showing only a season's props in a show comes next.
+
 ## 0.2.282
 
 - New **Library → Pictures**: add pictures and animated GIFs (press **+ Add a picture**), sort them into folders, rename and delete them. They're shrunk to fit a 64 × 64 matrix as they're added.

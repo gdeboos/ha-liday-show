@@ -304,6 +304,10 @@ export const HELP = {
         "<b>Test wiring</b> lights the top left white, the top row red and the left column green.",
         "For a mega-tree, make each string a column: <b>across</b> is how many strings, <b>down</b> how many LEDs each.",
       ] },
+      { id: "seasons", title: "Seasons", guide: ["lights.md", "seasons"], tips: [
+        "Tick a light's <b>Seasons</b> in its window, such as <b>Halloween</b>. Lights with none are all year.",
+        "Switch a season to <b>Packed away</b> when its props come down: nothing is sent to them, and shows play on the rest.",
+      ] },
       { id: "groups", title: "Groups", guide: ["lights.md", "light-groups"], tips: [
         "<b>+ New group</b> puts lights and parts together, such as the roof's icicles, so a show can give them one effect.",
         "Each group gets a lane under <b>House</b> in the Show editor. Effects run along its lights in this tab's order.",

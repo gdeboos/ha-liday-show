@@ -20,7 +20,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, public, scenelib, schedule, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, public, scenelib, schedule, seasons, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -358,6 +358,12 @@ def _clean_device(d: dict) -> dict:
     extra = {"entity": entity} if kind == "ha" else {}
     if matrix:
         extra["matrix"] = matrix
+    try:
+        tags = seasons.clean_tags(d.get("seasons"))
+    except ValueError as e:
+        raise web.HTTPBadRequest(text=str(e))
+    if tags:
+        extra["seasons"] = tags
     if kind == "ddp":
         # A controller can drive several lights from one IP, each from its own first LED.
         try:
@@ -403,7 +409,10 @@ async def put_devices(request):
             raise web.HTTPBadRequest(text=f"{name}: {e.text}" if name else e.text) from None
     if len({d["id"] for d in devices}) != len(devices):
         raise web.HTTPBadRequest(text="duplicate device id")
-    request.app[STORAGE].save_devices(devices)
+    storage = request.app[STORAGE]
+    storage.save_devices(devices)
+    # A light just ticked into a packed-away season goes dark straight away, as packing away does.
+    request.app[RUNNER].player.drop(seasons.away(devices, seasons.load(storage.load_settings())))
     return web.json_response(devices)
 
 
@@ -1236,6 +1245,26 @@ async def delete_draft(request):
     if not request.app[STORAGE].delete_draft(_draft_id(request)):
         raise web.HTTPNotFound()
     return web.json_response({"ok": True})
+
+
+# seasons: props packed away for part of the year (seasons.py) ------------------------------------
+async def get_seasons(request):
+    return web.json_response(seasons.load(request.app[STORAGE].load_settings()))
+
+
+async def put_seasons(request):
+    try:
+        clean = seasons.clean(await request.json())
+    except ValueError as e:
+        raise web.HTTPBadRequest(text=str(e))
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    settings["seasons"] = clean
+    storage.save_settings(settings)
+    # Props just packed away go dark straight away, even in the middle of a show or scene; props put
+    # out join in from the next show or scene.
+    request.app[RUNNER].player.drop(seasons.away(storage.load_devices(), clean))
+    return web.json_response(clean)
 
 
 # pictures for matrices --------------------------------------------------------------
@@ -2546,6 +2575,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/songs/delete", delete_song)
     r.add_get("/api/audio/info", get_song_info)
     r.add_put("/api/audio/info", put_song_info)
+    r.add_get("/api/seasons", get_seasons)
+    r.add_put("/api/seasons", put_seasons)
     r.add_get("/api/pictures", list_pictures)
     r.add_post("/api/pictures", create_picture)
     r.add_get("/api/pictures/{id}", get_picture)
