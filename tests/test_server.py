@@ -1635,3 +1635,21 @@ async def test_the_schedule_week(client):
     assert (await client.get("/api/schedule/week?start=nope")).status == 400
     today = await (await client.get("/api/schedule/week")).json()
     assert len(today["days"]) == 7
+
+
+async def test_baked_frames_can_arrive_gzipped(client):
+    import gzip
+    show_id = (await (await client.post("/api/shows", json={"name": "Gz"})).json())["id"]
+    await client.put(f"/api/shows/{show_id}", json={"name": "Gz", "duration": 1, "tracks": [{"device": "a", "clips": []}]})
+    blob = baked.encode(40, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"] * 40)
+    r = await client.put(f"/api/shows/{show_id}/baked?gz=1", data=gzip.compress(blob))
+    assert r.status == 200 and (await r.json())["bytes"] == len(blob)
+    assert client.app[server.STORAGE].load_baked(show_id) == blob
+    # In parts too: the gzipped file is split, joined again, then unpacked.
+    packed = gzip.compress(blob)
+    half = len(packed) // 2
+    q = f"/api/shows/{show_id}/baked/part?upload=abcdef0123456789abcdef01"
+    assert (await client.post(f"{q}&offset=0", data=packed[:half])).status == 200
+    r = await client.post(f"{q}&offset={half}&done=1&gz=1", data=packed[half:])
+    assert r.status == 200 and (await r.json())["bytes"] == len(blob)
+    assert (await client.put(f"/api/shows/{show_id}/baked?gz=1", data=b"not gzip")).status == 400

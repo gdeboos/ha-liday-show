@@ -44,6 +44,25 @@ export async function sendParts(api, url, blob, last = {}, progress = null) {
   return reply;
 }
 
+// Baked frames are mostly the same colours over and over, so gzipped they're many times smaller and
+// go up much sooner. {data, gz}: gz is false (and data as it was) where the browser can't gzip.
+export async function packed(data) {
+  if (typeof CompressionStream !== "function") return { data, gz: false };
+  try {
+    const out = await new Response(new Blob([data]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
+    return { data: new Uint8Array(out), gz: true };
+  } catch {
+    return { data, gz: false };
+  }
+}
+
+// Sends a scene's or building block's baked frames to `path` (…/baked), gzipped where it can.
+export async function sendBaked(api, path, blob) {
+  const { data, gz } = await packed(blob);
+  if (data.byteLength > PART) await sendParts(api, `${path}/part`, new Blob([data]), gz ? { gz: "1" } : {});
+  else await api(`${path}${gz ? "?gz=1" : ""}`, { method: "PUT", body: data, headers: { "Content-Type": "application/octet-stream" } });
+}
+
 // PUTs `blob` to `url` like the editor's api() does, but tells progress(fraction) as it goes up
 // (fetch can't): a long show takes a while to send from a phone.
 export function putWithProgress(url, blob, progress) {
