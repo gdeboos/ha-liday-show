@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.284
+
+- A show can have a **Season** (in **⚙ Show settings…**, or as you make it with **+ New show**): a Halloween show lists your all-year lights and your Halloween props, but not your Christmas ones. Lanes with effects on them always stay, marked **Not in this season**. Shows start as **Any season**, which lists every light as before.
+- In the Show editor, a packed-away prop's lane says **Packed away**, and a show's row in **Library → Shows** names its season.
+
 ## 0.2.283
 
 - **Seasons** for props that only go up for part of the year. Under **Seasons** on **Setup → Devices** (Halloween and Christmas to start with, plus **+ New season**), each season has an **Out** / **Packed away** switch. Tick a light's seasons in its window. While a season's props are packed away nothing is sent to them, and shows, scenes and playlists play on everything else. Showing only a season's props in a show comes next.

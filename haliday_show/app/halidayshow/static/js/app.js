@@ -21,7 +21,7 @@ import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
 import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb } from "./house.js";
 import { MAX_MATRIX, RUNS, gridOf, matrixTestFrame, toWire } from "./matrix.js";
-import { awayIds, newSeason, seasonNames } from "./seasons.js";
+import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
 import { forgetPicture, getPicture, keepPicture, pictureList, shrinkPicture, toBase64 } from "./pictures.js";
 import { placeOnSample } from "./samplehouse.js";
@@ -290,7 +290,7 @@ function restore(step) {
   app.edits++;
   app.selected = null;
   $("show-name").value = app.show.name; // undo can take back a rename
-  if ($("show-dialog").open) renderShowBrightness();
+  if ($("show-dialog").open) { renderShowBrightness(); fillSeasonPicker($("show-season"), app.show.season); }
   renderInspector();
   timeline.layout();
   scheduleAutoSave();
@@ -316,7 +316,9 @@ async function saveSeasons(next, what = "Seasons saved") {
     status(what, "saved", "lights");
   } catch (e) { status(`Couldn't save your seasons: ${e.message}`, true, "lights"); }
   house.away = awayIds(app.deviceList, app.seasons);
+  indexDevices(); // lanes follow: a deleted season's shows list every light again, and notes change
   renderDevices();
+  if (showListCache) renderShowLists(showListCache);
 }
 
 // Setup → Devices → Seasons: a line each, with its lights and its Out / Packed away switch.
@@ -362,6 +364,13 @@ function renderSeasons() {
     return row;
   }));
   if (!seasons.length) box.replaceChildren(Object.assign(document.createElement("p"), { className: "hint", textContent: "No seasons. Press + New season to add one." }));
+}
+
+// Show settings and New show: Any season, or one of the seasons.
+function fillSeasonPicker(sel, value) {
+  sel.replaceChildren(new Option("Any season: every light", ""));
+  for (const s of app.seasons || []) sel.add(new Option(s.name, s.id, false, s.id === value));
+  if (!(app.seasons || []).some((s) => s.id === value)) sel.value = "";
 }
 
 // Edit light window: the seasons this light is put up for.
@@ -426,7 +435,10 @@ function ensureTracks() {
   }
   const tracks = app.show.tracks, before = tracks.map((t) => t.device).join();
   const has = (id) => tracks.some((t) => t.device === id);
+  // A show set to a season lists the all-year lights and that season's props (seasons.js).
+  const listed = (d) => inSeason(d, app.show.season, app.seasons);
   for (const d of app.deviceList) {
+    if (!listed(d)) continue;
     if (!d.parts?.length) {
       // Back where its parts were, if it had any.
       const at = tracks.findIndex((t) => t.device.startsWith(`${d.id}#`));
@@ -456,8 +468,10 @@ function ensureTracks() {
   // A lane per light group, under the House lane.
   for (const g of app.groups) if (!has(GROUP + g.id)) tracks.splice(1, 0, { device: GROUP + g.id, clips: [] });
   // Empty tracks for parts and groups that no longer exist.
-  app.show.tracks = tracks.filter((t) => (isGroupTrack(t.device) ? groupById(t.device) : !t.device.includes("#") || app.devices[t.device])
-    || t.clips.length);
+  // Empty tracks for lights outside the show's season go too; one with effects stays, so nothing is lost.
+  const lightOf = (t) => app.lights[t.device] || app.lights[app.devices[t.device]?.parent];
+  app.show.tracks = tracks.filter((t) => ((isGroupTrack(t.device) ? groupById(t.device) : !t.device.includes("#") || app.devices[t.device])
+    && (!lightOf(t) || listed(lightOf(t)))) || t.clips.length);
   // Tracks follow the Devices tab's order: the House lane, then each light with its parts. Tracks for
   // missing lights stay at the end.
   const order = new Map(app.deviceList.map((d, i) => [d.id, i]));
@@ -2213,7 +2227,14 @@ app.clipFit = (clip, i) => {
   if (fit) lastFit.set(clip, fit);
   return fit || lastFit.get(clip) || null;
 };
-app.trackNote = (dev) => trackNote(dev)?.short || null;
+// A lane's warning: a prop packed away, or kept in this show for its effects though it's not in the
+// show's season; otherwise anything about what the light can show.
+app.trackNote = (dev) => {
+  const light = dev && (dev.light || app.lights[dev.parent] || app.lights[dev.id]);
+  if (light && isAway(light)) return "Packed away";
+  if (light && !inSeason(light, app.show.season, app.seasons)) return "Not in this season";
+  return trackNote(dev)?.short || null;
+};
 
 function housePositions() {
   return houseClips().length || groupsUseHouse() ? housePositionsAll() : {};
@@ -6075,7 +6096,7 @@ let showListCache = [];
 async function renderShowLists(shows = null) {
   try { showListCache = shows || await api("api/shows"); } catch { return; }
   renderArchivedShows();
-  const rows = showRows(showListCache, prefs.get("lastShow", null));
+  const rows = showRows(showListCache, prefs.get("lastShow", null), new Date(), app.seasons || []);
   for (const box of document.querySelectorAll("[data-show-list]")) {
     if (rows.length) {
       box.setAttribute("role", "list");
@@ -9271,6 +9292,8 @@ async function openNewShow() {
   $("ns-find").value = "";
   nsSongPicked();
   $("ns-length").value = 60;
+  fillSeasonPicker($("ns-season"), "");
+  $("ns-season-wrap").hidden = !(app.seasons || []).length;
   $("new-show-dialog").showModal();
   nsStep(1);
 }
@@ -9292,15 +9315,19 @@ async function nsSubmit(e) {
   const show = { name: $("ns-name").value.trim(), audio: newShow.song ? JSON.parse(newShow.song) : null,
     length: Math.max(1, Number($("ns-length").value) || 60), start: newShow.start,
     palette: allPalettes().find((p) => p.name === newShow.palette) || null,
-    gen: newShow.start === "empty" ? null : newShow.gen.read() };
+    gen: newShow.start === "empty" ? null : newShow.gen.read(), season: $("ns-season").value || null };
   $("new-show-dialog").close();
   await createShow(show);
 }
 
-async function createShow({ name, audio: ref, length, start, gen, palette = null }) {
+async function createShow({ name, audio: ref, length, start, gen, palette = null, season = null }) {
   await openShow(null);
   setShowPalette(app.show, palette);
   app.show.name = name;
+  if (season) {
+    app.show.season = season; // lists the all-year lights and that season's props
+    ensureTracks();
+  }
   $("show-name").value = name;
   app.show.audio = ref;
   if (!ref) {
@@ -9995,11 +10022,21 @@ function wire() {
     $("btn-delete").disabled = !app.showId;
     $("show-in-progress").checked = !app.showId || app.show.in_progress === true;
     $("show-in-progress").disabled = !app.showId;
+    fillSeasonPicker($("show-season"), app.show.season);
     renderShowPalette();
     renderShowBrightness();
     $("show-dialog").showModal();
   });
   wireLevel($("show-brightness"), $("show-brightness-out"), (v) => setWholeLevel(app.show, v));
+  $("show-season").addEventListener("change", (e) => {
+    if (e.target.value) app.show.season = e.target.value; else delete app.show.season;
+    app.selected = null; // lanes come and go, so track numbers move
+    ensureTracks();
+    app.changed();
+    renderInspector();
+    renderShowBrightness(); // its list of lights follows the lanes
+    timeline.layout();
+  });
   $("show-in-progress").addEventListener("change", async (e) => {
     const on = e.target.checked;
     if (!app.showId) return; // a new show is saved in progress anyway
