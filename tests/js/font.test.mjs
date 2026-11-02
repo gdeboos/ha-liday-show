@@ -29,3 +29,9 @@ test("a message is its letters' columns with a gap after each", () => {
   assert.equal(cols[5], 0);
   assert.deepEqual(textColumns(""), []);
 });
+
+test("an accent typed as its own mark joins its letter, and emoji's invisible marks are dropped", () => {
+  assert.deepEqual(textColumns("é"), textColumns("é"));
+  assert.deepEqual(textColumns("★️"), textColumns("★"));
+  assert.equal(textColumns("x".repeat(500)).length, 200 * 6); // at most 200 letters
+});

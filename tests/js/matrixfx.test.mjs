@@ -87,3 +87,15 @@ test("grid effects ignore Runs and stay inside a matrix with room to spare", () 
   assert.ok(lit(out, 9 * 40 + 15)); // something lit near the middle
   assert.ok(!lit(out, 0));
 });
+
+test("still text too wide for the matrix starts at the left, and a strip shows a slice", () => {
+  const still = { ...newClip("text", 0, 10), text: "HHHH", move: "still", size: "small" };
+  assert.deepEqual(dots(frame(tall(7), still, 0), 7)[3], "#####.#"); // H's middle row, then the next H
+  const strip = composeLight({ id: "s", segments: 30 }, () => ({ clips: [{ ...still, move: "scroll left" }] }), 3);
+  assert.equal(strip.length, 90);
+});
+
+test("playlist blocks don't offer effects made for matrices", async () => {
+  const { BLOCK_EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/playlisteditor.js");
+  assert.ok(!BLOCK_EFFECTS.includes("text"));
+});

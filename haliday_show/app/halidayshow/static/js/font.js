@@ -60,15 +60,20 @@ export function glyph(ch) {
   return ASCII.slice(k, k + GLYPH_W);
 }
 
-// A message as columns of dots, each letter followed by a blank column. Kept per message, as effects
-// ask for the same one every frame.
+export const MAX_TEXT = 200;
+
+// A message as columns of dots, each letter followed by a blank column. Accents typed as separate
+// marks join their letters first, and the invisible marks emoji carry are dropped. Recent messages are
+// kept, as effects ask for the same one for every LED of every frame.
 const cache = new Map();
 export function textColumns(text) {
-  const key = String(text ?? "");
+  const key = String(text ?? "").slice(0, MAX_TEXT);
   let cols = cache.get(key);
   if (!cols) {
-    cols = [...key].flatMap((ch) => [...glyph(ch), 0]);
-    if (cache.size < 256) cache.set(key, cols);
+    const clean = key.normalize("NFC").replace(/[\u200d\ufe0e\ufe0f]/g, "");
+    cols = [...clean].flatMap((ch) => [...glyph(ch), 0]);
+    if (cache.size >= 64) cache.clear(); // typing a message makes a new one each key press
+    cache.set(key, cols);
   }
   return cols;
 }

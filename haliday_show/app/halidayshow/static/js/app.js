@@ -3025,6 +3025,7 @@ function renderInspector() {
       el = document.createElement("input");
       el.type = p.type;
       if (p.type === "number" || p.type === "range") Object.assign(el, { min: p.min, max: p.max, step: p.step });
+      if (p.type === "text") el.maxLength = p.max;
       el.value = clip[p.key] ?? p.default;
     }
     const numeric = p.type === "number" || p.type === "range";
@@ -3659,6 +3660,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
       input = document.createElement("input");
       input.type = q.type;
       if (q.type === "number" || q.type === "range") Object.assign(input, { min: q.min, max: q.max, step: q.step });
+      if (q.type === "text") input.maxLength = q.max;
       input.value = preset.params[q.key] ?? q.default;
     }
     input.dataset.key = q.key;

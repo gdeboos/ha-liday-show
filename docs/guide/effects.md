@@ -93,12 +93,12 @@ House lane. They sit on top of each light's own effects, or mix with them (see [
 
 These are made for matrices (see *Matrices* under *1. Devices*). They're in the effect chooser under
 **On a matrix**. On a matrix they're drawn across the whole grid, so **Runs** doesn't apply; on a
-strip they show only a slice, as if the strip were a matrix one LED high. **✨ Generate** and the AI
-don't use them.
+strip they show only a slice, as if the strip were a matrix one LED high. **✨ Generate**, the AI,
+playlist blocks and Basic scenes don't use them; an Advanced scene can.
 
 | Effect | What it does |
 | --- | --- |
-| Scrolling text | Your **Text** in 5 × 7 letters, as tall as the matrix allows (or **small**), scrolling in from one side or held **still** in the middle. **Letters** can be one colour or a rainbow, one colour per letter. Accented letters lose their accents; £, ♥, ★ and ° work too |
+| Scrolling text | Your **Text** in 5 × 7 letters, as tall as the matrix allows (or **small**), scrolling in from one side or held **still** in the middle. **Letters** can be one colour or a rainbow, one colour per letter. Up to 200 letters. Accented letters lose their accents; £, ♥, ★ and ° work too, and anything else shows as ?. Still text too wide for the matrix starts at its left edge |
 
 #### Group lanes
 

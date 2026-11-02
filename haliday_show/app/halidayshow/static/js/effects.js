@@ -4,7 +4,7 @@
 // so a preview frame and a baked frame at the same time are identical.
 
 import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire } from "./matrix.js";
-import { GLYPH_H, textColumns } from "./font.js";
+import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 
 export const FPS = 40;
 
@@ -770,12 +770,12 @@ Object.assign(EFFECTS, {
 });
 
 // Effects made for matrices: renderXY(p, t, dur, w, h, x, y) colours one LED of a w x h grid, with
-// row 0 at the top. On a strip they show the grid's top row, as if the strip were a matrix one LED high.
+// row 0 at the top. A strip is drawn as a matrix one LED high, so it shows a slice through the effect.
 function gridEffect(fx) {
   return { ...fx, grid: true, group: "matrix", render: (p, t, dur, n, i) => fx.renderXY(p, t, dur, n, 1, i, 0) };
 }
 
-const text = (key, label, def) => ({ key, label, type: "text", default: def });
+const text = (key, label, def) => ({ key, label, type: "text", default: def, max: MAX_TEXT });
 
 Object.assign(EFFECTS, {
   text: gridEffect({
@@ -787,14 +787,14 @@ Object.assign(EFFECTS, {
     renderXY: (p, t, dur, w, h, x, y) => {
       // 5 x 7 letters, as tall as fits (or 7 LEDs), in the middle of the height. Scrolling, the text
       // comes in from one edge, goes off the other, and comes round again after a gap the matrix wide.
-      const cols = textColumns(p.text);
+      const cols = perFrame(p, "text", () => textColumns(p.text));
       const scale = p.size === "small" ? 1 : Math.max(1, Math.floor(h / GLYPH_H));
       const len = cols.length * scale, shown = Math.max(len - scale, 0); // the last letter's gap isn't part of it
       const row = Math.floor((y - Math.floor((h - GLYPH_H * scale) / 2)) / scale);
       if (!len || row < 0 || row >= GLYPH_H) return hexToRgb(p.background);
       const s = Math.floor(t * p.speed);
       let tx;
-      if (p.move === "still") tx = x - Math.floor((w - shown) / 2);
+      if (p.move === "still") tx = x - Math.max(Math.floor((w - shown) / 2), 0); // too wide to fit: from the left
       else if (p.move === "scroll right") tx = len - 1 - mod(w - 1 - x + s - w, len + w);
       else tx = mod(x + s - w, len + w);
       if (tx < 0 || tx >= len) return hexToRgb(p.background);
