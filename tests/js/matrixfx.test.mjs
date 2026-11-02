@@ -142,3 +142,16 @@ test("music bars rise from the bottom with the song", async () => {
   assert.ok(count(loud) > count(quiet) * 2);
   assert.ok(rowLevel(quiet, 16, 15) > rowLevel(quiet, 16, 0));
 });
+
+test("a setting that isn't a number can't break a frame", () => {
+  for (const effect of ["plasma", "fire2d", "housegradient", "housewave"]) {
+    const out = play({ ...newClip(effect, 0, 10), speed: "x", size: "x", height: "x" }, 1);
+    assert.equal(out.length, 768, effect);
+  }
+});
+
+test("music bars aren't offered in playlist blocks or scenes", async () => {
+  const { BLOCK_EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/playlisteditor.js");
+  const { SCENE_EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  for (const k of ["musicbars", "fire2d", "text"]) assert.ok(!BLOCK_EFFECTS.includes(k) && !SCENE_EFFECTS.includes(k), k);
+});

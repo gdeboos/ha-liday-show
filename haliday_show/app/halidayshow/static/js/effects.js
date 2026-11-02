@@ -108,6 +108,7 @@ const listColours = (p) => perFrame(p, "colours", () => Array.from({ length: Mat
 // u (0..1) along the colours as a blend; cyclic wraps the last back round to the first.
 function blendList(cols, u, cyclic = false) {
   if (cols.length === 1) return cols[0];
+  if (!Number.isFinite(u)) u = 0; // a setting that isn't a number (a damaged show) gives the first colour
   const x = cyclic ? mod(u, 1) * cols.length : Math.min(Math.max(u, 0), 1) * (cols.length - 1);
   const k = Math.min(Math.floor(x), cyclic ? cols.length - 1 : cols.length - 2);
   return mix(cols[k], cols[(k + 1) % cols.length], x - k);
