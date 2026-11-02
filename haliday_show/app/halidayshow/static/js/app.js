@@ -63,7 +63,7 @@ import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, save
 import { Timeline, fmtTime } from "./timeline.js";
 import { convertProblem, showUses, toWled } from "./convert.js";
 import { PART, putWithProgress, sendParts, uploadSong } from "./upload.js";
-import { bakeNote } from "./bakekey.js";
+import { bakeNote, lightsBakeKey } from "./bakekey.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
 watchButtons();
@@ -548,7 +548,12 @@ function matrixControls(d) {
     d.bulbs = d.segments;
   };
   on.addEventListener("change", () => {
-    if (!on.checked) { delete d.matrix; saveDevices(); return; }
+    if (!on.checked) {
+      delete d.matrix;
+      if (house.styles[d.id]?.style === "panel") house.setStyle(d.id, null); // back to a line through its corners
+      saveDevices();
+      return;
+    }
     if (d.parts?.length) {
       status(`Remove ${d.name}'s parts first: a matrix can't be split into parts yet`, "hint");
       on.checked = false;
@@ -4347,7 +4352,7 @@ async function flushPlaylists() {
 // none for a block (after an import, say). Which settings each was made with is kept in this
 // browser; another browser makes them again once.
 let blocksBaking = null, blocksAgain = false;
-const lightsKey = () => JSON.stringify((app.deviceList || []).map((d) => [d.id, d.segments, d.parts, d.whole]));
+const lightsKey = () => lightsBakeKey(app.deviceList);
 
 function bakeBlocks() {
   if (blocksBaking) { blocksAgain = true; return blocksBaking; }
@@ -8067,7 +8072,7 @@ async function save({ stage = null } = {}) {
 }
 
 // What a show's bake depends on besides the show: the lights, the groups and where they are on the house.
-const showBakeKey = (pos) => JSON.stringify([app.deviceList.map((d) => [d.id, d.segments, d.parts]), app.groups, pos]);
+const showBakeKey = (pos) => JSON.stringify([lightsBakeKey(app.deviceList), app.groups, pos]);
 // The same, kept with the bake on the server for when the show is next opened. The show itself and
 // every setting of every light go in (not just the ones above), so a change made since, here or in
 // another browser, bakes again.
