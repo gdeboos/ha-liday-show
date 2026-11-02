@@ -120,7 +120,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   in for you; a Govee light rewired to WLED converts in one step, keeping its shows and parts
 - **Matrices**: WLED panels and mega-trees (or a pixel controller's) up to 64 × 64, placed on the house
   photo as a panel or a tree, with each effect playing along rows, down columns or round the whole grid,
-  House patterns, spirals and scrolling text drawn across it, and a wiring test
+  House patterns, spirals, scrolling text, fire, snowfall and music bars drawn across it, and a wiring test
 - **Pixel controllers** over DDP (Falcon Player, ESPixelStick, ESPHome, Tasmota, ESP32) or E1.31/sACN
   (Falcon, Kulp, xLights set-ups), with several lights on one controller
 - **Govee** lights, found on the network, with a test pattern and a few yes or no questions to set

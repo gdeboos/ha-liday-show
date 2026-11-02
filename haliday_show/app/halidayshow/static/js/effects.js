@@ -85,6 +85,13 @@ function events(t, rate, life, seed, fn) {
 const add = (a, c, u) => { a[0] += c[0] * u; a[1] += c[1] * u; a[2] += c[2] * u; };
 // Smooth random values along a line: 0..1, the same for the same x and seed.
 const noise = (x, seed = 1) => { const k = Math.floor(x); return hash01(k, seed) + (hash01(k + 1, seed) - hash01(k, seed)) * smooth(x - k); };
+// The same in two dimensions, for flames and the like.
+function noise2(x, y, seed = 1) {
+  const i = Math.floor(x), j = Math.floor(y), fx = smooth(x - i), fy = smooth(y - j);
+  const at = (a, b) => hash01(a * 4099 + b, seed);
+  const top = at(i, j) + (at(i + 1, j) - at(i, j)) * fx, bottom = at(i, j + 1) + (at(i + 1, j + 1) - at(i, j + 1)) * fx;
+  return top + (bottom - top) * fy;
+}
 
 // Effects that take a list of colours (up to 8): Colour 1, Colour 2, ... and how many of them to use.
 // A palette fills the whole list. The colours past the count are kept but hidden.
@@ -101,6 +108,7 @@ const listColours = (p) => perFrame(p, "colours", () => Array.from({ length: Mat
 // u (0..1) along the colours as a blend; cyclic wraps the last back round to the first.
 function blendList(cols, u, cyclic = false) {
   if (cols.length === 1) return cols[0];
+  if (!Number.isFinite(u)) u = 0; // a setting that isn't a number (a damaged show) gives the first colour
   const x = cyclic ? mod(u, 1) * cols.length : Math.min(Math.max(u, 0), 1) * (cols.length - 1);
   const k = Math.min(Math.floor(x), cyclic ? cols.length - 1 : cols.length - 2);
   return mix(cols[k], cols[(k + 1) % cols.length], x - k);
@@ -803,6 +811,57 @@ Object.assign(EFFECTS, {
       return p.colours === "rainbow" ? hsv(mod(Math.floor(c / 6) * 0.13, 1), 1, 1) : hexToRgb(p.color);
     },
   }),
+  fire2d: gridEffect({
+    // Flames rising from the bottom: rising noise, hottest at the base, fading out towards the top.
+    label: "Fire", list: true,
+    params: [...colourList(["#ff0000", "#ff7000", "#ffe080"]), num("speed", "Speed", 1, 0.1, 5, 0.1),
+      num("height", "Flame height %", 80, 10, 100, 5)],
+    renderXY: (p, t, dur, w, h, x, y) => {
+      // Each column's flame reaches its own, flickering height; inside it, rising noise breaks it up.
+      const up = h - 1 - y, share = h > 1 ? up / (h - 1) : 0, s = t * p.speed;
+      const reach = (p.height / 100) * (0.35 + 0.65 * noise2(x * 0.6, s * 2.2, 37));
+      const n = noise2(x * 0.5, (up - s * 6) * 0.4, 31);
+      const heat = (1 - share / Math.max(reach, 0.01)) * (0.55 + 0.6 * n);
+      if (heat <= 0) return [0, 0, 0];
+      const c = blendList(listColours(p), Math.min(heat, 1));
+      const a = Math.min(heat * 3, 1);
+      return [c[0] * a, c[1] * a, c[2] * a];
+    },
+  }),
+  snowfall: gridEffect({
+    // Flakes (or rain) falling down each column at their own pace, gliding from LED to LED.
+    label: "Snowfall",
+    params: [color("color", "Colour", "#ffffff"), color("background", "Background", "#000000"),
+      choice("style", "Style", "snow", ["snow", "rain"]), num("density", "How many %", 15, 1, 100, 1),
+      num("speed", "Speed (LEDs per second)", 4, 0.5, 40, 0.5)],
+    renderXY: (p, t, dur, w, h, x, y) => {
+      // In each column's own falling frame, flakes sit at whole steps; rain trails a streak above them.
+      const rain = p.style === "rain", tail = rain ? 3 : 0;
+      const pace = rain ? 1 : 0.8 + 0.4 * hash01(x, 41);
+      const at = y - t * p.speed * pace + hash01(x, 43) * 1000, k = Math.floor(at);
+      let a = 0;
+      for (let j = k - tail - 1; j <= k + 1; j++) {
+        if (hash01(x * 7919 + j, 47) >= p.density / 100) continue;
+        const d = at - j; // above the flake (negative) it trails, below it fades in
+        const s = d >= 0 ? Math.max(0, 1 - d) : tail ? Math.max(0, 1 + d / tail) * 0.6 : Math.max(0, 1 + d);
+        a = Math.max(a, s);
+      }
+      return mix(hexToRgb(p.background), hexToRgb(p.color), a);
+    },
+  }),
+  musicbars: gridEffect({
+    // A bar per column rising from the bottom with the song's loudness, each its own height, green to red.
+    label: "Music bars", music: true,
+    params: [color("color", "Quiet", "#00ff00"), color("color2", "Middle", "#ffff00"), color("color3", "Loud", "#ff0000"),
+      color("background", "Background", "#000000"), num("boost", "Sensitivity %", 100, 25, 400, 5)],
+    renderXY: (p, t, dur, w, h, x, y) => {
+      const song = (Number(p.start) || 0) + t, level = Math.min(levelAt(song) * (p.boost / 100), 1);
+      const bar = level * (0.55 + 0.45 * noise(x * 0.9 + song * 3, 53));
+      const at = (h - y - 0.5) / h; // how far up this LED is, 0 to 1
+      if (at > bar) return hexToRgb(p.background);
+      return blendList([p.color, p.color2, p.color3].map(hexToRgb), at);
+    },
+  }),
 });
 
 // Patterns over the whole house (or a group, by where its lights are): mostly for layering, with a
@@ -830,6 +889,18 @@ Object.assign(EFFECTS, {
       const k = Math.floor(x), f = x - k, soft = p.soft / 100;
       const c = cols[mod(k, cols.length)];
       return soft > 0 && f > 1 - soft ? mix(c, cols[mod(k + 1, cols.length)], smooth((f - 1 + soft) / soft)) : c;
+    },
+  }),
+  plasma: houseEffect({
+    // Soft blobs of colour that swirl and merge, after the classic demo effect.
+    label: "Plasma", list: true,
+    params: [...colourList(["#ff0000", "#ffb000", "#00b000", "#0040ff"]), num("size", "Blobs across", 2, 0.5, 10, 0.5),
+      num("speed", "Speed", 1, 0, 10, 0.1)],
+    renderAt: (p, t, dur, u, v) => {
+      const f = p.size * Math.PI * 2, s = t * p.speed;
+      const w = Math.sin(u * f + s) + Math.sin(v * f * 1.3 - s * 0.7) + Math.sin((u + v) * f * 0.5 + s * 1.1)
+        + Math.sin(Math.hypot(u - 0.5, v - 0.5) * f * 1.5 - s);
+      return blendList(listColours(p), (w + 4) / 8, true);
     },
   }),
   spiral: houseEffect({
@@ -1122,6 +1193,10 @@ export const PRESETS = {
     { label: "Candy cane", params: { color: "#ff0000", color2: "#ffffff", count: "2", angle: 45, speed: 1 } },
     { label: "Wide bands", params: { width: 0.25, soft: 40, angle: 90 } },
     { label: "Barber's pole", params: { angle: 60, speed: 3, width: 0.05 } },
+  ],
+  plasma: [
+    { label: "Lava lamp", params: { color: "#ff0000", color2: "#ff6000", color3: "#400000", count: "3", size: 1, speed: 0.4 } },
+    { label: "Northern lights", params: { color: "#00ff80", color2: "#0040ff", color3: "#8000ff", count: "3", size: 1.5, speed: 0.6 } },
   ],
   spiral: [
     { label: "Candy cane", params: { color: "#ff0000", color2: "#ffffff", count: "2", stripes: 3, twist: 1.5, speed: 0.5 } },

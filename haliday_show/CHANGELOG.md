@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.281
+
+- More effects for matrices, under **On a matrix**: **Fire** (flames rising from the bottom), **Snowfall** (snow or rain falling down each column) and **Music bars** (a bar per column rising with the song).
+- New effect, **Plasma**: soft blobs of colour that swirl and merge, across the house or across a matrix, with **Lava lamp** and **Northern lights** presets.
+
 ## 0.2.280
 
 - New effect for matrices, **Scrolling text**: type a message, such as "Merry Christmas", and it scrolls across your panel or round your mega-tree, in one colour or a rainbow of letters, as tall as the matrix allows. It's under the new **On a matrix** heading in the effect chooser.
