@@ -99,3 +99,46 @@ test("playlist blocks don't offer effects made for matrices", async () => {
   const { BLOCK_EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/playlisteditor.js");
   assert.ok(!BLOCK_EFFECTS.includes("text"));
 });
+
+// The average brightness of a matrix frame's row y.
+const rowLevel = (out, w, y) => Array.from({ length: w }, (_, x) => px(out, y * w + x).reduce((a, b) => a + b, 0)).reduce((a, b) => a + b, 0) / w;
+const big = { id: "m", segments: 16 * 16, matrix: { w: 16, h: 16 } };
+const play = (clip, t) => composeLight(big, () => ({ clips: [clip] }), t);
+
+test("plasma swirls across the grid and moves", () => {
+  const clip = newClip("plasma", 0, 10);
+  const a = play(clip, 1), b = play(clip, 1.5);
+  assert.notDeepEqual(px(a, 0), px(a, 255));
+  assert.notDeepEqual([...a], [...b]);
+});
+
+test("fire burns brightest at the bottom and flickers", () => {
+  const clip = newClip("fire2d", 0, 10);
+  const a = play(clip, 2);
+  assert.ok(rowLevel(a, 16, 15) > rowLevel(a, 16, 2) * 2);
+  assert.notDeepEqual([...a], [...play(clip, 2.2)]);
+});
+
+test("snow falls: what's lit moves down the grid", () => {
+  const clip = { ...newClip("snowfall", 0, 10), density: 30, speed: 4, color: "#ffffff", background: "#000000" };
+  const a = play(clip, 1), b = play(clip, 1.25); // a quarter of a second at 4 LEDs a second: one row down
+  let same = 0, lit = 0;
+  for (let y = 0; y < 15; y++) for (let x = 0; x < 16; x++) {
+    if (lit_(a, y * 16 + x)) { lit++; if (lit_(b, (y + 1) * 16 + x)) same++; }
+  }
+  assert.ok(lit > 10 && same / lit > 0.9, `${same}/${lit}`);
+});
+function lit_(out, i) { return px(out, i)[0] > 128; }
+
+test("music bars rise from the bottom with the song", async () => {
+  const { setMusicLevels } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const clip = newClip("musicbars", 0, 10);
+  const count = (out) => Array.from({ length: 256 }, (_, i) => px(out, i).some((v) => v > 20)).filter(Boolean).length;
+  setMusicLevels({ fps: 10, values: Array(100).fill(90) });
+  const loud = play(clip, 2);
+  setMusicLevels({ fps: 10, values: Array(100).fill(10) });
+  const quiet = play(clip, 2);
+  setMusicLevels(undefined);
+  assert.ok(count(loud) > count(quiet) * 2);
+  assert.ok(rowLevel(quiet, 16, 15) > rowLevel(quiet, 16, 0));
+});

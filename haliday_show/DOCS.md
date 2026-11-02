@@ -1345,6 +1345,7 @@ House lane. They sit on top of each light's own effects, or mix with them (see [
 | House gradient | Up to 8 colours blended across the house in any direction, still or drifting |
 | Stripes | Stripes of your colours at any **Angle** (45° for candy cane), still or moving, with soft or sharp edges |
 | Spiral | Stripes of your colours winding round a mega-tree and turning (**Candy cane**, **Twirl**); on the house, slanted stripes moving along |
+| Plasma | Soft blobs of up to 8 colours that swirl and merge across the house, or across a matrix (**Lava lamp**, **Northern lights**) |
 | Chequerboard | Squares of your colours across the house, still or swapping |
 | Colour wave | Your colours rolling across the house as a wave, in any direction |
 | House sparkle | Sparkles scattered over every light by where it is, over the lights' own effects |
@@ -1370,6 +1371,9 @@ playlist blocks and Basic scenes don't use them; an Advanced scene can.
 | Effect | What it does |
 | --- | --- |
 | Scrolling text | Your **Text** in 5 × 7 letters, as tall as the matrix allows (or **small**), scrolling in from one side or held **still** in the middle. **Letters** can be one colour or a rainbow, one colour per letter. Up to 200 letters. Accented letters lose their accents; £, ♥, ★ and ° work too, and anything else shows as ?. Still text too wide for the matrix starts at its left edge |
+| Fire | Flames rising from the bottom of the matrix, each column flickering to its own height. Up to 8 colours from the base to the tips, a **Speed** and a **Flame height** |
+| Snowfall | Flakes falling down each column at their own pace, gliding from LED to LED. **Style: rain** falls straight, with a streak above each drop. Set **How many** and **Speed** |
+| Music bars | A bar per column rising from the bottom with the song's loudness, each a different height, green to red. Like **Music level**, it needs the show's song, and isn't offered in scenes |
 
 #### Group lanes
 
