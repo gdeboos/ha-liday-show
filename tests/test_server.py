@@ -1564,3 +1564,19 @@ async def test_pictures_list_skips_a_damaged_file_and_stops_at_the_limit(client,
     assert [p["id"] for p in await (await client.get("/api/pictures")).json()] == [pid]
     monkeypatch.setattr(server, "MAX_PICTURES", 2)
     assert (await client.post("/api/pictures", json=pic)).status == 400  # two files there already
+
+
+async def test_seasons_round_trip_and_packed_away_props_are_left_out_of_shows(client):
+    assert [s["id"] for s in await (await client.get("/api/seasons")).json()] == ["halloween", "christmas"]
+    lights = [{"id": "tree", "ip": "192.168.1.10", "kind": "wled", "segments": 10},
+              {"id": "ghost", "ip": "192.168.1.11", "kind": "wled", "segments": 10, "seasons": ["halloween"]}]
+    saved = await (await client.put("/api/devices", json=lights)).json()
+    assert saved[1]["seasons"] == ["halloween"] and "seasons" not in saved[0]
+    assert (await client.put("/api/devices", json=[{**lights[1], "seasons": "halloween"}])).status == 400
+    storage = client.server.app[server.STORAGE]
+    assert set(storage.devices_by_id()) == {"tree", "ghost"}
+    resp = await client.put("/api/seasons", json=[{"id": "halloween", "name": "Halloween", "out": False},
+                                                   {"id": "christmas", "name": "Christmas", "out": True}])
+    assert resp.status == 200
+    assert set(storage.devices_by_id()) == {"tree"}  # what shows, scenes and blocks play on
+    assert (await client.put("/api/seasons", json=[{"name": ""}])).status == 400

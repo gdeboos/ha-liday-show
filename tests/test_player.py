@@ -59,3 +59,19 @@ async def test_a_bake_longer_than_the_light_is_played_at_the_lights_length():
     await p.play("x", b, {"p": {"ip": "10.0.0.2", "segments": 44}, "w": {"ip": "10.0.0.3", "segments": 60}})
     await p.stop()
     assert out.claims == [("10.0.0.2", 44), ("10.0.0.3", 10)]
+
+
+def test_a_prop_packed_away_mid_show_is_let_go_and_sent_nothing_more():
+    released = []
+
+    class Output:
+        devices = {}
+
+        def release(self, ip):
+            released.append(ip)
+
+    p = player.Player(Output())
+    p.devices = {"tree": {"id": "tree", "ip": "192.168.1.10"}, "ghost": {"id": "ghost", "ip": "192.168.1.11"}}
+    p.drop({"ghost", "nothing-here"})
+    assert set(p.devices) == {"tree"}
+    assert released == ["192.168.1.11"]

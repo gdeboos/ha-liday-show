@@ -77,6 +77,13 @@ class Player:
         self.start = time.monotonic() - position
         self._task = asyncio.create_task(self._run())
 
+    def drop(self, ids: set[str]):
+        """Stops sending to these lights (props just packed away) and lets them go, mid-show too."""
+        for i in ids & set(self.devices):
+            d = self.devices.pop(i)
+            if not any(address(o) == address(d) for o in self.devices.values()):
+                self.output.release(address(d))
+
     def sync(self, position: float) -> float:
         """Return the drift seen (player minus browser), re-anchoring if needed."""
         if not self.playing:
