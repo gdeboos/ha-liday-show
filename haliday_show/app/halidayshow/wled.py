@@ -59,7 +59,7 @@ class WledError(Exception):
 
 
 async def fetch(ip: str, timeout: float = 4.0) -> dict:
-    """The light's name, LED count and segments (as parts)."""
+    """The light's name, LED count, segments (as parts) and, set up as 2D, its matrix size."""
     url = f"http://{ip}:{HTTP_PORT}/json"
     try:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
@@ -74,9 +74,18 @@ async def fetch(ip: str, timeout: float = 4.0) -> dict:
         leds = int(info["leds"]["count"])
     except (KeyError, TypeError, ValueError):
         raise WledError(f"{ip} didn't answer like a WLED light")
-    return {"name": str(info.get("name") or "WLED")[:64], "leds": leds,
-            "version": str(info.get("ver") or ""),
-            "parts": parts_from_segments(state.get("seg"), leds)}
+    found = {"name": str(info.get("name") or "WLED")[:64], "leds": leds,
+             "version": str(info.get("ver") or ""),
+             "parts": parts_from_segments(state.get("seg"), leds)}
+    # Set up as 2D (Config -> 2D Configuration), WLED reports the matrix's size.
+    try:
+        m = info["leds"]["matrix"]
+        w, h = int(m["w"]), int(m["h"])
+        if w > 0 and h > 0:
+            found["matrix"] = {"w": w, "h": h}
+    except (KeyError, TypeError, ValueError):
+        pass
+    return found
 
 
 # Finding WLED lights: they announce themselves over mDNS as _wled._tcp, which is how the WLED app

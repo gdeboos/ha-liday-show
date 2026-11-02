@@ -594,6 +594,13 @@ straight away. To swap the effect, press **Change…** beside **Effect**: it ope
 chooser used to add one, playing on that light for the clip's length, with the current effect
 outlined. Changing effect keeps the clip's colours, brightness and transitions.
 
+On a matrix, the clip's preview is the grid itself, and **Runs** picks how a strip effect plays on it:
+**Along each row** (every row the same, the default), **Down each column** (every column the same,
+good for a mega-tree's strings) or **Whole matrix as one strip** (it zig-zags through the rows, so a
+chase or a wipe goes round the whole grid). House patterns, such as **Stripes**, **Chequerboard**,
+**Colour wave** and **Spotlight**, don't need it: on a matrix's own lane they're drawn across the grid,
+as they are across the house.
+
 ### Transitions
 
 Under **Transitions** in the Selection panel, a clip can come **In** and go **Out** gently rather than

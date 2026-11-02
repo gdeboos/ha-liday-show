@@ -175,6 +175,32 @@ only**.
 To plan a WLED strip before it arrives, pick **Plan a light**, choose **WLED strip** as the **Kind of
 light** and set **LEDs** to how many it has.
 
+### Matrices (panels and mega-trees)
+
+A WLED light, pixel controller or E1.31 controller can be a **matrix**: a grid of LEDs, like a 16 × 16
+panel in a window or a mega-tree whose strings run side by side. A matrix can have up to 4,096 LEDs
+(64 × 64), where a strip stops at 1,000.
+
+A WLED set up as 2D (**Config → 2D Configuration** in WLED) is added as a matrix straight away. For
+anything else, open the light (**Setup → Devices**, press it) and turn on **Laid out as a grid** under
+**Matrix**, then set:
+
+- How many LEDs **across** and **down**. Its **LEDs** are always width times height.
+- **Starts at**: the corner the first LED is in.
+- **Wired in**: whether the wiring runs along **Rows** or up and down **Columns**, and **Zig-zag** if
+  each one runs back the other way, as most panels are wired.
+
+A WLED set up as 2D sorts out its own wiring, so leave it as plain rows from the top left. **Read from
+WLED** fills in the size from WLED again. On a pixel controller, set the wiring to match how it's wired.
+
+Press **Test wiring** to check: the top-left LED lights white, the rest of the top row red and the rest
+of the left column green. If they land anywhere else, change **Starts at**, **Wired in** or **Zig-zag**
+until they don't.
+
+A matrix plays as one light: it can't be split into parts yet, and **Reverse** isn't needed. Put it on
+the house photo as a **Panel** (see *Light styles*), and pick how each effect plays on it with **Runs**
+(see *Editing a clip*).
+
 #### Moving a Govee light to WLED
 
 Rewired a Govee light to run from a WLED controller? You don't need to add it again. Open
@@ -441,6 +467,7 @@ Each light has a **Style**:
 | Line | Strips, string lights, eaves lights | Trace along it, as above. |
 | Icicle | Icicle lights | Trace the line the icicles hang from, then set **Drops** to how many drops it has and **Length** to how far the longest one hangs on the photo. The drops are staggered, each in its segment's colour, with the light's **Bulbs** shared between them. It starts with one drop for about every five bulbs, and never shows more drops than bulbs. |
 | Spots | Spotlights | Press **Trace** and click where each spotlight sits, starting nearest the plug. Each one shines a soft wash of colour; drag its round handle to aim it, and use **Beam** for how wide the beams are. A spot covering several segments shows them blended. |
+| Panel | Matrices | Only offered for a matrix. Picking it puts the panel in the middle of the photo, the shape of its grid; drag its four corners onto the real panel's corners. The white corner is its top left. A panel photographed at an angle still fits, as every LED is spread between the corners. |
 
 ### Photo taken at an angle
 
@@ -1067,6 +1094,13 @@ clip is selected it loops on its own in a strip at the top of its settings, so c
 straight away. To swap the effect, press **Change…** beside **Effect**: it opens the same effect
 chooser used to add one, playing on that light for the clip's length, with the current effect
 outlined. Changing effect keeps the clip's colours, brightness and transitions.
+
+On a matrix, the clip's preview is the grid itself, and **Runs** picks how a strip effect plays on it:
+**Along each row** (every row the same, the default), **Down each column** (every column the same,
+good for a mega-tree's strings) or **Whole matrix as one strip** (it zig-zags through the rows, so a
+chase or a wipe goes round the whole grid). House patterns, such as **Stripes**, **Chequerboard**,
+**Colour wave** and **Spotlight**, don't need it: on a matrix's own lane they're drawn across the grid,
+as they are across the house.
 
 ### Transitions
 

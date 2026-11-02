@@ -20,3 +20,8 @@ export function bakeNote(what) {
   const s = typeof what === "string" ? what : JSON.stringify(what);
   return `${cyrb53(s, 1)}-${cyrb53(s, 2)}-${s.length.toString(36)}`;
 }
+
+// What a bake depends on in each light, for knowing within a visit whether a bake is still good:
+// its size, parts and a matrix's grid and wiring, but not its name or IP.
+export const lightsBakeKey = (devices) =>
+  JSON.stringify((devices || []).map((d) => [d.id, d.segments, d.parts, d.whole, d.matrix || null]));

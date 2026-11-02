@@ -75,8 +75,8 @@ def decode(blob: bytes) -> Baked:
     tracks, offset = [], 0
     for t in raw_tracks:
         segments = int(t["segments"])
-        if not 1 <= segments <= 1000:  # see server.MAX_SEGMENTS
-            raise BakedError("segment count must be 1-1000")
+        if not 1 <= segments <= 4096:  # see server.MAX_MATRIX
+            raise BakedError("segment count must be 1-4096")
         tracks.append(Track(str(t["device"]), segments, offset))
         offset += segments * 3
     data = blob[9 + hlen:]

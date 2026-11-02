@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { arcNearest, bulbLayout, bulbPositions, bulbSegment, defaultDrops, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
+import { arcNearest, bulbLayout, panelBulbs, defaultPanel, bulbPositions, bulbSegment, defaultDrops, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
   from "../../haliday_show/app/halidayshow/static/js/house.js";
 
 const close = (a, b) => a.every((p, i) => Math.abs(p[0] - b[i][0]) < 1e-9 && Math.abs(p[1] - b[i][1]) < 1e-9);
@@ -112,4 +112,31 @@ test("pins follow corners and leave stretches out of view alone", () => {
   const round = (list) => list.map((p) => p.map((v) => +v.toFixed(6)));
   assert.deepEqual(round(after.slice(-4)), round(before.slice(-4)));
   assert.deepEqual(after[3], [1, 0]);
+});
+
+
+test("a panel's LEDs fill its four corners in rows from the top left, even at an angle", () => {
+  const corners = [[0.1, 0.2], [0.5, 0.1], [0.6, 0.5], [0.2, 0.6]];
+  const b = panelBulbs(corners, 3, 2);
+  assert.equal(b.length, 6);
+  assert.deepEqual(b[0], [0.1, 0.2]);
+  assert.deepEqual(b[2], [0.5, 0.1]);
+  assert.deepEqual(b[5], [0.6, 0.5]);
+  assert.deepEqual(b[3], [0.2, 0.6]);
+  assert.deepEqual(b[1].map((v) => +v.toFixed(5)), [0.3, 0.15]);
+  // One LED, or a single row, sits in the middle.
+  assert.deepEqual(panelBulbs([[0, 0], [1, 0], [1, 1], [0, 1]], 1, 1), [[0.5, 0.5]]);
+  assert.deepEqual(panelBulbs([[0, 0], [1, 0], [1, 1], [0, 1]], 2, 1), [[0, 0.5], [1, 0.5]]);
+  // Its segment positions span the panel, so House patterns land across it.
+  const pos = segmentPositions([{ dev: { id: "m", segments: 6 }, bulbs: b }]).m;
+  assert.deepEqual(pos[0].map((v) => +v.toFixed(3)), [0, 0.2]);
+});
+
+test("a new panel is placed in the middle of the photo, the shape of its grid", () => {
+  const [tl, tr, br, bl] = defaultPanel({ w: 32, h: 8 }, 2);
+  assert.ok(Math.abs((tl[0] + br[0]) / 2 - 0.5) < 1e-9 && Math.abs((tl[1] + br[1]) / 2 - 0.5) < 1e-9);
+  // 32 x 8 on a photo twice as wide as it is tall: four times as wide as tall on screen.
+  assert.ok(Math.abs(((tr[0] - tl[0]) * 2) / (bl[1] - tl[1]) - 4) < 1e-9);
+  assert.equal(tr[1], tl[1]);
+  assert.equal(br[0], tr[0]);
 });

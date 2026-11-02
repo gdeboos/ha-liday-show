@@ -118,6 +118,9 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - One **Add a light** window for every kind: pick what you're adding and fill in only what it needs
 - **WLED** strips, found on the network or added by IP, with their LED count and WLED segments filled
   in for you; a Govee light rewired to WLED converts in one step, keeping its shows and parts
+- **Matrices**: WLED panels and mega-trees (or a pixel controller's) up to 64 × 64, placed on the house
+  photo by their corners, with each effect playing along rows, down columns or round the whole grid,
+  House patterns drawn across it, and a wiring test
 - **Pixel controllers** over DDP (Falcon Player, ESPixelStick, ESPHome, Tasmota, ESP32) or E1.31/sACN
   (Falcon, Kulp, xLights set-ups), with several lights on one controller
 - **Govee** lights, found on the network, with a test pattern and a few yes or no questions to set

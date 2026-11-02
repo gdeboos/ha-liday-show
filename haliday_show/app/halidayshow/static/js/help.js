@@ -288,6 +288,11 @@ export const HELP = {
         "Drag a light by its ⠿ handle to change the order every show and the house use.",
         "<b>Split into parts…</b> in a light's window gives different stretches their own effects.",
       ] },
+      { id: "matrix", title: "Matrices", guide: ["lights.md", "matrices-panels-and-mega-trees"], tips: [
+        "A WLED light or pixel controller laid out as a grid (a panel or a mega-tree): turn on <b>Laid out as a grid</b> under <b>Matrix</b> in its window.",
+        "A WLED set up as 2D sorts out its own wiring: leave it as plain rows from the top left.",
+        "<b>Test wiring</b> lights the top left white, the top row red and the left column green.",
+      ] },
       { id: "groups", title: "Groups", guide: ["lights.md", "light-groups"], tips: [
         "<b>+ New group</b> puts lights and parts together, such as the roof's icicles, so a show can give them one effect.",
         "Each group gets a lane under <b>House</b> in the Show editor. Effects run along its lights in this tab's order.",

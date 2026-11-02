@@ -24,3 +24,10 @@ def test_rejects_wrong_length():
     with pytest.raises(baked.BakedError):
         baked.decode(blob[:-1])
 
+
+
+def test_a_matrix_track_can_hold_4096_leds():
+    b = baked.decode(baked.encode(40, [{"device": "m", "segments": 4096}], [bytes(4096 * 3)]))
+    assert b.tracks[0].segments == 4096
+    with pytest.raises(baked.BakedError):
+        baked.decode(baked.encode(40, [{"device": "m", "segments": 4097}], [bytes(4097 * 3)]))

@@ -57,6 +57,32 @@ only**.
 To plan a WLED strip before it arrives, pick **Plan a light**, choose **WLED strip** as the **Kind of
 light** and set **LEDs** to how many it has.
 
+### Matrices (panels and mega-trees)
+
+A WLED light, pixel controller or E1.31 controller can be a **matrix**: a grid of LEDs, like a 16 × 16
+panel in a window or a mega-tree whose strings run side by side. A matrix can have up to 4,096 LEDs
+(64 × 64), where a strip stops at 1,000.
+
+A WLED set up as 2D (**Config → 2D Configuration** in WLED) is added as a matrix straight away. For
+anything else, open the light (**Setup → Devices**, press it) and turn on **Laid out as a grid** under
+**Matrix**, then set:
+
+- How many LEDs **across** and **down**. Its **LEDs** are always width times height.
+- **Starts at**: the corner the first LED is in.
+- **Wired in**: whether the wiring runs along **Rows** or up and down **Columns**, and **Zig-zag** if
+  each one runs back the other way, as most panels are wired.
+
+A WLED set up as 2D sorts out its own wiring, so leave it as plain rows from the top left. **Read from
+WLED** fills in the size from WLED again. On a pixel controller, set the wiring to match how it's wired.
+
+Press **Test wiring** to check: the top-left LED lights white, the rest of the top row red and the rest
+of the left column green. If they land anywhere else, change **Starts at**, **Wired in** or **Zig-zag**
+until they don't.
+
+A matrix plays as one light: it can't be split into parts yet, and **Reverse** isn't needed. Put it on
+the house photo as a **Panel** (see *Light styles*), and pick how each effect plays on it with **Runs**
+(see *Editing a clip*).
+
 #### Moving a Govee light to WLED
 
 Rewired a Govee light to run from a WLED controller? You don't need to add it again. Open

@@ -51,9 +51,29 @@ Written from WLED's source, not yet checked against a real WLED with a microphon
 first). Still to confirm there: where the sync **Send** setting is in WLED's pages on his version, the
 range of sampleSmth with AGC on and off, and how often a beat flag arrives.
 
+## Matrices (2D)
+
+From 0.2.278 a WLED light, DDP or E1.31 controller can be a matrix: a saved `matrix: {w, h, start,
+order, zigzag}` (`server._clean_matrix`), with `segments` always w × h and up to 4,096 (`MAX_MATRIX`;
+strips stay at 1,000). A matrix has no parts and no Reverse. Plan: the project doc `claude/matrix-plan.md`.
+
+- The editor works in grid order (rows from the top left). `matrix.js` `toWire` puts a frame into the
+  light's wiring order; `bake()` and the clip preview on the light apply it, so the player only plays
+  frames, as ever.
+- `POST /api/wled/info` returns `matrix: {w, h}` from `info.leds.matrix` when WLED is set up as 2D. Such a
+  light is saved as plain rows from the top left, on the understanding that WLED applies its own 2D
+  mapping (panels, serpentine, ledmap) to realtime data, as WLED's source suggests: realtime pixels
+  go through `setPixelColor`, which looks each index up in the mapping table `setUpMatrix()` builds
+  from the 2D configuration.
+- 4,096 LEDs go out as 9 DDP packets (checked on the wire at 127.0.0.1).
+
+Not checked on a real matrix yet (Gavin doesn't have one). **Test wiring** (top left white, top row red,
+left column green) is how to confirm the WLED mapping assumption on the first real one; record it here.
+
 ## Open questions
 
-- Matrices (2D): later. For now a matrix is driven as one long strip in WLED's LED order.
+- Matrices: whether WLED really untangles a 2D layout for DDP data (see above), and how a mega-tree is
+  usually set up in WLED's 2D configuration (release 2 in the plan).
 - Strips over 1000 LEDs: only the first 1000 are driven.
 - Finding WLED lights automatically (mDNS, or Home Assistant's WLED integration): would need a new
   library or HA's websocket API; adding by IP covers it for now.
