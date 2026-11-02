@@ -474,6 +474,10 @@ house so you can trace them on your photo. **Remove photo** goes back to the sam
 3. Press **Done** (or Enter). Drag a point to move it, right-click a point to remove it, and press
    Backspace while tracing to undo the last point. **Retrace** starts again and **Clear** removes
    the light from the photo.
+4. To place points closely, zoom in: **+** and **−** above the photo (**Fit** shows all of it again), or
+   hold Ctrl (⌘ on a Mac) and scroll, which zooms where you point. Move around the zoomed photo with
+   its scroll bars, or by dragging with the middle mouse button. On a phone or tablet, pinch with two
+   fingers to zoom and slide them to move around; one finger still traces.
 
 While a light is picked, it's drawn in a rainbow from red at the plug to the far end, so you can
 check it runs the same way as the real light. If it's backwards, retrace it from the other end, or

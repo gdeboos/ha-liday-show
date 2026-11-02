@@ -259,7 +259,13 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .house-panel { display: flex; flex-direction: column; align-items: center; }
 .house-panel canvas, .house-stage canvas { display: block; border-radius: 6px; }
 .house-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 12px; align-items: start; }
-.house-stage { display: flex; justify-content: center; min-width: 0; }
+.house-stage { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* The photo's box: it scrolls once the photo is zoomed in. */
+.house-scroll { display: flex; justify-content: safe center; align-items: safe center; overflow: auto;
+  max-height: max(calc(100vh - 230px), 320px); min-width: 0; overscroll-behavior: contain; }
+.house-zoom { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.house-zoom output { min-width: 3.5em; text-align: center; font-variant-numeric: tabular-nums; }
+.house-zoom .hint { margin-left: 6px; }
 .house-stage canvas { cursor: crosshair; touch-action: none; }
 .house-lights { display: flex; flex-direction: column; gap: 6px; position: sticky; top: 8px;
   max-height: calc(100vh - 140px); overflow-y: auto; }
