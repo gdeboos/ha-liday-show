@@ -167,6 +167,16 @@ export const HELP = {
       ] },
     ],
   },
+  pictures: {
+    title: "Pictures", guide: ["build-a-show.md", "pictures"],
+    topics: [
+      { id: "list", title: "Pictures", tips: [
+        "<b>+ Add a picture</b> adds pictures or animated GIFs, shrunk to fit a 64 × 64 matrix.",
+        "Use them on a matrix with the <b>Picture</b> effect, under <b>On a matrix</b> in the effect chooser.",
+        "Small, bold pictures with few colours look best on LEDs. See-through parts show the effect's background.",
+      ] },
+    ],
+  },
   palettes: {
     title: "Palettes", guide: ["build-a-show.md", "colour-palettes"],
     topics: [

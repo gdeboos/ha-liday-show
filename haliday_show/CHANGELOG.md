@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.282
+
+- New **Library → Pictures**: add pictures and animated GIFs (press **+ Add a picture**), sort them into folders, rename and delete them. They're shrunk to fit a 64 × 64 matrix as they're added.
+- New effect for matrices, **Picture**: shows one of your pictures or GIFs, fitted, filling or stretched, still or scrolling, with GIFs playing at the speed you pick.
+- Shared shows carry the pictures their **Picture** effects use, and importing one adds them to your Pictures. Shows without pictures share as before.
+
 ## 0.2.281
 
 - More effects for matrices, under **On a matrix**: **Fire** (flames rising from the bottom), **Snowfall** (snow or rain falling down each column) and **Music bars** (a bar per column rising with the song).
