@@ -277,7 +277,7 @@ export const HELP = {
       ] },
       { id: "week", title: "The week", guide: ["play-it.md", "the-week"], tips: [
         "<b>Week</b>, under the list, shows what plays when over seven days, a bar for each row.",
-        "Where rows overlap, the one that plays is on top and a hatched strip marks it. Press a bar to find its row.",
+        "Rows take turns: a row that's started plays to its end, so one due meanwhile waits, hatched. Press a bar to find its row.",
       ] },
       { id: "order", title: "When times overlap", tips: [
         "The row higher in the list plays first. Drag ⠿, or press <b>↑</b> and <b>↓</b>, to change the order.",

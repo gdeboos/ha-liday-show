@@ -1354,8 +1354,9 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .sched-week-bar.scene { top: auto; bottom: 3px; height: 9px; opacity: 0.85; }
 .sched-week-name { position: relative; z-index: 1; white-space: nowrap; }
 .sched-week-bar.scene .sched-week-name { display: none; }
-.sched-week-covered { position: absolute; top: 20px; height: 4px; z-index: 300;
-  background: repeating-linear-gradient(135deg, var(--warn) 0 3px, transparent 3px 6px); }
+.sched-week-covered { position: absolute; top: 3px; height: 17px; padding: 0; border: 1px dashed var(--bar); border-radius: 4px;
+  cursor: pointer; background: repeating-linear-gradient(135deg, var(--bar) 0 2px, transparent 2px 7px); opacity: 0.8; }
+.sched-week-covered.scene { top: auto; bottom: 3px; height: 9px; }
 .sched-week-waits { position: absolute; top: 0; bottom: 0; background: rgba(255,255,255,0.55); }
 .sched-row.flash, .sched-list > .flash { outline: 3px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 600px) { .sched-week-grid { grid-template-columns: 4.5em 1fr; } .sched-week-label { font-size: 11px; white-space: normal; } }

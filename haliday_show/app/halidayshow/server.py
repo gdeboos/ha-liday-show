@@ -1763,7 +1763,13 @@ async def get_schedule_week(request):
     except ValueError:
         raise web.HTTPBadRequest(text="start must be a date, like 2026-11-02")
     where, _ = request.app[SCHEDULER].where()
-    return web.json_response(schedule.week(schedule.load_entries(request.app[STORAGE]), start, where))
+    storage = request.app[STORAGE]
+    entries = schedule.load_entries(storage)
+    # Rows whose playlist, show or scene is gone are skipped by the scheduler, so they're left out here.
+    have = {"playlist": {p["id"] for p in playlists.load(storage)}, "scene": {s["id"] for s in storage.list_scenes()},
+            "show": {s["id"] for s in storage.list_shows()}}
+    alive = {e["id"] for e in entries if e["play"]["id"] in have[e["play"]["type"]]}
+    return web.json_response(schedule.week(entries, start, where, alive))
 
 
 async def put_schedule(request):

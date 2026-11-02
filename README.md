@@ -209,7 +209,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Playlists: several shows back to back, round and round, with a Show player page to play the music
   on any computer with speakers
 - A Schedule tab: playlists, shows and scenes that play by themselves (times or sunset, days and
-  dates), as many entries as you like, the one higher in the list first where they overlap
+  dates), as many entries as you like, taking turns where they overlap, with a week view of what
+  really plays when
 - Knows what each light can show: effects that won't work on a light (a chase on a light that shows one
   colour at a time) are greyed out in the chooser, such clips in older shows are marked on the timeline,
   and previews step at a slow light's own pace so they look like the real thing

@@ -2,7 +2,7 @@
 
 ## 0.2.286
 
-- The **Schedule** tab has a **Week** view under the list: seven days from today, a row per day, with each of your schedule's rows as a bar along the evening. Where rows overlap, the one that plays is on top and the overlap is marked; scenes fade where they wait for a playlist or show. Press a bar to find its row, and use **‹ ›** to look at other weeks.
+- The **Schedule** tab has a **Week** view under the list: seven days from today, a row per day, showing what really plays when. Each of your schedule's rows is a bar in its own colour. Where a row has to wait for another to finish, the wait is hatched, and a row that never gets a turn that day shows only hatched. Scenes fade where they wait for a playlist or show. Press a bar to find its row, and use **‹ ›** to look at other weeks.
 
 ## 0.2.285
 

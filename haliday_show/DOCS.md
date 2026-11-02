@@ -1691,14 +1691,19 @@ Playlists and shows take turns, and so do scenes; a scene can be on alongside a 
 
 #### The week
 
-**Week**, under the list, shows what plays when over seven days from today, a row per day. Each row
-of the schedule is a bar in its own colour, with its name; a scene is the thin bar along the bottom.
+**Week**, under the list, shows what really plays when over seven days from today, a row per day.
+Each row of the schedule is a bar in its own colour, with its name; a scene is the thin bar along the
+bottom.
 
-- Where two rows overlap, the one higher in the list is drawn on top, as it's the one that plays,
-  and a hatched strip underneath marks the overlap.
+- Rows take turns, as the schedule really plays them: a row that has started plays until its end
+  time, so another row due meanwhile waits, even if it's higher in the list. The time it waits is
+  hatched in its colour, and it starts after the first one if its own time isn't over by then. A row
+  whose whole time passes while another plays is only hatched: it doesn't get a turn that day. Where
+  two rows are due at the same moment, the one higher in the list goes first.
 - A scene's bar fades where it waits for a playlist or show to finish.
 - Times that run past midnight carry on past **00:00** on the day they start, and sunset times move
-  from day to day as they really do.
+  from day to day as they really do. A row that starts at sunset needs to know where you are (below).
+- Rows switched off, and rows whose playlist, show or scene has been deleted, aren't shown.
 - Hold the pointer over a bar for its times, and press it to find its row in the list. **‹** and **›**
   move a week at a time, and **From today** comes back.
 
