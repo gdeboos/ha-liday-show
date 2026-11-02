@@ -1553,3 +1553,14 @@ async def test_pictures_are_added_listed_renamed_and_deleted(client):
     assert await (await client.get("/api/pictures")).json() == []
     assert (await client.get(f"/api/pictures/{pid}")).status == 404
     assert (await client.get("/api/pictures/..%2Fsettings")).status in (400, 404)
+
+
+async def test_pictures_list_skips_a_damaged_file_and_stops_at_the_limit(client, monkeypatch):
+    px = base64.b64encode(bytes(4)).decode()
+    pic = {"name": "Dot", "w": 1, "h": 1, "frames": [px], "delays": [100]}
+    pid = (await (await client.post("/api/pictures", json=pic)).json())["id"]
+    folder = client.server.app[server.STORAGE].pictures_dir
+    (folder / "pbroken00000.json").write_text(json.dumps({**pic, "delays": ["x"]}))
+    assert [p["id"] for p in await (await client.get("/api/pictures")).json()] == [pid]
+    monkeypatch.setattr(server, "MAX_PICTURES", 2)
+    assert (await client.post("/api/pictures", json=pic)).status == 400  # two files there already

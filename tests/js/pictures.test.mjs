@@ -109,3 +109,17 @@ test("a GIF made by another program reads dot for dot", () => {
   const sum = (f) => { let s = 0; for (let i = 0; i < 240; i++) s += (f[i * 4] + f[i * 4 + 1] + f[i * 4 + 2]) * (i + 1); return s; };
   assert.deepEqual(pic.frames.map(sum), [5451221, 5102275, 5267503]);
 });
+
+test("damaged, enormous or endless GIFs are refused with a message, never a hang", () => {
+  const ok = gif(1, 1, [RED], [{ pixels: [0] }]);
+  const withCodeSize = (n) => { const g = ok.slice(); g[g.indexOf(0x2c) + 10] = n; return g; };
+  assert.throws(() => decodeGif(withCodeSize(30)), /damaged/);
+  const huge = ok.slice(); huge.set([255, 255, 255, 255], 6);
+  assert.throws(() => decodeGif(huge), /too big/);
+  const empty = ok.slice(); empty.set([0, 0], 6);
+  assert.throws(() => decodeGif(empty), /damaged/);
+  assert.throws(() => decodeGif(ok.slice(0, 20)), /cut short|damaged/);
+  // Thousands of frames: only the first ones are kept.
+  const many = gif(1, 1, [RED], Array.from({ length: 600 }, () => ({ pixels: [0] })));
+  assert.equal(decodeGif(many).frames.length, 500);
+});

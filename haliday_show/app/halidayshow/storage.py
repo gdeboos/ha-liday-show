@@ -396,7 +396,9 @@ class Storage:
         out = []
         for p in sorted(self.pictures_dir.glob("*.json")):
             d = self.load_picture(p.stem)
-            if not isinstance(d, dict) or not isinstance(d.get("delays"), list):
+            # A damaged or hand-edited file is left out rather than breaking the whole list.
+            if not isinstance(d, dict) or not isinstance(d.get("delays"), list) \
+                    or not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in d["delays"]):
                 continue
             out.append({"id": p.stem, "name": d.get("name", p.stem), "w": d.get("w"), "h": d.get("h"),
                         "frames": len(d["delays"]), "ms": sum(d["delays"])})
@@ -407,6 +409,9 @@ class Storage:
             return json.loads((self.pictures_dir / f"{picture_id}.json").read_text())
         except (FileNotFoundError, ValueError):
             return None
+
+    def count_pictures(self) -> int:
+        return len(list(self.pictures_dir.glob("*.json"))) if self.pictures_dir.is_dir() else 0
 
     def save_picture(self, picture: dict) -> str:
         """A new picture, under a new random id (pictures are added, renamed and deleted, never changed)."""

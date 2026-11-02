@@ -1240,6 +1240,7 @@ async def delete_draft(request):
 
 # pictures for matrices --------------------------------------------------------------
 MAX_PICTURE_SIDE, MAX_PICTURE_FRAMES = 64, 120
+MAX_PICTURES = 200  # the editor loads them all when it starts, so not without end
 
 
 def _picture_id(request) -> str:
@@ -1285,11 +1286,14 @@ async def list_pictures(request):
 
 async def create_picture(request):
     picture = _clean_picture(await request.json())
-    return web.json_response({"id": request.app[STORAGE].save_picture(picture)})
+    storage = request.app[STORAGE]
+    if await asyncio.to_thread(storage.count_pictures) >= MAX_PICTURES:
+        raise web.HTTPBadRequest(text=f"you have {MAX_PICTURES} pictures already; delete some first")
+    return web.json_response({"id": await asyncio.to_thread(storage.save_picture, picture)})
 
 
 async def get_picture(request):
-    picture = request.app[STORAGE].load_picture(_picture_id(request))
+    picture = await asyncio.to_thread(request.app[STORAGE].load_picture, _picture_id(request))
     if picture is None:
         raise web.HTTPNotFound()
     return web.json_response(picture)
@@ -1301,13 +1305,13 @@ async def rename_picture(request):
     name = " ".join(str(body.get("name") or "").split())[:60] if isinstance(body, dict) else ""
     if not name:
         raise web.HTTPBadRequest(text="give the picture a name")
-    if not request.app[STORAGE].rename_picture(picture_id, name):
+    if not await asyncio.to_thread(request.app[STORAGE].rename_picture, picture_id, name):
         raise web.HTTPNotFound()
     return web.json_response({"ok": True})
 
 
 async def delete_picture(request):
-    if not request.app[STORAGE].delete_picture(_picture_id(request)):
+    if not await asyncio.to_thread(request.app[STORAGE].delete_picture, _picture_id(request)):
         raise web.HTTPNotFound()
     return web.json_response({"ok": True})
 

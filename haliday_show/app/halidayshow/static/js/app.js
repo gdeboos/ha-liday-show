@@ -6544,14 +6544,14 @@ async function imSubmit(e) {
   const share = imp.share;
   $("import-dialog").close();
   // The show's pictures go into your Pictures first, so its Picture effects point at them.
-  const ids = {};
+  const ids = Object.create(null);
   for (const pic of share.pictures || []) {
     const saved = { name: pic.name, w: pic.w, h: pic.h, frames: pic.frames, delays: pic.delays };
     try {
       const { id } = await api("api/pictures", { method: "POST", json: saved });
       keepPicture(id, saved);
       ids[pic.key] = id;
-    } catch (err) { status(`Couldn't add the picture ${pic.name}: ${err.message}`, true, "pictures"); }
+    } catch (err) { status(`Couldn't add the picture ${pic.name}, so its effects show their background: ${err.message}`, true, "pictures"); }
   }
   share.tracks = withPictureIds(share.tracks, ids);
   await openShow(null);

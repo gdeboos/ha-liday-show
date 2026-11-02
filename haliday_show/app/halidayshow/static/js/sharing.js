@@ -99,7 +99,8 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
 // An imported show's tracks with each picture key swapped for the id it was saved under here
 // (ids: {key: id}). A key with no picture becomes none.
 export const withPictureIds = (tracks, ids) => tracks.map((t) => ({ ...t,
-  clips: t.clips.map((c) => (c.effect === "picture" && typeof c.picture === "string" && c.picture ? { ...c, picture: ids[c.picture] || "" } : c)) }));
+  clips: t.clips.map((c) => (c.effect !== "picture" ? c
+    : { ...c, picture: typeof c.picture === "string" && Object.hasOwn(ids, c.picture) && typeof ids[c.picture] === "string" ? ids[c.picture] : "" })) }));
 
 // A shared picture as it should be: small, with frames and delays that fit; anything else is skipped.
 function sharedPicture(p) {

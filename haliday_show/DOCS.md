@@ -758,7 +758,8 @@ samples under their folders.
 *Matrices* under *1. Devices*). Press **+ Add a picture** and pick one or more image files: PNG, JPEG,
 GIF and the other kinds your browser can open. Each is shrunk to fit the biggest matrix (64 × 64) as
 it's added, and a GIF keeps up to 120 of its frames, so small, bold pictures with few colours work
-best. See-through parts show the effect's **Background**.
+best. See-through parts show the effect's **Background**. You can keep up to 200 pictures, and a file
+over 2000 × 2000 needs making smaller first.
 
 Each picture's row shows its first frame, its size and, for a GIF, how many frames it has and how long
 it takes. **Rename…** changes its name; **Delete…** (under **⋯**) removes it for good, and **Picture**

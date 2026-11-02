@@ -2,6 +2,9 @@
 // decoder isn't in Safari). Returns each frame as it looks on screen: RGBA, drawn over the frames
 // before it as the GIF's disposal methods say, with see-through dots alpha 0.
 
+const MAX_DOTS = 4_000_000; // 2000 x 2000: plenty for anything shrunk to 64 x 64
+const MAX_GIF_FRAMES = 500; // more than are kept (pictures.js), so a long GIF still plays its start
+
 export function decodeGif(bytes) {
   const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const sig = String.fromCharCode(...b.subarray(0, 6));
@@ -20,6 +23,8 @@ export function decodeGif(bytes) {
   };
 
   const w = u16(), h = u16(), packed = u8();
+  if (!w || !h) throw new Error("The GIF file is damaged");
+  if (w * h > MAX_DOTS) throw new Error("That GIF is too big. Make it smaller first (under 2000 × 2000)");
   u8(); u8(); // background index and aspect: not needed
   const globalTable = packed & 0x80 ? table(1 << ((packed & 7) + 1)) : null;
   const canvas = new Uint8ClampedArray(w * h * 4);
@@ -41,7 +46,10 @@ export function decodeGif(bytes) {
     const left = u16(), top = u16(), iw = u16(), ih = u16(), ip = u8();
     const colours = ip & 0x80 ? table(1 << ((ip & 7) + 1)) : globalTable;
     if (!colours) throw new Error("The GIF has no colours");
-    const indices = lzw(u8(), subBlocks(), iw * ih);
+    if (iw * ih > MAX_DOTS) throw new Error("That GIF is too big. Make it smaller first (under 2000 × 2000)");
+    const minSize = u8();
+    if (minSize < 1 || minSize > 11) throw new Error("The GIF file is damaged");
+    const indices = lzw(minSize, subBlocks(), iw * ih);
     const before = gce.disposal === 3 ? canvas.slice() : null;
     const rows = ip & 0x40 ? interlaced(ih) : null;
     for (let r = 0; r < ih; r++) {
@@ -60,6 +68,7 @@ export function decodeGif(bytes) {
       for (let y = top; y < Math.min(top + ih, h); y++) canvas.fill(0, (y * w + left) * 4, (y * w + Math.min(left + iw, w)) * 4);
     } else if (before) canvas.set(before);
     gce = { disposal: 0, delay: 0, transparent: -1 };
+    if (frames.length >= MAX_GIF_FRAMES) break;
   }
   if (!frames.length) throw new Error("The GIF has no pictures in it");
   return { w, h, frames, delays };

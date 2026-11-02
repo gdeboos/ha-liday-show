@@ -172,3 +172,9 @@ test("a show with pictures carries them, keyed, and an older-style file is still
   const bad = { ...share, pictures: [{ key: "I1", name: "x", w: 99, h: 1, frames: ["AAAA"], delays: [100] }, "nope"] };
   assert.deepEqual(readShare(JSON.stringify(bad)).pictures, []);
 });
+
+test("a share file can't sneak odd values into a clip's picture", () => {
+  const tracks = [{ light: "L1", clips: [{ effect: "picture", start: 0, end: 1, picture: "constructor" },
+    { effect: "picture", start: 1, end: 2, picture: { evil: true } }, { effect: "picture", start: 2, end: 3, picture: "I1" }] }];
+  assert.deepEqual(withPictureIds(tracks, { I1: "pA" })[0].clips.map((c) => c.picture), ["", "", "pA"]);
+});
