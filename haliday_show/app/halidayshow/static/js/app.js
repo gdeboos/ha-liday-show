@@ -346,7 +346,16 @@ function renderSeasons() {
       if (v && v !== s.name) saveSeasons(seasons.map((x) => (x.id === s.id ? { ...x, name: v } : x)));
     }, "ghost small");
     const del = button("Delete…", async () => {
-      if (!(await askYes(`Delete the ${s.name} season? Its lights become all-year lights, and shows set to it go back to any season.`, { yes: "Delete", danger: true }))) return;
+      if (!(await askYes(`Delete the ${s.name} season? Its lights become all-year lights.`, { yes: "Delete", danger: true }))) return;
+      // Its lights let go of it, so a new season with the same name starts with none.
+      let untagged = false;
+      for (const d of app.deviceList) {
+        if (!(d.seasons || []).includes(s.id)) continue;
+        d.seasons = d.seasons.filter((t) => t !== s.id);
+        if (!d.seasons.length) delete d.seasons;
+        untagged = true;
+      }
+      if (untagged) await saveDevices();
       saveSeasons(seasons.filter((x) => x.id !== s.id), `${s.name} deleted`);
     }, "ghost small danger");
     row.append(name, swLabel, count, Object.assign(document.createElement("span"), { className: "spacer" }), rename, del);

@@ -409,7 +409,10 @@ async def put_devices(request):
             raise web.HTTPBadRequest(text=f"{name}: {e.text}" if name else e.text) from None
     if len({d["id"] for d in devices}) != len(devices):
         raise web.HTTPBadRequest(text="duplicate device id")
-    request.app[STORAGE].save_devices(devices)
+    storage = request.app[STORAGE]
+    storage.save_devices(devices)
+    # A light just ticked into a packed-away season goes dark straight away, as packing away does.
+    request.app[RUNNER].player.drop(seasons.away(devices, seasons.load(storage.load_settings())))
     return web.json_response(devices)
 
 

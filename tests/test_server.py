@@ -1580,3 +1580,16 @@ async def test_seasons_round_trip_and_packed_away_props_are_left_out_of_shows(cl
     assert resp.status == 200
     assert set(storage.devices_by_id()) == {"tree"}  # what shows, scenes and blocks play on
     assert (await client.put("/api/seasons", json=[{"name": ""}])).status == 400
+
+
+async def test_packing_props_away_lets_them_go_mid_show(client, monkeypatch):
+    dropped = []
+    monkeypatch.setattr(client.server.app[server.RUNNER].player, "drop", lambda ids: dropped.append(set(ids)))
+    lights = [{"id": "ghost", "ip": "192.168.1.11", "kind": "wled", "segments": 10, "seasons": ["halloween"]}]
+    await client.put("/api/devices", json=lights)
+    await client.put("/api/seasons", json=[{"id": "halloween", "name": "Halloween", "out": False}])
+    assert dropped[-1] == {"ghost"}
+    # Ticking another light into the packed-away season lets it go too.
+    await client.put("/api/devices", json=[*lights, {"id": "bat", "ip": "192.168.1.12", "kind": "wled", "segments": 5,
+                                                    "seasons": ["halloween"]}])
+    assert dropped[-1] == {"ghost", "bat"}

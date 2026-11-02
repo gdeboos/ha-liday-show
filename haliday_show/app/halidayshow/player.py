@@ -79,6 +79,8 @@ class Player:
 
     def drop(self, ids: set[str]):
         """Stops sending to these lights (props just packed away) and lets them go, mid-show too."""
+        if not self.playing:
+            return  # the next show or scene starts without them anyway
         for i in ids & set(self.devices):
             d = self.devices.pop(i)
             if not any(address(o) == address(d) for o in self.devices.values()):
