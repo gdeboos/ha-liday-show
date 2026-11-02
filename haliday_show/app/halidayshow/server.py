@@ -20,7 +20,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, migrate, playlists, public, scenelib, schedule, seasons, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, livemusic, migrate, playlists, public, scenelib, schedule, seasons, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -1831,12 +1831,7 @@ async def play_playlist(request):
 
 
 # live music (livemusic.py) --------------------------------------------------------
-def live_settings(storage) -> dict:
-    """Setup → Settings → Live music: which WLED listens ("any", or its IP), and how loud counts as music."""
-    s = storage.load_settings().get("live_music") or {}
-    source = s.get("source") if isinstance(s.get("source"), str) and s.get("source") else "any"
-    level = s.get("from") if isinstance(s.get("from"), int) and 0 <= s.get("from") <= 100 else 15
-    return {"source": source, "from": level}
+live_settings = livemusic.settings
 
 
 async def get_live_music(request):
@@ -2523,6 +2518,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run()), asyncio.create_task(app[RUNNER].watch_scene())]
         app[LIVE] = LiveMusic(lambda: {d["ip"]: d.get("name") for d in app[STORAGE].load_devices() if d.get("ip")})
         await app[LIVE].start()
+        app[RUNNER].live = app[LIVE]  # for scenes with React to music
         app[PUBLIC] = public.PublicSite(app[STORAGE], app[RUNNER], lambda: app[SCHEDULER].where()[0])
         await app[PUBLIC].apply()
         if read_stdin:

@@ -1331,6 +1331,24 @@ async def test_a_scene_with_a_bad_schedule_is_turned_down(client):
     assert (await client.put(f"/api/house-scenes/{scene_id}", json=bad)).status == 400
 
 
+async def test_a_scene_keeps_its_react_to_music_settings(client):
+    scene_id = (await (await client.post("/api/house-scenes", json={"name": "Glow"})).json())["id"]
+    body = {"name": "Glow", "mode": "basic", "lights": {},
+            "react": {"on": True, "quiet": 30, "flash": False, "strength": 80, "bass": "thump", "treble": "", "quietSecs": 6}}
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json=body)).status == 200
+    saved = await (await client.get(f"/api/house-scenes/{scene_id}")).json()
+    assert saved["react"] == body["react"]
+    advanced = {"name": "Glow", "mode": "advanced", "loop": 10, "tracks": [], "react": {"on": True}}
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json=advanced)).status == 200
+    assert (await (await client.get(f"/api/house-scenes/{scene_id}")).json())["react"]["quiet"] == 20
+    for bad in ({"quiet": 101}, {"strength": 5}, {"bass": "Not An Id"}, {"quietSecs": "4"}, []):
+        resp = await client.put(f"/api/house-scenes/{scene_id}", json={**body, "react": bad})
+        assert resp.status == 400, bad
+    plain = {"name": "Glow", "mode": "basic", "lights": {}}
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json=plain)).status == 200
+    assert "react" not in await (await client.get(f"/api/house-scenes/{scene_id}")).json()  # old scenes: none
+
+
 async def test_a_bake_remembers_what_it_was_made_for_until_it_changes(client, monkeypatch):
     show_id = (await (await client.post("/api/shows", json={"name": "Kept"})).json())["id"]
     show = {"name": "Kept", "fps": 40, "duration": 1, "tracks": []}

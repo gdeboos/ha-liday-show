@@ -33,6 +33,10 @@ class Player:
         self.level = 100  # a scene's brightness, 1-100 (Home Assistant's light); shows play at 100
         self._dim: bytes | None = None
         self._task: asyncio.Task | None = None
+        # React to music (react.py): a callable giving each frame's look, level and flash, and the baked
+        # loops of the scenes picked for strong bass and treble. None while nothing reacts.
+        self.react = None
+        self.variants: dict[str, Baked] = {}
 
     @property
     def playing(self) -> bool:
@@ -58,6 +62,7 @@ class Player:
         """
         devices = {k: d for k, d in devices.items() if linked(d)}
         await self.stop(release=False)
+        self.react, self.variants = None, {}
         self.baked, self.show_id, self.devices, self.offset = baked, show_id, devices, offset
         self.length = length
         claimed = set()
@@ -102,6 +107,20 @@ class Player:
         self.level = max(0, min(100, int(level)))
         self._dim = None if self.level >= 100 else bytes(v * self.level // 100 for v in range(256))
 
+    def _react_table(self, react) -> bytes:
+        """Each colour value scaled by the scenes' brightness and the music's level, then lifted towards
+        white by the beat's flash."""
+        scale = (self.level / 100) * (react.level / 100)
+        return bytes(min(255, round(v * scale + (255 - v * scale) * react.flash)) for v in range(256))
+
+    @staticmethod
+    def _variant_frame(baked: Baked, t, elapsed: float) -> bytes | None:
+        """This light's frame from another scene's loop (strong bass or treble), at the same moment."""
+        mine = next((x for x in baked.tracks if x.device == t.device and x.segments == t.segments), None)
+        if mine is None or not baked.frames:
+            return None
+        return baked.track_frame(mine, int(max(elapsed, 0) * baked.fps) % baked.frames)
+
     async def stop(self, release: bool = True):
         if self._task:
             self._task.cancel()
@@ -119,22 +138,30 @@ class Player:
         last = -1
         while True:
             elapsed = time.monotonic() - self.start - self.offset
-            idx = int(elapsed * b.fps)
+            idx = tick = int(elapsed * b.fps)
             if self.length is not None:
                 if elapsed >= self.length:
                     break
                 idx %= max(b.frames, 1)
             elif idx >= b.frames:
                 break
-            if idx >= 0 and idx != last:
+            react = self.react() if self.react else None
+            key = tick if react else idx
+            if idx >= 0 and key != last:
+                # Reacting, a frame goes out every frame time even when the loop is a still picture,
+                # as the level, flash and look move with the music. The frames are only picked,
+                # scaled and mixed, never worked out here.
+                table = self._react_table(react) if react else self._dim
+                source = self.variants.get(react.look) if react else None
                 for t in b.tracks:
                     d = self.devices.get(t.device)
                     if d:
                         dev = self.output.devices.get(address(d))
                         if dev:
-                            frame = b.track_frame(t, idx)
-                            dev.update(frame.translate(self._dim) if self._dim else frame)
-                last = idx
+                            frame = self._variant_frame(source, t, elapsed) if source else None
+                            frame = frame or b.track_frame(t, idx)
+                            dev.update(frame.translate(table) if table else frame)
+                last = key
             await asyncio.sleep(frame_s / 4)
         log.info("%s finished", f"show {self.show_id}" if self.show_id else "block")
         self.output.release_all()
