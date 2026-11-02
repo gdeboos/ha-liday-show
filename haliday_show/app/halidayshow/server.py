@@ -41,6 +41,9 @@ INGRESS_PEER = "172.30.32.2"  # the Supervisor's ingress proxy
 MAX_UPLOAD = 200 * 1024 * 1024
 MAX_BULBS = 2000  # bulbs on one light
 MAX_SEGMENTS = 1000  # per light; the Christmas String Lights 2 have 300 bulbs
+MAX_MATRIX = 4096  # LEDs on a matrix (64 x 64), which bakes to about 90 MB for 3 minutes
+MATRIX_KINDS = ("wled", "ddp", "e131")
+MATRIX_STARTS = ("top left", "top right", "bottom left", "bottom right")
 MAX_FIRST_LED = 100000  # where a light starts on a pixel controller; DDP offsets go far beyond this
 KINDS = ("govee", "wled", "ddp", "e131", "ha", "twinkly")
 _HA_ENTITY = re.compile(r"^(light|switch)\.[a-z0-9_]{1,200}$")
@@ -279,6 +282,25 @@ def _clean_parts(parts, segments: int) -> list:
     return sorted(clean, key=lambda c: c["from"])
 
 
+def _clean_matrix(m) -> dict:
+    """A light laid out as a grid: its size, and how its wiring runs from the first LED. A WLED set
+    up as 2D sorts out its own wiring, so it's plain rows from the top left here."""
+    if not isinstance(m, dict):
+        raise web.HTTPBadRequest(text="matrix must have a width and height")
+    try:
+        w, h = int(m.get("w")), int(m.get("h"))
+    except (TypeError, ValueError):
+        raise web.HTTPBadRequest(text="a matrix's width and height must be numbers")
+    if w < 1 or h < 1 or w * h > MAX_MATRIX:
+        raise web.HTTPBadRequest(text=f"a matrix has 1 to {MAX_MATRIX} LEDs (width times height)")
+    start, order = m.get("start", "top left"), m.get("order", "rows")
+    if start not in MATRIX_STARTS:
+        raise web.HTTPBadRequest(text=f"a matrix starts at one of: {', '.join(MATRIX_STARTS)}")
+    if order not in ("rows", "columns"):
+        raise web.HTTPBadRequest(text="a matrix is wired in rows or columns")
+    return {"w": w, "h": h, "start": start, "order": order, "zigzag": bool(m.get("zigzag"))}
+
+
 def _clean_device(d: dict) -> dict:
     """A device with no IP is planned: it has tracks in shows but nothing to send to yet."""
     ip = str(d.get("ip") or "").strip()
@@ -304,8 +326,18 @@ def _clean_device(d: dict) -> dict:
         protocol = "ha_switch" if entity.startswith("switch.") else "ha_light"
     if kind == "govee" and protocol not in PROTOCOLS:
         raise web.HTTPBadRequest(text=f"protocol must be one of {', '.join(PROTOCOLS)}")
+    matrix = None
+    if d.get("matrix") is not None:
+        if kind not in MATRIX_KINDS:
+            raise web.HTTPBadRequest(text="only WLED lights and pixel controllers can be a matrix")
+        if d.get("parts"):
+            raise web.HTTPBadRequest(text="a matrix can't be split into parts yet")
+        matrix = _clean_matrix(d["matrix"])
+        segments = matrix["w"] * matrix["h"]
     # Realtime messages hold the segment count in one byte; the other protocols can go further.
     most = MAX_SEGMENTS if protocol in LONG_PROTOCOLS or kind != "govee" else 255
+    if matrix:
+        most = MAX_MATRIX
     if not 1 <= segments <= most:
         raise web.HTTPBadRequest(text=f"segments must be 1-{most} with this protocol")
     try:
@@ -324,6 +356,8 @@ def _clean_device(d: dict) -> dict:
     if not dev_id:
         raise web.HTTPBadRequest(text="a planned device needs an id")
     extra = {"entity": entity} if kind == "ha" else {}
+    if matrix:
+        extra["matrix"] = matrix
     if kind == "ddp":
         # A controller can drive several lights from one IP, each from its own first LED.
         try:
@@ -348,7 +382,7 @@ def _clean_device(d: dict) -> dict:
         extra.update(universe=universe, channel=channel)
     return {"id": dev_id, "name": str(d.get("name") or ip or dev_id)[:64], "kind": kind,
             "ip": ip, "sku": "" if kind == "wled" else str(d.get("sku", "")), "segments": segments,
-            "reverse": bool(d.get("reverse")), "gradient": kind == "govee" and bool(d.get("gradient")),
+            "reverse": bool(d.get("reverse")) and not matrix, "gradient": kind == "govee" and bool(d.get("gradient")),
             "protocol": protocol, "brightness": brightness, "bulbs": bulbs,
             "parts": _clean_parts(d.get("parts"), segments),
             # A split light's own track plays across all its parts unless this is off.
@@ -391,7 +425,7 @@ async def wled_info(request):
         found = await wled.fetch(ip)
     except wled.WledError as e:
         raise web.HTTPBadGateway(text=str(e))
-    return web.json_response({**found, "max": MAX_SEGMENTS})
+    return web.json_response({**found, "max": MAX_SEGMENTS, "maxMatrix": MAX_MATRIX})
 
 
 async def wled_scan(request):
@@ -2043,6 +2077,9 @@ def _clean_style(style) -> dict | None:
             drops = min(max(int(style.get("drops", 40)), 1), MAX_BULBS)
             length = round(min(max(float(style.get("length", 0.06)), 0.01), 0.5), 4)
             return {"style": "icicle", "drops": drops, "length": length}
+        if style.get("style") == "panel":
+            # A matrix as a flat panel: its path is the four corners, from the top left round.
+            return {"style": "panel"}
         if style.get("style") == "spots":
             beam = round(min(max(float(style.get("beam", 0.5)), 0.1), 1.5), 3)
             aims = style.get("aims") or []

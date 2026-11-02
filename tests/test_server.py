@@ -1470,3 +1470,57 @@ async def test_shows_are_marked_in_progress_or_finished(client):
 
     assert (await client.post(f"/api/shows/{show_id}/mark", json={"in_progress": "yes"})).status == 400
     assert (await client.post("/api/shows/nope/mark", json={"in_progress": True})).status == 404
+
+
+async def test_matrix_lights(client):
+    panel = {"id": "panel", "kind": "wled", "ip": "192.168.1.90", "name": "Window", "segments": 5, "reverse": True,
+             "matrix": {"w": 16, "h": 16, "start": "top left", "order": "rows", "zigzag": False}}
+    resp = await client.put("/api/devices", json=[panel])
+    assert resp.status == 200
+    dev = (await resp.json())[0]
+    # Its LEDs are its width times its height; Reverse has no meaning on a grid.
+    assert (dev["segments"], dev["reverse"]) == (256, False)
+    assert dev["matrix"] == {"w": 16, "h": 16, "start": "top left", "order": "rows", "zigzag": False}
+    # Defaults fill in, and up to 4,096 LEDs is fine on a matrix.
+    big = {**panel, "matrix": {"w": 64, "h": 64}}
+    assert (await (await client.put("/api/devices", json=[big])).json())[0]["matrix"] == \
+        {"w": 64, "h": 64, "start": "top left", "order": "rows", "zigzag": False}
+    for d in ({**panel, "matrix": {"w": 65, "h": 64}}, {**panel, "matrix": {"w": 0, "h": 4}},
+              {**panel, "matrix": {"w": 4, "h": 4, "start": "middle"}},
+              {**panel, "matrix": {"w": 4, "h": 4, "order": "diagonal"}},
+              {**panel, "matrix": {"w": "x", "h": 4}}, {**panel, "matrix": "16x16"},
+              {**panel, "parts": [{"id": "a", "name": "A", "from": 1, "to": 5}]},
+              {"ip": "192.168.1.91", "segments": 4, "matrix": {"w": 2, "h": 2}},
+              {"kind": "twinkly", "ip": "192.168.1.92", "matrix": {"w": 2, "h": 2}}):
+        assert (await client.put("/api/devices", json=[d])).status == 400, d
+    for kind in ("ddp", "e131"):
+        d = {"id": kind, "kind": kind, "ip": "192.168.1.93", "matrix": {"w": 10, "h": 20, "order": "columns", "zigzag": True}}
+        assert (await (await client.put("/api/devices", json=[d])).json())[0]["segments"] == 200
+    # A strip keeps the 1,000 limit, and a light without a matrix saves no matrix field.
+    assert (await client.put("/api/devices", json=[{**panel, "matrix": None, "segments": 1001}])).status == 400
+    assert "matrix" not in (await (await client.put("/api/devices", json=[{**panel, "matrix": None}])).json())[0]
+
+
+async def test_matrix_panels_on_the_house_photo(client):
+    corners = [[0.1, 0.1], [0.3, 0.1], [0.3, 0.3], [0.1, 0.3]]
+    resp = await client.put("/api/house", json={"paths": {"panel": corners}, "styles": {"panel": {"style": "panel"}}})
+    assert resp.status == 200
+    assert (await resp.json())["styles"] == {"panel": {"style": "panel"}}
+
+
+async def test_wled_info_reads_a_matrix(client, aiohttp_server, monkeypatch):
+    from aiohttp import web
+
+    from halidayshow import wled
+
+    async def handler(request):
+        return web.json_response({"info": {"name": "Window", "leds": {"count": 256, "matrix": {"w": 16, "h": 16}}},
+                                  "state": {"seg": []}})
+
+    app = web.Application()
+    app.router.add_get("/json", handler)
+    fake = await aiohttp_server(app, host="127.0.0.1")
+    monkeypatch.setattr(wled, "HTTP_PORT", fake.port)
+    info = await (await client.post("/api/wled/info", json={"ip": "127.0.0.1"})).json()
+    assert (info["leds"], info["matrix"], info["maxMatrix"]) == (256, {"w": 16, "h": 16}, 4096)
+    await fake.close()
