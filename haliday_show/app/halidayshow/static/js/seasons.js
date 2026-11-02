@@ -24,3 +24,12 @@ export function newSeason(seasons, name) {
   for (let n = 2; ids.has(id); n++) id = `${slug(clean).slice(0, 36)}-${n}`;
   return { id, name: clean, out: true };
 }
+
+// Whether a show set to season `showSeason` lists light `d`: a show with no season (or one that's been
+// deleted) lists every light; otherwise the all-year lights and that season's props.
+export function inSeason(d, showSeason, seasons) {
+  const known = new Set((seasons || []).map((s) => s.id));
+  if (!showSeason || !known.has(showSeason)) return true;
+  const mine = (d?.seasons || []).filter((t) => known.has(t));
+  return !mine.length || mine.includes(showSeason);
+}

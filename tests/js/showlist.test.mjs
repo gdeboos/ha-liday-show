@@ -35,3 +35,11 @@ test("a copy gets a name nobody has", () => {
   assert.equal(copyName("Xmas", ["Xmas", "xmas copy"]), "Xmas copy 2");
   assert.equal(copyName("Xmas copy", ["Xmas", "Xmas copy", "Xmas copy 2"]), "Xmas copy 3");
 });
+
+test("a show's row names its season", () => {
+  const seasons = [{ id: "halloween", name: "Halloween", out: true }];
+  const [row] = showRows([{ id: "a", name: "Spooky", duration: 90, song: null, modified: 0, season: "halloween" }], null, new Date(), seasons);
+  assert.match(row.details, /^Halloween · No song yet/);
+  const [plain] = showRows([{ id: "b", name: "Any", duration: 90, song: null, modified: 0, season: "gone" }], null, new Date(), seasons);
+  assert.match(plain.details, /^No song yet/);
+});

@@ -24,9 +24,11 @@ export function changed(when, now = new Date()) {
 
 export const songName = (path) => (path ? path.split("/").pop().replace(/\.[^.]+$/, "") : null);
 
-// shows as the server lists them ({id, name, duration, song, modified}), newest change first, each
-// with what the row says. `last` is the show this browser last had open.
-export function showRows(shows, last, now = new Date()) {
+// shows as the server lists them ({id, name, duration, song, modified, season}), newest change first,
+// each with what the row says. `last` is the show this browser last had open; `seasons` names a show's
+// season (Setup → Devices → Seasons).
+export function showRows(shows, last, now = new Date(), seasons = []) {
+  const seasonName = (id) => seasons.find((x) => x.id === id)?.name;
   return [...shows]
     .sort((a, b) => (b.modified || 0) - (a.modified || 0) || a.name.localeCompare(b.name))
     .map((s) => ({
@@ -34,7 +36,8 @@ export function showRows(shows, last, now = new Date()) {
       name: s.name,
       last: s.id === last,
       inProgress: s.in_progress === true,
-      details: [songName(s.song) || "No song yet", length(s.duration), `changed ${changed(s.modified, now)}`].join(" · "),
+      details: [seasonName(s.season), songName(s.song) || "No song yet", length(s.duration), `changed ${changed(s.modified, now)}`]
+        .filter(Boolean).join(" · "),
     }));
 }
 

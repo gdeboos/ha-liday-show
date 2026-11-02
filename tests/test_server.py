@@ -1593,3 +1593,10 @@ async def test_packing_props_away_lets_them_go_mid_show(client, monkeypatch):
     await client.put("/api/devices", json=[*lights, {"id": "bat", "ip": "192.168.1.12", "kind": "wled", "segments": 5,
                                                     "seasons": ["halloween"]}])
     assert dropped[-1] == {"ghost", "bat"}
+
+
+async def test_a_shows_season_is_kept_and_listed(client):
+    await client.put("/api/shows/spooky", json={"name": "Spooky", "tracks": [], "season": "halloween"})
+    await client.put("/api/shows/plain", json={"name": "Plain", "tracks": []})
+    listed = {s["id"]: s for s in await (await client.get("/api/shows")).json()}
+    assert listed["spooky"]["season"] == "halloween" and listed["plain"]["season"] is None

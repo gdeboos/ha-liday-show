@@ -177,6 +177,7 @@ class Storage:
                         "song": audio.get("path") if isinstance(audio, dict) else None,
                         "baked": (self.shows_dir / f"{p.stem}.gshow").exists(),
                         "in_progress": show.get("in_progress") is True,
+                        "season": show.get("season") if isinstance(show.get("season"), str) else None,
                         "modified": int(p.stat().st_mtime)})
         return out
 
