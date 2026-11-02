@@ -290,7 +290,7 @@ function restore(step) {
   app.edits++;
   app.selected = null;
   $("show-name").value = app.show.name; // undo can take back a rename
-  if ($("show-dialog").open) renderShowBrightness();
+  if ($("show-dialog").open) { renderShowBrightness(); fillSeasonPicker($("show-season"), app.show.season); }
   renderInspector();
   timeline.layout();
   scheduleAutoSave();
@@ -5236,10 +5236,6 @@ async function makeShow(name, file, colors, palette = null) {
   await openShow(null);
   setShowPalette(app.show, palette);
   app.show.name = name;
-  if ($("ns-season").value) {
-    app.show.season = $("ns-season").value;
-    ensureTracks();
-  }
   $("show-name").value = name;
   app.show.audio = ref;
   app.changed();
@@ -9319,15 +9315,19 @@ async function nsSubmit(e) {
   const show = { name: $("ns-name").value.trim(), audio: newShow.song ? JSON.parse(newShow.song) : null,
     length: Math.max(1, Number($("ns-length").value) || 60), start: newShow.start,
     palette: allPalettes().find((p) => p.name === newShow.palette) || null,
-    gen: newShow.start === "empty" ? null : newShow.gen.read() };
+    gen: newShow.start === "empty" ? null : newShow.gen.read(), season: $("ns-season").value || null };
   $("new-show-dialog").close();
   await createShow(show);
 }
 
-async function createShow({ name, audio: ref, length, start, gen, palette = null }) {
+async function createShow({ name, audio: ref, length, start, gen, palette = null, season = null }) {
   await openShow(null);
   setShowPalette(app.show, palette);
   app.show.name = name;
+  if (season) {
+    app.show.season = season; // lists the all-year lights and that season's props
+    ensureTracks();
+  }
   $("show-name").value = name;
   app.show.audio = ref;
   if (!ref) {
@@ -10034,6 +10034,7 @@ function wire() {
     ensureTracks();
     app.changed();
     renderInspector();
+    renderShowBrightness(); // its list of lights follows the lanes
     timeline.layout();
   });
   $("show-in-progress").addEventListener("change", async (e) => {

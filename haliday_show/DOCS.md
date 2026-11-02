@@ -426,7 +426,8 @@ which season each belongs to, and switch a season off when its props are packed 
   **Season**. A Halloween show lists your all-year lights and your Halloween props, not your Christmas
   ones. **Any season** (the start for every show) lists every light. A light that's out of the show's
   season but already has effects in it keeps its lane, marked **Not in this season**, so changing
-  seasons never loses anything. A show's row in **Library → Shows** names its season.
+  seasons never loses anything. A show's row in **Library → Shows** names its season. Group lanes and
+  the House lane in a show with a season only reach the lights it lists.
 
 ## 2. Speakers
 
