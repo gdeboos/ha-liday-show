@@ -3,6 +3,8 @@
 // Every effect is a pure function of (clip, seconds into the clip, segment count),
 // so a preview frame and a baked frame at the same time are identical.
 
+import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire } from "./matrix.js";
+
 export const FPS = 40;
 
 // The House lane's track id. Its clips run across every light by where its segments sit on the
@@ -1341,12 +1343,37 @@ export function curvedSettings(p, t, dur) {
 }
 
 // A clip's colours at `time` (which may be outside it, for a crossfade) as floats, brightness applied.
-function paintClip(clip, time, n, buf) {
+// On a matrix (`grid`), House patterns are drawn across the grid, and other effects play as a strip
+// along each row, down each column or once round it (the clip's `runs`).
+let gridStrip = new Float32Array(0);
+function paintClip(clip, time, n, buf, grid = null) {
   const fx = EFFECTS[clip.effect];
   if (!fx) { buf.fill(0); return buf; }
   const dur = clip.end - clip.start;
   const [p, t] = curvedSettings({ ...defaultParams(clip.effect), ...clip }, time - clip.start, dur);
   const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
+  if (grid && fx.house) {
+    for (let i = 0; i < n; i++) {
+      const [u, v] = gridUV(i, grid.w, grid.h);
+      const c = fx.renderAt(p, t, dur, u, v);
+      const a = !c ? 0 : (c.length > 3 ? c[3] : 1) * level;
+      buf[i * 3] = c ? c[0] * a : 0;
+      buf[i * 3 + 1] = c ? c[1] * a : 0;
+      buf[i * 3 + 2] = c ? c[2] * a : 0;
+    }
+    return buf;
+  }
+  if (grid) {
+    const runs = runsOf(clip), len = stripLength(runs, grid.w, grid.h);
+    if (gridStrip.length < len * 3) gridStrip = new Float32Array(len * 3);
+    for (let i = 0; i < len; i++) {
+      const c = fx.render(p, t, dur, len, i);
+      gridStrip[i * 3] = c[0] * level;
+      gridStrip[i * 3 + 1] = c[1] * level;
+      gridStrip[i * 3 + 2] = c[2] * level;
+    }
+    return expandRuns(gridStrip, runs, grid.w, grid.h, buf);
+  }
   for (let i = 0; i < n; i++) {
     const c = fx.render(p, t, dur, n, i);
     buf[i * 3] = c[0] * level;
@@ -1376,19 +1403,19 @@ let scratchA = new Float32Array(0), scratchB = new Float32Array(0);
 // over the clip it crossfades with, or over what's beneath it (dark, on a light's own track). For a
 // lane (lane true) a clip fading to or from nothing is drawn in full: laneCover() says how much of
 // it lies over the lights.
-export function renderTrack(clips, time, n, out = new Uint8Array(n * 3), lane = false) {
+export function renderTrack(clips, time, n, out = new Uint8Array(n * 3), lane = false, grid = null) {
   out.fill(0);
   if (scratchA.length < n * 3) { scratchA = new Float32Array(n * 3); scratchB = new Float32Array(n * 3); }
   const mine = scratchA.subarray(0, n * 3), under = scratchB.subarray(0, n * 3);
   for (const clip of clips) {
     if (time < clip.start || time >= clip.end || !EFFECTS[clip.effect]) continue;
-    paintClip(clip, time, n, mine);
+    paintClip(clip, time, n, mine, grid);
     const tr = transitionAt(clips, clip, time);
     if (!tr || (lane && !tr.from)) {
       for (let j = 0; j < n * 3; j++) out[j] = clamp(mine[j]);
       continue;
     }
-    if (tr.from) paintClip(tr.from, time, n, under);
+    if (tr.from) paintClip(tr.from, time, n, under, grid);
     else for (let j = 0; j < n * 3; j++) under[j] = out[j];
     for (let i = 0; i < n; i++) {
       const w = transitionShare(tr, n > 1 ? i / (n - 1) : 0, i, clip);
@@ -1415,7 +1442,7 @@ export function composeLight(light, trackOf, time, positions = {}, houseClips = 
   out.fill(0);
   if (!light.parts?.length) {
     const tr = trackOf(light.id);
-    if (tr) renderTrack(tr.clips, time, light.segments, out);
+    if (tr) renderTrack(tr.clips, time, light.segments, out, false, gridOf(light));
     if (groups.length) applyGroups(groups, light.id, time, positions, out);
     if (houseClips.length && positions[light.id]) applyHouse(houseClips, time, positions[light.id], out);
     return out;
@@ -1503,7 +1530,10 @@ function bakeFrames(show, devices, fps, positions, groups) {
   for (let f = 0; f < header.frames; f++) {
     const time = f / fps;
     for (const [k, l] of lights.entries()) {
-      dim(composeLight(l, trackOf, time, positions, houseClips, out.subarray(off, off + l.segments * 3), plans), levels[k]);
+      const frame = out.subarray(off, off + l.segments * 3);
+      dim(composeLight(l, trackOf, time, positions, houseClips, frame, plans), levels[k]);
+      // A matrix is worked out in rows from the top left; its light wants them in its wiring order.
+      if (gridOf(l)) { const wired = toWire(frame, l.matrix); if (wired !== frame) frame.set(wired); }
       off += l.segments * 3;
     }
   }
