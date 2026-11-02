@@ -35,6 +35,9 @@ RESYNC_S = 1.0  # media players report position coarsely; only correct big jumps
 ENDING_S = 5.0  # a speaker that stops this close to the end of the show has just finished the song
 
 
+LIVE_SETTINGS_EVERY_S = 2.0  # how often a scene reacting to music looks at Setup → Settings → Live music again
+
+
 class RunnerError(Exception):
     pass
 
@@ -273,9 +276,17 @@ class Runner:
                     variants[look] = decode(blob)
             except Exception as e:  # a broken bake just means no strong-bass or strong-treble look
                 log.warning("scene %s: %s", cfg[look], e)
-        heard = livemusic.settings(self.storage)
-        reactor = react.Reactor(cfg, heard["from"])
-        self.player.react = lambda: reactor.step(self.live.now(heard["source"]), time.monotonic())
+        reactor = react.Reactor(cfg)
+        heard = {"at": -math.inf}
+
+        def step():
+            now = time.monotonic()
+            if now - heard["at"] >= LIVE_SETTINGS_EVERY_S:  # Live music changed while it plays
+                heard.update(livemusic.settings(self.storage), at=now)
+                reactor.threshold = heard["from"]
+            return reactor.step(self.live.now(heard["source"]), now)
+
+        self.player.react = step
         self.player.variants = variants
 
     def scene_level(self) -> int:

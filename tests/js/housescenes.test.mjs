@@ -104,6 +104,15 @@ test("switching modes keeps the scene's schedule", async () => {
   assert.deepEqual(toBasic(adv).schedule, schedule);
 });
 
+test("switching modes keeps React to music", async () => {
+  const { toAdvanced, toBasic } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const react = { on: true, quiet: 30, flash: true, strength: 60, bass: "thump", treble: "", quietSecs: 4 };
+  const adv = toAdvanced({ name: "Glow", mode: "basic", lights: {}, react }, lights, 20);
+  assert.deepEqual(adv.react, react);
+  assert.deepEqual(toBasic(adv).react, react);
+  assert.equal("react" in toBasic({ name: "Old", mode: "advanced", loop: 10, tracks: [] }), false);
+});
+
 test("a split light's parts each get their own look, or the whole light one", async () => {
   const { byParts, partLook, setByParts, setPartLook, canBasic, toAdvanced, toBasic } =
     await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");

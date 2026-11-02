@@ -131,14 +131,14 @@ async def test_a_reacting_scene_is_dimmed_flashed_and_swapped_but_only_from_bake
     looks = iter([react.Out("plain", 100, 0.0)] * 3 + [react.Out("plain", 50, 0.0)] * 3
                  + [react.Out("plain", 100, 0.5)] * 3 + [react.Out("bass", 100, 0.0)] * 50)
     p.react, p.variants = lambda: next(looks), {"bass": bass}
-    await asyncio.sleep(0.35)  # a still loop still gets sent every frame while reacting
+    await asyncio.sleep(0.35)  # a still loop is sent again whenever the music changes it
     await p.stop()
     sent = set(out.light.sent)
     assert bytes([50, 0, 0]) in sent  # the scenes' brightness
     assert bytes([25, 0, 0]) in sent  # and quieter music on top
     assert bytes([152, 128, 128]) in sent  # half way to white on a beat: 50 + 205*0.5, 0 + 255*0.5
     assert bytes([0, 0, 100]) in sent  # the strong bass scene's frame
-    assert len(out.light.sent) >= 5
+    assert len(out.light.sent) == len(sent)  # but not again while nothing changes
 
 
 async def test_a_new_show_stops_reacting():

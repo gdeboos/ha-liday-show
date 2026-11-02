@@ -422,3 +422,20 @@ async def test_a_scene_with_react_to_music_switched_off_plays_as_before(runner):
     runner.live = Heard(None)
     await runner.play_scene("glow")
     assert runner.player.react is None and runner.live.asked == []
+
+
+async def test_changing_live_music_applies_to_the_scene_playing(runner, monkeypatch):
+    monkeypatch.setattr(runner_mod, "LIVE_SETTINGS_EVERY_S", 0)
+    _scene(runner.storage)
+    glow = runner.storage.load_scene("glow")
+    glow["react"] = {**react.DEFAULTS, "on": True}
+    runner.storage.save_scene("glow", glow)
+    runner.storage.save_scene_baked("glow", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 4))
+    runner.live = Heard({"loudness": 50, "bass": 0, "treble": 0, "beat_at": None})
+    await runner.play_scene("glow")
+    runner.player.react()
+    settings = runner.storage.load_settings()
+    settings["live_music"] = {"source": "10.0.0.7", "from": 60}
+    runner.storage.save_settings(settings)
+    runner.player.react()
+    assert runner.live.asked[-1] == "10.0.0.7"

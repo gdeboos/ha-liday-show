@@ -84,4 +84,6 @@ class Reactor:
         if cfg["flash"] and beat is not None and beat != self.seen_beat:
             self.seen_beat, self.flash_at = beat, beat
         flash = cfg["strength"] / 100 * max(0.0, 1 - (now - self.flash_at) / FLASH_S) if cfg["flash"] and not silent else 0.0
-        return Out(self.look, self.level, flash)
+        # Whole percent and twentieths: a steady scene gives the same answer every frame, so the
+        # player has nothing new to send.
+        return Out(self.look, round(self.level), round(flash * 20) / 20)

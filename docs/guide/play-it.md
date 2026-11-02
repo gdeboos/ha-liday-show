@@ -143,11 +143,12 @@ scene, press **React to music…** in the bar above the timeline). Then:
 
 - **When it's quiet, down to** sets how dim the scene gets in the quiet parts. The louder the music, the
   brighter the scene, up to its normal brightness.
-- **Flash on each beat** lifts the lights towards white on every beat, dying away over a quarter of a
-  second. **Flash strength** sets how far.
+- **Flash on each beat** lifts every light towards white on every beat, the dark gaps too, dying away
+  over a quarter of a second. **Flash strength** sets how far.
 - **Strong bass plays** and **Strong treble plays** pick another of your scenes to switch to while the bass
   (or the treble) is loud and well above the other. It stays at least a second, so it doesn't flicker.
-  Leave them on **None** to stay on this scene.
+  Leave them on **None** to stay on this scene. Changes to those scenes show the next time this one
+  starts.
 - **Back to normal after** sets how many quiet seconds it waits, with the music stopped or no WLED heard,
   before gliding back to the plain scene at its normal brightness.
 

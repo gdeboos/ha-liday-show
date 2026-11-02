@@ -58,3 +58,11 @@ def test_silence_glides_back_to_the_plain_scene_at_normal_brightness():
         out = r.step(lv(5), 2.2 + k * 0.05)
     assert out.level == pytest.approx(100, abs=2)
     assert r.step(None, 5.0).level == pytest.approx(100, abs=2)  # no WLED heard at all: plain too
+
+
+def test_levels_move_in_whole_steps_so_a_steady_scene_isnt_resent_every_frame():
+    r = react.Reactor({**react.DEFAULTS, "on": True})
+    outs = [r.step({"loudness": 47, "bass": 0, "treble": 0, "beat_at": 9.97}, 10 + i / 40) for i in range(80)]
+    assert all(o.level == int(o.level) for o in outs)
+    assert all(round(o.flash * 20) == o.flash * 20 for o in outs)
+    assert len({o for o in outs[-20:]}) == 1  # settled: the same every frame, so nothing new goes out

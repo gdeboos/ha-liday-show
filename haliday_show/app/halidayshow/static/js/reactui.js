@@ -1,5 +1,5 @@
 // React to music on a scene (react.py plays it): the settings form, for the Scene editor and the
-// Advanced scene's React to music… window, and the line that says what it does.
+// Advanced scene's React to music… window.
 
 export const REACT_DEFAULTS = { on: false, quiet: 20, flash: true, strength: 60, bass: "", treble: "", quietSecs: 4 };
 
@@ -12,16 +12,6 @@ export function reactOf(scene) {
 export function lookChoices(scenes, selfId) {
   return scenes.filter((s) => s.id !== selfId).map((s) => ({ id: s.id, name: s.name }))
     .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-// What it does, in a line: "Off", or "Louder is brighter (down to 20%) · flashes on beats · strong bass: Thump".
-export function reactSummary(cfg, nameOf = (id) => id) {
-  if (!cfg?.on) return "Off";
-  const bits = [`Louder is brighter (down to ${cfg.quiet}%)`];
-  if (cfg.flash) bits.push("flashes on beats");
-  if (cfg.bass) bits.push(`strong bass: ${nameOf(cfg.bass) || "a deleted scene"}`);
-  if (cfg.treble) bits.push(`strong treble: ${nameOf(cfg.treble) || "a deleted scene"}`);
-  return bits.join(" · ");
 }
 
 function el(tag, props = {}, ...kids) {

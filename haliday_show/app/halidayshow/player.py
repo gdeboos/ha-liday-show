@@ -138,7 +138,7 @@ class Player:
         last = -1
         while True:
             elapsed = time.monotonic() - self.start - self.offset
-            idx = tick = int(elapsed * b.fps)
+            idx = int(elapsed * b.fps)
             if self.length is not None:
                 if elapsed >= self.length:
                     break
@@ -146,11 +146,11 @@ class Player:
             elif idx >= b.frames:
                 break
             react = self.react() if self.react else None
-            key = tick if react else idx
+            key = (idx, react) if react else idx
             if idx >= 0 and key != last:
-                # Reacting, a frame goes out every frame time even when the loop is a still picture,
-                # as the level, flash and look move with the music. The frames are only picked,
-                # scaled and mixed, never worked out here.
+                # Reacting, a frame also goes out when the level, flash or look move with the music,
+                # even on a loop that's a still picture. The frames are only picked, scaled and mixed,
+                # never worked out here.
                 table = self._react_table(react) if react else self._dim
                 source = self.variants.get(react.look) if react else None
                 for t in b.tracks:
