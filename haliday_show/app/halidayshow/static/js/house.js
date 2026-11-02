@@ -404,7 +404,7 @@ export class House {
     const count = Math.min(dev.bulbs || dev.segments * BULBS_PER_SEGMENT, MAX_BULBS);
     const style = this.styles[dev.id];
     const pins = this.pins[dev.id];
-    const key = `${count}:${dev.segments}:${dev.reverse}:${JSON.stringify(style)}:${JSON.stringify(points)}:${JSON.stringify(pins)}`;
+    const key = `${count}:${dev.segments}:${dev.reverse}:${JSON.stringify(gridOf(dev))}:${JSON.stringify(style)}:${JSON.stringify(points)}:${JSON.stringify(pins)}`;
     let c = this.cache.get(dev.id);
     if (c?.key !== key) {
       const shape = style?.style, grid = points.length === SHAPE_POINTS[shape] ? gridOf(dev) : null;

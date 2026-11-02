@@ -73,6 +73,7 @@ House lane. They sit on top of each light's own effects, or mix with them (see [
 | House solid | One colour on every light. Most useful mixed with the lights' own effects (see below) |
 | House gradient | Up to 8 colours blended across the house in any direction, still or drifting |
 | Stripes | Stripes of your colours at any **Angle** (45° for candy cane), still or moving, with soft or sharp edges |
+| Spiral | Stripes of your colours winding round a mega-tree and turning (**Candy cane**, **Twirl**); on the house, slanted stripes moving along |
 | Chequerboard | Squares of your colours across the house, still or swapping |
 | Colour wave | Your colours rolling across the house as a wave, in any direction |
 | House sparkle | Sparkles scattered over every light by where it is, over the lights' own effects |

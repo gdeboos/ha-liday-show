@@ -470,7 +470,7 @@ Each light has a **Style**:
 | Line | Strips, string lights, eaves lights | Trace along it, as above. |
 | Icicle | Icicle lights | Trace the line the icicles hang from, then set **Drops** to how many drops it has and **Length** to how far the longest one hangs on the photo. The drops are staggered, each in its segment's colour, with the light's **Bulbs** shared between them. It starts with one drop for about every five bulbs, and never shows more drops than bulbs. |
 | Spots | Spotlights | Press **Trace** and click where each spotlight sits, starting nearest the plug. Each one shines a soft wash of colour; drag its round handle to aim it, and use **Beam** for how wide the beams are. A spot covering several segments shows them blended. |
-| Mega-tree | Matrices | Only offered for a matrix. Picking it puts a tree in the middle of the photo; drag the white point to the top of the real tree and the other two to the ends of its base. Each column is a string, fanning out from the top. New effects on a mega-tree run **Down each column**. |
+| Mega-tree | Matrices | Only offered for a matrix. Picking it puts a tree in the middle of the photo; drag the white point to the top of the real tree and the other two to the ends of its base. Each column is a string, fanning out from the top. Effects you add to a mega-tree on the timeline start out running **Down each column**. |
 | Panel | Matrices | Only offered for a matrix. Picking it puts the panel in the middle of the photo, the shape of its grid; drag its four corners onto the real panel's corners. The white corner is its top left. A panel photographed at an angle still fits, as every LED is spread between the corners. |
 
 ### Photo taken at an angle
@@ -1344,6 +1344,7 @@ House lane. They sit on top of each light's own effects, or mix with them (see [
 | House solid | One colour on every light. Most useful mixed with the lights' own effects (see below) |
 | House gradient | Up to 8 colours blended across the house in any direction, still or drifting |
 | Stripes | Stripes of your colours at any **Angle** (45° for candy cane), still or moving, with soft or sharp edges |
+| Spiral | Stripes of your colours winding round a mega-tree and turning (**Candy cane**, **Twirl**); on the house, slanted stripes moving along |
 | Chequerboard | Squares of your colours across the house, still or swapping |
 | Colour wave | Your colours rolling across the house as a wave, in any direction |
 | House sparkle | Sparkles scattered over every light by where it is, over the lights' own effects |

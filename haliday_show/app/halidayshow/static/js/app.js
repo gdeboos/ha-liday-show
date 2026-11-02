@@ -2304,7 +2304,7 @@ function houseStyleControls(d) {
   if (style.style === "panel" || style.style === "tree") {
     if (!grid) return [l0, hint("This only fits a matrix. Turn on Matrix for this light under Setup → Devices.")];
     return [l0, hint(style.style === "tree"
-      ? "Drag the white point to the top of the tree and the other two to the ends of its base. Each column is a string. New effects on it run down each column."
+      ? "Drag the white point to the top of the tree and the other two to the ends of its base. Each column is a string. Effects you add to it start out running down each column."
       : "Drag the four corners onto the panel's corners. The white one is its top left.")];
   }
   if (style.style === "spots") {

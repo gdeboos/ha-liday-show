@@ -2,7 +2,7 @@
 
 ## 0.2.279
 
-- A matrix can be a **Mega-tree** on the house photo: pick it under **Style** on **Setup → House**, then drag the white point to the top of your tree and the other two to the ends of its base. Each column is a string, and new effects on the tree run **Down each column**.
+- A matrix can be a **Mega-tree** on the house photo: pick it under **Style** on **Setup → House**, then drag the white point to the top of your tree and the other two to the ends of its base. Each column is a string, and effects you add to the tree on the timeline start out running **Down each column**.
 - New effect, **Spiral**: stripes that wind round a mega-tree and turn, with **Candy cane** and **Twirl** presets. On the House lane it's slanted stripes moving along the house.
 
 ## 0.2.278
