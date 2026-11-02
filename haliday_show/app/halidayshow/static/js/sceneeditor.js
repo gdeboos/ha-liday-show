@@ -13,6 +13,7 @@ import { pickPalette } from "./palettepicker.js";
 import { withMore } from "./rowmenu.js";
 import { askText } from "./ask.js";
 import { PART, sendParts } from "./upload.js";
+import { lookChoices, reactForm, reactOf } from "./reactui.js";
 
 const SAVE_AFTER_MS = 600;
 const $ = (id) => document.getElementById(id);
@@ -319,8 +320,10 @@ export class SceneEditor {
     this.byParts.clear();
     this.d.prefs.set("lastScene", id);
     $("sc-name").value = this.scene.name;
+    this.heard = null;
     this.draw();
     this.d.opened();
+    this.d.api("api/live-music").then((heard) => { if (this.id === id) { this.heard = heard; this.drawReact(); } }).catch(() => {});
     // An older bake (or none, or one for different lights) is made again now.
     if (!this.scenes.find((s) => s.id === id)?.baked || this.d.prefs.get("sceneBakes", {})[id] !== this.bakeKey()) {
       this.saving = this.saving.then(() => this.bakeAndSend()).catch(() => {});
@@ -375,9 +378,19 @@ export class SceneEditor {
       rows.replaceChildren(...lights.flatMap((d) => this.lightRows(s, d)));
     }
     $("sc-when").replaceChildren(this.d.scheduleLink(this.id));
+    this.drawReact();
     this.drawPalette();
     this.drawPlayButton();
     this.startPreview();
+  }
+
+  // React to music. Saved on the scene only once it's changed, so old scenes stay as they were.
+  drawReact() {
+    const box = $("sc-react");
+    if (!box) return;
+    const scene = this.scene, cfg = reactOf(scene);
+    box.replaceChildren(reactForm(cfg, { scenes: lookChoices(this.scenes, this.id), heard: this.heard, idPrefix: "sc-rx" },
+      () => { if (scene !== this.scene) return; scene.react = { ...cfg }; this.changed(); }));
   }
 
   // The scene's palette, {name, colors} with the palette's colours today, or null.

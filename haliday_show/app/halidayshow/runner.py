@@ -17,9 +17,10 @@ the queue.
 import asyncio
 import logging
 import math
+import time
 from datetime import datetime, timezone
 
-from . import playlists
+from . import livemusic, playlists, react
 from .baked import decode
 from .ha import HAError, HomeAssistant, media_content_id, position_now
 from .player import Player
@@ -32,6 +33,9 @@ SCENE_BACK_S = 2.0  # how long the lights rest after a show before the scene com
 FOLLOW_EVERY_S = 1.0
 RESYNC_S = 1.0  # media players report position coarsely; only correct big jumps
 ENDING_S = 5.0  # a speaker that stops this close to the end of the show has just finished the song
+
+
+LIVE_SETTINGS_EVERY_S = 2.0  # how often a scene reacting to music looks at Setup → Settings → Live music again
 
 
 class RunnerError(Exception):
@@ -73,6 +77,7 @@ class Runner:
         self._yours = 0
         self._durations: dict[str, tuple[float, float]] = {}  # show id -> (baked file's mtime, seconds)
         self.scene: dict | None = None  # the scene on, or waiting to come back after a show: {id, name}
+        self.live = None  # livemusic.LiveMusic, set by the server, for scenes with React to music
         self.scene_playing = False  # its frames are what the lights are showing now
         self._idle_since: float | None = None
 
@@ -248,6 +253,7 @@ class Runner:
                 await self._stop()
                 self.player.set_level(self.scene_level())  # before the first frame goes out
                 await self.player.play(None, baked, self.storage.devices_by_id(), position=position, length=math.inf)
+                self._react(scene)
                 self.scene = {"id": scene_id, "name": scene.get("name", scene_id)}
                 self.scene_playing = True
         settings = self.storage.load_settings()
@@ -255,6 +261,33 @@ class Runner:
             settings["last_scene"] = scene_id
             self.storage.save_settings(settings)
         log.info("playing scene %s", scene_id)
+
+    def _react(self, scene: dict | None):
+        """Has the player follow the live music for a scene with React to music switched on: just
+        started, so a new show or scene (player.play) ends it."""
+        cfg = (scene or {}).get("react")
+        if not cfg or not cfg.get("on") or self.live is None:
+            return
+        variants = {}
+        for look in ("bass", "treble"):
+            blob = self.storage.load_scene_baked(cfg[look]) if cfg[look] else None
+            try:
+                if blob:
+                    variants[look] = decode(blob)
+            except Exception as e:  # a broken bake just means no strong-bass or strong-treble look
+                log.warning("scene %s: %s", cfg[look], e)
+        reactor = react.Reactor(cfg)
+        heard = {"at": -math.inf}
+
+        def step():
+            now = time.monotonic()
+            if now - heard["at"] >= LIVE_SETTINGS_EVERY_S:  # Live music changed while it plays
+                heard.update(livemusic.settings(self.storage), at=now)
+                reactor.threshold = heard["from"]
+            return reactor.step(self.live.now(heard["source"]), now)
+
+        self.player.react = step
+        self.player.variants = variants
 
     def scene_level(self) -> int:
         """Scenes' brightness, 1-100 (Home Assistant's HA-liday Show light). Shows aren't dimmed by it."""
@@ -375,6 +408,8 @@ class Runner:
             if scene:
                 self.player.set_level(self.scene_level())
             await self.player.play(None, baked, self.storage.devices_by_id(), length=item["seconds"])
+            if scene:
+                self._react(self.storage.load_scene(item["scene"]))
         while self.player.playing and self.block is item:
             await asyncio.sleep(0.1)
         return True

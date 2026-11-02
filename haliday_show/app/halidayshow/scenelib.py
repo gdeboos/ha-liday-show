@@ -15,6 +15,7 @@ colours. Either kind may still have a "schedule" from before 0.2.233, kept as it
 import math
 import re
 
+from . import react
 from .playlists import _EFFECT, _clean_params, clean_schedule
 
 MODES = ("basic", "advanced")
@@ -130,6 +131,11 @@ def _with_schedule(body: dict, out: dict) -> dict:
                 or not 1 <= len(colors) <= MAX_COLOURS or not all(isinstance(c, str) and _HEX.fullmatch(c) for c in colors):
             raise SceneError("the scene's palette needs a name and 1 to 12 colours")
         out["palette"] = {"name": name.strip(), "colors": [c.lower() for c in colors]}
+    if body.get("react") is not None:
+        try:
+            out["react"] = react.clean(body["react"])
+        except ValueError as e:
+            raise SceneError(str(e))
     if body.get("schedule") is not None:
         schedule = clean_schedule(body["schedule"])
         if schedule is None:

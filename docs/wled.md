@@ -51,6 +51,13 @@ Written from WLED's source, not yet checked against a real WLED with a microphon
 first). Still to confirm there: where the sync **Send** setting is in WLED's pages on his version, the
 range of sampleSmth with AGC on and off, and how often a beat flag arrives.
 
+From 0.2.287, scenes with **React to music** (`react.py`, a scene's optional `react` setting) follow
+`LiveMusic.now()`, which also gives `beat_at` (when the last beat flag arrived). The player calls
+`Reactor.step` every frame time and only scales, lifts towards white or swaps baked frames: the level
+follows sampleSmth, a flash starts on each new beat, and the strong bass or treble scene's loop is used
+while bands 0-3 or 10-15 are at least 70 and 10 above the other. Checked on the wire at 127.0.0.1
+with packets sent to 11988; not yet on a real WLED with a microphone.
+
 ## Matrices (2D)
 
 From 0.2.278 a WLED light, DDP or E1.31 controller can be a matrix: a saved `matrix: {w, h, start,

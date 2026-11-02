@@ -14,6 +14,7 @@ import {
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
+import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic } from "./housescenes.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
 import { partsFrame } from "./devicetest.js";
@@ -8197,6 +8198,7 @@ async function openSceneInEditor(id) {
     tracks: structuredClone(scene.tracks || []), ...(scene.palette ? { palette: scene.palette } : {}) };
   app.sceneId = id;
   app.sceneSchedule = scene.schedule || null; // from before the Schedule tab: kept as it is, unused
+  app.sceneReact = scene.react || null;
   app.history = [];
   ensureTracks();
   commit();
@@ -8229,8 +8231,26 @@ const sceneNow = () => {
   const tracks = app.show.tracks.map((t) => ({ device: t.device,
     clips: t.clips.filter((c) => c.start < loop).map((c) => (c.end > loop ? clipPiece(c, c.start, loop) : c)) }));
   return { name: app.show.name, mode: "advanced", loop, tracks, ...(app.show.palette ? { palette: app.show.palette } : {}),
-    ...(app.sceneSchedule ? { schedule: app.sceneSchedule } : {}) };
+    ...(app.sceneSchedule ? { schedule: app.sceneSchedule } : {}), ...(app.sceneReact ? { react: app.sceneReact } : {}) };
 };
+
+// React to music, for the Advanced scene open in the Show editor. Saved with the scene as other edits are.
+async function openSceneReact() {
+  const w = editWindow("React to music");
+  const cfg = reactOf({ react: app.sceneReact });
+  const id = app.sceneId;
+  const scenes = await api("api/house-scenes").catch(() => []);
+  const heard = await api("api/live-music").catch(() => null);
+  w.body.append(reactForm(cfg, { scenes: lookChoices(scenes, id), heard, idPrefix: "sb-rx" }, () => {
+    if (app.sceneId !== id) return;
+    app.sceneReact = { ...cfg };
+    app.dirty = true;
+    app.edits++;
+    scheduleAutoSave();
+  }));
+  w.foot.append(button("Done", () => w.dlg.close(), "primary"));
+  w.dlg.showModal();
+}
 
 // The schedule, for the Advanced scene open in the Show editor: what it does with the scene, and a
 // way to the Schedule tab (the scene stays open, under ↩ in the top bar).
@@ -9984,6 +10004,7 @@ function wire() {
   $("lm-from").addEventListener("change", (e) => saveLiveMusic({ from: Number(e.target.value) }));
   $("sb-back").addEventListener("click", () => leaveScene());
   $("sb-when").addEventListener("click", openSceneWhen);
+  $("sb-react").addEventListener("click", openSceneReact);
   $("sb-basic").addEventListener("click", () => leaveScene(true));
   $("sb-loop").addEventListener("change", (e) => {
     const v = Math.min(Math.max(Math.round(Number(e.target.value)) || 20, 1), 600);

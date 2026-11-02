@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.287
+
+- Scenes can **react to music** heard by a WLED with a microphone. Open a scene and switch on **React to music** under **Music** (for an Advanced scene, press **React to music…** above the timeline). The scene gets brighter as the music gets louder, flashes on each beat, and can switch to another of your scenes while the bass or treble is strong. When the music stops it glides back to normal. Which WLED it listens to is set under **Setup → Settings → Live music**.
+
 ## 0.2.286
 
 - The **Schedule** tab has a **Week** view under the list: seven days from today, a row per day, showing what really plays when. Each of your schedule's rows is a bar in its own colour. Where a row has to wait for another to finish, the wait is hatched, and a row that never gets a turn that day shows only hatched. Scenes fade where they wait for a playlist or show. Press a bar to find its row, and use **‹ ›** to look at other weeks.

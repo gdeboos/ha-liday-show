@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from halidayshow import baked, runner as runner_mod, scenelib
+from halidayshow import baked, react, runner as runner_mod, scenelib
 from halidayshow.output import Output
 from halidayshow.player import Player
 from halidayshow.runner import Runner, RunnerError
@@ -380,3 +380,62 @@ async def test_each_season_is_a_switch_in_home_assistant(runner):
     runner.storage.save_settings(settings)
     await bridge._publish_all()
     assert bridge.client.published["homeassistant/switch/haliday_show/season_christmas/config"] == b""
+
+
+class Heard:
+    """A WLED with a microphone, as livemusic.LiveMusic.now() reports it."""
+    def __init__(self, levels):
+        self.levels, self.asked = levels, []
+
+    def now(self, source="any"):
+        self.asked.append(source)
+        return self.levels
+
+
+async def test_a_scene_with_react_to_music_follows_the_wled_and_stops_with_the_next_show(runner):
+    _scene(runner.storage)
+    _scene(runner.storage, "thump", "Thump")
+    _show(runner.storage, "long", frames=4000)
+    glow = runner.storage.load_scene("glow")
+    glow["react"] = {**react.DEFAULTS, "on": True, "bass": "thump"}
+    runner.storage.save_scene("glow", glow)
+    runner.storage.save_scene_baked("glow", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 4))
+    settings = runner.storage.load_settings()
+    settings["live_music"] = {"source": "10.0.0.9", "from": 15}
+    runner.storage.save_settings(settings)
+    runner.live = Heard({"loudness": 90, "bass": 95, "treble": 5, "beat_at": None})
+    await runner.play_scene("glow")
+    assert set(runner.player.variants) == {"bass"}
+    assert runner.player.react().look == "bass"
+    assert runner.live.asked[-1] == "10.0.0.9"
+    await runner.play("long")
+    assert runner.player.react is None
+    await runner.stop()
+
+
+async def test_a_scene_with_react_to_music_switched_off_plays_as_before(runner):
+    _scene(runner.storage)
+    glow = runner.storage.load_scene("glow")
+    glow["react"] = {**react.DEFAULTS, "on": False}
+    runner.storage.save_scene("glow", glow)
+    runner.storage.save_scene_baked("glow", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 4))
+    runner.live = Heard(None)
+    await runner.play_scene("glow")
+    assert runner.player.react is None and runner.live.asked == []
+
+
+async def test_changing_live_music_applies_to_the_scene_playing(runner, monkeypatch):
+    monkeypatch.setattr(runner_mod, "LIVE_SETTINGS_EVERY_S", 0)
+    _scene(runner.storage)
+    glow = runner.storage.load_scene("glow")
+    glow["react"] = {**react.DEFAULTS, "on": True}
+    runner.storage.save_scene("glow", glow)
+    runner.storage.save_scene_baked("glow", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 4))
+    runner.live = Heard({"loudness": 50, "bass": 0, "treble": 0, "beat_at": None})
+    await runner.play_scene("glow")
+    runner.player.react()
+    settings = runner.storage.load_settings()
+    settings["live_music"] = {"source": "10.0.0.7", "from": 60}
+    runner.storage.save_settings(settings)
+    runner.player.react()
+    assert runner.live.asked[-1] == "10.0.0.7"

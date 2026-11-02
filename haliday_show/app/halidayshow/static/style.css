@@ -1360,3 +1360,20 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .sched-week-waits { position: absolute; top: 0; bottom: 0; background: rgba(255,255,255,0.55); }
 .sched-row.flash, .sched-list > .flash { outline: 3px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 600px) { .sched-week-grid { grid-template-columns: 4.5em 1fr; } .sched-week-label { font-size: 11px; white-space: normal; } }
+
+/* React to music (reactui.js): the Scene editor's Music card and the Advanced scene's window. */
+.react-form { display: grid; gap: 6px; }
+.react-form .hint { margin: 0; }
+.react-on { font-weight: 600; }
+.react-more { display: grid; gap: 8px; padding-top: 4px; }
+.react-more[hidden] { display: none; }
+.react-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.react-row[hidden] { display: none; }
+.react-row > span:first-child { min-width: 11em; }
+.react-row input[type="range"] { flex: 1 1 140px; max-width: 260px; }
+.react-row output { min-width: 3em; font-variant-numeric: tabular-nums; }
+.react-row input[type="number"] { width: 4.5em; }
+.react-row select { max-width: 100%; }
+@media (max-width: 600px) {
+  .react-row > span:first-child:not(:only-child) { min-width: 0; flex-basis: 100%; }
+}
