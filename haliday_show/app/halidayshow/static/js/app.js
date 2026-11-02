@@ -3002,7 +3002,7 @@ function renderInspector() {
     field("Lights' own effects", mix);
   }
   // On a matrix: how a strip effect plays across the grid. House patterns are drawn across it as they are.
-  if (gridOf(app.lights[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house) {
+  if (gridOf(app.lights[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house && !EFFECTS[clip.effect].grid) {
     const runs = document.createElement("select");
     const labels = { rows: "Along each row", columns: "Down each column", strip: "Whole matrix as one strip" };
     for (const r of RUNS) runs.add(new Option(labels[r], r, false, r === (clip.runs || "rows")));
@@ -3025,6 +3025,7 @@ function renderInspector() {
       el = document.createElement("input");
       el.type = p.type;
       if (p.type === "number" || p.type === "range") Object.assign(el, { min: p.min, max: p.max, step: p.step });
+      if (p.type === "text") el.maxLength = p.max;
       el.value = clip[p.key] ?? p.default;
     }
     const numeric = p.type === "number" || p.type === "range";
@@ -3659,6 +3660,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
       input = document.createElement("input");
       input.type = q.type;
       if (q.type === "number" || q.type === "range") Object.assign(input, { min: q.min, max: q.max, step: q.step });
+      if (q.type === "text") input.maxLength = q.max;
       input.value = preset.params[q.key] ?? q.default;
     }
     input.dataset.key = q.key;
@@ -5019,7 +5021,7 @@ function addToRange(effect, preset = null) {
   const added = tracks.map((t) => {
     const clip = clipFor();
     // A mega-tree's strings are its columns, so effects run down them unless changed.
-    if (house.styles[app.show.tracks[t].device]?.style === "tree" && !EFFECTS[effect].house) clip.runs = "columns";
+    if (house.styles[app.show.tracks[t].device]?.style === "tree" && !EFFECTS[effect].house && !EFFECTS[effect].grid) clip.runs = "columns";
     app.show.tracks[t].clips.push(clip);
     return { track: t, clip };
   });

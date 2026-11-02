@@ -66,3 +66,36 @@ test("a spiral's stripes twist from row to row and turn over time", () => {
   assert.notDeepEqual(row(a, 0), row(a, 2)); // twisted: the bottom row isn't the top row
   assert.notDeepEqual(row(a, 0), row(b, 0)); // and it turns
 });
+
+// A 7-high matrix, w wide, and a frame's lit dots as rows of # and .
+const tall = (w) => ({ id: "m", segments: w * 7, matrix: { w, h: 7 } });
+const dots = (out, w) => Array.from({ length: 7 }, (_, y) => Array.from({ length: w }, (_, x) => (lit(out, y * w + x) ? "#" : ".")).join(""));
+
+test("text sits still in the middle of the matrix, or scrolls in from the right", () => {
+  const still = { ...newClip("text", 0, 10), text: "H", color: "#ffffff", background: "#000000", move: "still", size: "small" };
+  assert.deepEqual(dots(frame(tall(7), still, 0), 7), [".#...#.", ".#...#.", ".#...#.", ".#####.", ".#...#.", ".#...#.", ".#...#."]);
+  const scroll = { ...still, move: "scroll left", speed: 4 };
+  // At the start the text is just off the right edge; after a second it has come in 4 columns.
+  assert.ok(dots(frame(tall(7), scroll, 0), 7).every((r) => r === "......."));
+  assert.deepEqual(dots(frame(tall(7), scroll, 1), 7).map((r) => r.slice(3)), ["#...", "#...", "#...", "####", "#...", "#...", "#..."]);
+});
+
+test("grid effects ignore Runs and stay inside a matrix with room to spare", () => {
+  const still = { ...newClip("text", 0, 10), text: "Hi", move: "still", size: "small", runs: "columns" };
+  const out = composeLight({ id: "m", segments: 40 * 20, matrix: { w: 40, h: 20 } }, () => ({ clips: [still] }), 1);
+  assert.equal(out.length, 40 * 20 * 3);
+  assert.ok(lit(out, 9 * 40 + 15)); // something lit near the middle
+  assert.ok(!lit(out, 0));
+});
+
+test("still text too wide for the matrix starts at the left, and a strip shows a slice", () => {
+  const still = { ...newClip("text", 0, 10), text: "HHHH", move: "still", size: "small" };
+  assert.deepEqual(dots(frame(tall(7), still, 0), 7)[3], "#####.#"); // H's middle row, then the next H
+  const strip = composeLight({ id: "s", segments: 30 }, () => ({ clips: [{ ...still, move: "scroll left" }] }), 3);
+  assert.equal(strip.length, 90);
+});
+
+test("playlist blocks don't offer effects made for matrices", async () => {
+  const { BLOCK_EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/playlisteditor.js");
+  assert.ok(!BLOCK_EFFECTS.includes("text"));
+});

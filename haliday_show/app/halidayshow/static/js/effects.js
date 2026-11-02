@@ -4,6 +4,7 @@
 // so a preview frame and a baked frame at the same time are identical.
 
 import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire } from "./matrix.js";
+import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 
 export const FPS = 40;
 
@@ -768,6 +769,42 @@ Object.assign(EFFECTS, {
   },
 });
 
+// Effects made for matrices: renderXY(p, t, dur, w, h, x, y) colours one LED of a w x h grid, with
+// row 0 at the top. A strip is drawn as a matrix one LED high, so it shows a slice through the effect.
+function gridEffect(fx) {
+  return { ...fx, grid: true, group: "matrix", render: (p, t, dur, n, i) => fx.renderXY(p, t, dur, n, 1, i, 0) };
+}
+
+const text = (key, label, def) => ({ key, label, type: "text", default: def, max: MAX_TEXT });
+
+Object.assign(EFFECTS, {
+  text: gridEffect({
+    label: "Scrolling text",
+    params: [text("text", "Text", "Merry Christmas"), color("color", "Colour", "#ff0000"), color("background", "Background", "#000000"),
+      choice("colours", "Letters", "one colour", ["one colour", "rainbow"]),
+      choice("move", "Move", "scroll left", ["scroll left", "scroll right", "still"]),
+      num("speed", "Speed (LEDs per second)", 8, 1, 60, 1), choice("size", "Size", "fill the height", ["fill the height", "small"])],
+    renderXY: (p, t, dur, w, h, x, y) => {
+      // 5 x 7 letters, as tall as fits (or 7 LEDs), in the middle of the height. Scrolling, the text
+      // comes in from one edge, goes off the other, and comes round again after a gap the matrix wide.
+      const cols = perFrame(p, "text", () => textColumns(p.text));
+      const scale = p.size === "small" ? 1 : Math.max(1, Math.floor(h / GLYPH_H));
+      const len = cols.length * scale, shown = Math.max(len - scale, 0); // the last letter's gap isn't part of it
+      const row = Math.floor((y - Math.floor((h - GLYPH_H * scale) / 2)) / scale);
+      if (!len || row < 0 || row >= GLYPH_H) return hexToRgb(p.background);
+      const s = Math.floor(t * p.speed);
+      let tx;
+      if (p.move === "still") tx = x - Math.max(Math.floor((w - shown) / 2), 0); // too wide to fit: from the left
+      else if (p.move === "scroll right") tx = len - 1 - mod(w - 1 - x + s - w, len + w);
+      else tx = mod(x + s - w, len + w);
+      if (tx < 0 || tx >= len) return hexToRgb(p.background);
+      const c = Math.floor(tx / scale);
+      if (!((cols[c] >> row) & 1)) return hexToRgb(p.background);
+      return p.colours === "rainbow" ? hsv(mod(Math.floor(c / 6) * 0.13, 1), 1, 1) : hexToRgb(p.color);
+    },
+  }),
+});
+
 // Patterns over the whole house (or a group, by where its lights are): mostly for layering, with a
 // lane's mix (Add, Brighter, Only where lit) over the lights' own effects.
 const angle = num("angle", "Angle (degrees)", 45, 0, 180, 5);
@@ -864,7 +901,7 @@ Object.assign(EFFECTS, {
 
 // Headings in the effect window, in order. House lane effects all go under "Across the house".
 export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
-  ["calm", "Calm"], ["music", "Follows the music"], ["house", "Across the house"]];
+  ["calm", "Calm"], ["music", "Follows the music"], ["house", "Across the house"], ["matrix", "On a matrix"]];
 const GROUP_OF = { solid: "basics", duo: "basics", trio: "basics", pulse: "basics", gradient: "basics", cycle: "basics",
   fade: "basics", strobe: "basics", chase: "movement", rainbow: "movement", comet: "movement", scanner: "movement",
   wipe: "movement", flicker: "festive", lightning: "festive", twinkle: "festive" };
@@ -1370,6 +1407,15 @@ function paintClip(clip, time, n, buf, grid = null) {
   const dur = clip.end - clip.start;
   const [p, t] = curvedSettings({ ...defaultParams(clip.effect), ...clip }, time - clip.start, dur);
   const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
+  if (grid && fx.grid) {
+    for (let i = 0; i < n; i++) {
+      const c = fx.renderXY(p, t, dur, grid.w, grid.h, i % grid.w, Math.floor(i / grid.w));
+      buf[i * 3] = c[0] * level;
+      buf[i * 3 + 1] = c[1] * level;
+      buf[i * 3 + 2] = c[2] * level;
+    }
+    return buf;
+  }
   if (grid && fx.house) {
     for (let i = 0; i < n; i++) {
       const [u, v] = gridUV(i, grid.w, grid.h);

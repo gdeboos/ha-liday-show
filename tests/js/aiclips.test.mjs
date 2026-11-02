@@ -125,7 +125,8 @@ test("palettes from the AI keep valid colours only, up to 12, and skip ones with
 test("every effect is described for the AI", async () => {
   const { EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
   const { EFFECT_NOTES, effectsForAI } = await import("../../haliday_show/app/halidayshow/static/js/aiclips.js");
-  for (const [key, fx] of Object.entries(EFFECTS)) if (!fx.experimental) assert.ok(EFFECT_NOTES[key], key);
+  for (const [key, fx] of Object.entries(EFFECTS)) if (!fx.experimental && !fx.grid) assert.ok(EFFECT_NOTES[key], key);
+  assert.ok(!effectsForAI().some((e) => EFFECTS[e.key].grid)); // matrix effects aren't offered
   assert.ok(effectsForAI().every((e) => e.looks));
 });
 

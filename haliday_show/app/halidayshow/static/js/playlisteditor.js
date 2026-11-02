@@ -21,9 +21,10 @@ export const BLOCKS = {
 };
 
 // Effects a block can play: ones that look the same however long they run (not Fade or Wipe, which
-// play once across their length), on each light rather than across the house photo.
+// play once across their length), on each light rather than across the house photo, and not the ones
+// made for matrices, which would show only a slice on every strip.
 export const BLOCK_EFFECTS = Object.keys(EFFECTS).filter((k) => k !== "solid" && !EFFECTS[k].once && !EFFECTS[k].music
-  && !EFFECTS[k].house && !EFFECTS[k].experimental);
+  && !EFFECTS[k].house && !EFFECTS[k].experimental && !EFFECTS[k].grid);
 
 const rand = () => Math.random().toString(36).slice(2, 8);
 

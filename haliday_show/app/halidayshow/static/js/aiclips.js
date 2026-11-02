@@ -34,9 +34,10 @@ export const EFFECT_NOTES = {
   housesparkle: "sparkles over every light", spotlight: "a soft light wandering over the house", housedots: "polka dots",
 };
 
-// Every effect with its settings, as the AI sees them.
+// Every effect with its settings, as the AI sees them. Effects made for matrices are left out: the AI
+// isn't told which lights are matrices, and on a strip they'd only show a slice.
 export function effectsForAI() {
-  return Object.entries(EFFECTS).filter(([, fx]) => !fx.experimental).map(([key, fx]) => ({
+  return Object.entries(EFFECTS).filter(([, fx]) => !fx.experimental && !fx.grid).map(([key, fx]) => ({
     key, label: fx.label, ...(EFFECT_NOTES[key] ? { looks: EFFECT_NOTES[key] } : {}), ...(fx.house ? { house: true } : {}),
     settings: fx.params.map((p) => ({
       key: p.key, type: p.type === "range" ? "number" : p.type,
