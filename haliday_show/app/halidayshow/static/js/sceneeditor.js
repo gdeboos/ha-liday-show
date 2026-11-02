@@ -12,7 +12,7 @@ import { applyPalette, paletteKeys } from "./palettes.js";
 import { pickPalette } from "./palettepicker.js";
 import { withMore } from "./rowmenu.js";
 import { askText } from "./ask.js";
-import { PART, sendParts } from "./upload.js";
+import { sendBaked } from "./upload.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 
 const SAVE_AFTER_MS = 600;
@@ -578,8 +578,7 @@ export class SceneEditor {
     const blob = bake(sceneShow(scene, lights, loop), this.d.devices(), FPS, advanced ? this.d.positions() : {},
       advanced ? this.d.groups?.() || [] : []);
     const path = `api/house-scenes/${encodeURIComponent(id)}/baked`;
-    if (blob.byteLength > PART) await sendParts(this.d.api, `${path}/part`, new Blob([blob]));
-    else await this.d.api(path, { method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" } });
+    await sendBaked(this.d.api, path, blob);
     const made = this.d.prefs.get("sceneBakes", {});
     made[id] = this.bakeKey(scene);
     this.d.prefs.set("sceneBakes", made);

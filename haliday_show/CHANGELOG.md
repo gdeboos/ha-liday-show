@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.290
+
+- **Play** with **Lights** on starts much sooner after an edit: the show's light frames are now packed small before they're sent, so **Sending…** takes a fraction of the time (often a few seconds less on a long show, more on a phone). Scenes and playlist blocks are sent packed too.
+
 ## 0.2.289
 
 - **Setup → House** can zoom in on the photo, so you can place lights exactly. Use **+**, **−** and **Fit** above the photo, or hold Ctrl (⌘ on a Mac) and scroll to zoom where you point. Scroll or drag with the middle mouse button to move around. On a phone or tablet, pinch to zoom and slide two fingers to move.

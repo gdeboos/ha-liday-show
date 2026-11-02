@@ -16,6 +16,7 @@ import math
 import os
 import re
 import time
+import zlib
 from pathlib import Path
 
 from aiohttp import web
@@ -684,11 +685,26 @@ async def get_baked_key(request):
     return web.json_response({"key": key})
 
 
+def _unpacked(request, blob: bytes) -> bytes:
+    """A show's frames arrive gzipped (?gz=1) from editors that can: mostly the same colours frame
+    after frame, they shrink many times over, so Play starts sooner. Older pages send them as they are."""
+    if request.query.get("gz") != "1":
+        return blob
+    d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    try:
+        out = d.decompress(blob, MAX_UPLOAD)
+    except zlib.error:
+        raise web.HTTPBadRequest(text="the show's frames arrived damaged; try again")
+    if d.unconsumed_tail:
+        raise web.HTTPRequestEntityTooLarge(max_size=MAX_UPLOAD, actual_size=MAX_UPLOAD + 1)
+    return out
+
+
 async def put_baked(request):
     show_id = _show_id(request)
     _not_archived(request, show_id)
     key = _clean_bake_key(request)
-    blob = await request.read()
+    blob = _unpacked(request, await request.read())
     try:
         decode(blob)
     except BakedError as e:
@@ -939,6 +955,7 @@ async def put_baked_part(request):
         return web.json_response({"received": size})
     blob = part.read_bytes()
     part.unlink(missing_ok=True)
+    blob = _unpacked(request, blob)
     try:
         decode(blob)
     except BakedError as e:
@@ -1723,6 +1740,7 @@ async def get_blocks(request):
 
 
 def _save_block(request, block_id: str, blob: bytes):
+    blob = _unpacked(request, blob)
     try:
         decode(blob)
     except BakedError as e:
@@ -1941,6 +1959,7 @@ async def delete_scene(request):
 def _save_scene_baked(request, scene_id: str, blob: bytes):
     if request.app[STORAGE].load_scene(scene_id) is None:
         raise web.HTTPNotFound(text="that scene has been deleted")
+    blob = _unpacked(request, blob)
     try:
         decode(blob)
     except BakedError as e:

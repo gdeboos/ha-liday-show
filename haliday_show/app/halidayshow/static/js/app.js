@@ -66,7 +66,7 @@ import { LIBRARY_KINDS, renameItem } from "./libfolders.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
 import { convertProblem, showUses, toWled } from "./convert.js";
-import { PART, putWithProgress, sendParts, uploadSong } from "./upload.js";
+import { PART, packed, putWithProgress, sendBaked, sendParts, uploadSong } from "./upload.js";
 import { bakeNote, lightsBakeKey } from "./bakekey.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
@@ -4518,8 +4518,7 @@ async function bakeBlocksOnce() {
     const blob = bake(blockShow(block, lights, loop), app.devices, FPS);
     const path = `api/blocks/${encodeURIComponent(block.id)}/baked`;
     try {
-      if (blob.byteLength > PART) await sendParts(api, `${path}/part`, new Blob([blob]));
-      else await api(path, { method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" } });
+      await sendBaked(api, path, blob);
     } catch (e) {
       if (/no such building block/.test(e.message)) continue; // taken out meanwhile
       throw e;
@@ -8378,9 +8377,14 @@ const bakeNoteFor = (pos, show = app.show) => bakeNote([show, app.deviceList, ap
 
 // note: what it was baked for (bakeNoteFor), kept with it on the server.
 async function uploadBake(showId, blob, progress = undefined, note = null) {
-  const q = note ? `?key=${encodeURIComponent(note)}` : "";
+  // Frames are mostly the same colours over and over, so gzipped they're many times smaller and
+  // Play starts sooner. A browser that can't gzip sends them as they are.
+  const { data, gz } = await packed(blob);
+  blob = data;
+  const query = { ...(note ? { key: note } : {}), ...(gz ? { gz: "1" } : {}) };
+  const q = Object.keys(query).length ? `?${new URLSearchParams(query)}` : "";
   // A long show on many bulbs is more than Home Assistant passes on in one go, so it goes in pieces.
-  if (blob.byteLength > PART) await sendParts(api, `api/shows/${showId}/baked/part`, new Blob([blob]), note ? { key: note } : {}, progress);
+  if (blob.byteLength > PART) await sendParts(api, `api/shows/${showId}/baked/part`, new Blob([blob]), query, progress);
   else if (progress) await putWithProgress(`api/shows/${showId}/baked${q}`, blob, progress);
   else {
     await api(`api/shows/${showId}/baked${q}`, {
