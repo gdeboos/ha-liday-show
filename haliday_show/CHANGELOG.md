@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.278
+
+- WLED lights, pixel controllers and E1.31 controllers can be a **matrix**: a panel or a mega-tree laid out as a grid, up to 4,096 LEDs (64 × 64). A WLED set up as 2D is added as one straight away; for others, open the light under **Setup → Devices** and turn on **Laid out as a grid** under **Matrix**, then set its size and wiring. **Test wiring** lights the top left white, the top row red and the left column green, so you can see the wiring settings are right.
+- On the house photo, a matrix can be a **Panel**: pick it under **Style** on **Setup → House** and drag its four corners onto the real panel.
+- In a show, each clip on a matrix has **Runs**: **Along each row**, **Down each column** or **Whole matrix as one strip**. House patterns like **Stripes** and **Chequerboard** are drawn across the grid. The clip's preview shows the grid.
+
 ## 0.2.277
 
 - When **✨ Generate** uses the AI, an **Anything else?** box lets you tell it more about how the take should look, such as "no strobes, save the big colours for the last chorus". What you type is kept with the show, ready for your next take.
