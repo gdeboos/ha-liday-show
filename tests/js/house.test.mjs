@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { arcNearest, bulbLayout, panelBulbs, defaultPanel, bulbPositions, bulbSegment, defaultDrops, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
+import { arcNearest, bulbLayout, panelBulbs, defaultPanel, treeBulbs, defaultTree, bulbPositions, bulbSegment, defaultDrops, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
   from "../../haliday_show/app/halidayshow/static/js/house.js";
 
 const close = (a, b) => a.every((p, i) => Math.abs(p[0] - b[i][0]) < 1e-9 && Math.abs(p[1] - b[i][1]) < 1e-9);
@@ -139,4 +139,18 @@ test("a new panel is placed in the middle of the photo, the shape of its grid", 
   assert.ok(Math.abs(((tr[0] - tl[0]) * 2) / (bl[1] - tl[1]) - 4) < 1e-9);
   assert.equal(tr[1], tl[1]);
   assert.equal(br[0], tr[0]);
+});
+
+
+test("a mega-tree's columns fan out from its top to its base, a string each", () => {
+  const b = treeBulbs([[0.5, 0.1], [0.3, 0.9], [0.7, 0.9]], 3, 2);
+  const r = (p) => p.map((v) => +v.toFixed(5));
+  assert.deepEqual(r(b[3]), [0.3, 0.9]); // bottom of the first string: the base's left end
+  assert.deepEqual(r(b[5]), [0.7, 0.9]);
+  assert.deepEqual(r(b[4]), [0.5, 0.9]);
+  // The top row sits just under the top, not all on one spot.
+  assert.deepEqual(r(b[0]), [0.48, 0.18]);
+  assert.deepEqual(r(b[1]), [0.5, 0.18]);
+  const [top, left, right] = defaultTree(1.6);
+  assert.ok(top[1] < left[1] && left[1] === right[1] && Math.abs((left[0] + right[0]) / 2 - top[0]) < 1e-9);
 });

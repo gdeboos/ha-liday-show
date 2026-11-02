@@ -292,6 +292,7 @@ export const HELP = {
         "A WLED light or pixel controller laid out as a grid (a panel or a mega-tree): turn on <b>Laid out as a grid</b> under <b>Matrix</b> in its window.",
         "A WLED set up as 2D sorts out its own wiring: leave it as plain rows from the top left.",
         "<b>Test wiring</b> lights the top left white, the top row red and the left column green.",
+        "For a mega-tree, make each string a column: <b>across</b> is how many strings, <b>down</b> how many LEDs each.",
       ] },
       { id: "groups", title: "Groups", guide: ["lights.md", "light-groups"], tips: [
         "<b>+ New group</b> puts lights and parts together, such as the roof's icicles, so a show can give them one effect.",

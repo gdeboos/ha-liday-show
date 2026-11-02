@@ -60,6 +60,30 @@ export function defaultPanel({ w, h }, aspect = 1.6) {
   return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 }
 
+// A matrix drawn as a mega-tree: each column a string from just under the top to the base, the
+// columns spread from the base's left end to its right, row 0 at the top.
+export function treeBulbs([top, left, right], w, h) {
+  const out = [];
+  for (let y = 0; y < h; y++) {
+    const v = 0.1 + 0.9 * (h > 1 ? y / (h - 1) : 1);
+    for (let x = 0; x < w; x++) {
+      const u = w > 1 ? x / (w - 1) : 0.5;
+      out.push([0, 1].map((k) => top[k] + (left[k] + (right[k] - left[k]) * u - top[k]) * v));
+    }
+  }
+  return out;
+}
+
+// Where a new mega-tree goes: the middle of a photo `aspect` times as wide as it is tall, a little
+// under half the photo high, its base 0.6 of its height across.
+export function defaultTree(aspect = 1.6) {
+  const across = (0.6 * 0.45) / aspect;
+  return [[0.5, 0.3], [0.5 - across / 2, 0.75], [0.5 + across / 2, 0.75]];
+}
+
+// How many points a matrix's shape on the photo has.
+export const SHAPE_POINTS = { panel: 4, tree: 3 };
+
 // Where each of a light's `count` bulbs is, in order from the plug: [x, y], or null for a bulb
 // out of view. A point [x, y, n] marks the stretch leading to it as out of view (round the back
 // of the house, or an extension lead with n = 0) holding n bulbs. The other bulbs are shared out
@@ -273,8 +297,8 @@ export class House {
   constructor({ api, status, frameFor }) {
     Object.assign(this, { api, status, frameFor });
     this.paths = {};
-    // id -> {style: "icicle", drops, length}, {style: "spots", beam, aims} or {style: "panel"} (a matrix,
-    // its path the four corners); others are a line
+    // id -> {style: "icicle", drops, length}, {style: "spots", beam, aims} or {style: "panel"} or
+    // {style: "tree"} (a matrix, its path the four corners or the top and the base's ends); others are a line
     this.styles = {};
     this.pins = {}; // id -> {segment: how far along its path, 0 to 1} (see pinBulbs)
     this.dim = 0.5;
@@ -383,9 +407,10 @@ export class House {
     const key = `${count}:${dev.segments}:${dev.reverse}:${JSON.stringify(style)}:${JSON.stringify(points)}:${JSON.stringify(pins)}`;
     let c = this.cache.get(dev.id);
     if (c?.key !== key) {
-      const grid = style?.style === "panel" && points.length === 4 ? gridOf(dev) : null;
+      const shape = style?.style, grid = points.length === SHAPE_POINTS[shape] ? gridOf(dev) : null;
       if (grid) {
-        this.cache.set(dev.id, c = { key, bulbs: panelBulbs(points, grid.w, grid.h) });
+        const bulbs = shape === "tree" ? treeBulbs(points, grid.w, grid.h) : panelBulbs(points, grid.w, grid.h);
+        this.cache.set(dev.id, c = { key, bulbs });
         return c.bulbs;
       }
       const bulbs = style?.style === "icicle" ? icicleDrops(points, style.drops, count) : bulbLayout(points, count);
@@ -590,16 +615,18 @@ export class House {
         }
       }
       ctx.setLineDash([]);
-      const panel = style?.style === "panel";
-      if (panel && pts.length === 4) {
+      const shape = SHAPE_POINTS[style?.style] ? style.style : null, panel = !!shape;
+      if (shape && pts.length === SHAPE_POINTS[shape]) {
+        // Close the outline: a panel's fourth side, or a tree's other side back to the top.
+        const last = pts[pts.length - 1];
         ctx.strokeStyle = active ? "rgba(80,170,255,0.9)" : "rgba(255,255,255,0.35)";
         ctx.lineWidth = active ? 2 : 1;
         ctx.beginPath();
-        ctx.moveTo(pts[3][0] * w, pts[3][1] * h);
+        ctx.moveTo(last[0] * w, last[1] * h);
         ctx.lineTo(pts[0][0] * w, pts[0][1] * h);
         ctx.stroke();
       }
-      if (dev.id === this.active && this.hover && !(panel && pts.length >= 4)) {
+      if (dev.id === this.active && this.hover && !(shape && pts.length >= SHAPE_POINTS[shape])) {
         const [x, y] = pts[pts.length - 1];
         ctx.strokeStyle = "rgba(80,170,255,0.9)";
         ctx.lineWidth = 2;
@@ -616,7 +643,7 @@ export class House {
       const [x0, y0] = pts[0];
       ctx.font = "12px system-ui, sans-serif";
       ctx.fillStyle = "#fff";
-      ctx.fillText(`${dev.name} (${panel ? "top left" : "plug"})`, x0 * w + 8, y0 * h - 8);
+      ctx.fillText(`${dev.name} (${shape === "tree" ? "top" : shape ? "top left" : "plug"})`, x0 * w + 8, y0 * h - 8);
       if (active && !panel) this.drawSegmentMarks(ctx, dev, w, h);
     }
     if (this.hoverBulb) {
@@ -822,7 +849,7 @@ export class House {
       const { w, h } = this.size || { w: 1, h: 1 };
       let best = null, bestD = HIT_PX;
       for (const [id, pts] of Object.entries(this.paths)) {
-        if (["spots", "panel"].includes(this.styles[id]?.style) || !this.shown(id)) continue; // spots and panels have no stretches
+        if (["spots", "panel", "tree"].includes(this.styles[id]?.style) || !this.shown(id)) continue; // spots and matrices have no stretches
         for (let i = 1; i < pts.length; i++) {
           const [ax, ay, bx, by] = [pts[i - 1][0] * w, pts[i - 1][1] * h, pts[i][0] * w, pts[i][1] * h];
           const [px, py] = [p[0] * w, p[1] * h];
@@ -879,8 +906,9 @@ export class House {
           onChange();
         }
       } else if (this.active) {
-        // A panel has its four corners and no more; they're moved by dragging.
-        if (this.styles[this.active]?.style === "panel" && this.paths[this.active]?.length >= 4) return;
+        // A panel has its four corners and a tree its three points, and no more; they're moved by dragging.
+        const most = SHAPE_POINTS[this.styles[this.active]?.style];
+        if (most && this.paths[this.active]?.length >= most) return;
         (this.paths[this.active] ||= []).push(p);
         this.save();
         onChange();

@@ -198,8 +198,11 @@ of the left column green. If they land anywhere else, change **Starts at**, **Wi
 until they don't.
 
 A matrix plays as one light: it can't be split into parts yet, and **Reverse** isn't needed. Put it on
-the house photo as a **Panel** (see *Light styles*), and pick how each effect plays on it with **Runs**
-(see *Editing a clip*).
+the house photo as a **Panel** or a **Mega-tree** (see *Light styles*), and pick how each effect plays
+on it with **Runs** (see *Editing a clip*).
+
+For a mega-tree, set the matrix up with one column per string: **across** is how many strings it has,
+and **down** how many LEDs each string has. The top row is the top of the tree.
 
 #### Moving a Govee light to WLED
 
@@ -467,6 +470,7 @@ Each light has a **Style**:
 | Line | Strips, string lights, eaves lights | Trace along it, as above. |
 | Icicle | Icicle lights | Trace the line the icicles hang from, then set **Drops** to how many drops it has and **Length** to how far the longest one hangs on the photo. The drops are staggered, each in its segment's colour, with the light's **Bulbs** shared between them. It starts with one drop for about every five bulbs, and never shows more drops than bulbs. |
 | Spots | Spotlights | Press **Trace** and click where each spotlight sits, starting nearest the plug. Each one shines a soft wash of colour; drag its round handle to aim it, and use **Beam** for how wide the beams are. A spot covering several segments shows them blended. |
+| Mega-tree | Matrices | Only offered for a matrix. Picking it puts a tree in the middle of the photo; drag the white point to the top of the real tree and the other two to the ends of its base. Each column is a string, fanning out from the top. New effects on a mega-tree run **Down each column**. |
 | Panel | Matrices | Only offered for a matrix. Picking it puts the panel in the middle of the photo, the shape of its grid; drag its four corners onto the real panel's corners. The white corner is its top left. A panel photographed at an angle still fits, as every LED is spread between the corners. |
 
 ### Photo taken at an angle
@@ -1099,8 +1103,10 @@ On a matrix, the clip's preview is the grid itself, and **Runs** picks how a str
 **Along each row** (every row the same, the default), **Down each column** (every column the same,
 good for a mega-tree's strings) or **Whole matrix as one strip** (it zig-zags through the rows, so a
 chase or a wipe goes round the whole grid). House patterns, such as **Stripes**, **Chequerboard**,
-**Colour wave** and **Spotlight**, don't need it: on a matrix's own lane they're drawn across the grid,
-as they are across the house.
+**Colour wave**, **Spotlight** and **Spiral**, don't need it: on a matrix's own lane they're drawn across
+the grid, as they are across the house. **Spiral** winds stripes round a mega-tree and turns them
+(try its **Candy cane** and **Twirl** presets); for a tree that fills up from the bottom, use **House
+wipe** going **bottom to top**.
 
 ### Transitions
 

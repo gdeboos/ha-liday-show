@@ -56,3 +56,13 @@ test("baking puts a matrix's frames into its wiring order", () => {
   assert.deepEqual([4, 5, 6, 7].map((i) => lit(rows, i)), [false, false, true, true]);
   assert.deepEqual([4, 5, 6, 7].map((i) => lit(zig, i)), [true, true, false, false]);
 });
+
+
+test("a spiral's stripes twist from row to row and turn over time", () => {
+  const spiral = { ...newClip("spiral", 0, 4), color: "#ff0000", color2: "#0000ff", count: "2", stripes: 1, twist: 0.5, speed: 1, soft: 0 };
+  const a = frame(panel(), spiral, 0), b = frame(panel(), spiral, 0.5);
+  const red = (out, i) => px(out, i)[0] > px(out, i)[2];
+  const row = (out, y) => [0, 1, 2, 3].map((x) => red(out, y * 4 + x));
+  assert.notDeepEqual(row(a, 0), row(a, 2)); // twisted: the bottom row isn't the top row
+  assert.notDeepEqual(row(a, 0), row(b, 0)); // and it turns
+});

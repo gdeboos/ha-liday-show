@@ -19,7 +19,7 @@ import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./control
 import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
-import { House, defaultDrops, defaultPanel, partRgb } from "./house.js";
+import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb } from "./house.js";
 import { MAX_MATRIX, RUNS, gridOf, matrixTestFrame, toWire } from "./matrix.js";
 import { placeOnSample } from "./samplehouse.js";
 import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
@@ -550,7 +550,7 @@ function matrixControls(d) {
   on.addEventListener("change", () => {
     if (!on.checked) {
       delete d.matrix;
-      if (house.styles[d.id]?.style === "panel") house.setStyle(d.id, null); // back to a line through its corners
+      if (SHAPE_POINTS[house.styles[d.id]?.style]) house.setStyle(d.id, null); // back to a line through its points
       saveDevices();
       return;
     }
@@ -2279,16 +2279,18 @@ function houseStyleControls(d) {
   const sel = document.createElement("select");
   sel.title = "How the light looks on the photo";
   sel.innerHTML = `<option value="line">Line</option><option value="icicle">Icicle</option>
-    <option value="spots">Spots</option>${grid ? `<option value="panel">Panel</option>` : ""}`;
+    <option value="spots">Spots</option>${grid ? `<option value="panel">Panel</option><option value="tree">Mega-tree</option>` : ""}`;
   sel.value = style?.style || "line";
   sel.addEventListener("change", () => {
-    if (sel.value === "panel" && house.paths[d.id]?.length !== 4) {
+    const need = SHAPE_POINTS[sel.value];
+    if (need && house.paths[d.id]?.length !== need) {
       const photo = house.photo, aspect = photo?.naturalWidth && photo.naturalHeight ? photo.naturalWidth / photo.naturalHeight : 1.6;
-      house.paths[d.id] = defaultPanel(grid, aspect);
+      house.paths[d.id] = sel.value === "tree" ? defaultTree(aspect) : defaultPanel(grid, aspect);
       delete house.pins[d.id];
     }
     house.setStyle(d.id, {
       panel: { style: "panel" },
+      tree: { style: "tree" },
       icicle: { style: "icicle", drops: defaultDrops(d), length: 0.06 },
       spots: { style: "spots", beam: 0.5, aims: [] },
     }[sel.value] || null);
@@ -2299,9 +2301,11 @@ function houseStyleControls(d) {
   l0.className = "row";
   l0.append("Style ", sel);
   if (!style) return [l0];
-  if (style.style === "panel") {
-    return [l0, hint(grid ? "Drag the four corners onto the panel's corners. The white one is its top left."
-      : "Panel only fits a matrix. Turn on Matrix for this light under Setup → Devices.")];
+  if (style.style === "panel" || style.style === "tree") {
+    if (!grid) return [l0, hint("This only fits a matrix. Turn on Matrix for this light under Setup → Devices.")];
+    return [l0, hint(style.style === "tree"
+      ? "Drag the white point to the top of the tree and the other two to the ends of its base. Each column is a string. New effects on it run down each column."
+      : "Drag the four corners onto the panel's corners. The white one is its top left.")];
   }
   if (style.style === "spots") {
     const beam = document.createElement("input");
@@ -2474,7 +2478,9 @@ function renderHouseLights() {
       card.append(hint("Drag a spot's round handle to aim it."));
     } else if (house.active === d.id && house.styles[d.id]?.style === "panel") {
       card.append(hint("Click the panel's four corners, starting at its top left and going round."));
-    } else if (house.styles[d.id]?.style === "panel") {
+    } else if (house.active === d.id && house.styles[d.id]?.style === "tree") {
+      card.append(hint("Click the top of the tree, then the left and right ends of its base."));
+    } else if (SHAPE_POINTS[house.styles[d.id]?.style]) {
       // The panel's own tip is under its Style.
     } else if (pts > 1 && !house.active) {
       card.append(hint("Click a line on the photo to mark part of it out of view. If the bulbs don't line up "
@@ -5012,6 +5018,8 @@ function addToRange(effect, preset = null) {
   if (!tracks.length) { status(`${label} won't work on ${left.map(trackName).join(", ")}`, "hint"); return; }
   const added = tracks.map((t) => {
     const clip = clipFor();
+    // A mega-tree's strings are its columns, so effects run down them unless changed.
+    if (house.styles[app.show.tracks[t].device]?.style === "tree" && !EFFECTS[effect].house) clip.runs = "columns";
     app.show.tracks[t].clips.push(clip);
     return { track: t, clip };
   });

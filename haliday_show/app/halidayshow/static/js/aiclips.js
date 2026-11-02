@@ -29,6 +29,7 @@ export const EFFECT_NOTES = {
   pinwheel: "spokes spinning round a point", curtain: "curtains opening or closing across the house",
   butterfly: "swirling waves of colour over the house", housesolid: "one colour on every light (good mixed)",
   housegradient: "colours blended across the house", housestripes: "stripes at any angle, still or moving (candy cane)",
+  spiral: "stripes winding round a mega-tree matrix, turning over time; slanted moving stripes elsewhere",
   housechecks: "a chequerboard of colours", housewave: "the palette rolling across the house",
   housesparkle: "sparkles over every light", spotlight: "a soft light wandering over the house", housedots: "polka dots",
 };
