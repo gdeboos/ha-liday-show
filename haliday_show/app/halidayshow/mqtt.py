@@ -7,6 +7,7 @@ Creates a "HA-liday Show" device with:
   sensor.ha_liday_show_status  idle, or the name of the show playing
   light.ha_liday_show          your scenes as one light: on/off, brightness, and the scenes as effects
   scene.ha_liday_show_<name>   one per scene, so they're in HA's Scenes, automations and voice
+  switch.ha_liday_show_<season>_props_out   one per season: on while its props are out (seasons.py)
 
 Publishing a show id or name to haliday_show/play also plays it directly. A scene asked for while a
 show or playlist is on waits for it to finish (runner.want_scene).
@@ -15,7 +16,7 @@ import asyncio
 import json
 import logging
 
-from . import __version__, migrate
+from . import __version__, migrate, seasons
 from .commands import find_show
 from .runner import Runner, RunnerError
 
@@ -76,6 +77,15 @@ def scene_configs(scenes: list[dict]) -> dict[str, dict]:
             "name": s["name"], "unique_id": f"haliday_show_scene_{s['id']}", "icon": "mdi:creation",
             "command_topic": f"{BASE}/scene/{s['id']}/set", "payload_on": "ON", "device": DEVICE, **avail}
     return out
+
+
+def season_configs(season_list: list[dict]) -> dict[str, dict]:
+    """A switch for each season: on while its props are out, off while they're packed away."""
+    avail = {"availability_topic": f"{BASE}/availability"}
+    return {f"{DISCOVERY}/switch/haliday_show/season_{s['id']}/config": {
+        "name": f"{s['name']} props out", "unique_id": f"haliday_show_season_{s['id']}", "icon": "mdi:calendar-star",
+        "command_topic": f"{BASE}/season/{s['id']}/set", "state_topic": f"{BASE}/season/{s['id']}/state",
+        "payload_on": "ON", "payload_off": "OFF", "device": DEVICE, **avail} for s in season_list}
 
 
 class MqttBridge:
@@ -164,11 +174,27 @@ class MqttBridge:
         if sorted(before) != sorted(now):
             settings["mqtt_scenes"] = now
             self.storage.save_settings(settings)
+        await self._publish_seasons(settings)
         await self.client.publish(f"{BASE}/availability", "online", retain=True)
         await self._publish_selected()
         self._status = None
         self._light = None
         await self._publish_status()
+
+    async def _publish_seasons(self, settings: dict):
+        """Each season's switch and its state; a deleted season's switch goes from Home Assistant."""
+        now = seasons.load(settings)
+        for topic, cfg in season_configs(now).items():
+            await self.client.publish(topic, json.dumps(cfg), retain=True)
+        for s in now:
+            await self.client.publish(f"{BASE}/season/{s['id']}/state", "ON" if s["out"] else "OFF", retain=True)
+        ids, before = [s["id"] for s in now], settings.get("mqtt_seasons", [])
+        for gone in set(before) - set(ids):
+            await self.client.publish(f"{DISCOVERY}/switch/haliday_show/season_{gone}/config", b"", retain=True)
+        if sorted(before) != sorted(ids):
+            settings = self.storage.load_settings()
+            settings["mqtt_seasons"] = ids
+            self.storage.save_settings(settings)
 
     async def _publish_selected(self):
         label = next((k for k, v in self.options.items() if v == self.selected), None)
@@ -256,6 +282,13 @@ class MqttBridge:
                     raise ValueError(f"no scene '{scene_id}'")
                 await self.runner.want_scene(scene_id)
                 await self._publish_status()
+            elif topic.startswith(f"{BASE}/season/") and topic.endswith("/set"):
+                season_id = topic[len(f"{BASE}/season/"):-len("/set")]
+                if text.upper() not in ("ON", "OFF") or not seasons.set_out(self.storage, season_id, text.upper() == "ON"):
+                    raise ValueError(f"no season '{season_id}', or not ON or OFF")
+                # Packed away: its props go dark straight away, as from Setup → Devices.
+                self.runner.player.drop(seasons.away(self.storage.load_devices(), seasons.load(self.storage.load_settings())))
+                await self.client.publish(f"{BASE}/season/{season_id}/state", text.upper(), retain=True)
             elif topic == f"{BASE}/stop":
                 await self.runner.stop()
                 await self._publish_status()

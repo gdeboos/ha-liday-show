@@ -9805,6 +9805,15 @@ function showView(view, { push = true } = {}) {
   if (page === "pictures") renderPicturesPage();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
+  // A season switched from Home Assistant since: show it as it is now.
+  if (page === "devices") {
+    api("api/seasons").then((list) => {
+      if (JSON.stringify(list) === JSON.stringify(app.seasons)) return;
+      app.seasons = list;
+      house.away = awayIds(app.deviceList, app.seasons);
+      renderDevices();
+    }).catch(() => {});
+  }
   if (page === "house") renderHouseLights();
   if (page === "settings") { renderCopies(); loadPublic(); startLiveMusic(); } else stopLiveMusic();
   if (page === "public") {

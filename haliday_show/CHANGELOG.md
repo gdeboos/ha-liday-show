@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.285
+
+- With MQTT set up, each season is a switch in Home Assistant (such as **Halloween props out**): on while its props are out, off while they're packed away. Flip it from a dashboard, or let an automation put the props out on a date. **Setup → Devices** shows the change next time you open it.
+
 ## 0.2.284
 
 - A show can have a **Season** (in **⚙ Show settings…**, or as you make it with **+ New show**): a Halloween show lists your all-year lights and your Halloween props, but not your Christmas ones. Lanes with effects on them always stay, marked **Not in this season**. Shows start as **Any season**, which lists every light as before.

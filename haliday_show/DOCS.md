@@ -422,6 +422,8 @@ which season each belongs to, and switch a season off when its props are packed 
   straight away. **Test** and previews on the light are off for it, it's marked **packed away** in the
   list, and the house view draws it dimmed.
 - Deleting a season makes its lights all-year lights again.
+- With MQTT set up, each season is also a switch in Home Assistant, so an automation can put a season's
+  props out or pack them away (see [With MQTT](#with-mqtt)).
 - **A show's season:** in **⚙ Show settings…** (or as you make it with **+ New show**), pick its
   **Season**. A Halloween show lists your all-year lights and your Halloween props, not your Christmas
   ones. **Any season** (the start for every show) lists every light. A light that's out of the show's
@@ -2033,6 +2035,23 @@ actions:
 ```
 
 and `light.turn_off` at midnight.
+
+Each [season](#seasons) is a switch on the same device, such as `switch.ha_liday_show_halloween_props_out`:
+on while that season's props are **Out**, off while they're **Packed away**. Switching it does the same as
+the switch on **Setup → Devices**. So an automation can put the Halloween props out on 1 October:
+
+```yaml
+triggers:
+  - trigger: time
+    at: "00:00:00"
+conditions:
+  - condition: template
+    value_template: "{{ now().month == 10 and now().day == 1 }}"
+actions:
+  - action: switch.turn_on
+    target:
+      entity_id: switch.ha_liday_show_halloween_props_out
+```
 
 ### Without MQTT
 

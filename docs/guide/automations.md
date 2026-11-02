@@ -57,6 +57,23 @@ actions:
 
 and `light.turn_off` at midnight.
 
+Each [season](lights.md#seasons) is a switch on the same device, such as `switch.ha_liday_show_halloween_props_out`:
+on while that season's props are **Out**, off while they're **Packed away**. Switching it does the same as
+the switch on **Setup → Devices**. So an automation can put the Halloween props out on 1 October:
+
+```yaml
+triggers:
+  - trigger: time
+    at: "00:00:00"
+conditions:
+  - condition: template
+    value_template: "{{ now().month == 10 and now().day == 1 }}"
+actions:
+  - action: switch.turn_on
+    target:
+      entity_id: switch.ha_liday_show_halloween_props_out
+```
+
 ### Without MQTT
 
 Without MQTT, use the app's stdin:

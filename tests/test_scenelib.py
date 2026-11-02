@@ -356,3 +356,27 @@ async def test_a_playlist_plays_a_scene_block_dimmed_as_scenes_are(runner):
 
 async def test_a_scene_block_whose_scene_has_gone_is_skipped(runner):
     assert await runner._play_block({"type": "scene", "id": "scene-1", "seconds": 5, "scene": "gone"}) is False
+
+
+async def test_each_season_is_a_switch_in_home_assistant(runner):
+    import json
+    from halidayshow import mqtt, seasons
+    runner.storage.save_devices([{"id": "a", "ip": "127.0.0.1", "segments": 1, "seasons": ["halloween"]}])
+    bridge = mqtt.MqttBridge(runner)
+    bridge.client = FakeClient()
+    await bridge._publish_all()
+    cfg = json.loads(bridge.client.published["homeassistant/switch/haliday_show/season_halloween/config"])
+    assert cfg["name"] == "Halloween props out" and cfg["command_topic"] == "haliday_show/season/halloween/set"
+    assert bridge.client.published["haliday_show/season/halloween/state"] == "ON"
+    # Switched off from Home Assistant: packed away, so shows leave the prop out.
+    await bridge._on_message("haliday_show/season/halloween/set", b"OFF")
+    assert seasons.load(runner.storage.load_settings())[0]["out"] is False
+    assert bridge.client.published["haliday_show/season/halloween/state"] == "OFF"
+    assert "a" not in runner.storage.devices_by_id()
+    await bridge._on_message("haliday_show/season/nope/set", b"OFF")  # not one of yours: ignored
+    # A deleted season's switch goes from Home Assistant.
+    settings = runner.storage.load_settings()
+    settings["seasons"] = [s for s in seasons.load(settings) if s["id"] != "christmas"]
+    runner.storage.save_settings(settings)
+    await bridge._publish_all()
+    assert bridge.client.published["homeassistant/switch/haliday_show/season_christmas/config"] == b""
