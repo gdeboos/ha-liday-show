@@ -4,6 +4,7 @@
 
 import { askYes } from "./ask.js";
 import { KIND_NAMES, PICK_TABS, describeSchedule, newEntry, pickList, whenNext } from "./schedule.js";
+import { weekLayout } from "./weekview.js";
 
 const SAVE_AFTER_MS = 600;
 const $ = (id) => document.getElementById(id);
@@ -32,6 +33,8 @@ export class SchedulePage {
     this.timer = null;
     this.saving = Promise.resolve();
     this.dragging = null;
+    this.weekFrom = null; // the week view's first day, "YYYY-MM-DD"; null is today
+    this.weekAsked = 0;
   }
 
   async load() {
@@ -69,6 +72,7 @@ export class SchedulePage {
         this.d.stateChanged?.(st);
         this.d.status("Schedule saved", "saved", "schedule");
         this.notes();
+        this.drawWeek();
       } catch (e) {
         this.d.status(`Couldn't save the schedule: ${e.message}`, true, "schedule");
       }
@@ -181,6 +185,66 @@ export class SchedulePage {
     }
     $("sched-add").disabled = !this.loaded;
     this.notes();
+    this.drawWeek();
+  }
+
+  // The week view: seven days from today (or the week picked with ‹ ›), a row each, every stretch a
+  // bar in the row's colour. Hatched where a row higher up plays instead; a scene's bar is faded where
+  // it waits for a playlist or show.
+  async drawWeek() {
+    const box = $("sched-week");
+    if (!box || !this.loaded) return;
+    const asked = ++this.weekAsked;
+    let week;
+    try {
+      week = await this.d.api(`api/schedule/week${this.weekFrom ? `?start=${this.weekFrom}` : ""}`);
+    } catch (e) {
+      box.replaceChildren(el("p", { class: "hint" }, `Couldn't work out the week: ${e.message}`));
+      return;
+    }
+    if (asked !== this.weekAsked) return; // a newer one is on its way
+    const today = (this.state.now || new Date().toISOString()).slice(0, 10);
+    const order = new Map(this.entries.map((e, k) => [e.id, k]));
+    const w = weekLayout(week, (id) => {
+      const e = this.entries.find((x) => x.id === id);
+      return e ? this.name(e) || `Deleted ${KIND_NAMES[e.play.type]}` : id;
+    }, today);
+    const shift = (days) => {
+      const d = new Date(`${week.days[0]}T00:00Z`);
+      d.setUTCDate(d.getUTCDate() + days);
+      this.weekFrom = d.toISOString().slice(0, 10) === today ? null : d.toISOString().slice(0, 10);
+      this.drawWeek();
+    };
+    const nav = el("div", { class: "sched-week-nav" },
+      el("button", { type: "button", class: "ghost small", "aria-label": "The week before", onclick: () => shift(-7) }, "‹"),
+      el("span", { class: "sched-week-range" }, `${w.days[0].label} to ${w.days[6].label}`),
+      el("button", { type: "button", class: "ghost small", "aria-label": "The week after", onclick: () => shift(7) }, "›"),
+      this.weekFrom ? el("button", { type: "button", class: "ghost small", onclick: () => { this.weekFrom = null; this.drawWeek(); } }, "From today") : null);
+    const axis = el("div", { class: "sched-week-axis" }, ...w.ticks.map((t) => el("span", { style: `left:${t.left}%` }, t.label)));
+    const rows = w.days.map((d) => el("div", { class: `sched-week-day${d.today ? " today" : ""}` },
+      el("span", { class: "sched-week-label" }, d.label, d.today ? el("small", {}, " today") : null),
+      el("div", { class: "sched-week-track" }, ...w.ticks.map((t) => el("span", { class: "sched-week-line", style: `left:${t.left}%` })),
+        ...d.bars.map((b) => {
+          const hue = ((order.get(b.entry) ?? 0) * 137 + 200) % 360;
+          const bar = el("button", { type: "button", class: `sched-week-bar ${b.lane}`, title: b.title, "aria-label": b.title,
+            // Rows higher up are drawn on top, as they're the ones that play.
+            style: `left:${b.left}%;width:${b.width}%;--bar:hsl(${hue} 60% 48%);z-index:${200 - (order.get(b.entry) ?? 0)}`,
+            onclick: () => {
+              const row = $(`sched-${b.entry}`);
+              row?.scrollIntoView({ block: "center", behavior: "smooth" });
+              row?.classList.add("flash");
+              setTimeout(() => row?.classList.remove("flash"), 1500);
+            } },
+          el("span", { class: "sched-week-name" }, b.name),
+          ...b.waits.map((c) => el("span", { class: "sched-week-waits", style: `left:${c.left}%;width:${c.width}%` })));
+          // Where a row higher up plays instead: its bar is on top, and a hatched strip under it marks the overlap.
+          const overlaps = b.covered.map((c) => el("span", { class: "sched-week-covered", title: b.title,
+            style: `left:${b.left + (c.left * b.width) / 100}%;width:${(c.width * b.width) / 100}%` }));
+          return [bar, ...overlaps];
+        }).flat())));
+    const empty = w.days.every((d) => !d.bars.length)
+      ? el("p", { class: "hint" }, this.entries.length ? "Nothing plays this week." : "") : null;
+    box.replaceChildren(nav, el("div", { class: "sched-week-grid" }, el("span"), axis, ...rows), ...(empty ? [empty] : []));
   }
 
   // What the entry plays: its name on a button that opens the picker.

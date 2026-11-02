@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.286
+
+- The **Schedule** tab has a **Week** view under the list: seven days from today, a row per day, with each of your schedule's rows as a bar along the evening. Where rows overlap, the one that plays is on top and the overlap is marked; scenes fade where they wait for a playlist or show. Press a bar to find its row, and use **‹ ›** to look at other weeks.
+
 ## 0.2.285
 
 - With MQTT set up, each season is a switch in Home Assistant (such as **Halloween props out**): on while its props are out, off while they're packed away. Flip it from a dashboard, or let an automation put the props out on a date. **Setup → Devices** shows the change next time you open it.

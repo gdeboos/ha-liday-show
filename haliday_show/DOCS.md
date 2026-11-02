@@ -1689,6 +1689,19 @@ Playlists and shows take turns, and so do scenes; a scene can be on alongside a 
   lights glow from sunset, the shows take over at six, the scene comes back once they've finished, and
   everything goes off at midnight.
 
+#### The week
+
+**Week**, under the list, shows what plays when over seven days from today, a row per day. Each row
+of the schedule is a bar in its own colour, with its name; a scene is the thin bar along the bottom.
+
+- Where two rows overlap, the one higher in the list is drawn on top, as it's the one that plays,
+  and a hatched strip underneath marks the overlap.
+- A scene's bar fades where it waits for a playlist or show to finish.
+- Times that run past midnight carry on past **00:00** on the day they start, and sunset times move
+  from day to day as they really do.
+- Hold the pointer over a bar for its times, and press it to find its row in the list. **‹** and **›**
+  move a week at a time, and **From today** comes back.
+
 #### Sunset and the clock
 
 Sunset times are worked out for Home Assistant's location (**Settings → System → General** in Home

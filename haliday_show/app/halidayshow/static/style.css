@@ -1332,3 +1332,30 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .season-tag { display: inline-block; margin-left: 6px; font-size: 12px; color: var(--muted); font-weight: normal; }
 .season-tag.away { color: var(--warn); }
 .season-ticks { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+/* Schedule → Week: a row per day, bars along one time axis. */
+.sched-week-box { margin: 18px 0; }
+.sched-week-box h3 { margin: 0 0 4px; font-size: 15px; }
+.sched-week-nav { display: flex; align-items: center; gap: 8px; margin: 6px 0 8px; flex-wrap: wrap; }
+.sched-week-range { font-weight: 600; }
+.sched-week-grid { display: grid; grid-template-columns: 8.5em 1fr; gap: 4px 8px; align-items: center; }
+.sched-week-axis { position: relative; height: 16px; font-size: 11px; color: var(--muted); }
+.sched-week-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.sched-week-axis span:first-child { transform: none; }
+.sched-week-day { display: contents; }
+.sched-week-label { font-size: 13px; white-space: nowrap; }
+.sched-week-day.today .sched-week-label { font-weight: 700; color: var(--accent); }
+.sched-week-label small { font-weight: 600; font-size: 11px; }
+.sched-week-track { position: relative; height: 34px; background: var(--track); border-radius: 6px; overflow: hidden; }
+.sched-week-day.today .sched-week-track { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sched-week-line { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--line); }
+.sched-week-bar { position: absolute; top: 3px; height: 17px; padding: 0 4px; border: 0; border-radius: 4px; overflow: hidden;
+  background: var(--bar); color: #fff; font-size: 11px; text-align: left; cursor: pointer; min-width: 3px; }
+.sched-week-bar.scene { top: auto; bottom: 3px; height: 9px; opacity: 0.85; }
+.sched-week-name { position: relative; z-index: 1; white-space: nowrap; }
+.sched-week-bar.scene .sched-week-name { display: none; }
+.sched-week-covered { position: absolute; top: 20px; height: 4px; z-index: 300;
+  background: repeating-linear-gradient(135deg, var(--warn) 0 3px, transparent 3px 6px); }
+.sched-week-waits { position: absolute; top: 0; bottom: 0; background: rgba(255,255,255,0.55); }
+.sched-row.flash, .sched-list > .flash { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 600px) { .sched-week-grid { grid-template-columns: 4.5em 1fr; } .sched-week-label { font-size: 11px; white-space: normal; } }

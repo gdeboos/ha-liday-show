@@ -275,6 +275,10 @@ export const HELP = {
         "<b>Only between</b> limits a row to some dates, such as December. Untick <b>On</b> to pause a row without losing it.",
         "The same playlist can have several rows, such as weekdays 17:00 to 22:00 and weekends until 23:00.",
       ] },
+      { id: "week", title: "The week", guide: ["play-it.md", "the-week"], tips: [
+        "<b>Week</b>, under the list, shows what plays when over seven days, a bar for each row.",
+        "Where rows overlap, the one that plays is on top and a hatched strip marks it. Press a bar to find its row.",
+      ] },
       { id: "order", title: "When times overlap", tips: [
         "The row higher in the list plays first. Drag ⠿, or press <b>↑</b> and <b>↓</b>, to change the order.",
         "A scene can be on alongside a playlist or show: it waits while they play and comes back after.",
