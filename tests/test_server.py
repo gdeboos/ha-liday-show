@@ -1506,6 +1506,9 @@ async def test_matrix_panels_on_the_house_photo(client):
     resp = await client.put("/api/house", json={"paths": {"panel": corners}, "styles": {"panel": {"style": "panel"}}})
     assert resp.status == 200
     assert (await resp.json())["styles"] == {"panel": {"style": "panel"}}
+    tree = [[0.5, 0.2], [0.4, 0.7], [0.6, 0.7]]
+    resp = await client.put("/api/house", json={"paths": {"tree": tree}, "styles": {"tree": {"style": "tree"}}})
+    assert (await resp.json())["styles"] == {"tree": {"style": "tree"}}
 
 
 async def test_wled_info_reads_a_matrix(client, aiohttp_server, monkeypatch):

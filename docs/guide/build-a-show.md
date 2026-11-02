@@ -598,8 +598,10 @@ On a matrix, the clip's preview is the grid itself, and **Runs** picks how a str
 **Along each row** (every row the same, the default), **Down each column** (every column the same,
 good for a mega-tree's strings) or **Whole matrix as one strip** (it zig-zags through the rows, so a
 chase or a wipe goes round the whole grid). House patterns, such as **Stripes**, **Chequerboard**,
-**Colour wave** and **Spotlight**, don't need it: on a matrix's own lane they're drawn across the grid,
-as they are across the house.
+**Colour wave**, **Spotlight** and **Spiral**, don't need it: on a matrix's own lane they're drawn across
+the grid, as they are across the house. **Spiral** winds stripes round a mega-tree and turns them
+(try its **Candy cane** and **Twirl** presets); for a tree that fills up from the bottom, use **House
+wipe** going **bottom to top**.
 
 ### Transitions
 

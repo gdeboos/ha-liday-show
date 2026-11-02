@@ -2080,6 +2080,9 @@ def _clean_style(style) -> dict | None:
         if style.get("style") == "panel":
             # A matrix as a flat panel: its path is the four corners, from the top left round.
             return {"style": "panel"}
+        if style.get("style") == "tree":
+            # A matrix as a mega-tree: its path is the top, then the left and right ends of the base.
+            return {"style": "tree"}
         if style.get("style") == "spots":
             beam = round(min(max(float(style.get("beam", 0.5)), 0.1), 1.5), 3)
             aims = style.get("aims") or []

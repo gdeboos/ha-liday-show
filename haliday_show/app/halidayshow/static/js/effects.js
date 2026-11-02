@@ -795,6 +795,20 @@ Object.assign(EFFECTS, {
       return soft > 0 && f > 1 - soft ? mix(c, cols[mod(k + 1, cols.length)], smooth((f - 1 + soft) / soft)) : c;
     },
   }),
+  spiral: houseEffect({
+    // Stripes that wind round a mega-tree: across, each row a little further on, turning over time.
+    // On the house it's a slanted set of stripes that moves along.
+    label: "Spiral", list: true,
+    params: [...colourList(["#ff0000", "#ffffff"]), num("stripes", "Stripes across", 2, 1, 20, 1),
+      num("twist", "Twists top to bottom", 1, -10, 10, 0.25), num("speed", "Turns per second", 0.5, -10, 10, 0.05),
+      num("soft", "Soft edges %", 10, 0, 50, 5)],
+    renderAt: (p, t, dur, u, v) => {
+      const cols = listColours(p), x = (u + v * p.twist - t * p.speed) * cols.length * p.stripes;
+      const k = Math.floor(x), f = x - k, soft = p.soft / 100;
+      const c = cols[mod(k, cols.length)];
+      return soft > 0 && f > 1 - soft ? mix(c, cols[mod(k + 1, cols.length)], smooth((f - 1 + soft) / soft)) : c;
+    },
+  }),
   housechecks: houseEffect({
     label: "Chequerboard", list: true,
     params: [...colourList(["#ff0000", "#00b000"]), num("size", "Squares across the house", 8, 1, 60, 1),
@@ -1071,6 +1085,10 @@ export const PRESETS = {
     { label: "Candy cane", params: { color: "#ff0000", color2: "#ffffff", count: "2", angle: 45, speed: 1 } },
     { label: "Wide bands", params: { width: 0.25, soft: 40, angle: 90 } },
     { label: "Barber's pole", params: { angle: 60, speed: 3, width: 0.05 } },
+  ],
+  spiral: [
+    { label: "Candy cane", params: { color: "#ff0000", color2: "#ffffff", count: "2", stripes: 3, twist: 1.5, speed: 0.5 } },
+    { label: "Twirl", params: { stripes: 1, twist: 3, speed: 1.5, soft: 40 } },
   ],
   housechecks: [
     { label: "Big squares", params: { size: 3 } },

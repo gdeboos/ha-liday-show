@@ -80,8 +80,11 @@ of the left column green. If they land anywhere else, change **Starts at**, **Wi
 until they don't.
 
 A matrix plays as one light: it can't be split into parts yet, and **Reverse** isn't needed. Put it on
-the house photo as a **Panel** (see *Light styles*), and pick how each effect plays on it with **Runs**
-(see *Editing a clip*).
+the house photo as a **Panel** or a **Mega-tree** (see *Light styles*), and pick how each effect plays
+on it with **Runs** (see *Editing a clip*).
+
+For a mega-tree, set the matrix up with one column per string: **across** is how many strings it has,
+and **down** how many LEDs each string has. The top row is the top of the tree.
 
 #### Moving a Govee light to WLED
 

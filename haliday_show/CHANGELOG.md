@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.279
+
+- A matrix can be a **Mega-tree** on the house photo: pick it under **Style** on **Setup → House**, then drag the white point to the top of your tree and the other two to the ends of its base. Each column is a string, and effects you add to the tree on the timeline start out running **Down each column**.
+- New effect, **Spiral**: stripes that wind round a mega-tree and turn, with **Candy cane** and **Twirl** presets. On the House lane it's slanted stripes moving along the house.
+
 ## 0.2.278
 
 - WLED lights, pixel controllers and E1.31 controllers can be a **matrix**: a panel or a mega-tree laid out as a grid, up to 4,096 LEDs (64 × 64). A WLED set up as 2D is added as one straight away; for others, open the light under **Setup → Devices** and turn on **Laid out as a grid** under **Matrix**, then set its size and wiring. **Test wiring** lights the top left white, the top row red and the left column green, so you can see the wiring settings are right.
