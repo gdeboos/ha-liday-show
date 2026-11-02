@@ -36,6 +36,7 @@
   <symbol id="i-palettes" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.9 1.4-1.9-.3-.9.2-2.1 1.6-2.1H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol>
   <symbol id="i-swatches" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
   <symbol id="i-presets" viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></symbol>
+  <symbol id="i-pictures" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m21 16-5-5-8 9"/></symbol>
   <symbol id="i-scenes" viewBox="0 0 24 24"><path d="M10 3.5l1.6 4.4 4.4 1.6-4.4 1.6L10 15.5l-1.6-4.4L4 9.5l4.4-1.6z"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></symbol>
   <symbol id="i-schedule" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v3l2 1.5"/></symbol>
   <symbol id="i-playlists" viewBox="0 0 24 24"><path d="M3 6h12M3 12h12M3 18h7"/><path d="m15 15 6 3.5-6 3.5z"/></symbol>
@@ -630,6 +631,7 @@
     <p class="subnav-group" id="lib-group-blocks">Ingredients</p>
     <button class="subtab" data-view="songs"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><b>Songs</b><span>Your songs folder</span></button>
     <button class="subtab" data-view="samples"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><b>Samples</b><span>Short sounds to layer</span></button>
+    <button class="subtab" data-view="pictures"><svg class="ico" aria-hidden="true"><use href="#i-pictures"/></svg><b>Pictures</b><span>Images and GIFs for matrices</span></button>
     <button class="subtab" data-view="palettes"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg><b>Palettes</b><span>Colour sets</span></button>
     <button class="subtab" data-view="presets"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg><b>Presets</b><span>Ready-made effect settings</span></button>
   </nav>
@@ -661,6 +663,15 @@
     <button type="button" id="btn-new-sample-folder" title="A folder to sort your samples into; the files stay where they are">+ New folder</button>
     <input id="sample-upload" type="file" accept="audio/*" multiple hidden>
     <span id="sample-progress" class="hint" aria-live="polite"></span></p>
+</main>
+<main id="view-pictures" class="view showlist" hidden>
+  <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-pictures"/></svg>Pictures</h2>
+  <p class="hint">Pictures and animated GIFs to show on a matrix with the <b>Picture</b> effect. They're shrunk to
+    fit the biggest matrix (64 × 64) when you add them, so small, bold pictures work best.</p>
+  <div id="pictures-list"></div>
+  <p class="group"><button type="button" class="primary" id="btn-add-picture">+ Add a picture</button>
+    <input id="picture-upload" type="file" accept="image/*" multiple hidden>
+    <span id="picture-progress" class="hint" aria-live="polite"></span></p>
 </main>
 <main id="view-songs" class="view showlist" hidden>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Songs</h2>

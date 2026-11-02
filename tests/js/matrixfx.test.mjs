@@ -155,3 +155,20 @@ test("music bars aren't offered in playlist blocks or scenes", async () => {
   const { SCENE_EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
   for (const k of ["musicbars", "fire2d", "text"]) assert.ok(!BLOCK_EFFECTS.includes(k) && !SCENE_EFFECTS.includes(k), k);
 });
+
+test("a picture is fitted to the matrix, see-through dots show the background, and a missing one is just background", async () => {
+  const { keepPicture, forgetPicture, toBase64 } = await import("../../haliday_show/app/halidayshow/static/js/pictures.js");
+  // 2 x 1: red, then see-through.
+  keepPicture("pic", { name: "Dot", w: 2, h: 1, frames: [toBase64(Uint8ClampedArray.from([255, 0, 0, 255, 0, 0, 0, 0]))], delays: [100] });
+  const clip = { ...newClip("picture", 0, 10), picture: "pic", fit: "stretch", move: "still", background: "#0000ff" };
+  const out = composeLight({ id: "m", segments: 8, matrix: { w: 4, h: 2 } }, () => ({ clips: [clip] }), 1);
+  assert.deepEqual(px(out, 0), [255, 0, 0]);
+  assert.deepEqual(px(out, 5), [255, 0, 0]);
+  assert.deepEqual(px(out, 3), [0, 0, 255]);
+  // Fitted, it keeps its shape: 4 wide by 2 tall fits a 4 x 4 matrix with blank rows above and below.
+  const fit = composeLight({ id: "m", segments: 16, matrix: { w: 4, h: 4 } }, () => ({ clips: [{ ...clip, fit: "fit" }] }), 1);
+  assert.deepEqual(px(fit, 0), [0, 0, 255]);
+  assert.deepEqual(px(fit, 4), [255, 0, 0]);
+  forgetPicture("pic");
+  assert.deepEqual(px(composeLight({ id: "m", segments: 8, matrix: { w: 4, h: 2 } }, () => ({ clips: [clip] }), 1), 0), [0, 0, 255]);
+});
