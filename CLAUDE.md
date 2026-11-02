@@ -94,7 +94,8 @@ data to `~/haliday-show/`). User guide: "Running without Home Assistant" in DOCS
 ## Conventions
 
 - Effects are written once, in `static/js/effects.js`, and used both for previews and for baking.
-  The Python player never computes effects; it only plays baked frames. Keep it that way.
+  The Python player never computes effects; it plays baked frames, and may scale, mix and choose
+  between them using live numbers (brightness, music levels). Keep it that way.
 - Saved data lives in the app's config folder (`HALIDAY_SHOW_CONFIG` elsewhere) (shows, devices, palettes, presets, settings,
   house photo) and is part of users' backups. Old saved shows and settings must keep loading:
   read missing fields with defaults rather than changing the format in place.

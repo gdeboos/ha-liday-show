@@ -367,6 +367,7 @@ export const HELP = {
         "Shows what a WLED light with a microphone hears, once that WLED is set to send its sound.",
         "<b>Listen to</b> picks the WLED; with <b>Any WLED that sends sound</b>, the loudest one is used.",
         "<b>Counts as music from</b> sets how loud is music rather than chatter.",
+        "To have the lights follow it, switch on <b>React to music</b> in a scene.",
       ] },
       { id: "data", title: "Your data", tips: [
         "<b>Export…</b> saves your lights, shows, palettes, presets, settings and house photo in one file. Songs aren't in it.",

@@ -205,7 +205,9 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   the same for every light, or switch one to **Advanced** to give it a timeline and the House lane in
   the Show editor. In Home Assistant each scene is a scene entity, and one light turns them on and off
   and dims them. Scenes can come on and go off by themselves, at set times or from sunset
-- **Live music**: see what a WLED with a microphone hears (loudness, beats, bass to treble) in Settings
+- **Live music**: see what a WLED with a microphone hears (loudness, beats, bass to treble) in Settings,
+  and have scenes **react to music**: brighter when it's louder, a flash on each beat, other scenes for
+  strong bass or treble
 - Playlists: several shows back to back, round and round, with a Show player page to play the music
   on any computer with speakers
 - A Schedule tab: playlists, shows and scenes that play by themselves (times or sunset, days and
@@ -367,6 +369,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/imagemeta.py            Takes the GPS location and other hidden details out of photos visitors see
   app/halidayshow/scenelib.py             Your scenes (Scene editor): checking them as they're saved
   app/halidayshow/livemusic.py            Live music: listens for WLED's sound sync (what its microphone hears)
+  app/halidayshow/react.py                React to music: a scene's level, beat flash and bass/treble look from live music
   app/halidayshow/storage.py              Shows, settings, songs and the house photo on disk
   app/halidayshow/backup.py               Export, import and start afresh, with copies kept first
   app/halidayshow/archive.py              Archiving, restoring and deleting shows and songs
@@ -409,6 +412,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/schedulepage.js                  The Schedule tab: entries in priority order, saved as you go
     js/playlisteditor.js                Playlist editor: where a dragged card lands, running time, building blocks
     js/sceneeditor.js                   Scene editor and Your scenes: rows per light, preview, saving and baking
+    js/reactui.js                       React to music settings for a scene (Scene editor and Advanced scenes)
     js/housescenes.js                   A scene's sums: what each light plays, its loop, its row's colours
     js/showbright.js                    Show settings → Brightness: the whole show and each light in it
     js/publicsettings.js                The Public page tab: its address, dates and queue in words
