@@ -1238,6 +1238,84 @@ async def delete_draft(request):
     return web.json_response({"ok": True})
 
 
+# pictures for matrices --------------------------------------------------------------
+MAX_PICTURE_SIDE, MAX_PICTURE_FRAMES = 64, 120
+MAX_PICTURES = 200  # the editor loads them all when it starts, so not without end
+
+
+def _picture_id(request) -> str:
+    picture_id = request.match_info["id"]
+    if not valid_id(picture_id):
+        raise web.HTTPBadRequest(text="bad picture id")
+    return picture_id
+
+
+def _clean_picture(body) -> dict:
+    """{name, w, h, frames: [base64 RGBA, w * h * 4 bytes each], delays: [ms]}: shrunk by the browser to
+    fit the largest matrix, so the effect only has to pick dots out of it."""
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text="expected a picture")
+    name = " ".join(str(body.get("name") or "").split())[:60]
+    if not name:
+        raise web.HTTPBadRequest(text="give the picture a name")
+    try:
+        w, h = int(body.get("w")), int(body.get("h"))
+    except (TypeError, ValueError):
+        raise web.HTTPBadRequest(text="a picture's width and height must be numbers")
+    if not (1 <= w <= MAX_PICTURE_SIDE and 1 <= h <= MAX_PICTURE_SIDE):
+        raise web.HTTPBadRequest(text=f"a picture is at most {MAX_PICTURE_SIDE} dots each way")
+    frames, delays = body.get("frames"), body.get("delays")
+    if not isinstance(frames, list) or not isinstance(delays, list) or not 1 <= len(frames) <= MAX_PICTURE_FRAMES \
+            or len(delays) != len(frames):
+        raise web.HTTPBadRequest(text=f"a picture has 1 to {MAX_PICTURE_FRAMES} frames, each with a delay")
+    for f in frames:
+        try:
+            data = base64.b64decode(f, validate=True) if isinstance(f, str) else b""
+        except (binascii.Error, ValueError):
+            data = b""
+        if len(data) != w * h * 4:
+            raise web.HTTPBadRequest(text="each frame must be the picture's size")
+    if not all(isinstance(d, int) and not isinstance(d, bool) and 20 <= d <= 10000 for d in delays):
+        raise web.HTTPBadRequest(text="each frame shows for 20 to 10000 ms")
+    return {"name": name, "w": w, "h": h, "frames": frames, "delays": delays}
+
+
+async def list_pictures(request):
+    return web.json_response(await asyncio.to_thread(request.app[STORAGE].list_pictures))
+
+
+async def create_picture(request):
+    picture = _clean_picture(await request.json())
+    storage = request.app[STORAGE]
+    if await asyncio.to_thread(storage.count_pictures) >= MAX_PICTURES:
+        raise web.HTTPBadRequest(text=f"you have {MAX_PICTURES} pictures already; delete some first")
+    return web.json_response({"id": await asyncio.to_thread(storage.save_picture, picture)})
+
+
+async def get_picture(request):
+    picture = await asyncio.to_thread(request.app[STORAGE].load_picture, _picture_id(request))
+    if picture is None:
+        raise web.HTTPNotFound()
+    return web.json_response(picture)
+
+
+async def rename_picture(request):
+    picture_id = _picture_id(request)
+    body = await request.json()
+    name = " ".join(str(body.get("name") or "").split())[:60] if isinstance(body, dict) else ""
+    if not name:
+        raise web.HTTPBadRequest(text="give the picture a name")
+    if not await asyncio.to_thread(request.app[STORAGE].rename_picture, picture_id, name):
+        raise web.HTTPNotFound()
+    return web.json_response({"ok": True})
+
+
+async def delete_picture(request):
+    if not await asyncio.to_thread(request.app[STORAGE].delete_picture, _picture_id(request)):
+        raise web.HTTPNotFound()
+    return web.json_response({"ok": True})
+
+
 # samples ---------------------------------------------------------------------------
 async def list_samples(request):
     return web.json_response(await asyncio.to_thread(request.app[STORAGE].list_samples))
@@ -1459,7 +1537,7 @@ def _clean_song_folders(body) -> list[dict]:
 
 # Folders for the Library's other lists (libfolders.js): per list, [{id, name, items}], where items
 # are the keys of what's in it (a show's id, a palette's name, a preset's "effect:name"). Nothing moves.
-LIBRARY_KINDS = ("shows", "scenes", "playlists", "palettes", "presets")
+LIBRARY_KINDS = ("shows", "scenes", "playlists", "palettes", "presets", "pictures")
 MAX_FOLDER_ITEMS = 2000
 
 
@@ -2468,6 +2546,11 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/songs/delete", delete_song)
     r.add_get("/api/audio/info", get_song_info)
     r.add_put("/api/audio/info", put_song_info)
+    r.add_get("/api/pictures", list_pictures)
+    r.add_post("/api/pictures", create_picture)
+    r.add_get("/api/pictures/{id}", get_picture)
+    r.add_post("/api/pictures/{id}/rename", rename_picture)
+    r.add_delete("/api/pictures/{id}", delete_picture)
     r.add_get("/api/drafts", list_drafts)
     r.add_post("/api/drafts", create_draft)
     r.add_get("/api/drafts/{id}", get_draft)

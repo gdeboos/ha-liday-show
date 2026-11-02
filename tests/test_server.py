@@ -1225,7 +1225,7 @@ async def test_song_folders_round_trip_and_validation(client):
 
 async def test_library_folders_per_list_round_trip_and_validation(client):
     empty = await (await client.get("/api/library-folders")).json()
-    assert empty == {"shows": [], "scenes": [], "playlists": [], "palettes": [], "presets": []}
+    assert empty == {"shows": [], "scenes": [], "playlists": [], "palettes": [], "presets": [], "pictures": []}
     resp = await client.put("/api/library-folders", json={"kind": "shows", "folders": [
         {"id": "xmas", "name": " Christmas  shows ", "items": ["a", "a", "b"]},
         {"id": "old", "name": "Old", "items": ["b", "c"]}]})
@@ -1527,3 +1527,40 @@ async def test_wled_info_reads_a_matrix(client, aiohttp_server, monkeypatch):
     info = await (await client.post("/api/wled/info", json={"ip": "127.0.0.1"})).json()
     assert (info["leds"], info["matrix"], info["maxMatrix"]) == (256, {"w": 16, "h": 16}, 4096)
     await fake.close()
+
+
+async def test_pictures_are_added_listed_renamed_and_deleted(client):
+    px = base64.b64encode(bytes([255, 0, 0, 255] * 6)).decode()  # 3 x 2, all red
+    pic = {"name": "  Star  ", "w": 3, "h": 2, "frames": [px, px], "delays": [100, 250]}
+    resp = await client.post("/api/pictures", json=pic)
+    assert resp.status == 200
+    pid = (await resp.json())["id"]
+    assert await (await client.get("/api/pictures")).json() == \
+        [{"id": pid, "name": "Star", "w": 3, "h": 2, "frames": 2, "ms": 350}]
+    got = await (await client.get(f"/api/pictures/{pid}")).json()
+    assert (got["name"], got["frames"], got["delays"]) == ("Star", [px, px], [100, 250])
+    assert (await client.post(f"/api/pictures/{pid}/rename", json={"name": "Big star"})).status == 200
+    assert (await (await client.get("/api/pictures")).json())[0]["name"] == "Big star"
+    # Out-of-range sizes, frames that don't match the size, too many frames and odd delays are refused.
+    bad = [{**pic, "w": 65}, {**pic, "frames": [px[:-4]]}, {**pic, "frames": [px] * 121, "delays": [100] * 121},
+           {**pic, "delays": [100]}, {**pic, "delays": [5, 100]}, {**pic, "frames": ["not base64!"]}, {**pic, "name": ""}]
+    for b in bad:
+        assert (await client.post("/api/pictures", json=b)).status == 400, b
+    # Pictures can go in Library folders like shows and palettes.
+    resp = await client.put("/api/library-folders", json={"kind": "pictures", "folders": [{"id": "x", "name": "Xmas", "items": [pid]}]})
+    assert resp.status == 200
+    assert (await client.delete(f"/api/pictures/{pid}")).status == 200
+    assert await (await client.get("/api/pictures")).json() == []
+    assert (await client.get(f"/api/pictures/{pid}")).status == 404
+    assert (await client.get("/api/pictures/..%2Fsettings")).status in (400, 404)
+
+
+async def test_pictures_list_skips_a_damaged_file_and_stops_at_the_limit(client, monkeypatch):
+    px = base64.b64encode(bytes(4)).decode()
+    pic = {"name": "Dot", "w": 1, "h": 1, "frames": [px], "delays": [100]}
+    pid = (await (await client.post("/api/pictures", json=pic)).json())["id"]
+    folder = client.server.app[server.STORAGE].pictures_dir
+    (folder / "pbroken00000.json").write_text(json.dumps({**pic, "delays": ["x"]}))
+    assert [p["id"] for p in await (await client.get("/api/pictures")).json()] == [pid]
+    monkeypatch.setattr(server, "MAX_PICTURES", 2)
+    assert (await client.post("/api/pictures", json=pic)).status == 400  # two files there already

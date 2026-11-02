@@ -5,6 +5,7 @@
 
 import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire } from "./matrix.js";
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
+import { frameAt, getPicture } from "./pictures.js";
 
 export const FPS = 40;
 
@@ -809,6 +810,34 @@ Object.assign(EFFECTS, {
       const c = Math.floor(tx / scale);
       if (!((cols[c] >> row) & 1)) return hexToRgb(p.background);
       return p.colours === "rainbow" ? hsv(mod(Math.floor(c / 6) * 0.13, 1), 1, 1) : hexToRgb(p.color);
+    },
+  }),
+  picture: gridEffect({
+    // One of your pictures (Library → Pictures), fitted to the matrix, still or scrolling, a GIF
+    // playing as it plays. See-through dots, and a picture that's gone, show the background.
+    label: "Picture",
+    params: [{ key: "picture", label: "Picture", type: "picture", default: "" },
+      choice("fit", "Fit", "fit", ["fit", "fill", "stretch"]),
+      choice("move", "Move", "still", ["still", "scroll left", "scroll right", "scroll up", "scroll down"]),
+      num("speed", "Speed (LEDs per second)", 4, 1, 60, 1), num("animate", "Animation speed %", 100, 10, 400, 10),
+      color("background", "Background", "#000000")],
+    renderXY: (p, t, dur, w, h, x, y) => {
+      const bg = hexToRgb(p.background), pic = getPicture(p.picture);
+      if (!pic) return bg;
+      const fx = w / pic.w, fy = h / pic.h, one = p.fit === "fill" ? Math.max(fx, fy) : Math.min(fx, fy);
+      const [sx, sy] = p.fit === "stretch" ? [fx, fy] : [one, one];
+      const dw = pic.w * sx, dh = pic.h * sy, s = Math.floor(t * p.speed);
+      // Where this LED falls on the picture as drawn: centred, or coming in from one edge and going
+      // out of the other, round again after a gap as wide (or tall) as the matrix.
+      let px = x + 0.5 - (w - dw) / 2, py = y + 0.5 - (h - dh) / 2;
+      if (p.move === "scroll left") px = mod(x + 0.5 + s - w, dw + w);
+      else if (p.move === "scroll right") px = dw - mod(w - x - 0.5 + s - w, dw + w);
+      else if (p.move === "scroll up") py = mod(y + 0.5 + s - h, dh + h);
+      else if (p.move === "scroll down") py = dh - mod(h - y - 0.5 + s - h, dh + h);
+      const ix = Math.floor(px / sx), iy = Math.floor(py / sy);
+      if (ix < 0 || iy < 0 || ix >= pic.w || iy >= pic.h) return bg;
+      const f = pic.frames[frameAt(pic, t, p.animate)], o = (iy * pic.w + ix) * 4;
+      return mix(bg, [f[o], f[o + 1], f[o + 2]], f[o + 3] / 255);
     },
   }),
   fire2d: gridEffect({

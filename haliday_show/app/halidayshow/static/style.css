@@ -1023,6 +1023,9 @@ a.button { text-decoration: none; }
 .pub-seg label:has(input:disabled) { opacity: .5; cursor: default; }
 /* Library → Palettes and Presets: rows like Your shows, with the colours or a live preview first. */
 .item-row > .palette-bar, .item-row > .item-strip { flex: none; width: 120px; height: 28px; border-radius: 4px; }
+/* A picture's first frame, dot for dot, on black like a matrix. */
+.item-row > .picture-thumb { flex: none; width: 56px; height: 56px; object-fit: contain; image-rendering: pixelated;
+  background: #000; border-radius: 4px; }
 .item-group { margin: 14px 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
   color: var(--muted); }
 .preset-list .item-group:first-child { margin-top: 4px; }

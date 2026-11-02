@@ -71,6 +71,7 @@ class Storage:
         self.shows_dir = config_dir / "shows"
         self.songs_dir = config_dir / "songs"
         self.drafts_dir = config_dir / "drafts"
+        self.pictures_dir = config_dir / "pictures"
         self.blocks_dir = config_dir / "blocks"  # playlists' building blocks, baked (playlists.py)
         # Your scenes and their baked loops (scenelib.py). Not "scenes": that folder was the cache of
         # Govee's own scene library until 0.2.207 (migrate.drop_govee_scenes clears it).
@@ -385,6 +386,53 @@ class Storage:
 
     def delete_draft(self, draft_id: str) -> bool:
         p = self.drafts_dir / f"{draft_id}.json"
+        if not p.exists():
+            return False
+        p.unlink()
+        return True
+
+    # pictures for matrices: small images and GIFs, already shrunk to fit, as RGBA frames ----------
+    def list_pictures(self) -> list[dict]:
+        out = []
+        for p in sorted(self.pictures_dir.glob("*.json")):
+            d = self.load_picture(p.stem)
+            # A damaged or hand-edited file is left out rather than breaking the whole list.
+            if not isinstance(d, dict) or not isinstance(d.get("delays"), list) \
+                    or not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in d["delays"]):
+                continue
+            out.append({"id": p.stem, "name": d.get("name", p.stem), "w": d.get("w"), "h": d.get("h"),
+                        "frames": len(d["delays"]), "ms": sum(d["delays"])})
+        return sorted(out, key=lambda d: str(d["name"]).lower())
+
+    def load_picture(self, picture_id: str) -> dict | None:
+        try:
+            return json.loads((self.pictures_dir / f"{picture_id}.json").read_text())
+        except (FileNotFoundError, ValueError):
+            return None
+
+    def count_pictures(self) -> int:
+        return len(list(self.pictures_dir.glob("*.json"))) if self.pictures_dir.is_dir() else 0
+
+    def save_picture(self, picture: dict) -> str:
+        """A new picture, under a new random id (pictures are added, renamed and deleted, never changed)."""
+        self.pictures_dir.mkdir(parents=True, exist_ok=True)
+        while True:
+            picture_id = "p" + os.urandom(5).hex()
+            if not (self.pictures_dir / f"{picture_id}.json").exists():
+                break
+        _write_atomic(self.pictures_dir / f"{picture_id}.json", json.dumps(picture).encode())
+        return picture_id
+
+    def rename_picture(self, picture_id: str, name: str) -> bool:
+        d = self.load_picture(picture_id)
+        if not isinstance(d, dict):
+            return False
+        d["name"] = name
+        _write_atomic(self.pictures_dir / f"{picture_id}.json", json.dumps(d).encode())
+        return True
+
+    def delete_picture(self, picture_id: str) -> bool:
+        p = self.pictures_dir / f"{picture_id}.json"
         if not p.exists():
             return False
         p.unlink()

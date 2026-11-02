@@ -21,6 +21,8 @@ import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
 import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb } from "./house.js";
 import { MAX_MATRIX, RUNS, gridOf, matrixTestFrame, toWire } from "./matrix.js";
+import { decodeGif } from "./gif.js";
+import { forgetPicture, getPicture, keepPicture, pictureList, shrinkPicture, toBase64 } from "./pictures.js";
 import { placeOnSample } from "./samplehouse.js";
 import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
 import { Layout } from "./layout.js";
@@ -42,7 +44,7 @@ import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, length as fmtLength, showRows, songName } from "./showlist.js";
 import {
-  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, suggest, suggestSong,
+  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, suggest, suggestSong, withPictureIds,
 } from "./sharing.js";
 import {
   BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
@@ -3018,7 +3020,8 @@ function renderInspector() {
     if (unusedColour(clip.effect, p.key, clip)) continue;
     target = p.type === "color" ? groups.colours : p.type === "range" ? groups.brightness : groups.settings;
     let el;
-    if (p.type === "select") {
+    if (p.type === "picture") el = picturePicker(clip[p.key] ?? p.default);
+    else if (p.type === "select") {
       el = document.createElement("select");
       for (const o of p.options) el.add(new Option(o, o, false, o === (clip[p.key] ?? p.default)));
     } else {
@@ -3653,7 +3656,8 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
     if (q.type === "color") colourKeys.push(q.key);
     const target = q.type === "color" ? groups.colours : q.type === "range" ? groups.brightness : groups.settings;
     let input;
-    if (q.type === "select") {
+    if (q.type === "picture") input = picturePicker(preset.params[q.key] ?? q.default);
+    else if (q.type === "select") {
       input = document.createElement("select");
       for (const o of q.options) input.add(new Option(o, o, false, o === (preset.params[q.key] ?? q.default)));
     } else {
@@ -6195,7 +6199,12 @@ async function previewShow(r) {
 // Sharing shows (sharing.js) ------------------------------------------------------
 // Share downloads a .halidayshow file; Import show reads one into a new show, in two steps: its
 // name and song, then which of your lights plays each of theirs.
-const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll() });
+// A picture for a share file: as saved (base64 frames), or null for one that's gone.
+const sharedPictureOf = (id) => {
+  const pic = getPicture(id);
+  return pic ? { name: pic.name, w: pic.w, h: pic.h, frames: pic.frames.map(toBase64), delays: pic.delays } : null;
+};
+const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll(), pictureOf: sharedPictureOf });
 
 function downloadText(name, text) {
   const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
@@ -6534,6 +6543,17 @@ async function imSubmit(e) {
   }
   const share = imp.share;
   $("import-dialog").close();
+  // The show's pictures go into your Pictures first, so its Picture effects point at them.
+  const ids = Object.create(null);
+  for (const pic of share.pictures || []) {
+    const saved = { name: pic.name, w: pic.w, h: pic.h, frames: pic.frames, delays: pic.delays };
+    try {
+      const { id } = await api("api/pictures", { method: "POST", json: saved });
+      keepPicture(id, saved);
+      ids[pic.key] = id;
+    } catch (err) { status(`Couldn't add the picture ${pic.name}, so its effects show their background: ${err.message}`, true, "pictures"); }
+  }
+  share.tracks = withPictureIds(share.tracks, ids);
   await openShow(null);
   const { tracks, dropped } = buildTracks(share, imp.plan, imp.mine, imFits);
   Object.assign(app.show, { name, audio: imp.song ? JSON.parse(imp.song) : null, duration: share.duration,
@@ -7092,6 +7112,131 @@ const songSeen = typeof IntersectionObserver === "function"
   ? new IntersectionObserver((entries) => {
     for (const e of entries) if (e.isIntersecting) { songSeen.unobserve(e.target); e.target._songLength?.(); }
   }) : null;
+// Library → Pictures: images and GIFs for the Picture effect on matrices ---------------------------
+// Every picture is fetched when the editor starts and kept decoded (pictures.js), as effects can't wait.
+async function loadPictures() {
+  try {
+    const list = await api("api/pictures");
+    await Promise.all(list.map(async (p) => {
+      if (getPicture(p.id)) return;
+      try { keepPicture(p.id, await api(`api/pictures/${encodeURIComponent(p.id)}`)); } catch { /* shown as missing */ }
+    }));
+    for (const { id } of pictureList()) if (!list.some((p) => p.id === id)) forgetPicture(id);
+  } catch (e) { status(`Couldn't load your pictures: ${e.message}`, true, "pictures"); }
+  if (!$("view-pictures").hidden) renderPicturesPage();
+}
+
+// The Picture effect's picture: a list of yours, with a note when there are none yet.
+function picturePicker(value) {
+  const el = document.createElement("select");
+  const list = pictureList();
+  el.add(new Option(list.length ? "Pick a picture" : "None yet: add one under Library → Pictures", "", false, !value));
+  for (const p of list) el.add(new Option(p.name, p.id, false, p.id === value));
+  if (value && !getPicture(value)) el.add(new Option("A picture that's been deleted", value, false, true));
+  return el;
+}
+
+// A picture's first frame, drawn big enough to see, dot for dot.
+function pictureThumb(pic) {
+  const c = document.createElement("canvas");
+  c.className = "picture-thumb";
+  c.width = pic.w;
+  c.height = pic.h;
+  c.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(pic.frames[0]), pic.w, pic.h), 0, 0);
+  return c;
+}
+
+function renderPicturesPage() {
+  const box = $("pictures-list");
+  const list = pictureList();
+  if (!list.length) {
+    box.innerHTML = `<p class="hint">None yet. Press <b>+ Add a picture</b> and pick a picture or an animated GIF.</p>`;
+    libraryFolderButtons();
+    return;
+  }
+  box.setAttribute("role", "list");
+  box.setAttribute("aria-label", "Your pictures");
+  box.replaceChildren(...list.map(({ id }) => {
+    const pic = getPicture(id);
+    const secs = pic.total / 1000;
+    const detail = `${pic.w} × ${pic.h}${pic.frames.length > 1 ? ` · ${pic.frames.length} frames, ${secs.toFixed(secs < 10 ? 1 : 0)} s` : ""}`;
+    return itemRow({
+      picture: pictureThumb(pic), name: pic.name, label: "picture", key: id, detail,
+      edit: () => renamePicture(id),
+      extra: [button("Delete…", () => deletePicture(id), "ghost danger")],
+    });
+  }));
+  // Edit… on a picture renames it: there's nothing else to change.
+  for (const b of box.querySelectorAll(".show-actions .primary")) b.textContent = "Rename…";
+  foldLibraryList("pictures", box);
+  libraryFolderButtons();
+}
+
+async function renamePicture(id) {
+  const pic = getPicture(id);
+  const name = await askText("Rename the picture", { value: pic.name, max: 60 });
+  if (!name || name === pic.name) return;
+  try {
+    await api(`api/pictures/${encodeURIComponent(id)}/rename`, { method: "POST", json: { name } });
+    pic.name = name;
+    renderPicturesPage();
+  } catch (e) { status(`Couldn't rename the picture: ${e.message}`, true, "pictures"); }
+}
+
+async function deletePicture(id) {
+  const pic = getPicture(id);
+  if (!(await askYes(`Delete the picture ${pic.name}? Picture effects using it show their background instead.`, { yes: "Delete", danger: true }))) return;
+  try {
+    await api(`api/pictures/${encodeURIComponent(id)}`, { method: "DELETE" });
+    forgetPicture(id);
+    if (folderOf(foldersOf("pictures"), id)) saveFolders("pictures", moveItems(foldersOf("pictures"), [id], ""), "Folders kept");
+    renderPicturesPage();
+    keepShowsReady();
+  } catch (e) { status(`Couldn't delete the picture: ${e.message}`, true, "pictures"); }
+}
+
+// A file's frames: a GIF through our own reader (so animations work in every browser), anything else
+// through the browser as one frame.
+async function readPictureFile(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return decodeGif(bytes);
+  const img = await createImageBitmap(new Blob([bytes], { type: file.type }));
+  // Shrunk by the browser first if it's big, then averaged down to size in shrinkPicture.
+  const scale = Math.min(1, 512 / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+  return { w, h, frames: [ctx.getImageData(0, 0, w, h).data], delays: [1000] };
+}
+
+async function addPictures(files) {
+  const note = $("picture-progress");
+  const added = [];
+  for (const file of files) {
+    note.textContent = `Adding ${file.name}…`;
+    try {
+      const pic = shrinkPicture(await readPictureFile(file));
+      const name = file.name.replace(/\.[^.]+$/, "").slice(0, 60) || "Picture";
+      const saved = { name, w: pic.w, h: pic.h, frames: pic.frames.map(toBase64), delays: pic.delays };
+      const { id } = await api("api/pictures", { method: "POST", json: saved });
+      keepPicture(id, saved);
+      added.push(id);
+    } catch (e) {
+      status(`Couldn't add ${file.name}: ${e.message}`, true, "pictures");
+    }
+  }
+  note.textContent = "";
+  if (added.length) {
+    const at = folderAt("pictures");
+    if (at && folderLoaded.pictures) saveFolders("pictures", moveItems(foldersOf("pictures"), added, at), null);
+    status(`Added ${added.length === 1 ? getPicture(added[0]).name : `${added.length} pictures`}`, "saved", "pictures");
+  }
+  renderPicturesPage();
+}
+
 // Library → Samples: short sounds for the Music editor's layers, in their own folder ---------------
 let samplePlayer = null, samplePlaying = null;
 function stopSample() {
@@ -7113,6 +7258,7 @@ const FOLDER_LISTS = {
   playlists: { noun: "playlist", many: "playlists", top: "Playlists", newButton: "[data-playlist-new]", redraw: () => renderPlaylistLists() },
   palettes: { noun: "palette", many: "palettes", top: "Palettes", newButton: "#btn-new-palette", redraw: () => renderPalettes() },
   presets: { noun: "preset", many: "presets", top: "Presets", newButton: "#btn-new-preset", redraw: () => renderPresetsTab() },
+  pictures: { noun: "picture", many: "pictures", top: "Pictures", newButton: "#btn-add-picture", redraw: () => renderPicturesPage() },
 };
 const folderData = Object.fromEntries(Object.keys(FOLDER_LISTS).map((k) => [k, []]));
 const folderLoaded = {}, folderSaving = {}, folderChains = {};
@@ -7343,7 +7489,7 @@ function folderPath(kind, at) {
 
 // The Library's own lists mark their rows their own way (data-show-id and so on).
 const LIB_KEY = { shows: (r) => r.dataset.showId, scenes: (r) => r.dataset.sceneId, playlists: (r) => r.dataset.playlistId,
-  palettes: (r) => r.dataset.key, presets: (r) => r.dataset.key };
+  palettes: (r) => r.dataset.key, presets: (r) => r.dataset.key, pictures: (r) => r.dataset.key };
 function foldLibraryList(kind, box) {
   for (const r of box.querySelectorAll(".show-row")) {
     const k = LIB_KEY[kind](r);
@@ -8082,11 +8228,11 @@ async function save({ stage = null } = {}) {
 }
 
 // What a show's bake depends on besides the show: the lights, the groups and where they are on the house.
-const showBakeKey = (pos) => JSON.stringify([lightsBakeKey(app.deviceList), app.groups, pos]);
+const showBakeKey = (pos) => JSON.stringify([lightsBakeKey(app.deviceList), app.groups, pos, pictureList().map((p) => p.id)]);
 // The same, kept with the bake on the server for when the show is next opened. The show itself and
 // every setting of every light go in (not just the ones above), so a change made since, here or in
 // another browser, bakes again.
-const bakeNoteFor = (pos, show = app.show) => bakeNote([show, app.deviceList, app.groups, pos, FPS]);
+const bakeNoteFor = (pos, show = app.show) => bakeNote([show, app.deviceList, app.groups, pos, FPS, pictureList().map((p) => p.id)]);
 
 // note: what it was baked for (bakeNoteFor), kept with it on the server.
 async function uploadBake(showId, blob, progress = undefined, note = null) {
@@ -9507,7 +9653,7 @@ function frame() {
 // editors had of their own.
 const EDITOR_LIST = { editor: "shows", music: "songs", playlist: "playlists", scene: "scenes" };
 const LIBRARY_LIST = { showlist: "shows", songlist: "songs", playlistlist: "playlists", scenelist: "scenes" };
-const SECTIONS = { library: ["shows", "scenes", "songs", "samples", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
+const SECTIONS = { library: ["shows", "scenes", "songs", "samples", "pictures", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
 const sectionPage = { library: "shows", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
@@ -9539,6 +9685,7 @@ function showView(view, { push = true } = {}) {
   if (page === "scenes") sceneEd.refresh();
   if (page === "scene") sceneEd.draw(); else { sceneEd.stopPreview(); sceneEd.flush(); }
   if (page === "samples") renderSamplesPage(); else stopSample();
+  if (page === "pictures") renderPicturesPage();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") loadSpeakers();
   if (page === "house") renderHouseLights();
@@ -9913,6 +10060,12 @@ function wire() {
     try { scheduleState = await api("api/location", { method: "PUT", json: {} }); } catch (err) { status(err.message, true); }
     refreshPlaylistStatus();
   });
+  $("btn-add-picture").addEventListener("click", () => $("picture-upload").click());
+  $("picture-upload").addEventListener("change", (e) => {
+    const files = [...e.target.files];
+    e.target.value = "";
+    if (files.length) addPictures(files);
+  });
   $("btn-new-palette").addEventListener("click", () => {
     openPaletteWindow(null, { name: uniqueName("My palette"), colors: ["#ff0000", "#00ff00", "#0000ff"] });
   });
@@ -10106,6 +10259,7 @@ async function init() {
   });
   try {
     await loadDevices();
+    await loadPictures(); // before any show is previewed or baked, as the Picture effect reads them
     keepBlocksReady();
     sceneEd.keepReady();
     loadSpeakers();
