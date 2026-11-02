@@ -4,6 +4,7 @@
 
 import { askYes } from "./ask.js";
 import { KIND_NAMES, PICK_TABS, describeSchedule, newEntry, pickList, whenNext } from "./schedule.js";
+import { weekLayout } from "./weekview.js";
 
 const SAVE_AFTER_MS = 600;
 const $ = (id) => document.getElementById(id);
@@ -32,6 +33,8 @@ export class SchedulePage {
     this.timer = null;
     this.saving = Promise.resolve();
     this.dragging = null;
+    this.weekFrom = null; // the week view's first day, "YYYY-MM-DD"; null is today
+    this.weekAsked = 0;
   }
 
   async load() {
@@ -69,6 +72,7 @@ export class SchedulePage {
         this.d.stateChanged?.(st);
         this.d.status("Schedule saved", "saved", "schedule");
         this.notes();
+        this.drawWeek();
       } catch (e) {
         this.d.status(`Couldn't save the schedule: ${e.message}`, true, "schedule");
       }
@@ -181,6 +185,67 @@ export class SchedulePage {
     }
     $("sched-add").disabled = !this.loaded;
     this.notes();
+    this.drawWeek();
+  }
+
+  // The week view: seven days from today (or the week picked with ‹ ›), a row each, every stretch a
+  // bar in the row's colour. Hatched where a row higher up plays instead; a scene's bar is faded where
+  // it waits for a playlist or show.
+  async drawWeek() {
+    const box = $("sched-week");
+    if (!box || !this.loaded) return;
+    const asked = ++this.weekAsked;
+    let week;
+    try {
+      week = await this.d.api(`api/schedule/week${this.weekFrom ? `?start=${this.weekFrom}` : ""}`);
+    } catch (e) {
+      box.replaceChildren(el("p", { class: "hint" }, `Couldn't work out the week: ${e.message}`));
+      return;
+    }
+    if (asked !== this.weekAsked) return; // a newer one is on its way
+    // HA-liday Show's own clock decides what today is, as it does for the schedule.
+    const now = new Date();
+    const today = (this.state.now || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`).slice(0, 10);
+    const order = new Map(this.entries.map((e, k) => [e.id, k]));
+    const w = weekLayout(week, (id) => {
+      const e = this.entries.find((x) => x.id === id);
+      return e ? this.name(e) || `Deleted ${KIND_NAMES[e.play.type]}` : id;
+    }, today);
+    const shift = (days) => {
+      const d = new Date(`${week.days[0]}T00:00Z`);
+      d.setUTCDate(d.getUTCDate() + days);
+      this.weekFrom = d.toISOString().slice(0, 10) === today ? null : d.toISOString().slice(0, 10);
+      this.drawWeek();
+    };
+    const nav = el("div", { class: "sched-week-nav" },
+      el("button", { type: "button", class: "ghost small", "aria-label": "The week before", onclick: () => shift(-7) }, "‹"),
+      el("span", { class: "sched-week-range" }, `${w.days[0].label} to ${w.days[6].label}`),
+      el("button", { type: "button", class: "ghost small", "aria-label": "The week after", onclick: () => shift(7) }, "›"),
+      this.weekFrom ? el("button", { type: "button", class: "ghost small", onclick: () => { this.weekFrom = null; this.drawWeek(); } }, "From today") : null);
+    const axis = el("div", { class: "sched-week-axis" }, ...w.ticks.map((t) => el("span", { style: `left:${t.left}%` }, t.label)));
+    const colour = (id) => `hsl(${((order.get(id) ?? 0) * 137 + 200) % 360} 60% 38%)`;
+    const find = (id) => {
+      const row = $(`sched-${id}`);
+      row?.scrollIntoView({ block: "center", behavior: "smooth" });
+      row?.classList.add("flash");
+      setTimeout(() => row?.classList.remove("flash"), 1500);
+    };
+    const rows = w.days.map((d) => el("div", { class: `sched-week-day${d.today ? " today" : ""}` },
+      el("span", { class: "sched-week-label" }, d.label, d.today ? el("small", {}, " today") : null),
+      el("div", { class: "sched-week-track" }, ...w.ticks.map((t) => el("span", { class: "sched-week-line", style: `left:${t.left}%` })),
+        ...d.bars.map((b) => el("button", { type: "button", class: `sched-week-bar ${b.lane}`, title: b.title, "aria-label": b.title,
+          style: `left:${b.left}%;width:${b.width}%;--bar:${colour(b.entry)}`, onclick: () => find(b.entry) },
+        el("span", { class: "sched-week-name" }, b.name),
+        ...b.waits.map((c) => el("span", { class: "sched-week-waits", style: `left:${c.left}%;width:${c.width}%` })))),
+        // A row's time spent waiting for another to finish: a hatched strip in its colour.
+        ...d.waiting.map((c) => el("button", { type: "button", class: `sched-week-covered ${c.lane}`, title: c.title, "aria-label": c.title,
+          style: `left:${c.left}%;width:${c.width}%;--bar:${colour(c.entry)}`, onclick: () => find(c.entry) })))));
+    const sunsetRows = this.entries.some((e) => e.on && e.start === "sunset");
+    const empty = w.days.every((d) => !d.bars.length && !d.waiting.length)
+      ? el("p", { class: "hint" }, !this.entries.length ? "Nothing on the schedule yet."
+        : sunsetRows && !this.state.location ? "Nothing plays this week. Rows that start at sunset need to know where you are: set it below."
+        : "Nothing plays this week.") : null;
+    box.replaceChildren(nav, el("div", { class: "sched-week-grid" }, el("span"), axis, ...rows), ...(empty ? [empty] : []));
   }
 
   // What the entry plays: its name on a button that opens the picker.

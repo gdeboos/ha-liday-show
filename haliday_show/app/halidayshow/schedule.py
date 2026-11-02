@@ -86,6 +86,72 @@ def _window(s: dict, d: date, where: Where = None) -> tuple[datetime, datetime] 
     return start, end
 
 
+def _iso(t: datetime) -> str:
+    return t.isoformat(timespec="minutes")
+
+
+def _overlaps(span: tuple[datetime, datetime], others: list[tuple[datetime, datetime]]) -> list[list[str]]:
+    """The parts of `span` that any of `others` covers, merged, as ISO minute pairs."""
+    cut = sorted((max(a, span[0]), min(b, span[1])) for a, b in others if a < span[1] and b > span[0])
+    merged: list[list[datetime]] = []
+    for a, b in cut:
+        if merged and a <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    return [[_iso(a), _iso(b)] for a, b in merged]
+
+
+def _take_turns(spans: list[tuple]) -> dict[int, tuple[datetime, datetime]]:
+    """What really plays in one lane, as Scheduler.tick_* decides: with nothing on, the highest row
+    that's due starts and plays until its own end; rows due meanwhile wait, and start then if their
+    time isn't over. spans: (priority, window, index); returns index -> what it plays."""
+    plays, done = {}, set()
+    t = min((w[0] for _, w, _ in spans), default=None)
+    while t is not None:
+        due = [(k, w, i) for k, w, i in spans if i not in done and w[0] <= t < w[1]]
+        if due:
+            _, w, i = min(due)
+            plays[i] = (t, w[1])
+            done.add(i)
+            t = w[1]
+            continue
+        t = min((w[0] for _, w, i in spans if i not in done and w[0] > t), default=None)
+    return plays
+
+
+def week(entries: list[dict], start: date, where: Where = None, alive: set[str] | None = None) -> dict:
+    """What plays when over the 7 days from `start`, for the Schedule tab's week view. Each switched-on
+    row's stretch is listed on the day it starts: its time, what of it really `plays` (None if it
+    doesn't get a turn), the `covered` parts it waits through while another row plays and, for a scene,
+    where it `waits` for a playlist or show. Rows whose playlist, show or scene is gone (not in
+    `alive`) are skipped, as the scheduler skips them. Last night's late runs count for the first morning."""
+    days = [start + timedelta(days=k) for k in range(7)]
+    spans = []  # (priority, entry, lane, window, day)
+    for k, e in enumerate(entries):
+        if not e.get("on") or (alive is not None and e["id"] not in alive):
+            continue
+        lane = "scene" if e["play"]["type"] == "scene" else "show"
+        for d in [start - timedelta(days=1), *days]:
+            if (w := _window(e, d, where)):
+                spans.append((k, e["id"], lane, w, d))
+    plays = {}
+    for lane in ("show", "scene"):
+        plays.update(_take_turns([(k, w, i) for i, (k, _, ln, w, _) in enumerate(spans) if ln == lane]))
+    shows_on = [plays[i] for i, x in enumerate(spans) if x[2] == "show" and i in plays]
+    out = []
+    for i, (k, eid, lane, w, d) in enumerate(spans):
+        if d < start:
+            continue
+        p = plays.get(i)
+        covered = [x for x in ([w] if p is None else [(w[0], p[0])]) if x[0] < x[1]]
+        out.append({"entry": eid, "lane": lane, "day": d.isoformat(), "start": _iso(w[0]), "end": _iso(w[1]),
+                    "plays": [_iso(p[0]), _iso(p[1])] if p else None,
+                    "covered": [[_iso(a), _iso(b)] for a, b in covered],
+                    **({"waits": _overlaps(p, shows_on) if p else []} if lane == "scene" else {})})
+    return {"days": [d.isoformat() for d in days], "slots": out}
+
+
 def window_at(s: dict, now: datetime, where: Where = None) -> tuple[datetime, datetime] | None:
     """The scheduled stretch going on at `now`, if any (yesterday's can run past midnight)."""
     if not s.get("on"):

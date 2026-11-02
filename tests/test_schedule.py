@@ -514,3 +514,54 @@ async def test_a_long_scene_id_still_moves_across(setup):
     entries = load_entries(storage)
     assert sorted(e["play"]["id"] for e in entries) == sorted([long_id, "a" * 63])
     assert all(valid_id(e["id"]) for e in entries) and len({e["id"] for e in entries}) == 2
+
+
+
+def _entry(eid, kind, start, end, days=(0, 1, 2, 3, 4, 5, 6), on=True):
+    return {"id": eid, "play": {"type": kind, "id": eid}, "on": on, "start": start, "end": end,
+            "days": list(days), "from": "", "to": ""}
+
+
+def test_the_week_shows_what_really_plays_rows_taking_turns_as_the_scheduler_does():
+    from datetime import date
+    from halidayshow.schedule import week
+
+    entries = [_entry("party", "playlist", "18:00", "20:00", days=(5,)),  # top row, but starts after "every"
+               _entry("eleven", "playlist", "21:00", "23:00", days=(4,)),  # top-ish, due while "every" plays
+               _entry("every", "playlist", "17:00", "22:00"),
+               _entry("late", "show", "23:00", "01:00", days=(6,)),  # Sunday into Monday
+               _entry("glow", "scene", "16:00", "23:30"),
+               _entry("gone", "playlist", "16:30", "23:00"),  # its playlist was deleted: never plays
+               _entry("off", "playlist", "10:00", "11:00", on=False)]
+    alive = {"party", "eleven", "every", "late", "glow", "off"}
+    w = week(entries, date(2026, 11, 2), None, alive)  # a Monday
+    assert w["days"][0] == "2026-11-02" and len(w["days"]) == 7
+    slots = w["slots"]
+    assert {s["entry"] for s in slots} == {"party", "eleven", "every", "late", "glow"}
+    on = lambda eid, day: next(s for s in slots if s["entry"] == eid and s["day"] == day)
+    # Saturday: "every" starts at 17:00 and keeps going; the party row's time passes while it plays.
+    assert on("every", "2026-11-07")["plays"] == ["2026-11-07T17:00", "2026-11-07T22:00"]
+    party = on("party", "2026-11-07")
+    assert party["plays"] is None and party["covered"] == [["2026-11-07T18:00", "2026-11-07T20:00"]]
+    # Friday: the 21:00 row waits for "every" to finish at 22:00, then plays the rest of its time.
+    eleven = on("eleven", "2026-11-06")
+    assert eleven["plays"] == ["2026-11-06T22:00", "2026-11-06T23:00"]
+    assert eleven["covered"] == [["2026-11-06T21:00", "2026-11-06T22:00"]]
+    # A scene waits while a playlist or show plays; scenes take turns among themselves only.
+    glow = on("glow", "2026-11-07")
+    assert glow["plays"] == ["2026-11-07T16:00", "2026-11-07T23:30"] and glow["covered"] == []
+    assert glow["waits"] == [["2026-11-07T17:00", "2026-11-07T22:00"]]
+    # Sunday's late show runs past midnight, drawn on the day it starts.
+    assert on("late", "2026-11-08")["plays"] == ["2026-11-08T23:00", "2026-11-09T01:00"]
+    assert all(s["day"] in w["days"] for s in slots)
+
+
+def test_the_week_counts_last_nights_late_run_into_the_first_morning():
+    from datetime import date
+    from halidayshow.schedule import week
+
+    entries = [_entry("first", "playlist", "00:30", "02:00"), _entry("late", "show", "23:00", "01:00", days=(6,))]
+    w = week(entries, date(2026, 11, 2), None, {"first", "late"})
+    monday = next(s for s in w["slots"] if s["entry"] == "first" and s["day"] == "2026-11-02")
+    # Sunday's late show is still on at 00:30 on Monday, so the first row waits until it ends at 01:00.
+    assert monday["plays"] == ["2026-11-02T01:00", "2026-11-02T02:00"]

@@ -1600,3 +1600,20 @@ async def test_a_shows_season_is_kept_and_listed(client):
     await client.put("/api/shows/plain", json={"name": "Plain", "tracks": []})
     listed = {s["id"]: s for s in await (await client.get("/api/shows")).json()}
     assert listed["spooky"]["season"] == "halloween" and listed["plain"]["season"] is None
+
+
+async def test_the_schedule_week(client):
+    entry = {"id": "eve", "play": {"type": "playlist", "id": "eve"}, "on": True, "start": "17:00", "end": "22:00",
+             "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""}
+    assert (await client.put("/api/schedule", json=[entry])).status == 200
+    w = await (await client.get("/api/schedule/week?start=2026-11-02")).json()
+    assert w["days"][0] == "2026-11-02" and w["slots"] == []  # its playlist doesn't exist, so it never plays
+    await client.post("/api/shows", json={"name": "Eve"})
+    await client.put("/api/shows/eve", json={"name": "Eve", "tracks": []})
+    show_row = {**entry, "play": {"type": "show", "id": "eve"}}
+    await client.put("/api/schedule", json=[show_row])
+    w = await (await client.get("/api/schedule/week?start=2026-11-02")).json()
+    assert len(w["slots"]) == 7 and w["slots"][0]["plays"] == ["2026-11-02T17:00", "2026-11-02T22:00"]
+    assert (await client.get("/api/schedule/week?start=nope")).status == 400
+    today = await (await client.get("/api/schedule/week")).json()
+    assert len(today["days"]) == 7
