@@ -2,7 +2,7 @@
 
 ## 0.2.317
 
-- New **Live music** effect for scenes: **Spectrum bars**. The music from bass to treble as up to 16 bars, side by side along a strip or rising up a matrix's columns, each as high as that part of the sound is loud.
+- New **Live music** effect for scenes: **Spectrum bars**. The music from bass to treble as up to 16 bars, side by side along a strip or rising up a matrix's columns, each as high as that part of the sound is loud. Pick it from the **Live music** group in a scene light's effect window.
 
 ## 0.2.316
 

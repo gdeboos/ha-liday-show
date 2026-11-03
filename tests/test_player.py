@@ -197,3 +197,21 @@ async def test_a_beat_burst_plays_from_its_start_on_each_beat_scaled_by_its_leve
     sent = out.light.sent
     assert bytes([200, 0, 0]) in sent and bytes([100, 0, 0]) in sent and bytes([0, 0, 0]) in sent  # start to end
     assert bytes([60, 0, 0]) in sent  # the next beat at the quietest: 200 × 0.3
+
+
+async def test_spectrum_bars_are_put_together_from_each_region_s_frame():
+    import asyncio
+    from halidayshow import baked
+    plain = baked.decode(baked.encode(20, [{"device": "s", "segments": 2}], [bytes(6)]))
+    track = {"device": "s", "segments": 2, "kind": "spectrum", "follows": "loudness", "count": 21,
+             "regions": [0, 1], "bands": [[0, 8], [8, 16]]}
+    live = baked.decode(baked.encode(40, [track], [bytes([k] * 6) for k in range(21)]))
+    out = LightOutput()
+    p = player.Player(out)
+    await p.play(None, plain, {"s": {"ip": "10.0.0.3", "segments": 2}}, length=float("inf"))
+    heard = {"loudness": 80, "bass": 0, "mid": 0, "treble": 0, "bands": [100] * 8 + [25] * 8}
+    p.live, p.live_tracks, p.live_step = live, {"s": live.tracks[0]}, lambda: heard
+    await asyncio.sleep(0.2)
+    await p.stop()
+    assert bytes([20, 20, 20, 5, 5, 5]) in out.light.sent  # low bands full (frame 20), high at a quarter (frame 5)
+    assert len(out.light.sent) == len(set(out.light.sent))  # and sent again only when it changes

@@ -47,7 +47,7 @@ def _spectrum_ok(t) -> bool:
     bands, regions = t.bands, t.regions
     if not isinstance(bands, list) or not 1 <= len(bands) <= BANDS or not isinstance(regions, list) or len(regions) != t.segments:
         return False
-    if not all(isinstance(b, list) and len(b) == 2 and all(isinstance(v, int) for v in b) and 0 <= b[0] < b[1] <= BANDS
+    if not all(isinstance(b, list) and len(b) == 2 and all(type(v) is int for v in b) and 0 <= b[0] < b[1] <= BANDS
                for b in bands):
         return False
     return all(isinstance(r, int) and not isinstance(r, bool) and 0 <= r < len(bands) for r in regions)
