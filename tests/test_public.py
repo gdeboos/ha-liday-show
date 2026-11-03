@@ -1088,3 +1088,23 @@ def test_the_waits_can_be_turned_off():
     p = public.clean({"repeat_minutes": 0, "phone_wait": "0"})
     assert p["repeat_minutes"] == 0 and p["phone_wait"] == 0
     assert public.clean({"repeat_minutes": 999})["repeat_minutes"] == 120
+
+
+async def test_tonight_counts_picks_since_midday_and_phones_listening(client):
+    from datetime import datetime, timedelta
+    runner = client.app[server.RUNNER]
+    evening = datetime(2026, 12, 20, 19, 0)
+    runner.public_log = [{"at": evening - timedelta(hours=10), "name": "Party"},  # this morning: last night's
+                         {"at": evening - timedelta(hours=1), "name": "Party"},
+                         {"at": evening - timedelta(minutes=30), "name": "Quiet"},
+                         {"at": evening - timedelta(minutes=5), "name": "Party"}]
+    runner.public_listeners = {"a": public.time.monotonic(), "b": public.time.monotonic() - 60}
+    t = public.tonight(runner, evening)
+    assert t == {"picks": 3, "top": [{"name": "Party", "count": 2}, {"name": "Quiet", "count": 1}], "listening": 1}
+    # After midnight it's still the same night.
+    assert public.tonight(runner, evening + timedelta(hours=6))["picks"] == 3
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "quiet"}]})
+    await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    view = await (await client.get("/api/public")).json()
+    assert view["tonight"]["picks"] >= 1
+    await runner.stop()

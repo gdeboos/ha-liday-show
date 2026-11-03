@@ -83,3 +83,12 @@ export function signHours(h) {
         : h.days.map((d) => DAY_SHORT[d]).join(", ").replace(/, ([^,]*)$/, " and $1");
   return `Shows from ${from} to ${clock(h.end)}, ${days}`;
 }
+
+// Tonight on the Queue tab: [label, value] rows from the view's tonight {picks, top, listening}.
+export function tonightRows(t) {
+  if (!t) return [];
+  const rows = [["Picks", t.picks ? String(t.picks) : "None yet"],
+    ["Listening on phones now", String(t.listening || 0)]];
+  if (t.top?.length) rows.push(["Most picked", t.top.map((x) => `${x.name} (${x.count})`).join(", ")]);
+  return rows;
+}

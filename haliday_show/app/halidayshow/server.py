@@ -2232,6 +2232,7 @@ def _public_view(app) -> dict:
             # Every word visitors read, grouped, with the wording each starts with, for the Words tab.
             "word_groups": public.WORD_GROUPS,
             "now": runner.public_now["name"] if runner.public_now else None,
+            "tonight": public.tonight(runner),
             "waiting": [{"name": r["name"], "wait": w} for r, w in zip(runner.requests, waits)]}
 
 

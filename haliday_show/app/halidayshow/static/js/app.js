@@ -44,7 +44,7 @@ import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette, usedColour
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, entriesFor, scheduleLine, whenNext } from "./schedule.js";
 import { SchedulePage } from "./schedulepage.js";
 import { readability } from "../public/colours.js";
-import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLink } from "./publicsettings.js";
+import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLink, tonightRows } from "./publicsettings.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
@@ -5638,6 +5638,13 @@ function renderPublicQueue(view) {
   if (!view.on && shownPage === "public") showView("settings", { push: false });
   $("pub-now").textContent = queueText(view);
   $("pub-clear").hidden = !view.waiting.length;
+  $("pub-tonight").replaceChildren(...tonightRows(view.tonight).map(([k, v]) => {
+    const row = document.createElement("p");
+    const b = document.createElement("b");
+    b.textContent = `${k}: `;
+    row.append(b, v);
+    return row;
+  }));
   // The link with the code is on the Who can start shows card; this line is for problems with the port.
   $("pub-address").textContent = view.error || !view.listening ? addressText(view, location.hostname) : "";
   $("pub-address").hidden = !$("pub-address").textContent;
