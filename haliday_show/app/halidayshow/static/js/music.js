@@ -651,7 +651,8 @@ export class MusicEditor {
       const old = this.base === ref ? this.info?.sections : null;
       const sections = describeSections(keepYours(r.sections, old || []), r.traits);
       const marks = this.base === ref ? this.info?.marks : null; // the server keeps them too
-      const info = { tempo: r.tempo || null, ...(r.key ? { key: r.key } : {}), beats: r.beats, bars: r.bars, sections, ...(marks ? { marks } : {}) };
+      const key = r.key || (this.base === ref ? this.info?.key : null); // a key found before stays if none is found now
+      const info = { tempo: r.tempo || null, ...(key ? { key } : {}), beats: r.beats, bars: r.bars, sections, ...(marks ? { marks } : {}) };
       await this.host.api(infoUrl(ref), { method: "PUT", json: info });
       if (this.base === ref) { this.info = info; this.secSel = -1; this.tempoKnown(); }
       const parts = `${info.sections.length} section${info.sections.length === 1 ? "" : "s"}`;
@@ -720,7 +721,11 @@ export class MusicEditor {
   async reloadInfo(ref) {
     if (this.base !== ref || this.dirty || Date.now() - (this.editedAt || 0) < 2000) return; // an edit still saving
     const info = await this.host.api(infoUrl(ref)).catch(() => null);
-    if (info && this.base === ref) { this.info = info; this.updateControls(); this.draw(); }
+    if (info && this.base === ref) {
+      const keyChanged = info.key !== this.info?.key;
+      this.info = info;
+      if (keyChanged) this.tempoKnown(); else { this.updateControls(); this.draw(); }
+    }
   }
 
   async upload(file) {
@@ -831,6 +836,8 @@ export class MusicEditor {
 
   // The song's key: from Detect, else worked out from the song itself when a layer first needs it.
   get songKey() { return this.info?.key || (this.foundKey && this.foundKey.base === this.base ? this.foundKey.key : null); }
+  // (changed() works it out first whenever a layer matches it, so a draft opened before Detect has
+  // run still plays in key.)
 
   findSongKey() {
     if (this.songKey || !this.main) return this.songKey;
@@ -852,8 +859,8 @@ export class MusicEditor {
   }
 
   // A layer's key: as it is (""), matching the song's ("match"), or moved by some semitones.
-  setKey(i, choice) {
-    const layer = this.layers[i];
+  async setKey(i, choice) {
+    let layer = this.layers[i];
     if (!layer) return;
     if (choice !== "match") {
       const semis = Number(choice) || 0;
@@ -862,9 +869,18 @@ export class MusicEditor {
     }
     const song = this.findSongKey();
     if (!song) return this.host.status("Couldn't tell the song's key", "hint");
+    // Each clip's audio is loaded first, so its key can be worked out.
+    const asked = layer, failed = new Set();
+    if (layer.clips.some((c) => !c.key)) this.host.status("Finding the clips' keys…");
+    for (const c of layer.clips) if (!c.key) await this.source(c.song).catch(() => failed.add(keyOf(c.song)));
+    i = this.layers.indexOf(asked); // the layer may have moved, or gone, meanwhile
+    if (i < 0) return;
+    layer = this.layers[i];
     const clips = layer.clips.map((c) => (c.key ? c : { ...c, key: this.keyOfSong(c.song, c) || undefined }));
     this.setLayer(i, { matchKey: true, semitones: undefined, clips });
-    const unknown = clips.filter((c) => !c.key).length;
+    const missing = clips.filter((c) => !c.key && !failed.has(keyOf(c.song))).length;
+    if (failed.size) return this.host.status(`Couldn't load ${[...failed].length === 1 ? "a clip's song" : "some clips' songs"}, so ${[...failed].length === 1 ? "it stays" : "they stay"} in ${[...failed].length === 1 ? "its" : "their"} own key`, "hint");
+    const unknown = missing;
     const moves = [...new Set(clips.filter((c) => c.key).map((c) => keyShift(c.key, song)))];
     this.host.status(`${layer.name} now plays in the song's key (${song})`
       + (moves.length === 1 && moves[0] ? `, ${Math.abs(moves[0])} semitone${Math.abs(moves[0]) === 1 ? "" : "s"} ${moves[0] > 0 ? "up" : "down"}` : "")
@@ -875,9 +891,9 @@ export class MusicEditor {
   // Every heard clip's place in the result (layers.js placeClips), at the song's tempo and key.
   placed() { return placeClips(this.layers, this.pieces, this.crossfade, this.songTempo, this.songKey); }
 
-  // The song's tempo has arrived or changed: layers matching it are placed again.
+  // The song's tempo (or key) has arrived or changed: layers matching it are placed again.
   tempoKnown() {
-    if (this.layers.some((l) => l.matchTempo)) this.changed();
+    if (this.layers.some((l) => l.matchTempo || l.matchKey)) this.changed();
     else { this.updateControls(); this.draw(); }
   }
 
@@ -1734,6 +1750,7 @@ export class MusicEditor {
     }
     // Clips on layers matching the song's tempo or key play from a stretched or shifted copy of their
     // audio (kept).
+    if (this.main && this.layers.some((l) => l.matchKey)) this.findSongKey();
     const placed = this.main ? this.placed() : [];
     for (const p of placed) {
       const c = this.layers[p.layer].clips[p.clip], key = sourceKey(c, p.speed, p.semis), src = this.sources[keyOf(c.song)];

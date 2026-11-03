@@ -9096,7 +9096,8 @@ async function analyseSong({ ai = false, cancelled = () => false } = {}) {
   const saved = app.show.audio ? await songInfo(app.show.audio) : null;
   if (song !== songBuffer || cancelled()) return null;
   const old = [...(saved?.sections || []), ...(app.show.sections || [])];
-  const info = { tempo: r.tempo || null, ...(r.key ? { key: r.key } : {}), beats: r.beats, bars: r.bars,
+  const key = r.key || saved?.key; // a key found before stays if none is found now
+  const info = { tempo: r.tempo || null, ...(key ? { key } : {}), beats: r.beats, bars: r.bars,
     sections: describeSections(keepYours(r.sections, old), r.traits) };
   applySongInfo(info);
   const ref = app.show.audio;
