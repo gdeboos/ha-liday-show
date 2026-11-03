@@ -161,6 +161,9 @@ players can play them. For a lights-only show, choose **No song, lights only** a
 tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
 list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Remove…** archives
 or deletes one. The song you last opened in the Music editor has a **Last edited** badge.
+A song with cover art (from an MP3, M4A or FLAC's own tags) shows it beside its name, and beside the
+shows that use it in **Library → Shows**. Songs are kept exactly as you added them, so their cover art,
+title and artist are never lost.
 
 Each song you added is one card, marked **Original**. Inside it, under **Edits of this song**:
 
@@ -310,7 +313,8 @@ file yet** until a song file has been made from it, then with that file as **✂
 **Rename…** renames it, and **Delete…** deletes the draft (not the song, or any file it made).
 
 **Make song file** (Ctrl+S) writes the draft as a WAV in `/media/haliday_show/`, named after the draft,
-so every speaker can play it; pick it under **Song** in a show. Its beats, sections and marks go with it.
+so every speaker can play it; pick it under **Song** in a show. Its beats, sections and marks go with it,
+and so does the cover art of the song you started from.
 The draft stays open, so you can keep changing it. Making it again asks whether to **Replace it** (the
 same file, so shows and playlists using it get the new version; the window lists those shows, since
 their effects don't move with the music, and any other drafts that splice that file in, which will play

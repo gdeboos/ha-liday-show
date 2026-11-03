@@ -21,7 +21,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, livemusic, migrate, playlists, public, scenelib, schedule, seasons, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songtags, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -873,7 +873,27 @@ async def upload_audio(request):
             f.write(chunk)
     os.replace(tmp, dest)
     storage = request.app[STORAGE]
+    await _carry_cover(request, dest)
     return web.json_response({"source": "media", "path": str(dest.relative_to(storage.media_dir))})
+
+
+async def _carry_cover(request, dest: Path):
+    """A WAV the Music editor made from a song (?cover_source=&cover_path=) keeps that song's cover."""
+    q = request.query
+    if dest.suffix.lower() != ".wav" or not q.get("cover_path"):
+        return
+    src = request.app[STORAGE].audio_path(q.get("cover_source", ""), q.get("cover_path", ""))
+    if src is not None:
+        await asyncio.to_thread(lambda: songtags.add_cover(dest, songtags.cached_cover(src)))
+
+
+async def get_audio_cover(request):
+    """A song's cover art, from its own tags (songtags.py)."""
+    p = request.app[STORAGE].audio_path(request.query.get("source", ""), request.query.get("path", ""))
+    pic = await asyncio.to_thread(songtags.cached_cover, p) if p is not None else None
+    if pic is None:
+        raise web.HTTPNotFound(text="no cover art in that song")
+    return web.Response(body=pic[1], content_type=pic[0], headers={"Cache-Control": "private, max-age=300"})
 
 
 # Big uploads in pieces: Home Assistant's ingress proxy refuses any request over 16 MB, so the editor
@@ -941,6 +961,7 @@ async def upload_audio_part(request):
         part.unlink(missing_ok=True)
         raise web.HTTPBadRequest(text="not an audio file")
     os.replace(part, dest)
+    await _carry_cover(request, dest)
     return web.json_response({"source": "media", "path": str(dest.relative_to(storage.media_dir))})
 
 
@@ -2603,6 +2624,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/samples", list_samples)
     r.add_delete("/api/samples", delete_sample)
     r.add_get("/api/audio/file", get_audio)
+    r.add_get("/api/audio/cover", get_audio_cover)
     r.add_get("/api/songs", list_songs)
     r.add_get("/api/songs/archived", list_archived_songs)
     r.add_get("/api/songs/users", song_users)

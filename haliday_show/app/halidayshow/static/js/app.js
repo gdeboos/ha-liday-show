@@ -6164,6 +6164,7 @@ async function renderShowLists(shows = null) {
 function showRow(r) {
   const row = document.createElement("div");
   row.className = "show-row";
+  if (r.cover) row.append(coverImg(r.cover, r.cover.v));
   row.setAttribute("role", "listitem");
   row.dataset.showId = r.id;
   const main = document.createElement("div");
@@ -7072,9 +7073,22 @@ function draftKid(d) {
   return songKid("draft", "✎", d.name, "Draft · no file yet", [details], [open, rename, dup, del]);
 }
 
+// A song's cover art beside its row, from the song file's own tags.
+function coverImg(ref, v = "") {
+  const img = document.createElement("img");
+  img.className = "song-cover";
+  img.alt = "";
+  img.loading = "lazy";
+  img.decoding = "async";
+  img.src = `api/audio/cover?${new URLSearchParams({ source: ref.source, path: ref.path, v: String(v) })}`;
+  img.addEventListener("error", () => img.remove());
+  return img;
+}
+
 function songRow(r) {
   const row = document.createElement("div");
   row.className = "show-row";
+  if (r.cover) row.append(coverImg(r.ref, r.modified));
   const main = document.createElement("div");
   main.className = "show-main";
   const head = document.createElement("div");

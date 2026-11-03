@@ -14,7 +14,7 @@ import struct
 import wave
 from pathlib import Path
 
-from . import seasons
+from . import seasons, songtags
 
 PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 SPEAKER_TEST = "haliday-show-speaker-test.wav"  # the chime that tests a speaker; not listed as a song
@@ -172,9 +172,13 @@ class Storage:
             except ValueError:
                 continue
             audio = show.get("audio")
+            song = self.audio_path(audio.get("source", ""), audio.get("path", "")) if isinstance(audio, dict) else None
             out.append({"id": p.stem, "name": show.get("name", p.stem),
                         "duration": show.get("duration", 0),
                         "song": audio.get("path") if isinstance(audio, dict) else None,
+                        "song_source": audio.get("source") if isinstance(audio, dict) else None,
+                        # Whether its song has cover art (api/audio/cover), to show beside it.
+                        "cover": bool(song and songtags.cached_cover(song)),
                         "baked": (self.shows_dir / f"{p.stem}.gshow").exists(),
                         "in_progress": show.get("in_progress") is True,
                         "season": show.get("season") if isinstance(show.get("season"), str) else None,
@@ -476,7 +480,7 @@ class Storage:
                 continue
             st = p.stat()
             info = self.load_song_info(ref["source"], ref["path"])
-            out.append({**ref, "size": st.st_size, "modified": int(st.st_mtime),
+            out.append({**ref, "size": st.st_size, "modified": int(st.st_mtime), "cover": songtags.cached_cover(p) is not None,
                         # Marks alone (put on before Detect) don't make it detected.
                         "detected": bool(info and (info.get("beats") or info.get("sections"))),
                         "tempo": (info or {}).get("tempo"),

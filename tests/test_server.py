@@ -1661,3 +1661,29 @@ async def test_arches_on_the_house_photo_are_cleaned(client):
     assert (await client.put("/api/house", json=body)).status == 200
     got = (await (await client.get("/api/house")).json())["styles"]["a"]
     assert got == {"style": "arches", "arches": 100, "height": 0.5, "down": False}
+
+
+async def test_cover_art_is_served_and_kept_on_wavs_made_from_a_song(client, tmp_path):
+    import aiohttp
+    import struct
+    jpeg = b"\xff\xd8\xff\xe0" + b"art" * 20
+    frame = b"\0image/jpeg\0\x03\0" + jpeg
+    body = b"APIC" + struct.pack(">I", len(frame)) + b"\0\0" + frame
+    n = len(body)
+    tag = b"ID3\x03\0\0" + bytes([(n >> 21) & 0x7F, (n >> 14) & 0x7F, (n >> 7) & 0x7F, n & 0x7F]) + body
+    (tmp_path / "media" / "songs" / "art.mp3").write_bytes(tag + b"\xff\xfb" * 50)
+    r = await client.get("/api/audio/cover", params={"source": "media", "path": "songs/art.mp3"})
+    assert r.status == 200 and r.content_type == "image/jpeg" and await r.read() == jpeg
+    assert (await client.get("/api/audio/cover", params={"source": "media", "path": "songs/tune.mp3"})).status == 404
+    assert (await client.get("/api/audio/cover", params={"source": "media", "path": "../x.mp3"})).status == 404
+
+    wav = b"RIFF" + struct.pack("<I", 36) + b"WAVE" + b"fmt " + struct.pack("<I", 16) + b"\1\0\1\0" \
+        + struct.pack("<II", 8000, 16000) + b"\2\0\x10\0" + b"data" + struct.pack("<I", 0)
+    form = aiohttp.FormData()
+    form.add_field("file", wav, filename="art (edit).wav")
+    r = await client.post("/api/audio?cover_source=media&cover_path=songs/art.mp3", data=form)
+    made = (await r.json())["path"]
+    r = await client.get("/api/audio/cover", params={"source": "media", "path": made})
+    assert r.status == 200 and await r.read() == jpeg
+    songs = {s["path"]: s for s in (await (await client.get("/api/songs")).json())["songs"]}
+    assert songs["songs/art.mp3"]["cover"] is True and songs["songs/tune.mp3"]["cover"] is False
