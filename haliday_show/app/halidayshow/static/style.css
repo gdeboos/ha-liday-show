@@ -1393,3 +1393,7 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .app-loading-card p { margin: 0; }
 .app-loading-card .spinner { width: 28px; height: 28px; border-width: 3px; color: var(--accent); }
 .app-loading-card .spinner[hidden] { display: none; }
+
+/* A song's cover art, from its own tags, at the start of its row (and its shows' rows). */
+.song-cover { flex: none; width: 44px; height: 44px; border-radius: 6px; object-fit: cover; background: var(--track); align-self: center; }
+@media (max-width: 720px) { .show-row .song-cover { align-self: flex-start; } }

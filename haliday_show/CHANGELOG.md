@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.294
+
+- Songs with cover art (MP3, M4A and FLAC) now show it beside their name in **Library → Songs**, and beside each show that uses them in **Library → Shows**. Songs were always kept exactly as you added them, so the art was already there.
+- A song you make in the Music editor (**Make song file**) keeps the cover art of the song you started from.
+
 ## 0.2.293
 
 - A light's parts can be put in order with **↑** and **↓** on each part's line, in the light's window under **Setup → Devices**. A part swaps places with the one next to it and keeps its length, and its effects in your shows go with it, so nothing breaks.

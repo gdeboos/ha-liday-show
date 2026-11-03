@@ -36,6 +36,8 @@ export function showRows(shows, last, now = new Date(), seasons = []) {
       name: s.name,
       last: s.id === last,
       inProgress: s.in_progress === true,
+      // Its song's cover art, when it has some.
+      cover: s.cover && s.song ? { source: s.song_source || "media", path: s.song, v: s.modified } : null,
       details: [seasonName(s.season), songName(s.song) || "No song yet", length(s.duration), `changed ${changed(s.modified, now)}`]
         .filter(Boolean).join(" · "),
     }));

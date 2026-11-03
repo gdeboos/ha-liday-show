@@ -367,6 +367,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/runner.py               Starts shows on a speaker or for the browser, plays playlists and visitors' requests
   app/halidayshow/public.py               The public page on its own port: visitors' choices and their queue
   app/halidayshow/imagemeta.py            Takes the GPS location and other hidden details out of photos visitors see
+  app/halidayshow/songtags.py             Reads a song file's cover art (MP3, M4A, FLAC, WAV) and keeps it on WAVs made from it
   app/halidayshow/scenelib.py             Your scenes (Scene editor): checking them as they're saved
   app/halidayshow/livemusic.py            Live music: listens for WLED's sound sync (what its microphone hears)
   app/halidayshow/react.py                React to music: a scene's level, beat flash and bass/treble look from live music

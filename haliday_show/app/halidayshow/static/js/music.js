@@ -1798,7 +1798,7 @@ export class MusicEditor {
     try {
       const ref = await uploadSong(this.host.api, blob, file, (done) => {
         if (done < 1) this.host.status(`Making ${file}… ${Math.round(done * 100)}%`);
-      });
+      }, { coverFrom: this.base || null });
       // The draft remembers the file it made, so making it again can replace it (making a song
       // file from an untouched song starts a draft too, so it can be made again).
       this.keeper.setMade(ref, session);
