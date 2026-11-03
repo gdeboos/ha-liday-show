@@ -33,6 +33,7 @@ export function changeEffect(look, effect, palette = null) {
   // A list of colours takes as many as the old look had (at least two).
   if (EFFECTS[effect]?.list && colours.length >= 2) next.params.count = String(Math.min(colours.length, paletteKeys(effect).length));
   if (look.params.brightness != null) next.params.brightness = look.params.brightness;
+  if (look.params.glitter) next.params.glitter = look.params.glitter;
   return next;
 }
 

@@ -1178,6 +1178,15 @@ the new one with no dark gap. Use the second clip's **In** (or, if it has none, 
 **Out**). On the House lane and group lanes, a clip fades in and out over the lights' own effects.
 The timeline shows each transition on its clip.
 
+### Glitter
+
+Under **Glitter** in the Selection panel, any clip can sparkle: drag **Amount** to the right and white
+sparkles twinkle over its effect, such as a red chase with glitter on it. More means more sparkles (up to
+about a quarter of the bulbs at once). **Colour** changes the sparkles, gold or icy blue, say. All the way
+left is no glitter. The sparkles follow the clip's **Brightness**, and come out the same every time, so
+what you see in the editor is what your lights show. Glitter stays when you change a clip's effect, and
+works on the House lane and group lanes too.
+
 ### Mixing lanes with the lights
 
 A clip on the House lane or a group lane covers the lights' own effects by default. Under **Clip**,
@@ -1514,7 +1523,8 @@ and not on the schedule) and **Remove…**.
   asked whether to recolour the lights already on. A light that's on keeps its own colours when you
   change its effect.
 - In the editor, each light has its own row: its **Effect**, its **Colours** (a colour box for each,
-  and **Palette…** to use one of your palettes), and **Speed** and **Brightness** sliders. Press the
+  and **Palette…** to use one of your palettes), and **Speed**, **Brightness** and **Glitter** sliders
+  (white sparkles over the effect; all the way left is none). Press the
   effect to change it: the same window as the Show editor's opens, with every effect moving in the
   light's own colours. Tick **Show presets** there to pick a preset; the effect then shows its name,
   such as **Three colours · Still blocks**. **Off** beside it turns the light off in this scene.

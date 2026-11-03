@@ -1155,7 +1155,7 @@ a.button { text-decoration: none; }
 .sc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .sc-same { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
 .sc-cols, .sc-row { display: grid; grid-template-columns: minmax(130px, 1.1fr) minmax(170px, 1.3fr) minmax(170px, 1.3fr)
-  minmax(100px, 1fr) minmax(100px, 1fr); gap: 8px 16px; align-items: center; }
+  minmax(90px, 1fr) minmax(90px, 1fr) minmax(90px, 1fr); gap: 8px 16px; align-items: center; }
 .sc-cols { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
 .sc-rows { display: flex; flex-direction: column; }
 .sc-row { padding: 8px 0; border-top: 1px solid var(--line); min-height: 48px; }

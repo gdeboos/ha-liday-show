@@ -37,7 +37,7 @@ test("the editors' lists share the Library pages' help", () => {
 test("a panel's bubble has its first tips and says how many there are", () => {
   const h = panelHelp("editor", "inspector", 2);
   assert.equal(h.tips.length, 2);
-  assert.equal(h.total, 5);
+  assert.equal(h.total, 6);
   assert.equal(h.topic.id, "selection");
 });
 

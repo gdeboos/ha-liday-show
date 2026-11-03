@@ -72,6 +72,7 @@ export const HELP = {
       { id: "selection", title: "Adding and changing effects", guide: ["build-a-show.md", "adding-effects"], tips: [
         "Select a stretch, then press <b>＋ Add effect…</b> to pick one. Each button plays it on that light first.",
         "Click a clip to change its effect, colours and settings here. It loops on its own while it's selected.",
+        "<b>Glitter</b> adds sparkles over any clip's effect. Drag <b>Amount</b> all the way left for none.",
         `${k("D")} duplicates, ${k("Ctrl", "C")} and ${k("Ctrl", "V")} copy and paste, and ${k("Ctrl", "Z")} undoes.`,
         `${k("Delete")} clears the selected stretch or clip. Hold ${k("Alt")} to start a selection on top of a clip.`,
         "<b>⚠ Too fast for this light</b> means the real light can't keep up with that effect. Slow it down or use a fade.",

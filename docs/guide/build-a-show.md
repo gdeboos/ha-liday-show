@@ -637,6 +637,15 @@ the new one with no dark gap. Use the second clip's **In** (or, if it has none, 
 **Out**). On the House lane and group lanes, a clip fades in and out over the lights' own effects.
 The timeline shows each transition on its clip.
 
+### Glitter
+
+Under **Glitter** in the Selection panel, any clip can sparkle: drag **Amount** to the right and white
+sparkles twinkle over its effect, such as a red chase with glitter on it. More means more sparkles (up to
+about a quarter of the bulbs at once). **Colour** changes the sparkles, gold or icy blue, say. All the way
+left is no glitter. The sparkles follow the clip's **Brightness**, and come out the same every time, so
+what you see in the editor is what your lights show. Glitter stays when you change a clip's effect, and
+works on the House lane and group lanes too.
+
 ### Mixing lanes with the lights
 
 A clip on the House lane or a group lane covers the lights' own effects by default. Under **Clip**,

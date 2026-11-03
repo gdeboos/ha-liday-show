@@ -187,6 +187,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - A palette for each show and scene: new effects take its colours and the effect chooser previews in them
 - Transitions on any clip (fade, wipe, from the middle or dissolve, in and out), with crossfades
   between clips back to back
+- Glitter on any clip: sparkles in the colour you choose over its effect
 - Settings that change over a clip, like xLights' value curves: speed up a chase into the chorus,
   or swell the brightness
 - House and group lane clips can cover the lights' own effects, add to them, keep the brighter, or
