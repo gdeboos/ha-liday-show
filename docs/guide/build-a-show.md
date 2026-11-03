@@ -672,7 +672,8 @@ chase or a wipe goes round the whole grid). House patterns, such as **Stripes**,
 **Colour wave**, **Spotlight** and **Spiral**, don't need it: on a matrix's own lane they're drawn across
 the grid, as they are across the house. **Spiral** winds stripes round a mega-tree and turns them
 (try its **Candy cane** and **Twirl** presets); for a tree that fills up from the bottom, use **House
-wipe** going **bottom to top**.
+wipe** going **bottom to top**. **Plasma** and **Spiral** are also listed under **On a matrix** in a matrix's own
+effect chooser, so you can put them on that light alone.
 
 ### Transitions
 

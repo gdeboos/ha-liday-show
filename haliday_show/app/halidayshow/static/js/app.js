@@ -22,7 +22,7 @@ import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
 import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb } from "./house.js";
-import { MAX_MATRIX, RUNS, gridOf, matrixTestFrame, toWire } from "./matrix.js";
+import { MAX_MATRIX, ON_A_MATRIX, RUNS, gridOf, laneTakes, matrixTestFrame, runsDownTree, toWire } from "./matrix.js";
 import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
 import { forgetPicture, getPicture, keepPicture, pictureList, shrinkPicture, toBase64 } from "./pictures.js";
@@ -2124,7 +2124,10 @@ const isLane = (i) => isHouse(i) || isGroup(i);
 app.groupFor = groupById; // for the timeline's lane names
 const trackKind = (i) => (isHouse(i) ? "house" : isGroup(i) ? "group" : "light");
 // House effects go on the House lane and group lanes; light effects everywhere but the House lane.
-const fitsTrack = (effect, i) => isGroup(i) || !!EFFECTS[effect]?.house === isHouse(i);
+const laneKind = (i) => (isGroup(i) ? "group" : isHouse(i) ? "house" : gridOf(playingDev(app.show.tracks[i])) ? "matrix" : "light");
+const fitsTrack = (effect, i) => laneTakes(effect, EFFECTS[effect], laneKind(i));
+const isTree = (id) => house.styles[id]?.style === "tree";
+const onTree = (i) => isTree(app.show.tracks[i]?.device);
 // The group lanes as they play, for composeLight; pass the house positions when there are any.
 // Made once per animation frame or so, so the lights in a preview share each group's strip.
 const plansMemo = { at: -Infinity, pos: null, plans: [] };
@@ -2880,8 +2883,11 @@ async function stopLightPreview() {
 const GROUP_CHOICES = [["Across the group, by where its lights are on the house photo", true],
   ["Along the group, as if its lights were one strip", false]];
 const labsOn = () => prefs.get("labs", false);
-// house: true for the House lane's effects, false for lights', undefined for both.
-const visibleEffects = (keep, house) => Object.entries(EFFECTS).filter(([, fx]) => house === undefined || !!fx.house === house);
+// house: true for the House lane's effects, false for lights', undefined for both. On a matrix, the
+// lights' list also has the house effects that suit its grid (ON_A_MATRIX), with its own effects.
+const visibleEffects = (keep, house, matrix = false) => Object.entries(EFFECTS)
+  .filter(([key, fx]) => house === undefined || !!fx.house === house || (matrix && house === false && ON_A_MATRIX.includes(key)));
+const shownGroup = (key, fx, house, matrix) => (matrix && house === false && ON_A_MATRIX.includes(key) ? "matrix" : fx.group);
 
 // Previews in the effect chooser: each strip loops its effect for as long as the clip or selection
 // (within reason) on the light's own segments.
@@ -3007,9 +3013,12 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         sh.textContent = heading;
         body.append(sh);
       }
-      const all = visibleEffects(current ?? undefined, house).filter(([key]) => !only || only.includes(key));
+      // Not when the House lane's own effects are offered too: Plasma and Spiral are listed there.
+      const matrix = !!gridOf(dev) && !groups.some(([, h]) => h);
+      const all = visibleEffects(current ?? undefined, house, matrix).filter(([key]) => !only || only.includes(key));
       // Under small headings (Basics, Movement, ...) when there's more than one kind.
-      const kinds = EFFECT_GROUPS.map(([g, label]) => [label, all.filter(([, fx]) => fx.group === g)]).filter(([, e]) => e.length);
+      const kinds = EFFECT_GROUPS.map(([g, label]) => [label, all.filter(([key, fx]) => shownGroup(key, fx, house, matrix) === g)])
+        .filter(([, e]) => e.length);
       for (const [kind, effects] of kinds) {
         if (kinds.length > 1 && !(toggle.checked && onlyMine)) {
           const sub = document.createElement("div");
@@ -3408,11 +3417,16 @@ function paste() {
   const fits = cb.clips.filter((c) => fitsTrack(c.effect, sel.track));
   if (!fits.length) {
     status(isHouse(sel.track) ? "Only House effects can go on the House lane"
-      : "House effects can only go on the House lane", "hint");
+      : "House effects can only go on the House lane (Plasma and Spiral can go on a matrix too)", "hint");
     return;
   }
-  const pasted = fits.map((c) => ({ ...clone(c), start: c.start + shift, end: c.end + shift }))
-    .filter((c) => !unfit(c, sel.track));
+  const fromStrip = !gridOf(playingDev(app.show.tracks[cb.track] || {}));
+  const pasted = fits.map((c) => {
+    const p = { ...clone(c), start: c.start + shift, end: c.end + shift };
+    // From a strip onto a mega-tree, an effect runs down its strings; from a matrix it keeps its Runs.
+    if (fromStrip && onTree(sel.track) && runsDownTree(EFFECTS[p.effect]) && !p.runs) p.runs = "columns";
+    return p;
+  }).filter((c) => !unfit(c, sel.track));
   const left = fits.length - pasted.length;
   if (!pasted.length) { status(`${left === 1 ? "That effect won't" : "Those effects won't"} work on ${trackName(sel.track)}`, "hint"); return; }
   app.show.tracks[sel.track].clips.push(...pasted);
@@ -5222,7 +5236,9 @@ function suggestionsFor(r, lights) {
 }
 
 // Whether an effect added to a selection spanning `tracks` goes on track t (see rangeTakes).
-const rangeFits = (effect, t, tracks) => rangeTakes(!!EFFECTS[effect]?.house, trackKind(t), tracks.map(trackKind));
+// Plasma and Spiral go on a matrix itself when the House lane isn't in the selection.
+const rangeFits = (effect, t, tracks) => (ON_A_MATRIX.includes(effect) && laneKind(t) === "matrix" && !tracks.some(isHouse))
+  || rangeTakes(!!EFFECTS[effect]?.house, trackKind(t), tracks.map(trackKind));
 
 function addToRange(effect, preset = null) {
   const r = app.selected.range;
@@ -5237,7 +5253,7 @@ function addToRange(effect, preset = null) {
   const added = tracks.map((t) => {
     const clip = clipFor();
     // A mega-tree's strings are its columns, so effects run down them unless changed.
-    if (house.styles[app.show.tracks[t].device]?.style === "tree" && !EFFECTS[effect].house && !EFFECTS[effect].grid) clip.runs = "columns";
+    if (onTree(t) && runsDownTree(EFFECTS[effect])) clip.runs = "columns";
     app.show.tracks[t].clips.push(clip);
     return { track: t, clip };
   });
@@ -9594,7 +9610,7 @@ async function generate({ colors, style, house, build, maxBars = prefs.get("genM
     .map((tr) => {
       const dev = app.devices[tr.device];
       return { id: tr.device, group: dev.parent || dev.id, segments: dev.segments, slow: isSlow(dev),
-        fits: (c) => fitFor(c, dev).level !== "no" };
+        fits: (c) => fitFor(c, dev).level !== "no", grid: gridOf(dev), tree: isTree(tr.device) }; // (house here is the House lane option)
     });
   if (!lights.length) { status("Add your lights under Setup → Devices first", "hint"); return; }
   // Listen to the song first if that hasn't been done yet.
@@ -9715,7 +9731,8 @@ async function describePresets(e) {
   e.preventDefault();
   const request = $("ai-preset-request").value.trim();
   if (!request) { $("ai-preset-request").focus(); return; }
-  const context = { effects: effectsForAI(), palettes: allPalettes().map((p) => ({ name: p.name, colors: p.colors })) };
+  // Presets are for any light, so not the effects made for matrices.
+  const context = { effects: effectsForAI({ matrix: false }), palettes: allPalettes().map((p) => ({ name: p.name, colors: p.colors })) };
   const done = aiWorking($("btn-ai-preset"), $("ai-preset-request"), $("ai-preset-hint"), "presets");
   let reply;
   try {
@@ -9862,7 +9879,9 @@ function aiLights() {
     let name = dev.name || tr.device;
     for (let k = 2; seen.has(name.toLowerCase()); k++) name = `${dev.name || tr.device} (${k})`;
     seen.add(name.toLowerCase());
-    lights.push({ name, trackIndex: i, segments: dev.segments, ...(isSlow(dev) ? { slow: true } : {}) });
+    const grid = gridOf(dev);
+    lights.push({ name, trackIndex: i, segments: dev.segments, ...(isSlow(dev) ? { slow: true } : {}),
+      ...(grid ? { matrix: { ...grid, shape: isTree(tr.device) ? "tree" : "panel" } } : {}) });
   });
   return lights;
 }

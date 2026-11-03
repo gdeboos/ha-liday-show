@@ -125,9 +125,14 @@ test("palettes from the AI keep valid colours only, up to 12, and skip ones with
 test("every effect is described for the AI", async () => {
   const { EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
   const { EFFECT_NOTES, effectsForAI } = await import("../../haliday_show/app/halidayshow/static/js/aiclips.js");
-  for (const [key, fx] of Object.entries(EFFECTS)) if (!fx.experimental && !fx.grid) assert.ok(EFFECT_NOTES[key], key);
-  assert.ok(!effectsForAI().some((e) => EFFECTS[e.key].grid)); // matrix effects aren't offered
-  assert.ok(effectsForAI().every((e) => e.looks));
+  for (const [key, fx] of Object.entries(EFFECTS)) if (!fx.experimental && !["text", "picture"].includes(key)) assert.ok(EFFECT_NOTES[key], key);
+  // Matrix effects are offered, marked, except the two that need your words or pictures.
+  const offered = effectsForAI();
+  assert.ok(offered.find((e) => e.key === "fire2d").matrix);
+  assert.ok(!offered.some((e) => e.key === "text" || e.key === "picture"));
+  assert.ok(offered.filter((e) => e.matrix).every((e) => EFFECTS[e.key].grid));
+  assert.ok(offered.every((e) => e.looks));
+  assert.ok(!effectsForAI({ matrix: false }).some((e) => e.matrix));
 });
 
 test("the AI's transitions, changing settings and lane mixes are checked", async () => {
@@ -146,4 +151,34 @@ test("the AI's transitions, changing settings and lane mixes are checked", async
   assert.equal(roof.mix, undefined); // only lanes mix
   assert.equal(house.mix, "only where lit");
   assert.equal(house.transInSecs, 4); // no longer than the clip
+});
+
+test("matrices: the AI is told about them and its matrix effects go only there", () => {
+  const lights = [
+    { name: "House", trackIndex: 0, segments: 0, house: true },
+    { name: "Roof", trackIndex: 1, segments: 20 },
+    { name: "Panel", trackIndex: 2, segments: 512, matrix: { w: 32, h: 16, shape: "panel" } },
+    { name: "Tree", trackIndex: 3, segments: 400, matrix: { w: 16, h: 25, shape: "tree" } },
+  ];
+  const s = { ...show(), tracks: [0, 1, 2, 3].map((i) => ({ device: i ? `d${i}` : HOUSE, clips: [] })) };
+  const ctx = buildContext({ show: s, lights, duration: 30 });
+  assert.deepEqual(ctx.lights[2].matrix, { w: 32, h: 16, shape: "panel" });
+  assert.equal(ctx.lights[1].matrix, undefined);
+  assert.ok(ctx.effects.some((e) => e.key === "fire2d"));
+  assert.ok(!buildContext({ show: show(), lights: lights.slice(0, 2), duration: 30 }).effects.some((e) => e.matrix)); // none without matrices
+  const { placed, skipped } = checkClips({ clips: [
+    { light: "Panel", start: 0, end: 4, effect: "fire2d" },
+    { light: "Roof", start: 0, end: 4, effect: "fire2d" }, // only on a matrix
+    { light: "Tree", start: 0, end: 4, effect: "spiral" }, // a house effect that suits a matrix
+    { light: "Roof", start: 0, end: 4, effect: "spiral" },
+    { light: "Tree", start: 4, end: 8, effect: "chase" }, // down the strings
+    { light: "Panel", start: 4, end: 8, effect: "chase" },
+    { light: "Panel", start: 8, end: 9, effect: "text" },
+    { light: "Panel", start: 9, end: 10, effect: "sweep" },
+    { light: "House", start: 0, end: 4, effect: "spiral" },
+  ] }, lights, 30);
+  assert.deepEqual(placed.map((p) => [p.trackIndex, p.clip.effect, p.clip.runs]), [
+    [2, "fire2d", undefined], [3, "spiral", undefined], [3, "chase", "columns"], [2, "chase", undefined], [0, "spiral", undefined]]);
+  assert.equal(skipped.length, 4);
+  assert.ok(skipped.some((m) => /Fire.*only works on a matrix/.test(m)));
 });

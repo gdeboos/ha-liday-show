@@ -88,3 +88,20 @@ export function gridTiles(x0, x1, height, grid, gap = 2) {
   }
   return out;
 }
+
+// House effects that also suit a matrix's own lane, drawn across its grid.
+export const ON_A_MATRIX = ["plasma", "spiral"];
+
+// Whether an effect can go on a lane: house effects on the House lane, the rest on lights, with
+// ON_A_MATRIX on a matrix too, and effects made for matrices (fx.grid) on matrices. Group lanes
+// take anything. lane: "house", "group", "matrix" or "light".
+export function laneTakes(key, fx, lane) {
+  if (!fx) return false;
+  if (lane === "group") return true;
+  if (lane === "house") return !!fx.house;
+  if (fx.house) return lane === "matrix" && ON_A_MATRIX.includes(key);
+  return true;
+}
+
+// A strip effect on a mega-tree runs down its strings (its columns) unless set otherwise.
+export const runsDownTree = (fx) => !!fx && !fx.house && !fx.grid;

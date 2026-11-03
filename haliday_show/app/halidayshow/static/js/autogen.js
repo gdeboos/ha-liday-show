@@ -4,7 +4,8 @@
 // With build, it lights the house the way a person would: a few lights in quiet parts, more as the
 // music builds, and every light together only for the loudest parts and the chorus.
 
-import { HOUSE, clipPiece, isGroupTrack, newClip } from "./effects.js";
+import { EFFECTS, HOUSE, clipPiece, isGroupTrack, newClip } from "./effects.js";
+import { runsDownTree } from "./matrix.js";
 import { applyPalette } from "./palettes.js";
 
 // How a style shifts a section's energy before picking looks, and how often looks change.
@@ -78,6 +79,27 @@ const SLOW_LOOKS = {
   ],
 };
 
+// Looks drawn across a matrix's grid, used there alongside the strip looks. Not Scrolling text or
+// Picture: they need your words or pictures.
+const GRID_LOOKS = {
+  low: [
+    { effect: "plasma", label: "Lava lamp", params: () => ({ size: 1, speed: 0.3 }) },
+    { effect: "snowfall", label: "Gentle snowfall", params: () => ({ density: 10, speed: 3 }) },
+    { effect: "spiral", label: "Slow spiral", params: () => ({ stripes: 2, twist: 1, speed: 0.15, soft: 40 }) },
+  ],
+  mid: [
+    { effect: "spiral", label: "Spiral, a turn a bar", params: (bps) => ({ stripes: 2, twist: 1.5, speed: bps / 4, soft: 20 }) },
+    { effect: "plasma", label: "Swirling plasma", params: () => ({ size: 1.5, speed: 1 }) },
+    { effect: "snowfall", label: "Snowfall", params: () => ({ density: 25, speed: 6 }) },
+  ],
+  high: [
+    { effect: "fire2d", label: "Fire", params: () => ({ speed: 1.5, height: 90 }) },
+    { effect: "musicbars", label: "Music bars", params: () => ({ boost: 150 }) },
+    { effect: "spiral", label: "Fast spiral", params: (bps) => ({ stripes: 3, twist: 2, speed: bps / 2, soft: 10 }) },
+    { effect: "snowfall", label: "Driving rain", params: () => ({ style: "rain", density: 30, speed: 20 }) },
+  ],
+};
+
 // A repeatable pseudo-random number in [0, 1) from any number of integers.
 function hash(...xs) {
   let h = 2166136261;
@@ -116,7 +138,8 @@ function clipFor(look, start, end, bps, n, colors, offset) {
   return clip;
 }
 
-// analysis: {beats, bars, sections, tempo, duration}; lights: [{id, segments, slow, fits}], slow for lights
+// analysis: {beats, bars, sections, tempo, duration}; lights: [{id, segments, slow, fits, grid, tree}], grid
+// ({w, h}) for a matrix (it also gets GRID_LOOKS), tree for a mega-tree (strip looks run down its strings), slow for lights
 // that can only change a few times a second (they get SLOW_LOOKS), fits(clip) false for a clip the light
 // can't show (another of the section's looks is used instead);
 // group: the light a part belongs to (parts of one light go dark or light up together; default its id);
@@ -148,7 +171,9 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
       const b = (a + 1 + Math.floor(hash(key, seed, 7) * (set.length - 1))) % set.length;
       return [set[a], set[b]];
     };
-    const fast = pick(LOOKS[t]), slow = pick(SLOW_LOOKS[t]);
+    const fast = pick(LOOKS[t]), slow = pick(SLOW_LOOKS[t]), grid2d = pick(GRID_LOOKS[t]);
+    // A matrix swaps the section's second look for one drawn across its grid.
+    const onGrid = [fast[0], grid2d[0]];
     // Loud sections and the chorus move together on every light; the rest alternate across lights.
     const unison = together(sec, t);
     // Which lights play: by the section's name, so a repeated verse uses the same ones, and in an
@@ -170,8 +195,12 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
       const on = lit(phrase);
       lights.forEach((light, li) => {
         if (!on.has(light.group ?? light.id)) return;
-        const look = (light.slow ? slow : fast)[(phrase + (unison ? 0 : li)) % 2];
-        const make = (l) => clipFor(l, start, end, bps, light.segments, colors, unison ? li : phrase);
+        const look = (light.slow ? slow : light.grid ? onGrid : fast)[(phrase + (unison ? 0 : li)) % 2];
+        const make = (l) => {
+          const c = clipFor(l, start, end, bps, light.segments, colors, unison ? li : phrase);
+          if (light.tree && runsDownTree(EFFECTS[c.effect])) c.runs = "columns";
+          return c;
+        };
         let clip = make(look);
         if (light.fits && !light.fits(clip)) {
           for (const other of (light.slow ? SLOW_LOOKS : LOOKS)[t]) {

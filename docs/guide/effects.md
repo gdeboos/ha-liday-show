@@ -94,8 +94,11 @@ House lane. They sit on top of each light's own effects, or mix with them (see [
 
 These are made for matrices (see *Matrices* under *1. Devices*). They're in the effect chooser under
 **On a matrix**. On a matrix they're drawn across the whole grid, so **Runs** doesn't apply; on a
-strip they show only a slice, as if the strip were a matrix one LED high. **✨ Generate**, the AI,
-playlist blocks and Basic scenes don't use them; an Advanced scene can.
+strip they show only a slice, as if the strip were a matrix one LED high. **✨ Generate** and the AI use
+**Fire**, **Snowfall**, **Music bars**, **Plasma** and **Spiral** on your matrices (never on strips), mixed in
+with the usual looks, and run other effects down a mega-tree's strings. They leave **Scrolling text** and
+**Picture** to you, as those need your own words or pictures. Playlist blocks and Basic scenes don't use
+them; an Advanced scene can.
 
 | Effect | What it does |
 | --- | --- |

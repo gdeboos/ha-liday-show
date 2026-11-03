@@ -50,7 +50,10 @@ with house effects. Other lights take only the other effects. A light marked "sl
 times a second: give it effects that change the whole light at once or barely move (fades, colour cycles, \
 pulses, still blocks, slow gradients), at most once a beat, and never anything that moves along the light \
 quickly (chases, comets, scanners, marquees, theatre chases, juggles, ripples, fireworks, snow), twinkles, \
-strobes, flicker or rainbows.
+strobes, flicker or rainbows. A light with "matrix" is a grid of LEDs, "w" across and "h" high; "shape" is \
+"panel" or "tree" (a mega-tree, whose columns are its strings). Effects marked "matrix" are drawn across the \
+grid and work only on those lights; the house effects Plasma and Spiral can go on a matrix light too. Other \
+effects on a matrix play the same along every row, or down every string on a tree.
 - "effects": every effect, with what it looks like ("looks") and its settings (key, type, range or options, \
 and default). Leave out settings the default suits. Colours are "#rrggbb"; LEDs wash out pastels and dark shades, so use strong colours, and \
 "#000000" for off.
