@@ -26,6 +26,11 @@ Your shows are under **Library → Shows**, and nothing changes in a show until 
 **Show editor**. Each show is listed with its song, its length and when it last changed, newest first, and the
 one you were last editing has a **Last edited** badge.
 
+Once a show has a [season](lights.md#seasons), buttons above the list pick which shows you see: **All**, or one
+season, such as **Christmas**, which shows its shows and the ones for **Any season**, from every folder,
+each saying which folder it's in. It says how many are shown, and remembers your choice in this browser.
+Pick **All** to see everything again.
+
 #### Folders
 
 Every Library list (**Shows**, **Scenes**, **Playlists**, **Songs**, **Samples**, **Palettes** and

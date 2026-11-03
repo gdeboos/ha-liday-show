@@ -43,3 +43,15 @@ test("a show's row names its season", () => {
   const [plain] = showRows([{ id: "b", name: "Any", duration: 90, song: null, modified: 0, season: "gone" }], null, new Date(), seasons);
   assert.match(plain.details, /^No song yet/);
 });
+
+test("the season filter keeps that season's shows and shows for any season", async () => {
+  const { inSeasonFilter } = await import("../../haliday_show/app/halidayshow/static/js/showlist.js");
+  const seasons = [{ id: "halloween", name: "Halloween" }, { id: "christmas", name: "Christmas" }];
+  const shows = [{ id: "spooky", season: "halloween" }, { id: "xmas", season: "christmas" }, { id: "any" },
+    { id: "gone", season: "easter" }]; // its season was deleted: any season again
+  const pick = (f) => shows.filter((s) => inSeasonFilter(s, f, seasons)).map((s) => s.id);
+  assert.deepEqual(pick("all"), ["spooky", "xmas", "any", "gone"]);
+  assert.deepEqual(pick("christmas"), ["xmas", "any", "gone"]);
+  assert.deepEqual(pick("halloween"), ["spooky", "any", "gone"]);
+  assert.deepEqual(pick("easter"), ["spooky", "xmas", "any", "gone"]); // a filter for a deleted season shows all
+});

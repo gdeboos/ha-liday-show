@@ -119,7 +119,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **WLED** strips, found on the network or added by IP, with their LED count and WLED segments filled
   in for you; a Govee light rewired to WLED converts in one step, keeping its shows and parts
 - **Seasons** for props that only go up for part of the year: a show lists only its season's props,
-  and a switch packs a season's props away so nothing is sent to them
+  a switch packs a season's props away so nothing is sent to them, and buttons on the show list show
+  one season's shows
 - **Matrices**: WLED panels and mega-trees (or a pixel controller's) up to 64 × 64, placed on the house
   photo as a panel or a tree, with each effect playing along rows, down columns or round the whole grid,
   House patterns, spirals, scrolling text, fire, snowfall, music bars and your own pictures and animated

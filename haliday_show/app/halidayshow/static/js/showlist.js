@@ -43,6 +43,14 @@ export function showRows(shows, last, now = new Date(), seasons = []) {
     }));
 }
 
+// Library → Shows' season buttons: "all", or a season's id, which keeps that season's shows and the
+// ones for any season (a show whose season was deleted counts as any season again).
+export function inSeasonFilter(show, filter, seasons) {
+  const ids = new Set(seasons.map((x) => x.id));
+  if (filter === "all" || !ids.has(filter)) return true;
+  return !ids.has(show.season) || show.season === filter;
+}
+
 // A name for a copy that isn't taken: "Xmas copy", then "Xmas copy 2"…
 export function copyName(name, taken) {
   const names = new Set(taken.map((n) => n.toLowerCase()));
