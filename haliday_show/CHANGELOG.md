@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.309
+
+- Shared shows now say which lights are matrices and how big they are. When you import one, their matrices are suggested for your matrices and their mega-trees for your mega-trees. The match screen tells you if the sizes differ (matrix effects stretch to fit) or if you've picked a strip for one (they show only a slice).
+
 ## 0.2.308
 
 - **Public page → Shows**: put what visitors can pick in your own order with **↑** and **↓**, or by dragging a row's **⠿** grip.

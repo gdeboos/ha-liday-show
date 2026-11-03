@@ -47,7 +47,7 @@ import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, inSeasonFilter, length as fmtLength, showRows, showThumb, songName, tileBackground } from "./showlist.js";
 import {
-  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, shareSeason, suggest, suggestSong, withPictureIds,
+  buildTracks, lengthNote, makeShare, matchCount, matrixNote, myLights, partPlan, readShare, shareFileName, shareLevels, shareSeason, suggest, suggestSong, withPictureIds,
 } from "./sharing.js";
 import {
   BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
@@ -6527,7 +6527,8 @@ const sharedPictureOf = (id) => {
   const pic = getPicture(id);
   return pic ? { name: pic.name, w: pic.w, h: pic.h, frames: pic.frames.map(toBase64), delays: pic.delays } : null;
 };
-const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll(), pictureOf: sharedPictureOf, seasons: app.seasons || [] });
+const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll(), pictureOf: sharedPictureOf, seasons: app.seasons || [],
+  shapeOf: (id) => house.styles[id]?.style });
 
 function downloadText(name, text) {
   const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
@@ -6699,7 +6700,8 @@ function imLights() {
     name.textContent = t.name;
     const detail = document.createElement("span");
     detail.className = "hint";
-    detail.textContent = [t.type.label, t.segments === 1 ? "one colour" : plural(t.segments, "segment"),
+    detail.textContent = [t.type.label,
+      t.matrix ? `${t.matrix.w} × ${t.matrix.h} ${t.matrix.shape === "tree" ? "mega-tree" : "matrix"}` : t.segments === 1 ? "one colour" : plural(t.segments, "segment"),
       t.parts.length ? plural(t.parts.length, "part") : "", t.seasons?.length ? `${t.seasons.join(" and ")} prop` : ""]
       .filter(Boolean).join(" · ");
     text.append(name, detail);
@@ -6746,6 +6748,13 @@ function imLights() {
       why.textContent = "Left out: its effects won't come across.";
     }
     col.append(label, pick, why);
+    const note = matrixNote(t, m);
+    if (note) {
+      const n = document.createElement("span");
+      n.className = "im-why hint";
+      n.textContent = note;
+      col.append(n);
+    }
     // Your own map only once your lights are on the house photo.
     if (mine.some((l) => l.where)) yours.append(miniMap(mine, m, `Where ${m?.name} is on your house`));
     yours.append(col);

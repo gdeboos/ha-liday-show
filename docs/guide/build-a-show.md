@@ -157,6 +157,10 @@ You can swap shows with friends, or post one on a forum, without either of you c
   your Halloween props, and their all-year lights for your all-year ones; the match screen says which of
   their lights are props.
 
+  **Matrices** come along with their size. Their matrices are suggested for your matrices, and their
+  mega-trees for your mega-trees. When the sizes differ, the match screen says their matrix effects
+  stretch to fit, and when you pick a strip for one, it says those effects show only a slice there.
+
   **Import show** saves it and opens it in the editor. Effects a light can't show are marked as usual
   (see [Effects a light can't show](#effects-a-light-cant-show)).
 
