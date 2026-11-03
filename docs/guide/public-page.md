@@ -244,13 +244,14 @@ What visitors get:
 
 - **A card at the top** of the page says what's on, with a bar showing how far through it is, and
   **🎧 Listen** if listening is on. It stays in view as they scroll down the shows.
-- **Up next** under it lists everyone's waiting picks, by show name only (never who picked them), with
-  roughly when each starts. The first three show, plus their own wherever it is, and **Show all**
+- **Up next** under it lists everyone's waiting picks, with each show's cover art and name (never who
+  picked them) and roughly when each starts. The first three show, plus their own wherever it is, and **Show all**
   opens the rest.
-- **If nothing's on**, their pick starts straight away.
+- **If nothing's on**, each show has **▶ Start** and their pick starts straight away. While something's
+  on (or others are waiting) the button says **+ Queue** instead.
 - **If something's on**, the card at the top tells them where they are in the queue and roughly how long
-  it'll be, such as "You're next, starting in about 2 minutes". Their pick is outlined in **Up next**,
-  with **Cancel** beside it.
+  it'll be, such as "You're next, starting in about 2 minutes". Their picks are highlighted in **Up next**,
+  with **Cancel** beside each.
 - **During one of your playlists**, a visitor's pick plays after the show that's on, then your
   playlist carries on with its next show. A scheduled playlist that's due to start waits until a
   visitor's show has finished.

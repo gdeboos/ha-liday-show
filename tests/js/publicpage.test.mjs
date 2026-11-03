@@ -177,3 +177,9 @@ test("the progress bar moves on between answers and stops at the end", () => {
   assert.equal(page.progressOf({ position: 10, duration: 40 }, 10000), 0.5);
   assert.equal(page.progressOf({ position: 39, duration: 40 }, 5000), 1);
 });
+
+test("the button says Queue when a pick would wait, Start when it would play now", () => {
+  assert.equal(page.startWord({ now: null, queue: [] }), "start");
+  assert.equal(page.startWord({ now: { name: "Party" }, queue: [] }), "queue_btn");
+  assert.equal(page.startWord({ now: null, queue: [{ name: "Party" }] }), "queue_btn");
+});

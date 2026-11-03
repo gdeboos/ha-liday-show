@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.326
+
+- **Up next is easier to read**: each pick shows its show's cover art and its full name (up to two lines), with its place and when it starts underneath. Your own picks have a soft highlight instead of a red border.
+- **The button on each show says + Queue** while something's on or others are waiting, and **▶ Start** when the show would play straight away. Change its words on the **Words** tab.
+
 ## 0.2.325
 
 - **A tidier visitors' page, with far less scrolling.** Your picture is now a banner with the title over it, and the flashing lights warning is one line (unless visitors have to accept it). A card at the top shows what's on with a bar for how far through it is, **🎧 Listen**, and the visitor's own place in the queue, and it stays in view as they scroll. **Music out of time?** opens the Earlier/Later buttons only for people who need them.
