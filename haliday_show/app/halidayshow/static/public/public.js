@@ -121,6 +121,9 @@ export function queueView(st, w, open = false) {
   };
 }
 
+// Installed as an app (or added to the home screen on an iPhone): the Install button isn't needed.
+export const runningAsApp = (win) => !!(win.matchMedia?.("(display-mode: standalone)").matches || win.navigator?.standalone);
+
 // Pressing Start or Queue on a show with no speaker also starts listening on this phone, if listening
 // is on and it isn't already (the press is what lets a phone play sound).
 export const listensToo = (c, st, listening) => !!(st.listen && c.speaker === false && !listening);
@@ -508,6 +511,33 @@ export function start() {
   const adminHeaders = () => (adminPass ? { "X-Admin": adminPass } : {});
   let adminOpen = false, taps = [];
   let queueOpen = false, nudgeOpen = false, heading = "", gotAt = 0;
+  // Installing as an app: the manifest carries the code (so the app opens unlocked), and the phone's own
+  // install offer is kept for the Install button rather than shown at a random moment.
+  let installOffer = null;
+  if (!preview && key) {
+    const link = (rel, href) => { const l = document.createElement("link"); l.rel = rel; l.href = href; document.head.append(l); };
+    link("manifest", `manifest.webmanifest?${new URLSearchParams({ c: key })}`);
+    link("apple-touch-icon", "icon.png?s=192");
+    addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      installOffer = e;
+      drawInstall();
+    });
+    addEventListener("appinstalled", () => { installOffer = null; drawInstall(); });
+  }
+  function drawInstall() {
+    const b = $("pp-install");
+    b.hidden = !installOffer || runningAsApp(window) || !last;
+    if (!b.hidden) b.textContent = say_(w, "install");
+  }
+  async function install() {
+    if (!installOffer) return;
+    const offer = installOffer;
+    installOffer = null;
+    drawInstall();
+    try { await offer.prompt(); await offer.userChoice; } catch { /* the phone said no */ }
+  }
+
   const listener = makeListener({
     code: key, say: (k, vars) => say_(w, k, vars), pos: () => (needsLocation ? where.pos : null),
     onChange: () => drawListen(), headers: adminHeaders,
@@ -592,6 +622,9 @@ export function start() {
     pictureShown = look.picture || 0;
     $("pp-picture").hidden = !look.picture;
     $("pp-header").classList.toggle("pp-banner", !!look.picture);
+    // The phone's bar above the page, in the page's own background.
+    const bg = getComputedStyle(document.body).backgroundColor;
+    if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
     $("pp-link").textContent = linkText(look);
     if (look.link) $("pp-link").href = look.link;
     $("pp-footer").hidden = !look.link;
@@ -821,6 +854,7 @@ export function start() {
       return;
     }
     last = st;
+    drawInstall();
     // A pass that no longer works (the admin PIN changed, or was taken off): forget it.
     if (adminPass && !st.admin) keepAdmin("");
     drawAdmin(st);
@@ -978,6 +1012,7 @@ export function start() {
 
   $("pp-retry").addEventListener("click", watchWhere);
   $("pp-title").addEventListener("click", tapTitle);
+  $("pp-install").addEventListener("click", install);
   $("pp-admin-ok").addEventListener("click", unlockAdmin);
   $("pp-admin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") unlockAdmin(); });
   $("pp-admin-close").addEventListener("click", () => { adminOpen = null; drawAdmin(); });

@@ -6,7 +6,8 @@
       "words": [
         {"key": "idle", "label": "When nothing's playing", "text": "Nothing's on right now. Pick a show to start it."},
         {"key": "on_now", "label": "When a show's playing", "text": "On now: {name}"},
-        {"key": "on_now_waiting", "label": "When a show's playing and others are waiting", "text": "On now: {name} · {count} waiting"},
+{"key": "install", "label": "Button to install the page as an app (where the phone offers it)", "text": "📲 Install app"},
+                {"key": "on_now_waiting", "label": "When a show's playing and others are waiting", "text": "On now: {name} · {count} waiting"},
         {"key": "up_next", "label": "Above the queue", "text": "Up next"},
         {"key": "queue_yours", "label": "Their own pick in the queue", "text": "Yours · in {minutes}"},
         {"key": "queue_when", "label": "When others in the queue start", "text": "in {minutes}"},

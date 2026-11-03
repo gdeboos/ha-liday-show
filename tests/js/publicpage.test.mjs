@@ -191,3 +191,10 @@ test("a press on a show with no speaker also starts listening, once", () => {
   assert.equal(page.listensToo({ speaker: true }, st, false), false);
   assert.equal(page.listensToo({ speaker: false }, { listen: null }, false), false);
 });
+
+test("the Install button isn't offered inside the installed app", () => {
+  const win = (standalone, iosStandalone) => ({ matchMedia: () => ({ matches: standalone }), navigator: { standalone: iosStandalone } });
+  assert.equal(page.runningAsApp(win(false, false)), false);
+  assert.equal(page.runningAsApp(win(true, false)), true);
+  assert.equal(page.runningAsApp(win(false, true)), true);
+});
