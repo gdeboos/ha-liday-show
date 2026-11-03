@@ -17,6 +17,11 @@ With "listen" on, visitors can also hear whatever's playing on their own phone (
 asks for a short-lived pass (POST /api/listen, with the nearby check and, if "listen_pin" is set, the
 PIN), then polls /api/listen/now for where the song is and plays a small copy of it (songcopy.py)
 in step with the lights. Phones only follow; they never move the lights.
+
+With "admin_pin" set, you can unlock your own phone (tap the page's title five times, type the PIN; POST
+/api/admin). It keeps a pass and sends it as X-Admin on every call, which skips Nearby, the opening
+hours, the listening PIN, the per-phone limit and a full queue, and works while visitors are off. The
+code is still needed.
 """
 import asyncio
 import copy
@@ -178,7 +183,9 @@ def clean(p) -> dict:
             "words": clean_words(p.get("words")),
             # Visitors can listen on their own phone, with a PIN as well (4 to 8 digits) if one is set.
             "listen": p.get("listen") is True,
-            "listen_pin": pin if _PIN.match(pin := str(p.get("listen_pin") or "").strip()) else ""}
+            "listen_pin": pin if _PIN.match(pin := str(p.get("listen_pin") or "").strip()) else "",
+            # Yours, to get past every check but the code (see the top of this file).
+            "admin_pin": apin if _PIN.match(apin := str(p.get("admin_pin") or "").strip()) else ""}
 
 
 DEFAULT_HOURS = {"on": False, "start": "17:00", "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""}
@@ -456,7 +463,7 @@ def _ticket(value) -> str:
 
 
 def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None = None,
-          needs_location: bool = False, where=None, now: datetime | None = None) -> dict:
+          needs_location: bool = False, where=None, now: datetime | None = None, admin: bool = False) -> dict:
     p = load(storage) or clean(None)
     look = p["look"]
     said = words(p)
@@ -465,7 +472,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         return {"open": True, "locked": True, "boot": BOOT,
                 "look": {k: look[k] for k in ("theme", "mode", "spacing", "corners", "size", "borders", "colours")},
                 "words": {k: said[k] for k in ("locked", "locked_hint", "offline")}}
-    picks = choices(storage) if p["on"] else []
+    admin = admin and _code_ok(p, code)
+    picks = choices(storage) if p["on"] or admin else []
     st = runner.status()
     waits = runner.queue_waits()
     mine = []
@@ -477,7 +485,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
             if r["ticket"] == ticket:
                 mine.append({"id": r["id"], "name": r["name"], "place": place, "wait": wait})
     return {
-        "open": p["on"],
+        "open": p["on"] or admin,
+        "admin": admin,
         "boot": BOOT,
         "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"], "group": c["group"],
                      "cover": c["cover"] if look["covers"] else 0,
@@ -488,12 +497,12 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
         "now": {"name": st["name"], "visitor": runner.public_now is not None} if st["playing"] else None,
         "waiting": len(runner.requests),
-        "full": len(runner.requests) >= p["queue"],
-        "per_phone": p["per_phone"],
+        "full": not admin and len(runner.requests) >= p["queue"],
+        "per_phone": MAX_QUEUE if admin else p["per_phone"],
         "mine": mine,
-        "needs_location": needs_location,
-        "listen": {"pin": bool(p["listen_pin"])} if p["listen"] else None,
-        "hours": hours_now(p, where, now),
+        "needs_location": needs_location and not admin,
+        "listen": {"pin": bool(p["listen_pin"]) and not admin} if p["listen"] else None,
+        "hours": {"open": True} if admin else hours_now(p, where, now),
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
                                          "corners", "size", "borders", "colours", "show_length", "warning",
                                          "covers")},
@@ -601,7 +610,7 @@ async def page(request):
 def _state(request, ticket, code):
     p = load(request.app[STORAGE]) or clean(None)
     return state(request.app[STORAGE], request.app[RUNNER], ticket, code, _needs_location(request, p),
-                 request.app[WHERE]())
+                 request.app[WHERE](), admin=is_admin(request, p))
 
 
 PICTURE_TYPES = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
@@ -736,15 +745,16 @@ async def post_request(request):
     storage, runner = request.app[STORAGE], request.app[RUNNER]
     p = load(storage) or clean(None)
     said = words(p)
-    if not p["on"]:
+    admin = is_admin(request, p)
+    if not (p["on"] or admin):
         raise web.HTTPConflict(text=said["closed"])
     if not _code_ok(p, body.get("code")):
         raise web.HTTPForbidden(text=said["locked"])
     # Only requests with the code count towards everyone's limit, so guessing can't lock visitors out.
     _throttle(request.app)
-    if not hours_now(p, request.app[WHERE]())["open"]:
+    if not admin and not hours_now(p, request.app[WHERE]())["open"]:
         raise web.HTTPConflict(text=said["not_open_now"])
-    if _needs_location(request, p):
+    if not admin and _needs_location(request, p):
         try:
             _check_near(request, p, body)
         except NotNear as e:
@@ -754,10 +764,13 @@ async def post_request(request):
     if pick is None:
         raise web.HTTPNotFound(text=said["gone"])
     yours = sum(r["ticket"] == ticket for r in runner.requests)
-    if yours >= p["per_phone"]:
+    if admin:
+        if len(runner.requests) >= MAX_QUEUE:  # still a ceiling, however many you add
+            raise web.HTTPConflict(text=said["full"])
+    elif yours >= p["per_phone"]:
         raise web.HTTPConflict(text=said["one_waiting"] if p["per_phone"] == 1 else
                                said["many_waiting"].replace("{count}", str(yours)))
-    if len(runner.requests) >= p["queue"]:
+    elif len(runner.requests) >= p["queue"]:
         raise web.HTTPConflict(text=said["full"])
     runner.add_request({"id": secrets.token_hex(6), "ticket": ticket, "kind": pick["kind"], "ref": pick["id"],
                         "name": pick["name"], "shows": pick["shows"], "gap": pick.get("gap", 0)})
@@ -774,7 +787,7 @@ async def post_near(request):
     if not _code_ok(p, body.get("code")):
         raise web.HTTPForbidden(text=words(p)["locked"])
     _throttle(request.app, NEAR, MAX_NEAR_PER_MIN)
-    if _needs_location(request, p):
+    if _needs_location(request, p) and not is_admin(request, p):
         try:
             _check_near(request, p, body)
         except NotNear as e:
@@ -828,13 +841,41 @@ def pin_pass(storage: Storage, p: dict) -> str:
     return _sign(storage, f"pin|{p['code']}|{p['listen_pin']}")
 
 
+def admin_pass(storage: Storage, p: dict) -> str:
+    """Your phone's pass once the admin PIN was right: good until that PIN (or the code) changes."""
+    return _sign(storage, f"admin|{p['code']}|{p['admin_pin']}")
+
+
+def is_admin(request, p: dict) -> bool:
+    if not (p["admin_pin"] and p["code"]):
+        return False
+    sent = request.headers.get("X-Admin", "")
+    return bool(_PASS.match(sent)) and hmac.compare_digest(sent, admin_pass(request.app[STORAGE], p))
+
+
+async def post_admin(request):
+    """Unlocks your own phone with the admin PIN. Without one set, there's nothing to unlock."""
+    _limit_client(request, "post", MAX_POSTS_PER_CLIENT_MIN)
+    body = await _body(request)
+    p = load(request.app[STORAGE]) or clean(None)
+    if not _code_ok(p, body.get("code")):
+        raise web.HTTPForbidden(text=words(p)["locked"])
+    if not p["admin_pin"]:
+        raise web.HTTPForbidden(text=words(p)["pin_wrong"])
+    _pin_ok(request, p, body, "admin_pin")
+    return _no_store(web.json_response({"pass": admin_pass(request.app[STORAGE], p)}))
+
+
 def listen_token(storage: Storage, p: dict, until: int) -> str:
     code, pin = p["code"], p["listen_pin"]
     return f"{until:010d}." + _sign(storage, f"listen|{code}|{pin}|{until}")
 
 
-def song_sig(storage: Storage, p: dict, key: str) -> str:
+def song_sig(storage: Storage, p: dict, key: str, admin: bool = False) -> str:
+    """The song's link: yours carries its own, which still works while visitors are off."""
     code, pin = p["code"], p["listen_pin"]
+    if admin:
+        return _sign(storage, f"song-admin|{code}|{p['admin_pin']}|{key}")
     return _sign(storage, f"song|{code}|{pin}|{key}")
 
 
@@ -857,23 +898,23 @@ def token_ok(storage: Storage, p: dict, token, now: float | None = None) -> bool
     return until >= (now or time.time()) and hmac.compare_digest(token, listen_token(storage, p, until))
 
 
-def _pin_ok(request, p: dict, body: dict):
+def _pin_ok(request, p: dict, body: dict, which: str = "listen_pin"):
     """Raises unless the PIN (or a pass from an earlier right PIN) is good; wrong ones are counted."""
     said = words(p)
     st = request.app[STORAGE]
-    good = pin_pass(st, p)
+    good = pin_pass(st, p) if which == "listen_pin" else admin_pass(st, p)
     sent_pass = body.get("pass")
     if isinstance(sent_pass, str) and _PASS.match(sent_pass) and hmac.compare_digest(sent_pass, good):
         return
     pin = str(body.get("pin") or "").strip()
     now, tries = time.monotonic(), request.app[PIN_TRIES]
-    who = client(request)
+    who = f"{which}|{client(request)}"
     wrong = [t for t in tries.get(who, ()) if now - t < PIN_WAIT_S]
     if len(wrong) >= MAX_PIN_TRIES:
         raise web.HTTPTooManyRequests(text=said["pin_wait"])
     if not pin:
         raise web.HTTPForbidden(text=said["pin_needed"], headers={"X-Listen": "pin"})
-    if not hmac.compare_digest(pin.encode(), p["listen_pin"].encode()):
+    if not hmac.compare_digest(pin.encode(), p[which].encode()):
         if who not in tries and len(tries) >= MAX_CLIENTS:
             tries.clear()
         tries[who] = [*wrong, now]
@@ -881,12 +922,13 @@ def _pin_ok(request, p: dict, body: dict):
     tries.pop(who, None)
 
 
-def _listening(request, code) -> dict:
-    """The settings, for a phone allowed to ask about listening at all (code right, listening on)."""
+def _listening(request, code, admin_sig: bool = False) -> dict:
+    """The settings, for a phone allowed to ask about listening at all (code right, listening on; the
+    page on too, unless it's yours)."""
     p = load(request.app[STORAGE]) or clean(None)
     if not _code_ok(p, code):
         raise web.HTTPForbidden(text=words(p)["locked"])
-    if not (p["on"] and p["listen"]):
+    if not ((p["on"] or admin_sig or is_admin(request, p)) and p["listen"]):
         raise web.HTTPConflict(text=words(p)["listen_off"])
     return p
 
@@ -896,14 +938,15 @@ async def post_listen(request):
     _limit_client(request, "post", MAX_POSTS_PER_CLIENT_MIN)
     body = await _body(request)
     p = _listening(request, body.get("code"))
-    if _needs_location(request, p):
+    admin = is_admin(request, p)
+    if _needs_location(request, p) and not admin:
         try:
             _check_near(request, p, body)
         except NotNear as e:
             raise web.HTTPForbidden(text=words(p)[e.word])
     st = request.app[STORAGE]
     out = {}
-    if p["listen_pin"]:
+    if p["listen_pin"] and not admin:
         _pin_ok(request, p, body)
         out["pass"] = pin_pass(st, p)
     until = int(time.time()) + LISTEN_FOR_S
@@ -960,7 +1003,10 @@ async def get_listen_now(request):
     if ready:
         # Its own signature rather than the pass, so a phone still loading the song when its pass is
         # renewed carries on.
-        out["src"] = "listen/song?" + urlencode({"code": p["code"], "key": key, "sig": song_sig(request.app[STORAGE], p, key)})
+        admin = is_admin(request, p)
+        out["src"] = "listen/song?" + urlencode({"code": p["code"], "key": key,
+                                                 "sig": song_sig(request.app[STORAGE], p, key, admin),
+                                                 **({"a": "1"} if admin else {})})
     # Read last, so it's as close as can be to the moment the answer leaves.
     out["position"] = round(request.app[RUNNER].player.position(), 4)
     return _no_store(web.json_response(out))
@@ -969,10 +1015,11 @@ async def get_listen_now(request):
 async def get_listen_song(request):
     """The song playing now (its small copy), only for a phone with a listening pass."""
     _limit_client(request, "listen", MAX_LISTEN_PER_CLIENT_MIN)
-    p = _listening(request, request.query.get("code"))
+    yours = request.query.get("a") == "1"
+    p = _listening(request, request.query.get("code"), admin_sig=yours)
     key, sig = request.query.get("key"), request.query.get("sig")
-    if not (isinstance(key, str) and isinstance(sig, str) and _PASS.match(sig)
-            and hmac.compare_digest(sig, song_sig(request.app[STORAGE], p, key))):
+    if not (isinstance(key, str) and isinstance(sig, str) and _PASS.match(sig) and (not yours or p["admin_pin"])
+            and hmac.compare_digest(sig, song_sig(request.app[STORAGE], p, key, yours))):
         raise web.HTTPForbidden(text=words(p)["listen_again"])
     _, path = _now_playing(request)
     try:
@@ -1009,6 +1056,7 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
     r.add_post("/api/cancel", post_cancel)
     r.add_post("/api/near", post_near)
     r.add_post("/api/listen", post_listen)
+    r.add_post("/api/admin", post_admin)
     r.add_get("/api/listen/now", get_listen_now)
     r.add_get("/listen/song", get_listen_song)
     r.add_get("/listen/silence.wav", get_silence)

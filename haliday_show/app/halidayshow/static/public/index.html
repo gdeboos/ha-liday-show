@@ -14,6 +14,20 @@
     <h1 id="pp-title">🎄 Light show</h1>
     <p id="pp-welcome" class="pp-welcome" hidden></p>
   </header>
+  <section id="pp-admin" class="pp-card pp-admin" hidden>
+    <p id="pp-admin-text" class="pp-hint" role="status" aria-live="polite"></p>
+    <div id="pp-admin-pin" class="pp-pin" hidden>
+      <label for="pp-admin-input">Admin PIN</label>
+      <div class="pp-pin-row">
+        <input id="pp-admin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
+        <button id="pp-admin-ok" type="button" class="primary">Unlock</button>
+      </div>
+    </div>
+    <div class="pp-pin-row">
+      <button id="pp-admin-out" type="button" hidden>Lock this phone</button>
+      <button id="pp-admin-close" type="button">Close</button>
+    </div>
+  </section>
   <section id="pp-locked" class="pp-card" hidden>
     <p id="pp-locked-text" class="pp-big"></p>
     <p id="pp-locked-hint" class="pp-hint"></p>

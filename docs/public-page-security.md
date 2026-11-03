@@ -47,6 +47,24 @@ Listening polls have their own per-address limit (`MAX_LISTEN_PER_CLIENT_MIN`, 1
 25 phones on one address). Song copies (`songcopy.py`) are made with ffmpeg from the owner's own files
 only, one at a time, with a 3-minute limit, in a temporary folder.
 
+## Admin PIN (0.2.324)
+
+Off unless `public.admin_pin` is set (4 to 8 digits). One more route, `POST /api/admin`, needing the
+code: right PIN gives an admin pass, an HMAC of `admin|code|admin_pin` with the listening key, so
+changing the code or the admin PIN ends every pass. Wrong PINs are counted per address as for the
+listening PIN, in their own count (`admin_pin|<address>`), so guessing one doesn't hold up the other.
+With no admin PIN set the route always refuses.
+
+The phone sends the pass as an `X-Admin` header (not in addresses, so it stays out of tunnel logs).
+`is_admin()` checks it on `state`, `request`, `near`, `listen` and `listen/now`, and it skips: Nearby,
+opening hours, the listening PIN, `per_phone`, `queue` (a ceiling of `MAX_QUEUE` stays) and `on`. The
+code is always still needed. The song link for an admin phone is signed separately
+(`song-admin|code|admin_pin|key`, with `a=1`), so only that signature gets past `on` being off.
+
+The visitors' page offers no visible way in: five quick taps on the title open the PIN box. That's
+obscurity on top of the PIN, not instead of it. The admin PIN is shown in the editor like the
+listening PIN, and the editor warns when the two are the same.
+
 ## Fixed in 0.2.177
 
 | Finding | Seen | Fix |

@@ -1283,6 +1283,20 @@
     </div>
     <p class="hint pub-note" id="pub-hours-hint" aria-live="polite"></p>
   </section>
+  <section class="card pub-card" id="pub-admin-card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Admin PIN</h2>
+    <p class="hint">Lets your own phone past <b>Nearby only</b> and the opening hours, from anywhere, at any time.
+      It also skips the listening PIN, the limit per phone and a full queue, and works while
+      <b>Let visitors start shows</b> is off, so you can try things before you open.</p>
+    <label class="field">PIN
+      <input id="pub-admin-pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off"
+        placeholder="None">
+      <span class="hint">4 to 8 numbers. Leave it empty for no admin PIN. Pick a different one from the listening
+        PIN.</span></label>
+    <p class="hint">There's no button for it on the page: open your visitors' link, tap the title five times
+      quickly, and type the PIN. Your phone remembers it until you change the PIN.</p>
+    <p class="hint pub-note" id="pub-admin-note"></p>
+  </section>
   </div>
   <div class="pub-panel" id="pub-panel-shows" role="tabpanel" aria-labelledby="pub-tab-shows" hidden>
   <section class="card pub-card">

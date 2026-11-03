@@ -135,7 +135,7 @@ def test_settings_are_cleaned():
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "look": public.clean_look(None), "hours": public.DEFAULT_HOURS, "words": {},
-        "listen": False, "listen_pin": "",
+        "listen": False, "listen_pin": "", "admin_pin": "",
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -856,3 +856,95 @@ async def test_the_page_asks_for_its_files_by_what_is_in_them(client):
     # The editor's preview gets the same.
     resp = await client.get("/public-preview/")
     assert f"public.js?v={stamp}" in await resp.text()
+
+
+async def test_admin_pin_is_cleaned_and_kept_from_visitors(client):
+    assert public.clean(None)["admin_pin"] == ""
+    assert public.clean({"admin_pin": " 8642 "})["admin_pin"] == "8642"
+    for bad in ("12", "123456789", "12a4", None):
+        assert public.clean({"admin_pin": bad})["admin_pin"] == ""
+    await client.put("/api/public", json={"on": True, "admin_pin": "8642"})
+    _, st, _ = await _visitor(client, "/api/state")
+    assert "8642" not in str(st) and st["admin"] is False
+    assert (await (await client.get("/api/public")).json())["admin_pin"] == "8642"
+
+
+async def _unlock(client, pin="8642"):
+    status, ok, _ = await _visitor(client, "/api/admin", {"pin": pin})
+    assert status == 200 and ok["pass"]
+    return {"X-Admin": ok["pass"]}
+
+
+async def test_the_admin_pin_unlocks_only_with_the_right_pin_and_code(client):
+    await client.put("/api/public", json={"on": True})
+    status, _, _ = await _visitor(client, "/api/admin", {"pin": "8642"})
+    assert status == 403  # no admin PIN set: nothing to unlock
+    await client.put("/api/public", json={"admin_pin": "8642"})
+    status, _, _ = await _visitor(client, "/api/admin", {"pin": "8642"}, code=False)
+    assert status == 403
+    status, text, _ = await _visitor(client, "/api/admin", {"pin": "1111"})
+    assert status == 403 and "isn't right" in text
+    me = await _unlock(client)
+    _, st, _ = await _visitor(client, "/api/state", headers=me)
+    assert st["admin"] is True
+    # A made-up pass is no pass, and changing the PIN ends the old one.
+    _, st, _ = await _visitor(client, "/api/state", headers={"X-Admin": "0" * 32})
+    assert st["admin"] is False
+    await client.put("/api/public", json={"admin_pin": "2222"})
+    _, st, _ = await _visitor(client, "/api/state", headers=me)
+    assert st["admin"] is False
+    # Wrong guesses are slowed down, and don't hold up the listening PIN.
+    for _ in range(public.MAX_PIN_TRIES):
+        await _visitor(client, "/api/admin", {"pin": "0000"})
+    status, _, _ = await _visitor(client, "/api/admin", {"pin": "2222"})
+    assert status == 429
+    await client.put("/api/public", json={"listen": True, "listen_pin": "4321"})
+    status, _, _ = await _visitor(client, "/api/listen", {"pin": "4321"})
+    assert status == 200
+
+
+async def test_admin_skips_nearby_hours_limits_and_the_page_being_off(client):
+    client.app[server.SCHEDULER].where = lambda: (HOME, "you")
+    await client.put("/api/public", json={
+        "on": False, "items": [{"kind": "show", "id": "party"}, {"kind": "show", "id": "quiet"}],
+        "per_phone": 1, "queue": 1, "admin_pin": "8642",
+        "hours": {"on": True, "start": "03:00", "end": "03:01", "days": [0]}})
+    me = await _unlock(client)
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers=FAR)
+    assert st["open"] is False and st["choices"] == []
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers={**FAR, **me})
+    assert st["open"] and st["admin"] and st["hours"] == {"open": True} and st["needs_location"] is False
+    assert {c["id"] for c in st["choices"]} == {"party", "quiet"}
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=FAR)
+    assert status == 409
+    runner = client.app[server.RUNNER]
+    await runner.play("party")  # something's on, so requests wait
+    for show in ("party", "quiet", "party"):  # past one per phone and a queue of one
+        status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": show},
+                                         headers={**FAR, **me})
+        assert status == 200, text
+    assert len(runner.requests) == 3
+    _, near, _ = await _visitor(client, "/api/near", {}, headers={**FAR, **me})
+    assert near == {"near": True}
+    await runner.stop()
+
+
+async def test_admin_listens_without_the_pin_or_being_nearby(client):
+    client.app[server.SCHEDULER].where = lambda: (HOME, "you")
+    await client.put("/api/public", json={"on": False, "listen": True, "listen_pin": "4321", "admin_pin": "8642"})
+    me = await _unlock(client)
+    status, _, _ = await _visitor(client, "/api/listen", {}, headers=FAR)
+    assert status == 409  # visitors are off
+    status, ok, _ = await _visitor(client, "/api/listen", {}, headers={**FAR, **me})
+    assert status == 200 and ok["token"] and "pass" not in ok
+    status, now, _ = await _visitor(client, f"/api/listen/now?token={ok['token']}", headers={**FAR, **me})
+    assert status == 200 and now == {"playing": False}
+    status, _, _ = await _visitor(client, f"/api/listen/now?token={ok['token']}", headers=FAR)
+    assert status == 409
+
+
+def test_admin_song_links_only_work_with_their_own_signature(tmp_path):
+    from halidayshow.storage import Storage
+    st = Storage(tmp_path / "config", tmp_path / "media")
+    p = public.clean({"code": "abcdef23", "admin_pin": "8642"})
+    assert public.song_sig(st, p, "k", True) != public.song_sig(st, p, "k")

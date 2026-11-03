@@ -128,3 +128,7 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-nudge-row button { padding: 8px 12px; }
 .pp-nudge-value { flex: 1 1 0; min-width: 0; font-size: .9375em; text-align: center; font-variant-numeric: tabular-nums; }
 .pp-nudge .pp-hint { margin: 6px 0 0; }
+.pp-admin { border-style: dashed; margin-bottom: calc(14px * var(--s)); }
+.pp-admin .pp-pin { margin-top: 0; }
+.pp-admin .pp-pin-row { flex-wrap: wrap; margin-top: 8px; }
+#pp-title { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
