@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.291
+
+- While HA-liday Show first loads, it says **Loading your shows…** over the page, so **Library → Shows** no longer looks empty for a moment. If it can't load, it says why, with **Try again**.
+
 ## 0.2.290
 
 - **Play** with **Lights** on starts much sooner after an edit: the show's light frames are now packed small before they're sent, so **Sending…** takes a fraction of the time (often a few seconds less on a long show, more on a phone). Scenes and playlist blocks are sent packed too.
