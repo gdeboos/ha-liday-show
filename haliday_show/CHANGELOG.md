@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.296
+
+- Automations without MQTT can put a season's props out or pack them away: send `{action: season, season: Halloween, out: true}` (or `out: false`) to the app, as you do for shows and scenes. The guide's **Without MQTT** section has the details.
+
 ## 0.2.295
 
 - Any clip can have **Glitter**: white sparkles twinkling over its effect, such as a red chase with glitter on it. Find it under **Glitter** in the Selection panel, with **Amount** and **Colour**. Scenes have a **Glitter** slider on each light's row too. Old shows look exactly as they did.

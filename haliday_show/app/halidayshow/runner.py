@@ -78,6 +78,7 @@ class Runner:
         self._durations: dict[str, tuple[float, float]] = {}  # show id -> (baked file's mtime, seconds)
         self.scene: dict | None = None  # the scene on, or waiting to come back after a show: {id, name}
         self.live = None  # livemusic.LiveMusic, set by the server, for scenes with React to music
+        self.seasons_changed = None  # set by the server: tells MQTT a season was switched by a command
         self.scene_playing = False  # its frames are what the lights are showing now
         self._idle_since: float | None = None
 

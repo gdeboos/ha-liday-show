@@ -500,3 +500,41 @@ async def test_a_visitor_waits_for_the_pause_after_a_show_as_before_blocks(runne
     assert (a, b, c) == ("one", "two", "one")
     assert 1 <= t2 - t1 < 1.9  # one 0.1 s show, then the pause
     assert 1 <= t3 - t2 < 1.9  # the visitor's show, then one pause (two would be over 2 s)
+
+
+async def test_the_season_command_puts_props_out_and_away(runner):
+    from halidayshow import seasons
+    storage = runner.storage
+    storage.save_devices([{"id": "a", "ip": "127.0.0.1", "segments": 1},
+                          {"id": "ghost", "ip": "127.0.0.2", "segments": 1, "seasons": ["halloween"]}])
+    told = []
+    runner.seasons_changed = lambda: told.append(True)
+    await runner.play("party")
+    runner.player.devices["ghost"] = {"id": "ghost", "ip": "127.0.0.2"}
+    assert await commands.handle(runner, '{"action": "season", "season": "Halloween", "out": false}') == "halloween packed away"
+    assert not seasons.load(storage.load_settings())[0]["out"]
+    assert "ghost" not in runner.player.devices  # gone dark straight away
+    assert told == [True]  # Home Assistant's switch follows, with MQTT
+    assert await commands.handle(runner, {"action": "season", "season": "halloween", "out": True}) == "halloween out"
+    assert seasons.load(storage.load_settings())[0]["out"]
+    assert await commands.handle(runner, "season Halloween off") == "halloween packed away"
+    with pytest.raises(ValueError, match="no season"):
+        await commands.handle(runner, '{"action": "season", "season": "Easter", "out": true}')
+    with pytest.raises(ValueError, match="out"):
+        await commands.handle(runner, '{"action": "season", "season": "Halloween"}')
+    await runner.stop()
+
+
+def test_season_commands_typed_as_text():
+    assert commands.parse("season Christmas lights out") == {"action": "season", "season": "Christmas lights", "out": True}
+    assert commands.parse("season Halloween away")["out"] is False
+    assert commands.parse("season Halloween on")["out"] is True
+    assert commands.parse("season Christmas lights") == {"action": "season", "season": "Christmas lights"}  # no out: refused later
+    assert commands.parse("season") == {"action": "season", "season": ""}
+
+
+async def test_a_season_typed_with_extra_spaces_is_found(runner):
+    settings = runner.storage.load_settings()
+    settings["seasons"] = [{"id": "xmas", "name": "Christmas lights", "out": True}]
+    runner.storage.save_settings(settings)
+    assert await commands.handle(runner, {"action": "season", "season": " christmas   LIGHTS ", "out": False}) == "xmas packed away"

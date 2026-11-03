@@ -2560,6 +2560,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[OUTPUT].ha = app[HA]
         app[RUNNER] = Runner(app[STORAGE], app[PLAYER], app[HA])
         app[MQTT] = MqttBridge(app[RUNNER])
+        app[RUNNER].seasons_changed = app[MQTT].refresh
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
         app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run()), asyncio.create_task(app[RUNNER].watch_scene())]
         app[LIVE] = LiveMusic(lambda: {d["ip"]: d.get("name") for d in app[STORAGE].load_devices() if d.get("ip")})

@@ -310,8 +310,9 @@ which season each belongs to, and switch a season off when its props are packed 
   straight away. **Test** and previews on the light are off for it, it's marked **packed away** in the
   list, and the house view draws it dimmed.
 - Deleting a season makes its lights all-year lights again.
-- With MQTT set up, each season is also a switch in Home Assistant, so an automation can put a season's
-  props out or pack them away (see [With MQTT](automations.md#with-mqtt)).
+- An automation can put a season's props out or pack them away: with MQTT, each season is a switch in
+  Home Assistant (see [With MQTT](automations.md#with-mqtt)); without it, send the app a season command (see
+  [Without MQTT](automations.md#without-mqtt)).
 - **A show's season:** in **⚙ Show settings…** (or as you make it with **+ New show**), pick its
   **Season**. A Halloween show lists your all-year lights and your Halloween props, not your Christmas
   ones. **Any season** (the start for every show) lists every light. A light that's out of the show's
