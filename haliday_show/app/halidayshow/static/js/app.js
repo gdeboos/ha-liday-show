@@ -14,6 +14,7 @@ import {
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
+import { splitVocals } from "./splitvocals.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic } from "./housescenes.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
@@ -7100,6 +7101,15 @@ function songKid(kind, icon, name, badge, lines, actions) {
   return row;
 }
 
+// Split vocals… for a song's row (splitvocals.js): its vocals and music saved as two new songs.
+function splitButton(r) {
+  const split = button("Split vocals…", () => splitVocals(r.ref, { api, askYes, status: (text, kind) => status(text, kind, "songs"),
+    songs: () => songRowsCache.map((x) => x.ref), songsChanged: () => renderSongsPage() }), "ghost");
+  split.setAttribute("aria-label", `Split ${r.name} into its vocals and music`);
+  split.title = "Split the song into its vocals and the music behind them, saved as two new songs. An AI does it in your browser";
+  return split;
+}
+
 function editKid(e) {
   const r = e.row, d = e.draft;
   const details = document.createElement("div");
@@ -7126,7 +7136,7 @@ function editKid(e) {
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   rm.disabled = !r.own;
-  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, ren, dup, rm].filter(Boolean));
+  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, ren, dup, splitButton(r), rm].filter(Boolean));
   row.title = r.file;
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
@@ -7255,6 +7265,7 @@ function songRow(r) {
     dup.title = "A copy of the song file beside it, to cut a different way";
     actions.append(ren, dup);
   }
+  actions.append(splitButton(r));
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   if (!r.own) {

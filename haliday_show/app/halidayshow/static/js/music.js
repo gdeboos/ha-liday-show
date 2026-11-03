@@ -12,6 +12,7 @@ import { evenOut, loudness } from "./loudness.js";
 import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
+import { splitVocals } from "./splitvocals.js";
 import { askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
@@ -2737,6 +2738,10 @@ export class MusicEditor {
     $("music-cut").addEventListener("click", () => this.cutSelection());
     $("music-keep").addEventListener("click", () => this.keepSelection());
     $("music-sample").addEventListener("click", () => this.saveSample());
+    $("music-split").addEventListener("click", () => {
+      if (!this.base) return this.host.status("Open a song first", "hint");
+      splitVocals(this.base, { ...this.host, askYes, songs: () => this.host.songs() });
+    });
     $("music-insert").addEventListener("click", () => this.addSong(false));
     $("music-append").addEventListener("click", () => this.addSong(true));
     $("music-undo").addEventListener("click", () => this.undo(-1));

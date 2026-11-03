@@ -785,6 +785,20 @@ play the lights only). An archived song moves to an **Archived** folder inside H
 folder, where it's out of HA-liday Show's song lists but still in Home Assistant's Media. Restoring it
 puts it back and gives it back to the shows that were left without a song.
 
+#### Split vocals
+
+**Split vocals…** (under a song's **⋯** in **Library → Songs**, or in the Music editor's **Edit** panel)
+separates a song into its singing and the music behind it, and saves both as new songs beside it:
+"Jingle Bells (vocals)" and "Jingle Bells (music)". Use the music as a backing track, or put the vocals
+on a [layer](#layers) over another song for a mash-up. Shows that use the original are left alone.
+
+An AI model does it, in your browser, on the song as it is (not a draft's edits). The first time, your
+browser downloads it, about 90 MB, through HA-liday Show, and keeps it for next time where it can.
+It's quickest on a computer whose browser can use the graphics card (recent Chrome or Edge): a few
+minutes for a song. Otherwise it runs on the processor and can take as long as the song lasts, many
+times over, so leave the page open and come back. Songs with clear lead vocals split best; backing
+singers and effects can stay in the music, and a little of the music in the vocals.
+
 ### Samples
 
 **Library → Samples** keeps short sounds, such as sleigh bells, a "ho ho ho" or a voice saying "Merry
@@ -2436,6 +2450,7 @@ You set everything with these settings (environment variables). All are optional
 | `ANTHROPIC_API_KEY` | A Claude API key for the AI, instead of Home Assistant's. |
 | `HALIDAY_SHOW_AI_TASK_ENTITY` | Which Home Assistant AI Task to use, if you have several. |
 | `HALIDAY_SHOW_MQTT_HOST` | Your MQTT broker, for the show entities. Also `_PORT`, `_USERNAME` and `_PASSWORD`. |
+| `HALIDAY_SHOW_STEMS_FROM` | Where [Split vocals](#split-vocals) gets its AI files, for an install with no internet: a web address holding `model.onnx`, `ort.webgpu.min.mjs`, `ort-wasm-simd-threaded.jsep.mjs` and `ort-wasm-simd-threaded.jsep.wasm`. Leave it unset otherwise. |
 
 > **Speakers:** Home Assistant plays songs from its own **media** folder, so a speaker can only play
 > a song if `HALIDAY_SHOW_MEDIA` is that same folder (shared over the network, for example).
