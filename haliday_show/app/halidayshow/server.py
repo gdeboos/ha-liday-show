@@ -1153,24 +1153,35 @@ def _eq_band(v) -> float | None:
     return round(float(v), 1)
 
 
+def _eq_filter(v) -> float | None:
+    """The DJ filter: -100 (muffled) to 100 (thin), 0 off."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not -100 <= v <= 100:
+        return None
+    return round(float(v), 1)
+
+
 def _clean_eq(eq) -> dict | None:
-    """Bass, mid and treble faders (dB, -24 meaning off) for the song or a layer, with changes at
-    points in the song: {bass, mid, treble, changes: [{anchor: {song, t}, bass, mid, treble, glide}]}."""
+    """Bass, mid and treble faders (dB, -24 meaning off) and the DJ filter (optional) for the song or a
+    layer, with changes at points in the song: {bass, mid, treble, filter, changes: [{anchor: {song, t},
+    bass, mid, treble, filter, glide}]}. A filter of 0 isn't saved, so drafts without one look as before."""
     if not isinstance(eq, dict):
         return None
     out = {b: _eq_band(eq.get(b, 0)) for b in EQ_BANDS}
-    changes = eq.get("changes", [])
-    if None in out.values() or not isinstance(changes, list) or len(changes) > MAX_EQ_CHANGES:
+    changes, flt = eq.get("changes", []), _eq_filter(eq.get("filter", 0))
+    if None in out.values() or flt is None or not isinstance(changes, list) or len(changes) > MAX_EQ_CHANGES:
         return None
+    if flt:
+        out["filter"] = flt
     out["changes"] = []
     for c in changes:
         if not isinstance(c, dict) or not isinstance(c.get("anchor"), dict):
             return None
         bands = {b: _eq_band(c.get(b, 0)) for b in EQ_BANDS}
         song, t, glide = _song_ref(c["anchor"].get("song")), _seconds(c["anchor"].get("t"), 86400), _seconds(c.get("glide", 1), 30)
-        if None in (*bands.values(), song, t, glide):
+        cf = _eq_filter(c.get("filter", 0))
+        if None in (*bands.values(), song, t, glide, cf):
             return None
-        out["changes"].append({"anchor": {"song": song, "t": t}, **bands, "glide": glide})
+        out["changes"].append({"anchor": {"song": song, "t": t}, **bands, **({"filter": cf} if cf else {}), "glide": glide})
     return out
 
 

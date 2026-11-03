@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.302
+
+- The Music editor's **EQ** panel has a **Filter**, like a DJ mixer's: slide it left to muffle the song or a layer, right to thin it out. It changes partway through with **+ Change here**, gliding like the faders, so you can sweep it for a build-up and drop. It's in **Make song file**, and a purple line on the waveform shows it.
+
 ## 0.2.301
 
 - The Music editor's waveform now shows what the mixer does. A grey band hangs down from the top where a layer quietens the song (deeper for a bigger dip, labelled such as **Song −16 dB**), and thin orange, green and blue lines along the bottom show the song's bass, mid and treble, gliding into each change.
