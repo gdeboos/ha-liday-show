@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.299
+## 0.2.301
 
 - The Music editor's waveform now shows what the mixer does. A grey band hangs down from the top where a layer quietens the song (deeper for a bigger dip, labelled such as **Song −16 dB**), and thin orange, green and blue lines along the bottom show the song's bass, mid and treble, gliding into each change.
 
