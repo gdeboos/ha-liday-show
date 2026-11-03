@@ -346,12 +346,22 @@ def _song_file(storage: Storage, show: dict | None) -> Path | None:
 
 
 def _cover_file(storage: Storage, show_ids: list[str]) -> Path | None:
-    """The song whose cover art a show (or a playlist, its first show that has some) is shown with."""
+    """What a show (or a playlist, its first show that has one) is pictured with: the show's own
+    picture (a JPEG in the shows folder), else its song's cover art."""
     for sid in show_ids:
+        if (own := storage.show_picture(sid)) is not None:
+            return own
         song = _song_file(storage, storage.load_show(sid))
         if song is not None and songtags.cached_cover(song):
             return song
     return None
+
+
+def _tile_colours(show: dict | None) -> list[str]:
+    """A show's palette colours, for the tile visitors see when it has no picture or cover art."""
+    pal = (show or {}).get("palette")
+    cols = pal.get("colors") if isinstance(pal, dict) else None
+    return [c.lower() for c in cols if isinstance(c, str) and _HEX.match(c)][:4] if isinstance(cols, list) else []
 
 
 _COVER_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
@@ -361,6 +371,11 @@ def cover_of(storage: Storage, pick: dict) -> tuple[str, bytes] | None:
     """A show's or playlist's cover art as visitors get it: with any hidden details taken out
     (imagemeta), and only in a kind of picture that can be checked for them."""
     song = _cover_file(storage, pick["shows"])
+    if song is not None and song.parent == storage.shows_dir:
+        try:
+            return "image/jpeg", song.read_bytes()  # a show's own picture, cleaned when it was added
+        except OSError:
+            return None
     pic = songtags.cached_cover(song) if song else None
     if not pic or pic[0] not in _COVER_TYPES:
         return None
@@ -378,12 +393,14 @@ def _choices(storage: Storage, today: date) -> list[dict]:
             if not _offered(storage, it["id"], show):
                 continue
             pick = {"kind": "show", "id": it["id"], "name": show.get("name") or it["id"], "shows": [it["id"]]}
+            pick["colours"] = _tile_colours(show)
         else:
             pl = by_id.get(it["id"])
             shows = [s for s in pl["shows"] if _offered(storage, s)] if pl else []
             if not shows:
                 continue
             pick = {"kind": "playlist", "id": it["id"], "name": pl["name"], "shows": shows, "gap": pl["gap"]}
+            pick["colours"] = _tile_colours(storage.load_show(shows[0]))
         # A number that changes with the cover, so pages fetch a new one (0: none).
         song = _cover_file(storage, pick["shows"])
         try:
@@ -429,6 +446,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
     return {
         "open": p["on"],
         "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"], "cover": c["cover"] if look["covers"] else 0,
+                     "colours": c["colours"] if look["covers"] else [],
                      "minutes": max(1, round(runner.request_seconds(c) / 60))} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"]}

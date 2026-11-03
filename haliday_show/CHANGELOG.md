@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.300
+
+- Give a show its own picture: **⚙ Show settings… → Picture → Upload picture…**. It's used instead of the song's cover art in **Library → Shows** and on the public page. **Remove** goes back to the cover art.
+- A show with no picture and no cover art now gets a tile in its colours with its first letter, in the Library and on the public page, so every show has a picture.
+
 ## 0.2.299
 
 - Visitors on the public page now see each show's cover art beside its name, from its song (a playlist shows its first show's). Turn it off with **Show cover art** under **Public page → Shows → On the page**.

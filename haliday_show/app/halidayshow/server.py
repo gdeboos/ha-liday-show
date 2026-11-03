@@ -21,7 +21,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songtags, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songtags, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -631,6 +631,38 @@ async def rename_show(request):
         raise web.HTTPNotFound()
     request.app[MQTT].refresh()
     return web.json_response({"ok": True, "name": name})
+
+
+MAX_SHOW_PICTURE = 4 * 1024 * 1024
+
+
+async def put_show_picture(request):
+    """A show's own picture (a JPEG; the editor sends it squared and shrunk), shown instead of its
+    song's cover art here and on the public page. Hidden details (where it was taken) are taken out."""
+    show_id = _show_id(request)
+    st = request.app[STORAGE]
+    if st.load_show(show_id) is None:
+        raise web.HTTPNotFound(text="save the show first")
+    data = await request.read()
+    if len(data) > MAX_SHOW_PICTURE:
+        raise web.HTTPRequestEntityTooLarge(max_size=MAX_SHOW_PICTURE, actual_size=len(data))
+    clean = imagemeta.clean(data, ".jpg") if data.startswith(b"\xff\xd8") else None
+    if clean is None:
+        raise web.HTTPBadRequest(text="send the picture as a JPEG")
+    st.save_show_picture(show_id, clean)
+    return web.json_response({"picture": st.show_picture_version(show_id)})
+
+
+async def delete_show_picture(request):
+    request.app[STORAGE].delete_show_picture(_show_id(request))
+    return web.json_response({"picture": 0})
+
+
+async def get_show_picture(request):
+    p = request.app[STORAGE].show_picture(_show_id(request))
+    if p is None:
+        raise web.HTTPNotFound()
+    return web.FileResponse(p, headers={"Cache-Control": "private, max-age=300"})
 
 
 async def mark_show(request):
@@ -2633,6 +2665,9 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/shows/{id}/duplicate", duplicate_show)
     r.add_post("/api/shows/{id}/rename", rename_show)
     r.add_post("/api/shows/{id}/mark", mark_show)
+    r.add_get("/api/shows/{id}/picture", get_show_picture)
+    r.add_put("/api/shows/{id}/picture", put_show_picture)
+    r.add_delete("/api/shows/{id}/picture", delete_show_picture)
     r.add_post("/api/shows/{id}/archive", archive_show)
     r.add_post("/api/shows/{id}/restore", restore_show)
     r.add_get("/api/audio", list_audio)

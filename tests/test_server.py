@@ -1702,3 +1702,23 @@ async def test_cover_art_is_served_and_kept_on_wavs_made_from_a_song(client, tmp
     assert r.status == 200 and await r.read() == jpeg
     songs = {s["path"]: s for s in (await (await client.get("/api/songs")).json())["songs"]}
     assert songs["songs/art.mp3"]["cover"] is True and songs["songs/tune.mp3"]["cover"] is False
+
+
+async def test_a_show_can_have_its_own_picture(client):
+    # The smallest JPEG the picture cleaner reads all through.
+    photo = b"\xff\xd8\xff\xda\x00\x08\x01\x01\x00\x00\x3f\x00\x12\x34\xff\xd9"
+    sid = (await (await client.post("/api/shows", json={"name": "Pic"})).json())["id"]
+    assert (await client.put(f"/api/shows/{sid}/picture", data=photo)).status == 404  # not saved yet
+    await client.put(f"/api/shows/{sid}", json={"name": "Pic", "tracks": [], "palette": {"name": "X", "colors": ["#FF0000", "#00ff00", "bad"]}})
+    listed = lambda rows: next(s for s in rows if s["id"] == sid)  # noqa: E731
+    s = listed(await (await client.get("/api/shows")).json())
+    assert s["picture"] == 0 and s["colours"] == ["#ff0000", "#00ff00"]
+    assert (await client.put(f"/api/shows/{sid}/picture", data=b"not a jpeg")).status == 400
+    r = await client.put(f"/api/shows/{sid}/picture", data=photo)
+    assert r.status == 200 and (await r.json())["picture"] > 0
+    assert await (await client.get(f"/api/shows/{sid}/picture")).read() == photo
+    # A copy keeps it; deleting the show takes it too.
+    copy = (await (await client.post(f"/api/shows/{sid}/duplicate", json={"name": "Pic copy"})).json())["id"]
+    assert (await client.get(f"/api/shows/{copy}/picture")).status == 200
+    assert (await client.delete(f"/api/shows/{sid}/picture")).status == 200
+    assert (await client.get(f"/api/shows/{sid}/picture")).status == 404

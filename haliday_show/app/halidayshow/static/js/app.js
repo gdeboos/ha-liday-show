@@ -44,7 +44,7 @@ import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLi
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
-import { copyName, inSeasonFilter, length as fmtLength, showRows, songName } from "./showlist.js";
+import { copyName, inSeasonFilter, length as fmtLength, showRows, showThumb, songName, tileBackground } from "./showlist.js";
 import {
   buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, suggest, suggestSong, withPictureIds,
 } from "./sharing.js";
@@ -6239,7 +6239,7 @@ function drawShowSeasons(picked, count) {
 function showRow(r) {
   const row = document.createElement("div");
   row.className = "show-row";
-  if (r.cover) row.append(coverImg(r.cover, r.cover.v));
+  row.append(showThumbEl(r.id, r.thumb));
   row.setAttribute("role", "listitem");
   row.dataset.showId = r.id;
   const main = document.createElement("div");
@@ -7149,15 +7149,58 @@ function draftKid(d) {
 }
 
 // A song's cover art beside its row, from the song file's own tags.
-function coverImg(ref, v = "") {
+function coverImg(ref, v = "", url = `api/audio/cover?${new URLSearchParams({ source: ref.source, path: ref.path, v: String(v) })}`) {
   const img = document.createElement("img");
   img.className = "song-cover";
   img.alt = "";
   img.loading = "lazy";
   img.decoding = "async";
-  img.src = `api/audio/cover?${new URLSearchParams({ source: ref.source, path: ref.path, v: String(v) })}`;
+  img.src = url;
   img.addEventListener("error", () => img.remove());
   return img;
+}
+
+// Show settings → Picture: what pictures the show now, and Upload picture… / Remove.
+function renderShowPicture() {
+  const s = showListCache.find((x) => x.id === app.showId);
+  const thumb = s ? showThumb(s) : showThumb({ name: app.show.name, colours: app.show.palette?.colors || [] });
+  $("show-pic").replaceChildren(showThumbEl(app.showId || "", thumb));
+  $("show-pic-upload").disabled = !app.showId;
+  $("show-pic-remove").hidden = !thumb.picture;
+  $("show-pic-hint").textContent = !app.showId ? "Save the show first, then give it a picture."
+    : thumb.picture ? "Your picture, shown beside the show here and on the public page."
+      : thumb.cover ? "Its song's cover art. Upload a picture to use that instead."
+        : "Its colours, as it has no cover art. Upload a picture to show that instead.";
+}
+
+// A picture for a show: squared from the middle and shrunk to 512 pixels, sent as a JPEG.
+async function uploadShowPicture(id, file) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const side = Math.min(bmp.width, bmp.height), size = Math.min(512, side);
+    const c = Object.assign(document.createElement("canvas"), { width: size, height: size });
+    c.getContext("2d").drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, size, size);
+    const blob = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.88));
+    await api(`api/shows/${encodeURIComponent(id)}/picture`, { method: "PUT", body: blob, headers: { "Content-Type": "image/jpeg" } });
+    status("Picture saved", "saved", "show");
+  } catch (err) {
+    status(`Couldn't use that picture: ${err.message || "it isn't a picture this browser can open"}`, true, "show");
+  }
+  await renderShowLists();
+  renderShowPicture();
+}
+
+// A show's picture, cover art or palette tile at the start of its row (showThumb).
+function showThumbEl(id, thumb) {
+  if (thumb?.picture) {
+    return coverImg(null, "", `api/shows/${encodeURIComponent(id)}/picture?v=${thumb.picture}`);
+  }
+  if (thumb?.cover) return coverImg(thumb.cover, thumb.cover.v);
+  const tile = Object.assign(document.createElement("span"), { className: "song-cover show-tile", textContent: thumb?.tile?.letter || "♪" });
+  tile.setAttribute("aria-hidden", "true");
+  const bg = tileBackground(thumb?.tile?.colours);
+  if (bg) tile.style.background = bg;
+  return tile;
 }
 
 function songRow(r) {
@@ -10192,6 +10235,7 @@ function wire() {
     $("btn-delete").disabled = !app.showId;
     $("show-in-progress").checked = !app.showId || app.show.in_progress === true;
     $("show-in-progress").disabled = !app.showId;
+    renderShowPicture();
     fillSeasonPicker($("show-season"), app.show.season);
     renderShowPalette();
     renderShowBrightness();
@@ -10206,6 +10250,21 @@ function wire() {
     renderInspector();
     renderShowBrightness(); // its list of lights follows the lanes
     timeline.layout();
+  });
+  $("show-pic-upload").addEventListener("click", () => $("show-pic-file").click());
+  $("show-pic-file").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (file && app.showId) await uploadShowPicture(app.showId, file);
+  });
+  $("show-pic-remove").addEventListener("click", async () => {
+    if (!app.showId) return;
+    try {
+      await api(`api/shows/${encodeURIComponent(app.showId)}/picture`, { method: "DELETE" });
+      status("Picture removed", "saved", "show");
+    } catch (err) { status(`Couldn't remove the picture: ${err.message}`, true, "show"); }
+    await renderShowLists();
+    renderShowPicture();
   });
   $("show-in-progress").addEventListener("change", async (e) => {
     const on = e.target.checked;

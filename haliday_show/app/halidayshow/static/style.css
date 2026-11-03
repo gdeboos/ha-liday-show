@@ -1402,3 +1402,7 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .duck-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .duck-by[hidden] { display: none; }
 .duck-by input[type=range] { width: 90px; vertical-align: middle; }
+/* A show with no picture or cover art: its palette's colours and its first letter. */
+.show-tile { display: grid; place-items: center; font-weight: 700; font-size: 20px; color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); background: var(--track); }
+.show-pic-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
