@@ -17,7 +17,7 @@ what it hears about 50 times a second to 239.0.0.1, UDP port 11988. Version 2 of
 
 Only that version is read; older WLEDs (the "00001" packet) are listed as heard but too old.
 Nothing is sent. Scenes with React to music read `now()` (react.py); the Live music card in
-Setup → Settings shows it. See docs/wled.md, "Live music".
+Setup → Live music shows it. See docs/wled.md, "Live music".
 """
 import asyncio
 import logging
@@ -134,7 +134,7 @@ class LiveMusic:
 
 
 def settings(storage) -> dict:
-    """Setup → Settings → Live music: which WLED listens ("any", or its IP), and how loud counts as music."""
+    """Setup → Live music: which WLED listens ("any", or its IP), and how loud counts as music."""
     s = storage.load_settings().get("live_music") or {}
     source = s.get("source") if isinstance(s.get("source"), str) and s.get("source") else "any"
     level = s.get("from") if isinstance(s.get("from"), int) and 0 <= s.get("from") <= 100 else 15

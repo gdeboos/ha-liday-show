@@ -57,23 +57,20 @@ browser, so each computer or phone keeps its own.
 
 ## Settings
 
-**Setup → Settings** holds the rest. Timing and Automations sit with the speakers, under **Setup →
+The rest of **Setup** is in its own tabs, one subject each. Timing and Automations sit with the speakers, under **Setup →
 Speakers**: **Light offset** for playing in the browser (positive values delay the lights), or the
 picked speaker's delay, and the exact `hassio.app_stdin` input for the open show.
 
-| Section | What's there |
+| Tab | What's there |
 | --- | --- |
-| Layout | Pick **Show**, **Music** or **Playlist**, then that editor's page layout, where every panel sits (including hidden ones) and its **Reset** button. |
-| Live music | What a WLED with a microphone hears (see [Live music](play-it.md#live-music)). |
-| Public page | **Let visitors start shows**, which adds the **Public page** tab (see [The public page](public-page.md#the-public-page)). |
-| AI | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](#setting-up-the-ai)). |
-| Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
-| Setup guide | **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](getting-started.md#quick-start)). |
-| Demo | **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](getting-started.md#the-demo)). |
-| Experimental | **Show the Labs tab**. |
+| **Editors** | Pick **Show**, **Music** or **Playlist**, then that editor's page layout, where every panel sits (including hidden ones) and its **Reset** button. |
+| **Live music** | What a WLED with a microphone hears (see [Live music](play-it.md#live-music)). |
+| **AI** | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](#setting-up-the-ai)). |
+| **Your data** | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
+| **More** | **Public page**: **Let visitors start shows**, which adds the **Public page** tab (see [The public page](public-page.md#the-public-page)). **Setup guide**: **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](getting-started.md#quick-start)). **Demo**: **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](getting-started.md#the-demo)). **Experimental**: **Show the Labs tab**. |
 
 **Labs** is a tab under **Setup** for working out new ways to drive Govee lights. It's hidden until you
-turn on **Show the Labs tab** under **Experimental**; that's saved in this browser, so each computer or
+turn on **Show the Labs tab** under **More → Experimental**; that's saved in this browser, so each computer or
 phone has its own. It holds:
 
 | Section | What's there |
@@ -83,7 +80,7 @@ phone has its own. It holds:
 
 ## Your data
 
-**Setup → Settings → Your data** puts everything HA-liday Show saves in one file, and back:
+**Setup → Your data** puts everything HA-liday Show saves in one file, and back:
 
 - **Export…** downloads a `.zip` of your lights (with their parts and groups), shows (archived ones
   too), scenes, palettes, presets, playlists, the schedule, settings (the public page's and your

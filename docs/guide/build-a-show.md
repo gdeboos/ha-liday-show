@@ -233,7 +233,7 @@ take it away:
 - **Archive** keeps it, out of the way. Archived shows and songs are listed, folded, under **Archived
   shows** and **Archived songs** at the foot of each list, and **Restore** brings one back.
 - **Delete for good…** removes it, after asking you once more. Before it does, HA-liday Show keeps a copy
-  of your shows and settings under **Setup → Settings → Your data** (*Before deleting*). A deleted song
+  of your shows and settings under **Setup → Your data** (*Before deleting*). A deleted song
   file itself can't be brought back.
 
 **Shows.** An archived show is skipped by playlists (they show it as *archived*) and can't be started

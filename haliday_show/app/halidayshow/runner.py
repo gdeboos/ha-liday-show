@@ -35,7 +35,7 @@ RESYNC_S = 1.0  # media players report position coarsely; only correct big jumps
 ENDING_S = 5.0  # a speaker that stops this close to the end of the show has just finished the song
 
 
-LIVE_SETTINGS_EVERY_S = 2.0  # how often a scene reacting to music looks at Setup → Settings → Live music again
+LIVE_SETTINGS_EVERY_S = 2.0  # how often a scene reacting to music looks at Setup → Live music again
 
 
 class RunnerError(Exception):

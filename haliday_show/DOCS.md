@@ -94,7 +94,7 @@ Help →** for the rest.
 The first time you open HA-liday Show, the **setup guide** opens and walks you through these steps in one
 window: add your lights, check each one, pick a speaker, choose the sample house or your own photo, and
 make your first show from a song. Every step can be skipped, **← Back** goes back, and you can run it
-again any time with **Run the setup guide** under **Setup → Settings**. Its first page also offers
+again any time with **Run the setup guide** under **Setup → More**. Its first page also offers
 **Try the demo** (see [The demo](#the-demo)). To do it by hand instead:
 
 1. **Setup → Devices**: press **+ Add a light**, pick what kind it is and follow the steps, then press
@@ -111,7 +111,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
    button or the `hassio.app_stdin` action.
 
 > **Just want to see it working?** On a fresh install, press **Try the demo** under **Setup → Devices**
-> (or **Setup → Settings → Demo**). See [The demo](#the-demo).
+> (or **Setup → More → Demo**). See [The demo](#the-demo).
 
 > **Tip:** lights not here yet? Add them as [planned lights](#lights-not-delivered-yet) and start
 > designing now. Once a song is picked, **✨ Generate** in the Show panel makes a whole first draft
@@ -126,7 +126,7 @@ music-box *Jingle Bells* made for HA-liday Show, free to use) to your songs, and
 in Christmas colours. Press **▶ Play** to watch it on the House panel. Nothing is sent to real lights.
 
 It's only offered while you have no lights, so it never mixes with your own. When you're done, press
-**Remove the demo** under **Setup → Settings → Demo**: the demo's lights, their places on the house and
+**Remove the demo** under **Setup → More → Demo**: the demo's lights, their places on the house and
 **Demo show** go, and your own shows are kept. The sample song stays in your songs, to use in your own
 shows if you like.
 
@@ -795,7 +795,7 @@ take it away:
 - **Archive** keeps it, out of the way. Archived shows and songs are listed, folded, under **Archived
   shows** and **Archived songs** at the foot of each list, and **Restore** brings one back.
 - **Delete for good…** removes it, after asking you once more. Before it does, HA-liday Show keeps a copy
-  of your shows and settings under **Setup → Settings → Your data** (*Before deleting*). A deleted song
+  of your shows and settings under **Setup → Your data** (*Before deleting*). A deleted song
   file itself can't be brought back.
 
 **Shows.** An archived show is skipped by playlists (they show it as *archived*) and can't be started
@@ -1666,14 +1666,14 @@ While a scene is on, starting a show or a playlist (from an editor, an automatio
 visitor) takes the lights over. When it finishes, or you stop it, the scene comes back after a
 couple of seconds, and its row says **Comes back after the show** meanwhile. To turn the lights off,
 press **■ Stop** on the scene, or **Stop** while only the scene is playing. **Remove…** deletes a
-scene for good, keeping a copy of all your data first under **Setup → Settings → Your data**.
+scene for good, keeping a copy of all your data first under **Setup → Your data**.
 
 Scenes are made for the lights you have when you edit them. If you add or change lights, open
 HA-liday Show and scenes are made again for the new lights.
 
 ### Live music
 
-**Setup → Settings → Live music** shows what a WLED light with a microphone hears: how loud it is, each
+**Setup → Live music** shows what a WLED light with a microphone hears: how loud it is, each
 beat, and the bass, middle and treble. A scene with **React to music** switched on follows it (see
 [React to music](#react-to-music) below).
 
@@ -1903,7 +1903,7 @@ Schedules you'd set on a playlist or scene before 0.2.233 were moved to the **Sc
 The public page lets people passing by start a show from their phone, usually by scanning a QR code
 on a sign outside. They see the shows and playlists you've picked, and nothing else of HA-liday Show.
 
-1. Open **Setup → Settings** and turn on **Let visitors start shows** under **Public page**. A **Public
+1. Open **Setup → More** and turn on **Let visitors start shows** under **Public page**. A **Public
    page** tab appears along the top.
 2. On the **Public page** tab, open **Shows** and, under **What visitors can pick**, press
    **+ Add shows or playlists…**. Tick as many as you like and press **Add**.
@@ -1920,11 +1920,15 @@ link in a new tab.
 
 | Page | What's there |
 | --- | --- |
-| **Access** | [Who can start shows](#who-can-start-shows), [Opening hours](#opening-hours), [Installing the page as an app](#installing-the-page-as-an-app) and your [Admin PIN](#admin-pin) |
-| **Shows** | [What visitors can pick](#what-visitors-can-pick), [On the page](#on-the-page): how long each lasts and the flashing lights warning, and [Listening on phones](#listening-on-phones) |
+| **Access** | [Who can start shows](#who-can-start-shows): the link and code, the sign and **Nearby only** (and [Installing the page as an app](#installing-the-page-as-an-app)) |
+| **Hours** | [Opening hours](#opening-hours) |
+| **Limits** | **Requests per phone** and **Queue length** ([Keeping it fair](#visitors-queue)) |
+| **Shows** | [What visitors can pick](#what-visitors-can-pick) and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
+| **Listening** | [Listening on phones](#listening-on-phones) |
+| **Admin** | Your [Admin PIN](#admin-pin) |
 | **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom |
 | **Words** | [Every message visitors read](#words), to change to your own |
-| **Queue** | [The visitors' queue](#visitors-queue) and its limits |
+| **Queue** | [The visitors' queue](#visitors-queue) as it is now |
 
 Beside them (below them on a narrower screen) the **Preview** shows the page as visitors with your
 code see it, and catches up as soon as you change something. Its buttons don't start anything.
@@ -2003,7 +2007,7 @@ address bar, with your code built in, so it keeps working however long ago it wa
 #### Admin PIN
 
 For trying the page out yourself, away from the house or out of hours. Type 4 to 8 numbers in **Admin
-PIN** on the **Access** page; leave it empty for none.
+PIN** on the **Admin** page; leave it empty for none.
 
 There's no button for it on the visitors' page, so nobody else goes looking. To unlock your phone:
 
@@ -2107,7 +2111,7 @@ Visitors can hear the music on their own phone, in time with the lights. It's ha
 outdoor speaker, or to keep things quiet for the neighbours. Your show's speaker, if it has one, plays
 as usual.
 
-1. On the **Shows** tab, under **Listening on phones**, turn on **Let visitors listen on their phone**.
+1. On the **Listening** page, turn on **Let visitors listen on their phone**.
 2. To keep it to yourself while you try it out, turn on **Needs a PIN to listen** and type a PIN of 4
    to 8 numbers.
 3. On your phone, open the visitors' link and press **🎧 Listen** in the card at the top (type the PIN
@@ -2185,7 +2189,7 @@ What visitors get:
   your own phone with the [Admin PIN](#admin-pin) too.
 - Visitors can't stop or skip anyone else's show.
 
-Keeping it fair:
+Keeping it fair, on the **Limits** page:
 
 - **Requests per phone** is how many shows one phone can have waiting (1 to start with). Once a
   visitor's show starts, they can pick another. It's a courtesy limit that someone determined could
@@ -2437,23 +2441,20 @@ browser, so each computer or phone keeps its own.
 
 ## Settings
 
-**Setup → Settings** holds the rest. Timing and Automations sit with the speakers, under **Setup →
+The rest of **Setup** is in its own tabs, one subject each. Timing and Automations sit with the speakers, under **Setup →
 Speakers**: **Light offset** for playing in the browser (positive values delay the lights), or the
 picked speaker's delay, and the exact `hassio.app_stdin` input for the open show.
 
-| Section | What's there |
+| Tab | What's there |
 | --- | --- |
-| Layout | Pick **Show**, **Music** or **Playlist**, then that editor's page layout, where every panel sits (including hidden ones) and its **Reset** button. |
-| Live music | What a WLED with a microphone hears (see [Live music](#live-music)). |
-| Public page | **Let visitors start shows**, which adds the **Public page** tab (see [The public page](#the-public-page)). |
-| AI | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](#setting-up-the-ai)). |
-| Your data | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
-| Setup guide | **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](#quick-start)). |
-| Demo | **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](#the-demo)). |
-| Experimental | **Show the Labs tab**. |
+| **Editors** | Pick **Show**, **Music** or **Playlist**, then that editor's page layout, where every panel sits (including hidden ones) and its **Reset** button. |
+| **Live music** | What a WLED with a microphone hears (see [Live music](#live-music)). |
+| **AI** | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](#setting-up-the-ai)). |
+| **Your data** | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
+| **More** | **Public page**: **Let visitors start shows**, which adds the **Public page** tab (see [The public page](#the-public-page)). **Setup guide**: **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](#quick-start)). **Demo**: **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](#the-demo)). **Experimental**: **Show the Labs tab**. |
 
 **Labs** is a tab under **Setup** for working out new ways to drive Govee lights. It's hidden until you
-turn on **Show the Labs tab** under **Experimental**; that's saved in this browser, so each computer or
+turn on **Show the Labs tab** under **More → Experimental**; that's saved in this browser, so each computer or
 phone has its own. It holds:
 
 | Section | What's there |
@@ -2463,7 +2464,7 @@ phone has its own. It holds:
 
 ## Your data
 
-**Setup → Settings → Your data** puts everything HA-liday Show saves in one file, and back:
+**Setup → Your data** puts everything HA-liday Show saves in one file, and back:
 
 - **Export…** downloads a `.zip` of your lights (with their parts and groups), shows (archived ones
   too), scenes, palettes, presets, playlists, the schedule, settings (the public page's and your
@@ -2527,7 +2528,7 @@ found). It's never sent the song itself.
 
 **Setup → Labs → Packet lab** is for experiments with Govee lights: it sends one light a message you
 choose and lists anything the light sends back. You won't need it to make shows. To see **Labs**, turn on
-**Show the Labs tab** under **Setup → Settings → Experimental**.
+**Show the Labs tab** under **Setup → More → Experimental**.
 
 1. Pick the **Light** (only Govee lights on the Devices tab with an IP address are offered).
 2. Pick a starting point under **Start from**, such as **Ask for its status** or **Realtime: rainbow**,

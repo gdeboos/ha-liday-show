@@ -838,7 +838,11 @@
     <button class="subtab" data-view="devices"><svg class="ico" aria-hidden="true"><use href="#i-devices"/></svg><b>Devices</b><span>Find, test and plan lights</span></button>
     <button class="subtab" data-view="speakers"><svg class="ico" aria-hidden="true"><use href="#i-speakers"/></svg><b>Speakers</b><span>Speakers and timing</span></button>
     <button class="subtab" data-view="house"><svg class="ico" aria-hidden="true"><use href="#i-house"/></svg><b>House</b><span>Photo and tracing</span></button>
-    <button class="subtab" data-view="settings"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><b>Settings</b><span>Layout, AI and more</span></button>
+    <button class="subtab" data-view="editors"><svg class="ico" aria-hidden="true"><use href="#i-layout"/></svg><b>Editors</b><span>Layout of each editor</span></button>
+    <button class="subtab" data-view="livemusic"><svg class="ico" aria-hidden="true"><use href="#i-mic"/></svg><b>Live music</b><span>WLED sound sync</span></button>
+    <button class="subtab" data-view="ai"><svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg><b>AI</b><span>Claude key and options</span></button>
+    <button class="subtab" data-view="data"><svg class="ico" aria-hidden="true"><use href="#i-data"/></svg><b>Your data</b><span>Export, import, backups</span></button>
+    <button class="subtab" data-view="settings"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><b>More</b><span>Public page, guide, demo</span></button>
     <button class="subtab" data-view="labs" id="tab-labs" hidden><svg class="ico" aria-hidden="true"><use href="#i-labs"/></svg><b>Labs</b><span>Packet lab and listening</span></button>
   </nav>
   <div class="section-body">
@@ -1069,7 +1073,7 @@
     </div>
   </div>
 </main>
-<main id="view-settings" class="view settings" hidden>
+<main id="view-editors" class="view settings" hidden>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-layout"/></svg>Layout</h2>
     <p class="hint">Each editor has its own layout. Pick one, then its page layout and where each panel sits. It's saved
@@ -1092,6 +1096,8 @@
       <p><button class="ghost layout-reset">Reset the Playlist editor's layout</button></p>
     </div>
   </section>
+</main>
+<main id="view-livemusic" class="view settings" hidden>
   <section class="card" id="live-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-mic"/></svg>Live music</h2>
     <p class="hint">What a WLED light with a microphone hears, sent over your network with its sound sync. Coming next:
@@ -1116,13 +1122,8 @@
       <input id="lm-from" type="range" min="0" max="100" step="1">
       <span class="hint">Quieter than this, such as chatter, counts as silence.</span></p>
   </section>
-  <section class="card" id="public-card">
-    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Public page</h2>
-    <p class="hint">Lets people passing by start a show from their phone. Turning it on adds a <b>Public page</b>
-      tab, where you choose what they can pick and when.</p>
-    <p><label><input id="pub-on" type="checkbox"> Let visitors start shows</label></p>
-    <p><button id="pub-open" hidden>Open the Public page tab</button></p>
-  </section>
+</main>
+<main id="view-ai" class="view settings" hidden>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg>AI</h2>
     <p class="hint" id="ai-status">Checking…</p>
@@ -1132,6 +1133,8 @@
       one such as Ollama. It sends the AI your lights' names, the effect list, the song's beats and sections,
       and the selection; never the song itself.</p>
   </section>
+</main>
+<main id="view-data" class="view settings" hidden>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-data"/></svg>Your data</h2>
     <p class="hint">Everything HA-liday Show saves: your lights, shows, palettes, presets, settings and house photo, in
@@ -1141,6 +1144,15 @@
       <button id="btn-afresh" class="ghost danger">Start afresh…</button></p>
     <p class="hint">Before an import or a fresh start, a copy of what you had is kept here, so you can put it back.</p>
     <div id="data-copies" class="wz-list"></div>
+  </section>
+</main>
+<main id="view-settings" class="view settings" hidden>
+  <section class="card" id="public-card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Public page</h2>
+    <p class="hint">Lets people passing by start a show from their phone. Turning it on adds a <b>Public page</b>
+      tab, where you choose what they can pick and when.</p>
+    <p><label><input id="pub-on" type="checkbox"> Let visitors start shows</label></p>
+    <p><button id="pub-open" hidden>Open the Public page tab</button></p>
   </section>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg>Setup guide</h2>
@@ -1223,11 +1235,15 @@
 </div>
 <main id="view-public" class="view pub-section" hidden>
   <nav class="subnav" role="tablist" aria-label="Public page" aria-orientation="vertical">
-    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-access" data-pubtab="access" aria-controls="pub-panel-access"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><b>Access</b><span>Link, code and hours</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-access" data-pubtab="access" aria-controls="pub-panel-access"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><b>Access</b><span>Link, code, sign and Nearby</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-hours" data-pubtab="hours" aria-controls="pub-panel-hours"><svg class="ico" aria-hidden="true"><use href="#i-timing"/></svg><b>Hours</b><span>Opening hours and the neighbours</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-limits" data-pubtab="limits" aria-controls="pub-panel-limits"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Limits</b><span>Fair turns for everyone</span></button>
     <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-shows" data-pubtab="shows" aria-controls="pub-panel-shows"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg><b>Shows</b><span>What visitors can pick</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-listening" data-pubtab="listening" aria-controls="pub-panel-listening"><svg class="ico" aria-hidden="true"><use href="#i-listen"/></svg><b>Listening</b><span>Music on visitors' phones</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-admin" data-pubtab="admin" aria-controls="pub-panel-admin"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><b>Admin</b><span>Your PIN for your phone</span></button>
     <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-look" data-pubtab="look" aria-controls="pub-panel-look"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg><b>Look</b><span>Picture and colours</span></button>
     <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-words" data-pubtab="words" aria-controls="pub-panel-words"><svg class="ico" aria-hidden="true"><use href="#i-presets"/></svg><b>Words</b><span>What visitors read</span></button>
-    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-queue" data-pubtab="queue" aria-controls="pub-panel-queue"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Queue</b><span>Visitors waiting</span></button>
+    <button type="button" role="tab" class="subtab pub-tab" id="pub-tab-queue" data-pubtab="queue" aria-controls="pub-panel-queue"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg><b>Queue</b><span>Waiting now, and tonight</span></button>
   </nav>
   <div class="section-body view pub-view">
   <div class="pub-settings">
@@ -1260,6 +1276,8 @@
         <label class="pub-inline">within <input id="pub-distance" type="number" min="25" max="2000" step="25"> m</label></div>
       <p class="hint pub-note" id="pub-nearby-hint"></p></div>
   </section>
+  </div>
+  <div class="pub-panel" id="pub-panel-hours" role="tabpanel" aria-labelledby="pub-tab-hours" hidden>
   <section class="card pub-card" id="pub-hours-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-timing"/></svg>Opening hours</h2>
     <p class="hint">When visitors can start shows. Outside these hours the page says when to come back, and
@@ -1283,19 +1301,17 @@
     </div>
     <p class="hint pub-note" id="pub-hours-hint" aria-live="polite"></p>
   </section>
-  <section class="card pub-card" id="pub-admin-card">
-    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Admin PIN</h2>
-    <p class="hint">Lets your own phone past <b>Nearby only</b> and the opening hours, from anywhere, at any time.
-      It also skips the listening PIN, the limit per phone and a full queue, and works while
-      <b>Let visitors start shows</b> is off, so you can try things before you open.</p>
-    <label class="field">PIN
-      <input id="pub-admin-pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off"
-        placeholder="None">
-      <span class="hint">4 to 8 numbers. Leave it empty for no admin PIN. Pick a different one from the listening
-        PIN.</span></label>
-    <p class="hint">There's no button for it on the page: open your visitors' link, tap the title five times
-      quickly, and type the PIN. Your phone remembers it until you change the PIN.</p>
-    <p class="hint pub-note" id="pub-admin-note"></p>
+  </div>
+  <div class="pub-panel" id="pub-panel-limits" role="tabpanel" aria-labelledby="pub-tab-limits" hidden>
+  <section class="card pub-card" id="pub-limits-card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-playlists"/></svg>Fair turns</h2>
+    <p class="hint">How many picks visitors can have waiting, so everyone gets a turn.</p>
+    <div class="pub-grid">
+      <label class="field">Requests per phone <input id="pub-per-phone" type="number" min="1" max="5" step="1">
+        <span class="hint">How many shows one phone can have waiting.</span></label>
+      <label class="field">Queue length <input id="pub-queue" type="number" min="1" max="20" step="1">
+        <span class="hint">How many can wait in all.</span></label>
+    </div>
   </section>
   </div>
   <div class="pub-panel" id="pub-panel-shows" role="tabpanel" aria-labelledby="pub-tab-shows" hidden>
@@ -1322,6 +1338,8 @@
         <option value="accept">Ask visitors to accept it before Start</option></select>
       <span class="hint">For shows with strobes or fast flashes. Change its words on the <b>Words</b> tab.</span></label>
   </section>
+  </div>
+  <div class="pub-panel" id="pub-panel-listening" role="tabpanel" aria-labelledby="pub-tab-listening" hidden>
   <section class="card pub-card" id="pub-listen-card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-listen"/></svg>Listening on phones</h2>
     <label class="check"><input id="pub-listen" type="checkbox"> Let visitors listen on their phone</label>
@@ -1336,6 +1354,22 @@
           once, then remember it until you change it.</span></label>
       <p class="hint pub-note" id="pub-listen-note"></p>
     </div>
+  </section>
+  </div>
+  <div class="pub-panel" id="pub-panel-admin" role="tabpanel" aria-labelledby="pub-tab-admin" hidden>
+  <section class="card pub-card" id="pub-admin-card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg>Admin PIN</h2>
+    <p class="hint">Lets your own phone past <b>Nearby only</b> and the opening hours, from anywhere, at any time.
+      It also skips the listening PIN, the limit per phone and a full queue, and works while
+      <b>Let visitors start shows</b> is off, so you can try things before you open.</p>
+    <label class="field">PIN
+      <input id="pub-admin-pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off"
+        placeholder="None">
+      <span class="hint">4 to 8 numbers. Leave it empty for no admin PIN. Pick a different one from the listening
+        PIN.</span></label>
+    <p class="hint">There's no button for it on the page: open your visitors' link, tap the title five times
+      quickly, and type the PIN. Your phone remembers it until you change the PIN.</p>
+    <p class="hint pub-note" id="pub-admin-note"></p>
   </section>
   </div>
   <div class="pub-panel" id="pub-panel-look" role="tabpanel" aria-labelledby="pub-tab-look" hidden>
@@ -1426,12 +1460,6 @@
       carries on. A playlist picked by a visitor plays through once.</p>
     <div class="pub-inline"><p class="hint pub-now" id="pub-now" aria-live="polite"></p>
       <button id="pub-clear" class="ghost" hidden>Clear the queue</button></div>
-    <div class="pub-grid">
-      <label class="field">Requests per phone <input id="pub-per-phone" type="number" min="1" max="5" step="1">
-        <span class="hint">How many shows one phone can have waiting.</span></label>
-      <label class="field">Queue length <input id="pub-queue" type="number" min="1" max="20" step="1">
-        <span class="hint">How many can wait in all.</span></label>
-    </div>
   </section>
   </div>
   </div>

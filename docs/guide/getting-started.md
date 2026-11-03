@@ -79,7 +79,7 @@ Help →** for the rest.
 The first time you open HA-liday Show, the **setup guide** opens and walks you through these steps in one
 window: add your lights, check each one, pick a speaker, choose the sample house or your own photo, and
 make your first show from a song. Every step can be skipped, **← Back** goes back, and you can run it
-again any time with **Run the setup guide** under **Setup → Settings**. Its first page also offers
+again any time with **Run the setup guide** under **Setup → More**. Its first page also offers
 **Try the demo** (see [The demo](#the-demo)). To do it by hand instead:
 
 1. **Setup → Devices**: press **+ Add a light**, pick what kind it is and follow the steps, then press
@@ -96,7 +96,7 @@ again any time with **Run the setup guide** under **Setup → Settings**. Its fi
    button or the `hassio.app_stdin` action.
 
 > **Just want to see it working?** On a fresh install, press **Try the demo** under **Setup → Devices**
-> (or **Setup → Settings → Demo**). See [The demo](#the-demo).
+> (or **Setup → More → Demo**). See [The demo](#the-demo).
 
 > **Tip:** lights not here yet? Add them as [planned lights](lights.md#lights-not-delivered-yet) and start
 > designing now. Once a song is picked, **✨ Generate** in the Show panel makes a whole first draft
@@ -111,7 +111,7 @@ music-box *Jingle Bells* made for HA-liday Show, free to use) to your songs, and
 in Christmas colours. Press **▶ Play** to watch it on the House panel. Nothing is sent to real lights.
 
 It's only offered while you have no lights, so it never mixes with your own. When you're done, press
-**Remove the demo** under **Setup → Settings → Demo**: the demo's lights, their places on the house and
+**Remove the demo** under **Setup → More → Demo**: the demo's lights, their places on the house and
 **Demo show** go, and your own shows are kept. The sample song stays in your songs, to use in your own
 shows if you like.
 

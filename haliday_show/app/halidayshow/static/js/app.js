@@ -4541,7 +4541,7 @@ function playlistScheduleNote(id) {
   return entriesFor(entries, "playlist", id).length ? `${scheduleLine(entries, "playlist", id, scheduleState)}.` : "";
 }
 
-// Setup → Settings → Live music (livemusic.py) ---------------------------------------
+// Setup → Live music (livemusic.py) ---------------------------------------
 // While the page is open it asks a few times a second what the chosen WLED hears.
 let liveTimer = null, liveView = null;
 function startLiveMusic() {
@@ -5621,7 +5621,7 @@ function wireData() {
   $("btn-export").addEventListener("click", () => status("Exporting… check your downloads"));
 }
 
-// The Public page: switched on under Setup → Settings, set up on its own tab. What visitors can pick
+// The Public page: switched on under Setup → More, set up on its own tab. What visitors can pick
 // (shows and playlists, each with optional dates every year) and the queue they're waiting in.
 let publicView = null;
 let publicNames = { show: {}, playlist: {}, archived: {}, unready: {}, empty: new Set() };
@@ -5958,7 +5958,7 @@ function listenNote(view, pinTicked) {
   const notes = [];
   if (pinTicked && !view.listen_pin) notes.push("Type a PIN of 4 to 8 numbers. Until then, anyone nearby can listen.");
   else if (view.listen_pin) notes.push(`Visitors type ${view.listen_pin} to listen.`);
-  if (!view.on) notes.push("Turn on Let visitors start shows (Setup → Settings) for the page to open.");
+  if (!view.on) notes.push("Turn on Let visitors start shows (Setup → More) for the page to open.");
   if (view.can_shrink_songs === false) notes.push("Songs go to phones as they are, so big ones take a while to load on mobile data.");
   return notes.join(" ");
 }
@@ -8370,7 +8370,7 @@ async function openRemoveShow(r) {
     your shows, where <b>Restore</b> brings it back.${lists.length ? " Its playlists skip it until then." : ""}
     Automations that start it won't find it while it's archived.`;
   $("rm-delete-note").innerHTML = `<b>Delete for good</b> removes it${lists.length ? ` and takes it out of ${esc(listOf(lists))}` : ""}.
-    A copy of everything is kept under <b>Setup → Settings → Your data</b>, just in case.`;
+    A copy of everything is kept under <b>Setup → Your data</b>, just in case.`;
   $("remove-dialog").showModal();
 }
 
@@ -8391,7 +8391,7 @@ async function openRemoveSong(r) {
     out of its song lists. <b>Restore</b>, under <b>Archived songs</b>, puts it back${users.length
     ? " and gives it back to any of these shows left without a song" : ""}.`;
   $("rm-delete-note").innerHTML = `<b>Delete for good</b> removes the song file. A copy of your shows and settings is kept
-    under <b>Setup → Settings → Your data</b>, but the song file itself can't be brought back.`;
+    under <b>Setup → Your data</b>, but the song file itself can't be brought back.`;
   $("remove-dialog").showModal();
 }
 
@@ -10265,7 +10265,7 @@ async function loadAiStatus() {
     : st.via === "ha" ? `Using Home Assistant's AI Task${st.entity ? ` (${st.entity})` : ""}.`
       : "Not set up yet: add a Claude API key on the app's Configuration tab, or set up an AI integration with an AI Task entity in Home Assistant.";
   $("ai-status").textContent = text;
-  $("ai-hint").textContent = st.via ? "" : "Set up an AI under Setup → Settings to use this.";
+  $("ai-hint").textContent = st.via ? "" : "Set up an AI under Setup → AI to use this.";
   $("ai-hint").hidden = !!st.via;
   $("ai-preset-hint").textContent = st.via ? "" : $("ai-hint").textContent;
   $("ai-preset-hint").hidden = !!st.via;
@@ -10436,7 +10436,7 @@ function frame() {
 // editors had of their own.
 const EDITOR_LIST = { editor: "shows", music: "songs", playlist: "playlists", scene: "scenes" };
 const LIBRARY_LIST = { showlist: "shows", songlist: "songs", playlistlist: "playlists", scenelist: "scenes" };
-const SECTIONS = { library: ["shows", "scenes", "songs", "samples", "pictures", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "settings", "labs"] };
+const SECTIONS = { library: ["shows", "scenes", "songs", "samples", "pictures", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "editors", "livemusic", "ai", "data", "settings", "labs"] };
 const sectionPage = { library: "shows", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
@@ -10485,7 +10485,9 @@ function showView(view, { push = true } = {}) {
     }).catch(() => {});
   }
   if (page === "house") renderHouseLights();
-  if (page === "settings") { renderCopies(); loadPublic(); startLiveMusic(); } else stopLiveMusic();
+  if (page === "data") renderCopies();
+  if (page === "settings") loadPublic();
+  if (page === "livemusic") startLiveMusic(); else stopLiveMusic();
   if (page === "public") {
     loadPublic({ items: true });
     const frame = $("pub-preview-frame");

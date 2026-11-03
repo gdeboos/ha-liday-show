@@ -282,7 +282,7 @@ export class SceneEditor {
         el("button", { type: "button", class: "ghost", "aria-label": "Close", onclick: () => dlg.close() }, "✕")),
       el("div", { class: "form-dialog-body" },
         el("p", {}, "The scene is deleted, and stops if it's on. A copy of everything is kept first under ",
-          el("b", {}, "Setup → Settings → Your data"), ", so it can be brought back.")),
+          el("b", {}, "Setup → Your data"), ", so it can be brought back.")),
       el("div", { class: "form-dialog-foot" }, el("span", { class: "spacer" }),
         el("button", { type: "button", onclick: () => dlg.close() }, "Cancel"), del));
     del.addEventListener("click", async () => {
