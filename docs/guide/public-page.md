@@ -218,6 +218,10 @@ How it works:
   press **Music out of time?** under the button, then **◀ Earlier** if they hear the beat after the lights flash (usual with Bluetooth), **Later ▶** if
   they hear it before. Each press moves the music 0.05 s, up to a second either way, and the phone
   remembers it for next time.
+- **Shows with no speaker** (no **Show speaker** of their own and no default one) say **🎧 Music on your
+  phone** on the visitors' page. A visitor who presses **▶ Start** or **+ Queue** on one starts listening
+  with the same press, so the music plays on their phone when it comes on. (Phones only play sound that
+  a press starts, so it can't begin by itself for everyone.) Others can press **🎧 Listen** as usual.
 - Keep the page open. On some phones the music stops when the screen locks; press **🎧 Listen** again
   to carry on.
 - Every word visitors see while listening is on the **Words** tab, under **Listening on a phone**.

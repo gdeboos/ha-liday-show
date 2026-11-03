@@ -121,6 +121,10 @@ export function queueView(st, w, open = false) {
   };
 }
 
+// Pressing Start or Queue on a show with no speaker also starts listening on this phone, if listening
+// is on and it isn't already (the press is what lets a phone play sound).
+export const listensToo = (c, st, listening) => !!(st.listen && c.speaker === false && !listening);
+
 // The button on each show: Start when it would play straight away, Queue when it would wait.
 export const startWord = (st) => (st.now || (st.queue || []).length ? "queue_btn" : "start");
 
@@ -893,7 +897,8 @@ export function start() {
       // Shows already waiting or on now can't be picked again; their button says so instead.
       const status = c.taken ? "" : c.name === nowName ? say_(w, "row_playing")
         : queued.has(`${c.kind}:${c.id}`) ? say_(w, "row_queued") : "";
-      const detail = [c.detail, status].filter(Boolean).join(" · ");
+      const phone = st.listen && c.speaker === false ? say_(w, "on_phone") : "";
+      const detail = [c.detail, status, phone].filter(Boolean).join(" · ");
       if (detail) text.append(el("div", "pp-hint", detail));
       row.append(text);
       if (startable) {
@@ -902,7 +907,11 @@ export function start() {
         b.type = "button";
         b.disabled = !!view.block || busy || !!c.taken;
         b.setAttribute("aria-label", `${say_(w, label).replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
-        b.addEventListener("click", () => send("api/request", { kind: c.kind, id: c.id }));
+        b.addEventListener("click", () => {
+          // Started in the press itself: phones only play sound that a press starts.
+          if (!preview && listensToo(c, st, listener.state.on)) listener.begin("", !!st.listen?.pin);
+          send("api/request", { kind: c.kind, id: c.id });
+        });
         row.append(b);
       }
       return row;

@@ -88,6 +88,7 @@
         {"key": "listen_short", "label": "Small Listen button at the top", "text": "🎧 Listen"},
         {"key": "listening_short", "label": "Small button while listening (press to stop)", "text": "■ Stop"},
         {"key": "out_of_time", "label": "Link to Music ahead / behind", "text": "Music out of time?"},
+        {"key": "on_phone", "label": "On a show with no speaker (Start also starts listening)", "text": "🎧 Music on your phone"},
         {"key": "listen_on", "label": "While listening", "text": "🎧 Listening: {name}"},
         {"key": "listen_nothing", "label": "Listening, with nothing playing", "text": "🎧 Listening. The music starts here when a show does."},
         {"key": "listen_loading", "label": "While the song loads", "text": "🎧 Getting the music ready…"},

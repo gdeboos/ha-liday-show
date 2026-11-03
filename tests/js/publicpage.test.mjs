@@ -183,3 +183,11 @@ test("the button says Queue when a pick would wait, Start when it would play now
   assert.equal(page.startWord({ now: { name: "Party" }, queue: [] }), "queue_btn");
   assert.equal(page.startWord({ now: null, queue: [{ name: "Party" }] }), "queue_btn");
 });
+
+test("a press on a show with no speaker also starts listening, once", () => {
+  const st = { listen: { pin: false } };
+  assert.equal(page.listensToo({ speaker: false }, st, false), true);
+  assert.equal(page.listensToo({ speaker: false }, st, true), false);
+  assert.equal(page.listensToo({ speaker: true }, st, false), false);
+  assert.equal(page.listensToo({ speaker: false }, { listen: null }, false), false);
+});
