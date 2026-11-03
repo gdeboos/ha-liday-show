@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.314
+
+- Scenes can hand a WLED light over to one of **WLED's own effects**. Pick **WLED's own effect** for that light (under **On this WLED** in the effect window), then pick the effect and palette from the WLED's own lists, with colours, speed and intensity. When the scene plays, the WLED runs that effect itself and your other lights play as usual. Its sound-reactive effects follow the WLED's own microphone. The preview shows only its colours.
+
 ## 0.2.313
 
 - Matrices can be split into parts now. In a matrix's window, under **Parts**, drag across the grid to make a rectangle (a star in one corner, say, or each window of a panel). Each part gets its own lane in your shows, where effects made for matrices fill its rectangle. With **Also play as one** ticked, the matrix's own lane still plays across the whole grid, and the LEDs outside every part follow it.

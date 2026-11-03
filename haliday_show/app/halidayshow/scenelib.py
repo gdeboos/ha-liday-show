@@ -123,6 +123,22 @@ def clean_scene(body) -> dict:
     return _with_schedule(body, out)
 
 
+def wled_looks(scene: dict, devices: dict) -> dict:
+    """The lights a scene hands over to WLED's own effects: {light id: its settings}. A whole WLED light
+    whose look (Basic) or lane's clip (Advanced) is the "wled" effect; anything else plays frames."""
+    found = {}
+    if scene.get("mode") == "advanced":
+        for tr in scene.get("tracks") or []:
+            clip = next((c for c in tr.get("clips") or [] if isinstance(c, dict) and c.get("effect") == "wled"), None)
+            if clip:
+                found[tr.get("device")] = clip
+    elif not scene.get("all"):
+        for light_id, look in (scene.get("lights") or {}).items():
+            if isinstance(look, dict) and look.get("effect") == "wled":
+                found[light_id] = look.get("params") or {}
+    return {k: v for k, v in found.items() if (devices.get(k) or {}).get("kind") == "wled"}
+
+
 def _with_schedule(body: dict, out: dict) -> dict:
     if body.get("palette") is not None:
         p = body["palette"]

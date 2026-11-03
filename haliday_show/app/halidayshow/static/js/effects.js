@@ -1011,8 +1011,20 @@ Object.assign(EFFECTS, {
 });
 
 // Headings in the effect window, in order. House lane effects all go under "Across the house".
+// WLED's own effect, for a WLED light in a scene: the WLED plays one of its built-in effects itself
+// (runner.py sends it the settings; no frames go to it). The editor can't show the real effect, so this
+// draws a still stand-in in its colours. Only offered in scenes, on a whole WLED light.
+EFFECTS.wled = {
+  label: "WLED's own effect", wledOwn: true, group: "wled",
+  params: [{ key: "fx", label: "Effect", type: "wledfx", default: 0 }, { key: "palette", label: "Palette", type: "wledpal", default: 0 },
+    num("speed", "Speed", 128, 0, 255, 1), num("intensity", "Intensity", 128, 0, 255, 1),
+    color("color", "Colour 1", "#ff0000"), color("color2", "Colour 2", "#ffffff"), color("color3", "Colour 3", "#00b000"),
+    { key: "fxName", label: "", type: "hidden", default: "" }, { key: "palName", label: "", type: "hidden", default: "" }],
+  render: (p, t, dur, n, i) => blendList([p.color, p.color2, p.color3].map(hexToRgb), n > 1 ? i / (n - 1) : 0),
+};
+
 export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
-  ["calm", "Calm"], ["music", "Follows the music"], ["house", "Across the house"], ["matrix", "On a matrix"]];
+  ["calm", "Calm"], ["music", "Follows the music"], ["house", "Across the house"], ["matrix", "On a matrix"], ["wled", "On this WLED"]];
 const GROUP_OF = { solid: "basics", duo: "basics", trio: "basics", pulse: "basics", gradient: "basics", cycle: "basics",
   fade: "basics", strobe: "basics", chase: "movement", rainbow: "movement", comet: "movement", scanner: "movement",
   wipe: "movement", flicker: "festive", lightning: "festive", twinkle: "festive" };

@@ -1,3 +1,4 @@
+import pytest
 import time
 
 from halidayshow import output, wled
@@ -110,3 +111,40 @@ async def test_scan_finds_lights_that_answer_for_the_wled_service(aiohttp_server
     assert asked and asked[0] == wled.mdns_query()
     assert b"\x05_wled\x04_tcp\x05local\x00\x00\x0c\x80\x01" in asked[0]  # PTR, answer straight back
     assert found == [{"ip": "127.0.0.1", "name": "Eaves", "leds": 120, "version": "", "parts": []}]
+
+
+def test_wled_s_own_effect_as_the_state_to_send():
+    s = wled.own_effect_state({"fx": 300, "speed": 99.6, "intensity": -5, "palette": 4, "color": "#FF8000",
+                               "color2": "nope", "brightness": 50})
+    assert s == {"on": True, "live": False, "seg": {"fx": 255, "sx": 100, "ix": 0, "pal": 4,
+                                                      "col": [[255, 128, 0], [0, 0, 0], [0, 176, 0]], "bri": 128}}
+    assert wled.own_effect_state({})["seg"] == {"fx": 0, "sx": 128, "ix": 128, "pal": 0,
+                                                "col": [[255, 0, 0], [255, 255, 255], [0, 176, 0]]}  # as the editor shows
+
+
+async def test_reading_a_wled_s_effects_and_sending_it_one(aiohttp_server, monkeypatch):
+    from aiohttp import web
+
+    posted = []
+
+    async def info(request):
+        return web.json_response({"info": {"name": "Eaves", "leds": {"count": 120}}, "state": {"seg": []},
+                                  "effects": ["Solid", "Blink", "RSVD", "Fireworks"], "palettes": ["Default", "* Random Cycle"]})
+
+    async def state(request):
+        posted.append(await request.json())
+        return web.json_response({"success": True})
+
+    app = web.Application()
+    app.router.add_get("/json", info)
+    app.router.add_post("/json/state", state)
+    fake = await aiohttp_server(app, host="127.0.0.1")
+    monkeypatch.setattr(wled, "HTTP_PORT", fake.port)
+    found = await wled.fetch("127.0.0.1")
+    assert found["effects"] == ["Solid", "Blink", "", "Fireworks"]  # by number, a reserved one blank
+    assert found["palettes"] == ["Default", "* Random Cycle"]
+    await wled.set_state("127.0.0.1", wled.own_effect_state({"fx": 3}))
+    assert posted[0]["seg"]["fx"] == 3 and posted[0]["live"] is False
+    monkeypatch.setattr(wled, "HTTP_PORT", 1)  # nothing listening
+    with pytest.raises(wled.WledError):
+        await wled.set_state("127.0.0.1", {}, timeout=1)

@@ -1256,6 +1256,47 @@ function matrixPartsPanel(d) {
   return tr;
 }
 
+// WLED's own effects and palettes, read from the light itself once a session: {effects, palettes}.
+const wledLists = new Map();
+function wledList(dev) {
+  if (!dev?.ip) return null;
+  if (!wledLists.has(dev.ip)) {
+    wledLists.set(dev.ip, api("api/wled/info", { method: "POST", json: { ip: dev.ip } })
+      .then((r) => ({ effects: r.effects || [], palettes: r.palettes || [] }))
+      .catch((e) => { wledLists.delete(dev.ip); throw e; }));
+  }
+  return wledLists.get(dev.ip);
+}
+
+// A list to pick one of a WLED's own effects (kind "wledfx") or palettes ("wledpal") for a clip or a
+// scene light's settings `p`, kept by number with its name beside it (for the editor to show).
+function wledPicker(kind, dev, p, onChange) {
+  const key = kind === "wledfx" ? "fx" : "palette", nameKey = key === "fx" ? "fxName" : "palName";
+  const what = key === "fx" ? "effect" : "palette";
+  const sel = document.createElement("select");
+  sel.className = "wled-pick";
+  sel.setAttribute("aria-label", `The WLED's own ${what}`);
+  sel.add(new Option(p[nameKey] || `${what[0].toUpperCase()}${what.slice(1)} ${p[key] ?? 0}`, p[key] ?? 0, false, true));
+  const list = wledList(dev);
+  if (!list) {
+    sel.disabled = true;
+    sel.title = `Give this light its IP address under Setup → Devices to pick from its own ${what}s`;
+    return sel;
+  }
+  sel.title = `Pick from this WLED's own ${what}s`;
+  list.then(({ effects, palettes }) => {
+    const names = key === "fx" ? effects : palettes;
+    if (!names.length) return;
+    sel.replaceChildren(...names.map((n, i) => (n ? new Option(n, i, false, i === (p[key] ?? 0)) : null)).filter(Boolean));
+  }).catch(() => { sel.title = `Couldn't reach this WLED to read its ${what}s. Is it on?`; });
+  sel.addEventListener("change", () => {
+    p[key] = Number(sel.value);
+    p[nameKey] = sel.selectedOptions[0]?.textContent.slice(0, 40) || "";
+    onChange();
+  });
+  return sel;
+}
+
 // Find segments: light one segment at a time and halve the range on each answer. A light with
 // fewer segments than the frame has nowhere to show the white one, so "anything lit?" can be
 // answered with the light still on its reel.
@@ -2222,7 +2263,7 @@ const sceneEd = new SceneEditor({
   positions: () => housePositionsAll(), groups: () => app.groups, editAdvanced: (id) => openSceneInEditor(id),
   scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => (entriesFor(scheduleState.entries || [], "scene", id).length
     ? scheduleLine(scheduleState.entries, "scene", id, scheduleState) : ""),
-  chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }),
+  chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }), wledPicker,
   palettePicker: (name, onPick, opts) => palettePicker(name, onPick, { none: PALETTE_NONE, ...opts }),
   paletteRows: () => [{ value: "", label: "None", detail: "Each light starts on a warm white" },
     ...allPalettes().map((p) => ({ value: p.name, label: p.name, detail: `${p.colors.length} colours`, picture: paletteBar(p.colors) }))],
@@ -2245,12 +2286,19 @@ app.groupFor = groupById; // for the timeline's lane names
 const trackKind = (i) => (isHouse(i) ? "house" : isGroup(i) ? "group" : "light");
 // House effects go on the House lane and group lanes; light effects everywhere but the House lane.
 const laneKind = (i) => (isGroup(i) ? "group" : isHouse(i) ? "house" : gridOf(playingDev(app.show.tracks[i])) ? "matrix" : "light");
-const fitsTrack = (effect, i) => laneTakes(effect, EFFECTS[effect], laneKind(i));
+// WLED's own effect: only in a scene, on a whole WLED light, as the one clip on its lane, all the way round.
+const wledLane = (i) => {
+  const d = playingDev(app.show.tracks[i] || {});
+  return !!app.sceneId && d?.kind === "wled" && !d.parent && !d.light && !d.parts?.length;
+};
+const onWledOwn = (i) => !!app.show.tracks[i]?.clips.some((c) => EFFECTS[c.effect]?.wledOwn);
+const fitsTrack = (effect, i) => (EFFECTS[effect]?.wledOwn ? wledLane(i)
+  : !onWledOwn(i) && laneTakes(effect, EFFECTS[effect], laneKind(i)));
 const isTree = (id) => house.styles[id]?.style === "tree";
 const onTree = (i) => isTree(app.show.tracks[i]?.device);
 // A copy of a clip from track `from` as it goes on track `to`, or null if that lane can't take it.
-const clipOnto = (c, from, to) => clipForLane(clone(c), EFFECTS[c.effect], { lane: laneKind(to), tree: onTree(to),
-  fromMatrix: laneKind(from) === "matrix" });
+const clipOnto = (c, from, to) => (!fitsTrack(c.effect, to) || (EFFECTS[c.effect]?.wledOwn && onWledOwn(to)) ? null
+  : clipForLane(clone(c), EFFECTS[c.effect], { lane: laneKind(to), tree: onTree(to), fromMatrix: laneKind(from) === "matrix" }));
 // The group lanes as they play, for composeLight; pass the house positions when there are any.
 // Made once per animation frame or so, so the lights in a preview share each group's strip.
 const plansMemo = { at: -Infinity, pos: null, plans: [] };
@@ -2869,7 +2917,7 @@ function clipPreviewRow(clip, dev) {
   if (clipPreview.clip !== clip) Object.assign(clipPreview, { clip, started: performance.now() });
   clipPreview.canvas = canvas;
   row.append(canvas);
-  if (linked(dev) && !EFFECTS[clip.effect]?.experimental) {
+  if (linked(dev) && !EFFECTS[clip.effect]?.experimental && !EFFECTS[clip.effect]?.wledOwn) {
     const box = document.createElement("input");
     box.type = "checkbox";
     box.checked = previewOnLight();
@@ -2910,7 +2958,7 @@ function drawClipPreview() {
   const rgb = asShown(dev, t, (tt) => renderTrack([clip], Math.max(tt, clip.start), dev.segments, undefined, false, grid));
   if (grid) drawGrid(c, rgb, grid, (dev.brightness ?? 100) / 100);
   else drawStrip(c, rgb, dev.segments, (dev.brightness ?? 100) / 100);
-  const onLight = previewOnLight() && linked(dev) && !EFFECTS[clip.effect]?.experimental && !app.playing && !app.starting;
+  const onLight = previewOnLight() && linked(dev) && !EFFECTS[clip.effect]?.experimental && !EFFECTS[clip.effect]?.wledOwn && !app.playing && !app.starting;
   if (onLight) sendPreview(dev, rgb);
   else if (clipPreview.dev) stopLightPreview();
 }
@@ -3136,7 +3184,10 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       }
       // Not when the House lane's own effects are offered too: Plasma and Spiral are listed there.
       const matrix = !!gridOf(dev) && !groups.some(([, h]) => h);
-      const all = visibleEffects(current ?? undefined, house, matrix).filter(([key]) => !only || only.includes(key));
+      // WLED's own effect: where the list asks for it (a scene's WLED row), or on a WLED's lane in an Advanced scene.
+      const wledHere = !!app.sceneId && dev?.kind === "wled" && !dev.parent && !dev.light && !dev.parts?.length && house === false;
+      const all = visibleEffects(current ?? undefined, house, matrix)
+        .filter(([key, fx]) => (!only || only.includes(key)) && (!fx.wledOwn || (only ? only.includes(key) : wledHere)));
       // Under small headings (Basics, Movement, ...) when there's more than one kind.
       const kinds = EFFECT_GROUPS.map(([g, label]) => [label, all.filter(([key, fx]) => shownGroup(key, fx, house, matrix) === g)])
         .filter(([, e]) => e.length);
@@ -3277,6 +3328,11 @@ function renderInspector() {
         for (const k of Object.keys(clip)) if (!CLIP_KEEPS.includes(k)) delete clip[k];
         Object.assign(clip, params, { effect: key });
       }
+      if (EFFECTS[key].wledOwn) {
+        // WLED's own effect plays the whole time round, as the lane's only clip.
+        Object.assign(clip, { start: 0, end: app.show.duration });
+        app.show.tracks[sel.track].clips = [clip];
+      }
       app.changed();
     },
   }), "Effect");
@@ -3329,6 +3385,11 @@ function renderInspector() {
     if (unusedColour(clip.effect, p.key, clip)) continue;
     target = p.type === "color" ? groups.colours : p.type === "range" ? groups.brightness : groups.settings;
     let el;
+    if (p.type === "hidden") continue;
+    if (p.type === "wledfx" || p.type === "wledpal") {
+      field(p.label, wledPicker(p.type, dev, clip, () => app.changed()));
+      continue;
+    }
     if (p.type === "picture") el = picturePicker(clip[p.key] ?? p.default);
     else if (p.type === "select") {
       el = document.createElement("select");
@@ -3364,7 +3425,7 @@ function renderInspector() {
       continue;
     }
     field(p.label, el);
-    if (p.type === "number") target.append(curveRow(clip, p));
+    if (p.type === "number" && !EFFECTS[clip.effect].wledOwn) target.append(curveRow(clip, p)); // WLED's own settings stay put
   }
   // Transitions: how the clip comes in and goes out. Back to back with another clip, it crossfades.
   groups.transitions = group("Transitions");
@@ -3449,7 +3510,7 @@ function renderInspector() {
   box.append(...Object.values(groups).filter((g) => g.children.length > 1));
   const actions = document.createElement("div");
   actions.className = "insp-actions";
-  actions.append(button("Save as preset…", () => savePresetFrom(clip), "ghost"));
+  if (!EFFECTS[clip.effect].wledOwn) actions.append(button("Save as preset…", () => savePresetFrom(clip), "ghost")); // it's per WLED
   actions.append(button("Copy", copySelection, "ghost"));
   if (!isLane(sel.track)) {
     actions.append(button("Copy to all lights", () => copyClipsTo([clip], sel.track, otherTracks(sel.track)), "ghost"));
@@ -3824,6 +3885,7 @@ function renderPresetsTab() {
   }
   const dev = presetPreviewDev();
   for (const [key, fx] of Object.entries(EFFECTS)) {
+    if (fx.wledOwn) continue;
     const mine = app.myPresets.filter((p) => p.effect === key);
     if (!mine.length) continue;
     const h = document.createElement("h3");
@@ -5353,8 +5415,9 @@ function suggestionsFor(r, lights) {
 
 // Whether an effect added to a selection spanning `tracks` goes on track t (see rangeTakes).
 // Plasma and Spiral go on a matrix itself when the House lane isn't in the selection.
-const rangeFits = (effect, t, tracks) => (ON_A_MATRIX.includes(effect) && laneKind(t) === "matrix" && !tracks.some(isHouse))
-  || rangeTakes(!!EFFECTS[effect]?.house, trackKind(t), tracks.map(trackKind));
+const rangeFits = (effect, t, tracks) => (EFFECTS[effect]?.wledOwn ? wledLane(t) : !onWledOwn(t)
+  && ((ON_A_MATRIX.includes(effect) && laneKind(t) === "matrix" && !tracks.some(isHouse))
+  || rangeTakes(!!EFFECTS[effect]?.house, trackKind(t), tracks.map(trackKind))));
 
 function addToRange(effect, preset = null) {
   const r = app.selected.range;
@@ -5365,12 +5428,19 @@ function addToRange(effect, preset = null) {
   const tracks = kind.filter((t) => !unfit(clipFor(), t));
   const left = kind.filter((t) => !tracks.includes(t));
   const label = `${EFFECTS[effect].label}${preset ? ` (${preset.label})` : ""}`;
+  if (!tracks.length && !kind.length && all.some(onWledOwn)) {
+    status("A light on WLED's own effect plays only that. Change or delete its clip to give it other effects", "hint");
+    return;
+  }
   if (!tracks.length) { status(`${label} won't work on ${left.map(trackName).join(", ")}`, "hint"); return; }
+  const own = EFFECTS[effect].wledOwn;
   const added = tracks.map((t) => {
     const clip = clipFor();
     // A mega-tree's strings are its columns, so effects run down them unless changed.
     if (onTree(t) && runsDownTree(EFFECTS[effect])) clip.runs = "columns";
-    app.show.tracks[t].clips.push(clip);
+    // WLED's own effect plays the whole time round, so it's the lane's only clip.
+    if (own) { Object.assign(clip, { start: 0, end: app.show.duration }); app.show.tracks[t].clips = [clip]; }
+    else app.show.tracks[t].clips.push(clip);
     return { track: t, clip };
   });
   // One light: edit the new clip straight away. Several: keep the selection to add more.
@@ -5411,7 +5481,7 @@ function deleteSelected() {
 
 function duplicateSelected() {
   const sel = app.selected;
-  if (!sel?.clip) return;
+  if (!sel?.clip || EFFECTS[sel.clip.effect]?.wledOwn) return; // WLED's own effect is the whole loop already
   const len = sel.clip.end - sel.clip.start;
   const copy = { ...sel.clip, start: sel.clip.end, end: sel.clip.end + len };
   app.show.tracks[sel.track].clips.push(copy);

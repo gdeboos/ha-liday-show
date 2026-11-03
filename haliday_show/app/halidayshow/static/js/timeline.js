@@ -375,7 +375,9 @@ export class Timeline {
       ctx.font = "600 11px system-ui, sans-serif";
       const tx = Math.max(x0, HEADER_W) + 4;
       // Trimmed to its own clip, so a short clip's name doesn't run into the next one.
-      const label = clipText(ctx, `${level === "ok" ? "" : "⚠ "}${EFFECTS[clip.effect]?.label || clip.effect}`, x1 - tx - 8);
+      // WLED's own effect says which one, as the clip only shows a stand-in in its colours.
+      const name = EFFECTS[clip.effect]?.wledOwn ? `WLED: ${clip.fxName || `effect ${clip.fx ?? 0}`}` : EFFECTS[clip.effect]?.label || clip.effect;
+      const label = clipText(ctx, `${level === "ok" ? "" : "⚠ "}${name}`, x1 - tx - 8);
       ctx.fillStyle = "rgba(0,0,0,0.55)";
       ctx.fillRect(tx - 2, top + 2, ctx.measureText(label).width + 6, 15);
       ctx.fillStyle = "#fff";
@@ -674,7 +676,9 @@ export class Timeline {
         return dv === HOUSE ? "house" : isGroupTrack(dv) ? "group" : gridOf(this.app.devices[dv]) ? "matrix" : "light";
       };
       const fx = EFFECTS[c.effect], house = !!fx?.house;
-      const fits = (k) => (house ? (kind(k) === "house") === (kind(d.track) === "house") && laneTakes(c.effect, fx, kind(k))
+      // WLED's own effect stays on its light's lane, and nothing joins it there.
+      const ownLane = (k) => this.app.show.tracks[k].clips.some((x) => EFFECTS[x.effect]?.wledOwn);
+      const fits = (k) => !fx?.wledOwn && !ownLane(k) && (house ? (kind(k) === "house") === (kind(d.track) === "house") && laneTakes(c.effect, fx, kind(k))
         : kind(k) !== "house" && kind(d.track) !== "house");
       if (ti >= 0 && ti !== d.track && fits(ti)) {
         const from = this.app.show.tracks[d.track].clips;

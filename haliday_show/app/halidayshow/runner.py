@@ -20,7 +20,7 @@ import math
 import time
 from datetime import datetime, timezone
 
-from . import livemusic, playlists, react
+from . import livemusic, playlists, react, scenelib, wled
 from .baked import decode
 from .ha import HAError, HomeAssistant, media_content_id, position_now
 from .player import Player
@@ -80,6 +80,7 @@ class Runner:
         self.live = None  # livemusic.LiveMusic, set by the server, for scenes with React to music
         self.seasons_changed = None  # set by the server: tells MQTT a season was switched by a command
         self.scene_playing = False  # its frames are what the lights are showing now
+        self._wled_tasks: set = set()  # WLEDs being told to play their own effect
         self._idle_since: float | None = None
 
     def status(self) -> dict:
@@ -253,7 +254,9 @@ class Runner:
             async with self._lock:
                 await self._stop()
                 self.player.set_level(self.scene_level())  # before the first frame goes out
-                await self.player.play(None, baked, self.storage.devices_by_id(), position=position, length=math.inf)
+                devices, own = self._scene_devices(scene)
+                await self.player.play(None, baked, devices, position=position, length=math.inf)
+                self._wled_own(own)
                 self._react(scene)
                 self.scene = {"id": scene_id, "name": scene.get("name", scene_id)}
                 self.scene_playing = True
@@ -262,6 +265,26 @@ class Runner:
             settings["last_scene"] = scene_id
             self.storage.save_settings(settings)
         log.info("playing scene %s", scene_id)
+
+    def _scene_devices(self, scene: dict | None) -> tuple[dict, dict]:
+        """The lights a scene's frames go to, and those left to WLED's own effects ({id: (device, look)}),
+        which get no frames."""
+        devices = self.storage.devices_by_id()
+        own = {k: (devices[k], look) for k, look in scenelib.wled_looks(scene or {}, devices).items()}
+        return {k: d for k, d in devices.items() if k not in own}, own
+
+    def _wled_own(self, own: dict):
+        """Tells each WLED on its own effect what to play (in the background: a WLED that doesn't
+        answer just stays as it was)."""
+        async def send(device: dict, look: dict):
+            try:
+                await wled.set_state(device["ip"], wled.own_effect_state(look))
+            except wled.WledError as e:
+                log.warning("%s: couldn't start its own effect: %s", device.get("name") or device.get("id"), e)
+        for device, look in own.values():
+            if device.get("ip"):  # a planned light has nothing to tell
+                self._wled_tasks.add(task := asyncio.create_task(send(device, look)))
+                task.add_done_callback(self._wled_tasks.discard)
 
     def _react(self, scene: dict | None):
         """Has the player follow the live music for a scene with React to music switched on: just
@@ -275,6 +298,9 @@ class Runner:
             try:
                 if blob:
                     variants[look] = decode(blob)
+                    # A light that scene hands to WLED's own effect gets none of its frames.
+                    own = scenelib.wled_looks(self.storage.load_scene(cfg[look]) or {}, self.storage.devices_by_id())
+                    variants[look].tracks = [t for t in variants[look].tracks if t.device not in own]
             except Exception as e:  # a broken bake just means no strong-bass or strong-treble look
                 log.warning("scene %s: %s", cfg[look], e)
         reactor = react.Reactor(cfg)
@@ -406,10 +432,13 @@ class Runner:
         async with self._lock:
             await self._stop()
             self.block = item
+            devices, own = self._scene_devices(self.storage.load_scene(item["scene"])) if scene \
+                else (self.storage.devices_by_id(), {})
             if scene:
                 self.player.set_level(self.scene_level())
-            await self.player.play(None, baked, self.storage.devices_by_id(), length=item["seconds"])
+            await self.player.play(None, baked, devices, length=item["seconds"])
             if scene:
+                self._wled_own(own)
                 self._react(self.storage.load_scene(item["scene"]))
         while self.player.playing and self.block is item:
             await asyncio.sleep(0.1)
@@ -489,6 +518,8 @@ class Runner:
         self.playlist = None
 
     async def _stop(self):
+        for task in list(self._wled_tasks):  # a slow WLED mustn't drop out of the next show's realtime
+            task.cancel()
         self.song = None
         self.block = None
         self.scene_playing = False

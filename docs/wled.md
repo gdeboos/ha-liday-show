@@ -77,6 +77,36 @@ strips stay at 1,000). A matrix has no parts and no Reverse. Plan: the project d
 Not checked on a real matrix yet (Gavin doesn't have one). **Test wiring** (top left white, top row red,
 left column green) is how to confirm the WLED mapping assumption on the first real one; record it here.
 
+## WLED's own effects in scenes
+
+From 0.2.314 a scene can give a whole WLED light (no parts) the `wled` effect. In a Basic scene it's the
+light's look, `{effect: "wled", params: {fx, palette, speed, intensity, color, color2, color3,
+brightness, fxName, palName}}`; in an Advanced scene, a clip with those fields covering the lane's whole
+loop. Plan: the project doc `claude/effects-plan.md`, round 2.
+
+- The editor reads the light's own lists from `POST /api/wled/info`. `wled.fetch` now returns
+  `effects` and `palettes` from `/json` (`body.effects`, `body.palettes`), by number, with reserved
+  slots ("RSVD", "-") blank. The scan leaves them out.
+- `scenelib.wled_looks(scene, devices)` finds those lights. `Runner._scene_devices` leaves them out of
+  the player's devices (so no DDP goes to them), and `Runner._wled_own` POSTs
+  `wled.own_effect_state(look)` to `/json/state` in the background:
+  `{"on": true, "live": false, "seg": {"fx", "sx", "ix", "pal", "col": [[r, g, b] × 3], "bri"?}}`.
+  This applies to scenes and to scene blocks in playlists. A WLED that doesn't answer is logged and
+  left as it is. Missing colours default to the editor's defaults (`wled.OWN_COLOURS`, tested against
+  effects.js).
+- `seg` is sent as one object, which WLED applies to its selected segments. `live: false` is there
+  to leave realtime mode at once, rather than after the 2.5 s timeout. `bri` on a segment is its own
+  brightness (newer WLED). None of this has been checked on a real WLED yet (only against a fake
+  answering `/json` and `/json/state`). On the first real one, check that the effect starts straight
+  after a show, that a WLED with several segments plays it on all of them, and what `bri` does. Also
+  check whether `live: false` really leaves realtime, or whether `lor` (live override) is what's needed;
+  either way WLED leaves realtime by itself 2.5 s after the last DDP packet.
+- The background POSTs are cancelled when anything else starts (`Runner._stop`), so a slow WLED can't
+  drop out of the next show's realtime. A React to music bass or treble scene's frames skip the lights
+  that scene hands to WLED's own effects.
+- Nothing is sent when the scene stops; the WLED goes on with its effect until a show sends frames
+  again (it switches to realtime on the first DDP packet, as ever).
+
 ## Open questions
 
 - Matrices: whether WLED really untangles a 2D layout for DDP data (see above), and how a mega-tree is
