@@ -1289,14 +1289,15 @@ export function applyHouse(clips, time, pos, out) {
     const [p, t] = curvedSettings({ ...defaultParams(clip.effect), ...clip }, time - clip.start, dur);
     const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
     const tr = transitionAt([], clip, time); // over the House lane, a transition fades in over the lights
+    const glitter = glitterOf(clip) ? hexToRgb(clip.glitterColor || GLITTER_COLOUR).map((v) => v * level) : null;
     for (let i = 0; i < pos.length; i++) {
       if (!pos[i]) continue;
       const c = fx.renderAt(p, t, dur, pos[i][0], pos[i][1]);
       const share = tr ? transitionShare(tr, pos[i][0], i, clip) : 1;
       if (c) mixInto(out, i * 3, [c[0] * level, c[1] * level, c[2] * level], (c.length > 3 ? c[3] : 1) * share, clip.mix);
-      // Sparkles go over the top, even where the House pattern itself is clear.
-      const g = glitterOf(clip) ? glitterAt(clip, time, i) * share : 0;
-      if (g) mixInto(out, i * 3, hexToRgb(clip.glitterColor || GLITTER_COLOUR).map((v) => v * level), g, "cover");
+      // Sparkles go over the top, even where the House pattern itself is clear, mixed as the clip is.
+      const g = glitter ? glitterAt(clip, time, Math.round(pos[i][0] * 2048) * 4099 + Math.round(pos[i][1] * 2048)) * share : 0;
+      if (g) mixInto(out, i * 3, glitter, g, clip.mix);
     }
   }
   return out;
@@ -1510,28 +1511,33 @@ let gridStrip = new Float32Array(0);
 function paintClip(clip, time, n, buf, grid = null) {
   paintEffect(clip, time, n, buf, grid);
   if (glitterOf(clip)) {
-    for (let i = 0; i < n; i++) addGlitter(clip, time, i, buf, i * 3);
+    const level = clipLevel(clip, time), colour = hexToRgb(clip.glitterColor || GLITTER_COLOUR);
+    for (let i = 0; i < n; i++) {
+      const a = glitterAt(clip, time, i);
+      if (a) for (let j = 0; j < 3; j++) buf[i * 3 + j] = buf[i * 3 + j] * (1 - a) + colour[j] * level * a;
+    }
   }
   return buf;
 }
 
+// The clip's brightness (0-1) at `time`, value curve and all.
+function clipLevel(clip, time) {
+  const [p] = curvedSettings({ ...defaultParams(clip.effect), ...clip }, time - clip.start, clip.end - clip.start);
+  return Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
+}
+
 // Glitter (clip.glitter 0-100, clip.glitterColor; both optional): sparkles over the clip's own
 // effect, at most a quarter of the lights at once, from the stable hash so preview and bake match.
-// It runs on the clip's own time, so a moved clip sparkles the same way.
+// It runs on the clip's own time, so a moved clip sparkles the same way (each piece of a cut clip
+// starts afresh, as other effects do).
 export const GLITTER_COLOUR = "#ffffff";
 const GLITTER_RATE = 7; // twinkles a second
 const glitterOf = (clip) => Math.min(Math.max(Number(clip.glitter) || 0, 0), 100);
-// How strongly light i sparkles at `time` (0 = not at all).
+// How strongly bulb `i` sparkles at `time` (0 = not at all). The House lane passes a number made from
+// each bulb's spot instead, so lights next to each other don't sparkle in step.
 function glitterAt(clip, time, i) {
   const s = (time - clip.start) * GLITTER_RATE + hash01(i + 1, 101), k = Math.floor(s);
   return hash01(i + 1, k + 1009) < glitterOf(clip) / 400 ? Math.sin((s - k) * Math.PI) : 0;
-}
-function addGlitter(clip, time, i, buf, o) {
-  const a = glitterAt(clip, time, i);
-  if (!a) return;
-  const level = Math.min(Math.max(Number(clip.brightness ?? 100), 0), 100) / 100;
-  const c = hexToRgb(clip.glitterColor || GLITTER_COLOUR);
-  for (let j = 0; j < 3; j++) buf[o + j] = buf[o + j] * (1 - a) + c[j] * level * a;
 }
 
 function paintEffect(clip, time, n, buf, grid = null) {

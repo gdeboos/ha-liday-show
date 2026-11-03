@@ -1188,6 +1188,7 @@ a.button { text-decoration: none; }
   .sc-mini { display: block; }
   .sc-none { display: none; }
   .sc-fx { grid-column: 1 / -1; }
+  .sc-glitter { grid-column: 1 / -1; }
   .sc-colours { grid-column: 1 / -1; }
 }
 .sc-mode { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }

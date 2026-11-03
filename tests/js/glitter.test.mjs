@@ -58,3 +58,31 @@ test("a scene light keeps its glitter when its effect changes", async () => {
   assert.equal(changeEffect(look, "twinkle").params.glitter, 40);
   assert.equal(clipFor(look, 0, 1).glitter, 40); // and the bake sees it
 });
+
+test("House lane sparkles mix with the lights as the clip says", () => {
+  const pos = [...Array(N).keys()].map((i) => [i / N, 0.5]);
+  const clip = { ...newClip("housewipe", 0, 10), glitter: 100, mix: "only where lit" };
+  const dark = applyHouse([clip], 0.01, pos, new Uint8Array(N * 3)); // nothing lit underneath
+  assert.ok(dark.every((v) => v === 0));
+});
+
+test("sparkles follow a brightness curve as the effect does", () => {
+  const fading = red({ glitter: 100, curves: { brightness: { to: 0, shape: "steady" } } });
+  const late = renderTrack([fading], 9.9, N);
+  assert.ok(Math.max(...lit(late).map((j) => late[j * 3 + 1]), 0) <= 10);
+});
+
+test("sparkles fade in with the clip and crossfade into the next", () => {
+  const fadeIn = renderTrack([red({ glitter: 100, transIn: "fade", transInSecs: 2 })], 0.2, N);
+  assert.ok(Math.max(...fadeIn) <= 40); // a tenth of the way in, everything is dim, sparkles too
+  const a = red({ glitter: 100, end: 5, transOut: "fade", transOutSecs: 2 });
+  const b = { ...newClip("solid", 5, 10), color: "#0000ff" };
+  const mid = renderTrack([a, b], 4.9, N);
+  assert.ok(lit(mid).length > 0); // still sparkling as it hands over
+});
+
+test("group lanes and matrices glitter too", () => {
+  assert.ok(lit(renderTrack([red({ glitter: 100 })], 2.5, N, undefined, true)).length > 0);
+  const grid = { w: 20, h: 10 };
+  assert.ok(lit(renderTrack([red({ glitter: 100 })], 2.5, N, undefined, false, grid)).length > 0);
+});

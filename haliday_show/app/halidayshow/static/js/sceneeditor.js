@@ -510,8 +510,10 @@ export class SceneEditor {
     row.append(sp ? this.slider("Speed", full, sp, clip[sp.key], (v) => { look.params[sp.key] = v; }) : none());
     const br = EFFECTS[look.effect].params.find((p) => p.key === "brightness");
     row.append(br ? this.slider("Brightness", full, br, clip.brightness, (v) => { look.params.brightness = v; }) : none());
-    row.append(this.slider("Glitter", full, { min: 0, max: 100, step: 5 }, look.params.glitter || 0,
-      (v) => { if (v) look.params.glitter = v; else delete look.params.glitter; }));
+    const glitter = this.slider("Glitter", full, { min: 0, max: 100, step: 5 }, look.params.glitter || 0,
+      (v) => { if (v) look.params.glitter = v; else delete look.params.glitter; });
+    glitter.classList.add("sc-glitter");
+    row.append(glitter);
     return row;
   }
 
