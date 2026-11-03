@@ -28,6 +28,12 @@ from .storage import Storage
 
 log = logging.getLogger(__name__)
 
+
+def clock() -> float:
+    """Seconds on a steady clock, for visitors' waits and rests (tests replace this, not time.monotonic,
+    which the event loop itself runs on)."""
+    return time.monotonic()
+
 START_TIMEOUT_S = 20
 SCENE_BACK_S = 2.0  # how long the lights rest after a show before the scene comes back
 FOLLOW_EVERY_S = 1.0
@@ -79,6 +85,11 @@ class Runner:
         # visitor pick {at: wall-clock datetime, name}, a day at most, and the listening passes seen
         # lately {pass: time.monotonic()}.
         self.public_log: list[dict] = []
+        # Rest breaks for the neighbours: when the current run of back-to-back visitor picks began, when
+        # the last one ended, and (while resting) when the rest is over, all time.monotonic().
+        self._run_since: float | None = None
+        self._last_public_end = 0.0
+        self.resting_until = 0.0
         self.public_listeners: dict[str, float] = {}
         self._public: asyncio.Task | None = None
         # Goes up whenever you play or stop something yourself, which ends a visitor's request part-way.
@@ -609,6 +620,33 @@ class Runner:
             except asyncio.CancelledError:
                 pass
 
+    def _rest_settings(self) -> tuple[float, float]:
+        """(minutes of back-to-back visitor picks before a rest, minutes of rest), in seconds; 0 = never."""
+        p = self.storage.load_settings().get("public") or {}
+        try:
+            after, rest = float(p.get("rest_after", 30)), float(p.get("rest_for", 5))
+        except (TypeError, ValueError):
+            after, rest = 30.0, 5.0
+        return max(after, 0) * 60, max(rest, 0) * 60
+
+    async def _rest_if_due(self):
+        """Before a visitor's pick: after a long enough run of them, the lights rest for a while."""
+        after, rest = self._rest_settings()
+        now = clock()
+        if self._run_since is None or now - self._last_public_end > max(rest, 60):
+            self._run_since = now  # a fresh run: there was a natural break
+            return
+        if not after or not rest or now - self._run_since < after:
+            return
+        self.resting_until = now + rest
+        log.info("visitors' picks: resting for %d minutes", round(rest / 60))
+        try:
+            while clock() < self.resting_until and self.requests:
+                await asyncio.sleep(0.5)
+        finally:
+            self.resting_until = 0.0
+            self._run_since = clock()
+
     async def _run_requests(self):
         """Play visitors' requests whenever nothing else is on. A playlist plays them itself."""
         try:
@@ -616,7 +654,11 @@ class Runner:
                 if self._playlist_running() or self.player.playing or self._lock.locked():
                     await asyncio.sleep(0.25)
                     continue
+                await self._rest_if_due()
+                if not self.requests or self._playlist_running() or self.player.playing:
+                    continue
                 await self._play_request(self.requests.pop(0))
+                self._last_public_end = clock()
                 if self.speaker_stopped:  # paused or stopped on the speaker: the house wants quiet
                     self.requests.clear()
         except asyncio.CancelledError:
@@ -650,7 +692,7 @@ class Runner:
         finally:
             self.public_now = None
             if played:
-                now = time.monotonic()
+                now = clock()
                 self.public_played = [p for p in self.public_played if now - p["at"] < 7200]
                 self.public_played.append({"kind": request["kind"], "ref": request["ref"],
                                            "ticket": request["ticket"], "at": now})
@@ -688,6 +730,7 @@ class Runner:
             if self.player.show_id in shows:
                 after = shows[shows.index(self.player.show_id) + 1:]
                 now_left += sum(self.show_duration(s) for s in after)
+        now_left += max(self.resting_until - clock(), 0)
         gap = float((self.playlist or {}).get("gap", 0)) if self._playlist_running() else 0.0
         waits, t = [], now_left + gap
         for r in self.requests:

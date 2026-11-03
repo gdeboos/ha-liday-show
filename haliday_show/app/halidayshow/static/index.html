@@ -1300,9 +1300,18 @@
         <div class="day-chips" id="pub-hours-days" role="group" aria-labelledby="pub-days-label"></div></div>
     </div>
     <p class="hint pub-note" id="pub-hours-hint" aria-live="polite"></p>
+    <h3 class="pub-sub">For the neighbours</h3>
     <label class="check"><input id="pub-finish-close" type="checkbox"> Shows finish by closing time</label>
     <p class="hint">A pick that wouldn't finish before closing (counting what's already waiting) isn't taken, and
       its button says so. Only with set opening hours.</p>
+    <div class="pub-grid">
+      <label class="field">Rest after <span class="pub-inline"><input id="pub-rest-after" type="number" min="0" max="240"
+          step="5"> minutes</span>
+        <span class="hint">Of visitors' picks back to back. 0 for no rests.</span></label>
+      <label class="field">Rest for <span class="pub-inline"><input id="pub-rest-for" type="number" min="0" max="30"
+          step="1"> minutes</span>
+        <span class="hint">Picks waiting start after; the page says the lights are resting.</span></label>
+    </div>
   </section>
   </div>
   <div class="pub-panel" id="pub-panel-limits" role="tabpanel" aria-labelledby="pub-tab-limits" hidden>

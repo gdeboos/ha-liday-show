@@ -135,7 +135,7 @@ def test_settings_are_cleaned():
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "look": public.clean_look(None), "hours": public.DEFAULT_HOURS, "words": {},
-        "listen": False, "listen_pin": "", "admin_pin": "", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True,
+        "listen": False, "listen_pin": "", "admin_pin": "", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -1063,9 +1063,9 @@ async def test_a_show_rests_after_it_plays_and_so_does_the_phone_that_picked_it(
                                           "items": [{"kind": "show", "id": s} for s in ("party", "quiet", "extra")]})
     runner = client.app[server.RUNNER]
     clock = [1000.0]
-    monkeypatch.setattr(public.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(public._runner, "clock", lambda: clock[0])
     # T1's pick of Party played and just ended.
-    runner.public_played = [{"kind": "show", "ref": "party", "ticket": T1, "at": 1000.0}]
+    runner.public_played = [{"kind": "show", "ref": "party", "ticket": T1, "at": 1000.0}]  # on the fake clock
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
     assert status == 409 and "played a few minutes ago" in text and "15 minutes" in text
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
@@ -1098,7 +1098,7 @@ async def test_tonight_counts_picks_since_midday_and_phones_listening(client):
                          {"at": evening - timedelta(hours=1), "name": "Party"},
                          {"at": evening - timedelta(minutes=30), "name": "Quiet"},
                          {"at": evening - timedelta(minutes=5), "name": "Party"}]
-    runner.public_listeners = {"a": public.time.monotonic(), "b": public.time.monotonic() - 60}
+    runner.public_listeners = {"a": public._runner.clock(), "b": public._runner.clock() - 60}
     t = public.tonight(runner, evening)
     assert t == {"picks": 3, "top": [{"name": "Party", "count": 2}, {"name": "Quiet", "count": 1}], "listening": 1}
     # After midnight it's still the same night.
@@ -1136,3 +1136,31 @@ async def test_picks_must_finish_before_closing_time(client, monkeypatch):
     assert status == 409 and "wouldn't finish before we close" in text
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert {c["taken"] for c in st["choices"]} == {"late"}
+
+
+async def test_the_lights_rest_after_a_long_run_of_visitors_picks(client, monkeypatch):
+    runner = client.app[server.RUNNER]
+    settings = runner.storage.load_settings()
+    settings["public"] = {**settings.get("public", {}), "rest_after": 30, "rest_for": 5}
+    runner.storage.save_settings(settings)
+    clock = [10_000.0]
+    monkeypatch.setattr(public._runner, "clock", lambda: clock[0])
+    runner.requests = [{"id": "r1", "shows": [], "gap": 0}]  # something waiting, so the rest is kept
+    # A fresh run starts with no rest.
+    await runner._rest_if_due()
+    assert runner._run_since == 10_000.0 and runner.resting_until == 0
+    # 31 minutes of back-to-back picks later: a rest. It ends when the clock passes it.
+    clock[0] += 31 * 60
+    runner._last_public_end = clock[0] - 5
+    task = asyncio.ensure_future(runner._rest_if_due())
+    await asyncio.sleep(0.05)
+    assert runner.resting_until == clock[0] + 300 and runner.queue_waits()[0] >= 299
+    clock[0] += 301
+    await asyncio.wait_for(task, 2)
+    assert runner.resting_until == 0 and runner._run_since == clock[0]
+    # A natural break longer than the rest starts a fresh run.
+    clock[0] += 31 * 60
+    runner._last_public_end = clock[0] - 10 * 60
+    await runner._rest_if_due()
+    assert runner.resting_until == 0 and runner._run_since == clock[0]
+    runner.requests = []
