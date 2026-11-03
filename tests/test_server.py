@@ -1297,6 +1297,27 @@ async def test_light_groups_round_trip_and_validation(client):
         assert (await client.put("/api/light-groups", json=bad)).status == 400
 
 
+async def test_a_scene_s_live_set_is_checked_kept_and_backed_up(client):
+    from halidayshow import backup
+    scene_id = (await (await client.post("/api/house-scenes", json={"name": "Meter"})).json())["id"]
+    live = baked.encode(1, [{"device": "a", "segments": 2, "kind": "level", "follows": "bass"}], [bytes(6)] * 21)
+    assert (await client.put(f"/api/house-scenes/{scene_id}/live", data=b"junk")).status == 400
+    assert (await client.put(f"/api/house-scenes/{scene_id}/live",
+                             data=baked.encode(1, [{"device": "a", "segments": 2}], [bytes(6)] * 21))).status == 400
+    assert (await client.put("/api/house-scenes/gone/live", data=live)).status == 404
+    assert (await client.put(f"/api/house-scenes/{scene_id}/live", data=live)).status == 200
+    storage = client.server.app[server.STORAGE]
+    assert storage.load_scene_live(scene_id) == live
+    assert backup._allowed(f"house-scenes/{scene_id}.live.gshow")
+    assert not backup._allowed("house-scenes/Bad Name.live.gshow")
+    # Changed: stale until the editor bakes it again; and it can be taken away.
+    await client.put(f"/api/house-scenes/{scene_id}", json={"name": "Meter", "mode": "basic", "lights": {}})
+    assert storage.load_scene_live(scene_id) is None
+    await client.put(f"/api/house-scenes/{scene_id}/live", data=live)
+    assert (await client.delete(f"/api/house-scenes/{scene_id}/live")).status == 200
+    assert storage.load_scene_live(scene_id) is None
+
+
 async def test_scenes_are_made_saved_baked_played_and_deleted(client):
     resp = await client.post("/api/house-scenes", json={"name": "Candy cane"})
     scene_id = (await resp.json())["id"]

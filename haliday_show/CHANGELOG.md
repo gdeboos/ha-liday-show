@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.315
+
+- New **Live music** effects for scenes, starting with **Level meter**: a light fills with the level of the music a WLED with a microphone hears. **Follows** picks the loudness, the bass, the mid or the treble, so different lights can move to different parts of the music. With no music it breathes gently in its colours. Pick it from the **Live music** group in a light's effect window in a scene.
+
 ## 0.2.314
 
 - Scenes can hand a WLED light over to one of **WLED's own effects**. Pick **WLED's own effect** for that light (under **On this WLED** in the effect window), then pick the effect and palette from the WLED's own lists, with colours, speed and intensity. When the scene plays, the WLED runs that effect itself and your other lights play as usual. Its sound-reactive effects follow the WLED's own microphone. The preview shows only its colours.

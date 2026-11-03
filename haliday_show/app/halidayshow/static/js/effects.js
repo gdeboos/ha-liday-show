@@ -1015,7 +1015,7 @@ Object.assign(EFFECTS, {
 // (runner.py sends it the settings; no frames go to it). The editor can't show the real effect, so this
 // draws a still stand-in in its colours. Only offered in scenes, on a whole WLED light.
 EFFECTS.wled = {
-  label: "WLED's own effect", wledOwn: true, group: "wled",
+  label: "WLED's own effect", wledOwn: true, sceneOnly: true, wholeLoop: true, group: "wled",
   params: [{ key: "fx", label: "Effect", type: "wledfx", default: 0 }, { key: "palette", label: "Palette", type: "wledpal", default: 0 },
     num("speed", "Speed", 128, 0, 255, 1), num("intensity", "Intensity", 128, 0, 255, 1),
     color("color", "Colour 1", "#ff0000"), color("color2", "Colour 2", "#ffffff"), color("color3", "Colour 3", "#00b000"),
@@ -1023,8 +1023,43 @@ EFFECTS.wled = {
   render: (p, t, dur, n, i) => blendList([p.color, p.color2, p.color3].map(hexToRgb), n > 1 ? i / (n - 1) : 0),
 };
 
+// Live music: effects that follow what a WLED with a microphone hears, in scenes (livemusic.py).
+// The player can't work an effect out, so each is baked at every level (bakeLive) and the player picks
+// the frame for the level it hears; with no music it plays the scene's own bake, where these draw a
+// gentle idle glow. In the editor, setLiveSource gives the levels to preview with.
+let liveSource = null;
+export function setLiveSource(fn) { liveSource = fn; }
+// Runs fn as a bake would see live effects (their idle look), whatever the editor previews with.
+export function withoutLive(fn) { const was = liveSource; liveSource = null; try { return fn(); } finally { liveSource = was; } }
+export const LIVE_LEVELS = 21; // 0, 5 ... 100 %
+export const FOLLOWS = ["loudness", "bass", "mid", "treble"];
+// The level (0-100) a live clip shows now: fixed while baking a level set, from the editor's live
+// source in a preview, or null for the idle look (the scene's own bake).
+const liveValue = (p, t) => (p.liveLevel != null ? p.liveLevel : liveSource ? liveSource(t)?.[p.follows] ?? null : null);
+// The idle look: the effect's colours breathing softly, once every 4 seconds (so a scene loops on it).
+const idleGlow = (c, t) => { const k = 0.12 + 0.18 * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / 4)); return c.map((v) => v * k); };
+const follows = choice("follows", "Follows", "loudness", FOLLOWS);
+
+EFFECTS.levelmeter = {
+  label: "Level meter", live: true, sceneOnly: true, wholeLoop: true, group: "live", list: true,
+  params: [...colourList(["#00ff00", "#ffff00", "#ff0000"]), follows,
+    choice("direction", "Fills", "from the start", ["from the start", "from the middle", "from both ends"]),
+    color("background", "Background", "#000000")],
+  render: (p, t, dur, n, i) => {
+    const x = n > 1 ? i / (n - 1) : 0.5;
+    // How far along the meter this light is, 0 at the end it fills from.
+    const u = p.direction === "from the middle" ? Math.abs(x - 0.5) * 2 : p.direction === "from both ends" ? 1 - Math.abs(x - 0.5) * 2 : x;
+    const c = blendList(listColours(p), u);
+    const v = liveValue(p, t);
+    if (v == null) return idleGlow(c, t);
+    const reach = (v / 100) * (1 + 1 / Math.max(n, 1)); // full shows every light
+    return v > 0 && u <= reach ? c : hexToRgb(p.background);
+  },
+};
+
 export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
-  ["calm", "Calm"], ["music", "Follows the music"], ["house", "Across the house"], ["matrix", "On a matrix"], ["wled", "On this WLED"]];
+  ["calm", "Calm"], ["music", "Follows the music"], ["house", "Across the house"], ["matrix", "On a matrix"], ["wled", "On this WLED"],
+  ["live", "Live music"]];
 const GROUP_OF = { solid: "basics", duo: "basics", trio: "basics", pulse: "basics", gradient: "basics", cycle: "basics",
   fade: "basics", strobe: "basics", chase: "movement", rainbow: "movement", comet: "movement", scanner: "movement",
   wipe: "movement", flicker: "festive", lightning: "festive", twinkle: "festive" };
@@ -1751,9 +1786,40 @@ export function dim(rgb, level) {
 // the light groups ({id, members}) for the group lanes; their strips run in the show's track order,
 // which is the Devices tab's.
 export function bake(show, devices, fps = FPS, positions = {}, groups = []) {
-  const before = musicLevels;
+  const before = musicLevels, live = liveSource;
   musicLevels = show.loudness?.values ? show.loudness : null; // a show without a song's loudness has a silent meter
-  try { return bakeFrames(show, devices, fps, positions, groups); } finally { musicLevels = before; }
+  liveSource = null; // live effects bake their idle look; the level set (bakeLive) has the rest
+  try { return bakeFrames(show, devices, fps, positions, groups); } finally { musicLevels = before; liveSource = live; }
+}
+
+// A scene's live effects at every level, for the player to pick from: one track per light on a live
+// effect (a whole light, its lane's one clip), LIVE_LEVELS frames, frame k at k × 5 %. Laid out as a
+// bake (GVSF), each track also naming its kind ("level") and what it follows. null without any.
+export function bakeLive(show, devices) {
+  const lights = [];
+  for (const tr of show.tracks || []) {
+    const dev = devices[tr.device], clip = tr.clips?.find((c) => EFFECTS[c.effect]?.live);
+    if (dev && clip && !dev.parent && !dev.light && !dev.parts?.length) lights.push({ dev, clip, id: tr.device });
+  }
+  if (!lights.length) return null;
+  const header = { fps: 1, frames: LIVE_LEVELS,
+    tracks: lights.map((l) => ({ device: l.id, segments: l.dev.segments, kind: "level", follows: FOLLOWS.includes(l.clip.follows) ? l.clip.follows : "loudness" })) };
+  const head = new TextEncoder().encode(JSON.stringify(header));
+  const stride = lights.reduce((n, l) => n + l.dev.segments * 3, 0);
+  const out = new Uint8Array(9 + head.length + LIVE_LEVELS * stride);
+  out.set([0x47, 0x56, 0x53, 0x46, 1], 0);
+  new DataView(out.buffer).setUint32(5, head.length);
+  out.set(head, 9);
+  let off = 9 + head.length;
+  for (let k = 0; k < LIVE_LEVELS; k++) {
+    for (const { dev, clip } of lights) {
+      const { transIn, transOut, curves, ...still } = clip; // one still frame a level
+      const frame = renderTrack([{ ...still, start: 0, end: 1, liveLevel: k * 5 }], 0.5, dev.segments, undefined, false, gridOf(dev));
+      out.set(gridOf(dev) ? toWire(frame, dev.matrix) : frame, off);
+      off += dev.segments * 3;
+    }
+  }
+  return out;
 }
 
 function bakeFrames(show, devices, fps, positions, groups) {

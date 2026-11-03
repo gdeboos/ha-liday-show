@@ -58,6 +58,14 @@ follows sampleSmth, a flash starts on each new beat, and the strong bass or treb
 while bands 0-3 or 10-15 are at least 70 and 10 above the other. Checked on the wire at 127.0.0.1
 with packets sent to 11988; not yet on a real WLED with a microphone.
 
+From 0.2.315, scene lights can play **live music effects** (`liveeffects.py`; plan: the project doc
+`claude/dreamview-plan.md`, release 3). The editor bakes each such light at 21 levels (0-100 % in fives)
+into `house-scenes/<id>.live.gshow` (a bake whose tracks also say `kind: "level"` and `follows`). The
+player picks the frame for the level heard (`Follower`: gliding over 0.15 s, starting from dark; idle
+after 4 s below **Counts as music from**, when the scene's own bake, with the effect's idle glow,
+plays). Checked on the wire at 127.0.0.1 with fake sound sync: a 60-LED Level meter following the bass
+lit 30 LEDs at bands of 128 and 60 at 255, and showed its idle glow with nothing sent.
+
 ## Matrices (2D)
 
 From 0.2.278 a WLED light, DDP or E1.31 controller can be a matrix: a saved `matrix: {w, h, start,

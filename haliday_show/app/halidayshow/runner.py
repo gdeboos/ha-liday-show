@@ -20,7 +20,7 @@ import math
 import time
 from datetime import datetime, timezone
 
-from . import livemusic, playlists, react, scenelib, wled
+from . import liveeffects, livemusic, playlists, react, scenelib, wled
 from .baked import decode
 from .ha import HAError, HomeAssistant, media_content_id, position_now
 from .player import Player
@@ -258,6 +258,7 @@ class Runner:
                 await self.player.play(None, baked, devices, position=position, length=math.inf)
                 self._wled_own(own)
                 self._react(scene)
+                self._live_effects(scene_id, own)
                 self.scene = {"id": scene_id, "name": scene.get("name", scene_id)}
                 self.scene_playing = True
         settings = self.storage.load_settings()
@@ -285,6 +286,26 @@ class Runner:
             if device.get("ip"):  # a planned light has nothing to tell
                 self._wled_tasks.add(task := asyncio.create_task(send(device, look)))
                 task.add_done_callback(self._wled_tasks.discard)
+
+    def _live_effects(self, scene_id: str, own: dict):
+        """Has the player show the scene's live music effects (liveeffects.py) at the level heard: just
+        started, so a new show or scene (player.play) ends it."""
+        live = liveeffects.load(self.storage.load_scene_live(scene_id))
+        if live is None or self.live is None:
+            return  # no live effects (or nothing listening): their idle look in the scene's bake plays
+        follower = liveeffects.Follower()
+        heard = {"at": -math.inf}
+
+        def step():
+            now = time.monotonic()
+            if now - heard["at"] >= LIVE_SETTINGS_EVERY_S:  # Live music changed while it plays
+                heard.update(livemusic.settings(self.storage), at=now)
+                follower.threshold = heard["from"]
+            return follower.step(self.live.now(heard["source"]), now)
+
+        self.player.live = live
+        self.player.live_tracks = {t.device: t for t in live.tracks if t.device not in own}
+        self.player.live_step = step
 
     def _react(self, scene: dict | None):
         """Has the player follow the live music for a scene with React to music switched on: just
@@ -440,6 +461,7 @@ class Runner:
             if scene:
                 self._wled_own(own)
                 self._react(self.storage.load_scene(item["scene"]))
+                self._live_effects(item["scene"], own)
         while self.player.playing and self.block is item:
             await asyncio.sleep(0.1)
         return True

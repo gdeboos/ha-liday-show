@@ -1606,6 +1606,9 @@ and not on the schedule) and **Remove…**.
 - A light split into parts plays one look across the whole light. Turn on **Each part on its own**
   under its name to give every part its own row instead, each starting on the light's look. A light set to play only as parts always
   has a row for each part.
+- A light not split into parts can play a **Live music** effect that follows what a WLED with a
+  microphone hears (see [Live music effects](#live-music-effects)). Its row then has **Follows** and
+  **Fills** under the effect.
 - A WLED light (one not split into parts) can play one of **WLED's own effects** instead: pick
   **WLED's own effect** under **On this WLED** in the effect window. Under it, pick which of the WLED's
   effects and palettes, read from the light itself (so the light needs its IP address). Its colours,
@@ -1707,6 +1710,25 @@ music, are set on the **Live music** card. A reacting scene plays like any other
 schedule, a playlist, Home Assistant's scene list, and after a show. **Scenes' brightness** (the
 HA-liday Show light in Home Assistant) still sets how bright it is at its loudest. Your lights' limits
 are the same as for shows.
+
+#### Live music effects
+
+A light in a scene can also play an effect that follows the music itself. Pick one from the **Live
+music** group in its effect window: on a light's row in a Basic scene (a light not split into parts),
+or on a light's lane in an Advanced scene, where, like **WLED's own effect**, it covers the whole loop as
+the lane's only effect.
+
+- **Level meter** fills the light with the level: **from the start**, **from the middle** or **from both
+  ends** (pick under **Fills**), in its colours from the first to the last (a palette fills them).
+
+**Follows** picks what it follows: **loudness**, **bass**, **mid** or **treble**. Give one light the bass
+and another the treble, and they move to different parts of the music. With no music for a few seconds
+(or no WLED heard), a live effect breathes gently in its colours instead, so the house never looks off.
+
+While you edit, the preview follows what your WLED hears; with nothing sending, it follows a made-up
+song so you can see it move. If **React to music** is on too, its brightness and beat flash work on top
+(its strong bass and treble scenes don't change a light on a live effect). The idle glow breathes every
+4 seconds, so in an Advanced scene keep **Goes round every** to a multiple of 4 seconds for a smooth loop.
 
 ### Playlists
 

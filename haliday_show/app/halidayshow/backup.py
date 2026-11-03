@@ -51,9 +51,10 @@ def _allowed(name: str) -> bool:
     if len(parts) == 2 and parts[0] == "blocks":  # playlists' building blocks, baked
         p = Path(parts[1])
         return p.suffix == ".gshow" and valid_id(p.stem)
-    if len(parts) == 2 and parts[0] == "house-scenes":  # your scenes and their baked loops (scenelib.py)
+    if len(parts) == 2 and parts[0] == "house-scenes":  # your scenes, their baked loops and live sets (scenelib.py)
         p = Path(parts[1])
-        return p.suffix in (".json", ".gshow") and valid_id(p.stem)
+        stem = p.stem[:-5] if p.suffix == ".gshow" and p.stem.endswith(".live") else p.stem
+        return p.suffix in (".json", ".gshow") and valid_id(stem)
     if len(parts) == 2 and parts[0] == "pictures":  # pictures for matrices
         p = Path(parts[1])
         return p.suffix == ".json" and valid_id(p.stem)

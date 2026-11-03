@@ -306,8 +306,9 @@ class Storage:
     def save_scene(self, scene_id: str, scene: dict):
         self.scenes_dir.mkdir(parents=True, exist_ok=True)
         _write_atomic(self.scenes_dir / f"{scene_id}.json", json.dumps(scene, indent=1).encode())
-        # The bake is stale until the editor uploads a new one.
+        # The bake (and live set) is stale until the editor uploads a new one.
         (self.scenes_dir / f"{scene_id}.gshow").unlink(missing_ok=True)
+        (self.scenes_dir / f"{scene_id}.live.gshow").unlink(missing_ok=True)
 
     def save_scene_baked(self, scene_id: str, blob: bytes):
         _write_atomic(self.scenes_dir / f"{scene_id}.gshow", blob)
@@ -318,10 +319,24 @@ class Storage:
         except FileNotFoundError:
             return None
 
+    def save_scene_live(self, scene_id: str, blob: bytes | None):
+        """A scene's live set (liveeffects.py), or None for a scene without live effects."""
+        if blob is None:
+            (self.scenes_dir / f"{scene_id}.live.gshow").unlink(missing_ok=True)
+        else:
+            _write_atomic(self.scenes_dir / f"{scene_id}.live.gshow", blob)
+
+    def load_scene_live(self, scene_id: str) -> bytes | None:
+        try:
+            return (self.scenes_dir / f"{scene_id}.live.gshow").read_bytes()
+        except FileNotFoundError:
+            return None
+
     def delete_scene(self, scene_id: str) -> bool:
         found = (self.scenes_dir / f"{scene_id}.json").exists()
         (self.scenes_dir / f"{scene_id}.json").unlink(missing_ok=True)
         (self.scenes_dir / f"{scene_id}.gshow").unlink(missing_ok=True)
+        (self.scenes_dir / f"{scene_id}.live.gshow").unlink(missing_ok=True)
         return found
 
     def new_scene_id(self, name: str) -> str:

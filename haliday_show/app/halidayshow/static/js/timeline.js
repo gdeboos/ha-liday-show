@@ -676,9 +676,9 @@ export class Timeline {
         return dv === HOUSE ? "house" : isGroupTrack(dv) ? "group" : gridOf(this.app.devices[dv]) ? "matrix" : "light";
       };
       const fx = EFFECTS[c.effect], house = !!fx?.house;
-      // WLED's own effect stays on its light's lane, and nothing joins it there.
-      const ownLane = (k) => this.app.show.tracks[k].clips.some((x) => EFFECTS[x.effect]?.wledOwn);
-      const fits = (k) => !fx?.wledOwn && !ownLane(k) && (house ? (kind(k) === "house") === (kind(d.track) === "house") && laneTakes(c.effect, fx, kind(k))
+      // WLED's own effect and live effects stay on their light's lane, and nothing joins them there.
+      const ownLane = (k) => this.app.show.tracks[k].clips.some((x) => EFFECTS[x.effect]?.wholeLoop);
+      const fits = (k) => !fx?.wholeLoop && !ownLane(k) && (house ? (kind(k) === "house") === (kind(d.track) === "house") && laneTakes(c.effect, fx, kind(k))
         : kind(k) !== "house" && kind(d.track) !== "house");
       if (ti >= 0 && ti !== d.track && fits(ti)) {
         const from = this.app.show.tracks[d.track].clips;
