@@ -1920,7 +1920,7 @@ link in a new tab.
 
 | Page | What's there |
 | --- | --- |
-| **Access** | [Who can start shows](#who-can-start-shows), [Opening hours](#opening-hours) and your [Admin PIN](#admin-pin) |
+| **Access** | [Who can start shows](#who-can-start-shows), [Opening hours](#opening-hours), [Installing the page as an app](#installing-the-page-as-an-app) and your [Admin PIN](#admin-pin) |
 | **Shows** | [What visitors can pick](#what-visitors-can-pick), [On the page](#on-the-page): how long each lasts and the flashing lights warning, and [Listening on phones](#listening-on-phones) |
 | **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom |
 | **Words** | [Every message visitors read](#words), to change to your own |
@@ -1985,6 +1985,20 @@ start tomorrow at 4:32pm" or "on Saturday at 5pm"), with your shows listed but n
 buttons. Their phones aren't asked for their location until it opens. Anyone already waiting in the
 queue at closing time still gets their show. Each show's own dates (below) still apply within the
 hours.
+
+#### Installing the page as an app
+
+Visitors (and you) can put the page on their home screen as an app. It opens full screen with no
+address bar, with your code built in, so it keeps working however long ago it was installed.
+
+- **Android (Chrome)**: an **📲 Install app** button appears at the top of the page when the phone
+  offers it. Press it and confirm. It doesn't show once the page is installed, or inside the app.
+- **iPhone**: press **Share**, then **Add to Home Screen**. (iPhones don't let a page offer its own
+  install button.)
+- The app is named after your **Title**, with your page's colours. Its icon is a string of coloured
+  bulbs on your page's background.
+- It needs the page to be reached over https, as it is through a tunnel such as Cloudflare. Everything
+  else (opening hours, **Nearby only**, the admin PIN) works exactly as on the web page.
 
 #### Admin PIN
 

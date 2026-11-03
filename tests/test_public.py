@@ -1009,3 +1009,22 @@ async def test_visitors_are_told_which_shows_have_no_speaker(client):
     public._CHOICES.clear()
     _, state, _ = await _visitor(client, "/api/state")
     assert all(c["speaker"] for c in state["choices"])
+
+
+async def test_the_page_can_be_installed_as_an_app_with_its_code(client):
+    await client.put("/api/public", json={"on": True, "look": {"title": "Northampton Close Lights",
+                                                               "theme": "christmas", "mode": "dark"}})
+    code = public.load(client.app[server.STORAGE])["code"]
+    status, _, _ = await _visitor(client, "/manifest.webmanifest", code=False)
+    assert status == 404  # no code, no app (the title is only for people with the code)
+    async with ClientSession() as s:
+        async with s.get(f"http://127.0.0.1:{client.public_port}/manifest.webmanifest?c={code}") as r:
+            assert r.status == 200 and r.content_type == "application/manifest+json"
+            m = await r.json(content_type=None)
+    assert m["name"] == "Northampton Close Lights" and m["start_url"] == f"./?c={code}"
+    assert m["display"] == "standalone" and m["background_color"] == "#0e1913"
+    assert {i["sizes"] for i in m["icons"]} == {"192x192", "512x512"}
+    status, png, headers = await _visitor(client, "/icon.png?s=192", code=False)
+    assert status == 200 and headers["Content-Type"] == "image/png" and png[:8] == b"\x89PNG\r\n\x1a\n"
+    status, _, _ = await _visitor(client, "/icon.png?s=7", code=False)
+    assert status == 404

@@ -264,6 +264,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     keeping it to your Wi-Fi
   - Visitors can listen to the music on their own phone, in time with the lights, with an optional PIN
     (a small copy of each song is made for phones with ffmpeg)
+  - Installable as an app on visitors' phones (home-screen icon, full screen, your code built in)
   - An admin PIN (hidden behind five taps on the title) lets your own phone past the nearby check,
     opening hours and limits, for trying it out
   - Every word visitors read can be changed, and an optional flashing lights warning (a note, or

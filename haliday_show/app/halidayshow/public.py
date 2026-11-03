@@ -42,7 +42,7 @@ from urllib.parse import urlencode
 
 from aiohttp import web
 
-from . import ai, imagemeta, playlists, schedule, songcopy, songtags
+from . import ai, appicon, imagemeta, playlists, schedule, songcopy, songtags
 from .runner import Runner
 from .storage import Storage, valid_id
 
@@ -1066,6 +1066,67 @@ async def get_listen_song(request):
     return resp
 
 
+# Installing the page as an app ------------------------------------------------------------------------
+# Each theme's background and heading colours (public.css), light then dark; the app's colours follow
+# the page's. "Follow the phone" picks dark: the page is mostly used after dark, by the lights.
+APP_COLOURS = {"plain": (("#f5f6f8", "#0277bd"), ("#111418", "#4fc3f7")),
+               "christmas": (("#fbf6f1", "#1b6b3a"), ("#0e1913", "#7fd39b")),
+               "frosty": (("#f0f6fb", "#0d47a1"), ("#0a1520", "#90caf9")),
+               "halloween": (("#fbf5ee", "#6a1b9a"), ("#130e16", "#f0a35e"))}
+ICON_SIZES = (192, 512)
+_ICONS: dict = {}  # (size, background, wire) -> PNG
+
+
+def app_colours(look: dict) -> tuple[str, str]:
+    """(background, heading colour) for the app's splash screen, title bar and icon."""
+    if look["theme"] == "custom":
+        c = look["colours"]
+        return c["bg"], c["head"]
+    light, dark = APP_COLOURS.get(look["theme"], APP_COLOURS["plain"])
+    return light if look["mode"] == "light" else dark
+
+
+def manifest(p: dict) -> dict:
+    bg, head = app_colours(p["look"])
+    v = hashlib.sha1(f"{bg}{head}".encode()).hexdigest()[:8]
+    name = p["look"]["title"] or "Light show"
+    icons = [{"src": f"icon.png?{urlencode({'s': n, 'v': v})}", "sizes": f"{n}x{n}", "type": "image/png",
+              "purpose": purpose} for n in ICON_SIZES for purpose in ("any", "maskable")]
+    # The code goes in the address the app opens, so it works however long ago it was installed.
+    return {"name": name, "short_name": name if len(name) <= 24 else name[:23] + "…",
+            "id": "./", "start_url": "./?" + urlencode({"c": p["code"]}), "scope": "./",
+            "display": "standalone", "background_color": bg, "theme_color": bg, "icons": icons}
+
+
+async def get_manifest(request):
+    """What a phone needs to install the page as an app: only with the code, like the title."""
+    _limit_client(request, "state", MAX_STATE_PER_CLIENT_MIN)
+    p = load(request.app[STORAGE]) or clean(None)
+    if not _code_ok(p, request.query.get("c")):
+        raise web.HTTPNotFound()
+    return web.json_response(manifest(p), content_type="application/manifest+json",
+                             headers={"Cache-Control": "no-cache"})
+
+
+async def get_icon(request):
+    _limit_client(request, "state", MAX_STATE_PER_CLIENT_MIN)
+    try:
+        size = int(request.query.get("s", "192"))
+    except ValueError:
+        size = 0
+    if size not in ICON_SIZES:
+        raise web.HTTPNotFound()
+    p = load(request.app[STORAGE]) or clean(None)
+    bg, head = app_colours(p["look"])
+    key = (size, bg, head)
+    if key not in _ICONS:
+        if len(_ICONS) > 8:
+            _ICONS.clear()
+        _ICONS[key] = await asyncio.to_thread(appicon.png, size, bg, head)
+    return web.Response(body=_ICONS[key], content_type="image/png",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
 def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
                     copies: songcopy.SongCopies | None = None) -> web.Application:
     app = web.Application(middlewares=[safe_headers], client_max_size=4096)
@@ -1081,6 +1142,8 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
     r.add_get("/", page)
     r.add_get("/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js)}", page)
     r.add_get("/api/state", get_state)
+    r.add_get("/manifest.webmanifest", get_manifest)
+    r.add_get("/icon.png", get_icon)
     r.add_get("/picture", get_picture)
     r.add_get("/cover", get_cover)
     r.add_post("/api/request", post_request)

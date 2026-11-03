@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.330
+
+- **Install the visitors' page as an app.** On Android an **📲 Install app** button appears at the top of the page; on an iPhone use **Share → Add to Home Screen**. The app opens full screen, is named after your title, uses your page's colours with a string-of-bulbs icon, and has your code built in. The button's words are on the **Words** tab.
+
 ## 0.2.329
 
 - **No speaker? The music plays on the visitor's phone.** With listening on, a show that has no speaker (no **Show speaker** and no default one) says **🎧 Music on your phone** on the visitors' page. Pressing **▶ Start** or **+ Queue** on it starts listening on that phone at the same time, so they hear the song when it comes on. Change the words on the **Words** tab.

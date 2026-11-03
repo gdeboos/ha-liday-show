@@ -65,6 +65,13 @@ The visitors' page offers no visible way in: five quick taps on the title open t
 obscurity on top of the PIN, not instead of it. The admin PIN is shown in the editor like the
 listening PIN, and the editor warns when the two are the same.
 
+## Installing as an app (0.2.330)
+
+Two more routes: `GET /manifest.webmanifest?c=<code>` (404 without the right code, since it carries the
+title and the code in `start_url`) and `GET /icon.png?s=192|512` (no code; drawn from the theme's two
+colours only, by `appicon.py`, cached in memory). No service worker, so nothing is cached for offline
+use and every call still goes through the usual checks.
+
 ## Fixed in 0.2.177
 
 | Finding | Seen | Fix |
