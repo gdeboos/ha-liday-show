@@ -64,7 +64,10 @@ into `house-scenes/<id>.live.gshow` (a bake whose tracks also say `kind: "level"
 player picks the frame for the level heard (`Follower`: gliding over 0.15 s, starting from dark; idle
 after 4 s below **Counts as music from**, when the scene's own bake, with the effect's idle glow,
 plays). Checked on the wire at 127.0.0.1 with fake sound sync: a 60-LED Level meter following the bass
-lit 30 LEDs at bands of 128 and 60 at 255, and showed its idle glow with nothing sent.
+lit 30 LEDs at bands of 128 and 60 at 255, and showed its idle glow with nothing sent. From 0.2.316 a live set can also hold "burst" tracks (Beat burst): the burst from start to end at
+40 frames a second, `count` frames, the last dark. The player starts it again on each new `beat_at`
+(`liveeffects.Bursts`) and scales it by the level it follows (0.3 to 1). On the wire, with a beat
+flag every half second, the burst restarted each time and faded in between.
 
 ## Matrices (2D)
 

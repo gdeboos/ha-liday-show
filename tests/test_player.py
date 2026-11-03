@@ -175,3 +175,23 @@ async def test_a_live_light_shows_the_baked_frame_for_the_level_it_follows():
     await p2.play("x", plain, {"w": {"ip": "10.0.0.3", "segments": 1}})
     await p2.stop()
     assert p2.live is None and p2.live_step is None  # a new show stops it
+
+
+async def test_a_beat_burst_plays_from_its_start_on_each_beat_scaled_by_its_level():
+    import asyncio
+    from halidayshow import baked
+    plain = baked.decode(baked.encode(20, [{"device": "w", "segments": 1}], [bytes([1, 2, 3])]))
+    frames = [bytes([200, 0, 0]), bytes([100, 0, 0]), bytes([0, 0, 0])] + [bytes(3)] * 18
+    live = baked.decode(baked.encode(10, [{"device": "w", "segments": 1, "kind": "burst", "follows": "bass", "count": 3}], frames))
+    out = LightOutput()
+    p = player.Player(out)
+    await p.play(None, plain, {"w": {"ip": "10.0.0.3", "segments": 1}}, length=float("inf"))
+    beat = {"loudness": 90, "bass": 100, "mid": 0, "treble": 0, "beat_at": 1.0}
+    p.live, p.live_tracks, p.live_step = live, {"w": live.tracks[0]}, lambda: beat
+    await asyncio.sleep(0.4)
+    beat = {**beat, "bass": 0, "beat_at": 2.0}  # another beat, the bass gone quiet
+    await asyncio.sleep(0.4)
+    await p.stop()
+    sent = out.light.sent
+    assert bytes([200, 0, 0]) in sent and bytes([100, 0, 0]) in sent and bytes([0, 0, 0]) in sent  # start to end
+    assert bytes([60, 0, 0]) in sent  # the next beat at the quietest: 200 × 0.3

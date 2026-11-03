@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.316
+
+- New **Live music** effect for scenes: **Beat burst**. Each beat the WLED hears sets off a short burst, a ripple, shockwave, sparkle or flash, with its brightness following the loudness, bass, mid or treble. Pick the burst and how long it lasts on the light's row.
+
 ## 0.2.315
 
 - New **Live music** effects for scenes, starting with **Level meter**: a light fills with the level of the music a WLED with a microphone hears. **Follows** picks the loudness, the bass, the mid or the treble, so different lights can move to different parts of the music. With no music it breathes gently in its colours. Pick it from the **Live music** group in a light's effect window in a scene.

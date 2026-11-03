@@ -1,11 +1,14 @@
 """Live music effects (effects.js, group Live music): scene lights that follow what a WLED with a
 microphone hears (livemusic.py).
 
-The editor bakes each such light at every level, 0 to 100 % in steps of 5, into the scene's live set
-(house-scenes/<id>.live.gshow: one track per light, naming what it follows). Each frame time the player
-picks the frame for the level it hears, gliding as React to music does; with no music for a few seconds
-(or no WLED heard) the light plays the scene's own bake, where the effect draws its idle glow. Only
-baked frames are picked, never worked out here.
+The editor bakes each such light into the scene's live set (house-scenes/<id>.live.gshow: one track per
+light, naming its kind, what it follows and how many frames are its own):
+  - "level" (Level meter): the light at every level, 0 to 100 % in steps of 5. The player picks the
+    frame for the level it hears, gliding as React to music does.
+  - "burst" (Beat burst): its burst from start to end, ending dark. The player starts it again on each
+    beat the WLED hears, as bright as the level it follows (burst_scale).
+With no music for a few seconds (or no WLED heard) the light plays the scene's own bake, where the
+effect draws its idle glow. Only baked frames are picked and scaled, never worked out here.
 """
 from .baked import Baked, decode
 
@@ -23,7 +26,13 @@ def load(blob: bytes | None) -> Baked | None:
         live = decode(blob)
     except (ValueError, KeyError, TypeError):  # a damaged file (say, from a backup) is just not used
         return None
-    if live.frames != LEVELS or not live.tracks or any(t.kind != "level" or t.follows not in FOLLOWS for t in live.tracks):
+    def fits(t):
+        if t.follows not in FOLLOWS:
+            return False
+        if t.kind == "level":
+            return t.count in (0, LEVELS)  # (sets from before bursts don't say)
+        return t.kind == "burst" and 1 <= t.count <= live.frames
+    if live.frames < LEVELS or not live.tracks or not all(fits(t) for t in live.tracks):
         return None
     return live
 
@@ -49,7 +58,25 @@ class Follower:
         for k in FOLLOWS:
             target = float(heard.get(k, 0) or 0)
             self.levels[k] += (target - self.levels[k]) * min(1.0, dt / GLIDE_S) if dt else 0
-        return {k: round(v) for k, v in self.levels.items()}
+        return {**{k: round(v) for k, v in self.levels.items()}, "beat_at": heard.get("beat_at")}
+
+
+class Bursts:
+    """When the bursts started: on each new beat heard. All of a scene's bursts start together."""
+
+    def __init__(self):
+        self.seen, self.start = None, -1e9
+
+    def index(self, beat_at, now: float, fps: int, count: int) -> int:
+        """Which of a burst's frames shows now: the last (dark) once it's over, until the next beat."""
+        if beat_at is not None and beat_at != self.seen:
+            self.seen, self.start = beat_at, now
+        return max(0, min(count - 1, int((now - self.start) * fps)))
+
+
+def burst_scale(level: float) -> float:
+    """How bright a burst plays for the level it follows (as effects.js burstStrength): never quite off."""
+    return 0.3 + 0.7 * max(0.0, min(100.0, level)) / 100
 
 
 def frame_index(level: float) -> int:

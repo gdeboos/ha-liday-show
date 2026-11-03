@@ -1057,6 +1057,40 @@ EFFECTS.levelmeter = {
   },
 };
 
+// Beat burst: a short burst on every beat. Baked from its start to its end (bakeLive), and the
+// player starts it again on each beat the WLED hears; the level it follows sets how bright it is.
+const BURSTS = ["ripple", "shockwave", "sparkle", "flash"];
+EFFECTS.beatburst = {
+  label: "Beat burst", live: true, sceneOnly: true, wholeLoop: true, group: "live", list: true,
+  params: [...colourList(["#ffffff", "#00b0ff"]), follows, choice("style", "Burst", "ripple", BURSTS),
+    num("length", "Length (seconds)", 0.5, 0.2, 2, 0.1), color("background", "Background", "#000000")],
+  render: (p, t, dur, n, i) => {
+    const x = n > 1 ? i / (n - 1) : 0.5, cols = listColours(p), bg = hexToRgb(p.background);
+    let age = p.burstAge, strength = 1;
+    if (age == null) {
+      // A preview: the time since the last beat the live source heard, as bright as the player makes
+      // it for the level it follows; with nothing, the idle glow.
+      const heard = liveSource ? liveSource(t) : null;
+      if (!heard) return idleGlow(blendList(cols, x), t);
+      age = heard.beatAge ?? 99;
+      strength = burstStrength(heard[p.follows] ?? 0);
+    }
+    const k = Math.max(0, 1 - age / p.length); // how much of the burst is left
+    if (!k) return bg;
+    let a;
+    if (p.style === "flash") a = k;
+    else if (p.style === "sparkle") a = hash01(i, 911) < 0.5 * k ? k : 0;
+    else {
+      // A ring of light running out from the middle (Ripple) or along from the start (Shockwave).
+      const d = p.style === "ripple" ? Math.abs(x - 0.5) * 2 : x;
+      a = Math.exp(-(((d - (1 - k)) / 0.12) ** 2)) * k;
+    }
+    return mix(bg, blendList(cols, p.style === "sparkle" ? hash01(i, 913) : x), Math.min(1, a) * strength);
+  },
+};
+// How bright a burst plays for the level it follows (as liveeffects.burst_scale): never quite off.
+export const burstStrength = (level) => 0.3 + 0.7 * Math.min(Math.max(level, 0), 100) / 100;
+
 export const EFFECT_GROUPS = [["basics", "Basics"], ["movement", "Movement"], ["festive", "Sparkle and festive"],
   ["calm", "Calm"], ["music", "Follows the music"], ["house", "Across the house"], ["matrix", "On a matrix"], ["wled", "On this WLED"],
   ["live", "Live music"]];
@@ -1792,9 +1826,11 @@ export function bake(show, devices, fps = FPS, positions = {}, groups = []) {
   try { return bakeFrames(show, devices, fps, positions, groups); } finally { musicLevels = before; liveSource = live; }
 }
 
-// A scene's live effects at every level, for the player to pick from: one track per light on a live
-// effect (a whole light, its lane's one clip), LIVE_LEVELS frames, frame k at k × 5 %. Laid out as a
-// bake (GVSF), each track also naming its kind ("level") and what it follows. null without any.
+// A scene's live effects baked for the player to pick from: one track per light on a live effect (a
+// whole light, its lane's one clip). A "level" track is LIVE_LEVELS frames, frame k at k × 5 %; a
+// "burst" track its burst from start to end at FPS, ending dark (`count` frames; the rest is padding).
+// Laid out as a bake (GVSF), each track also naming its kind, what it follows and its count. null
+// without any.
 export function bakeLive(show, devices) {
   const lights = [];
   for (const tr of show.tracks || []) {
@@ -1802,20 +1838,29 @@ export function bakeLive(show, devices) {
     if (dev && clip && !dev.parent && !dev.light && !dev.parts?.length) lights.push({ dev, clip, id: tr.device });
   }
   if (!lights.length) return null;
-  const header = { fps: 1, frames: LIVE_LEVELS,
-    tracks: lights.map((l) => ({ device: l.id, segments: l.dev.segments, kind: "level", follows: FOLLOWS.includes(l.clip.follows) ? l.clip.follows : "loudness" })) };
+  for (const l of lights) {
+    l.burst = l.clip.effect === "beatburst";
+    l.count = l.burst ? Math.ceil(Math.min(Math.max(Number(l.clip.length) || 0.5, 0.2), 2) * FPS) + 1 : LIVE_LEVELS;
+  }
+  const frames = Math.max(LIVE_LEVELS, ...lights.map((l) => l.count));
+  const header = { fps: FPS, frames,
+    tracks: lights.map((l) => ({ device: l.id, segments: l.dev.segments, kind: l.burst ? "burst" : "level",
+      follows: FOLLOWS.includes(l.clip.follows) ? l.clip.follows : "loudness", count: l.count })) };
   const head = new TextEncoder().encode(JSON.stringify(header));
   const stride = lights.reduce((n, l) => n + l.dev.segments * 3, 0);
-  const out = new Uint8Array(9 + head.length + LIVE_LEVELS * stride);
+  const out = new Uint8Array(9 + head.length + frames * stride);
   out.set([0x47, 0x56, 0x53, 0x46, 1], 0);
   new DataView(out.buffer).setUint32(5, head.length);
   out.set(head, 9);
   let off = 9 + head.length;
-  for (let k = 0; k < LIVE_LEVELS; k++) {
-    for (const { dev, clip } of lights) {
-      const { transIn, transOut, curves, ...still } = clip; // one still frame a level
-      const frame = renderTrack([{ ...still, start: 0, end: 1, liveLevel: k * 5 }], 0.5, dev.segments, undefined, false, gridOf(dev));
-      out.set(gridOf(dev) ? toWire(frame, dev.matrix) : frame, off);
+  for (let k = 0; k < frames; k++) {
+    for (const { dev, clip, burst, count } of lights) {
+      if (k < count) {
+        const { transIn, transOut, curves, ...still } = clip; // one still frame a level, or a moment of the burst
+        const frame = renderTrack([{ ...still, start: 0, end: 1, ...(burst ? { burstAge: k / FPS } : { liveLevel: k * 5 }) }],
+          0.5, dev.segments, undefined, false, gridOf(dev));
+        out.set(gridOf(dev) ? toWire(frame, dev.matrix) : frame, off);
+      }
       off += dev.segments * 3;
     }
   }

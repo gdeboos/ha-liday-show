@@ -210,8 +210,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   in a scene can play one of WLED's own effects instead
 - **Live music**: see what a WLED with a microphone hears (loudness, beats, bass to treble) in Settings,
   and have scenes **react to music**: brighter when it's louder, a flash on each beat, other scenes for
-  strong bass or treble, and **live music effects** on scene lights (a level meter following the loudness, bass, mid
-  or treble)
+  strong bass or treble, and **live music effects** on scene lights (a level meter or a burst on every beat, following the
+  loudness, bass, mid or treble)
 - Playlists: several shows back to back, round and round, with a Show player page to play the music
   on any computer with speakers
 - A Schedule tab: playlists, shows and scenes that play by themselves (times or sunset, days and

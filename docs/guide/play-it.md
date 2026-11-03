@@ -74,8 +74,8 @@ and not on the schedule) and **Remove…**.
   under its name to give every part its own row instead, each starting on the light's look. A light set to play only as parts always
   has a row for each part.
 - A light not split into parts can play a **Live music** effect that follows what a WLED with a
-  microphone hears (see [Live music effects](#live-music-effects)). Its row then has **Follows** and
-  **Fills** under the effect.
+  microphone hears (see [Live music effects](#live-music-effects)). Its row then has **Follows** (and
+  **Fills** or **Burst**) under the effect.
 - A WLED light (one not split into parts) can play one of **WLED's own effects** instead: pick
   **WLED's own effect** under **On this WLED** in the effect window. Under it, pick which of the WLED's
   effects and palettes, read from the light itself (so the light needs its IP address). Its colours,
@@ -187,6 +187,10 @@ the lane's only effect.
 
 - **Level meter** fills the light with the level: **from the start**, **from the middle** or **from both
   ends** (pick under **Fills**), in its colours from the first to the last (a palette fills them).
+- **Beat burst** plays a short burst on every beat the WLED hears: a **ripple** out from the middle, a
+  **shockwave** along from the start, a **sparkle**, or a **flash** of the whole light. **Length** sets
+  how long each burst lasts (0.2 to 2 seconds); between beats the light is dark. The level it follows
+  sets how bright each burst is, never quite off.
 
 **Follows** picks what it follows: **loudness**, **bass**, **mid** or **treble**. Give one light the bass
 and another the treble, and they move to different parts of the music. With no music for a few seconds
