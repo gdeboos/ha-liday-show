@@ -23,6 +23,8 @@
         {"key": "all_shows", "label": "Button for every heading", "text": "All"},
         {"key": "row_playing", "label": "On a show that's playing", "text": "Playing now"},
         {"key": "row_queued", "label": "On a show that's in the queue", "text": "In the queue"},
+        {"key": "queued_btn", "label": "Button on a show that's already waiting", "text": "✓ Queued"},
+        {"key": "playing_btn", "label": "Button on the show that's on now", "text": "♪ On now"},
         {"key": "start", "label": "Start button", "text": "▶ Start"},
         {"key": "queue_btn", "label": "Button when something's on (adds to the queue)", "text": "+ Queue"},
         {"key": "length", "label": "How long a show lasts", "text": "About {minutes}"},
@@ -45,7 +47,9 @@
         {"key": "one_waiting", "label": "They've already got one waiting", "text": "You can pick another show once yours starts."},
         {"key": "many_waiting", "label": "They've got the most waiting", "text": "You've got {count} shows waiting, the most for one phone."},
         {"key": "full", "label": "The queue is full", "text": "The queue is full. Try again in a few minutes."},
-        {"key": "gone", "label": "A show that's just been taken off", "text": "That show isn't available any more."}
+        {"key": "gone", "label": "A show that's just been taken off", "text": "That show isn't available any more."},
+        {"key": "already_queued", "label": "Picking a show that's already waiting", "text": "That one's already in the queue. Pick another!"},
+        {"key": "already_playing", "label": "Picking the show that's on now", "text": "That one's playing now. Pick another!"}
       ]
     },
     {
