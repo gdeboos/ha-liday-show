@@ -125,14 +125,14 @@ While a scene is on, starting a show or a playlist (from an editor, an automatio
 visitor) takes the lights over. When it finishes, or you stop it, the scene comes back after a
 couple of seconds, and its row says **Comes back after the show** meanwhile. To turn the lights off,
 press **■ Stop** on the scene, or **Stop** while only the scene is playing. **Remove…** deletes a
-scene for good, keeping a copy of all your data first under **Setup → Settings → Your data**.
+scene for good, keeping a copy of all your data first under **Setup → Your data**.
 
 Scenes are made for the lights you have when you edit them. If you add or change lights, open
 HA-liday Show and scenes are made again for the new lights.
 
 ### Live music
 
-**Setup → Settings → Live music** shows what a WLED light with a microphone hears: how loud it is, each
+**Setup → Live music** shows what a WLED light with a microphone hears: how loud it is, each
 beat, and the bass, middle and treble. A scene with **React to music** switched on follows it (see
 [React to music](#react-to-music) below).
 

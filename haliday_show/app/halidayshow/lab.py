@@ -1,5 +1,5 @@
 """Packet lab: send hand-made messages to one light and watch what comes back, to try out commands
-the add-on doesn't know yet (Setup → Settings → Packet lab). Only lights on the Devices tab can be
+the add-on doesn't know yet (Setup → Labs → Packet lab). Only lights on the Devices tab can be
 sent to, and only for a limited time.
 """
 import asyncio

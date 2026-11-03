@@ -9,7 +9,7 @@
 The public page lets people passing by start a show from their phone, usually by scanning a QR code
 on a sign outside. They see the shows and playlists you've picked, and nothing else of HA-liday Show.
 
-1. Open **Setup → Settings** and turn on **Let visitors start shows** under **Public page**. A **Public
+1. Open **Setup → More** and turn on **Let visitors start shows** under **Public page**. A **Public
    page** tab appears along the top.
 2. On the **Public page** tab, open **Shows** and, under **What visitors can pick**, press
    **+ Add shows or playlists…**. Tick as many as you like and press **Add**.
@@ -26,11 +26,15 @@ link in a new tab.
 
 | Page | What's there |
 | --- | --- |
-| **Access** | [Who can start shows](#who-can-start-shows), [Opening hours](#opening-hours), [Installing the page as an app](#installing-the-page-as-an-app) and your [Admin PIN](#admin-pin) |
-| **Shows** | [What visitors can pick](#what-visitors-can-pick), [On the page](#on-the-page): how long each lasts and the flashing lights warning, and [Listening on phones](#listening-on-phones) |
+| **Access** | [Who can start shows](#who-can-start-shows): the link and code, the sign and **Nearby only** (and [Installing the page as an app](#installing-the-page-as-an-app)) |
+| **Hours** | [Opening hours](#opening-hours) |
+| **Limits** | **Requests per phone** and **Queue length** ([Keeping it fair](#visitors-queue)) |
+| **Shows** | [What visitors can pick](#what-visitors-can-pick) and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
+| **Listening** | [Listening on phones](#listening-on-phones) |
+| **Admin** | Your [Admin PIN](#admin-pin) |
 | **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom |
 | **Words** | [Every message visitors read](#words), to change to your own |
-| **Queue** | [The visitors' queue](#visitors-queue) and its limits |
+| **Queue** | [The visitors' queue](#visitors-queue) as it is now |
 
 Beside them (below them on a narrower screen) the **Preview** shows the page as visitors with your
 code see it, and catches up as soon as you change something. Its buttons don't start anything.
@@ -109,7 +113,7 @@ address bar, with your code built in, so it keeps working however long ago it wa
 ### Admin PIN
 
 For trying the page out yourself, away from the house or out of hours. Type 4 to 8 numbers in **Admin
-PIN** on the **Access** page; leave it empty for none.
+PIN** on the **Admin** page; leave it empty for none.
 
 There's no button for it on the visitors' page, so nobody else goes looking. To unlock your phone:
 
@@ -213,7 +217,7 @@ Visitors can hear the music on their own phone, in time with the lights. It's ha
 outdoor speaker, or to keep things quiet for the neighbours. Your show's speaker, if it has one, plays
 as usual.
 
-1. On the **Shows** tab, under **Listening on phones**, turn on **Let visitors listen on their phone**.
+1. On the **Listening** page, turn on **Let visitors listen on their phone**.
 2. To keep it to yourself while you try it out, turn on **Needs a PIN to listen** and type a PIN of 4
    to 8 numbers.
 3. On your phone, open the visitors' link and press **🎧 Listen** in the card at the top (type the PIN
@@ -291,7 +295,7 @@ What visitors get:
   your own phone with the [Admin PIN](#admin-pin) too.
 - Visitors can't stop or skip anyone else's show.
 
-Keeping it fair:
+Keeping it fair, on the **Limits** page:
 
 - **Requests per phone** is how many shows one phone can have waiting (1 to start with). Once a
   visitor's show starts, they can pick another. It's a courtesy limit that someone determined could

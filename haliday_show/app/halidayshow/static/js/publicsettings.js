@@ -1,4 +1,4 @@
-// Setup → Settings → Public page: the words around the settings, kept apart so they can be tested.
+// Setup → More → Public page: the words around the settings, kept apart so they can be tested.
 
 const mins = (s) => {
   const m = Math.max(1, Math.round(s / 60));

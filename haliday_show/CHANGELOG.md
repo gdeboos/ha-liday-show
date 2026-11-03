@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.333
+
+- **Smaller, focused tabs with less scrolling.** What was the long **Setup → Settings** page is now its own tabs under **Setup**: **Editors** (layouts), **Live music**, **AI**, **Your data**, and **More** (the public page switch, setup guide, demo and Experimental). Nothing was removed, only moved.
+- **The Public page tab is split the same way**: **Access** (link, code, sign, Nearby), **Hours**, **Limits** (requests per phone and queue length), **Shows**, **Listening**, **Admin**, **Look**, **Words** and **Queue**.
+
 ## 0.2.332
 
 - **Admin controls on your phone.** With your phone unlocked by the admin PIN, the card at the top of the visitors' page has **⏭ Skip** (ends a visitor's pick that's playing) and **■ Stop the lights** (stops everything and clears the queue, after asking). **Up next** has **Remove** beside everyone else's picks.

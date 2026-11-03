@@ -54,7 +54,7 @@ export const HELP = {
       { id: "ai", title: "Describe it", guide: ["build-a-show.md", "describe-it"], tips: [
         "Type what you'd like, such as \"red and green chase on the roof in every chorus\", and press <b>✨ Create</b>.",
         `Select a stretch first to work on just that. ${k("Ctrl", "Z")} undoes the lot.`,
-        "It needs an AI, set up under <b>Setup → Settings → AI</b>.",
+        "It needs an AI, set up under <b>Setup → AI</b>.",
       ] },
       { id: "preview", title: "Preview and House", guide: ["house.md", "3-your-house"], tips: [
         "<b>Preview</b> shows each light's LEDs (or a Govee light's segments) as they'll look at the playhead.",
@@ -407,7 +407,9 @@ export const HELP = {
 };
 
 // Pages that show the same help: the editors' lists are the Library's pages.
-const SAME = { showlist: "shows", songlist: "songs", playlistlist: "playlists", scenelist: "scenes" };
+// Setup's own tabs for what was once one Settings page share its help.
+const SAME = { showlist: "shows", songlist: "songs", playlistlist: "playlists", scenelist: "scenes",
+  editors: "settings", livemusic: "settings", ai: "settings", data: "settings" };
 export const helpPageFor = (view) => (HELP[SAME[view] || view] ? SAME[view] || view : null);
 
 export const guideUrl = ([file, anchor]) => `${GUIDE}${file}${anchor ? `#${anchor}` : ""}`;

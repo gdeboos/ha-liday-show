@@ -91,7 +91,7 @@ export function reactForm(cfg, { scenes = [], heard = null, idPrefix = "rx" } = 
 
 function heardLine(heard) {
   if (!heard) return null;
-  const where = el("b", {}, "Setup → Settings → Live music");
+  const where = el("b", {}, "Setup → Live music");
   if (!heard.listening) return el("p", { class: "hint" }, "HA-liday Show can't listen for WLED right now. See ", where, ".");
   if (!heard.now) return el("p", { class: "hint" }, "No WLED is sending sound right now. Set one up under ", where, ".");
   return el("p", { class: "hint" }, heard.music ? "Hearing music now." : "A WLED is listening, but it's quiet.",

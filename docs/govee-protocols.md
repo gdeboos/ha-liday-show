@@ -215,7 +215,7 @@ video and a router capture from their own sync box or sync centre; record anythi
 
 ## Tools in the add-on for this kind of work
 
-All under Setup → Labs (tick **Show the Labs tab** under Setup → Settings → Experimental first):
+All under Setup → Labs (tick **Show the Labs tab** under Setup → More → Experimental first):
 
 - **Packet lab** (`lab.py`, `static/js/labtemplates.js`): send JSON, razer or `ptReal` to one of the
   configured lights, repeated on a timer, and see replies. Has the **Run sweep** (past the realtime
