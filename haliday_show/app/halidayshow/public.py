@@ -495,8 +495,16 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"]}
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
-        "now": {"name": st["name"], "visitor": runner.public_now is not None} if st["playing"] else None,
+        "now": {"name": st["name"], "visitor": runner.public_now is not None,
+                # How far through, for the bar under its name (a scene goes round with no end: none).
+                **({"position": round(st["position"], 1), "duration": round(st["duration"], 1)}
+                   if st["duration"] and not (st.get("scene") or {}).get("playing") else {})}
+        if st["playing"] else None,
         "waiting": len(runner.requests),
+        # Everyone's waiting picks, by show name only; a phone's own carry their id so it can cancel them.
+        "queue": [{"name": r["name"], "wait": wait, "yours": bool(ticket) and r["ticket"] == ticket,
+                   **({"id": r["id"]} if ticket and r["ticket"] == ticket else {})}
+                  for r, wait in zip(runner.requests, waits)],
         "full": not admin and len(runner.requests) >= p["queue"],
         "per_phone": MAX_QUEUE if admin else p["per_phone"],
         "mine": mine,

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.325
+
+- **A tidier visitors' page, with far less scrolling.** Your picture is now a banner with the title over it, and the flashing lights warning is one line (unless visitors have to accept it). A card at the top shows what's on with a bar for how far through it is, **🎧 Listen**, and the visitor's own place in the queue, and it stays in view as they scroll. **Music out of time?** opens the Earlier/Later buttons only for people who need them.
+- **Everyone can see the queue.** **Up next** lists the waiting picks by show name (never who picked them), with when each starts. Your own is outlined, with **Cancel** beside it.
+- **Show rows are compact**, with **▶ Start** beside the name, and say **Playing now** or **In the queue**. With two or more headings, buttons above the shows (**All**, then one per heading) show just that heading's shows.
+- New words for all of this are on the **Words** tab.
+
 ## 0.2.324
 
 - **Admin PIN** for the public page, under **Public page → Access**. Open your visitors' link, tap the title five times quickly and type the PIN: that phone then skips **Nearby only**, the opening hours, the listening PIN, the limit per phone and a full queue, and works while visitors are switched off. There's no button for it on the page, so visitors won't find it. Your phone remembers it until you change the PIN.

@@ -150,3 +150,30 @@ test("five quick taps on the title open the admin PIN box; a pause starts again"
   assert.equal(t.done, false);
   assert.equal(page.tapsDone(t.times, 3200).done, true);
 });
+
+
+test("the queue shows the first few, always yours, and opens to show all", () => {
+  const queue = ["A", "B", "C", "D", "E"].map((name, k) => ({ name, wait: 60 * (k + 1), yours: name === "E", ...(name === "E" ? { id: "e1" } : {}) }));
+  const shut = page.queueView({ queue }, W);
+  assert.equal(shut.head, "Up next");
+  assert.deepEqual(shut.rows.map((r) => r.name), ["A", "B", "C", "E"]);
+  assert.equal(shut.rows[3].when, "Yours · in 5 minutes");
+  assert.equal(shut.rows[3].id, "e1");
+  assert.equal(shut.rows[0].when, "in 1 minute");
+  assert.equal(shut.more, "Show all 5");
+  const open = page.queueView({ queue }, W, true);
+  assert.equal(open.rows.length, 5);
+  assert.equal(open.more, "Show fewer");
+  assert.deepEqual(page.queueView({ queue: [] }, W), { head: "", rows: [], more: "" });
+});
+
+test("headings come in the order they first appear", () => {
+  assert.deepEqual(page.headingsOf([{ group: "Bands" }, { group: "" }, { group: "Movies" }, { group: "Bands" }]), ["Bands", "Movies"]);
+});
+
+test("the progress bar moves on between answers and stops at the end", () => {
+  assert.equal(page.progressOf(null, 0), null);
+  assert.equal(page.progressOf({ name: "Scene" }, 0), null);
+  assert.equal(page.progressOf({ position: 10, duration: 40 }, 10000), 0.5);
+  assert.equal(page.progressOf({ position: 39, duration: 40 }, 5000), 1);
+});

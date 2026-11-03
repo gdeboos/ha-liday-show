@@ -6,7 +6,12 @@
       "words": [
         {"key": "idle", "label": "When nothing's playing", "text": "Nothing's on right now. Pick a show to start it."},
         {"key": "on_now", "label": "When a show's playing", "text": "On now: {name}"},
-        {"key": "on_now_waiting", "label": "When a show's playing and others are waiting", "text": "On now: {name} · {count} waiting"}
+        {"key": "on_now_waiting", "label": "When a show's playing and others are waiting", "text": "On now: {name} · {count} waiting"},
+        {"key": "up_next", "label": "Above the queue", "text": "Up next"},
+        {"key": "queue_yours", "label": "Their own pick in the queue", "text": "Yours · in {minutes}"},
+        {"key": "queue_when", "label": "When others in the queue start", "text": "in {minutes}"},
+        {"key": "queue_more", "label": "Show the whole queue", "text": "Show all {count}"},
+        {"key": "queue_less", "label": "Show less of the queue", "text": "Show fewer"}
       ]
     },
     {
@@ -15,6 +20,9 @@
         {"key": "pick_head", "label": "Heading", "text": "Pick a show"},
         {"key": "pick_hint", "label": "Under the heading", "text": "It plays on the lights and speaker here. If something's on, yours plays next."},
         {"key": "shows_head", "label": "Heading when visitors can't start one yet", "text": "Shows"},
+        {"key": "all_shows", "label": "Button for every heading", "text": "All"},
+        {"key": "row_playing", "label": "On a show that's playing", "text": "Playing now"},
+        {"key": "row_queued", "label": "On a show that's in the queue", "text": "In the queue"},
         {"key": "start", "label": "Start button", "text": "▶ Start"},
         {"key": "length", "label": "How long a show lasts", "text": "About {minutes}"},
         {"key": "length_playlist", "label": "How long a playlist lasts", "text": "Playlist · about {minutes}"},
@@ -72,6 +80,9 @@
         {"key": "listen", "label": "Listen button", "text": "🎧 Listen on your phone"},
         {"key": "listen_hint", "label": "Under the button", "text": "Hear the music on your phone, in time with the lights."},
         {"key": "listen_stop", "label": "Stop button", "text": "■ Stop listening"},
+        {"key": "listen_short", "label": "Small Listen button at the top", "text": "🎧 Listen"},
+        {"key": "listening_short", "label": "Small button while listening (press to stop)", "text": "■ Stop"},
+        {"key": "out_of_time", "label": "Link to Music ahead / behind", "text": "Music out of time?"},
         {"key": "listen_on", "label": "While listening", "text": "🎧 Listening: {name}"},
         {"key": "listen_nothing", "label": "Listening, with nothing playing", "text": "🎧 Listening. The music starts here when a show does."},
         {"key": "listen_loading", "label": "While the song loads", "text": "🎧 Getting the music ready…"},
