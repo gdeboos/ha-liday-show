@@ -188,8 +188,9 @@ the lane's only effect.
 - **Level meter** fills the light with the level: **from the start**, **from the middle** or **from both
   ends** (pick under **Fills**), in its colours from the first to the last (a palette fills them).
 - **Beat burst** plays a short burst on every beat the WLED hears: a **ripple** out from the middle, a
-  **shockwave** along from the start, a **sparkle**, or a **flash** of the whole light. **Length** sets
-  how long each burst lasts (0.2 to 2 seconds); between beats the light is dark. The level it follows
+  **shockwave** along from the start, a **sparkle**, or a **flash** of the whole light. **Length** (in
+  the Speed column of its row) sets how long each burst lasts, 0.2 to 2 seconds; between beats the
+  light is dark. The level it follows
   sets how bright each burst is, never quite off.
 
 **Follows** picks what it follows: **loudness**, **bass**, **mid** or **treble**. Give one light the bass

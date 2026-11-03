@@ -2,7 +2,7 @@
 
 ## 0.2.316
 
-- New **Live music** effect for scenes: **Beat burst**. Each beat the WLED hears sets off a short burst, a ripple, shockwave, sparkle or flash, with its brightness following the loudness, bass, mid or treble. Pick the burst and how long it lasts on the light's row.
+- New **Live music** effect for scenes: **Beat burst**. Each beat the WLED hears sets off a short burst, a ripple, shockwave, sparkle or flash, with its brightness following the loudness, bass, mid or treble. Pick the burst and how long it lasts (**Length**) on the light's row.
 
 ## 0.2.315
 

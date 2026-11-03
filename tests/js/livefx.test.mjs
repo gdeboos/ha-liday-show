@@ -54,9 +54,11 @@ test("a scene's live lights baked at every level, for the player to pick from", 
 });
 
 test("live effects stay in scenes", () => {
-  assert.ok(LIVE_EFFECTS.includes("levelmeter"));
-  assert.ok(!BLOCK_EFFECTS.includes("levelmeter"));
-  assert.ok(!effectsForAI().some((e) => e.key === "levelmeter"));
+  for (const k of ["levelmeter", "beatburst"]) {
+    assert.ok(LIVE_EFFECTS.includes(k));
+    assert.ok(!BLOCK_EFFECTS.includes(k));
+    assert.ok(!effectsForAI().some((e) => e.key === k));
+  }
   assert.ok(EFFECTS.levelmeter.wholeLoop && EFFECTS.levelmeter.sceneOnly);
 });
 

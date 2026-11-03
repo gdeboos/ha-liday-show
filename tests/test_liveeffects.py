@@ -7,6 +7,11 @@ def _set(tracks=None, frames=21):
     return baked.encode(1, tracks, [bytes(sum(t["segments"] for t in tracks) * 3)] * frames)
 
 
+def test_a_live_set_from_0_2_315_still_loads():
+    old = baked.encode(1, [{"device": "w", "segments": 2, "kind": "level", "follows": "bass"}], [bytes(6)] * 21)
+    assert liveeffects.load(old).tracks[0].count == 0
+
+
 def test_a_live_set_is_checked_before_use():
     live = liveeffects.load(_set())
     assert live.tracks[0].follows == "treble" and live.frames == 21
@@ -40,6 +45,9 @@ def test_a_burst_starts_on_each_new_beat_and_rests_dark_between():
     assert liveeffects.load(baked.encode(40, tracks, [bytes(6)] * 21)) is not None
     too_long = [{**tracks[0], "count": 30}]
     assert liveeffects.load(baked.encode(40, too_long, [bytes(3)] * 21)) is None
+    old = liveeffects.Bursts()
+    assert old.index(3.0, 10.0, 40, 5) == 4  # a beat from before the scene started: nothing
+    assert old.index(9.9, 10.0, 40, 5) == 0  # the next one starts it
     b = liveeffects.Bursts()
     assert b.index(None, 10.0, 40, 5) == 4  # no beat yet: resting
     assert b.index(7.0, 10.0, 40, 5) == 0  # a beat: from the start

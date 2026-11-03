@@ -65,10 +65,12 @@ class Bursts:
     """When the bursts started: on each new beat heard. All of a scene's bursts start together."""
 
     def __init__(self):
-        self.seen, self.start = None, -1e9
+        self.seen, self.start, self.primed = None, -1e9, False
 
     def index(self, beat_at, now: float, fps: int, count: int) -> int:
         """Which of a burst's frames shows now: the last (dark) once it's over, until the next beat."""
+        if not self.primed:  # a beat heard before the scene started doesn't set one off
+            self.seen, self.primed = beat_at, True
         if beat_at is not None and beat_at != self.seen:
             self.seen, self.start = beat_at, now
         return max(0, min(count - 1, int((now - self.start) * fps)))

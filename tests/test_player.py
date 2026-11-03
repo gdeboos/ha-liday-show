@@ -186,8 +186,10 @@ async def test_a_beat_burst_plays_from_its_start_on_each_beat_scaled_by_its_leve
     out = LightOutput()
     p = player.Player(out)
     await p.play(None, plain, {"w": {"ip": "10.0.0.3", "segments": 1}}, length=float("inf"))
-    beat = {"loudness": 90, "bass": 100, "mid": 0, "treble": 0, "beat_at": 1.0}
+    beat = {"loudness": 90, "bass": 100, "mid": 0, "treble": 0, "beat_at": None}
     p.live, p.live_tracks, p.live_step = live, {"w": live.tracks[0]}, lambda: beat
+    await asyncio.sleep(0.05)
+    beat = {**beat, "beat_at": 1.0}
     await asyncio.sleep(0.4)
     beat = {**beat, "bass": 0, "beat_at": 2.0}  # another beat, the bass gone quiet
     await asyncio.sleep(0.4)
