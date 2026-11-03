@@ -653,3 +653,16 @@ async def test_visitors_see_each_shows_cover_art(client, tmp_path):
     _, view, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert not any(c["cover"] for c in view["choices"])
     assert (await _visitor(client, "/cover?kind=show&id=party"))[0] == 404
+
+
+async def test_headings_group_shows_for_visitors(client):
+    items = [{"kind": "show", "id": "quiet"}, {"kind": "heading", "name": "  Christmas   favourites "},
+             {"kind": "show", "id": "party"}, {"kind": "playlist", "id": "eve"}, {"kind": "heading", "name": " "},
+             {"kind": "heading", "name": "Christmas favourites"}]
+    await client.put("/api/public", json={"on": True, "items": items})
+    saved = (await (await client.get("/api/public")).json())["items"]
+    assert [i.get("name") or i["id"] for i in saved] == ["quiet", "Christmas favourites", "party", "eve", "Christmas favourites"]
+    public._CHOICES.clear()
+    _, view, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert [(c["id"], c["group"]) for c in view["choices"]] == [
+        ("quiet", ""), ("party", "Christmas favourites"), ("eve", "Christmas favourites")]

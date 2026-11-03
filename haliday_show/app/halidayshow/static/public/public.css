@@ -105,3 +105,8 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-cover { flex: none; width: 56px; height: 56px; border-radius: 8px; object-fit: cover; }
 .pp-tile { display: grid; place-items: center; font-weight: 700; font-size: 24px; color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); background: rgba(127, 127, 127, 0.35); }
+
+/* Your headings: the shows under one, in a box with its name. */
+.pp-group { display: flex; flex-direction: column; gap: calc(8px * var(--s)); padding: calc(12px * var(--s));
+  border: var(--bw) solid var(--line); border-radius: var(--r); background: color-mix(in srgb, var(--panel) 50%, transparent); }
+.pp-group-name { margin: 0 0 2px; font-size: 1.05em; font-weight: 700; overflow-wrap: anywhere; }

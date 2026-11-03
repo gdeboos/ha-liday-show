@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.308
+
+- **Public page → Shows**: put what visitors can pick in your own order with **↑** and **↓**, or by dragging a row's **⠿** grip.
+- **+ Add heading…** groups shows for visitors under a title, such as *Christmas favourites*: on their phones, the shows below a heading sit in a box with its name.
+
 ## 0.2.307
 
 - **✨ Generate** and the AI now use your matrices properly: **Fire**, **Snowfall**, **Music bars**, **Plasma** and **Spiral** turn up there, mixed in with the usual looks, and effects on a mega-tree run down its strings.

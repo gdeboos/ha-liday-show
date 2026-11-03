@@ -427,7 +427,7 @@ export function start() {
     $("pp-pick-hint").hidden = !startable;
     $("pp-pick-head").textContent = say_(w, startable ? "pick_head" : "shows_head");
     $("pp-block").hidden = !view.block || !startable;
-    $("pp-choices").replaceChildren(...view.choices.map((c) => {
+    const rows = view.choices.map((c) => {
       const row = el("div", "pp-row");
       // The song's cover art, when it has some (and it's not turned off).
       if (c.cover) {
@@ -461,7 +461,22 @@ export function start() {
         row.append(b);
       }
       return row;
-    }));
+    });
+    // Shows under one of your headings go in a box with it; ones before any heading stand on their own.
+    const out = [];
+    let box = null, under = null;
+    view.choices.forEach((c, k) => {
+      if (!c.group) { out.push(rows[k]); box = null; under = null; return; }
+      if (c.group !== under) {
+        box = el("section", "pp-group");
+        const h = el("h3", "pp-group-name", c.group);
+        box.append(h);
+        out.push(box);
+        under = c.group;
+      }
+      box.append(rows[k]);
+    });
+    $("pp-choices").replaceChildren(...out);
   }
 
   async function refresh() {
