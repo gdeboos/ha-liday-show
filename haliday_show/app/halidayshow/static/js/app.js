@@ -9,7 +9,7 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, EFFECT_GROUPS, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -2877,7 +2877,7 @@ const presetsFor = (effect) => [...(PRESETS[effect] || []), ...app.myPresets.fil
 const presetLabel = (p) => (p.mine ? `★ ${p.label}` : p.label);
 
 // What a clip keeps when its effect changes: its place, and how it comes in, goes out and mixes.
-const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOut", "transOutSecs", "mix", "runs"];
+const CLIP_KEEPS = ["effect", "start", "end", "transIn", "transInSecs", "transOut", "transOutSecs", "mix", "runs", "glitter", "glitterColor"];
 
 // What a clip becomes with `effect` and, optionally, one of its presets: the effect's defaults, the
 // colours and brightness carried over from `from` (the clip being changed), then the preset.
@@ -3245,6 +3245,41 @@ function renderInspector() {
     wrap.append(type, secs, " s");
     field(label, wrap);
   }
+
+  // Glitter: sparkles over the effect. 0 is off (the setting is removed).
+  groups.glitter = group("Glitter");
+  target = groups.glitter;
+  const glitter = document.createElement("input");
+  Object.assign(glitter, { type: "range", min: 0, max: 100, step: 5, value: clip.glitter || 0 });
+  glitter.setAttribute("aria-label", "Glitter amount");
+  glitter.title = "White sparkles over the effect. All the way left is none";
+  const glitterShown = document.createElement("span");
+  glitterShown.className = "range-value";
+  const glitterColour = document.createElement("input");
+  Object.assign(glitterColour, { type: "color", value: clip.glitterColor || GLITTER_COLOUR });
+  glitterColour.setAttribute("aria-label", "Glitter colour");
+  const showGlitter = () => {
+    glitterShown.textContent = Number(glitter.value) ? `${glitter.value}%` : "None";
+    glitterColour.disabled = !Number(glitter.value);
+  };
+  const setGlitter = () => {
+    const v = Number(glitter.value);
+    if (v) clip.glitter = v; else { delete clip.glitter; delete clip.glitterColor; }
+    showGlitter();
+  };
+  glitter.addEventListener("input", () => { setGlitter(); app.changed({ live: true }); });
+  glitter.addEventListener("change", () => { setGlitter(); app.changed(); });
+  glitterColour.addEventListener("input", () => { if (clip.glitter) { clip.glitterColor = glitterColour.value; app.changed({ live: true }); } });
+  glitterColour.addEventListener("change", () => {
+    if (!clip.glitter) return;
+    if (glitterColour.value.toLowerCase() === GLITTER_COLOUR) delete clip.glitterColor; else clip.glitterColor = glitterColour.value;
+    app.changed();
+  });
+  showGlitter();
+  const glitterWrap = document.createElement("span");
+  glitterWrap.append(glitter, glitterShown);
+  field("Amount", glitterWrap);
+  field("Colour", glitterColour);
 
   const colourKeys = EFFECTS[clip.effect].params.filter((p) => p.type === "color" && !unusedColour(clip.effect, p.key, clip)).map((p) => p.key);
   if (colourKeys.length) {

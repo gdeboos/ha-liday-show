@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.295
+
+- Any clip can have **Glitter**: white sparkles twinkling over its effect, such as a red chase with glitter on it. Find it under **Glitter** in the Selection panel, with **Amount** and **Colour**. Scenes have a **Glitter** slider on each light's row too. Old shows look exactly as they did.
+
 ## 0.2.294
 
 - Songs with cover art (MP3, M4A and FLAC) now show it beside their name in **Library → Songs**, and beside each show that uses them in **Library → Shows**. Songs were always kept exactly as you added them, so the art was already there.

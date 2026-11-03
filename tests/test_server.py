@@ -1331,6 +1331,15 @@ async def test_a_scene_with_a_bad_schedule_is_turned_down(client):
     assert (await client.put(f"/api/house-scenes/{scene_id}", json=bad)).status == 400
 
 
+async def test_a_scene_light_can_glitter(client):
+    scene_id = (await (await client.post("/api/house-scenes", json={"name": "Sparkle"})).json())["id"]
+    body = {"name": "Sparkle", "mode": "basic",
+            "lights": {"a": {"effect": "solid", "params": {"color": "#ff0000", "glitter": 40, "glitterColor": "#ffd700"}}}}
+    assert (await client.put(f"/api/house-scenes/{scene_id}", json=body)).status == 200
+    saved = await (await client.get(f"/api/house-scenes/{scene_id}")).json()
+    assert saved["lights"]["a"]["params"]["glitter"] == 40
+
+
 async def test_a_scene_keeps_its_react_to_music_settings(client):
     scene_id = (await (await client.post("/api/house-scenes", json={"name": "Glow"})).json())["id"]
     body = {"name": "Glow", "mode": "basic", "lights": {},
