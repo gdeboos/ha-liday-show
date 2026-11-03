@@ -75,3 +75,16 @@ export function matrixTestFrame({ w, h }) {
   out.set([255, 255, 255], 0);
   return out;
 }
+
+// Where a matrix clip's snapshots go along the timeline between x0 and x1: each as tall as the lane
+// and the grid's shape (at least 8 px wide), a small gap between, the last trimmed to the clip's end.
+export function gridTiles(x0, x1, height, grid, gap = 2) {
+  const w = Math.max(8, (height * grid.w) / grid.h), out = [];
+  // frac: how much of the grid fits (the last is trimmed at the clip's end). A sliver under 4 px
+  // would show less than a column, so it's left out.
+  for (let x = x0; x < x1 - (out.length ? 4 : 0.5); x += w + gap) {
+    const tw = Math.min(w, x1 - x);
+    out.push({ x, w: tw, frac: tw / w });
+  }
+  return out;
+}

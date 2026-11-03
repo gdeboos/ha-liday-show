@@ -2811,6 +2811,7 @@ function drawStrip(c, rgb, n, cap = 1) {
 // The add-on applies the light's brightness cap, so the clip's own colours are sent. A part
 // lights its own slice of the light, with the rest off.
 // A matrix's colours (rows from the top left) as a grid, as big as fits, in the middle.
+const gridCanvas = document.createElement("canvas");
 function drawGrid(c, rgb, { w: gw, h: gh }, cap = 1) {
   const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
   if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
@@ -2822,6 +2823,20 @@ function drawGrid(c, rgb, { w: gw, h: gh }, cap = 1) {
   ctx.clearRect(0, 0, w, h);
   const cell = Math.min(w / gw, h / gh), gap = cell >= 4 ? 0.5 : 0;
   const x0 = (w - cell * gw) / 2, y0 = (h - cell * gh) / 2;
+  if (!gap) {
+    // Small cells: one image the size of the grid, scaled up, rather than a fill per LED (the effect
+    // window animates dozens of these at once).
+    gridCanvas.width = gw; gridCanvas.height = gh;
+    const img = gridCanvas.getContext("2d").createImageData(gw, gh);
+    for (let i = 0; i < gw * gh; i++) {
+      img.data[i * 4] = rgb[i * 3] * cap; img.data[i * 4 + 1] = rgb[i * 3 + 1] * cap; img.data[i * 4 + 2] = rgb[i * 3 + 2] * cap;
+      img.data[i * 4 + 3] = 255;
+    }
+    gridCanvas.getContext("2d").putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(gridCanvas, x0, y0, cell * gw, cell * gh);
+    return;
+  }
   for (let i = 0; i < gw * gh; i++) {
     const [r, g, b] = [rgb[i * 3], rgb[i * 3 + 1], rgb[i * 3 + 2]].map((v) => Math.round(v * cap));
     ctx.fillStyle = `rgb(${r},${g},${b})`;
@@ -2951,7 +2966,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       dlg.close(); app.paletteEffect = effect; onPick(effect, preset);
     }, active ? "active" : "");
     const strip = document.createElement("canvas");
-    strip.className = "fx-strip";
+    strip.className = `fx-strip${gridOf(dev) ? " grid" : ""}`; // a matrix's previews are its grid, so taller
     const span = document.createElement("span");
     span.textContent = label;
     b.append(strip, span);
@@ -3052,13 +3067,16 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
 
 function drawPickerPreviews() {
   for (const set of [pickerPreview, presetTabPreview, presetDialogPreview]) {
+    const grids = set === pickerPreview; // the preset rows are a fixed strip's height
     const items = set.items;
     // offsetParent is null while the strips' panel or tab is hidden.
     if (!items.length || !items[0].canvas.isConnected || !items[0].canvas.offsetParent) continue;
     const secs = (performance.now() - set.started) / 1000;
     for (const { canvas, clip, dev } of items) {
-      const n = dev?.segments || 15;
-      drawStrip(canvas, asShown(dev, secs % clip.end, (t) => renderTrack([clip], t, n)), n, (dev?.brightness ?? 100) / 100);
+      const n = dev?.segments || 15, grid = grids ? gridOf(dev) : null, cap = (dev?.brightness ?? 100) / 100;
+      // On a matrix, each effect moves as the grid would show it.
+      const rgb = asShown(dev, secs % clip.end, (t) => renderTrack([clip], t, n, undefined, false, grid));
+      if (grid) drawGrid(canvas, rgb, grid, cap); else drawStrip(canvas, rgb, n, cap);
     }
   }
 }

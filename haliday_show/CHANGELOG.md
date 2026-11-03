@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.306
+
+- On a matrix, the effect window's moving previews and the clips on the timeline are now drawn as the grid, so you can see **Fire**, **Scrolling text** or a picture as they'll look rather than a thin slice.
+
 ## 0.2.305
 
 - Shared shows now carry their season and which lights are seasonal props. When you import one, a Halloween show becomes your Halloween show (if you have that season), and their Halloween props are suggested for yours. The match screen marks their props, such as **Halloween prop**.

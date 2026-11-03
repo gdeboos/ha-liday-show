@@ -68,3 +68,19 @@ test("the wiring test lights the top left white, the top row red and the left co
   assert.deepEqual(at(3), [0, 255, 0]);
   assert.deepEqual(at(4), [0, 0, 0]);
 });
+
+test("a matrix clip on the timeline is a row of grid snapshots, each the grid's shape", async () => {
+  const { gridTiles } = await import("../../haliday_show/app/halidayshow/static/js/matrix.js");
+  const tiles = gridTiles(100, 200, 30, { w: 32, h: 16 });
+  assert.equal(tiles[0].x, 100);
+  assert.equal(tiles[0].w, 60); // 30 high, twice as wide
+  assert.ok(tiles.every((t) => t.x + t.w <= 200 + 1e-9));
+  assert.equal(tiles.length, 2); // 60 + 2 gap + the last, trimmed
+  assert.equal(tiles[1].w, 38);
+  assert.equal(tiles[0].frac, 1);
+  assert.ok(Math.abs(tiles[1].frac - 38 / 60) < 1e-9); // the part of the grid the trimmed one shows
+  assert.equal(gridTiles(0, 63, 30, { w: 32, h: 16 }).length, 1); // a 1 px sliver after the gap is left out
+  assert.equal(gridTiles(0, 3, 30, { w: 32, h: 16 }).length, 1); // but a very short clip still gets one
+  const tall = gridTiles(0, 100, 30, { w: 8, h: 32 });
+  assert.equal(tall[0].w, 8); // never narrower than 8 px
+});
