@@ -108,7 +108,7 @@ export const QUEUE_SHOWN = 3;
 export function queueView(st, w, open = false) {
   const q = st.queue || [];
   const rows = q.map((r, k) => ({
-    place: k + 1, name: r.name, yours: !!r.yours, id: r.id || "",
+    place: k + 1, name: r.name, yours: !!r.yours, id: r.id || "", kind: r.kind || "", ref: r.ref || "",
     when: r.yours ? say_(w, "queue_yours", { minutes: minutes(r.wait) }) : say_(w, "queue_when", { minutes: minutes(r.wait) }),
   }));
   // Always show your own, even far down.
@@ -120,6 +120,9 @@ export function queueView(st, w, open = false) {
       : open && rows.length > QUEUE_SHOWN ? say_(w, "queue_less") : "",
   };
 }
+
+// The button on each show: Start when it would play straight away, Queue when it would wait.
+export const startWord = (st) => (st.now || (st.queue || []).length ? "queue_btn" : "start");
 
 // Your headings, in the order they first appear, for the buttons above the shows.
 export function headingsOf(choices) {
@@ -720,7 +723,15 @@ export function start() {
     $("pp-queue-head").textContent = q.head;
     $("pp-queue").replaceChildren(...q.rows.map((r) => {
       const li = el("li", r.yours ? "pp-yours" : "");
-      li.append(el("span", "pp-place", String(r.place)), el("span", "pp-name", r.name), el("span", "pp-when", r.when));
+      const pick = (st.choices || []).find((c) => c.kind === r.kind && c.id === r.ref);
+      const art = coverOf({ kind: r.kind, id: r.ref, name: r.name, cover: pick?.cover || 0, colours: pick?.colours || [] }, st);
+      if (art) li.append(art);
+      const text = el("div", "pp-text");
+      text.append(el("div", "pp-name", r.name));
+      const meta = el("div", "pp-when");
+      meta.append(el("span", "pp-place", `${r.place}.`), document.createTextNode(` ${r.when}`));
+      text.append(meta);
+      li.append(text);
       if (r.yours && r.id) {
         const b = el("button", "", say_(w, "cancel"));
         b.type = "button";
@@ -733,6 +744,27 @@ export function start() {
     $("pp-queue-more").textContent = q.more;
     $("pp-queue-more").hidden = !q.more;
     $("pp-queue-more").setAttribute("aria-expanded", String(queueOpen));
+  }
+
+  // A show's cover art from its song, or a tile in its colours with its first letter (none if covers are off).
+  function coverOf(c, st) {
+    if (st.look?.covers === false) return null;
+    if (c.cover) {
+      const img = el("img", "pp-cover");
+      img.alt = "";
+      img.loading = "lazy";
+      img.src = `cover?${new URLSearchParams({ kind: c.kind, id: c.id, code: key, v: String(c.cover) })}`;
+      img.addEventListener("error", () => img.remove());
+      return img;
+    }
+    const tile = el("span", "pp-cover pp-tile", [...c.name.trim()].find((ch) => /[\p{L}\p{N}]/u.test(ch))?.toLocaleUpperCase() || "♪");
+    tile.setAttribute("aria-hidden", "true");
+    // Its palette's colours, or two picked from its name (as in the app's Library).
+    let h = 0;
+    for (const ch of c.name) h = (h * 31 + ch.codePointAt(0)) % 360;
+    const cols = c.colours?.length ? c.colours : [`hsl(${h}, 55%, 42%)`, `hsl(${(h + 50) % 360}, 60%, 32%)`];
+    tile.style.background = cols.length === 1 ? cols[0] : `linear-gradient(135deg, ${cols.join(", ")})`;
+    return tile;
   }
 
   function drawProgress() {
@@ -849,40 +881,24 @@ export function start() {
       return b;
     }));
     const nowName = st.now?.name || "";
-    const queued = new Set((st.queue || []).map((r) => r.name));
+    const queued = new Set((st.queue || []).map((r) => `${r.kind}:${r.ref}`));
     const picked = view.choices.filter((c) => !heading || c.group === heading);
+    const word = startWord(st);
     const rows = picked.map((c) => {
       const row = el("div", "pp-row");
-      // The song's cover art, when it has some (and it's not turned off).
-      if (c.cover) {
-        const img = el("img", "pp-cover");
-        img.alt = "";
-        img.loading = "lazy";
-        img.src = `cover?${new URLSearchParams({ kind: c.kind, id: c.id, code: key, v: String(c.cover) })}`;
-        img.addEventListener("error", () => img.remove());
-        row.append(img);
-      } else if (st.look?.covers !== false) {
-        // No picture: a tile in the show's colours with its first letter.
-        const tile = el("span", "pp-cover pp-tile", [...c.name.trim()].find((ch) => /[\p{L}\p{N}]/u.test(ch))?.toLocaleUpperCase() || "♪");
-        tile.setAttribute("aria-hidden", "true");
-        // Its palette's colours, or two picked from its name (as in the app's Library).
-        let h = 0;
-        for (const ch of c.name) h = (h * 31 + ch.codePointAt(0)) % 360;
-        const cols = c.colours?.length ? c.colours : [`hsl(${h}, 55%, 42%)`, `hsl(${(h + 50) % 360}, 60%, 32%)`];
-        tile.style.background = cols.length === 1 ? cols[0] : `linear-gradient(135deg, ${cols.join(", ")})`;
-        row.append(tile);
-      }
+      const art = coverOf(c, st);
+      if (art) row.append(art);
       const text = el("div", "pp-text");
       text.append(el("div", "pp-name", c.name));
-      const status = c.name === nowName ? say_(w, "row_playing") : queued.has(c.name) ? say_(w, "row_queued") : "";
+      const status = c.name === nowName ? say_(w, "row_playing") : queued.has(`${c.kind}:${c.id}`) ? say_(w, "row_queued") : "";
       const detail = [c.detail, status].filter(Boolean).join(" · ");
       if (detail) text.append(el("div", "pp-hint", detail));
       row.append(text);
       if (startable) {
-        const b = el("button", "primary", say_(w, "start"));
+        const b = el("button", "primary", say_(w, word));
         b.type = "button";
         b.disabled = !!view.block || busy;
-        b.setAttribute("aria-label", `${say_(w, "start").replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
+        b.setAttribute("aria-label", `${say_(w, word).replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
         b.addEventListener("click", () => send("api/request", { kind: c.kind, id: c.id }));
         row.append(b);
       }

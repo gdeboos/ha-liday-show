@@ -24,6 +24,7 @@
         {"key": "row_playing", "label": "On a show that's playing", "text": "Playing now"},
         {"key": "row_queued", "label": "On a show that's in the queue", "text": "In the queue"},
         {"key": "start", "label": "Start button", "text": "▶ Start"},
+        {"key": "queue_btn", "label": "Button when something's on (adds to the queue)", "text": "+ Queue"},
         {"key": "length", "label": "How long a show lasts", "text": "About {minutes}"},
         {"key": "length_playlist", "label": "How long a playlist lasts", "text": "Playlist · about {minutes}"},
         {"key": "no_shows", "label": "When there's nothing to pick", "text": "There aren't any shows to pick yet."},

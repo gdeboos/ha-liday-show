@@ -160,16 +160,17 @@ h1, h2 { color: var(--head, var(--text)); }
   font-weight: 600; font-size: .875em; text-decoration: underline; text-underline-offset: 3px; }
 .pp-queue-box { padding: 10px 12px; margin: 0 0 12px; }
 .pp-queue-head { margin: 0 0 6px; font-size: .8125em; color: var(--muted); }
-.pp-queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.pp-queue li { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: calc(var(--r) * .7);
-  border: 2px solid transparent; }
-.pp-queue li.pp-yours { border-color: var(--accent); }
-.pp-queue .pp-place { width: 1.4em; text-align: center; font-weight: 700; color: var(--muted); flex: none; }
-.pp-queue .pp-name { flex: 1; min-width: 0; font-size: .9375em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-queue .pp-when { font-size: .75em; color: var(--muted); flex: none; text-align: right; }
-.pp-queue li.pp-yours .pp-when { color: var(--text); font-weight: 600; }
-.pp-queue button { min-height: 36px; padding: 4px 10px; font-size: .8125em; }
-
+.pp-queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pp-queue li { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: calc(var(--r) * .7); }
+.pp-queue li.pp-yours { border: 0; background: color-mix(in srgb, var(--head, var(--accent)) 14%, transparent); }
+.pp-queue .pp-cover { width: 40px; height: 40px; border-radius: 6px; }
+.pp-queue .pp-tile { font-size: 18px; }
+.pp-queue .pp-name { font-size: .9375em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  line-clamp: 2; overflow: hidden; }
+.pp-queue .pp-when { font-size: .8125em; color: var(--muted); }
+.pp-queue .pp-place { font-weight: 700; }
+.pp-queue li.pp-yours .pp-when { color: var(--text); }
+.pp-queue button { min-height: 40px; padding: 4px 12px; font-size: .875em; background: transparent; }
 .pp-chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 10px; margin: 0 -2px; scrollbar-width: none; }
 .pp-chips button { flex: none; min-height: 40px; padding: 6px 14px; border-radius: 999px; }
 .pp-chips button[aria-pressed="true"] { background: var(--head, var(--accent)); border-color: var(--head, var(--accent));

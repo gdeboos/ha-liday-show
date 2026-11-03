@@ -502,7 +502,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         if st["playing"] else None,
         "waiting": len(runner.requests),
         # Everyone's waiting picks, by show name only; a phone's own carry their id so it can cancel them.
-        "queue": [{"name": r["name"], "wait": wait, "yours": bool(ticket) and r["ticket"] == ticket,
+        "queue": [{"name": r["name"], "kind": r["kind"], "ref": r["ref"], "wait": wait,
+                   "yours": bool(ticket) and r["ticket"] == ticket,
                    **({"id": r["id"]} if ticket and r["ticket"] == ticket else {})}
                   for r, wait in zip(runner.requests, waits)],
         "full": not admin and len(runner.requests) >= p["queue"],

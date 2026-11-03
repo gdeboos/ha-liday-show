@@ -959,6 +959,7 @@ async def test_visitors_see_the_whole_queue_by_name_only(client):
     await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert [(q["name"], q["yours"]) for q in st["queue"]] == [("Quiet", True), ("Party", False)]
+    assert (st["queue"][0]["kind"], st["queue"][0]["ref"]) == ("show", "quiet")
     assert "id" in st["queue"][0] and "id" not in st["queue"][1]
     assert T2 not in str(st) and "ticket" not in str(st["queue"])
     assert st["now"]["name"] == "Party" and 0 <= st["now"]["position"] <= st["now"]["duration"] == 10
