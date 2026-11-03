@@ -2413,7 +2413,8 @@ def _clean_style(style) -> dict | None:
             return {"style": "panel"}
         if style.get("style") == "tree":
             # A matrix as a mega-tree: its path is the top, then the left and right ends of the base.
-            return {"style": "tree"}
+            # round: its strings go all the way round, so the back half is drawn faint.
+            return {"style": "tree", "round": True} if style.get("round") is True else {"style": "tree"}
         if style.get("style") == "spots":
             beam = round(min(max(float(style.get("beam", 0.5)), 0.1), 1.5), 3)
             aims = style.get("aims") or []

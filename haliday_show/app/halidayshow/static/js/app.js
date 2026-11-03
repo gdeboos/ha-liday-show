@@ -2439,6 +2439,22 @@ function houseStyleControls(d) {
   if (!style) return [l0];
   if (style.style === "panel" || style.style === "tree") {
     if (!grid) return [l0, hint("This only fits a matrix. Turn on Matrix for this light under Setup → Devices.")];
+    if (style.style === "tree") {
+      // Strings all the way round the pole: the back half drawn faint, behind, so a spin goes round.
+      const round = document.createElement("input");
+      round.type = "checkbox";
+      round.checked = style.round === true;
+      round.addEventListener("change", () => {
+        house.setStyle(d.id, round.checked ? { style: "tree", round: true } : { style: "tree" });
+        renderHouseLights();
+      });
+      const l1 = document.createElement("label");
+      l1.className = "row";
+      l1.title = "Tick if the strings go right round the pole: the half at the back is drawn faint, behind the front";
+      l1.append(round, " Goes all the way round");
+      return [l0, l1, hint("Drag the white point to the top of the tree and the other two to the ends of its base. Each column is a string. "
+        + "Effects you add to it start out running down each column." + (round.checked ? " The first half of the strings runs left to right across the front, the rest back round behind." : ""))];
+    }
     return [l0, hint(style.style === "tree"
       ? "Drag the white point to the top of the tree and the other two to the ends of its base. Each column is a string. Effects you add to it start out running down each column."
       : "Drag the four corners onto the panel's corners. The white one is its top left.")];
