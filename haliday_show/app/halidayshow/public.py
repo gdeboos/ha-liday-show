@@ -505,7 +505,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                      "cover": c["cover"] if look["covers"] else 0,
                      "colours": c["colours"] if look["covers"] else [],
                      "minutes": max(1, round(runner.request_seconds(c) / 60)),
-                     "taken": "" if admin else taken(runner, c["kind"], c["id"])} for c in picks if c["available"]],
+                     "taken": taken(runner, c["kind"], c["id"])} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"]}
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
@@ -786,7 +786,7 @@ async def post_request(request):
                  and c["id"] == body.get("id")), None)
     if pick is None:
         raise web.HTTPNotFound(text=said["gone"])
-    if not admin and (why := taken(runner, pick["kind"], pick["id"])):
+    if why := taken(runner, pick["kind"], pick["id"]):
         raise web.HTTPConflict(text=said["already_queued" if why == "queued" else "already_playing"])
     yours = sum(r["ticket"] == ticket for r in runner.requests)
     if admin:

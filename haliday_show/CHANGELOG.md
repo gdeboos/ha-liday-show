@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.328
+
+- **No repeats on your admin phone either.** A phone unlocked with the admin PIN now also sees **✓ Queued** or **♪ On now**, and can't queue a show that's already waiting or playing. It still skips Nearby, the opening hours, the listening PIN and the limits.
+
 ## 0.2.327
 
 - **The same show can't be queued twice.** Once a show is waiting in the queue, or playing now, visitors can't pick it again until it's played: its button says **✓ Queued** or **♪ On now** instead of **+ Queue**. Your phone with the admin PIN can still add it. The new words are on the **Words** tab.

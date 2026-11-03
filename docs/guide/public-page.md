@@ -108,6 +108,7 @@ A dashed card then says your phone is in admin mode, and **Close** tucks it away
 - **Nearby only** and the opening hours don't apply: **▶ Start** shows wherever you are, at any time.
 - The listening PIN isn't asked for.
 - The limit per phone and **Queue length** don't apply (up to 20 waiting, as a ceiling).
+- You still can't queue a show that's already waiting or playing now.
 - The page works even with **Let visitors start shows** off, so you can check everything before you
   open. Other people still see it as closed.
 
@@ -261,8 +262,8 @@ What visitors get:
   A show with no speaker plays its lights only, unless the
   [Show player](play-it.md#music-with-no-speaker-the-show-player) is open.
 - **No repeats:** a show (or playlist) that's already waiting in the queue, or playing now, can't be
-  picked again until it's played. Its button says **✓ Queued** or **♪ On now** instead. (Your own phone
-  with the [Admin PIN](#admin-pin) can still add it.)
+  picked again until it's played. Its button says **✓ Queued** or **♪ On now** instead. This applies to
+  your own phone with the [Admin PIN](#admin-pin) too.
 - Visitors can't stop or skip anyone else's show.
 
 Keeping it fair:

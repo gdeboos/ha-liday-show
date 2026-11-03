@@ -908,7 +908,8 @@ async def test_the_admin_pin_unlocks_only_with_the_right_pin_and_code(client):
 async def test_admin_skips_nearby_hours_limits_and_the_page_being_off(client):
     client.app[server.SCHEDULER].where = lambda: (HOME, "you")
     await client.put("/api/public", json={
-        "on": False, "items": [{"kind": "show", "id": "party"}, {"kind": "show", "id": "quiet"}],
+        "on": False, "items": [{"kind": "show", "id": "party"}, {"kind": "show", "id": "quiet"},
+                               {"kind": "show", "id": "carols"}],
         "per_phone": 1, "queue": 1, "admin_pin": "8642",
         "hours": {"on": True, "start": "03:00", "end": "03:01", "days": [0]}})
     me = await _unlock(client)
@@ -916,12 +917,12 @@ async def test_admin_skips_nearby_hours_limits_and_the_page_being_off(client):
     assert st["open"] is False and st["choices"] == []
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers={**FAR, **me})
     assert st["open"] and st["admin"] and st["hours"] == {"open": True} and st["needs_location"] is False
-    assert {c["id"] for c in st["choices"]} == {"party", "quiet"}
+    assert {c["id"] for c in st["choices"]} == {"party", "quiet", "carols"}
     status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=FAR)
     assert status == 409
     runner = client.app[server.RUNNER]
-    await runner.play("party")  # something's on, so requests wait
-    for show in ("party", "quiet", "party"):  # past one per phone and a queue of one
+    await runner.play("extra")  # something's on, so requests wait
+    for show in ("party", "quiet", "carols"):  # past one per phone and a queue of one
         status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": show},
                                          headers={**FAR, **me})
         assert status == 200, text
@@ -986,8 +987,8 @@ async def test_the_same_show_cant_be_queued_twice(client):
         assert status == 409 and "already in the queue" in text
     _, st, _ = await _visitor(client, f"/api/state?ticket={T2}")
     assert {c["id"]: c["taken"] for c in st["choices"]} == {"party": "queued", "quiet": "", "carols": "playing"}
-    # Your own phone, with the admin PIN, can still add it.
+    # Not even your own phone with the admin PIN.
     me = await _unlock(client)
     status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=me)
-    assert status == 200
+    assert status == 409
     await runner.stop()
