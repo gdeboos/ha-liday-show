@@ -3,6 +3,7 @@
 ## 0.2.320
 
 - Fixed **🎧 Listen on your phone** not showing on some phones after an update. A phone (or a tunnel such as Cloudflare) could keep the old copy of the visitors' page's script and use it with the new page. The page's files now change their address whenever they change, so phones always get the new ones.
+- A green bar under the tabs now shows whatever is on your lights, however it started (the schedule, an automation, a visitor or you): the show, playlist or scene, how far through it is, and **Restart** and **Stop** (**Turn off** for a scene).
 
 ## 0.2.319
 
