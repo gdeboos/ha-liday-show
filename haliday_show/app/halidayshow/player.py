@@ -154,7 +154,9 @@ class Player:
                 break
             react = self.react() if self.react else None
             heard = self.live_step() if self.live_step else None
-            key = (idx, react, tuple(heard.values()) if heard else None)
+            # Only the live frames actually shown count, so a gliding level sends no more than it changes.
+            levels = tuple(liveeffects.frame_index(heard[t.follows]) for t in self.live_tracks.values()) if heard else None
+            key = (idx, react, levels)
             if idx >= 0 and key != last:
                 # Reacting, a frame also goes out when the level, flash or look move with the music,
                 # even on a loop that's a still picture. The frames are only picked, scaled and mixed,

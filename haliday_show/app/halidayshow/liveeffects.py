@@ -21,7 +21,7 @@ def load(blob: bytes | None) -> Baked | None:
         return None
     try:
         live = decode(blob)
-    except ValueError:
+    except (ValueError, KeyError, TypeError):  # a damaged file (say, from a backup) is just not used
         return None
     if live.frames != LEVELS or not live.tracks or any(t.kind != "level" or t.follows not in FOLLOWS for t in live.tracks):
         return None

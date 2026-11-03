@@ -10,7 +10,9 @@ def _set(tracks=None, frames=21):
 def test_a_live_set_is_checked_before_use():
     live = liveeffects.load(_set())
     assert live.tracks[0].follows == "treble" and live.frames == 21
-    for bad in (None, b"", b"nonsense", _set(frames=20), _set([{"device": "w", "segments": 2}]),
+    damaged = b"GVSF\x01" + len(b'{"fps":1,"frames":21,"tracks":[{"device":"a"}]}').to_bytes(4, "big") \
+        + b'{"fps":1,"frames":21,"tracks":[{"device":"a"}]}'
+    for bad in (None, b"", b"nonsense", damaged, _set(frames=20), _set([{"device": "w", "segments": 2}]),
                 _set([{"device": "w", "segments": 2, "kind": "level", "follows": "vocals"}])):
         assert liveeffects.load(bad) is None
 

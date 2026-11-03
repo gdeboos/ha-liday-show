@@ -1726,7 +1726,9 @@ and another the treble, and they move to different parts of the music. With no m
 (or no WLED heard), a live effect breathes gently in its colours instead, so the house never looks off.
 
 While you edit, the preview follows what your WLED hears; with nothing sending, it follows a made-up
-song so you can see it move. **React to music** works on top if it's on too.
+song so you can see it move. If **React to music** is on too, its brightness and beat flash work on top
+(its strong bass and treble scenes don't change a light on a live effect). The idle glow breathes every
+4 seconds, so in an Advanced scene keep **Goes round every** to a multiple of 4 seconds for a smooth loop.
 
 ### Playlists
 
