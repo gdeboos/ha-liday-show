@@ -28,6 +28,21 @@
   </section>
   <div id="pp-open" hidden>
     <p id="pp-now" class="pp-now"></p>
+    <section id="pp-listen" class="pp-card pp-listen" hidden>
+      <div class="pp-listen-row">
+        <button id="pp-listen-btn" type="button" class="primary"></button>
+        <p id="pp-listen-text" class="pp-hint" role="status" aria-live="polite"></p>
+      </div>
+      <div id="pp-pin" class="pp-pin" hidden>
+        <label for="pp-pin-input" id="pp-pin-label"></label>
+        <div class="pp-pin-row">
+          <input id="pp-pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
+          <button id="pp-pin-ok" type="button" class="primary"></button>
+        </div>
+      </div>
+      <p id="pp-listen-msg" class="pp-listen-msg" role="alert" hidden></p>
+      <p id="pp-listen-tip" class="pp-hint" hidden></p>
+    </section>
     <div id="pp-mine" class="pp-list" hidden></div>
     <p id="pp-message" class="pp-message" role="status" aria-live="polite" hidden></p>
     <p id="pp-hours" class="pp-card pp-big pp-hours" role="status" hidden></p>

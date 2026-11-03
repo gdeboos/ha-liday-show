@@ -1910,7 +1910,7 @@ link in a new tab.
 | Page | What's there |
 | --- | --- |
 | **Access** | [Who can start shows](#who-can-start-shows) and [Opening hours](#opening-hours) |
-| **Shows** | [What visitors can pick](#what-visitors-can-pick), and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
+| **Shows** | [What visitors can pick](#what-visitors-can-pick), [On the page](#on-the-page): how long each lasts and the flashing lights warning, and [Listening on phones](#listening-on-phones) |
 | **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom |
 | **Words** | [Every message visitors read](#words), to change to your own |
 | **Queue** | [The visitors' queue](#visitors-queue) and its limits |
@@ -2043,6 +2043,37 @@ Also on the **Shows** tab:
 
   The warning's words, and the button's, are on the **Words** tab.
 
+#### Listening on phones
+
+Visitors can hear the music on their own phone, in time with the lights. It's handy before you have an
+outdoor speaker, or to keep things quiet for the neighbours. Your show's speaker, if it has one, plays
+as usual.
+
+1. On the **Shows** tab, under **Listening on phones**, turn on **Let visitors listen on their phone**.
+2. To keep it to yourself while you try it out, turn on **Needs a PIN to listen** and type a PIN of 4
+   to 8 numbers.
+3. On your phone, open the visitors' link and press **🎧 Listen on your phone** (type the PIN if you
+   set one).
+
+How it works:
+
+- The phone plays whatever show is on, however it was started: from the page, a playlist, the schedule,
+  an automation or the editor. It starts at the right point, and visitors who arrive part-way through
+  join in where the song is. Between shows it waits, and carries on with the next one by itself.
+- With **Nearby only** on, phones have to be nearby to listen, as for starting a show. A PIN is asked
+  for as well, not instead.
+- A phone asks for the PIN once, then remembers it until you change it. Change or clear the PIN and
+  phones that were listening are asked again. After five wrong PINs, a phone waits 10 minutes.
+- HA-liday Show makes a small copy of each song for phones (about 4 MB for a 3-minute song), so it
+  loads quickly over mobile data. The first phone to listen to a song may wait a few seconds while it's
+  made. The copies aren't part of your backups.
+- On your Wi-Fi the music is usually within a few hundredths of a second of the lights. Over mobile data
+  it can be a little further out. Bluetooth headphones and speakers play a little late, as they do with
+  any phone.
+- Keep the page open. On some phones the music stops when the screen locks; press **🎧 Listen on your
+  phone** again to carry on.
+- Every word visitors see while listening is on the **Words** tab, under **Listening on a phone**.
+
 #### Words
 
 Every message visitors read is on the **Words** tab, in groups: the top of the page, the list of
@@ -2170,6 +2201,9 @@ HA-liday Show runs on.
 - **Each visitor's phone has its own limit** on how often it can ask, so one person (or a script)
   can't slow your lights down or crowd everyone else out. Wrong guesses at the code don't count
   against real visitors.
+- **Listening only sends the song that's playing now**, and only to a phone with your code (and your PIN,
+  if you set one) that passes the nearby check. Turn on **Needs a PIN to listen** if you'd rather
+  strangers couldn't listen.
 - **Nearby only** keeps out casual visitors far away, but a phone reports its own location, so
   someone determined at a computer could get round it. **Clear the queue** and **New code…** deal with
   anyone who does.

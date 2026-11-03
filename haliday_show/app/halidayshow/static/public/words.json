@@ -67,6 +67,26 @@
       ]
     },
     {
+      "group": "Listening on a phone",
+      "words": [
+        {"key": "listen", "label": "Listen button", "text": "🎧 Listen on your phone"},
+        {"key": "listen_hint", "label": "Under the button", "text": "Hear the music on your phone, in time with the lights."},
+        {"key": "listen_stop", "label": "Stop button", "text": "■ Stop listening"},
+        {"key": "listen_on", "label": "While listening", "text": "🎧 Listening: {name}"},
+        {"key": "listen_nothing", "label": "Listening, with nothing playing", "text": "🎧 Listening. The music starts here when a show does."},
+        {"key": "listen_loading", "label": "While the song loads", "text": "🎧 Getting the music ready…"},
+        {"key": "listen_tap", "label": "When the phone needs a press to play", "text": "Press Listen again to hear the music."},
+        {"key": "listen_lock", "label": "Tip while listening", "text": "Keep this page open. On some phones the music stops when the screen locks."},
+        {"key": "pin_ask", "label": "Asking for the PIN", "text": "Type the PIN to listen"},
+        {"key": "pin_ok", "label": "Button after the PIN", "text": "OK"},
+        {"key": "pin_needed", "label": "No PIN typed", "text": "Type the PIN to listen."},
+        {"key": "pin_wrong", "label": "Wrong PIN", "text": "That PIN isn't right. Try again."},
+        {"key": "pin_wait", "label": "Too many wrong PINs", "text": "Too many wrong PINs. Try again in 10 minutes."},
+        {"key": "listen_off", "label": "Listening switched off", "text": "Listening on your phone isn't on right now."},
+        {"key": "listen_again", "label": "Pass ran out", "text": "Press Listen again to carry on listening."}
+      ]
+    },
+    {
       "group": "Closed, and without the code",
       "words": [
         {"key": "closed", "label": "Visitors switched off", "text": "No shows right now."},

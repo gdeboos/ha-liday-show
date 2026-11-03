@@ -395,6 +395,10 @@ export const HELP = {
         "Open the <b>Visitors' link</b> on your phone, on your home Wi-Fi, to try it. Print the QR code for a sign outside.",
         "<b>Opening hours</b> and <b>Nearby only</b> limit when and where visitors can start shows.",
       ] },
+      { id: "listen", title: "Listening on phones", tips: [
+        "Turn on <b>Let visitors listen on their phone</b> (on the <b>Shows</b> tab) and visitors can hear whatever's playing on their phone, in time with the lights.",
+        "Add a PIN to keep it to yourself while you try it out. Phones ask for it once, and again after you change it.",
+      ] },
       { id: "look", title: "How the page looks", tips: [
         "Change the words, the picture at the top, the colours and the link at the bottom. The <b>Preview</b> follows every change.",
       ] },

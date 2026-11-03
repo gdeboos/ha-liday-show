@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.318
+
+- Visitors can **listen to the music on their own phone**, in time with the lights. Turn on **Let visitors listen on their phone** on the **Public page** tab, under **Shows → Listening on phones**. Visitors press **🎧 Listen on your phone** and hear whatever show is on, however it was started, joining part-way through if they arrive late. Your show's speaker plays as usual.
+- **Needs a PIN to listen** keeps it to people with your PIN (4 to 8 numbers), handy for trying it out before your speakers and sign are up. Phones ask once, and again after you change it. With **Nearby only** on, they still need to be nearby too.
+- HA-liday Show now makes a small copy of each song for phones (about 4 MB for 3 minutes), so it loads quickly over mobile data. This makes the app a little bigger to download.
+- The words visitors see while listening can be changed on the **Words** tab, under **Listening on a phone**.
+
 ## 0.2.317
 
 - New **Live music** effect for scenes: **Spectrum bars**. The music from bass to treble as up to 16 bars, side by side along a strip or rising up a matrix's columns, each as high as that part of the sound is loud. Pick it from the **Live music** group in a scene light's effect window.

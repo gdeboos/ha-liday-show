@@ -12,8 +12,16 @@ in every visitor's link and must come with every call; with "nearby", a phone th
 network must be within "distance" metres of the house (settings' location, else Home Assistant's). Each
 phone sends a random ticket it keeps, which is how "one request per phone" is counted: mobile
 networks put many phones behind one internet address.
+
+With "listen" on, visitors can also hear whatever's playing on their own phone (Listen): the phone
+asks for a short-lived pass (POST /api/listen, with the nearby check and, if "listen_pin" is set, the
+PIN), then polls /api/listen/now for where the song is and plays a small copy of it (songcopy.py)
+in step with the lights. Phones only follow; they never move the lights.
 """
+import asyncio
 import copy
+import hashlib
+import hmac
 import io
 import ipaddress
 import json
@@ -25,10 +33,11 @@ import secrets
 import time
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urlencode
 
 from aiohttp import web
 
-from . import ai, imagemeta, playlists, schedule, songtags
+from . import ai, imagemeta, playlists, schedule, songcopy, songtags
 from .runner import Runner
 from .storage import Storage, valid_id
 
@@ -54,6 +63,14 @@ _LINK = re.compile(r"^https?://[A-Za-z0-9.-]+(:\d{1,5})?(/[^\s]*)?$")
 _ADDRESS = re.compile(r"^https?://[A-Za-z0-9.-]+(:\d{1,5})?(/[^\s?#]*)?$")
 WHERE = web.AppKey("where", object)  # () -> (lat, lon) of the house, or None
 
+COPIES = web.AppKey("copies", songcopy.SongCopies)
+PIN_TRIES = web.AppKey("pin_tries", dict)
+LISTEN_FOR_S = 15 * 60  # how long a listening pass lasts before the phone asks again (and is checked again)
+MAX_LISTEN_PER_CLIENT_MIN = 1500  # each listening phone asks where the song is about once a second
+MAX_PIN_TRIES, PIN_WAIT_S = 5, 10 * 60  # wrong PINs from one address before it has to wait
+_PIN = re.compile(r"^[0-9]{4,8}$")
+_PASS = re.compile(r"^[0-9a-f]{32}$")
+_TOKEN = re.compile(r"^[0-9]{10}\.[0-9a-f]{32}$")
 RUNNER = web.AppKey("runner", Runner)
 STORAGE = web.AppKey("storage", Storage)
 POSTS = web.AppKey("posts", list)
@@ -153,7 +170,10 @@ def clean(p) -> dict:
             "address": address if len(address) <= 200 and _ADDRESS.match(address) else "",
             "look": clean_look(p.get("look")),
             "hours": clean_hours(p.get("hours")),
-            "words": clean_words(p.get("words"))}
+            "words": clean_words(p.get("words")),
+            # Visitors can listen on their own phone, with a PIN as well (4 to 8 digits) if one is set.
+            "listen": p.get("listen") is True,
+            "listen_pin": pin if _PIN.match(pin := str(p.get("listen_pin") or "").strip()) else ""}
 
 
 DEFAULT_HOURS = {"on": False, "start": "17:00", "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""}
@@ -466,6 +486,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "per_phone": p["per_phone"],
         "mine": mine,
         "needs_location": needs_location,
+        "listen": {"pin": bool(p["listen_pin"])} if p["listen"] else None,
         "hours": hours_now(p, where, now),
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
                                          "corners", "size", "borders", "colours", "show_length", "warning",
@@ -545,7 +566,7 @@ async def safe_headers(request, handler):
 
 async def page(request):
     name = request.match_info.get("name") or "index.html"
-    if name not in ("index.html", "public.js", "public.css", "colours.js"):
+    if name not in ("index.html", "public.js", "public.css", "colours.js", "listensync.js"):
         raise web.HTTPNotFound()
     resp = web.FileResponse(PAGE / name)
     resp.headers["Cache-Control"] = "no-cache"
@@ -749,7 +770,201 @@ async def post_cancel(request):
     return _no_store(web.json_response(_state(request, ticket, body.get("code"))))
 
 
-def make_public_app(storage: Storage, runner: Runner, where=lambda: None) -> web.Application:
+# Listening on visitors' phones ----------------------------------------------------------------------
+_SECRETS: dict = {}
+
+
+def _secret(storage: Storage) -> bytes:
+    """Signs listening passes. Kept in a hidden file, which backups leave out, so passes survive a restart."""
+    if storage.config_dir in _SECRETS:
+        return _SECRETS[storage.config_dir]
+    f = storage.config_dir / ".listen-secret"
+    try:
+        value = bytes.fromhex(f.read_text().strip())
+        if len(value) < 16:
+            raise ValueError
+    except (OSError, ValueError):
+        value = secrets.token_bytes(32)
+        try:
+            storage.config_dir.mkdir(parents=True, exist_ok=True)
+            f.write_text(value.hex())
+        except OSError:
+            log.warning("listening: couldn't keep the passes' key, so phones are asked again after a restart")
+    _SECRETS[storage.config_dir] = value
+    return value
+
+
+def _sign(storage: Storage, text: str) -> str:
+    return hmac.new(_secret(storage), text.encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def pin_pass(storage: Storage, p: dict) -> str:
+    """What a phone keeps once its PIN was right: good until the PIN (or the code) changes."""
+    return _sign(storage, f"pin|{p['code']}|{p['listen_pin']}")
+
+
+def listen_token(storage: Storage, p: dict, until: int) -> str:
+    code, pin = p["code"], p["listen_pin"]
+    return f"{until:010d}." + _sign(storage, f"listen|{code}|{pin}|{until}")
+
+
+def song_sig(storage: Storage, p: dict, key: str) -> str:
+    code, pin = p["code"], p["listen_pin"]
+    return _sign(storage, f"song|{code}|{pin}|{key}")
+
+
+# A fifth of a second of silence: pressing Listen plays it, which lets the page play the song later
+# (phones only play sound started from a press).
+SILENCE = (b"RIFF" + (36 + 3200).to_bytes(4, "little") + b"WAVEfmt " + (16).to_bytes(4, "little")
+           + (1).to_bytes(2, "little") + (1).to_bytes(2, "little") + (8000).to_bytes(4, "little")
+           + (16000).to_bytes(4, "little") + (2).to_bytes(2, "little") + (16).to_bytes(2, "little")
+           + b"data" + (3200).to_bytes(4, "little") + bytes(3200))
+
+
+async def get_silence(request):
+    return web.Response(body=SILENCE, content_type="audio/wav", headers={"Cache-Control": "max-age=86400"})
+
+
+def token_ok(storage: Storage, p: dict, token, now: float | None = None) -> bool:
+    if not isinstance(token, str) or not _TOKEN.match(token):
+        return False
+    until = int(token.split(".")[0])
+    return until >= (now or time.time()) and hmac.compare_digest(token, listen_token(storage, p, until))
+
+
+def _pin_ok(request, p: dict, body: dict):
+    """Raises unless the PIN (or a pass from an earlier right PIN) is good; wrong ones are counted."""
+    said = words(p)
+    st = request.app[STORAGE]
+    good = pin_pass(st, p)
+    sent_pass = body.get("pass")
+    if isinstance(sent_pass, str) and _PASS.match(sent_pass) and hmac.compare_digest(sent_pass, good):
+        return
+    pin = str(body.get("pin") or "").strip()
+    now, tries = time.monotonic(), request.app[PIN_TRIES]
+    who = client(request)
+    wrong = [t for t in tries.get(who, ()) if now - t < PIN_WAIT_S]
+    if len(wrong) >= MAX_PIN_TRIES:
+        raise web.HTTPTooManyRequests(text=said["pin_wait"])
+    if not pin:
+        raise web.HTTPForbidden(text=said["pin_needed"], headers={"X-Listen": "pin"})
+    if not hmac.compare_digest(pin.encode(), p["listen_pin"].encode()):
+        if who not in tries and len(tries) >= MAX_CLIENTS:
+            tries.clear()
+        tries[who] = [*wrong, now]
+        raise web.HTTPForbidden(text=said["pin_wrong"], headers={"X-Listen": "pin"})
+    tries.pop(who, None)
+
+
+def _listening(request, code) -> dict:
+    """The settings, for a phone allowed to ask about listening at all (code right, listening on)."""
+    p = load(request.app[STORAGE]) or clean(None)
+    if not _code_ok(p, code):
+        raise web.HTTPForbidden(text=words(p)["locked"])
+    if not (p["on"] and p["listen"]):
+        raise web.HTTPConflict(text=words(p)["listen_off"])
+    return p
+
+
+async def post_listen(request):
+    """A listening pass for this phone: by the lights (as for Start) and, if set, with the PIN."""
+    _limit_client(request, "post", MAX_POSTS_PER_CLIENT_MIN)
+    body = await _body(request)
+    p = _listening(request, body.get("code"))
+    if _needs_location(request, p):
+        try:
+            _check_near(request, p, body)
+        except NotNear as e:
+            raise web.HTTPForbidden(text=words(p)[e.word])
+    st = request.app[STORAGE]
+    out = {}
+    if p["listen_pin"]:
+        _pin_ok(request, p, body)
+        out["pass"] = pin_pass(st, p)
+    until = int(time.time()) + LISTEN_FOR_S
+    return _no_store(web.json_response({**out, "token": listen_token(st, p, until), "seconds": LISTEN_FOR_S}))
+
+
+_SONG_NOW: dict = {}  # config folder -> ((show id, start count), (name, song file or None, duration))
+
+
+def playing_song(storage: Storage, runner: Runner) -> tuple[dict, Path | None]:
+    """The show playing now ({name, duration}) and its song file, whether its song is on a speaker,
+    in the Show player or nowhere; None for the song with no show on (a scene or a building block
+    has no song). Every listening phone asks once a second, so each show is read once per start."""
+    pl = runner.player
+    if not pl.playing or not pl.show_id:
+        return {}, None
+    which = (pl.show_id, runner.started)
+    known = _SONG_NOW.get(storage.config_dir)
+    if not known or known[0] != which:
+        show = storage.load_show(pl.show_id)
+        known = (which, ((show or {}).get("name") or pl.show_id, _song_file(storage, show)))
+        _SONG_NOW[storage.config_dir] = known
+    name, path = known[1]
+    if path is not None and not path.is_file():
+        path = None
+    return {"name": name, "duration": pl.status()["duration"]}, path
+
+
+def _now_playing(request) -> tuple[dict, Path | None]:
+    return playing_song(request.app[STORAGE], request.app[RUNNER])
+
+
+def _pass_ok(request, p: dict, token):
+    if not token_ok(request.app[STORAGE], p, token):
+        raise web.HTTPForbidden(text=words(p)["listen_again"], headers={"X-Listen": "renew"})
+
+
+async def get_listen_now(request):
+    """Where the song playing now is: the phone sets its own song to match. Asked about once a second."""
+    _limit_client(request, "listen", MAX_LISTEN_PER_CLIENT_MIN)
+    p = _listening(request, request.query.get("code"))
+    _pass_ok(request, p, request.query.get("token"))
+    st, path = _now_playing(request)
+    if path is None:
+        return _no_store(web.json_response({"playing": False}))
+    copies = request.app[COPIES]
+    copies.want(path)
+    try:
+        key = songcopy.key_of(path)
+    except OSError:
+        return _no_store(web.json_response({"playing": False}))
+    ready = copies.ready(path) is not None
+    out = {"playing": True, "key": key, "ready": ready, "name": st.get("name"), "duration": st.get("duration")}
+    if ready:
+        # Its own signature rather than the pass, so a phone still loading the song when its pass is
+        # renewed carries on.
+        out["src"] = "listen/song?" + urlencode({"code": p["code"], "key": key, "sig": song_sig(request.app[STORAGE], p, key)})
+    # Read last, so it's as close as can be to the moment the answer leaves.
+    out["position"] = round(request.app[RUNNER].player.position(), 4)
+    return _no_store(web.json_response(out))
+
+
+async def get_listen_song(request):
+    """The song playing now (its small copy), only for a phone with a listening pass."""
+    _limit_client(request, "listen", MAX_LISTEN_PER_CLIENT_MIN)
+    p = _listening(request, request.query.get("code"))
+    key, sig = request.query.get("key"), request.query.get("sig")
+    if not (isinstance(key, str) and isinstance(sig, str) and _PASS.match(sig)
+            and hmac.compare_digest(sig, song_sig(request.app[STORAGE], p, key))):
+        raise web.HTTPForbidden(text=words(p)["listen_again"])
+    _, path = _now_playing(request)
+    try:
+        if path is None or songcopy.key_of(path) != key:
+            raise web.HTTPNotFound()
+    except OSError:
+        raise web.HTTPNotFound()
+    found = request.app[COPIES].ready(path)
+    if found is None:
+        request.app[COPIES].want(path)
+        raise web.HTTPServiceUnavailable(text="still getting it ready", headers={"Retry-After": "2"})
+    resp = web.FileResponse(found[0], headers={"Content-Type": found[1], "Cache-Control": "private, max-age=3600"})
+    return resp
+
+
+def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
+                    copies: songcopy.SongCopies | None = None) -> web.Application:
     app = web.Application(middlewares=[safe_headers], client_max_size=4096)
     app[STORAGE] = storage
     app[RUNNER] = runner
@@ -757,15 +972,21 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None) -> web
     app[POSTS] = []
     app[NEAR] = []
     app[CLIENTS] = {}
+    app[PIN_TRIES] = {}
+    app[COPIES] = copies or songcopy.SongCopies()
     r = app.router
     r.add_get("/", page)
-    r.add_get("/{name:(public\\.js|public\\.css|colours\\.js)}", page)
+    r.add_get("/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js)}", page)
     r.add_get("/api/state", get_state)
     r.add_get("/picture", get_picture)
     r.add_get("/cover", get_cover)
     r.add_post("/api/request", post_request)
     r.add_post("/api/cancel", post_cancel)
     r.add_post("/api/near", post_near)
+    r.add_post("/api/listen", post_listen)
+    r.add_get("/api/listen/now", get_listen_now)
+    r.add_get("/listen/song", get_listen_song)
+    r.add_get("/listen/silence.wav", get_silence)
     return app
 
 
@@ -777,6 +998,28 @@ class PublicSite:
         self.port = port()
         self.error: str | None = None
         self._runner: web.AppRunner | None = None
+        self.copies = songcopy.SongCopies()
+        self._watch: asyncio.Task | None = None
+
+    async def _get_songs_ready(self):
+        """With listening on, makes the playing song's copy as soon as it starts, so the first phone
+        rarely waits, and the public page's own shows' copies ahead of time."""
+        ahead_done = None
+        while True:
+            try:
+                p = load(self.storage)
+                if p and p["on"] and p["listen"] and songcopy.converter():
+                    if (path := playing_song(self.storage, self.runner)[1]) is not None:
+                        self.copies.want(path)
+                    if ahead_done != p["items"]:
+                        ahead_done = p["items"]
+                        for c in choices(self.storage):
+                            for sid in c["shows"]:
+                                if (path := _song_file(self.storage, self.storage.load_show(sid))) is not None:
+                                    self.copies.want(path)
+            except Exception:  # never let a hiccup stop the watching
+                log.exception("listening: getting songs ready")
+            await asyncio.sleep(2)
 
     @property
     def listening(self) -> bool:
@@ -793,7 +1036,10 @@ class PublicSite:
             self.runner.clear_requests()
         if p is None or self._runner is not None:
             return
-        app_runner = web.AppRunner(make_public_app(self.storage, self.runner, self.where), access_log=None)
+        if self._watch is None:
+            self._watch = asyncio.get_running_loop().create_task(self._get_songs_ready())
+        app_runner = web.AppRunner(make_public_app(self.storage, self.runner, self.where, self.copies),
+                                   access_log=None)
         await app_runner.setup()
         try:
             await web.TCPSite(app_runner, port=self.port).start()
@@ -806,6 +1052,9 @@ class PublicSite:
         log.info("public page on port %d", self.port)
 
     async def close(self):
+        if self._watch:
+            self._watch.cancel()
+            self._watch = None
         if self._runner:
             await self._runner.cleanup()
             self._runner = None

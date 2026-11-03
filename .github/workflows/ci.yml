@@ -63,6 +63,10 @@ jobs:
           curl -fsS -u any:pw "$ip:8098/api/info"
       - name: Follows the TZ setting (playlist schedules use the local clock)
         run: docker run --rm -e TZ=Asia/Tokyo --entrypoint python3 haliday-show-test -c "import time; z = time.strftime('%Z'); print(z); assert z == 'JST', z"
+      - name: Has ffmpeg (songs for phones) and it makes an AAC copy
+        run: |
+          docker run --rm --entrypoint sh haliday-show-test -c "ffmpeg -v error -f lavfi -i sine=duration=1 -c:a aac /tmp/t.m4a && ls -l /tmp/t.m4a"
+          docker image ls haliday-show-test
       - name: aarch64 base image exists
         run: |
           base=$(sed -n 's/^FROM \(.*\)$/\1/p' haliday_show/Dockerfile | sed 's/${BUILD_ARCH}/aarch64/')

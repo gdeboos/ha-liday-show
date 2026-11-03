@@ -1,7 +1,8 @@
 import { bestOn } from "./colours.js";
+import { addSample, learnLead, median, steer, target } from "./listensync.js";
 
-// The public page: people passing by pick a show and queue it up. It only talks to the three calls
-// on the public port (api/state, api/request, api/cancel), never to the editor.
+// The public page: people passing by pick a show and queue it up, and (if you allow it) listen to
+// the music on their phone. It only talks to the public port's own calls, never to the editor.
 
 const ordinal = (n) => {
   const tens = n % 100;
@@ -219,6 +220,187 @@ function ticket() {
   return t;
 }
 
+const PASS_KEY = "halidayshow.listenPass";
+const POLL_MS = 1000;
+const STEER_MS = 250;
+const RENEW_EARLY_S = 120; // ask for a new pass this long before it runs out
+
+// Listening on the phone: plays the song that's on now, kept in time with the lights (listensync.js).
+// say(key, vars) gives a word; pos() where the phone is (for the nearby check); onChange() redraws.
+export function makeListener({ code, say, pos, onChange }) {
+  const audio = new Audio();
+  audio.preload = "auto";
+  if ("preservesPitch" in audio) audio.preservesPitch = true;
+  const me = {
+    on: false, state: "off", // "off" | "pin" | "starting" | "loading" | "playing" | "idle" | "tap"
+    name: "", message: "", token: "", until: 0,
+  };
+  let samples = [], song = null, src = "", errs = [], lead = 0.15, seekedAt = 0, learning = false;
+  let pollTimer = null, steerTimer = null, polling = false, gen = 0;
+  const passKey = `${PASS_KEY}.${code}`;
+  const keptPass = () => { try { return localStorage.getItem(passKey) || ""; } catch { return ""; } };
+  const keepPass = (v) => { try { v ? localStorage.setItem(passKey, v) : localStorage.removeItem(passKey); } catch { /* this visit only */ } };
+
+  const set = (state, message = "") => { me.state = state; me.message = message; onChange(); };
+
+  // Phones only play sound started by a press: play a moment of silence now, so the song can start
+  // later on this same player.
+  function unlock() {
+    audio.src = "listen/silence.wav";
+    src = "";
+    audio.play().catch(() => {});
+  }
+
+  async function getPass(pin) {
+    const body = { code, ...(pos() || {}) };
+    if (pin) body.pin = pin;
+    else if (keptPass()) body.pass = keptPass();
+    const res = await fetch("api/listen", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      const err = new Error(text || say("offline"));
+      err.pin = res.headers.get("X-Listen") === "pin";
+      err.status = res.status;
+      if (err.pin && !pin) keepPass("");
+      throw err;
+    }
+    const ans = await res.json();
+    if (ans.pass) keepPass(ans.pass);
+    me.token = ans.token;
+    me.until = Date.now() + ans.seconds * 1000;
+  }
+
+  async function begin(pin, needsPin) {
+    if (needsPin && !pin && !keptPass()) { set("pin"); return; }
+    unlock();
+    me.on = true;
+    set("starting");
+    try {
+      await getPass(pin);
+    } catch (e) {
+      me.on = false;
+      audio.pause();
+      if (e.pin) set("pin", e.message);
+      else set("off", e.message);
+      return;
+    }
+    const mine = ++gen;
+    samples = []; errs = [];
+    poll(mine);
+    clearInterval(steerTimer);
+    steerTimer = setInterval(steerNow, STEER_MS);
+  }
+
+  function stop(message = "") {
+    me.on = false;
+    gen++;
+    clearTimeout(pollTimer);
+    clearInterval(steerTimer);
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+    src = ""; song = null; samples = [];
+    set("off", message);
+  }
+
+  async function poll(mine) {
+    if (mine !== gen || polling) return;
+    polling = true;
+    try {
+      if (me.until - Date.now() < RENEW_EARLY_S * 1000) await getPass();
+      const sent = performance.now();
+      const res = await fetch(`api/listen/now?${new URLSearchParams({ code, token: me.token })}`, { cache: "no-store" });
+      const recv = performance.now();
+      if (mine !== gen) return;
+      if (res.status === 403 && res.headers.get("X-Listen") === "renew") {
+        await getPass();
+      } else if (!res.ok) {
+        if (res.status === 409 || res.status === 403) { stop(await res.text()); return; }
+      } else {
+        heard(await res.json(), sent, recv);
+      }
+    } catch (e) {
+      if (mine !== gen) return;
+      if (e.status) { // a pass refused: the PIN changed, listening was turned off, or the phone walked off
+        me.on = false;
+        stop(e.message);
+        if (e.pin) set("pin", e.message);
+        return;
+      }
+      // A blip: carry on, the song keeps playing meanwhile.
+    } finally {
+      polling = false;
+    }
+    if (mine === gen) pollTimer = setTimeout(() => poll(mine), POLL_MS);
+  }
+
+  function heard(now, sent, recv) {
+    if (!now.playing) {
+      if (song) { audio.pause(); song = null; src = ""; samples = []; }
+      set("idle");
+      return;
+    }
+    me.name = now.name || "";
+    if (song !== now.key) { song = now.key; samples = []; errs = []; }
+    samples = addSample(samples, { sent, recv, position: now.position });
+    if (!now.ready) { set("loading"); return; }
+    if (src !== now.src) {
+      src = now.src;
+      audio.src = src;
+      seekTo();
+      return;
+    }
+    if (audio.paused && me.state !== "tap") play();
+  }
+
+  function play() {
+    audio.play().then(() => { if (me.state !== "playing") set("playing"); }).catch((e) => {
+      if (e?.name === "NotAllowedError") set("tap");
+    });
+  }
+
+  function seekTo() {
+    const t = target(samples, performance.now());
+    if (t === null) return;
+    try { audio.currentTime = Math.max(0, t + lead); } catch { /* not loaded yet: the next steer tries again */ }
+    seekedAt = performance.now();
+    learning = true;
+    errs = [];
+    audio.playbackRate = 1;
+    if (audio.paused) play();
+  }
+
+  function steerNow() {
+    if (!me.on || !src || audio.paused || audio.readyState < 2) return;
+    const now = performance.now();
+    const t = target(samples, now);
+    if (t === null) return;
+    if (now - seekedAt < 1000) return; // let a jump settle first
+    errs = [...errs, audio.currentTime - t].slice(-8);
+    if (errs.length < 4) return;
+    const err = median(errs);
+    if (learning) { lead = learnLead(lead, err); learning = false; }
+    const move = steer(err);
+    if (move.seek) seekTo();
+    else if (audio.playbackRate !== move.rate) audio.playbackRate = move.rate;
+  }
+
+  audio.addEventListener("ended", () => { if (me.on) set("idle"); });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && me.on) { clearTimeout(pollTimer); poll(gen); }
+  });
+
+  return {
+    get state() { return me; },
+    begin,
+    stop,
+    // Pressing Listen again after the phone wouldn't play by itself.
+    resume() { set("playing"); play(); },
+  };
+}
+
 export function start() {
   const $ = (id) => document.getElementById(id);
   // Shown inside the editor's Public page tab: looks the same, but starts nothing.
@@ -232,6 +414,10 @@ export function start() {
   try { accepted = sessionStorage.getItem(ACCEPTED_KEY) === "1"; } catch { /* private browsing */ }
   const snow = makeSnow($("pp-snow"));
   let pictureShown = 0;
+  const listener = makeListener({
+    code: key, say: (k, vars) => say_(w, k, vars), pos: () => (needsLocation ? where.pos : null),
+    onChange: () => drawListen(),
+  });
 
   function applyLook(look) {
     if (!look) return;
@@ -343,6 +529,50 @@ export function start() {
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
   }
 
+  // The Listen card: shown while listening, or to phones that could start listening.
+  function drawListen() {
+    const st = last;
+    const me = listener.state;
+    const offered = !!(st && st.open && st.listen && !st.locked);
+    const card = $("pp-listen");
+    card.hidden = !(me.on || me.state === "pin" || (offered && canStart(needsLocation, where)) || (offered && me.message));
+    if (card.hidden) return;
+    const playing = me.on && me.state !== "tap";
+    $("pp-listen-btn").textContent = say_(w, playing ? "listen_stop" : "listen");
+    $("pp-listen-btn").hidden = me.state === "pin";
+    const text = {
+      off: "listen_hint", pin: "", starting: "listen_loading", loading: "listen_loading", tap: "listen_tap",
+      playing: me.name ? "listen_on" : "listen_nothing", idle: "listen_nothing",
+    }[me.state];
+    $("pp-listen-text").textContent = text ? say_(w, text, { name: me.name }) : "";
+    $("pp-listen-text").hidden = !text;
+    $("pp-pin").hidden = me.state !== "pin";
+    $("pp-pin-label").textContent = say_(w, "pin_ask");
+    $("pp-pin-ok").textContent = say_(w, "pin_ok");
+    $("pp-listen-msg").textContent = me.message;
+    $("pp-listen-msg").hidden = !me.message;
+    $("pp-listen-tip").textContent = say_(w, "listen_lock");
+    $("pp-listen-tip").hidden = !(me.on && ["playing", "idle"].includes(me.state));
+  }
+
+  function pressListen() {
+    if (preview) {
+      say("This is a preview. On visitors' phones, this plays the music.", true);
+      return;
+    }
+    const me = listener.state;
+    if (me.state === "tap") listener.resume();
+    else if (me.on) listener.stop();
+    else listener.begin("", !!last?.listen?.pin);
+  }
+
+  function sendPin() {
+    const pin = $("pp-pin-input").value.trim();
+    $("pp-pin-input").value = "";
+    if (preview) { say("This is a preview. On visitors' phones, this plays the music.", true); return; }
+    listener.begin(pin, true);
+  }
+
   // A problem, or with info = true, a plain progress note.
   const say = (text, info = false) => {
     $("pp-message").textContent = text;
@@ -381,7 +611,7 @@ export function start() {
     $("pp-hours").hidden = !closed;
     needsLocation = !!st.needs_location;
     // Outside opening hours nobody's asked for their location: there's nothing to start yet.
-    if (needsLocation && where.state === "idle" && st.open && !closed && !document.hidden) watchWhere();
+    if (needsLocation && where.state === "idle" && st.open && (!closed || st.listen) && !document.hidden) watchWhere();
     if (!needsLocation && where.state !== "idle") { // e.g. Nearby only turned off: start afresh if it comes back
       stopWatching();
       Object.assign(where, { state: "idle", text: "", pos: null });
@@ -391,6 +621,9 @@ export function start() {
     const view = describe(st);
     $("pp-closed").hidden = !view.closed;
     $("pp-open").hidden = view.closed;
+    // Listening turned off (or the page closed) while a phone listens: it stops.
+    if (listener.state.on && !(st.open && st.listen)) listener.stop(say_(w, "listen_off"));
+    drawListen();
     if (view.closed) return;
     $("pp-now").textContent = view.now;
     const mine = $("pp-mine");
@@ -520,6 +753,9 @@ export function start() {
   }
 
   $("pp-retry").addEventListener("click", watchWhere);
+  $("pp-listen-btn").addEventListener("click", pressListen);
+  $("pp-pin-ok").addEventListener("click", sendPin);
+  $("pp-pin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") sendPin(); });
   $("pp-accept").addEventListener("click", () => {
     accepted = true;
     try { sessionStorage.setItem(ACCEPTED_KEY, "1"); } catch { /* kept for this visit */ }
