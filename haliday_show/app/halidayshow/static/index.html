@@ -51,6 +51,14 @@
   <symbol id="i-public" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h7v-4"/></symbol>
   <symbol id="i-listen" viewBox="0 0 24 24"><path d="M3 12h3l2-6 3 12 3-9 2 6 1.5-3H21"/></symbol>
 </svg>
+<!-- Over the page until your shows, lights and settings have loaded, so nothing looks empty meanwhile. -->
+<div id="app-loading" class="app-loading" role="status" aria-live="polite">
+  <div class="app-loading-card">
+    <span class="spinner" aria-hidden="true"></span>
+    <p id="app-loading-text">Loading your shows…</p>
+    <button type="button" id="app-loading-retry" class="primary" hidden>Try again</button>
+  </div>
+</div>
 <header class="topbar">
   <h1><img class="brand" src="static/favicon.svg" alt="" width="26" height="26">HA-liday Show</h1>
   <nav>

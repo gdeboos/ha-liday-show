@@ -10468,11 +10468,17 @@ async function init() {
       else showView(wanted, { push: false });
     }
     window.addEventListener("popstate", pageFromHistory);
+    $("app-loading").hidden = true;
     // A fresh install opens the setup guide, once.
     if (!app.deviceList.length && !shows.length && !prefs.get("wizard.done", false)) openWizard();
     tellRetired();
   } catch (e) {
     status(`Couldn't reach HA-liday Show: ${e.message}`, true);
+    // Said where the loading was, with a way to try again, rather than leaving the page looking empty.
+    $("app-loading-text").textContent = `Couldn't load HA-liday Show: ${e.message}`;
+    $("app-loading").querySelector(".spinner").hidden = true;
+    $("app-loading-retry").hidden = false;
+    $("app-loading-retry").onclick = () => location.reload();
   }
   requestAnimationFrame(frame);
 }
