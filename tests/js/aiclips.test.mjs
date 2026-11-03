@@ -125,7 +125,7 @@ test("palettes from the AI keep valid colours only, up to 12, and skip ones with
 test("every effect is described for the AI", async () => {
   const { EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
   const { EFFECT_NOTES, effectsForAI } = await import("../../haliday_show/app/halidayshow/static/js/aiclips.js");
-  for (const [key, fx] of Object.entries(EFFECTS)) if (!fx.experimental && !["text", "picture"].includes(key)) assert.ok(EFFECT_NOTES[key], key);
+  for (const [key, fx] of Object.entries(EFFECTS)) if (!fx.experimental && !fx.wledOwn && !["text", "picture"].includes(key)) assert.ok(EFFECT_NOTES[key], key);
   // Matrix effects are offered, marked, except the two that need your words or pictures.
   const offered = effectsForAI();
   assert.ok(offered.find((e) => e.key === "fire2d").matrix);

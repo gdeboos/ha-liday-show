@@ -439,3 +439,38 @@ async def test_changing_live_music_applies_to_the_scene_playing(runner, monkeypa
     runner.storage.save_settings(settings)
     runner.player.react()
     assert runner.live.asked[-1] == "10.0.0.7"
+
+
+def test_which_lights_a_scene_hands_to_wled_s_own_effects():
+    devices = {"w": {"id": "w", "kind": "wled"}, "g": {"id": "g", "kind": "govee"}}
+    look = {"effect": "wled", "params": {"fx": 9, "speed": 200}}
+    basic = {"mode": "basic", "lights": {"w": look, "g": look, "w#p1": look, "x": look}}
+    assert scenelib.wled_looks(basic, devices) == {"w": {"fx": 9, "speed": 200}}  # only whole WLED lights
+    assert scenelib.wled_looks({"mode": "basic", "lights": {"w": {"effect": "chase", "params": {}}}}, devices) == {}
+    advanced = {"mode": "advanced", "loop": 10, "tracks": [
+        {"device": "w", "clips": [{"effect": "wled", "start": 0, "end": 10, "fx": 3}]},
+        {"device": "g", "clips": [{"effect": "wled", "start": 0, "end": 10, "fx": 3}]}]}
+    assert scenelib.wled_looks(advanced, devices) == {"w": {"effect": "wled", "start": 0, "end": 10, "fx": 3}}
+
+
+async def test_a_wled_on_its_own_effect_gets_its_state_and_no_frames(runner, monkeypatch):
+    sent = []
+
+    async def fake_set_state(ip, state, timeout=4.0):
+        sent.append((ip, state))
+
+    monkeypatch.setattr(runner_mod.wled, "set_state", fake_set_state)
+    runner.storage.save_devices([{"id": "a", "ip": "127.0.0.1", "segments": 1},
+                                 {"id": "w", "kind": "wled", "ip": "127.0.0.2", "segments": 1},
+                                 {"id": "p", "kind": "wled", "ip": "", "segments": 1}])
+    look = {"effect": "wled", "params": {"fx": 9, "speed": 200, "intensity": 50, "palette": 6, "color": "#ff0000"}}
+    runner.storage.save_scene("mix", {"name": "Mix", "mode": "basic", "lights": {
+        "a": {"effect": "solid", "params": {}}, "w": look, "p": look}})
+    runner.storage.save_scene_baked("mix", baked.encode(40, [{"device": "a", "segments": 1}, {"device": "w", "segments": 1}],
+                                                        [b"\xff\x00\x00\x00\xff\x00"] * 4))
+    await runner.play_scene("mix")
+    assert await _until(lambda: sent)
+    assert set(runner.player.devices) == {"a"}  # no frames to the WLED (or the planned one)
+    ip, state = sent[0]
+    assert ip == "127.0.0.2" and len(sent) == 1
+    assert state["on"] is True and state["seg"]["fx"] == 9 and state["seg"]["sx"] == 200 and state["seg"]["pal"] == 6

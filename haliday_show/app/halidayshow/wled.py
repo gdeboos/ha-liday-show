@@ -58,6 +58,56 @@ class WledError(Exception):
     pass
 
 
+# The "wled" effect's default colours in effects.js, for a look that hasn't changed them (the editor
+# shows these, so WLED should get them too).
+OWN_COLOURS = {"color": "#ff0000", "color2": "#ffffff", "color3": "#00b000"}
+
+
+def own_effect_state(p: dict) -> dict:
+    """A scene light's look on WLED's own effect ({fx, speed, intensity, palette, color, color2, color3,
+    brightness}, as the editor saves it) as the /json/state WLED takes: its main segment's effect,
+    speed, intensity, palette and three colours, the light on, and out of realtime mode at once."""
+    def whole(key, default, top=255):
+        try:
+            return max(0, min(top, round(float(p.get(key, default)))))
+        except (TypeError, ValueError):
+            return default
+
+    def rgb(key):
+        v = p.get(key, OWN_COLOURS[key])
+        if isinstance(v, str) and len(v) == 7 and v[0] == "#":
+            try:
+                return [int(v[1:3], 16), int(v[3:5], 16), int(v[5:7], 16)]
+            except ValueError:
+                pass
+        return [0, 0, 0]
+
+    seg = {"fx": whole("fx", 0), "sx": whole("speed", 128), "ix": whole("intensity", 128), "pal": whole("palette", 0),
+           "col": [rgb(k) for k in ("color", "color2", "color3")]}
+    if isinstance(p.get("brightness"), (int, float)) and not isinstance(p.get("brightness"), bool):
+        seg["bri"] = round(max(0, min(100, p["brightness"])) * 255 / 100)
+    return {"on": True, "live": False, "seg": seg}
+
+
+async def set_state(ip: str, state: dict, timeout: float = 4.0):
+    """Sends WLED a new state (POST /json/state)."""
+    url = f"http://{ip}:{HTTP_PORT}/json/state"
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
+            async with s.post(url, json=state) as r:
+                if r.status != 200:
+                    raise WledError(f"{ip} answered {r.status}")
+    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        raise WledError(f"no WLED light answered at {ip}") from e
+
+
+def _names(names) -> list[str]:
+    """WLED's list of effect or palette names, each kept at its number; reserved slots ("RSVD", "-") blank."""
+    if not isinstance(names, list):
+        return []
+    return ["" if not isinstance(n, str) or n.strip() in ("RSVD", "-", "") else n.strip()[:40] for n in names[:256]]
+
+
 async def fetch(ip: str, timeout: float = 4.0) -> dict:
     """The light's name, LED count, segments (as parts) and, set up as 2D, its matrix size."""
     url = f"http://{ip}:{HTTP_PORT}/json"
@@ -76,7 +126,9 @@ async def fetch(ip: str, timeout: float = 4.0) -> dict:
         raise WledError(f"{ip} didn't answer like a WLED light")
     found = {"name": str(info.get("name") or "WLED")[:64], "leds": leds,
              "version": str(info.get("ver") or ""),
-             "parts": parts_from_segments(state.get("seg"), leds)}
+             "parts": parts_from_segments(state.get("seg"), leds),
+             # Its own effects and palettes, by number (for a scene light on WLED's own effect).
+             "effects": _names(body.get("effects")), "palettes": _names(body.get("palettes"))}
     # Set up as 2D (Config -> 2D Configuration), WLED reports the matrix's size.
     try:
         m = info["leds"]["matrix"]
@@ -128,5 +180,7 @@ async def scan(timeout: float = 2.5, to=MDNS) -> list[dict]:
     finally:
         transport.close()
     found = await asyncio.gather(*(fetch(ip) for ip in answers.ips), return_exceptions=True)
-    lights = [{"ip": ip, **f} for ip, f in zip(answers.ips, found) if isinstance(f, dict)]
+    # The scan lists lights to add, so it leaves out their effect and palette lists.
+    lights = [{"ip": ip, **{k: v for k, v in f.items() if k not in ("effects", "palettes")}}
+              for ip, f in zip(answers.ips, found) if isinstance(f, dict)]
     return sorted(lights, key=lambda d: socket.inet_aton(d["ip"]))

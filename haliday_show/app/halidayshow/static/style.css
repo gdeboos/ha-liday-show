@@ -1417,3 +1417,7 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .pub-item.dragging { opacity: .5; }
 @media (max-width: 720px) { .pub-item.pub-under { margin-left: 10px; } }
 .matrix-parts { display: block; max-width: 100%; height: auto; margin: 6px 0; border-radius: 4px; cursor: crosshair; touch-action: none; }
+.sc-fx:has(.sc-wled) { flex-wrap: wrap; }
+.sc-wled { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; flex-basis: 100%; }
+.sc-wled select { max-width: 160px; }
+.sc-wled .hint { flex-basis: 100%; font-size: 11px; }

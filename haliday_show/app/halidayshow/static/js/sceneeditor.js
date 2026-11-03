@@ -40,6 +40,7 @@ export class SceneEditor {
   // scheduleLink(id) (what the schedule does with a scene, and a way to the Schedule tab),
   // scheduleLine(id) (the same in words, or "" when it isn't on the schedule),
   // chooseEffect(options) (the Show editor's effect window, with its moving previews),
+  // wledPicker(kind, dev, params, onChange) (a WLED's own effects or palettes, read from it),
   // palettePicker(name, onPick, options) (a button to pick a palette by eye), paletteRows() (the
   // palettes as rows for radioRows(box, name, rows, picked, onPick)), firstPalette() (the one New
   // scene starts on), askYes(text, options)
@@ -456,12 +457,16 @@ export class SceneEditor {
     const clip = look ? clipFor(look, 0, 1) : null;
     const preset = look ? this.d.presetsFor(look.effect).find((p) => matchesPreset(p, clip)) : null;
     const fxName = look ? `${EFFECTS[look.effect]?.label || look.effect}${preset ? ` · ${preset.label || preset.name}` : ""}` : "Off";
+    // A whole WLED light can play one of WLED's own effects instead (runner.py hands it over).
+    const dev = this.d.devices()[devId] || null;
+    const wledOK = dev?.kind === "wled" && !dev.parent && !dev.light && !dev.parts?.length;
+    const own = !!EFFECTS[look?.effect]?.wledOwn;
     const eff = el("button", { type: "button", class: "sc-effect picker-button", "aria-haspopup": "dialog",
       "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: `${fxName}. Pick an effect or preset, with a preview of each` },
       el("span", { class: "picker-name" }, fxName), el("span", { class: "picker-change", "aria-hidden": "true" }, "Change…"));
     eff.addEventListener("click", () => this.d.chooseEffect({
       title: `Effect for ${full}`, dev: this.d.devices()[devId] || null, length: 6,
-      current: look?.effect ?? null, currentPreset: preset, only: SCENE_EFFECTS,
+      current: look?.effect ?? null, currentPreset: preset, only: wledOK ? [...SCENE_EFFECTS, "wled"] : SCENE_EFFECTS,
       // Each effect previews as it would be picked: this light's colours carried over.
       palette: this.palette(),
       paramsFor: (key) => {
@@ -479,6 +484,12 @@ export class SceneEditor {
     if (look && label !== "Every light") {
       fx.append(el("button", { type: "button", class: "ghost small", "aria-label": `Turn ${full} off in this scene`,
         title: "Off in this scene", onclick: () => { set(null); changed(true); } }, "Off"));
+    }
+    if (own) {
+      // Which of the WLED's effects and palettes: the preview only shows a still stand-in in its colours.
+      fx.append(el("span", { class: "sc-wled" }, this.d.wledPicker("wledfx", dev, look.params, () => changed(false)),
+        this.d.wledPicker("wledpal", dev, look.params, () => changed(false)),
+        el("span", { class: "hint" }, "Plays on the WLED itself; the preview shows only its colours")));
     }
     row.append(el("span", { class: "sc-light" }, label, extra), fx);
     if (!look) {
@@ -511,6 +522,14 @@ export class SceneEditor {
     row.append(sp ? this.slider("Speed", full, sp, clip[sp.key], (v) => { look.params[sp.key] = v; }) : none());
     const br = EFFECTS[look.effect].params.find((p) => p.key === "brightness");
     row.append(br ? this.slider("Brightness", full, br, clip.brightness, (v) => { look.params.brightness = v; }) : none());
+    if (own) {
+      // WLED's own effects have an Intensity where the others have Glitter.
+      const ix = EFFECTS.wled.params.find((p) => p.key === "intensity");
+      const intensity = this.slider("Intensity", full, ix, clip.intensity, (v) => { look.params.intensity = v; });
+      intensity.classList.add("sc-glitter");
+      row.append(intensity);
+      return row;
+    }
     const glitter = this.slider("Glitter", full, { min: 0, max: 100, step: 5 }, look.params.glitter || 0,
       (v) => { if (v) look.params.glitter = v; else delete look.params.glitter; });
     glitter.classList.add("sc-glitter");
