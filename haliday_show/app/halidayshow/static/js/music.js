@@ -1929,7 +1929,9 @@ export class MusicEditor {
       ctx.fillStyle = col("--muted");
       ctx.globalAlpha = 0.35;
       for (let px = 0; px < w; px++) {
-        const d = ov.dip[at(px)] || 0;
+        // The deepest dip under the pixel, so a short one still shows when zoomed far out.
+        let d = 0;
+        for (let k = Math.max(0, at(px)), e = Math.max(k + 1, at(px + 1)); k < e && k < ov.dip.length; k++) d = Math.max(d, ov.dip[k]);
         if (d > 0.05) {
           ctx.fillRect(px, waveT, 1, (Math.min(d, DUCK_MAX) / DUCK_MAX) * half);
           if (!run) runs.push(run = { from: px, most: 0 });
