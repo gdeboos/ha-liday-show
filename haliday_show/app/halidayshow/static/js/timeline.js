@@ -6,6 +6,7 @@
 
 import { EFFECTS, HOUSE, isGroupTrack, renderTrack } from "./effects.js";
 import { gridOf, gridTiles, laneTakes } from "./matrix.js";
+import { isRectPart, rectText } from "./parts.js";
 import { asShown } from "./lightspeed.js";
 import { countText, rangeText } from "./lightwords.js";
 
@@ -266,8 +267,8 @@ export class Timeline {
       const sub = house ? "Across all lights"
         : lane ? (lane.gone ? "Not played" : `Group of ${lane.members.length}`)
         : !dev ? tr.device
-        : dev.light ? (dev.light.whole === false ? "Not played: parts only" : `All parts · ${countText(dev)}`)
-        : dev.parent ? rangeText(dev, dev.from, dev.to)
+        : dev.light ? (dev.light.whole === false ? "Not played: parts only" : `${gridOf(dev.light) ? "Whole matrix" : "All parts"} · ${countText(dev)}`)
+        : dev.parent ? (isRectPart(dev.part) ? rectText(dev.part) : rangeText(dev, dev.from, dev.to))
         : `${countText(dev)}${dev.ip || dev.entity ? "" : " · planned"}`;
       const note = !house && !lane && dev && this.app.trackNote?.(dev);
       if (note) ctx.fillStyle = WARN;

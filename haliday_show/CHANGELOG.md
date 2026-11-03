@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.312
+
+- Matrices can be split into parts now. In a matrix's window, under **Parts**, drag across the grid to make a rectangle (a star in one corner, say, or each window of a panel). Each part gets its own lane in your shows, where effects made for matrices fill its rectangle. With **Also play as one** ticked, the matrix's own lane still plays across the whole grid, and the LEDs outside every part follow it.
+
 ## 0.2.311
 
 - A matrix set up as a row of arches (or drawn as a plain line) on **Setup → House** now lights along the arches in its real wiring order, so the house preview matches what your lights do.

@@ -1556,6 +1556,22 @@ async def test_matrix_lights(client):
     assert "matrix" not in (await (await client.put("/api/devices", json=[{**panel, "matrix": None}])).json())[0]
 
 
+async def test_matrix_parts_are_rectangles(client):
+    panel = {"id": "panel", "kind": "wled", "ip": "192.168.1.90", "name": "Window", "matrix": {"w": 16, "h": 8}}
+    parts = [{"id": "b", "name": "Right", "x": 8, "y": 0, "w": 8, "h": 8}, {"id": "a", "name": "Star", "x": 0, "y": 0, "w": 4, "h": 4}]
+    dev = (await (await client.put("/api/devices", json=[{**panel, "parts": parts, "whole": False}])).json())[0]
+    assert dev["parts"] == [{"id": "a", "name": "Star", "x": 0, "y": 0, "w": 4, "h": 4},
+                            {"id": "b", "name": "Right", "x": 8, "y": 0, "w": 8, "h": 8}]
+    assert dev["whole"] is False
+    for bad in ([{"id": "a", "x": 0, "y": 0, "w": 17, "h": 1}],  # past the grid's edge
+                [{"id": "a", "x": -1, "y": 0, "w": 2, "h": 2}],
+                [{"id": "a", "x": 0, "y": 0, "w": 0, "h": 2}],
+                [{"id": "a", "x": 0, "y": 0, "w": 4, "h": 4}, {"id": "b", "x": 3, "y": 3, "w": 2, "h": 2}],  # overlap
+                [{"id": "a", "x": 0, "y": 0, "w": 2, "h": 2}, {"id": "a", "x": 4, "y": 0, "w": 2, "h": 2}],
+                [{"id": "a", "from": 1, "to": 5}]):
+        assert (await client.put("/api/devices", json=[{**panel, "parts": bad}])).status == 400, bad
+
+
 async def test_matrix_panels_on_the_house_photo(client):
     corners = [[0.1, 0.1], [0.3, 0.1], [0.3, 0.3], [0.1, 0.3]]
     resp = await client.put("/api/house", json={"paths": {"panel": corners}, "styles": {"panel": {"style": "panel"}}})

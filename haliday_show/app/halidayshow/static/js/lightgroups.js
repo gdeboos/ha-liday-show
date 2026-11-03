@@ -1,6 +1,9 @@
 // Light groups: lights and parts a show can give one effect, on their own lane in the Show editor
 // (effects.js plays them). Saved with the settings as [{id, name, members: [light or part id]}].
 
+import { gridOf } from "./matrix.js";
+import { partSize } from "./parts.js";
+
 // What can go in a group, in the Devices tab's order: each light, then (for a split light) each part,
 // indented under it.
 export function memberChoices(lights) {
@@ -40,8 +43,8 @@ export function groupShares(members, lights) {
   const want = new Set(members), out = [];
   for (const d of lights) {
     let n = 0;
-    if (!d.parts?.length) { if (want.has(d.id)) n = d.segments; }
-    else for (const p of d.parts) if (want.has(d.id) || want.has(`${d.id}#${p.id}`)) n += p.to - p.from + 1;
+    if (!d.parts?.length || (gridOf(d) && want.has(d.id))) { if (want.has(d.id)) n = d.segments; }
+    else for (const p of d.parts) if (want.has(d.id) || want.has(`${d.id}#${p.id}`)) n += partSize(p);
     if (n) out.push({ light: d, n });
   }
   return out;
@@ -52,8 +55,9 @@ export function groupSegments(members, lights) {
   const want = new Set(members);
   let n = 0;
   for (const d of lights) {
-    if (!d.parts?.length) { if (want.has(d.id)) n += d.segments; continue; }
-    for (const p of d.parts) if (want.has(d.id) || want.has(`${d.id}#${p.id}`)) n += p.to - p.from + 1;
+    // A split matrix as a member is its whole grid, as planGroups plays it.
+    if (!d.parts?.length || (gridOf(d) && want.has(d.id))) { if (want.has(d.id)) n += d.segments; continue; }
+    for (const p of d.parts) if (want.has(d.id) || want.has(`${d.id}#${p.id}`)) n += partSize(p);
   }
   return n;
 }

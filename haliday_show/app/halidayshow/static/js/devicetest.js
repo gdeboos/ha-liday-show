@@ -2,6 +2,7 @@
 // they're sent). Each part is lit in its colour on the Devices map with its first segment white,
 // so you can see where it starts and which way it runs. Unused segments stay off.
 import { partRgb } from "./house.js";
+import { partCells } from "./parts.js";
 
 const WHITE = [255, 255, 255];
 
@@ -10,7 +11,8 @@ export function partsFrame(light, only) {
   const out = new Uint8Array(light.segments * 3);
   (light.parts || []).forEach((p, k) => {
     if (only != null && p.id !== only) return;
-    for (let s = p.from; s <= Math.min(p.to, light.segments); s++) out.set(s === p.from ? WHITE : partRgb(k), (s - 1) * 3);
+    // Each part in its colour, its first LED (a matrix part's top left) white.
+    partCells(light, p).forEach((i, n) => { if (i < light.segments) out.set(n ? partRgb(k) : WHITE, i * 3); });
   });
   return out;
 }

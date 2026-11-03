@@ -79,9 +79,18 @@ Press **Test wiring** to check: the top-left LED lights white, the rest of the t
 of the left column green. If they land anywhere else, change **Starts at**, **Wired in** or **Zig-zag**
 until they don't.
 
-A matrix plays as one light: it can't be split into parts yet, and **Reverse** isn't needed. Put it on
-the house photo as a **Panel** or a **Mega-tree** (see *Light styles*), and pick how each effect plays
-on it with **Runs** (see *Editing a clip*).
+**Reverse** isn't needed on a matrix. Put it on the house photo as a **Panel** or a **Mega-tree** (see
+*Light styles*), and pick how each effect plays on it with **Runs** (see *Editing a clip*).
+
+To give part of a matrix its own lane, such as a star in one corner or each window of a panel, drag
+across the grid under **Parts** in its window. Each rectangle you drag out becomes a part: name it in
+the list under the grid. Parts can't overlap. On the timeline, each part gets its own lane under the
+matrix: effects made for matrices fill its rectangle, and other effects follow its **Runs** inside it.
+With **Also play as one** ticked, the matrix keeps its own lane, playing across the whole grid; the
+LEDs outside every part follow it, and so does a part while none of its own clips is playing.
+Untick it if you only use the parts: the LEDs outside them then stay off. **Test** lights one part
+on the real matrix, white at its top left, and **Test parts** lights them all in their colours.
+Remove a part with **✕**; its clips stay in your shows.
 
 For a mega-tree, set the matrix up with one column per string: **across** is how many strings it has,
 and **down** how many LEDs each string has. The top row is the top of the tree.

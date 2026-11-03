@@ -6,6 +6,7 @@
 import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire } from "./matrix.js";
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture } from "./pictures.js";
+import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
 
 export const FPS = 40;
 
@@ -1330,10 +1331,14 @@ export function planGroups(groups, lights, trackOf, positions = {}) {
     const ranges = [];
     for (const light of lights) {
       const parts = light.parts?.length ? light.parts : null;
-      const pieces = !parts ? (want.has(light.id) ? [{ from: 1, to: light.segments, pos: light.id }] : [])
+      // A split matrix as a member is the whole grid; its parts are rectangles of it.
+      const pieces = !parts || (gridOf(light) && want.has(light.id)) ? (want.has(light.id) ? [{ from: 1, to: light.segments, pos: light.id }] : [])
         : parts.filter((p) => want.has(light.id) || want.has(`${light.id}#${p.id}`))
-          .map((p) => ({ from: p.from, to: p.to, pos: `${light.id}#${p.id}` }));
-      for (const p of pieces) ranges.push({ light: light.id, start: p.from - 1, n: p.to - p.from + 1, pos: p.pos });
+          .map((p) => (gridOf(light) ? { cells: partCells(light, p), pos: `${light.id}#${p.id}` } : { from: p.from, to: p.to, pos: `${light.id}#${p.id}` }));
+      for (const p of pieces) {
+        ranges.push(p.cells ? { light: light.id, start: 0, n: p.cells.length, cells: p.cells, pos: p.pos }
+          : { light: light.id, start: p.from - 1, n: p.to - p.from + 1, pos: p.pos });
+      }
     }
     if (!ranges.length) continue;
     let offset = 0, box = null;
@@ -1371,7 +1376,9 @@ export function applyGroups(plans, light, time, positions, out) {
     }
     const house = live.filter((c) => EFFECTS[c.effect]?.house);
     for (const r of mine) {
-      const slice = out.subarray(r.start * 3, (r.start + r.n) * 3);
+      // A matrix part's LEDs aren't side by side, so they're gathered, worked on and put back.
+      const slice = r.cells ? Uint8Array.from({ length: r.n * 3 }, (_, k) => out[r.cells[Math.floor(k / 3)] * 3 + (k % 3)])
+        : out.subarray(r.start * 3, (r.start + r.n) * 3);
       if (plan.strip && (plan.cover || plan.mix !== "cover")) {
         for (let i = 0; i < r.n; i++) {
           const j = (r.offset + i) * 3;
@@ -1384,6 +1391,7 @@ export function applyGroups(plans, light, time, positions, out) {
         const across = (q) => q && [u1 > u0 ? (q[0] - u0) / (u1 - u0) : 0.5, v1 > v0 ? (q[1] - v0) / (v1 - v0) : 0.5];
         applyHouse(house, time, pos.slice(0, r.n).map(across), slice);
       }
+      if (r.cells) for (let i = 0; i < r.n; i++) out.set(slice.subarray(i * 3, i * 3 + 3), r.cells[i] * 3);
     }
   }
   return out;
@@ -1648,6 +1656,29 @@ export function composeLight(light, trackOf, time, positions = {}, houseClips = 
     if (tr) renderTrack(tr.clips, time, light.segments, out, false, gridOf(light));
     if (groups.length) applyGroups(groups, light.id, time, positions, out);
     if (houseClips.length && positions[light.id]) applyHouse(houseClips, time, positions[light.id], out);
+    return out;
+  }
+  const grid = gridOf(light);
+  if (grid) {
+    // A matrix's parts are rectangles over it: its own lane plays across the whole grid (unless
+    // it's off), and each part's lane wins in its rectangle while one of its clips is running.
+    const whole = light.whole === false ? null : trackOf(light.id);
+    if (whole?.clips.length) renderTrack(whole.clips, time, light.segments, out, false, grid);
+    for (const p of light.parts) {
+      const tr = trackOf(`${light.id}#${p.id}`);
+      if (tr?.clips.some((c) => time >= c.start && time < c.end)) {
+        scatterPart(renderTrack(tr.clips, time, partSize(p), undefined, false, partGrid(p)), light, p, out);
+      }
+    }
+    if (groups.length) applyGroups(groups, light.id, time, positions, out);
+    if (houseClips.length && positions[light.id]) {
+      if (light.whole !== false) applyHouse(houseClips, time, positions[light.id], out);
+      else {
+        // Parts only: the House lane lights the parts, and the LEDs outside them stay off.
+        const lit = applyHouse(houseClips, time, positions[light.id], out.slice());
+        for (const p of light.parts) for (const i of partCells(light, p)) out.set(lit.subarray(i * 3, i * 3 + 3), i * 3);
+      }
+    }
     return out;
   }
   const joined = light.parts.reduce((n, p) => n + p.to - p.from + 1, 0);
