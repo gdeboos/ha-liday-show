@@ -17,6 +17,9 @@ on a sign outside. They see the shows and playlists you've picked, and nothing e
    your home Wi-Fi. It's HA-liday Show's address with `:18099` and your code on the end, such as
    `http://192.168.1.20:18099/?c=5fjzqr26`.
 
+A visitors' page left open on a phone loads again by itself after HA-liday Show updates or restarts, so
+it always shows what's new.
+
 Down the left (along the top on a phone) is a list of five pages, as in **Library** and **Setup**, and
 the last one you had open is remembered. **▶ Open the page**, at the top, opens your real visitors'
 link in a new tab.

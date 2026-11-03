@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.319
+
+- A visitors' page left open on a phone now loads again by itself after HA-liday Show updates or restarts. Before, a page opened before an update carried on as the old version, so **🎧 Listen on your phone** didn't appear until it was refreshed.
+
 ## 0.2.318
 
 - Visitors can **listen to the music on their own phone**, in time with the lights. Turn on **Let visitors listen on their phone** on the **Public page** tab, under **Shows → Listening on phones**. Visitors press **🎧 Listen on your phone** and hear whatever show is on, however it was started, joining part-way through if they arrive late. Your show's speaker plays as usual.
