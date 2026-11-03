@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.337
+
+- **Rest breaks, for the neighbours.** After 30 minutes of visitors' picks playing back to back, the lights rest for 5 minutes before the next pick starts, and the visitors' page says so. Set both under **Public page → Hours → For the neighbours** (0 turns rests off). Your own shows, playlists and the schedule aren't affected.
+
 ## 0.2.336
 
 - **Shows finish by closing time.** With opening hours set, a visitor's pick that wouldn't finish before you close (counting what's already waiting) isn't taken: its button says **Too long for tonight**, and anyone who tries is told when you close. It's on to start with; turn it off with **Shows finish by closing time** under **Public page → Hours**.

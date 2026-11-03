@@ -1435,3 +1435,5 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .now-progress > span { display: block; height: 100%; background: var(--ok); }
 .now-time { font-variant-numeric: tabular-nums; }
 .now-actions { display: flex; gap: 6px; }
+/* A small heading inside a Public page card, such as "For the neighbours" on Hours. */
+.pub-sub { font-size: .9375rem; margin: 16px 0 6px; padding-top: 12px; border-top: 1px solid var(--line); }

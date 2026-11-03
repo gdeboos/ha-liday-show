@@ -43,6 +43,7 @@ from urllib.parse import urlencode
 from aiohttp import web
 
 from . import ai, appicon, imagemeta, playlists, schedule, songcopy, songtags
+from . import runner as _runner
 from .runner import Runner
 from .storage import Storage, valid_id
 
@@ -179,6 +180,9 @@ def clean(p) -> dict:
             "phone_wait": _count(p.get("phone_wait"), 5, 60, low=0),
             # With opening hours on: picks that wouldn't finish before closing time aren't taken.
             "finish_by_close": p.get("finish_by_close") is not False,
+            # After this many minutes of visitors' picks back to back, the lights rest this long (0: never).
+            "rest_after": _count(p.get("rest_after"), 30, 240, low=0),
+            "rest_for": _count(p.get("rest_for"), 5, 30, low=0),
             # In every visitor's link (the QR code), so a guessed address alone doesn't let anyone in.
             "code": code if _CODE.match(code) else "",
             "nearby": p.get("nearby") is not False,
@@ -492,7 +496,7 @@ def tonight(runner: Runner, now: datetime | None = None) -> dict:
     for n in names:
         counts[n] = counts.get(n, 0) + 1
     top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:3]
-    t = time.monotonic()
+    t = _runner.clock()
     return {"picks": len(names), "top": [{"name": n, "count": c} for n, c in top],
             "listening": sum(1 for at in runner.public_listeners.values() if t - at < LISTENING_FRESH_S)}
 
@@ -539,7 +543,7 @@ def taken(runner: Runner, kind: str, ref: str, repeat_minutes: int = 0) -> str:
 def repeat_left(runner: Runner, kind: str, ref: str, minutes: int) -> float:
     """Seconds until a show (or playlist) a visitor picked can be picked again."""
     ends = [p["at"] for p in runner.public_played if p["kind"] == kind and p["ref"] == ref]
-    return max(0.0, max(ends) + minutes * 60 - time.monotonic()) if ends else 0.0
+    return max(0.0, max(ends) + minutes * 60 - _runner.clock()) if ends else 0.0
 
 
 def phone_wait_left(runner: Runner, ticket: str | None, minutes: int) -> float:
@@ -547,7 +551,7 @@ def phone_wait_left(runner: Runner, ticket: str | None, minutes: int) -> float:
     if not ticket or not minutes:
         return 0.0
     ends = [p["at"] for p in runner.public_played if p["ticket"] == ticket]
-    return max(0.0, max(ends) + minutes * 60 - time.monotonic()) if ends else 0.0
+    return max(0.0, max(ends) + minutes * 60 - _runner.clock()) if ends else 0.0
 
 
 def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None = None,
@@ -594,6 +598,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                    if st["duration"] and not (st.get("scene") or {}).get("playing") else {})}
         if st["playing"] else None,
         "waiting": len(runner.requests),
+        # Seconds left of a rest break, while the lights rest between visitors' picks.
+        "resting": round(max(runner.resting_until - _runner.clock(), 0)),
         # Everyone's waiting picks, by show name only; a phone's own carry their id so it can cancel them.
         "queue": [{"name": r["name"], "kind": r["kind"], "ref": r["ref"], "wait": wait,
                    "yours": bool(ticket) and r["ticket"] == ticket,
@@ -1141,7 +1147,7 @@ async def get_listen_now(request):
     seen = request.app[RUNNER].public_listeners
     if len(seen) > MAX_CLIENTS:
         seen.clear()
-    seen[request.query.get("token", "")] = time.monotonic()
+    seen[request.query.get("token", "")] = _runner.clock()
     st, path = _now_playing(request)
     if path is None:
         return _no_store(web.json_response({"playing": False}))

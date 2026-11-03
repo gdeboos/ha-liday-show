@@ -84,7 +84,9 @@ export function describe(st) {
     block = say_(w, "full");
   }
   let now = say_(w, "idle");
-  if (st.now) {
+  if (st.resting > 0 && !st.now) {
+    now = say_(w, "resting");
+  } else if (st.now) {
     const name = st.now.name || "…";
     now = !st.mine.some((r) => r.playing) && st.waiting
       ? say_(w, "on_now_waiting", { name, count: st.waiting }) : say_(w, "on_now", { name });

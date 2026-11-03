@@ -27,7 +27,7 @@ link in a new tab.
 | Page | What's there |
 | --- | --- |
 | **Access** | [Who can start shows](#who-can-start-shows): the link and code, the sign and **Nearby only** (and [Installing the page as an app](#installing-the-page-as-an-app)) |
-| **Hours** | [Opening hours](#opening-hours) |
+| **Hours** | [Opening hours](#opening-hours), finishing by closing time and rest breaks |
 | **Limits** | **Requests per phone**, **Queue length** and how soon a show, or a phone, can pick again ([Keeping it fair](#visitors-queue)) |
 | **Shows** | [What visitors can pick](#what-visitors-can-pick) and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
 | **Listening** | [Listening on phones](#listening-on-phones) |
@@ -90,6 +90,11 @@ when:
 **Shows finish by closing time** (on to start with): a pick that wouldn't finish before closing,
 counting everything already waiting, isn't taken. Its button says **Too long for tonight** and the
 visitor is told when you close. Your admin phone isn't held to it.
+
+**Rest after** and **Rest for** (30 and 5 minutes to start with): after that long of visitors' picks
+playing back to back, the lights rest before the next one starts, and the page says they're resting
+"for the neighbours". A natural gap longer than the rest starts the count again. 0 turns rests off.
+Your own shows, playlists and the schedule aren't affected.
 
 The line underneath says whether the page is open now, or when it next opens. Sunset is worked out
 for your home location, as for playlists; without one, a sunset start never opens, and it says so.
