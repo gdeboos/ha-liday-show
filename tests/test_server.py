@@ -1073,6 +1073,12 @@ async def test_draft_layers_are_kept_and_checked(client, tmp_path):
     ducked = (await (await client.post("/api/drafts", json={**draft, "layers": [
         {"name": "Voice", "duck": True, "clips": []}, {"name": "Bells", "duck": False, "clips": []}]})).json())["id"]
     assert [l.get("duck") for l in (await (await client.get(f"/api/drafts/{ducked}")).json())["layers"]] == [True, None]
+    # How far it dips: kept when set, 3 to 24 dB.
+    deep = (await (await client.post("/api/drafts", json={**draft, "layers": [
+        {"name": "Voice", "duck": True, "duckDb": 18, "clips": []}]})).json())["id"]
+    assert (await (await client.get(f"/api/drafts/{deep}")).json())["layers"][0]["duckDb"] == 18
+    for bad_db in (2, 25, "8", True):
+        assert (await client.post("/api/drafts", json={**draft, "layers": [{"name": "x", "duck": True, "duckDb": bad_db, "clips": []}]})).status == 400
     for bad in ([{"name": "x", "duck": "yes", "clips": []}], [{"name": "x", "clips": [{**clip, "end": 0}]}], [{"name": "x", "gain": 99, "clips": []}],
                 [{"name": "x", "clips": [{**clip, "anchor": "12"}]}], [{"name": "x", "clips": []}] * 5, "x"):
         assert (await client.post("/api/drafts", json={**draft, "layers": bad})).status == 400

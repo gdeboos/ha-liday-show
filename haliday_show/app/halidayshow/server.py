@@ -1143,7 +1143,7 @@ def _clean_eq(eq) -> dict | None:
 
 
 def _clean_layers(layers) -> list[dict] | None:
-    """A draft's layers: [{name, gain, duck, matchTempo, eq (all optional), clips: [{song, start, end,
+    """A draft's layers: [{name, gain, duck, duckDb, matchTempo, eq (all optional), clips: [{song, start, end,
     anchor: {song, t}, gain, fadeIn, fadeOut, bpm (optional)}]}], samples or songs played over the song,
     each clip pinned to a moment in it."""
     if not isinstance(layers, list) or len(layers) > MAX_LAYERS:
@@ -1177,9 +1177,15 @@ def _clean_layers(layers) -> list[dict] | None:
         eq = _clean_eq(layer["eq"]) if layer.get("eq") is not None else None
         if not isinstance(duck, bool) or not isinstance(match, bool) or (layer.get("eq") is not None and eq is None):
             return None
+        duck_db = layer.get("duckDb")  # how far the song dips under it; missing is 8 dB
+        if duck_db is not None and (isinstance(duck_db, bool) or not isinstance(duck_db, (int, float))
+                                    or not math.isfinite(duck_db) or not 3 <= duck_db <= 24):
+            return None
         out.append({"name": " ".join(layer.get("name", "").split())[:40], "gain": gain, "clips": clean})
         if duck:
             out[-1]["duck"] = True
+        if duck_db is not None:
+            out[-1]["duckDb"] = round(float(duck_db), 1)
         if match:
             out[-1]["matchTempo"] = True
         if eq is not None:

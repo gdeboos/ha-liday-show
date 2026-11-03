@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
+import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, MAX_CHANGES, applyEq, eqAt, faderText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { stretch } from "./tempo.js";
 import { askText, askYes } from "./ask.js";
@@ -999,7 +999,7 @@ export class MusicEditor {
   renderLayers() {
     const box = $("music-layers");
     const samples = this.samplesList || [], songs = this.host.songs();
-    const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, !!l.duck, !!l.matchTempo, isFlat(l.eq), l.clips.length]), isFlat(this.eq),
+    const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, !!l.duck, l.duckDb, !!l.matchTempo, isFlat(l.eq), l.clips.length]), isFlat(this.eq),
       this.eqCh, !!this.songTempo, samples.length, JSON.stringify(this.sampleFolders || []), songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
       box.dataset.sig = sig;
@@ -1059,7 +1059,21 @@ export class MusicEditor {
         vol.addEventListener("change", () => this.setLayer(i, { gain: Number(vol.value) }));
         const duck = el("input", { type: "checkbox", checked: !!l.duck });
         duck.addEventListener("change", () => this.setLayer(i, { duck: duck.checked }));
-        const duckLabel = el("label", { title: "Turn the song down a little while this layer's clips play, so they're clearer: good for a voice" }, duck, " Quieten the song");
+        // By how much: 8 dB unless set (saved only when it isn't 8).
+        const by = el("input", { type: "range", min: DUCK_MIN, max: DUCK_MAX, step: 1, value: duckDbOf(l), disabled: !l.duck });
+        by.setAttribute("aria-label", `How much ${l.name} quietens the song`);
+        const byDb = el("span", { className: "hint", textContent: `${duckDbOf(l)} dB` });
+        by.addEventListener("input", () => { byDb.textContent = `${by.value} dB`; });
+        by.addEventListener("change", () => {
+          this.setLayer(i, { duckDb: Number(by.value) === -DUCK_DB ? undefined : Number(by.value) });
+          // The row is drawn afresh: keep the keyboard on the slider.
+          [...$("music-layers").querySelectorAll(".duck-by input")][i]?.focus();
+        });
+        const byLabel = el("label", { className: "duck-by", hidden: !l.duck,
+          title: "How far the song goes down: a little, so it's still heard, or nearly silent" }, "By ", by, " ", byDb);
+        duck.addEventListener("change", () => { byLabel.hidden = !duck.checked; });
+        const duckLabel = el("span", { className: "duck-group" },
+          el("label", { title: "Turn the song down a little while this layer's clips play, so they're clearer: good for a voice" }, duck, " Quieten the song"), byLabel);
         const tempo = el("input", { type: "checkbox", checked: !!l.matchTempo, disabled: !this.songTempo && !l.matchTempo });
         tempo.addEventListener("change", () => this.setMatchTempo(i, tempo.checked));
         const tempoLabel = el("label", { title: this.songTempo

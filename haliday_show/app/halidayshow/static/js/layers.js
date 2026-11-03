@@ -1,7 +1,8 @@
 // Layers in the Music editor: samples or songs played on top of the song, each clip pinned to the
 // moment in the song it starts at, so it follows cuts (music.js draws and edits them).
 //
-// A layer: {name, gain (dB), duck (optional: quieten the song while its clips play), eq (optional:
+// A layer: {name, gain (dB), duck (optional: quieten the song while its clips play), duckDb (optional:
+// by how much, 3-24 dB, 8 when missing), eq (optional:
 // its bass, mid and treble, mixer.js), matchTempo (optional: clips play at the song's tempo, each from
 // its own bpm), clips: [{song, start, end, anchor: {song, t}, gain (dB), fadeIn, fadeOut}]}.
 // song is the clip's audio ({source, path}); start and end are the part of it that plays; anchor is
@@ -75,29 +76,37 @@ function span(c, speed, src, rate) {
 
 const db = (g) => 10 ** ((g || 0) / 20);
 
-// How far the song dips under a layer that quietens it, and how quickly: it starts going down just
-// before the clip, so the clip's first sound is already clear, and comes back up gently after it.
+// How far the song dips under a layer that quietens it (each layer can set its own, `duckDb`), and how
+// quickly: it starts going down just before the clip, so the clip's first sound is already clear, and
+// comes back up gently after it.
 export const DUCK_DB = -8;
+export const DUCK_MIN = 3, DUCK_MAX = 24;
 const DUCK_DOWN = 0.15, DUCK_UP = 0.5;
+export const duckDbOf = (L) => (Number.isFinite(L?.duckDb) ? Math.min(Math.max(L.duckDb, DUCK_MIN), DUCK_MAX) : -DUCK_DB);
 
 // The song's gain at each sample under the layers that quieten it, or null if none do. Only clips
 // that are heard count (a missing sample doesn't dip the song).
 export function duckEnvelope(layers, placed, sources, n, rate) {
-  let depth = null;
+  // Each layer's own dip (dB down), gliding at its own pace; where layers overlap, the deepest wins.
+  const dips = new Map();
   for (const { layer, clip, at, speed = 1 } of placed) {
     const L = layers[layer], c = L.clips[clip], src = sources[keyOf(c.song)];
     if (!L.duck || !src) continue;
     const len = Math.round(((c.end - c.start) / speed) * rate);
     const a = Math.max(0, Math.round(at * rate)), b = Math.min(n, Math.round(at * rate) + len);
     if (b <= a) continue;
-    depth ??= new Float32Array(n);
-    depth.fill(1, a, b);
+    if (!dips.has(layer)) dips.set(layer, new Float32Array(n));
+    dips.get(layer).fill(duckDbOf(L), a, b);
   }
-  if (!depth) return null;
-  const up = 1 / (rate * DUCK_UP), down = 1 / (rate * DUCK_DOWN);
-  for (let i = 1; i < n; i++) depth[i] = Math.max(depth[i], depth[i - 1] - up);
-  for (let i = n - 2; i >= 0; i--) depth[i] = Math.max(depth[i], depth[i + 1] - down);
-  for (let i = 0; i < n; i++) depth[i] = 10 ** ((DUCK_DB * depth[i]) / 20);
+  if (!dips.size) return null;
+  const depth = new Float32Array(n);
+  for (const [layer, d] of dips) {
+    const dip = duckDbOf(layers[layer]), up = dip / (rate * DUCK_UP), down = dip / (rate * DUCK_DOWN);
+    for (let i = 1; i < n; i++) d[i] = Math.max(d[i], d[i - 1] - up);
+    for (let i = n - 2; i >= 0; i--) d[i] = Math.max(d[i], d[i + 1] - down);
+    for (let i = 0; i < n; i++) if (d[i] > depth[i]) depth[i] = d[i];
+  }
+  for (let i = 0; i < n; i++) depth[i] = 10 ** (-depth[i] / 20);
   return depth;
 }
 
