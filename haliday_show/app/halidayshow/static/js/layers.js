@@ -87,23 +87,25 @@ export const duckDbOf = (L) => (Number.isFinite(L?.duckDb) ? Math.min(Math.max(L
 // The song's gain at each sample under the layers that quieten it, or null if none do. Only clips
 // that are heard count (a missing sample doesn't dip the song).
 export function duckEnvelope(layers, placed, sources, n, rate) {
-  let depth = null, deepest = 0; // dB down at each sample; where layers overlap, the deepest wins
+  // Each layer's own dip (dB down), gliding at its own pace; where layers overlap, the deepest wins.
+  const dips = new Map();
   for (const { layer, clip, at, speed = 1 } of placed) {
     const L = layers[layer], c = L.clips[clip], src = sources[keyOf(c.song)];
     if (!L.duck || !src) continue;
     const len = Math.round(((c.end - c.start) / speed) * rate);
     const a = Math.max(0, Math.round(at * rate)), b = Math.min(n, Math.round(at * rate) + len);
     if (b <= a) continue;
-    depth ??= new Float32Array(n);
-    const dip = duckDbOf(L);
-    deepest = Math.max(deepest, dip);
-    for (let i = a; i < b; i++) if (depth[i] < dip) depth[i] = dip;
+    if (!dips.has(layer)) dips.set(layer, new Float32Array(n));
+    dips.get(layer).fill(duckDbOf(L), a, b);
   }
-  if (!depth) return null;
-  // Glides at the deepest layer's pace, so one layer on its own goes down and up in the same time.
-  const up = deepest / (rate * DUCK_UP), down = deepest / (rate * DUCK_DOWN);
-  for (let i = 1; i < n; i++) depth[i] = Math.max(depth[i], depth[i - 1] - up);
-  for (let i = n - 2; i >= 0; i--) depth[i] = Math.max(depth[i], depth[i + 1] - down);
+  if (!dips.size) return null;
+  const depth = new Float32Array(n);
+  for (const [layer, d] of dips) {
+    const dip = duckDbOf(layers[layer]), up = dip / (rate * DUCK_UP), down = dip / (rate * DUCK_DOWN);
+    for (let i = 1; i < n; i++) d[i] = Math.max(d[i], d[i - 1] - up);
+    for (let i = n - 2; i >= 0; i--) d[i] = Math.max(d[i], d[i + 1] - down);
+    for (let i = 0; i < n; i++) if (d[i] > depth[i]) depth[i] = d[i];
+  }
   for (let i = 0; i < n; i++) depth[i] = 10 ** (-depth[i] / 20);
   return depth;
 }

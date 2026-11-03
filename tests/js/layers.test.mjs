@@ -97,6 +97,17 @@ test("each layer says how far the song dips, and the deepest wins where they ove
   near(env[620], 10 ** (-16 / 20), "the deeper one while both play");
 });
 
+test("a gentle dip glides at its own pace, whatever another layer does elsewhere", () => {
+  const rate = 100, n = 2000;
+  const sources = { "media:b.mp3": [new Float32Array(300).fill(0.5)] };
+  const voice = (duckDb, t) => ({ name: "Voice", gain: 0, duck: true, duckDb, clips: [{ song: B, start: 0, end: 2, anchor: { song: A, t } }] });
+  const alone = [voice(3, 4)], both = [voice(3, 4), voice(24, 14)];
+  const a = duckEnvelope(alone, placeClips(alone, song, 0), sources, n, rate);
+  const b = duckEnvelope(both, placeClips(both, song, 0), sources, n, rate);
+  near(b[625], a[625], "coming back up after the gentle clip just as it would alone");
+  assert.ok(a[625] < 1 && a[625] > 10 ** (-3 / 20));
+});
+
 test("a layer that quietens the song dips it while its clips play, smoothly, and only then", () => {
   const rate = 100, n = 1000;
   const sources = { "media:b.mp3": [new Float32Array(300).fill(0.5)] };

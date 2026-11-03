@@ -1064,7 +1064,11 @@ export class MusicEditor {
         by.setAttribute("aria-label", `How much ${l.name} quietens the song`);
         const byDb = el("span", { className: "hint", textContent: `${duckDbOf(l)} dB` });
         by.addEventListener("input", () => { byDb.textContent = `${by.value} dB`; });
-        by.addEventListener("change", () => this.setLayer(i, { duckDb: Number(by.value) === -DUCK_DB ? undefined : Number(by.value) }));
+        by.addEventListener("change", () => {
+          this.setLayer(i, { duckDb: Number(by.value) === -DUCK_DB ? undefined : Number(by.value) });
+          // The row is drawn afresh: keep the keyboard on the slider.
+          [...$("music-layers").querySelectorAll(".duck-by input")][i]?.focus();
+        });
         const byLabel = el("label", { className: "duck-by", hidden: !l.duck,
           title: "How far the song goes down: a little, so it's still heard, or nearly silent" }, "By ", by, " ", byDb);
         duck.addEventListener("change", () => { byLabel.hidden = !duck.checked; });
