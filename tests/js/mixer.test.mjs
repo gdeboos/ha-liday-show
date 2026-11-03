@@ -44,7 +44,7 @@ test("changes glide to their setting, and follow cuts", () => {
   const placed = placeChanges(eq, song, 0);
   assert.deepEqual(placed.map((c) => [c.at, c.i]), [[15, 1], [30, 0]], "in time order");
   assert.equal(eqAt(eq, placed, 10).bass, 0);
-  assert.deepEqual(eqAt(eq, placed, 20), { bass: -6, mid: 0, treble: 0, change: 1 });
+  assert.deepEqual(eqAt(eq, placed, 20), { bass: -6, mid: 0, treble: 0, filter: 0, change: 1 });
   assert.equal(eqAt(eq, placed, 31).change, 0);
   const spans = gainSpans(eq, placed, 60 * 10, 10);
   assert.deepEqual(spans.map((s) => [s.from, s.to, s.a[0], s.b[0]]), [[0, 150, 0, 0], [150, 300, -6, -6], [300, 320, -6, -60], [320, 600, -60, -60]]);
@@ -60,4 +60,28 @@ test("a glide moves smoothly between settings", () => {
   near(at(0.3), 0.5, 0.02, "before");
   near(at(1.0), 0.5 * 10 ** (-6 / 20), 0.03, "halfway in dB");
   near(at(2.0), 0.5 * 10 ** (-12 / 20), 0.02, "after");
+});
+
+test("the filter muffles to the left and thins to the right, and does nothing in the middle", async () => {
+  const { filterCurve } = await import("../../haliday_show/app/halidayshow/static/js/mixer.js");
+  const low = sine(100), high = sine(6000);
+  const run = (filter, x) => level(applyEq([Float32Array.from(x)], rate, { bass: 0, mid: 0, treble: 0, filter, changes: [] }, [])[0]);
+  assert.ok(isFlat({ bass: 0, mid: 0, treble: 0, filter: 0, changes: [] }));
+  assert.ok(!isFlat({ bass: 0, mid: 0, treble: 0, filter: -50, changes: [] }));
+  assert.ok(run(-100, high) < 0.01, "all the way left: the highs are gone");
+  near(run(-100, low), 0.5, 0.08, "and the bass is still there");
+  assert.ok(run(100, low) < 0.03, "all the way right: the bass is gone");
+  near(run(100, high), 0.5, 0.08, "and the highs are still there");
+  near(run(-10, high), 0.5, 0.08, "a touch of filter barely changes anything");
+  assert.equal(eqAt({ filter: -40 }, [], 0).filter, -40);
+  // It changes at points with a glide, like the faders.
+  const placed = [{ at: 0.5, i: 0, bass: 0, mid: 0, treble: 0, filter: -100, glide: 0.1 }];
+  const withChange = { bass: 0, mid: 0, treble: 0, changes: [{ anchor: { song: A, t: 0.5 }, filter: -100, glide: 0.1 }] };
+  const x = applyEq([sine(6000)], rate, withChange, placed)[0];
+  const lvl = (a, b) => { let m = 0; for (let i = Math.round(a * rate); i < Math.round(b * rate); i++) m = Math.max(m, Math.abs(x[i])); return m; };
+  near(lvl(0.1, 0.45), 0.5, 0.05, "open before the change");
+  assert.ok(lvl(0.7, 0.95) < 0.01, "muffled after it");
+  const curve = filterCurve({ filter: 0 }, placed, 100, 50);
+  assert.equal(curve[10], 0);
+  assert.equal(curve[80], -100);
 });

@@ -1139,7 +1139,7 @@ a.button { text-decoration: none; }
 .eq-row input[type=range] { width: 90px; }
 .eq-value { display: inline-block; min-width: 3.6em; }
 .eq-glide { width: 4.5em; }
-.music-eq .eq-row > label:has(input[type=range]) { flex-basis: 100%; display: grid; grid-template-columns: 4em minmax(0, 1fr) 3.6em; align-items: center; gap: 6px; }
+.music-eq .eq-row > label:has(input[type=range]) { flex-basis: 100%; display: grid; grid-template-columns: 4em minmax(0, 1fr) 6.2em; align-items: center; gap: 6px; }
 .music-eq .eq-row input[type=range] { width: 100%; }
 
 /* Scenes (sceneeditor.js): Your scenes rows and the Scene editor. */

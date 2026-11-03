@@ -10,7 +10,7 @@ import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, s
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
 import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
-import { BANDS, EQ_MAX, EQ_MIN, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, flatEq, isFlat, placeChanges } from "./mixer.js";
+import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { stretch } from "./tempo.js";
 import { askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
@@ -28,6 +28,8 @@ const WAVE_B = 210; // the bottom of the waveform; layers' lanes go under it
 // bottom are worked out this many times a second when the mix changes, not on every redraw.
 const OVERLAY_RATE = 50;
 const EQ_COLOURS = ["#e07b39", "#43a047", "#3b8ede"]; // bass, mid, treble
+const FILTER_COLOUR = "#9c5bd6";
+const settingText = (band, v) => (band === "filter" ? filterText(v) : faderText(v));
 const LANE_H = 56; // one layer's lane, tall enough to show its clips' waveforms
 const LAYER_HUES = [200, 30, 140, 300]; // a colour for each layer's clips
 const MIN_SECTION = 0.5;
@@ -904,8 +906,8 @@ export class MusicEditor {
     if (!at) return this.host.status("Move the playhead into the song first (not right at its end)", "hint");
     if ((eq.changes || []).length >= MAX_CHANGES) return this.host.status(`Up to ${MAX_CHANGES} changes each`, "hint");
     if (placed.some((c) => Math.abs(c.at - this.time) < 0.05)) return this.host.status("There's already a change here: move its faders", "hint");
-    const { bass, mid, treble } = eqAt(eq, placed, this.time);
-    const changes = [...(eq.changes || []), { anchor: at, bass, mid, treble, glide: 1 }];
+    const { bass, mid, treble, filter } = eqAt(eq, placed, this.time);
+    const changes = [...(eq.changes || []), { anchor: at, bass, mid, treble, ...(filter ? { filter } : {}), glide: 1 }];
     this.editEq(ch, { ...eq, changes }, { ch, i: changes.length - 1 });
     this.host.status(`Added a change at ${fmtTime(this.time)}. Move the faders to set what it glides to`, "hint");
   }
@@ -1010,7 +1012,7 @@ export class MusicEditor {
       const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
       const eqButton = (ch, id, name) => {
         const b = el("button", { type: "button", className: `ghost${isFlat(this.channelEq(ch)) ? "" : " on"}`, textContent: "EQ" });
-        b.title = `Bass, mid and treble for ${name}, like a DJ mixer`;
+        b.title = `Bass, mid, treble and filter for ${name}, like a DJ mixer`;
         b.setAttribute("aria-expanded", String(this.eqCh === id));
         b.setAttribute("aria-controls", "music-eq");
         b.setAttribute("aria-label", `${name} EQ`);
@@ -1033,6 +1035,15 @@ export class MusicEditor {
           f.addEventListener("change", () => this.setBand(ch, band, Number(f.value)));
           row.append(el("label", {}, `${label} `, f, " ", v));
         }
+        // The DJ filter: left muffles, right thins, the middle leaves the sound alone (it snaps there).
+        const flt = el("input", { type: "range", min: -FILTER_MAX, max: FILTER_MAX, step: 5, value: 0, className: "eq-filter" });
+        flt.dataset.band = "filter";
+        flt.setAttribute("aria-label", `${name} filter`);
+        const fv = el("span", { className: "hint eq-value" });
+        fv.dataset.band = "filter";
+        flt.addEventListener("input", () => { fv.textContent = filterText(Number(flt.value)); });
+        flt.addEventListener("change", () => this.setBand(ch, "filter", Number(flt.value)));
+        row.append(el("label", { title: "Left muffles the sound, right thins it out, like a DJ's filter. The middle is off" }, "Filter ", flt, " ", fv));
         const add = el("button", { type: "button", textContent: "+ Change here" });
         add.title = "From the playhead on, glide to new settings: add a change here, then move the faders";
         add.addEventListener("click", () => this.addChange(ch));
@@ -1147,7 +1158,7 @@ export class MusicEditor {
       const placed = placeChanges(eq, this.pieces, this.crossfade), now = eqAt(eq, placed, this.time);
       for (const f of row.querySelectorAll("input[type=range]")) {
         if (document.activeElement !== f) f.value = now[f.dataset.band];
-        row.querySelector(`.eq-value[data-band="${f.dataset.band}"]`).textContent = faderText(Number(f.value));
+        row.querySelector(`.eq-value[data-band="${f.dataset.band}"]`).textContent = settingText(f.dataset.band, Number(f.value));
       }
       row.dataset.change = now.change;
       const c = now.change >= 0 ? placed.find((p) => p.i === now.change) : null;
@@ -1685,6 +1696,8 @@ export class MusicEditor {
     this.overlay = {
       dip: steps ? dipCurve(this.layers, placed, this.sources, steps, OVERLAY_RATE) : null,
       eq: steps && !isFlat(this.eq) ? eqCurves(this.eq, placeChanges(this.eq, this.pieces, this.crossfade), steps, OVERLAY_RATE) : null,
+      filter: steps && [this.eq, ...(this.eq?.changes || [])].some((s) => s?.filter)
+        ? filterCurve(this.eq, placeChanges(this.eq, this.pieces, this.crossfade), steps, OVERLAY_RATE) : null,
     };
     if (this.h !== WAVE_B + LANE_H * this.layers.length) this.layout();
     const total = this.total;
@@ -1921,7 +1934,7 @@ export class MusicEditor {
   // middle for a boost, below it for a cut. The waveform itself stays the song as it was.
   drawOverlay(ctx, col, waveT, waveB) {
     const ov = this.overlay, { w } = this;
-    if (!ov || (!ov.dip && !ov.eq)) return;
+    if (!ov || (!ov.dip && !ov.eq && !ov.filter)) return;
     const at = (px) => Math.floor((this.view.start + (px / w) * this.view.span) * OVERLAY_RATE);
     if (ov.dip) {
       const half = (waveB - waveT) / 2, runs = [];
@@ -1950,8 +1963,11 @@ export class MusicEditor {
     if (ov.eq) {
       const base = waveB - 16, per = 12 / -EQ_MIN; // 12 px for a band all the way down
       ctx.lineWidth = 1.5;
-      ov.eq.forEach((band, k) => {
-        ctx.strokeStyle = EQ_COLOURS[k];
+      // The filter: down for muffled, up for thin, 12 px at either end.
+      const lines = [...(ov.filter ? [[ov.filter.map((v) => (v / FILTER_MAX) * -EQ_MIN), FILTER_COLOUR]] : []),
+        ...BANDS.map((_, k) => [ov.eq[k], EQ_COLOURS[k]])];
+      lines.forEach(([band, colour]) => {
+        ctx.strokeStyle = colour;
         ctx.beginPath();
         for (let px = 0; px < w; px++) {
           const v = band[Math.min(band.length - 1, Math.max(0, at(px)))];

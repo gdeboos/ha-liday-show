@@ -3,7 +3,9 @@
 // down; at the bottom of its fader a band is off. Settings can change at points in the song, gliding
 // to the new setting, and those points follow cuts like layer clips (music.js draws and edits them).
 //
-// An eq: {bass, mid, treble (dB), changes: [{anchor: {song, t}, bass, mid, treble, glide (s)}]}.
+// An eq: {bass, mid, treble (dB), filter (optional), changes: [{anchor: {song, t}, bass, mid, treble,
+// filter, glide (s)}]}. The filter is the DJ's: -100 muffles the sound (low-pass), 100 thins it
+// (high-pass), 0 leaves it alone.
 
 import { resultTime } from "./layers.js";
 
@@ -15,8 +17,11 @@ const LOW_HZ = 250, HIGH_HZ = 3000;
 const FLOOR = -60; // glides to and from "off" go through this, so they sound like a fade
 
 export const flatEq = () => ({ bass: 0, mid: 0, treble: 0, changes: [] });
-const setting = (s) => ({ bass: s?.bass ?? 0, mid: s?.mid ?? 0, treble: s?.treble ?? 0 });
-const isZero = (s) => BANDS.every((b) => !s[b]);
+export const FILTER_MAX = 100;
+const setting = (s) => ({ bass: s?.bass ?? 0, mid: s?.mid ?? 0, treble: s?.treble ?? 0, filter: s?.filter ?? 0 });
+const isZero = (s) => BANDS.every((b) => !s[b]) && !s.filter;
+const bandsFlat = (eq) => [eq, ...(eq.changes || [])].every((s) => BANDS.every((b) => !setting(s)[b]));
+const filterFlat = (eq) => [eq, ...(eq.changes || [])].every((s) => !setting(s).filter);
 
 // True when an eq leaves the sound as it is.
 export function isFlat(eq) {
@@ -74,6 +79,69 @@ export function eqCurves(eq, placed, n, rate) {
   return out;
 }
 
+// The filter's setting at each moment, as stretches like gainSpans: [{from, to, a, b}].
+function filterSpans(eq, placed, n, rate) {
+  const spans = [];
+  let cur = setting(eq).filter, pos = 0;
+  for (const c of placed) {
+    const start = Math.min(n, Math.max(pos, Math.round(c.at * rate)));
+    if (start > pos) spans.push({ from: pos, to: start, a: cur, b: cur });
+    const next = c.filter ?? 0, end = Math.min(n, start + Math.round(Math.max(0, c.glide) * rate));
+    if (end > start) spans.push({ from: start, to: end, a: cur, b: next });
+    cur = next;
+    pos = Math.max(pos, end, start);
+  }
+  if (pos < n) spans.push({ from: pos, to: n, a: cur, b: cur });
+  return spans;
+}
+
+// The filter's setting at every step, for its line on the waveform (like eqCurves).
+export function filterCurve(eq, placed, n, rate) {
+  const out = new Float32Array(n);
+  for (const sp of filterSpans(eq, placed, n, rate)) {
+    for (let i = sp.from; i < sp.to; i++) out[i] = sp.a + (sp.b - sp.a) * (sp.to - sp.from > 1 ? (i - sp.from) / (sp.to - sp.from) : 0);
+  }
+  return out;
+}
+
+// Where the filter cuts, swept on a log scale: left from 20 kHz down to 200 Hz, right from 20 Hz up to
+// 2 kHz.
+export const filterHz = (v) => (v < 0 ? 20000 * 0.01 ** (-v / FILTER_MAX) : 20 * 100 ** (v / FILTER_MAX));
+const FILTER_STEP = 64; // samples between retunings while it moves
+const FILTER_Q = 0.9; // a touch of resonance at the cut, as a DJ mixer's filter has
+
+// The filter over channels in place, retuned every few samples as its setting glides. Near the middle
+// it's left out altogether, picking up again smoothly from the sound as it is.
+function applyFilter(channels, rate, eq, placed, offset) {
+  const n = channels[0]?.length || 0;
+  const spans = filterSpans(eq, placed, offset + n, rate);
+  const values = new Float32Array(Math.ceil(n / FILTER_STEP));
+  for (let s = 0, k = 0; s < values.length; s++) {
+    const i = offset + s * FILTER_STEP + FILTER_STEP / 2;
+    while (k < spans.length - 1 && i >= spans[k].to) k++;
+    const sp = spans[k];
+    values[s] = sp ? sp.a + (sp.b - sp.a) * Math.min(1, Math.max(0, (i - sp.from) / Math.max(1, sp.to - sp.from))) : 0;
+  }
+  for (const ch of channels) {
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    for (let s = 0; s < values.length; s++) {
+      const from = s * FILTER_STEP, to = Math.min(n, from + FILTER_STEP), v = values[s];
+      if (Math.abs(v) < 0.5) { // off: the sound passes, and the filter starts from it next time
+        if (to > from) { x1 = x2 = y1 = y2 = ch[to - 1]; }
+        continue;
+      }
+      const f = Math.min(filterHz(v), rate * 0.45), w = (2 * Math.PI * f) / rate, cs = Math.cos(w), al = Math.sin(w) / (2 * FILTER_Q);
+      const a0 = 1 + al, A1 = (-2 * cs) / a0, A2 = (1 - al) / a0;
+      const B0 = (v < 0 ? (1 - cs) / 2 : (1 + cs) / 2) / a0, B1 = (v < 0 ? 1 - cs : -(1 + cs)) / a0, B2 = B0;
+      for (let i = from; i < to; i++) {
+        const x = ch[i], y = B0 * x + B1 * x1 + B2 * x2 - A1 * y1 - A2 * y2;
+        x2 = x1; x1 = x; y2 = y1; y1 = y;
+        ch[i] = y;
+      }
+    }
+  }
+}
+
 // A second-order filter (RBJ's cookbook) that runs over a block at a time, keeping its state between
 // blocks.
 function biquad(kind, f, rate, q = Math.SQRT1_2) {
@@ -124,6 +192,12 @@ function splitter(rate) {
 // offset is where the channels start in the song, in samples, for a clip mixed on its own.
 export function applyEq(channels, rate, eq, placed, offset = 0) {
   if (isFlat(eq)) return channels;
+  if (!bandsFlat(eq)) applyBands(channels, rate, eq, placed, offset);
+  if (!filterFlat(eq)) applyFilter(channels, rate, eq, placed, offset);
+  return channels;
+}
+
+function applyBands(channels, rate, eq, placed, offset) {
   const n = channels[0]?.length || 0;
   const spans = gainSpans(eq, placed, offset + n, rate).map((s) => ({ ...s, from: s.from - offset, to: s.to - offset,
     still: s.a.every((v, q) => v === s.b[q]), g: s.a.map(toGain) }));
@@ -156,3 +230,5 @@ export function applyEq(channels, rate, eq, placed, offset = 0) {
 
 // How a fader's value reads.
 export const faderText = (v) => (v <= EQ_MIN ? "off" : `${v > 0 ? "+" : ""}${v} dB`);
+// How the filter reads: off in the middle, muffled to the left, thin to the right.
+export const filterText = (v) => (!v ? "off" : v < 0 ? `muffled ${-v}%` : `thin ${v}%`);

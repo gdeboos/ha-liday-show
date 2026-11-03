@@ -1109,6 +1109,15 @@ async def test_draft_mixer_settings_are_kept_and_checked(client, tmp_path):
                 {**draft, "layers": [{**draft["layers"][0], "clips": [{**clip, "bpm": 5}]}]},
                 {**draft, "layers": [{**draft["layers"][0], "eq": {"treble": -30}}]}):
         assert (await client.post("/api/drafts", json=bad)).status == 400
+    # The DJ filter: kept when set (on the eq and its changes), -100 to 100, left out at 0.
+    filtered = {**draft, "eq": {**eq, "filter": -60, "changes": [{**change, "filter": 40}]}}
+    fid = (await (await client.post("/api/drafts", json=filtered)).json())["id"]
+    got = (await (await client.get(f"/api/drafts/{fid}")).json())["eq"]
+    assert got["filter"] == -60 and got["changes"][0]["filter"] == 40
+    zero = (await (await client.post("/api/drafts", json={**draft, "eq": {**eq, "filter": 0}})).json())["id"]
+    assert "filter" not in (await (await client.get(f"/api/drafts/{zero}")).json())["eq"]
+    for bad_filter in (101, -101, "low", True):
+        assert (await client.post("/api/drafts", json={**draft, "eq": {**eq, "filter": bad_filter}})).status == 400
 
 
 async def test_songs_upload_in_parts(client, tmp_path):

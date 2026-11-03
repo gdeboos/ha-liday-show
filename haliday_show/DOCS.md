@@ -553,7 +553,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Layers](#layers) · [Mixer](#mixer-bass-mid-treble-and-tempo) · [Suggest cuts](#suggest-cuts) ·
+- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Layers](#layers) · [Mixer](#mixer-bass-mid-treble-filter-and-tempo) · [Suggest cuts](#suggest-cuts) ·
   [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
@@ -891,7 +891,7 @@ Layers play samples or other songs on top of the song: sleigh bells over the int
 last chorus, a voice saying "Merry Christmas", or another song fading in under the end.
 
 1. Under the waveform, in the **Mixer**, press **+ Add layer** (up to four). Its row has a name, a
-   **Volume**, **EQ** (see [Mixer](#mixer-bass-mid-treble-and-tempo)), **Quieten the song**, **Match
+   **Volume**, **EQ** (see [Mixer](#mixer-bass-mid-treble-filter-and-tempo)), **Quieten the song**, **Match
    tempo** and **Remove**, and a lane appears under the waveform for its clips.
 2. Put the playhead where you want a clip to start, then pick a sample or song from **+ Add a clip at
    the playhead…** on the layer's row. It starts a little quieter than the song, so it sits in the mix;
@@ -919,7 +919,7 @@ the sample back. Layers are part of the draft and every change is one
 distorting where they pile up. The waveform, **Detect** and **Suggest cuts** go by the song alone, and a
 sample saved with **Save as sample…** includes the layers.
 
-#### Mixer: bass, mid, treble and tempo
+#### Mixer: bass, mid, treble, filter and tempo
 
 The **Mixer** under the waveform works like a DJ's, for mash-ups and for making a layer sit well with
 the song. The song has a row, and so does each layer.
@@ -928,8 +928,12 @@ the song. The song has a row, and so does each layer.
   or **✕**, to close them; another row's **EQ** swaps to its faders). Each goes from +6 dB down to **off**
   at the bottom: take the bass out of the song while a layer's bass carries it, say, or the treble off a
   layer so it sits behind. The **EQ** button is highlighted when anything is changed.
+- **Filter**, under the faders, is a DJ's filter: slide it left to muffle the sound, as if it's coming
+  through a wall, or right to thin it out until only the top is left. The middle is off. Sweep it with
+  changes (below) for a build-up: muffle the song, then open it up on the drop. A change made before you
+  used the filter has it off, so the sound opens up again there; move the playhead past it to set it.
 - **Changes partway through:** put the playhead where it should change, press **+ Change here**, then
-  move the faders. From there the sound glides to the new settings over **Glide** seconds (1 by
+  move the faders (and the **Filter**). From there the sound glides to the new settings over **Glide** seconds (1 by
   default; 0 for an instant switch). The faders always show, and change, the setting at the playhead:
   before the first change that's the row's own setting. A change shows as a small diamond: the song's
   along the bottom of the waveform, a layer's in its lane. Click one to put the playhead on it, drag it
@@ -951,7 +955,8 @@ what the mixer does:
   **Song −16 dB**.
 - When the song has EQ, three thin lines run along the bottom of the waveform: orange for **Bass**, green
   for **Mid** and blue for **Treble**. A line above the others is turned up, below them turned down, and
-  each glides into a change as the sound does.
+  each glides into a change as the sound does. A purple line is the **Filter**: down for muffled, up for
+  thin.
 
 #### Suggest cuts
 
