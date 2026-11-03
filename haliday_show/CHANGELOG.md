@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.297
+
+- **Library → Shows** has season buttons above the list once a show has a season: **All**, **Halloween**, **Christmas** and your own. Pick one to see just that season's shows (and the ones for any season), from every folder. Your choice is remembered.
+
 ## 0.2.296
 
 - Automations without MQTT can put a season's props out or pack them away: send `{action: season, season: Halloween, out: true}` (or `out: false`) to the app, as you do for shows and scenes. The guide's **Without MQTT** section has the details.

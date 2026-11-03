@@ -44,7 +44,7 @@ import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLi
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
-import { copyName, length as fmtLength, showRows, songName } from "./showlist.js";
+import { copyName, inSeasonFilter, length as fmtLength, showRows, songName } from "./showlist.js";
 import {
   buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, suggest, suggestSong, withPictureIds,
 } from "./sharing.js";
@@ -307,6 +307,7 @@ async function loadDevices() {
   app.seasons = seasons;
   house.away = awayIds(list, seasons);
   indexDevices();
+  if (showListCache.length) renderShowLists(showListCache); // the season names and buttons
 }
 
 // Seasons (seasons.js): which props are packed away just now. A part goes with its light.
@@ -6177,7 +6178,11 @@ let showListCache = [];
 async function renderShowLists(shows = null) {
   try { showListCache = shows || await api("api/shows"); } catch { return; }
   renderArchivedShows();
-  const rows = showRows(showListCache, prefs.get("lastShow", null), new Date(), app.seasons || []);
+  const seasons = app.seasons || [];
+  const picked = seasonFilter();
+  const shown = showListCache.filter((s) => inSeasonFilter(s, picked, seasons));
+  const rows = showRows(shown, prefs.get("lastShow", null), new Date(), seasons);
+  drawShowSeasons(picked, shown.length);
   for (const box of document.querySelectorAll("[data-show-list]")) {
     if (rows.length) {
       box.setAttribute("role", "list");
@@ -6187,13 +6192,46 @@ async function renderShowLists(shows = null) {
       box.removeAttribute("aria-label");
     }
     if (!rows.length) {
-      box.innerHTML = `<p class="hint">No shows yet. Press <b>+ New show</b> to make your first one.</p>`;
+      if (showListCache.length) {
+        box.replaceChildren(Object.assign(document.createElement("p"), { className: "hint",
+          textContent: `No shows for ${seasons.find((x) => x.id === picked)?.name || "this season"} yet.` }));
+      } else box.innerHTML = `<p class="hint">No shows yet. Press <b>+ New show</b> to make your first one.</p>`;
       continue;
     }
     box.replaceChildren(...rows.map((r) => showRow(r)));
-    foldLibraryList("shows", box);
+    // Picking a season shows its shows from every folder, each saying where it is (as Find does).
+    foldLibraryList("shows", box, { finding: picked !== "all" });
   }
   libraryFolderButtons();
+}
+
+// Library → Shows' season buttons: All, then one per season, remembered in this browser. Shown once
+// a show has a season (or one is picked), so a list with no seasonal shows stays as it was.
+function seasonFilter() {
+  const picked = prefs.get("showSeason", "all");
+  return (app.seasons || []).some((x) => x.id === picked) ? picked : "all";
+}
+
+function drawShowSeasons(picked, count) {
+  const seasons = app.seasons || [];
+  const ids = new Set(seasons.map((x) => x.id));
+  const tools = $("lib-show-tools");
+  tools.hidden = !seasons.length || (picked === "all" && !showListCache.some((s) => ids.has(s.season)));
+  if (tools.hidden) return;
+  const choice = (id, label) => {
+    const b = button(label, async () => {
+      prefs.set("showSeason", id);
+      await renderShowLists(showListCache);
+      // The buttons are drawn afresh: keep the keyboard on the one just pressed.
+      $("lib-season").querySelector(`[data-season="${CSS.escape(id)}"]`)?.focus();
+    }, "");
+    b.dataset.season = id;
+    b.setAttribute("aria-pressed", String(id === picked));
+    if (id !== "all") b.title = `${label} shows, and shows for any season`;
+    return b;
+  };
+  $("lib-season").replaceChildren(choice("all", "All"), ...seasons.map((x) => choice(x.id, x.name)));
+  $("lib-show-count").textContent = picked === "all" ? "" : `${count} shown, of ${showListCache.length}`;
 }
 
 function showRow(r) {
@@ -7459,7 +7497,8 @@ const FOLDER_LISTS = {
   songs: { noun: "song", many: "songs", top: "Songs", redraw: () => drawSongRows(),
     stopFinding: () => { $("song-filter").value = ""; prefs.set("songShow", "all"); } },
   samples: { noun: "sample", many: "samples", top: "Samples", redraw: () => drawSamples() },
-  shows: { noun: "show", many: "shows", top: "Shows", newButton: "[data-show-new]", redraw: () => showListCache && renderShowLists(showListCache) },
+  shows: { noun: "show", many: "shows", top: "Shows", newButton: "[data-show-new]", redraw: () => showListCache && renderShowLists(showListCache),
+    stopFinding: () => prefs.set("showSeason", "all") },
   scenes: { noun: "scene", many: "scenes", top: "Scenes", newButton: "[data-scene-new]", redraw: () => sceneEd.drawLists?.() },
   playlists: { noun: "playlist", many: "playlists", top: "Playlists", newButton: "[data-playlist-new]", redraw: () => renderPlaylistLists() },
   palettes: { noun: "palette", many: "palettes", top: "Palettes", newButton: "#btn-new-palette", redraw: () => renderPalettes() },
@@ -7696,12 +7735,12 @@ function folderPath(kind, at) {
 // The Library's own lists mark their rows their own way (data-show-id and so on).
 const LIB_KEY = { shows: (r) => r.dataset.showId, scenes: (r) => r.dataset.sceneId, playlists: (r) => r.dataset.playlistId,
   palettes: (r) => r.dataset.key, presets: (r) => r.dataset.key, pictures: (r) => r.dataset.key };
-function foldLibraryList(kind, box) {
+function foldLibraryList(kind, box, { finding = false } = {}) {
   for (const r of box.querySelectorAll(".show-row")) {
     const k = LIB_KEY[kind](r);
     if (k) r.dataset.folderKey = k;
   }
-  folderize(kind, box);
+  folderize(kind, box, { finding });
 }
 
 // box: the list's own box, drawn; rows marked data-folder-key. finding: every match shows, flat.

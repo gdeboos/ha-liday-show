@@ -657,6 +657,10 @@
 <main id="view-shows" class="view">
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-editor"/></svg>Shows</h2>
   <p class="hint">Open a show to change it. Nothing in a show changes until you open it.</p>
+  <div class="group song-tools" id="lib-show-tools" hidden>
+    <span id="lib-season" class="seg-buttons" role="group" aria-label="Season"></span>
+    <span id="lib-show-count" class="hint" aria-live="polite"></span>
+  </div>
   <div class="show-list" data-show-list></div>
   <p class="group"><button type="button" class="primary" data-show-new>+ New show</button>
     <button type="button" data-show-import title="Add a show someone shared with you, from its .halidayshow file">Import show…</button></p>
