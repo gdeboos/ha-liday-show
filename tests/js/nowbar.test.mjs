@@ -14,7 +14,7 @@ test("a show, with the scene that comes back after it", () => {
   assert.equal(on.title, "Xmas");
   assert.equal(on.scene, "Warm white");
   assert.equal(on.mediaPlayer, "media_player.garden");
-  assert.deepEqual(on.actions.map((a) => a.act), ["restart", "stop"]);
+  assert.deepEqual(on.actions.map((a) => a.act), ["preview", "restart", "stop"]);
 });
 
 test("a playlist says what's playing in it", () => {
@@ -29,5 +29,5 @@ test("a playlist says what's playing in it", () => {
 test("a scene can be turned off", () => {
   const on = nowOn({ playing: true, show: null, name: "Warm white", scene: { id: "warm", name: "Warm white", playing: true }, playlist: null });
   assert.equal(on.kind, "scene");
-  assert.deepEqual(on.actions, [{ act: "stop-scene", label: "Turn off" }]);
+  assert.deepEqual(on.actions.map((a) => a.act), ["preview", "stop-scene"]);
 });

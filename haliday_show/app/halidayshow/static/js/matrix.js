@@ -51,6 +51,17 @@ export function toWire(rgb, matrix) {
   return out;
 }
 
+// The other way: a frame as it goes down the wire, back in grid order (for showing what a light shows).
+export function fromWire(rgb, matrix) {
+  if (plain(matrix)) return rgb;
+  const order = wireOrder(matrix), out = new Uint8Array(rgb.length);
+  for (let k = 0; k < order.length; k++) {
+    const g = order[k] * 3;
+    out[g] = rgb[k * 3]; out[g + 1] = rgb[k * 3 + 1]; out[g + 2] = rgb[k * 3 + 2];
+  }
+  return out;
+}
+
 export const stripLength = (runs, w, h) => (runs === "columns" ? h : runs === "strip" ? w * h : w);
 
 // Lays a strip effect's colours (stripLength of them, 3 values each) over the grid in `out`.

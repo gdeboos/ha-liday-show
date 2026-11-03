@@ -3,7 +3,8 @@
 // from the player's status (api/player) without the page, so it can be tested.
 
 // {title, detail, kind: "show" | "playlist" | "scene" | "block", position, duration, scene, actions}
-// or null when nothing's on. actions: [{act: "stop" | "restart" | "stop-scene", label}].
+// or null when nothing's on. actions: [{act: "preview" | "restart" | "stop" | "stop-scene", label}];
+// Preview shows the house photo with what the lights are showing.
 export function nowOn(st) {
   if (!st) return null;
   const scene = st.scene?.id ? st.scene : null;
@@ -14,7 +15,7 @@ export function nowOn(st) {
       detail: [st.playlist.finishing ? "finishing" : "", what ? `now: ${what}` : ""].filter(Boolean).join(" · "),
       position: st.playing ? st.position : 0, duration: st.playing ? st.duration : 0,
       id: st.playlist.id, scene: null,
-      actions: [{ act: "restart", label: "Restart playlist" }, { act: "stop", label: "Stop" }],
+      actions: [{ act: "preview", label: "Preview" }, { act: "restart", label: "Restart playlist" }, { act: "stop", label: "Stop" }],
     };
   }
   if (st.playing && st.show) {
@@ -23,16 +24,16 @@ export function nowOn(st) {
       position: st.position, duration: st.duration, id: st.show, mediaPlayer: st.media_player || null,
       // A scene that comes back once the show ends.
       scene: scene && !scene.playing ? scene.name : null,
-      actions: [{ act: "restart", label: "Restart" }, { act: "stop", label: "Stop" }],
+      actions: [{ act: "preview", label: "Preview" }, { act: "restart", label: "Restart" }, { act: "stop", label: "Stop" }],
     };
   }
   if (st.playing && st.block) {
     return { kind: "block", title: st.name || "A block", detail: "", position: st.position, duration: st.duration,
-      scene: null, actions: [{ act: "stop", label: "Stop" }] };
+      scene: null, actions: [{ act: "preview", label: "Preview" }, { act: "stop", label: "Stop" }] };
   }
   if (scene?.playing) {
     return { kind: "scene", title: scene.name, detail: "", position: 0, duration: 0, id: scene.id, scene: null,
-      actions: [{ act: "stop-scene", label: "Turn off" }] };
+      actions: [{ act: "preview", label: "Preview" }, { act: "stop-scene", label: "Turn off" }] };
   }
   return null;
 }

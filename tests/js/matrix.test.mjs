@@ -84,3 +84,10 @@ test("a matrix clip on the timeline is a row of grid snapshots, each the grid's 
   const tall = gridTiles(0, 100, 30, { w: 8, h: 32 });
   assert.equal(tall[0].w, 8); // never narrower than 8 px
 });
+
+test("a frame off the wire comes back in grid order", async () => {
+  const { toWire, fromWire } = await import("../../haliday_show/app/halidayshow/static/js/matrix.js");
+  const m = { w: 3, h: 2, start: "bottom right", order: "columns", zigzag: true };
+  const grid = Uint8Array.from({ length: 18 }, (_, k) => k);
+  assert.deepEqual([...fromWire(toWire(grid, m), m)], [...grid]);
+});
