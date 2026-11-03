@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.308
+
+- Shared shows now say which lights are matrices and how big they are. When you import one, their matrices are suggested for your matrices and their mega-trees for your mega-trees. The match screen tells you if the sizes differ (matrix effects stretch to fit) or if you've picked a strip for one (they show only a slice).
+
 ## 0.2.307
 
 - **✨ Generate** and the AI now use your matrices properly: **Fire**, **Snowfall**, **Music bars**, **Plasma** and **Spiral** turn up there, mixed in with the usual looks, and effects on a mega-tree run down its strings.

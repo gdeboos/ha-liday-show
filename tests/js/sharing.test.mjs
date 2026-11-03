@@ -228,3 +228,44 @@ test("a show shared without seasons is matched exactly as before, props or not",
   assert.equal(odd.lights[0].seasons.length, 20);
   assert.equal(odd.lights[0].seasons[0].length, 40);
 });
+
+test("shared matrices: carried, read back safely, and matched to your matrices", async () => {
+  const { matrixNote } = await import("../../haliday_show/app/halidayshow/static/js/sharing.js");
+  const panel = { id: "panel", name: "Window panel", kind: "wled", segments: 512, parts: [],
+    matrix: { w: 32, h: 16, start: "top left", order: "rows", zigzag: true } };
+  const mega = { id: "mega", name: "Big tree", kind: "wled", segments: 400, parts: [],
+    matrix: { w: 16, h: 25, start: "bottom left", order: "columns", zigzag: true } };
+  const s = { name: "M", duration: 20, tracks: [
+    { device: "panel", clips: [clip(0, 5, "fire2d")] }, { device: "mega", clips: [clip(0, 5, "spiral")] },
+    { device: "roof", clips: [clip(0, 5)] }] };
+  const shapeOf = (id) => (id === "mega" ? "tree" : "panel");
+  const file = makeShare(s, [panel, mega, roof], { shapeOf });
+  assert.equal(file.version, 1); // older copies ignore the matrix and import it as before
+  assert.equal(file.lights[0].type.label, "WLED matrix");
+  const out = readShare(JSON.stringify(file));
+  assert.deepEqual(out.lights.map((l) => l.matrix), [{ w: 32, h: 16, shape: "panel" }, { w: 16, h: 25, shape: "tree" }, undefined]);
+  // Damaged or silly values are left out.
+  const bad = JSON.parse(JSON.stringify(file));
+  bad.lights[0].matrix = { w: 0, h: 9999, shape: "blob" };
+  bad.lights[1].matrix = { w: 10, h: 10, shape: "blob" };
+  const read = readShare(JSON.stringify(bad));
+  assert.equal(read.lights[0].matrix, undefined);
+  assert.deepEqual(read.lights[1].matrix, { w: 10, h: 10, shape: "panel" });
+
+  // Theirs go to your matrices, the tree to your tree, even when another light is a closer size.
+  const myTree = { ...mega, id: "t2", name: "Front tree" };
+  const myPanel = { ...panel, id: "p2", name: "Porch", segments: 400, matrix: { ...panel.matrix, w: 20, h: 20 } };
+  const strip = { id: "s2", name: "Strip", kind: "wled", segments: 512, parts: [] };
+  const mine = myLights([myTree, myPanel, strip], { shapeOf: (id) => (id === "t2" ? "tree" : "panel") });
+  assert.deepEqual(mine.find((l) => l.id === "t2").matrix, { w: 16, h: 25, shape: "tree" });
+  const plan = suggest(out.lights.slice(0, 2), mine);
+  assert.equal(plan.L1.light, "p2");
+  assert.equal(plan.L2.light, "t2");
+  assert.match(plan.L2.why, /mega-tree/);
+
+  // The match screen's note when the grids differ or the light isn't a matrix.
+  assert.equal(matrixNote(out.lights[1], mine[0]), "");
+  assert.match(matrixNote(out.lights[0], mine[1]), /32 × 16.*20 × 20.*stretch/);
+  assert.match(matrixNote(out.lights[0], mine[2]), /slice/);
+  assert.equal(matrixNote(out.lights[2], mine[2]), "");
+});

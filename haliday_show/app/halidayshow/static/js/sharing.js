@@ -3,6 +3,8 @@
 // suggests which of your lights plays each of theirs, and builds the tracks of a new show.
 // The song never travels; only its name and length.
 
+import { MAX_MATRIX, gridOf } from "./matrix.js";
+
 export const SHARE_FORMAT = "halidayshow";
 // Version 2 adds the pictures a show's Picture effects use; a show without any is still written as 1,
 // so older copies can import it. Later versions must keep importing version 1 and 2 files.
@@ -19,8 +21,8 @@ const GOVEE_GROUPS = [
   [/tree/i, "tree"], [/bar|lamp|bulb|wall|hexa|panel/i, "lamp"],
 ];
 export function lightType(dev, model) {
-  if (dev.kind === "wled") return { label: "WLED strip", group: "strip" };
-  if (dev.kind === "ddp" || dev.kind === "e131") return { label: "Pixel lights", group: "strip" };
+  if (dev.kind === "wled") return { label: gridOf(dev) ? "WLED matrix" : "WLED strip", group: "strip" };
+  if (dev.kind === "ddp" || dev.kind === "e131") return { label: gridOf(dev) ? "Pixel matrix" : "Pixel lights", group: "strip" };
   if (dev.kind === "twinkly") return { label: "Twinkly lights", group: "string" };
   if (dev.kind === "ha") {
     const sw = dev.protocol === "ha_switch";
@@ -30,6 +32,14 @@ export function lightType(dev, model) {
   const group = GOVEE_GROUPS.find(([re]) => re.test(name))?.[1] || "govee";
   return { label: name, group };
 }
+
+// A matrix as a share file and the match screen describe it: its size and whether it's a mega-tree.
+// shapeOf(id) gives "tree" or "panel" (the house photo's style).
+const matrixOf = (d, shapeOf) => {
+  const g = gridOf(d);
+  return g ? { w: g.w, h: g.h, shape: shapeOf(d.id) === "tree" ? "tree" : "panel" } : null;
+};
+const gridWords = (m) => `${m.w} × ${m.h} ${m.shape === "tree" ? "mega-tree" : "matrix"}`;
 
 // Where a light sits on the house photo, roughly: the box round its segments, 0 to 1 across and down.
 export function whereOf(points) {
@@ -44,7 +54,7 @@ export function whereOf(points) {
 // The share file for `show`. `lights` is the Devices tab's list, `models` Govee models by SKU,
 // `positions` each device or part id's segment positions on the house (as the House lane uses).
 // Lights with no effects in the show are left out; so are tracks whose light has gone.
-export function makeShare(show, lights, { models = {}, positions = {}, app = "", pictureOf = () => null, seasons = [] } = {}) {
+export function makeShare(show, lights, { models = {}, positions = {}, app = "", pictureOf = () => null, seasons = [], shapeOf = () => "panel" } = {}) {
   const byId = new Map(lights.map((d) => [d.id, d]));
   // Seasons go by name (ids are only this copy's): a light's, and the show's.
   const seasonName = new Map(seasons.map((x) => [x.id, x.name]));
@@ -62,6 +72,9 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
     if (level != null && level !== 100) out.lights.at(-1).brightness = level;
     const its = (d.seasons || []).map((id) => seasonName.get(id)).filter(Boolean);
     if (its.length) out.lights.at(-1).seasons = its;
+    // Older copies ignore it, so a show with matrices is still version 1 (or 2 with pictures).
+    const matrix = matrixOf(d, shapeOf);
+    if (matrix) out.lights.at(-1).matrix = matrix;
     return key;
   };
   for (const tr of show.tracks || []) {
@@ -106,6 +119,14 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
 export const withPictureIds = (tracks, ids) => tracks.map((t) => ({ ...t,
   clips: t.clips.map((c) => (c.effect !== "picture" ? c
     : { ...c, picture: typeof c.picture === "string" && Object.hasOwn(ids, c.picture) && typeof ids[c.picture] === "string" ? ids[c.picture] : "" })) }));
+
+// A shared matrix's size, if it's a real one: whole numbers, 1 to 4,096 LEDs in all.
+function sharedMatrix(m) {
+  if (!m || typeof m !== "object") return null;
+  const w = Number(m.w), h = Number(m.h);
+  if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || h < 1 || w * h > MAX_MATRIX) return null;
+  return { w, h, shape: m.shape === "tree" ? "tree" : "panel" };
+}
 
 // A shared picture as it should be: small, with frames and delays that fit; anything else is skipped.
 function sharedPicture(p) {
@@ -153,6 +174,7 @@ export function readShare(text) {
         ? { x: l.where.x, y: l.where.y, w: l.where.w, h: l.where.h } : null,
       ...(level(l.brightness) ? { brightness: level(l.brightness) } : {}),
       ...(names(l.seasons).length ? { seasons: names(l.seasons) } : {}),
+      ...(sharedMatrix(l.matrix) ? { matrix: sharedMatrix(l.matrix) } : {}),
     }));
   const keys = new Set(lights.map((l) => l.key));
   let count = 0;
@@ -197,9 +219,10 @@ export function shareLevels(share, plan) {
 }
 
 // Your lights as the match screen offers them. `whole: false` lights play their parts only.
-export function myLights(lights, { models = {}, positions = {}, seasons = [] } = {}) {
+export function myLights(lights, { models = {}, positions = {}, seasons = [], shapeOf = () => "panel" } = {}) {
   const seasonName = new Map(seasons.map((x) => [x.id, x.name]));
   return lights.filter((d) => !d.light).map((d) => ({
+    ...(matrixOf(d, shapeOf) ? { matrix: matrixOf(d, shapeOf) } : {}),
     seasons: (d.seasons || []).map((id) => seasonName.get(id)).filter(Boolean),
     id: d.id, name: d.name, type: lightType(d, models[d.sku]), sku: d.kind === "govee" ? d.sku || "" : "",
     kind: d.kind || "govee", segments: d.segments, whole: d.whole !== false || !d.parts?.length,
@@ -246,7 +269,23 @@ export function score(theirs, mine, { seasonal = (theirs.seasons || []).length >
   const shared = mySeasons.find((x) => theirSeasons.includes(x.toLowerCase()));
   if (shared) { s += 3; why.unshift(`both ${shared} props`); }
   else if (seasonal && !theirSeasons.length && mySeasons.length) s -= 1;
+  // A matrix's grid effects want one of your matrices, a mega-tree's spirals one of your trees.
+  if (theirs.matrix && mine.matrix) {
+    const tree = theirs.matrix.shape === "tree", same = tree === (mine.matrix.shape === "tree");
+    s += same ? 5 : 3;
+    why.unshift(same && tree ? "both mega-trees" : "both matrices");
+  } else if (theirs.matrix) s -= 2;
   return { score: s, why };
+}
+
+// What the match screen says when a matrix of theirs goes on a light of yours that isn't the same:
+// a different grid stretches their matrix effects to fit, and a strip shows only a slice of them.
+export function matrixNote(theirs, mine) {
+  if (!theirs?.matrix || !mine) return "";
+  if (!mine.matrix) return `Made for a ${gridWords(theirs.matrix)}: its matrix effects show only a slice on ${mine.name}.`;
+  const a = theirs.matrix, b = mine.matrix;
+  if (a.w === b.w && a.h === b.h) return "";
+  return `Their ${a.w} × ${a.h}, yours ${b.w} × ${b.h}: its matrix effects stretch to fit.`;
 }
 
 // The imported show's season: yours with the same name (any case), or none (any season) with a note
