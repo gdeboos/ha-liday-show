@@ -44,8 +44,10 @@ export function whereOf(points) {
 // The share file for `show`. `lights` is the Devices tab's list, `models` Govee models by SKU,
 // `positions` each device or part id's segment positions on the house (as the House lane uses).
 // Lights with no effects in the show are left out; so are tracks whose light has gone.
-export function makeShare(show, lights, { models = {}, positions = {}, app = "", pictureOf = () => null } = {}) {
+export function makeShare(show, lights, { models = {}, positions = {}, app = "", pictureOf = () => null, seasons = [] } = {}) {
   const byId = new Map(lights.map((d) => [d.id, d]));
+  // Seasons go by name (ids are only this copy's): a light's, and the show's.
+  const seasonName = new Map(seasons.map((x) => [x.id, x.name]));
   const used = new Map(); // light id -> key, in the order the show uses them
   const out = { lights: [], tracks: [] };
   const lightKey = (d) => {
@@ -58,6 +60,8 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
       where: whereOf(positions[d.id]), _parts: parts });
     const level = show.lightBrightness?.[d.id];
     if (level != null && level !== 100) out.lights.at(-1).brightness = level;
+    const its = (d.seasons || []).map((id) => seasonName.get(id)).filter(Boolean);
+    if (its.length) out.lights.at(-1).seasons = its;
     return key;
   };
   for (const tr of show.tracks || []) {
@@ -92,6 +96,7 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
     lights: out.lights, tracks: out.tracks,
     // Show settings → Brightness, only when dimmed (older copies ignore it and play at 100%).
     ...(show.brightness != null && show.brightness !== 100 ? { brightness: show.brightness } : {}),
+    ...(seasonName.get(show.season) ? { season: seasonName.get(show.season) } : {}),
     ...(pictures.length ? { pictures } : {}),
   };
 }
@@ -130,6 +135,7 @@ export function readShare(text) {
   const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
   const text64 = (v, d = "") => (typeof v === "string" ? v.slice(0, 80) : d);
   const nums = (a) => (Array.isArray(a) ? a.filter((v) => Number.isFinite(v)) : []);
+  const names = (a) => (Array.isArray(a) ? a.filter((v) => typeof v === "string" && v.trim()).slice(0, 20).map((v) => v.trim().slice(0, 40)) : []);
   // A brightness level, 1–100; anything else (or 100) is left out.
   const level = (v) => {
     const n = Math.round(Number(v));
@@ -146,6 +152,7 @@ export function readShare(text) {
       where: l.where && ["x", "y", "w", "h"].every((k) => Number.isFinite(l.where[k]))
         ? { x: l.where.x, y: l.where.y, w: l.where.w, h: l.where.h } : null,
       ...(level(l.brightness) ? { brightness: level(l.brightness) } : {}),
+      ...(names(l.seasons).length ? { seasons: names(l.seasons) } : {}),
     }));
   const keys = new Set(lights.map((l) => l.key));
   let count = 0;
@@ -167,6 +174,7 @@ export function readShare(text) {
     sections: (Array.isArray(s.sections) ? s.sections : []).filter((x) => x && Number.isFinite(x.start) && Number.isFinite(x.end)),
     lights: lights.filter((l) => tracks.some((t) => t.light === l.key)), tracks,
     ...(level(s.brightness) ? { brightness: level(s.brightness) } : {}),
+    ...(typeof s.season === "string" && s.season.trim() ? { season: s.season.trim().slice(0, 40) } : {}),
     pictures: (Array.isArray(s.pictures) ? s.pictures : []).slice(0, MAX_SHARED_PICTURES).map(sharedPicture).filter(Boolean),
   };
 }
@@ -189,8 +197,10 @@ export function shareLevels(share, plan) {
 }
 
 // Your lights as the match screen offers them. `whole: false` lights play their parts only.
-export function myLights(lights, { models = {}, positions = {} } = {}) {
+export function myLights(lights, { models = {}, positions = {}, seasons = [] } = {}) {
+  const seasonName = new Map(seasons.map((x) => [x.id, x.name]));
   return lights.filter((d) => !d.light).map((d) => ({
+    seasons: (d.seasons || []).map((id) => seasonName.get(id)).filter(Boolean),
     id: d.id, name: d.name, type: lightType(d, models[d.sku]), sku: d.kind === "govee" ? d.sku || "" : "",
     kind: d.kind || "govee", segments: d.segments, whole: d.whole !== false || !d.parts?.length,
     parts: (d.parts || []).map((p) => ({ id: `${d.id}#${p.id}`, name: p.name })),
@@ -208,7 +218,9 @@ function likeness(a, b) {
 }
 
 // How well one of your lights suits one of theirs, and the reasons, best first.
-export function score(theirs, mine) {
+// seasonal: the shared show says which of its lights are props (older files don't), so an all-year
+// light of theirs can be kept off your props.
+export function score(theirs, mine, { seasonal = (theirs.seasons || []).length > 0 } = {}) {
   let s = 0;
   const why = [];
   if (theirs.sku && theirs.sku === mine.sku) { s += 5; why.push("same model"); }
@@ -229,7 +241,21 @@ export function score(theirs, mine) {
   s += 2 * size;
   if (size > 0.8 && why.length < 2) why.push("similar size");
   if (likeness(theirs.name, mine.name) >= 0.5) { s += 2; why.unshift("same name"); }
+  // Seasonal props for props of the same season; an all-year light rather not on one of your props.
+  const theirSeasons = (theirs.seasons || []).map((x) => x.toLowerCase()), mySeasons = mine.seasons || [];
+  const shared = mySeasons.find((x) => theirSeasons.includes(x.toLowerCase()));
+  if (shared) { s += 3; why.unshift(`both ${shared} props`); }
+  else if (seasonal && !theirSeasons.length && mySeasons.length) s -= 1;
   return { score: s, why };
+}
+
+// The imported show's season: yours with the same name (any case), or none (any season) with a note
+// saying theirs was for a season you haven't got.
+export function shareSeason(share, seasons) {
+  if (!share.season) return { id: null, note: "" };
+  const found = seasons.find((x) => x.name.toLowerCase() === share.season.toLowerCase());
+  return found ? { id: found.id, note: "" }
+    : { id: null, note: `It was made for ${share.season}, a season you haven't got, so it's for any season. Pick one in ⚙ Show settings….` };
 }
 
 // Which of their parts plays on which of yours: in order when you have the same number (or by
@@ -257,7 +283,8 @@ export function partPlan(theirs, mine) {
 // Each of your lights is suggested once, best match first; poor matches are left out.
 export function suggest(theirs, mine) {
   const pairs = [];
-  for (const t of theirs) for (const m of mine) pairs.push({ t, m, ...score(t, m) });
+  const seasonal = theirs.some((t) => t.seasons?.length);
+  for (const t of theirs) for (const m of mine) pairs.push({ t, m, ...score(t, m, { seasonal }) });
   pairs.sort((a, b) => b.score - a.score);
   const plan = Object.fromEntries(theirs.map((t) => [t.key, { light: null, why: "", parts: {} }]));
   const taken = new Set();

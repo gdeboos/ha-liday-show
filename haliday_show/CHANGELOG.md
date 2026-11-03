@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.305
+
+- Shared shows now carry their season and which lights are seasonal props. When you import one, a Halloween show becomes your Halloween show (if you have that season), and their Halloween props are suggested for yours. The match screen marks their props, such as **Halloween prop**.
+
 ## 0.2.304
 
 - **Split vocals…** separates a song into its singing and the music behind it, saved as two new songs, such as "Jingle Bells (vocals)" and "Jingle Bells (music)". Find it under a song's **⋯** in **Library → Songs**, or in the Music editor. An AI does it in your browser; the first time, the browser downloads it (about 90 MB). It's quickest where the browser can use the graphics card (recent Chrome or Edge); otherwise it's slow, so leave the page open.

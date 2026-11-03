@@ -121,8 +121,8 @@ You can swap shows with friends, or post one on a forum, without either of you c
 - **Share** on a show's row downloads a small file ending in `.halidayshow`. It holds the show's effects,
   its beats and sections, its **Brightness** levels from **⚙ Show settings…**, the song's name and length,
   and a short description of each light it uses
-  (its name, what kind of light it is, how many segments and parts it has, and roughly where it is on
-  your house photo). It doesn't hold the song, your house photo, IP addresses or any settings. Lights
+  (its name, what kind of light it is, how many segments and parts it has, roughly where it is on
+  your house photo, and the [seasons](lights.md#seasons) it's a prop for). The show's season goes with it too. It doesn't hold the song, your house photo, IP addresses or any settings. Lights
   with no effects in the show are left out. Pictures used by its **Picture** effects go with it (up to
   20), and are added to your **Library → Pictures** when it's imported. A show with pictures needs
   HA-liday Show 0.2.282 or later to import.
@@ -151,6 +151,11 @@ You can swap shows with friends, or post one on a forum, without either of you c
   the light of yours that plays it. Where two of their lights play on one of yours, the brighter level
   is used. You can change them afterwards in **⚙ Show settings…**. A show shared from an older
   HA-liday Show, before brightness, imports at 100%.
+
+  **Seasons** come along by name. A Halloween show becomes a Halloween show if you have a season called
+  Halloween (otherwise it's for any season, and a note says so). Their Halloween props are suggested for
+  your Halloween props, and their all-year lights for your all-year ones; the match screen says which of
+  their lights are props.
 
   **Import show** saves it and opens it in the editor. Effects a light can't show are marked as usual
   (see [Effects a light can't show](#effects-a-light-cant-show)).
