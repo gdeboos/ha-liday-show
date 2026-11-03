@@ -742,6 +742,16 @@ Object.assign(EFFECTS, {
 // Library → Presets) previews make up a lively level so the effect can be seen.
 let musicLevels;
 export function setMusicLevels(levels) { musicLevels = levels && Array.isArray(levels.values) ? levels : null; }
+// "made up": previews with no song behind them (the effect window, presets, scenes, which follow
+// live music) show a lively level so the effect can be seen.
+export const MADE_UP = "made up";
+export function useMusicLevels(levels) { musicLevels = levels === MADE_UP ? undefined : levels && Array.isArray(levels.values) ? levels : null; }
+// Runs fn with these levels (a show's loudness, null for silent, or MADE_UP), then puts back the open show's.
+export function withMusicLevels(levels, fn) {
+  const before = musicLevels;
+  useMusicLevels(levels);
+  try { return fn(); } finally { musicLevels = before; }
+}
 function levelAt(time) {
   if (musicLevels === undefined) return 0.45 + 0.3 * Math.sin(time * 5.1) * Math.sin(time * 1.3) + 0.2 * Math.max(0, Math.sin(time * 12.6));
   const v = musicLevels?.values;

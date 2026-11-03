@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.312
+
+- **Music level** shows in its previews again. In the effect window and the preset previews it moves to a made-up level (the start of a song is often too quiet to show anything), and **▶ Preview** in **Library → Shows** follows that show's own song rather than staying dark.
+
 ## 0.2.311
 
 - A matrix set up as a row of arches (or drawn as a plain line) on **Setup → House** now lights along the arches in its real wiring order, so the house preview matches what your lights do.
