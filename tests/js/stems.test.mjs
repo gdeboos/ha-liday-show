@@ -44,3 +44,15 @@ test("splitting gives vocals and music as long as the song, which add back up to
     assert.ok(Math.abs(vocals[0][i] + music[0][i] - L[i]) < 1e-6);
   }
 });
+
+test("the halves are named after the song, and saved as 16-bit WAV", async () => {
+  const { stemNames, wav16 } = await import("../../haliday_show/app/halidayshow/static/js/splitvocals.js");
+  assert.deepEqual(stemNames("haliday_show/Rock/Jingle Bells.mp3"), { vocals: "Jingle Bells (vocals).wav", music: "Jingle Bells (music).wav" });
+  const buf = wav16([Float32Array.of(0, 1, -1), Float32Array.of(0.5, 0, 2)], 44100), v = new DataView(buf);
+  assert.equal(buf.byteLength, 44 + 3 * 2 * 2);
+  assert.equal(String.fromCharCode(...new Uint8Array(buf, 0, 4)), "RIFF");
+  assert.equal(v.getUint32(24, true), 44100);
+  assert.equal(v.getInt16(44 + 4, true), 32767); // full scale
+  assert.equal(v.getInt16(44 + 10, true), 32767); // clipped, not wrapped
+  assert.equal(v.getInt16(44 + 8, true), -32768);
+});

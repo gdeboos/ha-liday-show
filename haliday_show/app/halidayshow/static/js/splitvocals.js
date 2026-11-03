@@ -32,30 +32,37 @@ export function wav16(channels, rate) {
 }
 
 let busy = false;
+const MAX_MINUTES = 8; // longer songs need more memory than a phone or tablet has for this
 
 // ref: the song ({source, path}). host: {api, status(text, kind), askYes(text, opts), songs() (the list,
 // for names already taken), songsChanged()}.
 export async function splitVocals(ref, host) {
   if (busy) return host.status("Already splitting a song: wait for it to finish", "hint");
-  const song = ref.path.split("/").pop().replace(/\.[^.]+$/, "");
-  const names = stemNames(ref.path);
-  if (!(await host.askYes(`Split ${song} into its vocals and the music behind them? It's saved as two new songs, `
-    + `"${names.vocals.replace(/\.wav$/, "")}" and "${names.music.replace(/\.wav$/, "")}". The first time, your browser downloads `
-    + "the AI that does it (about 90 MB). It takes a few minutes; keep this page open meanwhile.", { yes: "Split vocals" }))) return;
-  const taken = new Set((host.songs() || []).map((s) => s.path.split("/").pop().toLowerCase()));
-  if ((taken.has(names.vocals.toLowerCase()) || taken.has(names.music.toLowerCase()))
-      && !(await host.askYes(`${song} has been split before. Replace those songs?`, { yes: "Replace" }))) return;
-  busy = true;
-  const worker = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
+  busy = true; // from the first question on, so a second press can't start another meanwhile
+  let worker = null;
   try {
+    const song = ref.path.split("/").pop().replace(/\.[^.]+$/, "");
+    const names = stemNames(ref.path);
+    if (!(await host.askYes(`Split ${song} into its vocals and the music behind them? It's saved as two new songs, `
+      + `"${names.vocals.replace(/\.wav$/, "")}" and "${names.music.replace(/\.wav$/, "")}". The first time, your browser downloads `
+      + "the AI that does it (about 90 MB). It takes a few minutes; keep this page open meanwhile.", { yes: "Split vocals" }))) return;
+    // They're saved in HA-liday Show's own songs folder, like anything made here.
+    const taken = new Set((host.songs() || []).filter((s) => s.source === "media").map((s) => s.path.toLowerCase()));
+    if ((taken.has(`haliday_show/${names.vocals}`.toLowerCase()) || taken.has(`haliday_show/${names.music}`.toLowerCase()))
+        && !(await host.askYes(`${song} has been split before. Replace those songs? Shows that use them will play the new ones.`, { yes: "Replace" }))) return;
+    worker = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
     host.status(`Loading ${song}…`);
     let decoded;
     try {
       const bytes = await fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(ref.path)}`);
       decoded = await new OfflineAudioContext(2, 1, MDX.rate).decodeAudioData(bytes); // resampled to the model's rate
     } catch (e) { throw new Error(songLoadMessage(e)); }
+    if (decoded.duration > MAX_MINUTES * 60) {
+      throw new Error(`it's longer than ${MAX_MINUTES} minutes, more than a browser can split in one go. Cut it shorter in the Music editor first`);
+    }
     const left = Float32Array.from(decoded.getChannelData(0));
     const right = decoded.numberOfChannels > 1 ? Float32Array.from(decoded.getChannelData(1)) : Float32Array.from(left);
+    decoded = null; // let the decoded copy go before the split needs its memory
     const result = await new Promise((resolve, reject) => {
       worker.onmessage = ({ data }) => {
         if (data.error) reject(new Error(data.error));
@@ -75,9 +82,9 @@ export async function splitVocals(ref, host) {
     host.status(`Split ${song}: saved "${names.vocals.replace(/\.wav$/, "")}" and "${names.music.replace(/\.wav$/, "")}" to your songs. `
       + "Use them as layers in the Music editor", "saved");
   } catch (e) {
-    host.status(`Couldn't split ${song}: ${e.message}`, true);
+    host.status(`Couldn't split ${ref.path.split("/").pop().replace(/\.[^.]+$/, "")}: ${e.message}`, true);
   } finally {
-    worker.terminate();
+    worker?.terminate();
     busy = false;
   }
 }

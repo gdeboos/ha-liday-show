@@ -7,6 +7,7 @@ import asyncio
 import base64
 import binascii
 import contextlib
+import hashlib
 import datetime
 import hmac
 import ipaddress
@@ -913,15 +914,19 @@ async def upload_audio(request):
 # Split vocals (static/js/stems.js): the AI model and the runtime that runs it in the browser, passed
 # through from where they're published, so the browser fetches them from HA-liday Show itself (no
 # other site to allow, nothing kept here or in backups; the browser keeps its own copy). Only these
-# files, from these exact versions. HALIDAY_SHOW_STEMS_FROM points at a mirror of them instead, for an
-# install with no internet.
+# files, each checked against its size and SHA-256 before its last bytes go out: one that doesn't
+# match (changed upstream, cut off) is broken off, so the browser never runs or keeps it.
+# HALIDAY_SHOW_STEMS_FROM points at a mirror of them instead, for an install with no internet.
 _ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/"
 STEM_FILES = {
     "model.onnx": ("https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR-MDX-NET-Voc_FT.onnx",
-                   "application/octet-stream"),
-    "ort.webgpu.min.mjs": (_ORT + "ort.webgpu.min.mjs", "text/javascript"),
-    "ort-wasm-simd-threaded.jsep.mjs": (_ORT + "ort-wasm-simd-threaded.jsep.mjs", "text/javascript"),
-    "ort-wasm-simd-threaded.jsep.wasm": (_ORT + "ort-wasm-simd-threaded.jsep.wasm", "application/wasm"),
+                   "application/octet-stream", 66762490, "534b2070fcc7df514b13ef660dc8cbb328679c2374d04354a5c42bb14ecce111"),
+    "ort.webgpu.min.mjs": (_ORT + "ort.webgpu.min.mjs", "text/javascript", 333468,
+                           "e1a0817ac08d5a6ade7f229754c2aecd444bff0bd22c259ca148a04b9f9e9f65"),
+    "ort-wasm-simd-threaded.jsep.mjs": (_ORT + "ort-wasm-simd-threaded.jsep.mjs", "text/javascript", 46839,
+                                        "2fb14505d39926e4c544de8c57fe59a2f2bc74caba6f71890be9afecc5046758"),
+    "ort-wasm-simd-threaded.jsep.wasm": (_ORT + "ort-wasm-simd-threaded.jsep.wasm", "application/wasm", 21663894,
+                                         "185b0861a6cd6cbdfb057289338090436483cc59e10a7bc83bd167b15531a51b"),
 }
 
 
@@ -931,42 +936,63 @@ class StemsUnavailable(Exception):
 
 async def _stream_from(url: str):
     try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1800, sock_connect=20)) as s:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1800, sock_connect=20, sock_read=60),
+                                         trust_env=True) as s:
             async with s.get(url) as r:
                 if r.status != 200:
                     raise StemsUnavailable(f"HTTP {r.status}")
                 async for chunk in r.content.iter_chunked(1 << 16):
                     yield chunk
-    except aiohttp.ClientError as e:
-        raise StemsUnavailable(str(e)) from e
+    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        raise StemsUnavailable(str(e) or type(e).__name__) from e
 
 
 async def get_stem_file(request):
     name = request.match_info["name"]
     if name not in STEM_FILES:
         raise web.HTTPNotFound(text="not one of Split vocals' files")
-    url, kind = STEM_FILES[name]
+    url, kind, size, sha = STEM_FILES[name]
     mirror = os.environ.get("HALIDAY_SHOW_STEMS_FROM", "").strip()
     if mirror:
         url = mirror.rstrip("/") + "/" + name
     chunks = _stream_from(url)
     try:
-        first = await chunks.__anext__()
-    except StopAsyncIteration:
-        first = b""
-    except StemsUnavailable as e:
-        log.warning("Split vocals: couldn't download %s: %s", name, e)
-        raise web.HTTPBadGateway(text=f"Couldn't download the AI files for Split vocals ({e}). Is HA-liday Show online?")
-    resp = web.StreamResponse(headers={"Content-Type": kind, "Cache-Control": "public, max-age=31536000, immutable"})
-    await resp.prepare(request)
-    await resp.write(first)
-    try:
-        async for chunk in chunks:
-            await resp.write(chunk)
-    except StemsUnavailable as e:  # cut off part way: the browser sees a short file and says so
-        log.warning("Split vocals: %s cut off: %s", name, e)
-    await resp.write_eof()
-    return resp
+        try:
+            held = await chunks.__anext__()
+        except StopAsyncIteration:
+            held = b""
+        except StemsUnavailable as e:
+            log.warning("Split vocals: couldn't download %s: %s", name, e)
+            raise web.HTTPBadGateway(text=f"Couldn't download the AI files for Split vocals ({e}). Is HA-liday Show "
+                                          "online? Without internet, see HALIDAY_SHOW_STEMS_FROM in the guide")
+        resp = web.StreamResponse(headers={"Content-Type": kind, "Content-Length": str(size),
+                                           "Cache-Control": "public, max-age=31536000, immutable"})
+        await resp.prepare(request)
+        digest, got, problem = hashlib.sha256(held), len(held), None
+        try:
+            # Everything goes out as it comes but the latest piece, held back until the whole file checks out.
+            async for chunk in chunks:
+                digest.update(chunk)
+                got += len(chunk)
+                if got > size:
+                    problem = "bigger than it should be"
+                    break
+                await resp.write(held)
+                held = chunk
+        except StemsUnavailable as e:
+            problem = f"cut off ({e})"
+        if not problem and (got != size or digest.hexdigest() != sha):
+            problem = "not the file it should be" if got == size else "cut off"
+        if problem:
+            log.warning("Split vocals: %s from %s was %s; not passed on", name, url, problem)
+            if request.transport:
+                request.transport.close()  # short of its Content-Length: the browser drops it
+            return resp
+        await resp.write(held)
+        await resp.write_eof()
+        return resp
+    finally:
+        await chunks.aclose()  # a browser that went away stops the download too
 
 
 async def _carry_cover(request, dest: Path):

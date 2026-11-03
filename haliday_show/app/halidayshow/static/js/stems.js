@@ -1,8 +1,9 @@
 // Split vocals: a song separated into its vocals and the music behind them, in your browser, by a
 // free AI model (UVR's MDX-Net "Voc FT"). The model works on the song's spectrum in 6-second
-// chunks; this does everything around it (the spectrum in, the sound back out), so the same code
-// runs in the browser's worker (stemsworker.js, with onnxruntime-web) and in the tests (with
-// onnxruntime-node). The model's output is the vocals; the music is the song with them taken away.
+// chunks; this does everything around it (the spectrum in, the sound back out), with no DOM, so it
+// runs in the browser's worker (stemsworker.js, with onnxruntime-web) and in Node (the tests use a
+// stand-in model; checked against the real one with onnxruntime-node, 0.985 correlation with a known
+// voice). The model's output is the vocals; the music is the song with them taken away.
 
 export const MDX = {
   rate: 44100,

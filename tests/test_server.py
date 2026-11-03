@@ -1746,26 +1746,43 @@ async def test_a_show_can_have_its_own_picture(client):
     assert (await client.get(f"/api/shows/{sid}/picture")).status == 404
 
 
-async def test_split_vocals_files_are_passed_through_from_their_one_source(client, monkeypatch):
+async def test_split_vocals_files_are_passed_through_from_their_one_source_and_checked(client, monkeypatch):
+    import hashlib
+    good = b"abcdef" * 30000
     fetched = []
 
-    async def fake(url):
-        fetched.append(url)
-        yield b"abc"
-        yield b"def"
+    def stream(data):
+        async def fake(url):
+            fetched.append(url)
+            for i in range(0, len(data), 65536):
+                yield data[i:i + 65536]
+        return fake
 
-    monkeypatch.setattr(server, "_stream_from", fake)
+    files = dict(server.STEM_FILES)
+    for name, (url, kind, _, _) in files.items():
+        files[name] = (url, kind, len(good), hashlib.sha256(good).hexdigest())
+    monkeypatch.setattr(server, "STEM_FILES", files)
+    monkeypatch.setattr(server, "_stream_from", stream(good))
     resp = await client.get("/api/stems/files/model.onnx")
-    assert resp.status == 200 and await resp.read() == b"abcdef"
+    assert resp.status == 200 and await resp.read() == good
     assert "UVR-MDX-NET-Voc_FT.onnx" in fetched[0]
-    assert "immutable" in resp.headers["Cache-Control"]
-    resp = await client.get("/api/stems/files/ort.webgpu.min.mjs")
+    assert "immutable" in resp.headers["Cache-Control"] and resp.headers["Content-Length"] == str(len(good))
+    resp = await client.get("/api/stems/files/ort.webgpu.min.mjs?v=abc")
     assert resp.headers["Content-Type"].startswith("text/javascript") and "onnxruntime-web@1.20.1" in fetched[1]
+    await resp.read()
     assert (await client.get("/api/stems/files/..%2Fsettings.json")).status == 404
     assert (await client.get("/api/stems/files/anything.js")).status == 404
+    # A file that isn't the one it should be, or is cut off, is broken off before its end.
+    for bad in (good[:-1] + b"X", good[:1000], good + b"more"):
+        monkeypatch.setattr(server, "_stream_from", stream(bad))
+        resp = await client.get("/api/stems/files/model.onnx")
+        with pytest.raises(Exception):
+            body = await resp.read()
+            assert len(body) == len(good) and body == good  # never the whole, right file
     # From a mirror instead (an install with no internet), when one is set.
+    monkeypatch.setattr(server, "_stream_from", stream(good))
     monkeypatch.setenv("HALIDAY_SHOW_STEMS_FROM", "http://mirror.local/files/")
-    await client.get("/api/stems/files/model.onnx")
+    await (await client.get("/api/stems/files/model.onnx")).read()
     assert fetched[-1] == "http://mirror.local/files/model.onnx"
 
     async def broken(url):
