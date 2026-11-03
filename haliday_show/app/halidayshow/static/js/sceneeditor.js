@@ -532,7 +532,10 @@ export class SceneEditor {
       row.append(el("span", { class: "sc-colours" }, swatches, colours));
     } else row.append(none());
     const sp = speedParam(look.effect);
-    row.append(sp ? this.slider("Speed", full, sp, clip[sp.key], (v) => { look.params[sp.key] = v; }) : none());
+    const length = look.effect === "beatburst" && EFFECTS.beatburst.params.find((p) => p.key === "length");
+    // A Beat burst's Length takes the Speed column.
+    row.append(sp ? this.slider("Speed", full, sp, clip[sp.key], (v) => { look.params[sp.key] = v; })
+      : length ? this.slider("Length", full, length, clip.length, (v) => { look.params.length = v; }) : none());
     const br = EFFECTS[look.effect].params.find((p) => p.key === "brightness");
     row.append(br ? this.slider("Brightness", full, br, clip.brightness, (v) => { look.params.brightness = v; }) : none());
     if (EFFECTS[look.effect].live) { row.append(none()); return row; } // no Glitter: it's one frame a level

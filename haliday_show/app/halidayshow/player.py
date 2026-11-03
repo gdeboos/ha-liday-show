@@ -43,6 +43,7 @@ class Player:
         self.live: Baked | None = None
         self.live_tracks: dict = {}
         self.live_step = None
+        self.bursts = liveeffects.Bursts()
 
     @property
     def playing(self) -> bool:
@@ -70,6 +71,7 @@ class Player:
         await self.stop(release=False)
         self.react, self.variants = None, {}
         self.live, self.live_tracks, self.live_step = None, {}, None
+        self.bursts = liveeffects.Bursts()
         self.baked, self.show_id, self.devices, self.offset = baked, show_id, devices, offset
         self.length = length
         claimed = set()
@@ -114,6 +116,18 @@ class Player:
         self.level = max(0, min(100, int(level)))
         self._dim = None if self.level >= 100 else bytes(v * self.level // 100 for v in range(256))
 
+    def _live_pick(self, lt, heard: dict) -> tuple[int, int]:
+        """A live light's frame now, and how bright (in twentieths): a level's own frame at full, or a
+        burst's frame scaled by the level it follows."""
+        if lt.kind == "burst":
+            k = self.bursts.index(heard.get("beat_at"), time.monotonic(), self.live.fps, lt.count)
+            return k, round(liveeffects.burst_scale(heard[lt.follows]) * 20)
+        return liveeffects.frame_index(heard[lt.follows]), 20
+
+    @staticmethod
+    def _scale_table(twentieths: int) -> bytes:
+        return bytes(v * twentieths // 20 for v in range(256))
+
     def _react_table(self, react) -> bytes:
         """Each colour value scaled by the scenes' brightness and the music's level, then lifted towards
         white by the beat's flash."""
@@ -155,8 +169,8 @@ class Player:
             react = self.react() if self.react else None
             heard = self.live_step() if self.live_step else None
             # Only the live frames actually shown count, so a gliding level sends no more than it changes.
-            levels = tuple(liveeffects.frame_index(heard[t.follows]) for t in self.live_tracks.values()) if heard else None
-            key = (idx, react, levels)
+            shown = {d: self._live_pick(lt, heard) for d, lt in self.live_tracks.items()} if heard else None
+            key = (idx, react, tuple(shown.values()) if shown else None)
             if idx >= 0 and key != last:
                 # Reacting, a frame also goes out when the level, flash or look move with the music,
                 # even on a loop that's a still picture. The frames are only picked, scaled and mixed,
@@ -170,8 +184,12 @@ class Player:
                         if dev:
                             lt = self.live_tracks.get(t.device) if heard else None
                             if lt is not None and lt.segments == t.segments:
-                                # A light on a live effect: its frame for the level it follows.
-                                frame = self.live.track_frame(lt, liveeffects.frame_index(heard[lt.follows]))
+                                # A light on a live effect: its frame for the level it follows, or its
+                                # burst's frame since the last beat, as bright as the level says.
+                                k, scale = shown[t.device]
+                                frame = self.live.track_frame(lt, k)
+                                if scale < 20:
+                                    frame = frame.translate(self._scale_table(scale))
                             else:
                                 frame = self._variant_frame(source, t, elapsed) if source else None
                                 frame = frame or b.track_frame(t, idx)
