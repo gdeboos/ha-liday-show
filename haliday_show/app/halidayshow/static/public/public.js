@@ -103,6 +103,37 @@ export function describe(st) {
   };
 }
 
+// The queue as visitors see it: every pick by show name, yours marked, the first few unless opened.
+export const QUEUE_SHOWN = 3;
+export function queueView(st, w, open = false) {
+  const q = st.queue || [];
+  const rows = q.map((r, k) => ({
+    place: k + 1, name: r.name, yours: !!r.yours, id: r.id || "",
+    when: r.yours ? say_(w, "queue_yours", { minutes: minutes(r.wait) }) : say_(w, "queue_when", { minutes: minutes(r.wait) }),
+  }));
+  // Always show your own, even far down.
+  const shown = open ? rows : rows.filter((r, k) => k < QUEUE_SHOWN || r.yours);
+  return {
+    head: q.length ? say_(w, "up_next", { count: q.length }) : "",
+    rows: shown,
+    more: rows.length > shown.length ? say_(w, "queue_more", { count: rows.length })
+      : open && rows.length > QUEUE_SHOWN ? say_(w, "queue_less") : "",
+  };
+}
+
+// Your headings, in the order they first appear, for the buttons above the shows.
+export function headingsOf(choices) {
+  const out = [];
+  for (const c of choices || []) if (c.group && !out.includes(c.group)) out.push(c.group);
+  return out;
+}
+
+// How far through the show on now is, 0 to 1, moving on from the last answer by the time since.
+export function progressOf(now, sinceMs) {
+  if (!now || !(now.duration > 0)) return null;
+  return Math.min(1, Math.max(0, (now.position + sinceMs / 1000) / now.duration));
+}
+
 // The words for the footer link: yours, or else the site's name.
 export function linkText(look) {
   if (!look?.link) return "";
@@ -469,6 +500,7 @@ export function start() {
   };
   const adminHeaders = () => (adminPass ? { "X-Admin": adminPass } : {});
   let adminOpen = false, taps = [];
+  let queueOpen = false, nudgeOpen = false, heading = "", gotAt = 0;
   const listener = makeListener({
     code: key, say: (k, vars) => say_(w, k, vars), pos: () => (needsLocation ? where.pos : null),
     onChange: () => drawListen(), headers: adminHeaders,
@@ -552,6 +584,7 @@ export function start() {
     }
     pictureShown = look.picture || 0;
     $("pp-picture").hidden = !look.picture;
+    $("pp-header").classList.toggle("pp-banner", !!look.picture);
     $("pp-link").textContent = linkText(look);
     if (look.link) $("pp-link").href = look.link;
     $("pp-footer").hidden = !look.link;
@@ -633,19 +666,22 @@ export function start() {
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
   }
 
-  // The Listen card: shown while listening, or to phones that could start listening.
+  // Listen: a small button in the bar, with its details underneath while listening (or asking for the PIN).
   function drawListen() {
     const st = last;
     const me = listener.state;
     const offered = !!(st && st.open && st.listen && !st.locked);
-    const card = $("pp-listen");
-    card.hidden = !(me.on || me.state === "pin" || (offered && canStart(needsLocation, where)) || (offered && me.message));
-    if (card.hidden) return;
+    const btn = $("pp-listen-btn");
+    btn.hidden = !(me.on || (offered && canStart(needsLocation, where)));
     const playing = me.on && me.state !== "tap";
-    $("pp-listen-btn").textContent = say_(w, playing ? "listen_stop" : "listen");
-    $("pp-listen-btn").hidden = me.state === "pin";
+    btn.textContent = say_(w, playing ? "listening_short" : "listen_short");
+    btn.setAttribute("aria-pressed", String(playing));
+    btn.setAttribute("aria-label", say_(w, playing ? "listen_stop" : "listen").replace(/^[^\p{L}\p{N}]+/u, ""));
+    const panel = $("pp-listen");
+    panel.hidden = !(me.on || me.state === "pin" || me.message);
+    if (panel.hidden) return;
     const text = {
-      off: "listen_hint", pin: "", starting: "listen_loading", loading: "listen_loading", tap: "listen_tap",
+      off: "", pin: "", starting: "listen_loading", loading: "listen_loading", tap: "listen_tap",
       playing: me.name ? "listen_on" : "listen_nothing", idle: "listen_nothing",
     }[me.state];
     $("pp-listen-text").textContent = text ? say_(w, text, { name: me.name }) : "";
@@ -656,15 +692,53 @@ export function start() {
     $("pp-listen-msg").textContent = me.message;
     $("pp-listen-msg").hidden = !me.message;
     $("pp-listen-tip").textContent = say_(w, "listen_lock");
-    $("pp-listen-tip").hidden = !(me.on && ["playing", "idle"].includes(me.state));
-    // Music ahead / behind, while listening.
-    $("pp-nudge").hidden = !(me.on && ["playing", "idle", "loading"].includes(me.state));
+    const listening = me.on && ["playing", "idle", "loading"].includes(me.state);
+    $("pp-listen-tip").hidden = !(listening && nudgeOpen);
+    // Music ahead / behind, tucked behind a link while listening.
+    $("pp-nudge-open").hidden = !listening;
+    $("pp-nudge-open").textContent = say_(w, "out_of_time");
+    $("pp-nudge-open").setAttribute("aria-expanded", String(nudgeOpen));
+    $("pp-nudge").hidden = !(listening && nudgeOpen);
     $("pp-nudge-label").textContent = say_(w, "nudge_label");
     $("pp-nudge-earlier").textContent = say_(w, "nudge_earlier");
     $("pp-nudge-later").textContent = say_(w, "nudge_later");
     const nw = nudgeWord(listener.nudge);
     $("pp-nudge-value").textContent = say_(w, nw.key, { seconds: nw.seconds });
     $("pp-nudge-hint").textContent = say_(w, "nudge_hint");
+  }
+
+  // What's on and how far through, the queue under it.
+  function drawBar(st, view) {
+    $("pp-now").textContent = view.now;
+    // Your own pick stays in sight while the shows scroll: playing, or where it is in the queue.
+    const yours = view.mine[0];
+    $("pp-now-yours").textContent = yours ? yours.text : "";
+    $("pp-now-yours").hidden = !yours;
+    drawProgress();
+    const q = queueView(st, w, queueOpen);
+    $("pp-queue-box").hidden = !q.rows.length;
+    $("pp-queue-head").textContent = q.head;
+    $("pp-queue").replaceChildren(...q.rows.map((r) => {
+      const li = el("li", r.yours ? "pp-yours" : "");
+      li.append(el("span", "pp-place", String(r.place)), el("span", "pp-name", r.name), el("span", "pp-when", r.when));
+      if (r.yours && r.id) {
+        const b = el("button", "", say_(w, "cancel"));
+        b.type = "button";
+        b.setAttribute("aria-label", `${say_(w, "cancel")}: ${r.name}`);
+        b.addEventListener("click", () => send("api/cancel", { id: r.id }));
+        li.append(b);
+      }
+      return li;
+    }));
+    $("pp-queue-more").textContent = q.more;
+    $("pp-queue-more").hidden = !q.more;
+    $("pp-queue-more").setAttribute("aria-expanded", String(queueOpen));
+  }
+
+  function drawProgress() {
+    const p = progressOf(last?.now, Date.now() - gotAt);
+    $("pp-progress").hidden = p === null;
+    if (p !== null) $("pp-progress-fill").style.width = `${(p * 100).toFixed(1)}%`;
   }
 
   function pressListen() {
@@ -721,6 +795,7 @@ export function start() {
     $("pp-where-text").textContent = whereText(where, w).text;
     // The flashing lights warning, and (if you ask for it) a press to accept it before Start.
     $("pp-warning").hidden = !st.open || !warningShown(st.look);
+    $("pp-warning").classList.toggle("pp-slim", !mustAccept(st.look, accepted));
     $("pp-accept").hidden = !mustAccept(st.look, accepted);
     const closed = comeBackText(st.hours, w);
     $("pp-hours").textContent = closed;
@@ -741,27 +816,12 @@ export function start() {
     if (listener.state.on && !(st.open && st.listen)) listener.stop(say_(w, "listen_off"));
     drawListen();
     if (view.closed) return;
-    $("pp-now").textContent = view.now;
-    const mine = $("pp-mine");
-    mine.replaceChildren(...view.mine.map((r) => {
-      const row = el("div", "pp-row pp-yours");
-      const text = el("div", "pp-text");
-      text.append(el("div", "pp-name", r.name), el("div", "pp-hint", r.text));
-      row.append(text);
-      if (r.cancel) {
-        const b = el("button", "", say_(w, "cancel"));
-        b.type = "button";
-        b.addEventListener("click", () => send("api/cancel", { id: r.id }));
-        row.append(b);
-      }
-      return row;
-    }));
-    mine.hidden = !view.mine.length;
+    drawBar(st, view);
     $("pp-block").textContent = view.block;
     $("pp-block").hidden = !view.block;
     $("pp-coming").textContent = view.coming;
     $("pp-coming").hidden = !view.coming;
-    $("pp-now").hidden = (!!view.coming || !!closed) && !st.now;
+    $("pp-bar").hidden = (!!view.coming || !!closed) && !st.now && !view.mine.length && $("pp-listen-btn").hidden;
     $("pp-pick").hidden = !view.choices.length;
     $("pp-none").hidden = view.choices.length > 0 || view.soon.length > 0;
     $("pp-soon-head").hidden = !view.soon.length;
@@ -776,7 +836,22 @@ export function start() {
     $("pp-pick-hint").hidden = !startable;
     $("pp-pick-head").textContent = say_(w, startable ? "pick_head" : "shows_head");
     $("pp-block").hidden = !view.block || !startable;
-    const rows = view.choices.map((c) => {
+    // Buttons for your headings, once there are two or more.
+    const heads = headingsOf(view.choices);
+    if (heading && !heads.includes(heading)) heading = "";
+    $("pp-chips").hidden = heads.length < 2;
+    $("pp-chips").setAttribute("aria-label", say_(w, startable ? "pick_head" : "shows_head"));
+    $("pp-chips").replaceChildren(...["", ...heads].map((h) => {
+      const b = el("button", "", h || say_(w, "all_shows"));
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(heading === h));
+      b.addEventListener("click", () => { heading = h; render(last); });
+      return b;
+    }));
+    const nowName = st.now?.name || "";
+    const queued = new Set((st.queue || []).map((r) => r.name));
+    const picked = view.choices.filter((c) => !heading || c.group === heading);
+    const rows = picked.map((c) => {
       const row = el("div", "pp-row");
       // The song's cover art, when it has some (and it's not turned off).
       if (c.cover) {
@@ -799,7 +874,9 @@ export function start() {
       }
       const text = el("div", "pp-text");
       text.append(el("div", "pp-name", c.name));
-      if (c.detail) text.append(el("div", "pp-hint", c.detail));
+      const status = c.name === nowName ? say_(w, "row_playing") : queued.has(c.name) ? say_(w, "row_queued") : "";
+      const detail = [c.detail, status].filter(Boolean).join(" · ");
+      if (detail) text.append(el("div", "pp-hint", detail));
       row.append(text);
       if (startable) {
         const b = el("button", "primary", say_(w, "start"));
@@ -814,7 +891,7 @@ export function start() {
     // Shows under one of your headings go in a box with it; ones before any heading stand on their own.
     const out = [];
     let box = null, under = null;
-    view.choices.forEach((c, k) => {
+    picked.forEach((c, k) => {
       if (!c.group) { out.push(rows[k]); box = null; under = null; return; }
       if (c.group !== under) {
         box = el("section", "pp-group");
@@ -833,6 +910,7 @@ export function start() {
       const res = await fetch(`api/state?ticket=${encodeURIComponent(me)}&code=${encodeURIComponent(key)}`,
         { cache: "no-store", headers: adminHeaders() });
       if (!res.ok) throw new Error();
+      gotAt = Date.now();
       render(await res.json());
       if ($("pp-message").dataset.kind === "offline") say("");
     } catch {
@@ -856,6 +934,7 @@ export function start() {
         body: JSON.stringify({ ...body, ...(needsLocation ? where.pos : {}), ticket: me, code: key }),
       });
       if (res.ok) {
+        gotAt = Date.now();
         render(await res.json());
       } else {
         say((await res.text()) || "That didn't work. Try again in a moment.");
@@ -878,6 +957,9 @@ export function start() {
   $("pp-listen-btn").addEventListener("click", pressListen);
   $("pp-pin-ok").addEventListener("click", sendPin);
   $("pp-nudge-earlier").addEventListener("click", () => listener.shift(1));
+  $("pp-nudge-open").addEventListener("click", () => { nudgeOpen = !nudgeOpen; drawListen(); });
+  $("pp-queue-more").addEventListener("click", () => { queueOpen = !queueOpen; if (last) render(last); });
+  setInterval(() => { if (!document.hidden && last) drawProgress(); }, 1000);
   $("pp-nudge-later").addEventListener("click", () => listener.shift(-1));
   $("pp-pin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") sendPin(); });
   $("pp-accept").addEventListener("click", () => {

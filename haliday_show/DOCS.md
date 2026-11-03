@@ -2041,8 +2041,9 @@ The title, words and picture only show to people with your code.
 - Visitors see the list in the order it's in here. Move a row with **↑** and **↓**, or drag it by its
   **⠿** grip.
 - **+ Add heading…** groups shows for visitors, such as *Christmas favourites* or *For the kids*. The
-  shows below a heading, down to the next one, appear in a box with its name on visitors' phones; shows
-  above the first heading stand on their own. Move a heading like any row, change its words in place,
+  shows below a heading, down to the next one, appear under its name on visitors' phones; shows
+  above the first heading stand on their own. With two or more headings, visitors also get a row of
+  buttons above the shows (**All** and one per heading) to see just that heading's shows. Move a heading like any row, change its words in place,
   and **Remove** it to ungroup its shows (they stay on the page).
 - **+ Add shows or playlists…** opens a window of your saved shows, with **Playlists** beside them. Go into
   your folders as in the Library, or type in **Find in any folder**, tick everything you want and press
@@ -2087,8 +2088,8 @@ as usual.
 1. On the **Shows** tab, under **Listening on phones**, turn on **Let visitors listen on their phone**.
 2. To keep it to yourself while you try it out, turn on **Needs a PIN to listen** and type a PIN of 4
    to 8 numbers.
-3. On your phone, open the visitors' link and press **🎧 Listen on your phone** (type the PIN if you
-   set one).
+3. On your phone, open the visitors' link and press **🎧 Listen** in the card at the top (type the PIN
+   if you set one). Press **■ Stop** to stop.
 
 How it works:
 
@@ -2106,12 +2107,12 @@ How it works:
 - On your Wi-Fi the music is usually within a few hundredths of a second of the lights. Over mobile data
   it can be a little further out. Bluetooth headphones and speakers play a little late, as they do with
   any phone.
-- If the music and lights aren't together, visitors can fix it on their own phone while listening:
-  **◀ Earlier** if they hear the beat after the lights flash (usual with Bluetooth), **Later ▶** if
+- If the music and lights aren't together, visitors can fix it on their own phone while listening: they
+  press **Music out of time?** under the button, then **◀ Earlier** if they hear the beat after the lights flash (usual with Bluetooth), **Later ▶** if
   they hear it before. Each press moves the music 0.05 s, up to a second either way, and the phone
   remembers it for next time.
-- Keep the page open. On some phones the music stops when the screen locks; press **🎧 Listen on your
-  phone** again to carry on.
+- Keep the page open. On some phones the music stops when the screen locks; press **🎧 Listen** again
+  to carry on.
 - Every word visitors see while listening is on the **Words** tab, under **Listening on a phone**.
 
 #### Words
@@ -2135,9 +2136,15 @@ on the **Look** tab.)
 
 What visitors get:
 
+- **A card at the top** of the page says what's on, with a bar showing how far through it is, and
+  **🎧 Listen** if listening is on. It stays in view as they scroll down the shows.
+- **Up next** under it lists everyone's waiting picks, by show name only (never who picked them), with
+  roughly when each starts. The first three show, plus their own wherever it is, and **Show all**
+  opens the rest.
 - **If nothing's on**, their pick starts straight away.
-- **If something's on**, they're told where they are in the queue and roughly how long it'll be, such
-  as "You're next, starting in about 2 minutes". They can **Cancel** while they wait.
+- **If something's on**, the card at the top tells them where they are in the queue and roughly how long
+  it'll be, such as "You're next, starting in about 2 minutes". Their pick is outlined in **Up next**,
+  with **Cancel** beside it.
 - **During one of your playlists**, a visitor's pick plays after the show that's on, then your
   playlist carries on with its next show. A scheduled playlist that's due to start waits until a
   visitor's show has finished.

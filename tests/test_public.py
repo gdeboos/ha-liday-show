@@ -948,3 +948,20 @@ def test_admin_song_links_only_work_with_their_own_signature(tmp_path):
     st = Storage(tmp_path / "config", tmp_path / "media")
     p = public.clean({"code": "abcdef23", "admin_pin": "8642"})
     assert public.song_sig(st, p, "k", True) != public.song_sig(st, p, "k")
+
+
+async def test_visitors_see_the_whole_queue_by_name_only(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"},
+                                                                {"kind": "show", "id": "quiet"}], "per_phone": 1})
+    runner = client.app[server.RUNNER]
+    await runner.play("party")  # something's on, so requests wait
+    await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert [(q["name"], q["yours"]) for q in st["queue"]] == [("Quiet", True), ("Party", False)]
+    assert "id" in st["queue"][0] and "id" not in st["queue"][1]
+    assert T2 not in str(st) and "ticket" not in str(st["queue"])
+    assert st["now"]["name"] == "Party" and 0 <= st["now"]["position"] <= st["now"]["duration"] == 10
+    _, st, _ = await _visitor(client, "/api/state")  # no ticket: nothing is anyone's
+    assert [q["yours"] for q in st["queue"]] == [False, False]
+    await runner.stop()
