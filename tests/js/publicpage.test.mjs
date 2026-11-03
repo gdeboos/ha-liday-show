@@ -128,3 +128,10 @@ test("a page left open loads again once after HA-liday Show restarts", () => {
   assert.equal(page.shouldReload("", "bbbb", ""), false);
   assert.equal(page.shouldReload("aaaa", undefined, ""), false); // an older server says nothing
 });
+
+test("music ahead / behind reads in plain words", () => {
+  assert.deepEqual(page.nudgeWord(0), { key: "nudge_none", seconds: "0" });
+  assert.deepEqual(page.nudgeWord(0.2), { key: "nudge_earlier_by", seconds: "0.2" });
+  assert.deepEqual(page.nudgeWord(-0.15), { key: "nudge_later_by", seconds: "0.15" });
+  assert.deepEqual(page.nudgeWord(1), { key: "nudge_earlier_by", seconds: "1.0" });
+});

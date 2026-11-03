@@ -1,5 +1,5 @@
 import { bestOn } from "./colours.js";
-import { addSample, learnLead, median, steer, target } from "./listensync.js";
+import { NUDGE_STEP, addSample, clampNudge, learnLead, median, steer, target } from "./listensync.js";
 
 // The public page: people passing by pick a show and queue it up, and (if you allow it) listen to
 // the music on their phone. It only talks to the public port's own calls, never to the editor.
@@ -221,6 +221,14 @@ function ticket() {
 }
 
 const PASS_KEY = "halidayshow.listenPass";
+const NUDGE_KEY = "halidayshow.listenNudge";
+
+// How the Music ahead / behind setting reads: {key, seconds} for the word to show.
+export function nudgeWord(nudge) {
+  if (!nudge) return { key: "nudge_none", seconds: "0" };
+  const seconds = Math.abs(nudge).toFixed(2).replace(/0$/, "");
+  return { key: nudge > 0 ? "nudge_earlier_by" : "nudge_later_by", seconds };
+}
 const POLL_MS = 1000;
 const STEER_MS = 250;
 const RENEW_EARLY_S = 120; // ask for a new pass this long before it runs out
@@ -236,6 +244,8 @@ export function makeListener({ code, say, pos, onChange }) {
     name: "", message: "", token: "", until: 0,
   };
   let samples = [], song = null, src = "", errs = [], lead = 0.15, seekedAt = 0, learning = false;
+  let nudge = 0; // seconds earlier than the lights, kept on this phone
+  try { nudge = clampNudge(localStorage.getItem(NUDGE_KEY)); } catch { /* private browsing */ }
   let pollTimer = null, steerTimer = null, polling = false, gen = 0;
   const passKey = `${PASS_KEY}.${code}`;
   const keptPass = () => { try { return localStorage.getItem(passKey) || ""; } catch { return ""; } };
@@ -364,7 +374,7 @@ export function makeListener({ code, say, pos, onChange }) {
   function seekTo() {
     const t = target(samples, performance.now());
     if (t === null) return;
-    try { audio.currentTime = Math.max(0, t + lead); } catch { /* not loaded yet: the next steer tries again */ }
+    try { audio.currentTime = Math.max(0, t + nudge + lead); } catch { /* not loaded yet: the next steer tries again */ }
     seekedAt = performance.now();
     learning = true;
     errs = [];
@@ -378,7 +388,7 @@ export function makeListener({ code, say, pos, onChange }) {
     const t = target(samples, now);
     if (t === null) return;
     if (now - seekedAt < 1000) return; // let a jump settle first
-    errs = [...errs, audio.currentTime - t].slice(-8);
+    errs = [...errs, audio.currentTime - (t + nudge)].slice(-8);
     if (errs.length < 4) return;
     const err = median(errs);
     if (learning) { lead = learnLead(lead, err); learning = false; }
@@ -398,6 +408,14 @@ export function makeListener({ code, say, pos, onChange }) {
     stop,
     // Pressing Listen again after the phone wouldn't play by itself.
     resume() { set("playing"); play(); },
+    get nudge() { return nudge; },
+    // Music earlier (+1) or later (-1) by a step. A small change glides in; a big one jumps.
+    shift(dir) {
+      nudge = clampNudge(nudge + dir * NUDGE_STEP);
+      try { localStorage.setItem(NUDGE_KEY, String(nudge)); } catch { /* this visit only */ }
+      errs = [];
+      onChange();
+    },
   };
 }
 
@@ -572,6 +590,14 @@ export function start() {
     $("pp-listen-msg").hidden = !me.message;
     $("pp-listen-tip").textContent = say_(w, "listen_lock");
     $("pp-listen-tip").hidden = !(me.on && ["playing", "idle"].includes(me.state));
+    // Music ahead / behind, while listening.
+    $("pp-nudge").hidden = !(me.on && ["playing", "idle", "loading"].includes(me.state));
+    $("pp-nudge-label").textContent = say_(w, "nudge_label");
+    $("pp-nudge-earlier").textContent = say_(w, "nudge_earlier");
+    $("pp-nudge-later").textContent = say_(w, "nudge_later");
+    const nw = nudgeWord(listener.nudge);
+    $("pp-nudge-value").textContent = say_(w, nw.key, { seconds: nw.seconds });
+    $("pp-nudge-hint").textContent = say_(w, "nudge_hint");
   }
 
   function pressListen() {
@@ -775,6 +801,8 @@ export function start() {
   $("pp-retry").addEventListener("click", watchWhere);
   $("pp-listen-btn").addEventListener("click", pressListen);
   $("pp-pin-ok").addEventListener("click", sendPin);
+  $("pp-nudge-earlier").addEventListener("click", () => listener.shift(1));
+  $("pp-nudge-later").addEventListener("click", () => listener.shift(-1));
   $("pp-pin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") sendPin(); });
   $("pp-accept").addEventListener("click", () => {
     accepted = true;

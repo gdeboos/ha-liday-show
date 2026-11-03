@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.323
+
+- **Music ahead / behind** for people listening on their phone: while listening, **◀ Earlier** and **Later ▶** move the music by 0.05 s at a time, so it lines up with the lights. Handy with Bluetooth headphones and speakers, which play a little late. Each phone remembers its own setting. The words are on the **Words** tab, under **Listening on a phone**.
+
 ## 0.2.322
 
 - Fixed **🎧 Listen on your phone** not showing on some phones after an update. A phone (or a tunnel such as Cloudflare) could keep the old copy of the visitors' page's script and use it with the new page. The page's files now change their address whenever they change, so phones always get the new ones.

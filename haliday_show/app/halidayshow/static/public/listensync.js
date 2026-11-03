@@ -64,3 +64,13 @@ export function median(values) {
   const m = v.length >> 1;
   return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
 }
+
+// Music ahead / behind, set on each phone: how much earlier (+) or later (-) than the lights the phone
+// plays the song, in seconds. Bluetooth headphones and speakers play late, so they want it earlier.
+export const NUDGE_STEP = 0.05;
+export const MAX_NUDGE_S = 1;
+
+export function clampNudge(v) {
+  const n = Math.round((Number(v) || 0) / NUDGE_STEP) * NUDGE_STEP;
+  return Math.max(-MAX_NUDGE_S, Math.min(MAX_NUDGE_S, Math.round(n * 100) / 100));
+}

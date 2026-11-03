@@ -76,3 +76,13 @@ test("median", () => {
   assert.equal(sync.median([4, 1, 2, 3]), 2.5);
   assert.ok(Number.isNaN(sync.median([NaN])));
 });
+
+test("music ahead / behind steps by 0.05 s within a second each way", () => {
+  assert.equal(sync.clampNudge(0.15), 0.15);
+  assert.equal(sync.clampNudge(0.1 + 0.05), 0.15); // no floating-point crumbs
+  assert.equal(sync.clampNudge(0.07), 0.05);
+  assert.equal(sync.clampNudge(3), 1);
+  assert.equal(sync.clampNudge(-3), -1);
+  assert.equal(sync.clampNudge("nonsense"), 0);
+  assert.equal(sync.clampNudge(null), 0);
+});

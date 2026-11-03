@@ -2082,6 +2082,10 @@ How it works:
 - On your Wi-Fi the music is usually within a few hundredths of a second of the lights. Over mobile data
   it can be a little further out. Bluetooth headphones and speakers play a little late, as they do with
   any phone.
+- If the music and lights aren't together, visitors can fix it on their own phone while listening:
+  **◀ Earlier** if they hear the beat after the lights flash (usual with Bluetooth), **Later ▶** if
+  they hear it before. Each press moves the music 0.05 s, up to a second either way, and the phone
+  remembers it for next time.
 - Keep the page open. On some phones the music stops when the screen locks; press **🎧 Listen on your
   phone** again to carry on.
 - Every word visitors see while listening is on the **Words** tab, under **Listening on a phone**.
