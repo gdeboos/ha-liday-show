@@ -23,7 +23,7 @@ from pathlib import Path
 import aiohttp
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songtags, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, liveeffects, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songtags, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -2164,6 +2164,24 @@ def _save_scene_baked(request, scene_id: str, blob: bytes):
     return web.json_response({"ok": True, "bytes": len(blob)})
 
 
+async def put_scene_live(request):
+    """A scene's live set (liveeffects.py), baked by the editor beside the scene's own bake."""
+    scene_id = _scene_id(request)
+    storage = request.app[STORAGE]
+    if storage.load_scene(scene_id) is None:
+        raise web.HTTPNotFound(text="that scene has been deleted")
+    blob = _unpacked(request, await request.read())
+    if liveeffects.load(blob) is None:
+        raise web.HTTPBadRequest(text="that isn't a scene's live set")
+    storage.save_scene_live(scene_id, blob)
+    return web.json_response({"ok": True, "bytes": len(blob)})
+
+
+async def delete_scene_live(request):
+    request.app[STORAGE].save_scene_live(_scene_id(request), None)
+    return web.json_response({"ok": True})
+
+
 async def put_scene_baked(request):
     scene_id = _scene_id(request)
     return _save_scene_baked(request, scene_id, await request.read())
@@ -2867,6 +2885,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/house-scenes/{id}", put_scene)
     r.add_delete("/api/house-scenes/{id}", delete_scene)
     r.add_put("/api/house-scenes/{id}/baked", put_scene_baked)
+    r.add_put("/api/house-scenes/{id}/live", put_scene_live)
+    r.add_delete("/api/house-scenes/{id}/live", delete_scene_live)
     r.add_post("/api/house-scenes/{id}/baked/part", put_scene_baked_part)
     r.add_post("/api/house-scenes/{id}/play", play_scene)
     r.add_post("/api/house-scenes/{id}/stop", stop_scene)

@@ -15,6 +15,8 @@ export const ADVANCED_LOOP_S = 20;
 // Effects a scene can use: the playlist's Effect block ones (they look right however long they run),
 // with Solid first for a still colour.
 export const SCENE_EFFECTS = ["solid", ...BLOCK_EFFECTS.filter((k) => k !== "solid")];
+// Live music effects, offered on a whole light's row (they follow a WLED's microphone; effects.js).
+export const LIVE_EFFECTS = Object.keys(EFFECTS).filter((k) => EFFECTS[k].live);
 
 export const WARM_WHITE = "#ffc977";
 
@@ -92,8 +94,8 @@ export function setPartLook(scene, d, p, look) {
 
 // Each part on its own, starting on the light's look (all off if it was off), or the whole light
 // again, on the first part's look.
-// WLED's own effect only goes on a whole WLED light, so a look copied anywhere else becomes plain colours.
-const plainIfOwn = (look) => (EFFECTS[look?.effect]?.wledOwn ? changeEffect(look, "trio") : look);
+// WLED's own effect and live effects only go on a whole light's row, so a look copied anywhere else becomes plain colours.
+const plainIfOwn = (look) => (EFFECTS[look?.effect]?.sceneOnly ? changeEffect(look, "trio") : look);
 
 export function setByParts(scene, d, on) {
   if (on) {

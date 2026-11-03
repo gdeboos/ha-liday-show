@@ -491,3 +491,22 @@ async def test_a_react_scene_s_wled_on_its_own_effect_gets_no_frames_from_it(run
     runner.live = Live()
     runner._react({"react": {"on": True, "bass": "bass", "treble": ""}})
     assert [t.device for t in runner.player.variants["bass"].tracks] == ["a"]
+
+
+async def test_a_scene_with_live_effects_hands_the_player_its_live_set(runner):
+    class Live:
+        def now(self, source):
+            return {"loudness": 80, "bass": 60, "mid": 0, "treble": 0}
+
+    _scene(runner.storage)
+    live = baked.encode(1, [{"device": "a", "segments": 1, "kind": "level", "follows": "bass"}], [bytes(3)] * 21)
+    runner.storage.save_scene_live("glow", live)
+    await runner.play_scene("glow")
+    assert runner.player.live is None  # nothing listening for live music: the idle glow plays
+    runner.live = Live()
+    await runner.play_scene("glow")
+    assert runner.player.live is not None and set(runner.player.live_tracks) == {"a"}
+    assert runner.player.live_step() is not None  # music heard: levels to show
+    runner.storage.save_scene_live("glow", None)
+    await runner.play_scene("glow")
+    assert runner.player.live is None

@@ -2,10 +2,10 @@
 // A scene's logic is in housescenes.js; scenelib.py keeps them and the runner plays them round and
 // round. This draws the pages, saves as you go, and bakes each scene's loop for the player.
 
-import { EFFECTS, FPS, MADE_UP, bake, composeLight, matchesPreset, presetParams, unusedColour, withMusicLevels } from "./effects.js";
+import { EFFECTS, FPS, MADE_UP, bake, bakeLive, composeLight, withoutLive, matchesPreset, presetParams, unusedColour, withMusicLevels } from "./effects.js";
 import { gatherPart } from "./parts.js";
 import {
-  SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
+  LIVE_EFFECTS, SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
   sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
 import { setShowPalette, showPalette } from "./showpalette.js";
@@ -459,14 +459,16 @@ export class SceneEditor {
     const fxName = look ? `${EFFECTS[look.effect]?.label || look.effect}${preset ? ` · ${preset.label || preset.name}` : ""}` : "Off";
     // A whole WLED light can play one of WLED's own effects instead (runner.py hands it over).
     const dev = this.d.devices()[devId] || null;
-    const wledOK = dev?.kind === "wled" && !dev.parent && !dev.light && !dev.parts?.length;
+    const whole = !!dev && !dev.parent && !dev.light && !dev.parts?.length; // live effects need a whole light
+    const wledOK = whole && dev.kind === "wled";
     const own = !!EFFECTS[look?.effect]?.wledOwn;
     const eff = el("button", { type: "button", class: "sc-effect picker-button", "aria-haspopup": "dialog",
       "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: `${fxName}. Pick an effect or preset, with a preview of each` },
       el("span", { class: "picker-name" }, fxName), el("span", { class: "picker-change", "aria-hidden": "true" }, "Change…"));
     eff.addEventListener("click", () => this.d.chooseEffect({
       title: `Effect for ${full}`, dev: this.d.devices()[devId] || null, length: 6,
-      current: look?.effect ?? null, currentPreset: preset, only: wledOK ? [...SCENE_EFFECTS, "wled"] : SCENE_EFFECTS,
+      current: look?.effect ?? null, currentPreset: preset,
+      only: [...SCENE_EFFECTS, ...(whole ? LIVE_EFFECTS : []), ...(wledOK ? ["wled"] : [])],
       // Each effect previews as it would be picked: this light's colours carried over.
       palette: this.palette(),
       paramsFor: (key) => {
@@ -490,6 +492,17 @@ export class SceneEditor {
       fx.append(el("span", { class: "sc-wled" }, this.d.wledPicker("wledfx", dev, look.params, () => changed(false)),
         this.d.wledPicker("wledpal", dev, look.params, () => changed(false)),
         el("span", { class: "hint" }, "Plays on the WLED itself; the preview shows only its colours")));
+    }
+    if (EFFECTS[look?.effect]?.live) {
+      // What it follows and how it fills, under the effect: the rest of the row is as for any light.
+      const picks = EFFECTS[look.effect].params.filter((p) => p.type === "select" && p.key !== "count").map((p) => {
+        const sel = el("select", { "aria-label": `${p.label} for ${full}`, title: p.label });
+        for (const o of p.options) sel.add(new Option(`${p.label}: ${o}`, o, false, o === clip[p.key]));
+        sel.addEventListener("change", () => { look.params[p.key] = sel.value; changed(false); });
+        return sel;
+      });
+      fx.append(el("span", { class: "sc-wled" }, ...picks,
+        el("span", { class: "hint" }, "Follows what a WLED with a microphone hears; a gentle glow when there's no music")));
     }
     row.append(el("span", { class: "sc-light" }, label, extra), fx);
     if (!look) {
@@ -522,6 +535,7 @@ export class SceneEditor {
     row.append(sp ? this.slider("Speed", full, sp, clip[sp.key], (v) => { look.params[sp.key] = v; }) : none());
     const br = EFFECTS[look.effect].params.find((p) => p.key === "brightness");
     row.append(br ? this.slider("Brightness", full, br, clip.brightness, (v) => { look.params.brightness = v; }) : none());
+    if (EFFECTS[look.effect].live) { row.append(none()); return row; } // no Glitter: it's one frame a level
     if (own) {
       // WLED's own effects have an Intensity where the others have Glitter.
       const ix = EFFECTS.wled.params.find((p) => p.key === "intensity");
@@ -597,12 +611,17 @@ export class SceneEditor {
   async bakeAndSend(id = this.id, scene = this.scene) {
     const lights = this.d.lights();
     if (!lights.length) return;
-    const loop = sceneLoop(scene, lights, FPS);
+    const loop = withoutLive(() => sceneLoop(scene, lights, FPS)); // live effects loop on their idle glow
     const advanced = scene.mode === "advanced";
-    const blob = bake(sceneShow(scene, lights, loop), this.d.devices(), FPS, advanced ? this.d.positions() : {},
+    const show = sceneShow(scene, lights, loop);
+    const blob = bake(show, this.d.devices(), FPS, advanced ? this.d.positions() : {},
       advanced ? this.d.groups?.() || [] : []);
     const path = `api/house-scenes/${encodeURIComponent(id)}/baked`;
     await sendBaked(this.d.api, path, blob);
+    // Live music effects at every level, for the player to pick from (or none to keep).
+    const live = bakeLive(show, this.d.devices());
+    if (live) await sendBaked(this.d.api, `api/house-scenes/${encodeURIComponent(id)}/live`, live);
+    else await this.d.api(`api/house-scenes/${encodeURIComponent(id)}/live`, { method: "DELETE" });
     const made = this.d.prefs.get("sceneBakes", {});
     made[id] = this.bakeKey(scene);
     this.d.prefs.set("sceneBakes", made);

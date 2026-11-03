@@ -8,6 +8,7 @@ import logging
 import math
 import time
 
+from . import liveeffects
 from .baked import Baked
 from .output import Output, address, linked
 
@@ -37,6 +38,11 @@ class Player:
         # loops of the scenes picked for strong bass and treble. None while nothing reacts.
         self.react = None
         self.variants: dict[str, Baked] = {}
+        # Live music effects (liveeffects.py): the scene's live set, its tracks by light, and a callable
+        # giving the levels heard now ({follows: 0-100}, or None for the idle look).
+        self.live: Baked | None = None
+        self.live_tracks: dict = {}
+        self.live_step = None
 
     @property
     def playing(self) -> bool:
@@ -63,6 +69,7 @@ class Player:
         devices = {k: d for k, d in devices.items() if linked(d)}
         await self.stop(release=False)
         self.react, self.variants = None, {}
+        self.live, self.live_tracks, self.live_step = None, {}, None
         self.baked, self.show_id, self.devices, self.offset = baked, show_id, devices, offset
         self.length = length
         claimed = set()
@@ -146,7 +153,8 @@ class Player:
             elif idx >= b.frames:
                 break
             react = self.react() if self.react else None
-            key = (idx, react) if react else idx
+            heard = self.live_step() if self.live_step else None
+            key = (idx, react, tuple(heard.values()) if heard else None)
             if idx >= 0 and key != last:
                 # Reacting, a frame also goes out when the level, flash or look move with the music,
                 # even on a loop that's a still picture. The frames are only picked, scaled and mixed,
@@ -158,8 +166,13 @@ class Player:
                     if d:
                         dev = self.output.devices.get(address(d))
                         if dev:
-                            frame = self._variant_frame(source, t, elapsed) if source else None
-                            frame = frame or b.track_frame(t, idx)
+                            lt = self.live_tracks.get(t.device) if heard else None
+                            if lt is not None and lt.segments == t.segments:
+                                # A light on a live effect: its frame for the level it follows.
+                                frame = self.live.track_frame(lt, liveeffects.frame_index(heard[lt.follows]))
+                            else:
+                                frame = self._variant_frame(source, t, elapsed) if source else None
+                                frame = frame or b.track_frame(t, idx)
                             dev.update(frame.translate(table) if table else frame)
                 last = key
             await asyncio.sleep(frame_s / 4)

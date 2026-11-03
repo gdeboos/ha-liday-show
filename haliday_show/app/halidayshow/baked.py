@@ -5,6 +5,7 @@ Layout (big endian):
   u8       format version (1)
   u32      header length
   bytes    header JSON: {"fps": 40, "frames": N, "tracks": [{"device": id, "segments": n}, ...]}
+           (a scene's live set also gives each track "kind" and "follows"; liveeffects.py)
   N frames, each the tracks' r g b bytes concatenated in track order (segments * 3 per track)
 
 Files baked before 0.2.207 may also list Govee scenes in the header ("scenes"); they're no longer
@@ -28,6 +29,8 @@ class Track:
     device: str
     segments: int
     offset: int  # byte offset inside a frame
+    kind: str = ""  # a scene's live set (liveeffects.py): "level"
+    follows: str = ""  # and what it follows: loudness, bass, mid or treble
 
     @property
     def size(self) -> int:
@@ -77,7 +80,7 @@ def decode(blob: bytes) -> Baked:
         segments = int(t["segments"])
         if not 1 <= segments <= 4096:  # see server.MAX_MATRIX
             raise BakedError("segment count must be 1-4096")
-        tracks.append(Track(str(t["device"]), segments, offset))
+        tracks.append(Track(str(t["device"]), segments, offset, str(t.get("kind") or ""), str(t.get("follows") or "")))
         offset += segments * 3
     data = blob[9 + hlen:]
     if len(data) != frames * offset:

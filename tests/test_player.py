@@ -149,3 +149,29 @@ async def test_a_new_show_stops_reacting():
     await p.play("x", b, {"w": {"ip": "10.0.0.3", "segments": 1}})
     await p.stop()
     assert p.react is None and p.variants == {}
+
+
+async def test_a_live_light_shows_the_baked_frame_for_the_level_it_follows():
+    import asyncio
+    from halidayshow import baked
+    plain = baked.decode(baked.encode(20, [{"device": "w", "segments": 1}], [bytes([1, 2, 3])]))  # the idle glow
+    live = baked.decode(baked.encode(1, [{"device": "w", "segments": 1, "kind": "level", "follows": "bass"}],
+                                     [bytes([k * 10, 0, 0]) for k in range(21)]))
+    out = LightOutput()
+    p = player.Player(out)
+    await p.play(None, plain, {"w": {"ip": "10.0.0.3", "segments": 1}}, length=float("inf"))
+    heard = iter([None] * 3 + [{"loudness": 90, "bass": 50, "mid": 0, "treble": 0}] * 3
+                 + [{"loudness": 90, "bass": 100, "mid": 0, "treble": 0}] * 3 + [None] * 50)
+    p.live, p.live_tracks, p.live_step = live, {"w": live.tracks[0]}, lambda: next(heard)
+    await asyncio.sleep(0.35)
+    await p.stop()
+    sent = out.light.sent
+    assert sent[0] == bytes([1, 2, 3])  # no music: the scene's own frame
+    assert bytes([100, 0, 0]) in sent  # bass at 50 %: frame 10
+    assert bytes([200, 0, 0]) in sent  # bass at 100 %: frame 20
+    assert sent[-1] == bytes([1, 2, 3])  # quiet again: the idle look
+    p2 = player.Player(LightOutput())
+    p2.live, p2.live_step = live, (lambda: None)
+    await p2.play("x", plain, {"w": {"ip": "10.0.0.3", "segments": 1}})
+    await p2.stop()
+    assert p2.live is None and p2.live_step is None  # a new show stops it
