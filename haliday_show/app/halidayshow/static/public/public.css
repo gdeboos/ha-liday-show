@@ -194,3 +194,8 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-install { min-height: 36px; padding: 4px 12px; font-size: .8125em; font-weight: 600; margin-top: 8px; }
 .pp-banner .pp-install { position: absolute; top: 10px; right: 12px; margin: 0;
   background: color-mix(in srgb, var(--bg) 80%, transparent); backdrop-filter: blur(4px); }
+/* Your admin phone: Skip and Stop under what's on. */
+.pp-admin-ctl { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 10px;
+  border-top: 1px dashed var(--line); }
+.pp-admin-ctl button { min-height: 40px; padding: 4px 12px; font-size: .875em; background: transparent; }
+#pp-admin-stop { color: var(--danger); border-color: var(--danger); }

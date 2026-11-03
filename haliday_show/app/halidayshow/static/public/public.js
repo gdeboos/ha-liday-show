@@ -761,6 +761,9 @@ export function start() {
     $("pp-now-yours").textContent = yours ? yours.text : "";
     $("pp-now-yours").hidden = !yours;
     drawProgress();
+    // Your admin phone: skip a visitor's pick, or stop everything.
+    $("pp-admin-ctl").hidden = !(st.admin && st.now);
+    $("pp-admin-skip").hidden = !st.now?.visitor;
     const q = queueView(st, w, queueOpen);
     $("pp-queue-box").hidden = !q.rows.length;
     $("pp-queue-head").textContent = q.head;
@@ -775,6 +778,13 @@ export function start() {
       meta.append(el("span", "pp-place", `${r.place}.`), document.createTextNode(` ${r.when}`));
       text.append(meta);
       li.append(text);
+      if (!r.yours && r.id && st.admin) {
+        const b = el("button", "", "Remove");
+        b.type = "button";
+        b.setAttribute("aria-label", `Remove: ${r.name}`);
+        b.addEventListener("click", () => send("api/admin/remove", { id: r.id }));
+        li.append(b);
+      }
       if (r.yours && r.id) {
         const b = el("button", "", say_(w, "cancel"));
         b.type = "button";
@@ -1019,6 +1029,10 @@ export function start() {
   $("pp-retry").addEventListener("click", watchWhere);
   $("pp-title").addEventListener("click", tapTitle);
   $("pp-install").addEventListener("click", install);
+  $("pp-admin-skip").addEventListener("click", () => send("api/admin/skip", {}));
+  $("pp-admin-stop").addEventListener("click", () => {
+    if (confirm("Stop the lights and clear the queue?")) send("api/admin/stop", {});
+  });
   $("pp-admin-ok").addEventListener("click", unlockAdmin);
   $("pp-admin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") unlockAdmin(); });
   $("pp-admin-close").addEventListener("click", () => { adminOpen = null; drawAdmin(); });
