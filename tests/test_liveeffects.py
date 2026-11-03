@@ -57,3 +57,22 @@ def test_a_burst_starts_on_each_new_beat_and_rests_dark_between():
     assert liveeffects.burst_scale(0) == 0.3 and liveeffects.burst_scale(100) == 1.0
     f = liveeffects.Follower()
     assert f.step({"loudness": 50, "beat_at": 3.5}, 1.0)["beat_at"] == 3.5
+
+
+def test_spectrum_bars_are_put_together_region_by_region():
+    track = {"device": "s", "segments": 4, "kind": "spectrum", "follows": "loudness", "count": 21,
+             "regions": [0, 0, 1, 1], "bands": [[0, 8], [8, 16]]}
+    frames = [bytes([k, k, k]) * 4 for k in range(21)]
+    live = liveeffects.load(baked.encode(40, [track], frames))
+    assert live is not None
+    s = liveeffects.Spectrum(live.tracks[0])
+    idx = s.indexes([100] * 8 + [50] * 8)  # the low half full, the high half at 50 %
+    assert idx == (20, 10)
+    assert s.frame(live, idx) == bytes([20] * 6 + [10] * 6)
+    for bad in ({**track, "regions": [0, 0, 1]}, {**track, "regions": [0, 0, 2, 1]}, {**track, "bands": [[0, 17], [8, 16]]},
+                {**track, "bands": "low"}, {**track, "count": 5}):
+        assert liveeffects.load(baked.encode(40, [bad], frames)) is None, bad
+    f = liveeffects.Follower()
+    f.step({"loudness": 50, "bands": [80] * 16}, 1.0)
+    out = f.step({"loudness": 50, "bands": [80] * 16}, 1.1)
+    assert len(out["bands"]) == 16 and 0 < out["bands"][0] <= 80

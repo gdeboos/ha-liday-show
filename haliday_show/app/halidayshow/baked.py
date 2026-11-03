@@ -32,6 +32,8 @@ class Track:
     kind: str = ""  # a scene's live set (liveeffects.py): "level" or "burst"
     follows: str = ""  # and what it follows: loudness, bass, mid or treble
     count: int = 0  # and how many of the frames are its own
+    regions: list | None = None  # Spectrum: each LED's region, and each region's bands [first, last + 1)
+    bands: list | None = None
 
     @property
     def size(self) -> int:
@@ -82,7 +84,7 @@ def decode(blob: bytes) -> Baked:
         if not 1 <= segments <= 4096:  # see server.MAX_MATRIX
             raise BakedError("segment count must be 1-4096")
         tracks.append(Track(str(t["device"]), segments, offset, str(t.get("kind") or ""), str(t.get("follows") or ""),
-                            int(t.get("count") or 0)))
+                            int(t.get("count") or 0), t.get("regions"), t.get("bands")))
         offset += segments * 3
     data = blob[9 + hlen:]
     if len(data) != frames * offset:

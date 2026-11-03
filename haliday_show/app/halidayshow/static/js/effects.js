@@ -3,7 +3,7 @@
 // Every effect is a pure function of (clip, seconds into the clip, segment count),
 // so a preview frame and a baked frame at the same time are identical.
 
-import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire } from "./matrix.js";
+import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } from "./matrix.js";
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
@@ -1088,6 +1088,52 @@ EFFECTS.beatburst = {
     return mix(bg, blendList(cols, p.style === "sparkle" ? hash01(i, 913) : x), Math.min(1, a) * strength);
   },
 };
+// Spectrum bars: one bar per band region across the light, each as high as its bands are loud. A strip
+// splits into sections side by side, each filling along; a matrix into columns, each rising from the
+// bottom. Up to 16 regions (the WLED sends 16 bands), each the mean of its bands. Baked like the Level
+// meter at every level (all the bars at once), and the player puts each region's frame together.
+export const BANDS = 16;
+export const spectrumRegions = (w) => Math.max(1, Math.min(BANDS, w));
+// The bands region r of `count` takes: [first, last + 1).
+export const regionBands = (r, count) => [Math.floor((r * BANDS) / count), Math.max(Math.floor((r * BANDS) / count) + 1, Math.floor(((r + 1) * BANDS) / count))];
+const regionLevel = (bands, r, count) => {
+  const [a, b] = regionBands(r, count);
+  let sum = 0;
+  for (let k = a; k < b; k++) sum += bands?.[k] ?? 0;
+  return sum / (b - a);
+};
+EFFECTS.spectrum = {
+  ...gridEffect({
+    label: "Spectrum bars", live: true, sceneOnly: true, wholeLoop: true, list: true,
+    params: [...colourList(["#00ff00", "#ffff00", "#ff0000"]), color("background", "Background", "#000000")],
+    renderXY: (p, t, dur, w, h, x, y) => {
+      const count = spectrumRegions(w), r = Math.min(count - 1, Math.floor((x * count) / w));
+      // How far up (or along) its bar this LED is, 0 to 1.
+      let u;
+      if (h > 1) u = (h - 1 - y) / (h - 1);
+      else {
+        const start = Math.ceil((r * w) / count), end = Math.ceil(((r + 1) * w) / count);
+        u = end - start > 1 ? (x - start) / (end - start - 1) : 0;
+      }
+      const c = blendList(listColours(p), u);
+      let v = p.liveLevel;
+      if (v == null) {
+        const heard = liveSource ? liveSource(t) : null;
+        if (!heard) return idleGlow(c, t);
+        v = regionLevel(heard.bands, r, count);
+      }
+      const steps = h > 1 ? h : Math.max(1, Math.ceil(((r + 1) * w) / count) - Math.ceil((r * w) / count));
+      return v > 0 && u <= (v / 100) * (1 + 1 / steps) - 1e-9 ? c : hexToRgb(p.background);
+    },
+  }),
+  group: "live",
+};
+// The region each LED of a light is in (grid order on a matrix), as the Spectrum bars draw them.
+export function spectrumLayout(segments, grid) {
+  const w = grid ? grid.w : segments, count = spectrumRegions(w);
+  return { count, region: Array.from({ length: segments }, (_, i) => Math.min(count - 1, Math.floor(((grid ? i % w : i) * count) / w))) };
+}
+
 // How bright a burst plays for the level it follows (as liveeffects.burst_scale): never quite off.
 export const burstStrength = (level) => 0.3 + 0.7 * Math.min(Math.max(level, 0), 100) / 100;
 
@@ -1843,9 +1889,16 @@ export function bakeLive(show, devices) {
     l.count = l.burst ? Math.ceil(Math.min(Math.max(Number(l.clip.length) || 0.5, 0.2), 2) * FPS) + 1 : LIVE_LEVELS;
   }
   const frames = Math.max(LIVE_LEVELS, ...lights.map((l) => l.count));
-  const header = { fps: FPS, frames,
-    tracks: lights.map((l) => ({ device: l.id, segments: l.dev.segments, kind: l.burst ? "burst" : "level",
-      follows: FOLLOWS.includes(l.clip.follows) ? l.clip.follows : "loudness", count: l.count })) };
+  const track = (l) => {
+    const t = { device: l.id, segments: l.dev.segments, kind: l.burst ? "burst" : "level",
+      follows: FOLLOWS.includes(l.clip.follows) ? l.clip.follows : "loudness", count: l.count };
+    if (l.clip.effect !== "spectrum") return t;
+    // Spectrum: each LED's region along the wire, and the bands each region takes.
+    const grid = gridOf(l.dev), { count, region } = spectrumLayout(l.dev.segments, grid);
+    const wired = grid ? Array.from(wireOrder(l.dev.matrix), (g) => region[g]) : region;
+    return { ...t, kind: "spectrum", follows: "loudness", regions: wired, bands: Array.from({ length: count }, (_, r) => regionBands(r, count)) };
+  };
+  const header = { fps: FPS, frames, tracks: lights.map(track) };
   const head = new TextEncoder().encode(JSON.stringify(header));
   const stride = lights.reduce((n, l) => n + l.dev.segments * 3, 0);
   const out = new Uint8Array(9 + head.length + frames * stride);

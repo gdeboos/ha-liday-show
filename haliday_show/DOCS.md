@@ -1725,6 +1725,9 @@ the lane's only effect.
   the Speed column of its row) sets how long each burst lasts, 0.2 to 2 seconds; between beats the
   light is dark. The level it follows
   sets how bright each burst is, never quite off.
+- **Spectrum bars** shows the music from bass to treble: a bar for each part of the sound, side by side
+  along a strip (each section filling along it) or up a matrix's columns (each rising from the bottom),
+  up to 16 bars. It always shows every part of the sound, so it has no **Follows**.
 
 **Follows** picks what it follows: **loudness**, **bass**, **mid** or **treble**. Give one light the bass
 and another the treble, and they move to different parts of the music. With no music for a few seconds
