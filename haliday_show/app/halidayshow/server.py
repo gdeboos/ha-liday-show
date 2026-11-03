@@ -1066,6 +1066,9 @@ def _clean_marks(marks) -> list[dict] | None:
     return sorted(out, key=lambda m: m["t"])
 
 
+_KEY = re.compile(r"^[A-G][♯#♭b]? (major|minor)$")  # a song's key, as analysis.js names it
+
+
 def _clean_song_info(body) -> dict | None:
     """Detect's results for a song: {tempo, beats, bars, sections: [{start, end, label, energy}]}, and
     the marks you've put on it ({marks: [{t, label, color}]}) when they're sent."""
@@ -1106,6 +1109,11 @@ def _clean_song_info(body) -> dict | None:
             item["color"] = color.lower()
         clean.append(item)
     out = {"tempo": tempo, "beats": beats, "bars": bars, "sections": clean}
+    key = body.get("key")
+    if key is not None:
+        if not isinstance(key, str) or not _KEY.match(key):
+            return None
+        out["key"] = key
     if "marks" in body:
         marks = _clean_marks(body["marks"])
         if marks is None:
@@ -1216,9 +1224,18 @@ def _clean_layers(layers) -> list[dict] | None:
                           "gain": cg, "fadeIn": fade_in, "fadeOut": fade_out})
             if bpm is not None:  # its own tempo, for a layer that matches the song's
                 clean[-1]["bpm"] = round(float(bpm), 1)
+            ckey = c.get("key")
+            if ckey is not None:  # its own key, for a layer that matches the song's
+                if not isinstance(ckey, str) or not _KEY.match(ckey):
+                    return None
+                clean[-1]["key"] = ckey
         duck, match = layer.get("duck", False), layer.get("matchTempo", False)
         eq = _clean_eq(layer["eq"]) if layer.get("eq") is not None else None
         if not isinstance(duck, bool) or not isinstance(match, bool) or (layer.get("eq") is not None and eq is None):
+            return None
+        match_key, semis = layer.get("matchKey", False), layer.get("semitones")
+        if not isinstance(match_key, bool) or (semis is not None and (isinstance(semis, bool) or not isinstance(semis, int)
+                                                                        or not -6 <= semis <= 6)):
             return None
         duck_db = layer.get("duckDb")  # how far the song dips under it; missing is 8 dB
         if duck_db is not None and (isinstance(duck_db, bool) or not isinstance(duck_db, (int, float))
@@ -1229,6 +1246,10 @@ def _clean_layers(layers) -> list[dict] | None:
             out[-1]["duck"] = True
         if duck_db is not None:
             out[-1]["duckDb"] = round(float(duck_db), 1)
+        if match_key:
+            out[-1]["matchKey"] = True
+        if semis:
+            out[-1]["semitones"] = semis
         if match:
             out[-1]["matchTempo"] = True
         if eq is not None:

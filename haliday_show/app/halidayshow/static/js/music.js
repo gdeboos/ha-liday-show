@@ -5,13 +5,13 @@
 // the pieces to a WAV and uploads it like any other song, ready to pick in the editor. Detect finds
 // a song's beats and sections and keeps them with the file, for any show that uses it.
 
-import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
+import { analyseInWorker, barVectorsInWorker, keyFrom, keyShift, toMono } from "./analysis.js";
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
 import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
-import { stretch } from "./tempo.js";
+import { shift } from "./tempo.js";
 import { askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
@@ -651,7 +651,7 @@ export class MusicEditor {
       const old = this.base === ref ? this.info?.sections : null;
       const sections = describeSections(keepYours(r.sections, old || []), r.traits);
       const marks = this.base === ref ? this.info?.marks : null; // the server keeps them too
-      const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections, ...(marks ? { marks } : {}) };
+      const info = { tempo: r.tempo || null, ...(r.key ? { key: r.key } : {}), beats: r.beats, bars: r.bars, sections, ...(marks ? { marks } : {}) };
       await this.host.api(infoUrl(ref), { method: "PUT", json: info });
       if (this.base === ref) { this.info = info; this.secSel = -1; this.tempoKnown(); }
       const parts = `${info.sections.length} section${info.sections.length === 1 ? "" : "s"}`;
@@ -829,8 +829,51 @@ export class MusicEditor {
   // The song's tempo (once detected), which layers can match.
   get songTempo() { return this.info?.tempo || null; }
 
-  // Every heard clip's place in the result (layers.js placeClips), at the song's tempo.
-  placed() { return placeClips(this.layers, this.pieces, this.crossfade, this.songTempo); }
+  // The song's key: from Detect, else worked out from the song itself when a layer first needs it.
+  get songKey() { return this.info?.key || (this.foundKey && this.foundKey.base === this.base ? this.foundKey.key : null); }
+
+  findSongKey() {
+    if (this.songKey || !this.main) return this.songKey;
+    const mono = toMono(this.main, this.audio.sampleRate);
+    this.foundKey = { base: this.base, key: keyFrom(mono.samples, mono.rate) };
+    return this.foundKey.key;
+  }
+
+  // A sample's or song's key: from its detected info, else from its audio (the part the clip plays).
+  keyOfSong(ref, clip = null) {
+    const k = keyOf(ref), info = this.infos[k];
+    if (info?.key) return info.key;
+    const audio = this.sources[k], rate = this.audio.sampleRate;
+    if (!audio) return null;
+    const part = clip ? audio.map((ch) => ch.subarray(Math.floor(clip.start * rate), Math.ceil(clip.end * rate))) : audio;
+    if (part[0].length < rate) return null; // too short to tell
+    const mono = toMono(part, rate);
+    return keyFrom(mono.samples, mono.rate);
+  }
+
+  // A layer's key: as it is (""), matching the song's ("match"), or moved by some semitones.
+  setKey(i, choice) {
+    const layer = this.layers[i];
+    if (!layer) return;
+    if (choice !== "match") {
+      const semis = Number(choice) || 0;
+      this.setLayer(i, { matchKey: undefined, semitones: semis || undefined });
+      return this.host.status(semis ? `${layer.name} plays ${Math.abs(semis)} semitone${Math.abs(semis) === 1 ? "" : "s"} ${semis > 0 ? "higher" : "lower"}` : `${layer.name} plays in its own key`);
+    }
+    const song = this.findSongKey();
+    if (!song) return this.host.status("Couldn't tell the song's key", "hint");
+    const clips = layer.clips.map((c) => (c.key ? c : { ...c, key: this.keyOfSong(c.song, c) || undefined }));
+    this.setLayer(i, { matchKey: true, semitones: undefined, clips });
+    const unknown = clips.filter((c) => !c.key).length;
+    const moves = [...new Set(clips.filter((c) => c.key).map((c) => keyShift(c.key, song)))];
+    this.host.status(`${layer.name} now plays in the song's key (${song})`
+      + (moves.length === 1 && moves[0] ? `, ${Math.abs(moves[0])} semitone${Math.abs(moves[0]) === 1 ? "" : "s"} ${moves[0] > 0 ? "up" : "down"}` : "")
+      + (unknown ? `. ${unknown} clip${unknown === 1 ? " is" : "s are"} too short to tell, so stay${unknown === 1 ? "s" : ""} as ${unknown === 1 ? "it is" : "they are"}` : ""),
+    unknown ? "hint" : "info");
+  }
+
+  // Every heard clip's place in the result (layers.js placeClips), at the song's tempo and key.
+  placed() { return placeClips(this.layers, this.pieces, this.crossfade, this.songTempo, this.songKey); }
 
   // The song's tempo has arrived or changed: layers matching it are placed again.
   tempoKnown() {
@@ -979,6 +1022,8 @@ export class MusicEditor {
     const speed = clipSpeed(this.layers[i], { bpm }, this.songTempo), room = (this.total - this.time) * speed;
     const end = Math.round(Math.min(whole, room) * 1000) / 1000;
     const clip = { song: ref, start: 0, end, anchor: at, gain, fadeIn: 0, fadeOut: 0, ...(bpm ? { bpm } : {}) };
+    // On a layer matching the song's key, its own key, so it can be moved to fit.
+    if (this.layers[i].matchKey) { this.findSongKey(); const k = this.keyOfSong(ref, clip); if (k) clip.key = k; }
     const layers = this.layers.map((l, k) => (k === i ? { ...l, clips: [...l.clips, clip] } : l));
     this.editLayers(layers, { layer: i, clip: layers[i].clips.length - 1 });
     this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} at ${fmtTime(this.time)}${end < whole - 0.01 ? ", trimmed to the song's end" : ""}. Drag it to move it, or its ends to trim it`);
@@ -1005,7 +1050,7 @@ export class MusicEditor {
   renderLayers() {
     const box = $("music-layers");
     const samples = this.samplesList || [], songs = this.host.songs();
-    const sig = JSON.stringify([this.layers.map((l) => [l.name, l.gain, !!l.duck, l.duckDb, !!l.matchTempo, isFlat(l.eq), l.clips.length]), isFlat(this.eq),
+    const sig = JSON.stringify([this.songKey, this.layers.map((l) => [l.name, l.gain, !!l.duck, l.duckDb, !!l.matchTempo, !!l.matchKey, l.semitones, isFlat(l.eq), l.clips.length]), isFlat(this.eq),
       this.eqCh, !!this.songTempo, samples.length, JSON.stringify(this.sampleFolders || []), songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
       box.dataset.sig = sig;
@@ -1094,6 +1139,14 @@ export class MusicEditor {
         const tempoLabel = el("label", { title: this.songTempo
           ? `Speed this layer's clips up or slow them down to the song's ${this.songTempo} BPM, keeping their pitch`
           : "Detect the song first, so it has a tempo to match" }, tempo, " Match tempo");
+        // Key: as it is, matching the song's, or moved by some semitones.
+        const keySel = el("select", { title: "Move this layer's clips up or down so they fit the song's key and don't clash" });
+        keySel.setAttribute("aria-label", `${l.name} key`);
+        keySel.append(new Option("Own key", ""), new Option(`Match the song${this.songKey ? ` (${this.songKey})` : ""}`, "match"));
+        for (const n of [6, 5, 4, 3, 2, 1, -1, -2, -3, -4, -5, -6]) keySel.append(new Option(`${n > 0 ? "+" : "−"}${Math.abs(n)} semitone${Math.abs(n) === 1 ? "" : "s"}`, String(n)));
+        keySel.value = l.matchKey ? "match" : l.semitones ? String(l.semitones) : "";
+        keySel.addEventListener("change", () => this.setKey(i, keySel.value));
+        const keyLabel = el("label", {}, "Key ", keySel);
         const add = el("select", { title: "Put a sample or song on this layer at the playhead" });
         add.setAttribute("aria-label", `Add to ${l.name}`);
         add.append(new Option("+ Add a clip at the playhead…", ""));
@@ -1117,7 +1170,7 @@ export class MusicEditor {
         remove.addEventListener("click", () => this.removeLayer(i));
         const dot = el("span", { className: "layer-dot" });
         dot.style.background = `hsl(${LAYER_HUES[i % 4]} 65% 50%)`;
-        rows.push(el("div", { className: "group layer-row" }, dot, name, el("label", {}, "Volume ", vol, " ", db), eqButton(i, i, l.name), duckLabel, tempoLabel, add, remove));
+        rows.push(el("div", { className: "group layer-row" }, dot, name, el("label", {}, "Volume ", vol, " ", db), eqButton(i, i, l.name), duckLabel, tempoLabel, keyLabel, add, remove));
       });
       const addLayer = el("button", { type: "button", textContent: "+ Add layer", disabled: !this.pieces.length || this.layers.length >= MAX_LAYERS });
       addLayer.title = this.layers.length >= MAX_LAYERS ? `Up to ${MAX_LAYERS} layers` : "Add a row for samples or songs to play over the song";
@@ -1679,14 +1732,15 @@ export class MusicEditor {
         ? applyEq(this.main.map((ch) => Float32Array.from(ch)), rate, this.eq, placeChanges(this.eq, this.pieces, this.crossfade)) : this.main;
       this.eqFor = { eq: this.eq, main: this.main };
     }
-    // Clips on layers matching the song's tempo play from a stretched copy of their audio (kept).
+    // Clips on layers matching the song's tempo or key play from a stretched or shifted copy of their
+    // audio (kept).
     const placed = this.main ? this.placed() : [];
     for (const p of placed) {
-      const c = this.layers[p.layer].clips[p.clip], key = sourceKey(c, p.speed), src = this.sources[keyOf(c.song)];
-      if (p.speed !== 1 && src && !this.sources[key]) this.sources[key] = stretch(src, rate, p.speed);
+      const c = this.layers[p.layer].clips[p.clip], key = sourceKey(c, p.speed, p.semis), src = this.sources[keyOf(c.song)];
+      if ((p.speed !== 1 || p.semis) && src && !this.sources[key]) this.sources[key] = shift(src, rate, p.speed, p.semis);
     }
-    // Stretched copies no clip plays at any more (a tempo typed again, say) are let go.
-    const used = new Set(placed.map((p) => sourceKey(this.layers[p.layer].clips[p.clip], p.speed)));
+    // Copies no clip plays at any more (a tempo typed again, say) are let go.
+    const used = new Set(placed.map((p) => sourceKey(this.layers[p.layer].clips[p.clip], p.speed, p.semis)));
     for (const key of Object.keys(this.sources)) if (key.includes("@") && !used.has(key)) delete this.sources[key];
     // What plays and is made into a song file: the song with its layers mixed in, kept from clipping.
     this.rendered = placed.length || this.mainEq !== this.main
@@ -1722,7 +1776,7 @@ export class MusicEditor {
     const shown = this.shown, info = shown && (shown.beats.length || shown.sections.length) ? shown : null;
     $("music-analysis").textContent = !has ? ""
       : this.dirty && !info ? "Make the song file to find its beats and sections"
-        : info ? `${info.tempo ? `${info.tempo} BPM, ` : ""}${info.beats.length} beats, ${info.sections.length} sections${info.sections.length ? `: ${info.sections.map((x) => x.label).join(", ")}` : ""}`
+        : info ? `${info.tempo ? `${info.tempo} BPM, ` : ""}${info.key ? `${info.key}, ` : ""}${info.beats.length} beats, ${info.sections.length} sections${info.sections.length ? `: ${info.sections.map((x) => x.label).join(", ")}` : ""}`
           : "Not detected yet";
     if (this.dirty && info) $("music-analysis").textContent += " (following your edits)";
     $("music-redo").disabled = !this.future.length;
@@ -1857,7 +1911,7 @@ export class MusicEditor {
   async detectMade(ref, channels, rate, marks) {
     const mono = toMono(channels, rate);
     const r = await analyseInWorker(mono.samples, mono.rate);
-    const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars,
+    const info = { tempo: r.tempo || null, ...(r.key ? { key: r.key } : {}), beats: r.beats, bars: r.bars,
       sections: describeSections(r.sections, r.traits), marks };
     await this.host.api(infoUrl(ref), { method: "PUT", json: info });
   }
@@ -2269,9 +2323,9 @@ export class MusicEditor {
           ctx.globalAlpha = 1;
         }
         // Its own waveform, from the audio it plays (stretched, if it's matching the tempo).
-        const src = this.sources[sourceKey(c, p.speed)];
+        const src = this.sources[sourceKey(c, p.speed, p.semis)];
         if (src && !gone) {
-          const key = sourceKey(c, p.speed);
+          const key = sourceKey(c, p.speed, p.semis);
           if (this.clipPeaks?.src !== this.sources) this.clipPeaks = { src: this.sources, by: {} };
           const pk = (this.clipPeaks.by[key] ??= peaks(src));
           const rate = this.audio.sampleRate, spp = (this.view.span * rate) / w, mid = (top + bot) / 2 + 5, amp = (bot - top) / 2 - 7;

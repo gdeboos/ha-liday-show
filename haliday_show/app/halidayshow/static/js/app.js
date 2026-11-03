@@ -7366,7 +7366,7 @@ async function asSubmit(e) {
       const channels = Array.from({ length: song.numberOfChannels }, (_, c) => song.getChannelData(c));
       const { samples, rate } = toMono(channels, song.sampleRate);
       const r = await analyseInWorker(samples, rate);
-      info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars, sections: describeSections(r.sections, r.traits) };
+      info = { tempo: r.tempo || null, ...(r.key ? { key: r.key } : {}), beats: r.beats, bars: r.bars, sections: describeSections(r.sections, r.traits) };
       await api(songInfoUrl(ref), { method: "PUT", json: info });
       // The AI's names and notes follow when they come, unless the song's sections were edited meanwhile.
       const first = info;
@@ -9096,7 +9096,7 @@ async function analyseSong({ ai = false, cancelled = () => false } = {}) {
   const saved = app.show.audio ? await songInfo(app.show.audio) : null;
   if (song !== songBuffer || cancelled()) return null;
   const old = [...(saved?.sections || []), ...(app.show.sections || [])];
-  const info = { tempo: r.tempo || null, beats: r.beats, bars: r.bars,
+  const info = { tempo: r.tempo || null, ...(r.key ? { key: r.key } : {}), beats: r.beats, bars: r.bars,
     sections: describeSections(keepYours(r.sections, old), r.traits) };
   applySongInfo(info);
   const ref = app.show.audio;

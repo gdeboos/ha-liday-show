@@ -553,7 +553,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Layers](#layers) · [Mixer](#mixer-bass-mid-treble-filter-and-tempo) · [Suggest cuts](#suggest-cuts) ·
+- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Layers](#layers) · [Mixer](#mixer-bass-mid-treble-filter-tempo-and-key) · [Suggest cuts](#suggest-cuts) ·
   [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
@@ -891,8 +891,8 @@ Layers play samples or other songs on top of the song: sleigh bells over the int
 last chorus, a voice saying "Merry Christmas", or another song fading in under the end.
 
 1. Under the waveform, in the **Mixer**, press **+ Add layer** (up to four). Its row has a name, a
-   **Volume**, **EQ** (see [Mixer](#mixer-bass-mid-treble-filter-and-tempo)), **Quieten the song**, **Match
-   tempo** and **Remove**, and a lane appears under the waveform for its clips.
+   **Volume**, **EQ** (see [Mixer](#mixer-bass-mid-treble-filter-tempo-and-key)), **Quieten the song**, **Match
+   tempo**, **Key** and **Remove**, and a lane appears under the waveform for its clips.
 2. Put the playhead where you want a clip to start, then pick a sample or song from **+ Add a clip at
    the playhead…** on the layer's row. It starts a little quieter than the song, so it sits in the mix;
    change that with the clip's **Volume**.
@@ -919,7 +919,7 @@ the sample back. Layers are part of the draft and every change is one
 distorting where they pile up. The waveform, **Detect** and **Suggest cuts** go by the song alone, and a
 sample saved with **Save as sample…** includes the layers.
 
-#### Mixer: bass, mid, treble, filter and tempo
+#### Mixer: bass, mid, treble, filter, tempo and key
 
 The **Mixer** under the waveform works like a DJ's, for mash-ups and for making a layer sit well with
 the song. The song has a row, and so does each layer.
@@ -945,6 +945,13 @@ the song. The song has a row, and so does each layer.
   seconds of steady beat). If it's wrong or missing, click the clip and type it under **Tempo**. A clip is
   never stretched more than about 1.4 times either way: one at half or double the song's tempo plays
   in time at about its own speed. Line the clip's first beat up with a bar (clips snap to them).
+- **Key** on a layer moves its clips up or down so they're in the song's key and don't clash. **Match the
+  song** works out the song's key (or uses the one **Detect** found, shown beside its tempo) and each
+  clip's, and moves each clip by as few semitones as it takes (at most 6), keeping its speed. A key and
+  its relative minor or major (C major and A minor, say) share their notes, so they count as the same. Or
+  pick **+1** to **+6** or **−1** to **−6 semitones** to move it by hand; **Own key** leaves it as it is.
+  A clip too short to tell (under a second) stays as it is. A big move (5 or 6 semitones) can sound a
+  little artificial.
 
 All of it is part of the draft, every change is one **Undo** step, and **Make song file** includes it.
 The waveform still shows the song as it was, without the mixer, with two marks on top so you can see

@@ -37,7 +37,7 @@ test("clips are placed, and only those still in the song", () => {
     { song: B, start: 0, end: 2, anchor: { song: A, t: 5 } },
     { song: B, start: 0, end: 2, anchor: { song: A, t: 15 } },
   ] }];
-  assert.deepEqual(placeClips(layers, cut(song, 0, 10, 20), 0), [{ layer: 0, clip: 0, at: 5, length: 2, speed: 1 }]);
+  assert.deepEqual(placeClips(layers, cut(song, 0, 10, 20), 0), [{ layer: 0, clip: 0, at: 5, length: 2, speed: 1, semis: 0 }]);
 });
 
 test("mixing adds each clip at its place with its gain and fades, leaving the song alone", () => {

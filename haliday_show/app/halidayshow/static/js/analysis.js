@@ -101,6 +101,93 @@ export function features(samples, rate) {
   return { fps: rate / HOP, onset: normaliseOnset(onset, rate / HOP), loud, timbre, chroma };
 }
 
+// The song's key, from its chroma: the Krumhansl–Schmuckler method, which compares how much of each
+// pitch class there is with how much each key uses, and picks the closest of the 24. Each frame counts
+// the same, so a loud passage doesn't outweigh the rest.
+const MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const MINOR = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+const NOTES = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
+export const keyName = (tonic, minor) => `${NOTES[tonic]} ${minor ? "minor" : "major"}`;
+
+// Chroma fine enough for keys (features' window is too short to tell neighbouring low notes apart):
+// a long window, each bin's energy to its nearest pitch class from 80 Hz to 2 kHz, counted from C.
+const KEY_WIN = 4096, KEY_HOP = 2048;
+export function keyChroma(samples, rate) {
+  const bins = KEY_WIN / 2, pitch = new Int8Array(bins + 1).fill(-1);
+  for (let b = 1; b <= bins; b++) {
+    const f = (b * rate) / KEY_WIN;
+    if (f >= 80 && f <= 2000) pitch[b] = ((Math.round(12 * Math.log2(f / 261.6256)) % 12) + 12) % 12;
+  }
+  const win = new Float64Array(KEY_WIN).map((_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / KEY_WIN));
+  const re = new Float64Array(KEY_WIN), im = new Float64Array(KEY_WIN), out = [];
+  for (let start = 0; start + KEY_WIN <= samples.length; start += KEY_HOP) {
+    for (let j = 0; j < KEY_WIN; j++) { re[j] = samples[start + j] * win[j]; im[j] = 0; }
+    fft(re, im);
+    const c = new Float32Array(12);
+    for (let b = 1; b <= bins; b++) if (pitch[b] >= 0) c[pitch[b]] += Math.sqrt(re[b] * re[b] + im[b] * im[b]);
+    out.push(c);
+  }
+  return out;
+}
+
+// chroma: per frame, energy per pitch class counted from C (keyChroma).
+export function estimateKey(chroma) {
+  const total = new Float64Array(12);
+  for (const c of chroma) {
+    let sum = 0;
+    for (const v of c) sum += v;
+    if (sum < 1e-6) continue;
+    for (let k = 0; k < 12; k++) total[k] += c[k] / sum;
+  }
+  if (total.every((v) => !v)) return null;
+  const corr = (profile, tonic) => {
+    let mx = 0, my = 0;
+    for (let k = 0; k < 12; k++) { mx += total[k]; my += profile[k]; }
+    mx /= 12; my /= 12;
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let k = 0; k < 12; k++) {
+      const x = total[(k + tonic) % 12] - mx, y = profile[k] - my;
+      sxy += x * y; sxx += x * x; syy += y * y;
+    }
+    return sxy / Math.sqrt(sxx * syy || 1);
+  };
+  let best = null;
+  for (let tonic = 0; tonic < 12; tonic++) {
+    for (const minor of [false, true]) {
+      const r = corr(minor ? MINOR : MAJOR, tonic);
+      if (!best || r > best.r) best = { r, tonic, minor };
+    }
+  }
+  return keyName(best.tonic, best.minor);
+}
+
+// A key straight from mono samples (a sample or a clip that hasn't been detected), or null.
+export function keyFrom(samples, rate) {
+  const mono = rate > TARGET_RATE * 1.5 ? toMono([samples], rate) : { samples, rate };
+  return estimateKey(keyChroma(mono.samples, mono.rate));
+}
+
+// "A minor" → {tonic: 9, minor: true}; null for anything else. ♯/# and ♭/b both read.
+export function parseKey(name) {
+  const m = typeof name === "string" && name.match(/^([A-G])([♯#♭b]?) (major|minor)$/);
+  if (!m) return null;
+  const base = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]];
+  const acc = m[2] === "♯" || m[2] === "#" ? 1 : m[2] ? -1 : 0;
+  return { tonic: (base + acc + 12) % 12, minor: m[3] === "minor" };
+}
+
+// Semitones to move something in key `from` into key `to`, the shorter way round (-6 to 6). A minor
+// key counts as its relative major (A minor as C major), as they share their notes. 0 if either key
+// isn't known.
+export function keyShift(from, to) {
+  const a = parseKey(from), b = parseKey(to);
+  if (!a || !b) return 0;
+  const major = (k) => (k.tonic + (k.minor ? 3 : 0)) % 12;
+  let d = (((major(b) - major(a)) % 12) + 12) % 12;
+  if (d > 6) d -= 12;
+  return d;
+}
+
 // Removes the local average so only sudden rises count, and scales to unit deviation.
 function normaliseOnset(env, fps) {
   const half = Math.round(fps * 0.25);
@@ -415,6 +502,7 @@ export function analyse(samples, rate) {
   const sections = findSections(units, f, duration);
   return {
     tempo: Math.round(tempo * 10) / 10,
+    key: estimateKey(keyChroma(samples, rate)),
     beats: frames.map((t) => round(t / f.fps)),
     bars,
     sections,

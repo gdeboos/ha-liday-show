@@ -61,3 +61,20 @@ export function stretch(channels, rate, speed) {
     return res;
   });
 }
+
+// A clip both sped to the song's tempo (speed, as stretch) and moved up or down by `semitones`
+// keeping that speed: stretched by speed ÷ pitch ratio, then played faster or slower by the ratio,
+// which moves the pitch and brings the length back. The same channels if there's nothing to do.
+export function shift(channels, rate, speed, semitones = 0) {
+  if (!semitones) return stretch(channels, rate, speed);
+  if (!channels.length) return channels;
+  const r = 2 ** (semitones / 12);
+  return stretch(channels, rate, speed / r).map((ch) => {
+    const out = new Float32Array(Math.max(0, Math.floor((ch.length - 1) / r)));
+    for (let i = 0; i < out.length; i++) {
+      const x = i * r, k = Math.floor(x), f = x - k;
+      out[i] = ch[k] + (ch[k + 1] - ch[k]) * f;
+    }
+    return out;
+  });
+}
