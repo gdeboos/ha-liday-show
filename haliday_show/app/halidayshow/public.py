@@ -462,6 +462,19 @@ def _ticket(value) -> str:
     return ticket
 
 
+def taken(runner: Runner, kind: str, ref: str) -> str:
+    """Why a show or playlist can't be picked again right now: "queued" (someone's pick is waiting),
+    "playing" (on now), or "" if it's free. Stops the same song being queued over and over."""
+    if any(r["kind"] == kind and r["ref"] == ref for r in runner.requests):
+        return "queued"
+    now = runner.public_now
+    if now and now["kind"] == kind and now["ref"] == ref:
+        return "playing"
+    if kind == "show" and runner.player.playing and runner.player.show_id == ref and not runner.scene_playing:
+        return "playing"
+    return ""
+
+
 def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None = None,
           needs_location: bool = False, where=None, now: datetime | None = None, admin: bool = False) -> dict:
     p = load(storage) or clean(None)
@@ -491,7 +504,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"], "group": c["group"],
                      "cover": c["cover"] if look["covers"] else 0,
                      "colours": c["colours"] if look["covers"] else [],
-                     "minutes": max(1, round(runner.request_seconds(c) / 60))} for c in picks if c["available"]],
+                     "minutes": max(1, round(runner.request_seconds(c) / 60)),
+                     "taken": "" if admin else taken(runner, c["kind"], c["id"])} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"]}
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
@@ -772,6 +786,8 @@ async def post_request(request):
                  and c["id"] == body.get("id")), None)
     if pick is None:
         raise web.HTTPNotFound(text=said["gone"])
+    if not admin and (why := taken(runner, pick["kind"], pick["id"])):
+        raise web.HTTPConflict(text=said["already_queued" if why == "queued" else "already_playing"])
     yours = sum(r["ticket"] == ticket for r in runner.requests)
     if admin:
         if len(runner.requests) >= MAX_QUEUE:  # still a ceiling, however many you add

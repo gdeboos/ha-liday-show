@@ -23,7 +23,7 @@ async def client(aiohttp_client, tmp_path, monkeypatch):
     c = await aiohttp_client(app)
     st = app[server.STORAGE]
     st.save_devices([{"id": "a", "ip": "", "segments": 1}])
-    for sid, frames in (("party", 400), ("quiet", 400), ("hidden", 4)):
+    for sid, frames in (("party", 400), ("quiet", 400), ("hidden", 4), ("carols", 400), ("extra", 400)):
         st.save_show(sid, {"name": sid.title(), "tracks": []})
         st.save_baked(sid, baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * frames))
     settings = st.load_settings()
@@ -91,15 +91,15 @@ async def test_the_public_port_has_nothing_of_the_editor(client):
 
 
 async def test_one_request_per_phone_and_a_full_queue(client):
-    await client.put("/api/public", json={"on": True, "shows": ["party", "quiet"], "per_phone": 1, "queue": 2})
+    await client.put("/api/public", json={"on": True, "shows": ["party", "quiet", "extra"], "per_phone": 1, "queue": 2})
     runner = client.app[server.RUNNER]
-    await runner.play("party")  # something's on, so requests wait
+    await runner.play("carols")  # something's on, so requests wait
     status, st, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
     assert status == 200 and st["mine"][0]["place"] == 1 and 5 <= st["mine"][0]["wait"] <= 10
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
     assert status == 409 and "pick another show once yours starts" in text
     await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
-    status, text, _ = await _visitor(client, "/api/request", {"ticket": "c" * 20, "kind": "show", "id": "party"})
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": "c" * 20, "kind": "show", "id": "extra"})
     assert status == 409 and "queue is full" in text
     view = await (await client.get("/api/public")).json()
     assert [w["name"] for w in view["waiting"]] == ["Quiet", "Party"]
@@ -269,13 +269,14 @@ async def test_your_own_wifi_and_the_switch_skip_the_location_check(client):
     assert status == 200
     # With no home location it can't be checked, so internet visitors are refused; the tab says so.
     client.app[server.SCHEDULER].where = lambda: (None, None)
-    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "nearby": True})
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"},
+                                                                {"kind": "show", "id": "quiet"}], "nearby": True})
     view = await (await client.get("/api/public")).json()
     assert view["home"] is None
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party",
                                                               "lat": 51.5, "lon": -0.12}, headers=FAR)
     assert status == 403 and "can't be started from here" in text
-    status, _, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "quiet"})
     assert status == 200  # your own Wi-Fi still works
 
 
@@ -562,7 +563,8 @@ def test_words_keep_only_your_own_changes():
 
 
 async def test_visitors_get_your_words_and_the_server_uses_them(client):
-    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}], "per_phone": 1,
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"},
+                                                                {"kind": "show", "id": "carols"}], "per_phone": 1,
                                           "words": {"start": "Go!", "one_waiting": "Patience, one at a time."},
                                           "look": {"show_length": False, "warning": "accept"}})
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
@@ -571,7 +573,7 @@ async def test_visitors_get_your_words_and_the_server_uses_them(client):
     runner = client.app[server.RUNNER]
     await runner.play("quiet")
     await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
-    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "carols"})
     assert status == 409 and text == "Patience, one at a time."
     view = await (await client.get("/api/public")).json()
     assert view["words"] == {"start": "Go!", "one_waiting": "Patience, one at a time."}
@@ -954,7 +956,7 @@ async def test_visitors_see_the_whole_queue_by_name_only(client):
     await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"},
                                                                 {"kind": "show", "id": "quiet"}], "per_phone": 1})
     runner = client.app[server.RUNNER]
-    await runner.play("party")  # something's on, so requests wait
+    await runner.play("carols")  # something's on, so requests wait
     await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
     await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
@@ -962,7 +964,30 @@ async def test_visitors_see_the_whole_queue_by_name_only(client):
     assert (st["queue"][0]["kind"], st["queue"][0]["ref"]) == ("show", "quiet")
     assert "id" in st["queue"][0] and "id" not in st["queue"][1]
     assert T2 not in str(st) and "ticket" not in str(st["queue"])
-    assert st["now"]["name"] == "Party" and 0 <= st["now"]["position"] <= st["now"]["duration"] == 10
+    assert st["now"]["name"] == "Carols" and 0 <= st["now"]["position"] <= st["now"]["duration"] == 10
     _, st, _ = await _visitor(client, "/api/state")  # no ticket: nothing is anyone's
     assert [q["yours"] for q in st["queue"]] == [False, False]
+    await runner.stop()
+
+
+async def test_the_same_show_cant_be_queued_twice(client):
+    await client.put("/api/public", json={"on": True, "per_phone": 5, "admin_pin": "8642",
+                                          "items": [{"kind": "show", "id": "party"}, {"kind": "show", "id": "quiet"},
+                                                    {"kind": "show", "id": "carols"}]})
+    runner = client.app[server.RUNNER]
+    await runner.play("carols")  # on now, from the editor
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "carols"})
+    assert status == 409 and "playing now" in text
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    assert status == 200
+    # Already waiting, whoever picked it.
+    for ticket in (T1, T2):
+        status, text, _ = await _visitor(client, "/api/request", {"ticket": ticket, "kind": "show", "id": "party"})
+        assert status == 409 and "already in the queue" in text
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T2}")
+    assert {c["id"]: c["taken"] for c in st["choices"]} == {"party": "queued", "quiet": "", "carols": "playing"}
+    # Your own phone, with the admin PIN, can still add it.
+    me = await _unlock(client)
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=me)
+    assert status == 200
     await runner.stop()

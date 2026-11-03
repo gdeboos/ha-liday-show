@@ -890,15 +890,18 @@ export function start() {
       if (art) row.append(art);
       const text = el("div", "pp-text");
       text.append(el("div", "pp-name", c.name));
-      const status = c.name === nowName ? say_(w, "row_playing") : queued.has(`${c.kind}:${c.id}`) ? say_(w, "row_queued") : "";
+      // Shows already waiting or on now can't be picked again; their button says so instead.
+      const status = c.taken ? "" : c.name === nowName ? say_(w, "row_playing")
+        : queued.has(`${c.kind}:${c.id}`) ? say_(w, "row_queued") : "";
       const detail = [c.detail, status].filter(Boolean).join(" · ");
       if (detail) text.append(el("div", "pp-hint", detail));
       row.append(text);
       if (startable) {
-        const b = el("button", "primary", say_(w, word));
+        const label = c.taken === "queued" ? "queued_btn" : c.taken === "playing" ? "playing_btn" : word;
+        const b = el("button", c.taken ? "pp-taken" : "primary", say_(w, label));
         b.type = "button";
-        b.disabled = !!view.block || busy;
-        b.setAttribute("aria-label", `${say_(w, word).replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
+        b.disabled = !!view.block || busy || !!c.taken;
+        b.setAttribute("aria-label", `${say_(w, label).replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
         b.addEventListener("click", () => send("api/request", { kind: c.kind, id: c.id }));
         row.append(b);
       }

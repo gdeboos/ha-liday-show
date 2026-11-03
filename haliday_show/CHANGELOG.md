@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.327
+
+- **The same show can't be queued twice.** Once a show is waiting in the queue, or playing now, visitors can't pick it again until it's played: its button says **✓ Queued** or **♪ On now** instead of **+ Queue**. Your phone with the admin PIN can still add it. The new words are on the **Words** tab.
+
 ## 0.2.326
 
 - **Up next is easier to read**: each pick shows its show's cover art and its full name (up to two lines), with its place and when it starts underneath. Your own picks have a soft highlight instead of a red border.

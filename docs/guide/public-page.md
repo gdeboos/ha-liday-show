@@ -260,6 +260,9 @@ What visitors get:
 - **The music** plays on the show's **Show speaker** (or your default one), as it does for playlists.
   A show with no speaker plays its lights only, unless the
   [Show player](play-it.md#music-with-no-speaker-the-show-player) is open.
+- **No repeats:** a show (or playlist) that's already waiting in the queue, or playing now, can't be
+  picked again until it's played. Its button says **✓ Queued** or **♪ On now** instead. (Your own phone
+  with the [Admin PIN](#admin-pin) can still add it.)
 - Visitors can't stop or skip anyone else's show.
 
 Keeping it fair:

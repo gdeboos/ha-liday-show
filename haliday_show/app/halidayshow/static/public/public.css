@@ -187,3 +187,6 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-group-name { margin: 10px 4px 2px; font-size: .8125em; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: var(--muted); }
 #pp-choices .pp-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+/* A show already waiting or on now: a quiet label where its button was, so it isn't picked twice. */
+#pp-choices .pp-row button.pp-taken:disabled { opacity: 1; background: transparent; color: var(--muted);
+  border-color: var(--line); cursor: default; }
