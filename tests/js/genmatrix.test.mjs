@@ -67,3 +67,17 @@ test("which lanes take which effects", () => {
   assert.ok(laneTakes("chase", EFFECTS.chase, "matrix") && laneTakes("fire2d", EFFECTS.fire2d, "light"));
   assert.ok(laneTakes("sweep", EFFECTS.sweep, "group"));
 });
+
+test("a clip pasted or copied onto another lane", async () => {
+  const { clipForLane } = await import("../../haliday_show/app/halidayshow/static/js/matrix.js");
+  const chase = { effect: "chase", start: 0, end: 4 };
+  assert.equal(clipForLane(chase, EFFECTS.chase, { lane: "matrix", tree: true }).runs, "columns"); // strip → tree
+  assert.equal(clipForLane(chase, EFFECTS.chase, { lane: "matrix", tree: true, fromMatrix: true }).runs, undefined); // keeps its Runs
+  assert.equal(clipForLane({ ...chase, runs: "strip" }, EFFECTS.chase, { lane: "matrix", tree: true }).runs, "strip");
+  assert.equal(clipForLane(chase, EFFECTS.chase, { lane: "matrix" }).runs, undefined); // a panel keeps rows
+  assert.equal(clipForLane(chase, EFFECTS.chase, { lane: "house" }), null);
+  const plasma = { effect: "plasma", start: 0, end: 4 };
+  assert.equal(clipForLane(plasma, EFFECTS.plasma, { lane: "light" }), null); // not onto a strip
+  assert.deepEqual(clipForLane(plasma, EFFECTS.plasma, { lane: "matrix", tree: true }), plasma);
+  assert.ok(clipForLane(plasma, EFFECTS.plasma, { lane: "group" }));
+});

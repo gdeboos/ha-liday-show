@@ -22,7 +22,7 @@ import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
 import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb } from "./house.js";
-import { MAX_MATRIX, ON_A_MATRIX, RUNS, gridOf, laneTakes, matrixTestFrame, runsDownTree, toWire } from "./matrix.js";
+import { MAX_MATRIX, ON_A_MATRIX, RUNS, clipForLane, gridOf, laneTakes, matrixTestFrame, runsDownTree, toWire } from "./matrix.js";
 import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
 import { forgetPicture, getPicture, keepPicture, pictureList, shrinkPicture, toBase64 } from "./pictures.js";
@@ -2128,6 +2128,9 @@ const laneKind = (i) => (isGroup(i) ? "group" : isHouse(i) ? "house" : gridOf(pl
 const fitsTrack = (effect, i) => laneTakes(effect, EFFECTS[effect], laneKind(i));
 const isTree = (id) => house.styles[id]?.style === "tree";
 const onTree = (i) => isTree(app.show.tracks[i]?.device);
+// A copy of a clip from track `from` as it goes on track `to`, or null if that lane can't take it.
+const clipOnto = (c, from, to) => clipForLane(clone(c), EFFECTS[c.effect], { lane: laneKind(to), tree: onTree(to),
+  fromMatrix: laneKind(from) === "matrix" });
 // The group lanes as they play, for composeLight; pass the house positions when there are any.
 // Made once per animation frame or so, so the lights in a preview share each group's strip.
 const plansMemo = { at: -Infinity, pos: null, plans: [] };
@@ -3414,19 +3417,13 @@ function paste() {
   if (!sel) { status("Select the light to paste onto", "hint"); return; }
   let shift = 0;
   if (sel.track === cb.track && !cb.whole) shift = app.time - Math.min(...cb.clips.map((c) => c.start));
-  const fits = cb.clips.filter((c) => fitsTrack(c.effect, sel.track));
+  const fits = cb.clips.map((c) => clipOnto(c, cb.track, sel.track)).filter(Boolean);
   if (!fits.length) {
     status(isHouse(sel.track) ? "Only House effects can go on the House lane"
       : "House effects can only go on the House lane (Plasma and Spiral can go on a matrix too)", "hint");
     return;
   }
-  const fromStrip = !gridOf(playingDev(app.show.tracks[cb.track] || {}));
-  const pasted = fits.map((c) => {
-    const p = { ...clone(c), start: c.start + shift, end: c.end + shift };
-    // From a strip onto a mega-tree, an effect runs down its strings; from a matrix it keeps its Runs.
-    if (fromStrip && onTree(sel.track) && runsDownTree(EFFECTS[p.effect]) && !p.runs) p.runs = "columns";
-    return p;
-  }).filter((c) => !unfit(c, sel.track));
+  const pasted = fits.map((c) => ({ ...c, start: c.start + shift, end: c.end + shift })).filter((c) => !unfit(c, sel.track));
   const left = fits.length - pasted.length;
   if (!pasted.length) { status(`${left === 1 ? "That effect won't" : "Those effects won't"} work on ${trackName(sel.track)}`, "hint"); return; }
   app.show.tracks[sel.track].clips.push(...pasted);
@@ -3440,10 +3437,10 @@ function copyClipsTo(clips, from, targets, replace = false) {
   if (!targets.length) { status("There are no other lights", "hint"); return; }
   let left = 0;
   for (const t of targets) {
-    const fits = clips.filter((c) => !unfit(c, t));
+    const fits = clips.map((c) => clipOnto(c, from, t)).filter((c) => c && !unfit(c, t));
     left += clips.length - fits.length;
     if (replace) app.show.tracks[t].clips = [];
-    app.show.tracks[t].clips.push(...fits.map(clone));
+    app.show.tracks[t].clips.push(...fits);
   }
   status(`Copied ${clips.length} effect${clips.length > 1 ? "s" : ""} from ${trackName(from)} to `
     + (targets.length === 1 ? trackName(targets[0]) : `${targets.length} lights`)
@@ -6732,7 +6729,8 @@ function imParts(t, m, p) {
 // house photo, with the song in this browser. Nothing is saved and no lights are sent anything.
 const imPrev = { on: false, audio: null, start: 0, raf: 0, tracks: null };
 // Effects this copy knows, on the lane they belong on: what an import keeps, and so what the preview plays.
-const imFits = (fx, house) => !!EFFECTS[fx] && !!EFFECTS[fx].house === house;
+// Plasma and Spiral may sit on a light lane (a matrix's) too.
+const imFits = (fx, house) => !!EFFECTS[fx] && (!!EFFECTS[fx].house === house || (!house && ON_A_MATRIX.includes(fx)));
 
 function imPreviewReady() {
   housePositionsAll(); // brings house.devices up to date

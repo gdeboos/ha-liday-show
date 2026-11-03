@@ -5,7 +5,7 @@
 // under the ruler, song and beat lane, which stay put.
 
 import { EFFECTS, HOUSE, isGroupTrack, renderTrack } from "./effects.js";
-import { gridOf, gridTiles } from "./matrix.js";
+import { gridOf, gridTiles, laneTakes } from "./matrix.js";
 import { asShown } from "./lightspeed.js";
 import { countText, rangeText } from "./lightwords.js";
 
@@ -667,13 +667,14 @@ export class Timeline {
       c.end = c.start + len;
       const ti = this.trackAt(y);
       // A clip can move to another light or group lane, but not between the House lane and the
-      // lights, and a House effect only between group lanes.
+      // lights, and a House effect only between group lanes (and matrices, for Plasma and Spiral).
       const kind = (k) => {
         const dv = this.app.show.tracks[k].device;
-        return dv === HOUSE ? "house" : isGroupTrack(dv) ? "group" : "light";
+        return dv === HOUSE ? "house" : isGroupTrack(dv) ? "group" : gridOf(this.app.devices[dv]) ? "matrix" : "light";
       };
-      const house = !!EFFECTS[c.effect]?.house;
-      const fits = (k) => kind(k) === kind(d.track) || (!house && kind(k) !== "house" && kind(d.track) !== "house");
+      const fx = EFFECTS[c.effect], house = !!fx?.house;
+      const fits = (k) => (house ? (kind(k) === "house") === (kind(d.track) === "house") && laneTakes(c.effect, fx, kind(k))
+        : kind(k) !== "house" && kind(d.track) !== "house");
       if (ti >= 0 && ti !== d.track && fits(ti)) {
         const from = this.app.show.tracks[d.track].clips;
         from.splice(from.indexOf(c), 1);

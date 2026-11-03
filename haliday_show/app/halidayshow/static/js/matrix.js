@@ -105,3 +105,10 @@ export function laneTakes(key, fx, lane) {
 
 // A strip effect on a mega-tree runs down its strings (its columns) unless set otherwise.
 export const runsDownTree = (fx) => !!fx && !fx.house && !fx.grid;
+
+// A clip pasted or copied onto a lane: null if the lane can't take its effect. From a strip onto a
+// mega-tree, a strip effect runs down the strings, as one added there does; from a matrix it keeps its Runs.
+export function clipForLane(clip, fx, { lane, tree = false, fromMatrix = false }) {
+  if (!laneTakes(clip.effect, fx, lane)) return null;
+  return tree && !fromMatrix && runsDownTree(fx) && !clip.runs ? { ...clip, runs: "columns" } : clip;
+}
