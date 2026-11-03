@@ -19,6 +19,12 @@ you've turned it on. HA-liday Show opens on **Library**:
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
 page you last had open. Below, "the House tab" and so on mean that page.
 
+Whenever something is on your lights, a green bar under the tabs says what (**Show on now:**,
+**Playlist on now:**, **Scene on now:**), however it started: the schedule, an automation, a visitor,
+or you. It shows how far through a show is, and has **Restart** (the show, or the playlist from its
+first show) and **Stop**; a scene has **Turn off**. When a show is on over a scene, it says the scene
+comes back after. The bar stays out of the way while you play a show from its own editor.
+
 The four editors open from the Library: **Edit** on a show takes you to the **Show editor** (the timeline,
 previews and effect settings), **Edit** on a scene to the **Scene editor** (see [Scenes](play-it.md#scenes)),
 **Edit** on a song to the **Music editor** (cutting, shortening, joining and detecting) and **Edit** on a

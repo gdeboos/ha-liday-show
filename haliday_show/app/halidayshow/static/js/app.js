@@ -62,6 +62,7 @@ import { addToMore, moreMenu, withMore } from "./rowmenu.js";
 import { askText, askYes } from "./ask.js";
 import { movePart } from "./partorder.js";
 import { glyphIcon, watchButtons } from "./glyphs.js";
+import { KIND_WORDS, nowOn } from "./nowbar.js";
 import { browse, folderButton, pathNav } from "./folderbrowse.js";
 import {
   addFolder, childrenOf, countIn, deleteFolder, flatTree, folderOf, fromSongFolders, moveFolder, moveItems, moveProblem,
@@ -9258,6 +9259,54 @@ async function syncLights() {
 // Browser playback plays the region (when set) instead of the whole show.
 const playEnd = () => (app.region && !app.remote ? Math.min(app.region.end, app.duration()) : app.duration());
 
+// The bar under the top bar: what's on your lights, whatever started it (schedule, automation, a
+// visitor, a scene), with Stop and Restart. Asked every few seconds; the time ticks on in between.
+const nowBar = { on: null, at: 0, busy: false };
+async function refreshNowBar() {
+  try { nowBar.on = nowOn(await api("api/player")); nowBar.at = performance.now(); } catch { return; }
+  drawNowBar();
+}
+
+function drawNowBar() {
+  const on = nowBar.on, bar = $("now-bar");
+  // The Show editor's own Play has its transport; the bar is for everything else.
+  const editorsOwn = app.playing && on?.kind === "show" && on.id === app.showId;
+  bar.hidden = !on || editorsOwn;
+  if (bar.hidden) return;
+  bar.querySelector(".now-kind").textContent = `${KIND_WORDS[on.kind]} on now:`;
+  bar.querySelector(".now-title").textContent = on.title;
+  bar.querySelector(".now-detail").textContent = [on.detail, on.scene ? `${on.scene} comes back after` : ""].filter(Boolean).join(" · ");
+  const pos = on.duration ? Math.min(on.position + (performance.now() - nowBar.at) / 1000, on.duration) : 0;
+  const prog = bar.querySelector(".now-progress");
+  prog.hidden = !on.duration;
+  prog.firstElementChild.style.width = on.duration ? `${(pos / on.duration) * 100}%` : "0";
+  bar.querySelector(".now-time").textContent = on.duration ? `${fmtLength(pos)} / ${fmtLength(on.duration)}` : "";
+  const box = bar.querySelector(".now-actions");
+  const key = on.actions.map((a) => a.act).join() + on.kind + on.id;
+  if (box.dataset.key === key) return;
+  box.dataset.key = key;
+  box.replaceChildren(...on.actions.map((a) => {
+    const b = button(a.act === "restart" ? `⏮ ${a.label}` : `■ ${a.label}`, () => nowAction(a.act), a.act === "restart" ? "ghost small" : "small");
+    b.setAttribute("aria-label", `${a.label} ${on.title}`);
+    return b;
+  }));
+}
+
+async function nowAction(act) {
+  const on = nowBar.on;
+  if (!on || nowBar.busy) return;
+  nowBar.busy = true;
+  try {
+    if (act === "stop") await api("api/player/stop", { method: "POST", json: {} });
+    else if (act === "stop-scene") await api(`api/house-scenes/${encodeURIComponent(on.id)}/stop`, { method: "POST" });
+    else if (on.kind === "playlist") await api(`api/playlists/${encodeURIComponent(on.id)}/play`, { method: "POST" });
+    else await api("api/player/play", { method: "POST", json: { show: on.id, position: 0, ...(on.mediaPlayer ? { media_player: on.mediaPlayer } : {}) } });
+    status(act === "restart" ? `${on.title} started again` : `${on.title} stopped`);
+  } catch (e) { status(`Couldn't do that: ${e.message}`, true); }
+  nowBar.busy = false;
+  await refreshNowBar();
+}
+
 function renderRegion() {
   const r = app.region;
   $("region-wrap").hidden = !r;
@@ -11009,6 +11058,9 @@ async function init() {
     // A fresh install opens the setup guide, once.
     if (!app.deviceList.length && !shows.length && !prefs.get("wizard.done", false)) openWizard();
     tellRetired();
+    refreshNowBar();
+    setInterval(() => { if (!document.hidden) refreshNowBar(); }, 3000);
+    setInterval(drawNowBar, 500);
   } catch (e) {
     status(`Couldn't reach HA-liday Show: ${e.message}`, true);
     // Said where the loading was, with a way to try again, rather than leaving the page looking empty.

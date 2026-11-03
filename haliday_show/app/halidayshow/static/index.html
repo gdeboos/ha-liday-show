@@ -74,6 +74,14 @@
   <button type="button" id="btn-help" class="help-btn ghost" aria-expanded="false" aria-controls="help-drawer"
     title="Tips for this page, and the full guide"><span class="help-q" aria-hidden="true">?</span><span>Help</span></button>
 </header>
+<!-- What's on your lights right now, whatever started it, with Stop and Restart (nowbar.js). -->
+<div id="now-bar" class="now-bar" role="status" aria-live="polite" hidden>
+  <span class="now-dot" aria-hidden="true"></span>
+  <div class="now-text"><span class="now-kind"></span> <b class="now-title"></b> <span class="hint now-detail"></span></div>
+  <div class="now-progress" hidden><span></span></div>
+  <span class="hint now-time"></span>
+  <div class="now-actions group"></div>
+</div>
 <!-- Help for the page you're on (helpui.js, words in help.js). It sits beside the page, which stays usable. -->
 <aside id="help-drawer" class="help-drawer" role="dialog" aria-labelledby="help-title" hidden>
   <div class="help-head">

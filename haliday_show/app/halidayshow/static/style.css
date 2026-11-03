@@ -1421,3 +1421,17 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .sc-wled { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; flex-basis: 100%; }
 .sc-wled select { max-width: 160px; }
 .sc-wled .hint { flex-basis: 100%; font-size: 11px; }
+
+/* What's on your lights right now (nowbar.js). */
+.now-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 16px;
+  background: color-mix(in srgb, var(--ok) 12%, var(--panel)); border-bottom: 1px solid color-mix(in srgb, var(--ok) 40%, var(--line)); }
+.now-bar[hidden] { display: none; }
+.now-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); flex: none; animation: now-pulse 1.6s ease-in-out infinite; }
+@keyframes now-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .now-dot { animation: none; } }
+.now-text { flex: 1 1 14em; min-width: 0; overflow-wrap: anywhere; }
+.now-kind { color: var(--muted); }
+.now-progress { flex: 0 1 160px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.now-progress > span { display: block; height: 100%; background: var(--ok); }
+.now-time { font-variant-numeric: tabular-nums; }
+.now-actions { display: flex; gap: 6px; }
