@@ -65,6 +65,11 @@ The visitors' page offers no visible way in: five quick taps on the title open t
 obscurity on top of the PIN, not instead of it. The admin PIN is shown in the editor like the
 listening PIN, and the editor warns when the two are the same.
 
+## Admin controls (0.2.332)
+
+`POST /api/admin/skip`, `/api/admin/stop`, `/api/admin/remove` need the code and a valid `X-Admin` pass
+(`_admin_only`), else 403. For an admin phone the state gives every queued pick's id (never tickets).
+
 ## Installing as an app (0.2.330)
 
 Two more routes: `GET /manifest.webmanifest?c=<code>` (404 without the right code, since it carries the

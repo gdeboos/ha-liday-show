@@ -1028,3 +1028,31 @@ async def test_the_page_can_be_installed_as_an_app_with_its_code(client):
     assert status == 200 and headers["Content-Type"] == "image/png" and png[:8] == b"\x89PNG\r\n\x1a\n"
     status, _, _ = await _visitor(client, "/icon.png?s=7", code=False)
     assert status == 404
+
+
+async def test_your_admin_phone_can_skip_stop_and_remove(client):
+    await client.put("/api/public", json={"on": True, "per_phone": 3, "admin_pin": "8642",
+                                          "items": [{"kind": "show", "id": s} for s in ("party", "quiet", "extra")]})
+    runner = client.app[server.RUNNER]
+    for path in ("/api/admin/skip", "/api/admin/stop", "/api/admin/remove"):
+        status, _, _ = await _visitor(client, path, {"ticket": T1})
+        assert status == 403  # not unlocked
+    await runner.play("carols")  # something's on, so picks wait
+    await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
+    await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "quiet"})
+    me = await _unlock(client)
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers=me)
+    assert all("id" in q for q in st["queue"])  # admin sees ids to remove
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert not any("id" in q for q in st["queue"])  # visitors don't
+    rid = runner.requests[1]["id"]
+    status, st, _ = await _visitor(client, "/api/admin/remove", {"ticket": T1, "id": rid}, headers=me)
+    assert status == 200 and [q["name"] for q in st["queue"]] == ["Party"]
+    await runner.stop()
+    await _until(lambda: runner.public_now is not None)  # Party starts
+    status, _, _ = await _visitor(client, "/api/admin/skip", {"ticket": T1}, headers=me)
+    assert status == 200
+    await _until(lambda: runner.public_now is None and not runner.player.playing)
+    await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "quiet"})
+    status, st, _ = await _visitor(client, "/api/admin/stop", {"ticket": T1}, headers=me)
+    assert status == 200 and runner.requests == []

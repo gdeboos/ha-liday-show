@@ -524,7 +524,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         # Everyone's waiting picks, by show name only; a phone's own carry their id so it can cancel them.
         "queue": [{"name": r["name"], "kind": r["kind"], "ref": r["ref"], "wait": wait,
                    "yours": bool(ticket) and r["ticket"] == ticket,
-                   **({"id": r["id"]} if ticket and r["ticket"] == ticket else {})}
+                   # Your admin phone can remove anyone's pick, so it gets every id (never tickets).
+                   **({"id": r["id"]} if admin or (ticket and r["ticket"] == ticket) else {})}
                   for r, wait in zip(runner.requests, waits)],
         "full": not admin and len(runner.requests) >= p["queue"],
         "per_phone": MAX_QUEUE if admin else p["per_phone"],
@@ -884,6 +885,39 @@ def is_admin(request, p: dict) -> bool:
     return bool(_PASS.match(sent)) and hmac.compare_digest(sent, admin_pass(request.app[STORAGE], p))
 
 
+async def _admin_only(request) -> dict:
+    """The settings, for your unlocked admin phone only (with the code)."""
+    _limit_client(request, "post", MAX_POSTS_PER_CLIENT_MIN)
+    body = await _body(request)
+    p = load(request.app[STORAGE]) or clean(None)
+    if not _code_ok(p, body.get("code")) or not is_admin(request, p):
+        raise web.HTTPForbidden(text=words(p)["locked"])
+    return body
+
+
+async def post_admin_skip(request):
+    """Skip the visitor's pick playing now."""
+    body = await _admin_only(request)
+    await request.app[RUNNER].skip_request()
+    log.info("public page: admin skipped the pick playing")
+    return _no_store(web.json_response(_state(request, body.get("ticket") and _ticket(body["ticket"]), body.get("code"))))
+
+
+async def post_admin_stop(request):
+    """Stop whatever is on, and clear the queue."""
+    body = await _admin_only(request)
+    await request.app[RUNNER].stop()
+    log.info("public page: admin stopped the lights")
+    return _no_store(web.json_response(_state(request, body.get("ticket") and _ticket(body["ticket"]), body.get("code"))))
+
+
+async def post_admin_remove(request):
+    """Take anyone's pick out of the queue."""
+    body = await _admin_only(request)
+    request.app[RUNNER].remove_request(str(body.get("id", "")))
+    return _no_store(web.json_response(_state(request, body.get("ticket") and _ticket(body["ticket"]), body.get("code"))))
+
+
 async def post_admin(request):
     """Unlocks your own phone with the admin PIN. Without one set, there's nothing to unlock."""
     _limit_client(request, "post", MAX_POSTS_PER_CLIENT_MIN)
@@ -1151,6 +1185,9 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
     r.add_post("/api/near", post_near)
     r.add_post("/api/listen", post_listen)
     r.add_post("/api/admin", post_admin)
+    r.add_post("/api/admin/skip", post_admin_skip)
+    r.add_post("/api/admin/stop", post_admin_stop)
+    r.add_post("/api/admin/remove", post_admin_remove)
     r.add_get("/api/listen/now", get_listen_now)
     r.add_get("/listen/song", get_listen_song)
     r.add_get("/listen/silence.wav", get_silence)

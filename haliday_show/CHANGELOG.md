@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.332
+
+- **Admin controls on your phone.** With your phone unlocked by the admin PIN, the card at the top of the visitors' page has **⏭ Skip** (ends a visitor's pick that's playing) and **■ Stop the lights** (stops everything and clears the queue, after asking). **Up next** has **Remove** beside everyone else's picks.
+
 ## 0.2.331
 
 - **The flashing lights warning is remembered.** Once a visitor presses **I understand**, their phone doesn't ask again on later visits, unless you change the warning's words.

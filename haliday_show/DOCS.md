@@ -2017,6 +2017,12 @@ A dashed card then says your phone is in admin mode, and **Close** tucks it away
 - The listening PIN isn't asked for.
 - The limit per phone and **Queue length** don't apply (up to 20 waiting, as a ceiling).
 - You still can't queue a show that's already waiting or playing now.
+
+While a show is on, your admin phone also gets, under what's on:
+
+- **⏭ Skip**: ends a visitor's pick that's playing now; the next one waiting starts as usual.
+- **■ Stop the lights**: stops whatever is on and clears the queue (it asks first).
+- **Remove** beside anyone's pick in **Up next**, to take it out of the queue.
 - The page works even with **Let visitors start shows** off, so you can check everything before you
   open. Other people still see it as closed.
 

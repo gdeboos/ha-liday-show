@@ -575,6 +575,22 @@ class Runner:
     def clear_requests(self):
         self.requests.clear()
 
+    def remove_request(self, request_id: str) -> bool:
+        """Take anyone's pick out of the queue (yours, from the public page as admin)."""
+        before = len(self.requests)
+        self.requests = [r for r in self.requests if r["id"] != request_id]
+        return len(self.requests) < before
+
+    async def skip_request(self) -> bool:
+        """End the visitor's pick that's playing now; the next one waiting starts as usual. Nothing
+        else is stopped (a scene that was waiting comes back if no one else is queued)."""
+        if not self.public_now:
+            return False
+        self._yours += 1  # ends _play_request after this show, rather than going on to its next
+        async with self._lock:
+            await self._stop()
+        return True
+
     async def close(self):
         """On shutdown: stop everything, visitors' requests included."""
         await self.stop()
