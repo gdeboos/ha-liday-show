@@ -135,7 +135,7 @@ def test_settings_are_cleaned():
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "look": public.clean_look(None), "hours": public.DEFAULT_HOURS, "words": {},
-        "listen": False, "listen_pin": "", "admin_pin": "",
+        "listen": False, "listen_pin": "", "admin_pin": "", "repeat_minutes": 15, "phone_wait": 5,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -1056,3 +1056,35 @@ async def test_your_admin_phone_can_skip_stop_and_remove(client):
     await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "quiet"})
     status, st, _ = await _visitor(client, "/api/admin/stop", {"ticket": T1}, headers=me)
     assert status == 200 and runner.requests == []
+
+
+async def test_a_show_rests_after_it_plays_and_so_does_the_phone_that_picked_it(client, monkeypatch):
+    await client.put("/api/public", json={"on": True, "per_phone": 3, "repeat_minutes": 15, "phone_wait": 5,
+                                          "items": [{"kind": "show", "id": s} for s in ("party", "quiet", "extra")]})
+    runner = client.app[server.RUNNER]
+    clock = [1000.0]
+    monkeypatch.setattr(public.time, "monotonic", lambda: clock[0])
+    # T1's pick of Party played and just ended.
+    runner.public_played = [{"kind": "show", "ref": "party", "ticket": T1, "at": 1000.0}]
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
+    assert status == 409 and "played a few minutes ago" in text and "15 minutes" in text
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    assert status == 409 and "pick again in 5 minutes" in text
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert st["wait_left"] == 300
+    assert {c["id"]: c["taken"] for c in st["choices"]}["party"] == "recent"
+    clock[0] += 5 * 60  # five minutes on: T1 can pick again, Party still rests
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    assert status == 200
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
+    assert status == 409
+    clock[0] += 10 * 60
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
+    assert status == 200
+    await runner.stop()
+
+
+def test_the_waits_can_be_turned_off():
+    p = public.clean({"repeat_minutes": 0, "phone_wait": "0"})
+    assert p["repeat_minutes"] == 0 and p["phone_wait"] == 0
+    assert public.clean({"repeat_minutes": 999})["repeat_minutes"] == 120

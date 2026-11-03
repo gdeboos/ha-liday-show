@@ -5937,6 +5937,8 @@ function renderPublicItems() {
   $("pub-add").hidden = !left; // headings can still be added
   $("pub-all-added").hidden = left;
   $("pub-per-phone").value = view.per_phone;
+  $("pub-repeat").value = view.repeat_minutes ?? 15;
+  $("pub-phone-wait").value = view.phone_wait ?? 5;
   drawPublicListen(view);
   $("pub-queue").value = view.queue;
 }
@@ -6160,13 +6162,19 @@ function savePublic() {
     else if (pin) status("A PIN is 4 to 8 numbers. The PIN you had stays until you type one.", "hint");
   }
   if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
+  for (const [id, key] of [["pub-repeat", "repeat_minutes"], ["pub-phone-wait", "phone_wait"]]) {
+    const n = Number($(id).value);
+    if ($(id).value !== "" && Number.isFinite(n)) publicView[key] = Math.max(0, Math.round(n));
+  }
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin } = publicView;
+    const { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin,
+      repeat_minutes, phone_wait } = publicView;
     try {
       const view = await api("api/public", {
-        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin },
+        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin,
+          repeat_minutes, phone_wait },
       });
       if (pubPending === 1) {
         publicView = view;
@@ -6188,6 +6196,8 @@ function wirePublic() {
   $("pub-on").addEventListener("change", () => savePublic());
   $("pub-open").addEventListener("click", () => showView("public"));
   $("pub-per-phone").addEventListener("change", savePublic);
+  $("pub-repeat").addEventListener("change", () => savePublic());
+  $("pub-phone-wait").addEventListener("change", () => savePublic());
   $("pub-listen-card").addEventListener("change", () => savePublic());
   $("pub-listen-pin-on").addEventListener("change", () => {
     $("pub-listen-pin-wrap").hidden = !$("pub-listen-pin-on").checked;
