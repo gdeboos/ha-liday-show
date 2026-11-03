@@ -1407,3 +1407,12 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .show-tile { display: grid; place-items: center; font-weight: 700; font-size: 20px; color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); background: var(--track); }
 .show-pic-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* What visitors can pick: order by ↑ ↓ or dragging the grip; headings group the shows under them. */
+.pub-grip { cursor: grab; color: var(--muted); align-self: center; user-select: none; touch-action: none; }
+.pub-order { display: flex; gap: 4px; align-self: center; }
+.pub-item.pub-heading { background: var(--track); }
+.pub-item.pub-heading input { font-weight: 700; width: min(100%, 320px); }
+.pub-item.pub-under { margin-left: 20px; }
+.pub-item.dragging { opacity: .5; }
+@media (max-width: 720px) { .pub-item.pub-under { margin-left: 10px; } }

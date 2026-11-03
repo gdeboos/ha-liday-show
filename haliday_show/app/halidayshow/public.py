@@ -80,7 +80,11 @@ def _count(value, default: int, top: int) -> int:
 
 
 def _item(x) -> dict | None:
-    """One show or playlist on the public page: {"kind", "id", "from", "to"} with optional dates."""
+    """One show or playlist on the public page: {"kind", "id", "from", "to"} with optional dates, or a
+    heading {"kind": "heading", "name"} that the shows after it, up to the next one, are grouped under."""
+    if isinstance(x, dict) and x.get("kind") == "heading":
+        name = " ".join(str(x.get("name") or "").split())[:60]
+        return {"kind": "heading", "name": name} if name else None
     if not isinstance(x, dict) or x.get("kind") not in ("show", "playlist"):
         return None
     iid, frm, to = str(x.get("id", "")), str(x.get("from") or ""), str(x.get("to") or "")
@@ -130,8 +134,8 @@ def clean(p) -> dict:
         raw = [{"kind": "show", "id": x} for x in old("shows")] + [{"kind": "playlist", "id": x} for x in old("playlists")]
     items, seen = [], set()
     for x in raw[:MAX_ITEMS]:
-        if (it := _item(x)) and (it["kind"], it["id"]) not in seen:
-            seen.add((it["kind"], it["id"]))
+        if (it := _item(x)) and (it["kind"] == "heading" or (it["kind"], it["id"]) not in seen):
+            seen.add((it["kind"], it.get("id")))
             items.append(it)
     code = str(p.get("code") or "")
     address = str(p.get("address") or "").strip().rstrip("/")
@@ -386,8 +390,11 @@ def cover_of(storage: Storage, pick: dict) -> tuple[str, bytes] | None:
 def _choices(storage: Storage, today: date) -> list[dict]:
     p = load(storage) or clean(None)
     by_id = {pl["id"]: pl for pl in playlists.load(storage)}
-    out = []
+    out, group = [], ""
     for it in p["items"]:
+        if it["kind"] == "heading":
+            group = it["name"]
+            continue
         if it["kind"] == "show":
             show = storage.load_show(it["id"])
             if not _offered(storage, it["id"], show):
@@ -401,6 +408,7 @@ def _choices(storage: Storage, today: date) -> list[dict]:
                 continue
             pick = {"kind": "playlist", "id": it["id"], "name": pl["name"], "shows": shows, "gap": pl["gap"]}
             pick["colours"] = _tile_colours(storage.load_show(shows[0]))
+        pick["group"] = group  # the heading it's under ("" before any)
         # A number that changes with the cover, so pages fetch a new one (0: none).
         song = _cover_file(storage, pick["shows"])
         try:
@@ -445,11 +453,12 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                 mine.append({"id": r["id"], "name": r["name"], "place": place, "wait": wait})
     return {
         "open": p["on"],
-        "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"], "cover": c["cover"] if look["covers"] else 0,
+        "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"], "group": c["group"],
+                     "cover": c["cover"] if look["covers"] else 0,
                      "colours": c["colours"] if look["covers"] else [],
                      "minutes": max(1, round(runner.request_seconds(c) / 60))} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
-        "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"]}
+        "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"]}
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
         "now": {"name": st["name"], "visitor": runner.public_now is not None} if st["playing"] else None,
         "waiting": len(runner.requests),
