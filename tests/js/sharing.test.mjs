@@ -178,3 +178,35 @@ test("a share file can't sneak odd values into a clip's picture", () => {
     { effect: "picture", start: 1, end: 2, picture: { evil: true } }, { effect: "picture", start: 2, end: 3, picture: "I1" }] }];
   assert.deepEqual(withPictureIds(tracks, { I1: "pA" })[0].clips.map((c) => c.picture), ["", "", "pA"]);
 });
+
+test("a shared show says its season and which lights are seasonal props, by name", async () => {
+  const { makeShare, readShare, myLights, suggest, score, shareSeason } = await import("../../haliday_show/app/halidayshow/static/js/sharing.js");
+  const seasons = [{ id: "halloween", name: "Halloween" }, { id: "xmas", name: "Christmas" }];
+  const lights = [
+    { id: "ghost", name: "Ghost", kind: "wled", segments: 30, seasons: ["halloween"] },
+    { id: "eaves", name: "Eaves", kind: "wled", segments: 30 },
+  ];
+  const show = { name: "Spooky", season: "halloween", duration: 10, tracks: [
+    { device: "ghost", clips: [{ effect: "solid", start: 0, end: 5 }] }, { device: "eaves", clips: [{ effect: "solid", start: 0, end: 5 }] }] };
+  const share = readShare(JSON.stringify(makeShare(show, lights, { seasons })));
+  assert.equal(share.season, "Halloween");
+  assert.deepEqual(share.lights.find((l) => l.name === "Ghost").seasons, ["Halloween"]);
+  assert.equal(share.lights.find((l) => l.name === "Eaves").seasons, undefined);
+  // On import: their Halloween props go to your Halloween props, their all-year lights to yours.
+  const mine = myLights([
+    { id: "pumpkin", name: "Porch", kind: "wled", segments: 30, seasons: ["h"] },
+    { id: "roof", name: "Roof", kind: "wled", segments: 30 },
+  ], { seasons: [{ id: "h", name: "halloween" }] });
+  const plan = suggest(share.lights, mine);
+  assert.equal(plan[share.lights.find((l) => l.name === "Ghost").key].light, "pumpkin");
+  assert.equal(plan[share.lights.find((l) => l.name === "Eaves").key].light, "roof");
+  assert.ok(score(share.lights[0], mine[0]).why.some((w) => /Halloween/i.test(w)) || score(share.lights[1], mine[0]).why.some((w) => /Halloween/i.test(w)));
+  // The show's season becomes yours of that name, or Any season (with a note) if you haven't one.
+  assert.deepEqual(shareSeason(share, [{ id: "h", name: "HALLOWEEN" }]), { id: "h", note: "" });
+  assert.match(shareSeason(share, []).note, /Halloween/);
+  assert.equal(shareSeason(share, []).id, null);
+  assert.deepEqual(shareSeason({ ...share, season: undefined }, seasons), { id: null, note: "" });
+  // Old files, with no seasons in them, import as before.
+  const old = readShare(JSON.stringify({ ...makeShare(show, lights), season: undefined }));
+  assert.equal(old.season, undefined);
+});

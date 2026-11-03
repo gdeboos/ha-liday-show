@@ -47,7 +47,7 @@ import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, inSeasonFilter, length as fmtLength, showRows, showThumb, songName, tileBackground } from "./showlist.js";
 import {
-  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, suggest, suggestSong, withPictureIds,
+  buildTracks, lengthNote, makeShare, matchCount, myLights, partPlan, readShare, shareFileName, shareLevels, shareSeason, suggest, suggestSong, withPictureIds,
 } from "./sharing.js";
 import {
   BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
@@ -6438,7 +6438,7 @@ const sharedPictureOf = (id) => {
   const pic = getPicture(id);
   return pic ? { name: pic.name, w: pic.w, h: pic.h, frames: pic.frames.map(toBase64), delays: pic.delays } : null;
 };
-const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll(), pictureOf: sharedPictureOf });
+const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll(), pictureOf: sharedPictureOf, seasons: app.seasons || [] });
 
 function downloadText(name, text) {
   const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
@@ -6611,7 +6611,7 @@ function imLights() {
     const detail = document.createElement("span");
     detail.className = "hint";
     detail.textContent = [t.type.label, t.segments === 1 ? "one colour" : plural(t.segments, "segment"),
-      t.parts.length ? plural(t.parts.length, "part") : ""]
+      t.parts.length ? plural(t.parts.length, "part") : "", t.seasons?.length ? `${t.seasons.join(" and ")} prop` : ""]
       .filter(Boolean).join(" · ");
     text.append(name, detail);
     theirs.append(miniMap(share.lights, t, `Where ${t.name} is on their house`), text);
@@ -6790,8 +6790,10 @@ async function imSubmit(e) {
   share.tracks = withPictureIds(share.tracks, ids);
   await openShow(null);
   const { tracks, dropped } = buildTracks(share, imp.plan, imp.mine, imFits);
+  const season = shareSeason(share, app.seasons || []);
   Object.assign(app.show, { name, audio: imp.song ? JSON.parse(imp.song) : null, duration: share.duration,
-    beats: share.beats, bars: share.bars, sections: share.sections, tracks, ...shareLevels(share, imp.plan) });
+    beats: share.beats, bars: share.bars, sections: share.sections, tracks, ...shareLevels(share, imp.plan),
+    ...(season.id ? { season: season.id } : {}) });
   if (share.tempo !== null) app.show.tempo = share.tempo;
   ensureTracks();
   $("show-name").value = name;
@@ -6804,6 +6806,7 @@ async function imSubmit(e) {
     status(`${name} imported`, "saved", "show");
     // Effects from a newer HA-liday Show than this one.
     if (dropped) status(`${plural(dropped, "effect")} in ${name} need a newer HA-liday Show, so they were left out. Update, then import it again to get them`, "hint");
+    else if (season.note) status(season.note, "hint", "show");
   } catch (err) {
     status(`Couldn't save ${name}: ${err.message}`, true, "show");
   }
