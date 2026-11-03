@@ -5803,6 +5803,10 @@ function renderPublicGuard() {
   if (document.activeElement !== $("pub-sign-text")) $("pub-sign-text").value = view.look?.sign_text || "";
   $("pub-nearby-hint").textContent = nearbyText(view);
   $("pub-nearby-hint").classList.toggle("warn", view.nearby && !view.home);
+  keep("pub-admin-pin", view.admin_pin || "");
+  $("pub-admin-note").textContent = view.admin_pin && view.admin_pin === view.listen_pin
+    ? "⚠ This is the same as the listening PIN, so anyone you give that to can get in as admin too." : "";
+  $("pub-admin-note").classList.toggle("warn", !!$("pub-admin-note").textContent);
 }
 
 let pubDragging = null; // the item being dragged in What visitors can pick
@@ -6112,6 +6116,11 @@ function savePublic() {
   publicView.nearby = $("pub-nearby").checked;
   if (Number($("pub-distance").value)) publicView.distance = Number($("pub-distance").value);
   if (shownPage === "public") {
+    const pin = $("pub-admin-pin").value.trim();
+    if (!pin || /^[0-9]{4,8}$/.test(pin)) publicView.admin_pin = pin;
+    else status("A PIN is 4 to 8 numbers. The admin PIN you had stays until you type one.", "hint");
+  }
+  if (shownPage === "public") {
     const sunset = $("pub-hours-start-kind").value === "sunset";
     const hours = {
       on: $("pub-hours-on").checked,
@@ -6154,10 +6163,10 @@ function savePublic() {
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin } = publicView;
+    const { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin } = publicView;
     try {
       const view = await api("api/public", {
-        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin },
+        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin },
       });
       if (pubPending === 1) {
         publicView = view;
@@ -6188,6 +6197,7 @@ function wirePublic() {
     $(id).addEventListener("change", savePublic);
   }
   $("pub-hours-card").addEventListener("change", () => savePublic());
+  $("pub-admin-pin").addEventListener("change", () => savePublic());
   $("pub-look").addEventListener("change", (e) => { if (e.target.id !== "pub-picture-file") savePublic(); });
   $("pub-showing").addEventListener("change", () => savePublic());
   $("pub-word-list").addEventListener("change", () => savePublic());

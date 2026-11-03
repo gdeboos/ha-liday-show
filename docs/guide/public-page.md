@@ -26,7 +26,7 @@ link in a new tab.
 
 | Page | What's there |
 | --- | --- |
-| **Access** | [Who can start shows](#who-can-start-shows) and [Opening hours](#opening-hours) |
+| **Access** | [Who can start shows](#who-can-start-shows), [Opening hours](#opening-hours) and your [Admin PIN](#admin-pin) |
 | **Shows** | [What visitors can pick](#what-visitors-can-pick), [On the page](#on-the-page): how long each lasts and the flashing lights warning, and [Listening on phones](#listening-on-phones) |
 | **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom |
 | **Words** | [Every message visitors read](#words), to change to your own |
@@ -91,6 +91,30 @@ start tomorrow at 4:32pm" or "on Saturday at 5pm"), with your shows listed but n
 buttons. Their phones aren't asked for their location until it opens. Anyone already waiting in the
 queue at closing time still gets their show. Each show's own dates (below) still apply within the
 hours.
+
+### Admin PIN
+
+For trying the page out yourself, away from the house or out of hours. Type 4 to 8 numbers in **Admin
+PIN** on the **Access** page; leave it empty for none.
+
+There's no button for it on the visitors' page, so nobody else goes looking. To unlock your phone:
+
+1. Open your visitors' link (the one in the QR code).
+2. Tap the page's title five times quickly. A small **Admin PIN** box appears.
+3. Type the PIN and press **Unlock**.
+
+A dashed card then says your phone is in admin mode, and **Close** tucks it away. On that phone:
+
+- **Nearby only** and the opening hours don't apply: **▶ Start** shows wherever you are, at any time.
+- The listening PIN isn't asked for.
+- The limit per phone and **Queue length** don't apply (up to 20 waiting, as a ceiling).
+- The page works even with **Let visitors start shows** off, so you can check everything before you
+  open. Other people still see it as closed.
+
+You still need the link with your code. Your phone remembers the unlock until you change or empty the
+admin PIN (or press **Lock this phone** in the card). Five wrong PINs from one place make it wait ten
+minutes. If the admin PIN is the same as the listening PIN, the editor warns you, as anyone with the
+listening PIN could then get in as admin too.
 
 ### How the page looks
 

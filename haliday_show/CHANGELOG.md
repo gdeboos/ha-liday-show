@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.324
+
+- **Admin PIN** for the public page, under **Public page → Access**. Open your visitors' link, tap the title five times quickly and type the PIN: that phone then skips **Nearby only**, the opening hours, the listening PIN, the limit per phone and a full queue, and works while visitors are switched off. There's no button for it on the page, so visitors won't find it. Your phone remembers it until you change the PIN.
+
 ## 0.2.323
 
 - **Music ahead / behind** for people listening on their phone: while listening, **◀ Earlier** and **Later ▶** move the music by 0.05 s at a time, so it lines up with the lights. Handy with Bluetooth headphones and speakers, which play a little late. Each phone remembers its own setting. The words are on the **Words** tab, under **Listening on a phone**.

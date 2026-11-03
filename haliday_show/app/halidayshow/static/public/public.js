@@ -221,6 +221,14 @@ function ticket() {
 }
 
 const PASS_KEY = "halidayshow.listenPass";
+const ADMIN_KEY = "halidayshow.adminPass";
+
+// The hidden way into the admin PIN box: this many taps on the title, each within `gap` ms of the last.
+export const ADMIN_TAPS = 5;
+export function tapsDone(times, now, need = ADMIN_TAPS, gap = 700) {
+  const run = times.length && now - times[times.length - 1] < gap ? [...times, now] : [now];
+  return run.length >= need ? { times: [], done: true } : { times: run, done: false };
+}
 const NUDGE_KEY = "halidayshow.listenNudge";
 
 // How the Music ahead / behind setting reads: {key, seconds} for the word to show.
@@ -235,7 +243,7 @@ const RENEW_EARLY_S = 120; // ask for a new pass this long before it runs out
 
 // Listening on the phone: plays the song that's on now, kept in time with the lights (listensync.js).
 // say(key, vars) gives a word; pos() where the phone is (for the nearby check); onChange() redraws.
-export function makeListener({ code, say, pos, onChange }) {
+export function makeListener({ code, say, pos, onChange, headers = () => ({}) }) {
   const audio = new Audio();
   audio.preload = "auto";
   if ("preservesPitch" in audio) audio.preservesPitch = true;
@@ -266,7 +274,7 @@ export function makeListener({ code, say, pos, onChange }) {
     if (pin) body.pin = pin;
     else if (keptPass()) body.pass = keptPass();
     const res = await fetch("api/listen", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      method: "POST", headers: { "Content-Type": "application/json", ...headers() }, body: JSON.stringify(body),
     });
     if (!res.ok) {
       const text = await res.text();
@@ -321,7 +329,7 @@ export function makeListener({ code, say, pos, onChange }) {
     try {
       if (me.until - Date.now() < RENEW_EARLY_S * 1000) await getPass();
       const sent = performance.now();
-      const res = await fetch(`api/listen/now?${new URLSearchParams({ code, token: me.token })}`, { cache: "no-store" });
+      const res = await fetch(`api/listen/now?${new URLSearchParams({ code, token: me.token })}`, { cache: "no-store", headers: headers() });
       const recv = performance.now();
       if (mine !== gen) return;
       if (res.status === 403 && res.headers.get("X-Listen") === "renew") {
@@ -451,10 +459,69 @@ export function start() {
     location.reload();
     return true;
   }
+  // Your own phone, unlocked with the admin PIN: the pass goes with every call.
+  const adminKey = `${ADMIN_KEY}.${key}`;
+  let adminPass = "";
+  try { adminPass = (!preview && localStorage.getItem(adminKey)) || ""; } catch { /* private browsing */ }
+  const keepAdmin = (v) => {
+    adminPass = v;
+    try { v ? localStorage.setItem(adminKey, v) : localStorage.removeItem(adminKey); } catch { /* this visit only */ }
+  };
+  const adminHeaders = () => (adminPass ? { "X-Admin": adminPass } : {});
+  let adminOpen = false, taps = [];
   const listener = makeListener({
     code: key, say: (k, vars) => say_(w, k, vars), pos: () => (needsLocation ? where.pos : null),
-    onChange: () => drawListen(),
+    onChange: () => drawListen(), headers: adminHeaders,
   });
+
+  function drawAdmin(st = last) {
+    const on = !!st?.admin;
+    $("pp-admin").hidden = !(adminOpen || (on && adminOpen !== null));
+    if ($("pp-admin").hidden) return;
+    $("pp-admin-pin").hidden = on;
+    $("pp-admin-out").hidden = !on;
+    if (on) $("pp-admin-text").textContent = "🔓 Admin: this phone skips Nearby, the opening hours, the listening PIN and the limits.";
+    else if (!$("pp-admin-text").dataset.said) $("pp-admin-text").textContent = "";
+    $("pp-admin-text").hidden = !$("pp-admin-text").textContent;
+  }
+
+  function tapTitle() {
+    if (preview || !key) return;
+    const t = tapsDone(taps, Date.now());
+    taps = t.times;
+    if (!t.done) return;
+    adminOpen = true;
+    $("pp-admin-text").textContent = "";
+    delete $("pp-admin-text").dataset.said;
+    drawAdmin();
+    if (!last?.admin) $("pp-admin-input").focus();
+  }
+
+  async function unlockAdmin() {
+    const pin = $("pp-admin-input").value.trim();
+    $("pp-admin-input").value = "";
+    if (!pin) return;
+    try {
+      const res = await fetch("api/admin", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: key, pin }),
+      });
+      if (!res.ok) {
+        $("pp-admin-text").textContent = (await res.text()) || "That didn't work.";
+        $("pp-admin-text").dataset.said = "1";
+        $("pp-admin-text").hidden = false;
+        return;
+      }
+      keepAdmin((await res.json()).pass);
+      delete $("pp-admin-text").dataset.said;
+      stopWatching();
+      Object.assign(where, { state: "idle", text: "", pos: null });
+      refresh();
+    } catch {
+      $("pp-admin-text").textContent = "Can't reach the lights right now.";
+      $("pp-admin-text").dataset.said = "1";
+      $("pp-admin-text").hidden = false;
+    }
+  }
 
   function applyLook(look) {
     if (!look) return;
@@ -524,7 +591,7 @@ export function start() {
     let again = false;
     try {
       const res = await fetch("api/near", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json", ...adminHeaders() },
         body: JSON.stringify({ ...where.pos, code: key }),
       });
       if (!res.ok) throw new Error(String(res.status)); // busy, or a blip: ask again shortly
@@ -644,6 +711,9 @@ export function start() {
       return;
     }
     last = st;
+    // A pass that no longer works (the admin PIN changed, or was taken off): forget it.
+    if (adminPass && !st.admin) keepAdmin("");
+    drawAdmin(st);
     for (const [id, key] of [["pp-closed-text", "closed"], ["pp-closed-hint", "closed_hint"], ["pp-retry", "try_again"],
       ["pp-soon-head", "soon_head"], ["pp-none", "no_shows"], ["pp-warning-text", "warning"], ["pp-accept", "accept"]]) {
       $(id).textContent = say_(w, key);
@@ -760,7 +830,8 @@ export function start() {
 
   async function refresh() {
     try {
-      const res = await fetch(`api/state?ticket=${encodeURIComponent(me)}&code=${encodeURIComponent(key)}`, { cache: "no-store" });
+      const res = await fetch(`api/state?ticket=${encodeURIComponent(me)}&code=${encodeURIComponent(key)}`,
+        { cache: "no-store", headers: adminHeaders() });
       if (!res.ok) throw new Error();
       render(await res.json());
       if ($("pp-message").dataset.kind === "offline") say("");
@@ -781,7 +852,7 @@ export function start() {
     $("pp-message").dataset.kind = "";
     try {
       const res = await fetch(path, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json", ...adminHeaders() },
         body: JSON.stringify({ ...body, ...(needsLocation ? where.pos : {}), ticket: me, code: key }),
       });
       if (res.ok) {
@@ -799,6 +870,11 @@ export function start() {
   }
 
   $("pp-retry").addEventListener("click", watchWhere);
+  $("pp-title").addEventListener("click", tapTitle);
+  $("pp-admin-ok").addEventListener("click", unlockAdmin);
+  $("pp-admin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") unlockAdmin(); });
+  $("pp-admin-close").addEventListener("click", () => { adminOpen = null; drawAdmin(); });
+  $("pp-admin-out").addEventListener("click", () => { keepAdmin(""); adminOpen = null; drawAdmin(); refresh(); });
   $("pp-listen-btn").addEventListener("click", pressListen);
   $("pp-pin-ok").addEventListener("click", sendPin);
   $("pp-nudge-earlier").addEventListener("click", () => listener.shift(1));

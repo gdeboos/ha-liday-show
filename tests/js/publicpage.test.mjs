@@ -135,3 +135,18 @@ test("music ahead / behind reads in plain words", () => {
   assert.deepEqual(page.nudgeWord(-0.15), { key: "nudge_later_by", seconds: "0.15" });
   assert.deepEqual(page.nudgeWord(1), { key: "nudge_earlier_by", seconds: "1.0" });
 });
+
+test("five quick taps on the title open the admin PIN box; a pause starts again", () => {
+  let t = { times: [] };
+  for (const at of [0, 300, 600, 900]) {
+    t = page.tapsDone(t.times, at);
+    assert.equal(t.done, false);
+  }
+  t = page.tapsDone(t.times, 1200);
+  assert.equal(t.done, true);
+  assert.deepEqual(t.times, []);
+  t = { times: [] };
+  for (const at of [0, 300, 600, 2000, 2300, 2600, 2900]) t = page.tapsDone(t.times, at);
+  assert.equal(t.done, false);
+  assert.equal(page.tapsDone(t.times, 3200).done, true);
+});
