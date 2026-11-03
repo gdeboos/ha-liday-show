@@ -2378,7 +2378,7 @@ function houseStretchEditor(d) {
 // is, and unpin it. Dragging the number along the line pins it (see House.pinBulbs).
 function houseSegmentEditor(d) {
   const pick = house.active ? null : house.pinPick;
-  if (pick?.id !== d.id) return null;
+  if (pick?.id !== d.id || gridOf(app.lights[d.id] || d)) return null; // a matrix has no LED numbers to pin
   const light = app.lights[d.parent || d.id];
   const num = pick.s + (d.from || 1); // counted on the whole light, in show order
   const pinned = house.pins[d.id]?.[pick.s] != null;
@@ -2477,7 +2477,8 @@ function houseStyleControls(d) {
     way.addEventListener("change", () => { house.setStyle(d.id, { ...style, down: way.value === "down" }); renderHouseLights(); });
     const row = (label, el) => { const l = document.createElement("label"); l.className = "row"; l.append(label, el); return l; };
     return [l0, row("Arches ", count), row("Height ", height), row("Curve ", way),
-      hint("Trace the line the arches stand on (or hang from), from the end with the plug.")];
+      hint("Trace the line the arches stand on (or hang from), from the end with the plug."
+        + (grid ? " Its LEDs run along the arches in the wiring order set for the matrix under Setup → Devices." : ""))];
   }
   if (style.style === "spots") {
     const beam = document.createElement("input");
@@ -2654,6 +2655,11 @@ function renderHouseLights() {
       card.append(hint("Click the top of the tree, then the left and right ends of its base."));
     } else if (SHAPE_POINTS[house.styles[d.id]?.style]) {
       // The panel's own tip is under its Style.
+    } else if (pts > 1 && !house.active && gridOf(app.lights[d.id] || d)) {
+      // A matrix's LEDs follow its wiring along the line, so there are no numbers to pin (any saved
+      // pins are kept but not used).
+      card.append(hint("Click a line on the photo to mark part of it out of view. The matrix's LEDs run along it in "
+        + "the wiring order set under Setup → Devices."));
     } else if (pts > 1 && !house.active) {
       card.append(hint("Click a line on the photo to mark part of it out of view. If the bulbs don't line up "
         + "with the real ones (a photo taken at an angle), drag a segment number along the line to where that "
