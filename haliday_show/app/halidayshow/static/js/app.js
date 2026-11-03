@@ -25,7 +25,7 @@ import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb }
 import { startLivePreview, stopLivePreview } from "./livepreview.js";
 import { addRectPart, gatherPart, isRectPart, joinParts, partAt, partGrid, partSize, pickPart, rectText, scatterPart, spreadParts,
   wholeSegments } from "./parts.js";
-import { MAX_MATRIX, ON_A_MATRIX, RUNS, clipForLane, gridOf, laneTakes, matrixTestFrame, runsDownTree, toWire } from "./matrix.js";
+import { MAX_MATRIX, ON_A_MATRIX, RUNS, clipForLane, gridOf, laneTakes, matrixTestFrame, runsDownTree, fromWire, toWire } from "./matrix.js";
 import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
 import { forgetPicture, getPicture, keepPicture, pictureList, shrinkPicture, toBase64 } from "./pictures.js";
@@ -9286,10 +9286,65 @@ function drawNowBar() {
   if (box.dataset.key === key) return;
   box.dataset.key = key;
   box.replaceChildren(...on.actions.map((a) => {
-    const b = button(a.act === "restart" ? `⏮ ${a.label}` : `■ ${a.label}`, () => nowAction(a.act), a.act === "restart" ? "ghost small" : "small");
+    const b = button(a.act === "preview" ? `👁 ${a.label}` : a.act === "restart" ? `⏮ ${a.label}` : `■ ${a.label}`,
+      () => (a.act === "preview" ? livePreview() : nowAction(a.act)), a.act === "stop" || a.act === "stop-scene" ? "small" : "ghost small");
     b.setAttribute("aria-label", `${a.label} ${on.title}`);
     return b;
   }));
+}
+
+// Preview on the bar: the house photo showing what your lights are showing right now, as it goes
+// out to them (whatever started it), asked for several times a second while the window is open.
+function livePreview() {
+  const w = editWindow("On your lights now");
+  w.dlg.classList.add("preview-dialog");
+  const canvas = document.createElement("canvas");
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", "What your lights are showing now, on your house photo");
+  const frameBox = Object.assign(document.createElement("div"), { className: "im-preview-frame" });
+  frameBox.append(canvas);
+  const what = Object.assign(document.createElement("p"), { className: "hint" });
+  what.setAttribute("aria-live", "polite");
+  const note = Object.assign(document.createElement("p"), { className: "hint",
+    innerHTML: Object.keys(house.paths || {}).length ? "What's going out to your lights, a few times a second."
+      : "Your lights show here once they're on the photo under <b>Setup → House</b>." });
+  w.body.append(frameBox, what, note);
+  w.foot.append(Object.assign(document.createElement("span"), { className: "spacer" }), button("Close", () => w.dlg.close()));
+  let frames = new Map(), open = true, timer = 0;
+  const paint = () => {
+    house.paint(canvas, Math.min(window.innerHeight * 0.5, 420), (dev) => {
+      const light = dev.parent ? app.lights[dev.parent] : app.lights[dev.id] || dev;
+      const full = frames.get(light?.id);
+      if (!full) return new Uint8Array((dev.segments || 1) * 3);
+      return dev.parent ? gatherPart(full, light, dev.part) : full;
+    });
+  };
+  const ask = async () => {
+    if (!open) return;
+    try {
+      const [now, st] = await Promise.all([api("api/player/frame"), timer % 5 ? null : api("api/player").catch(() => null)]);
+      if (st) { const on = nowOn(st); what.textContent = on ? `${KIND_WORDS[on.kind]}: ${on.title}` : "Nothing is on your lights now."; }
+      const bytes = Uint8Array.from(atob(now.rgb || ""), (c) => c.charCodeAt(0));
+      const next = new Map();
+      let at = 0;
+      for (const t of now.tracks || []) {
+        let rgb = bytes.subarray(at, at + t.segments * 3);
+        at += t.segments * 3;
+        const light = app.lights[t.device];
+        if (light && gridOf(light)) rgb = fromWire(rgb, light.matrix);
+        next.set(t.device, rgb);
+      }
+      frames = next;
+      if (!now.playing) what.textContent = "Nothing is on your lights now.";
+    } catch { /* try again next time */ }
+    paint();
+    timer++;
+    if (open) setTimeout(ask, 150);
+  };
+  w.dlg.addEventListener("close", () => { open = false; });
+  w.dlg.showModal();
+  paint();
+  ask();
 }
 
 async function nowAction(act) {

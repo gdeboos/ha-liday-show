@@ -1833,3 +1833,18 @@ async def test_split_vocals_files_are_passed_through_from_their_one_source_and_c
     monkeypatch.setattr(server, "_stream_from", broken)
     resp = await client.get("/api/stems/files/model.onnx")
     assert resp.status == 502 and "Couldn't download" in await resp.text()
+
+
+async def test_whats_on_the_lights_now_can_be_seen(client):
+    import base64
+    assert (await (await client.get("/api/player/frame")).json()) == {"playing": False, "tracks": [], "rgb": ""}
+    client.app[server.STORAGE].save_devices([{"id": "a", "ip": "", "segments": 2}])
+    sid = (await (await client.post("/api/shows", json={"name": "Now"})).json())["id"]
+    await client.put(f"/api/shows/{sid}", json={"name": "Now", "tracks": [{"device": "a", "clips": []}]})
+    blob = baked.encode(40, [{"device": "a", "segments": 2}], [b"\x01\x02\x03\x04\x05\x06"] * 400)
+    await client.put(f"/api/shows/{sid}/baked", data=blob)
+    assert (await client.post("/api/player/play", json={"show": sid, "position": 1})).status == 200
+    now = await (await client.get("/api/player/frame")).json()
+    assert now["playing"] and now["tracks"] == [{"device": "a", "segments": 2}]
+    assert base64.b64decode(now["rgb"]) == b"\x01\x02\x03\x04\x05\x06"
+    await client.post("/api/player/stop", json={})

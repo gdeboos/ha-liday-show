@@ -37,7 +37,9 @@ page you last had open. Below, "the House tab" and so on mean that page.
 Whenever something is on your lights, a green bar under the tabs says what (**Show on now:**,
 **Playlist on now:**, **Scene on now:**), however it started: the schedule, an automation, a visitor,
 or you. It shows how far through a show is, and has **Restart** (the show, or the playlist from its
-first show) and **Stop**; a scene has **Turn off**. When a show is on over a scene, it says the scene
+first show) and **Stop**; a scene has **Turn off**. **Preview** opens your house photo showing what
+your lights are showing right now, a few times a second: exactly what's going out to them, brightness
+and music reactions included, whatever is playing. When a show is on over a scene, it says the scene
 comes back after. The bar stays out of the way while you play a show from its own editor.
 
 The four editors open from the Library: **Edit** on a show takes you to the **Show editor** (the timeline,

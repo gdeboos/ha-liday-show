@@ -2641,6 +2641,16 @@ async def player_sync(request):
     return web.json_response({**runner.status(), "drift": round(drift, 4)})
 
 
+async def player_frame(request):
+    """What's on the lights right now: {playing, tracks: [{device, segments}], rgb (base64)}."""
+    now = request.app[PLAYER].frame_now()
+    if now is None:
+        return web.json_response({"playing": False, "tracks": [], "rgb": ""}, headers={"Cache-Control": "no-store"})
+    tracks, rgb = now
+    return web.json_response({"playing": True, "tracks": tracks, "rgb": base64.b64encode(rgb).decode()},
+                             headers={"Cache-Control": "no-store"})
+
+
 async def player_stop(request):
     """Stops what's on. {"show": id} stops it only if that show is what's playing (the editor)."""
     show = None
@@ -2931,4 +2941,5 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/player/play", player_play)
     r.add_post("/api/player/sync", player_sync)
     r.add_post("/api/player/stop", player_stop)
+    r.add_get("/api/player/frame", player_frame)
     return app

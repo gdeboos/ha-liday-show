@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.2.321
+## 0.2.322
 
 - Fixed **🎧 Listen on your phone** not showing on some phones after an update. A phone (or a tunnel such as Cloudflare) could keep the old copy of the visitors' page's script and use it with the new page. The page's files now change their address whenever they change, so phones always get the new ones.
+
+## 0.2.321
+
+- **Preview** on the green bar under the tabs opens your house photo showing what your lights are showing right now, whatever started it: a show, a playlist, a scene or a visitor's pick. It's what's actually going out to the lights, so brightness and music reactions show too.
 
 ## 0.2.320
 
