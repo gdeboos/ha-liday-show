@@ -44,6 +44,7 @@ class Player:
         self.live_tracks: dict = {}
         self.live_step = None
         self.bursts = liveeffects.Bursts()
+        self.spectra: dict = {}  # Spectrum bars lights, put together region by region
 
     @property
     def playing(self) -> bool:
@@ -72,6 +73,7 @@ class Player:
         self.react, self.variants = None, {}
         self.live, self.live_tracks, self.live_step = None, {}, None
         self.bursts = liveeffects.Bursts()
+        self.spectra = {}
         self.baked, self.show_id, self.devices, self.offset = baked, show_id, devices, offset
         self.length = length
         claimed = set()
@@ -122,7 +124,14 @@ class Player:
         if lt.kind == "burst":
             k = self.bursts.index(heard.get("beat_at"), time.monotonic(), self.live.fps, lt.count)
             return k, round(liveeffects.burst_scale(heard[lt.follows]) * 20)
+        if lt.kind == "spectrum":
+            return self._spectrum(lt).indexes(heard.get("bands")), 20
         return liveeffects.frame_index(heard[lt.follows]), 20
+
+    def _spectrum(self, lt) -> "liveeffects.Spectrum":
+        if lt.device not in self.spectra:
+            self.spectra[lt.device] = liveeffects.Spectrum(lt)
+        return self.spectra[lt.device]
 
     @staticmethod
     def _scale_table(twentieths: int) -> bytes:
@@ -187,7 +196,7 @@ class Player:
                                 # A light on a live effect: its frame for the level it follows, or its
                                 # burst's frame since the last beat, as bright as the level says.
                                 k, scale = shown[t.device]
-                                frame = self.live.track_frame(lt, k)
+                                frame = self._spectrum(lt).frame(self.live, k) if lt.kind == "spectrum" else self.live.track_frame(lt, k)
                                 if scale < 20:
                                     frame = frame.translate(self._scale_table(scale))
                             else:

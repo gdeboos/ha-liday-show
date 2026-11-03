@@ -11,7 +11,9 @@ export function madeUpLevels(t) {
   const beat = Math.max(0, 1 - ((t * 2) % 1) * 3); // 120 BPM, each beat dying over a third of it
   const swell = 0.5 - 0.5 * Math.cos((2 * Math.PI * t) / 8);
   const pct = (v) => Math.round(Math.max(0, Math.min(1, v)) * 100);
-  return { beatAge: (t % 0.5), loudness: pct(0.25 + 0.5 * swell + 0.25 * beat), bass: pct(0.2 + 0.4 * swell + 0.4 * beat),
+  // 16 bands, bass on the left, each rising and falling at its own pace.
+  const bands = Array.from({ length: 16 }, (_, b) => pct((0.75 - b / 32) * (0.35 + 0.35 * swell + 0.3 * Math.abs(Math.sin(t * (1.7 + b * 0.37) + b)))));
+  return { bands, beatAge: (t % 0.5), loudness: pct(0.25 + 0.5 * swell + 0.25 * beat), bass: pct(0.2 + 0.4 * swell + 0.4 * beat),
     mid: pct(0.3 + 0.4 * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / 5))), treble: pct(0.15 + 0.5 * (0.5 - 0.5 * Math.cos((2 * Math.PI * t) / 3))) };
 }
 

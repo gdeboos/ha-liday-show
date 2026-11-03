@@ -88,3 +88,34 @@ test("Beat burst: a burst baked from start to end, ending dark, for the player t
   assert.equal(burstStrength(0), 0.3);
   assert.equal(burstStrength(100), 1);
 });
+
+test("Spectrum bars: sections on a strip, columns on a matrix, each region baked at every level", async () => {
+  const { spectrumLayout, regionBands } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const bars = { ...newClip("spectrum", 0, 8), color: "#00ff00", color2: "#ff0000", count: "2" };
+  // 32 LEDs: 16 sections of 2; band 0 full, the rest off.
+  setLiveSource(() => ({ bands: [100, ...Array(15).fill(0)] }));
+  try {
+    assert.deepEqual(lit(renderTrack([bars], 1, 32), 32), [0, 1]);
+    // A matrix of 4 columns: each takes 4 bands, so the first column is a quarter up (its bottom LED).
+    const grid = { w: 4, h: 3 };
+    assert.deepEqual(lit(renderTrack([bars], 1, 12, undefined, false, grid), 12), [8]);
+    setLiveSource(() => ({ bands: [100, 100, 100, 100, ...Array(12).fill(0)] }));
+    const f = renderTrack([bars], 1, 12, undefined, false, grid);
+    assert.deepEqual(lit(f, 12), [0, 4, 8]);
+  } finally { setLiveSource(null); }
+  assert.deepEqual(spectrumLayout(8, null), { count: 8, region: [0, 1, 2, 3, 4, 5, 6, 7] });
+  assert.deepEqual(spectrumLayout(40, null).region.slice(0, 6), [0, 0, 0, 1, 1, 2]);
+  assert.deepEqual(regionBands(0, 4), [0, 4]); // 4 regions take 4 bands each
+  assert.deepEqual(regionBands(15, 16), [15, 16]);
+  const matrix = { segments: 12, matrix: { w: 4, h: 3, start: "top left", order: "rows", zigzag: true } };
+  const blob = bakeLive({ tracks: [{ device: "m", clips: [bars] }] }, { m: matrix });
+  const hl = new DataView(blob.buffer).getUint32(5);
+  const [t] = JSON.parse(new TextDecoder().decode(blob.subarray(9, 9 + hl))).tracks;
+  assert.equal(t.kind, "spectrum");
+  assert.deepEqual(t.regions, [0, 1, 2, 3, 3, 2, 1, 0, 0, 1, 2, 3]); // along the zig-zag wire
+  assert.deepEqual(t.bands, [[0, 4], [4, 8], [8, 12], [12, 16]]);
+  const frame = (k) => blob.subarray(9 + hl + k * 36, 9 + hl + (k + 1) * 36);
+  assert.equal(lit(frame(20), 12).length, 12); // every bar full at 100 %
+  assert.equal(lit(frame(0), 12).length, 0);
+  assert.ok(EFFECTS.spectrum.live && EFFECTS.spectrum.group === "live");
+});

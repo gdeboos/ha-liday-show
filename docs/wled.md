@@ -67,7 +67,12 @@ plays). Checked on the wire at 127.0.0.1 with fake sound sync: a 60-LED Level me
 lit 30 LEDs at bands of 128 and 60 at 255, and showed its idle glow with nothing sent. From 0.2.316 a live set can also hold "burst" tracks (Beat burst): the burst from start to end at
 40 frames a second, `count` frames, the last dark. The player starts it again on each new `beat_at`
 (`liveeffects.Bursts`) and scales it by the level it follows (0.3 to 1). On the wire, with a beat
-flag every half second, the burst restarted each time and faded in between.
+flag every half second, the burst restarted each time and faded in between. From 0.2.317 a "spectrum" track (Spectrum bars) is baked
+like a level track (all bars at each level), with `regions` (each LED's region, along the wire) and
+`bands` (each region's [first, last + 1) of WLED's 16). The player glides the 16 bands, and
+`liveeffects.Spectrum` puts the light together run by run from each region's frame. On the wire, a
+60-LED strip with bands 0-3 at 255 and 4-7 at 128 lit the first four sections fully, the next four
+by half, and the rest not at all.
 
 ## Matrices (2D)
 
