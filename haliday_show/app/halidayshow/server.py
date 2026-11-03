@@ -19,6 +19,7 @@ import time
 import zlib
 from pathlib import Path
 
+import aiohttp
 from aiohttp import web
 
 from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songtags, twinkly, wled
@@ -907,6 +908,65 @@ async def upload_audio(request):
     storage = request.app[STORAGE]
     await _carry_cover(request, dest)
     return web.json_response({"source": "media", "path": str(dest.relative_to(storage.media_dir))})
+
+
+# Split vocals (static/js/stems.js): the AI model and the runtime that runs it in the browser, passed
+# through from where they're published, so the browser fetches them from HA-liday Show itself (no
+# other site to allow, nothing kept here or in backups; the browser keeps its own copy). Only these
+# files, from these exact versions. HALIDAY_SHOW_STEMS_FROM points at a mirror of them instead, for an
+# install with no internet.
+_ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/"
+STEM_FILES = {
+    "model.onnx": ("https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR-MDX-NET-Voc_FT.onnx",
+                   "application/octet-stream"),
+    "ort.webgpu.min.mjs": (_ORT + "ort.webgpu.min.mjs", "text/javascript"),
+    "ort-wasm-simd-threaded.jsep.mjs": (_ORT + "ort-wasm-simd-threaded.jsep.mjs", "text/javascript"),
+    "ort-wasm-simd-threaded.jsep.wasm": (_ORT + "ort-wasm-simd-threaded.jsep.wasm", "application/wasm"),
+}
+
+
+class StemsUnavailable(Exception):
+    pass
+
+
+async def _stream_from(url: str):
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1800, sock_connect=20)) as s:
+            async with s.get(url) as r:
+                if r.status != 200:
+                    raise StemsUnavailable(f"HTTP {r.status}")
+                async for chunk in r.content.iter_chunked(1 << 16):
+                    yield chunk
+    except aiohttp.ClientError as e:
+        raise StemsUnavailable(str(e)) from e
+
+
+async def get_stem_file(request):
+    name = request.match_info["name"]
+    if name not in STEM_FILES:
+        raise web.HTTPNotFound(text="not one of Split vocals' files")
+    url, kind = STEM_FILES[name]
+    mirror = os.environ.get("HALIDAY_SHOW_STEMS_FROM", "").strip()
+    if mirror:
+        url = mirror.rstrip("/") + "/" + name
+    chunks = _stream_from(url)
+    try:
+        first = await chunks.__anext__()
+    except StopAsyncIteration:
+        first = b""
+    except StemsUnavailable as e:
+        log.warning("Split vocals: couldn't download %s: %s", name, e)
+        raise web.HTTPBadGateway(text=f"Couldn't download the AI files for Split vocals ({e}). Is HA-liday Show online?")
+    resp = web.StreamResponse(headers={"Content-Type": kind, "Cache-Control": "public, max-age=31536000, immutable"})
+    await resp.prepare(request)
+    await resp.write(first)
+    try:
+        async for chunk in chunks:
+            await resp.write(chunk)
+    except StemsUnavailable as e:  # cut off part way: the browser sees a short file and says so
+        log.warning("Split vocals: %s cut off: %s", name, e)
+    await resp.write_eof()
+    return resp
 
 
 async def _carry_cover(request, dest: Path):
@@ -2704,6 +2764,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/shows/{id}/restore", restore_show)
     r.add_get("/api/audio", list_audio)
     r.add_post("/api/audio", upload_audio)
+    r.add_get("/api/stems/files/{name}", get_stem_file)
     r.add_post("/api/audio/part", upload_audio_part)
     r.add_get("/api/samples", list_samples)
     r.add_delete("/api/samples", delete_sample)

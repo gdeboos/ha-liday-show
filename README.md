@@ -226,6 +226,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   Home Assistant's 16 MB limit upload fine
 - Cut, trim and splice songs in the **Music editor**, with crossfades, as named **drafts** kept as you go that you can come back to and tweak, then make into a song file
 - **Even out the volume** when making a song file, so songs play at about the same loudness
+- **Split vocals**: an AI in your browser separates a song's singing from the music, saved as two songs
 - **Layers** in the Music editor: samples or songs played over a song, pinned to the music so they follow cuts, mixed into the song file, optionally quietening the song under them by as much as you choose
 - **Mixer** in the Music editor: bass, mid and treble faders and a DJ filter on the song and each layer, changing partway through, layers moved into the song's key, and layers matched to the song's tempo, for mash-ups
 - **Samples**: short sounds (sleigh bells, a "ho ho ho") to layer over songs, made from part of a song or added as files
@@ -416,6 +417,9 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/schedulepage.js                  The Schedule tab: entries in priority order, saved as you go
     js/playlisteditor.js                Playlist editor: where a dragged card lands, running time, building blocks
     js/sceneeditor.js                   Scene editor and Your scenes: rows per light, preview, saving and baking
+    js/stems.js                         Split vocals: the song's spectrum in and out of the AI model (MDX-Net), in 6-second chunks
+    js/stemsworker.js                   Split vocals' worker: fetches the model and its runtime, runs the split
+    js/splitvocals.js                   Split vocals… on a song: decode, split in the worker, save both halves
     js/reactui.js                       React to music settings for a scene (Scene editor and Advanced scenes)
     js/housescenes.js                   A scene's sums: what each light plays, its loop, its row's colours
     js/showbright.js                    Show settings → Brightness: the whole show and each light in it

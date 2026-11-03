@@ -1744,3 +1744,34 @@ async def test_a_show_can_have_its_own_picture(client):
     assert (await client.get(f"/api/shows/{copy}/picture")).status == 200
     assert (await client.delete(f"/api/shows/{sid}/picture")).status == 200
     assert (await client.get(f"/api/shows/{sid}/picture")).status == 404
+
+
+async def test_split_vocals_files_are_passed_through_from_their_one_source(client, monkeypatch):
+    fetched = []
+
+    async def fake(url):
+        fetched.append(url)
+        yield b"abc"
+        yield b"def"
+
+    monkeypatch.setattr(server, "_stream_from", fake)
+    resp = await client.get("/api/stems/files/model.onnx")
+    assert resp.status == 200 and await resp.read() == b"abcdef"
+    assert "UVR-MDX-NET-Voc_FT.onnx" in fetched[0]
+    assert "immutable" in resp.headers["Cache-Control"]
+    resp = await client.get("/api/stems/files/ort.webgpu.min.mjs")
+    assert resp.headers["Content-Type"].startswith("text/javascript") and "onnxruntime-web@1.20.1" in fetched[1]
+    assert (await client.get("/api/stems/files/..%2Fsettings.json")).status == 404
+    assert (await client.get("/api/stems/files/anything.js")).status == 404
+    # From a mirror instead (an install with no internet), when one is set.
+    monkeypatch.setenv("HALIDAY_SHOW_STEMS_FROM", "http://mirror.local/files/")
+    await client.get("/api/stems/files/model.onnx")
+    assert fetched[-1] == "http://mirror.local/files/model.onnx"
+
+    async def broken(url):
+        raise server.StemsUnavailable("no internet")
+        yield b""
+
+    monkeypatch.setattr(server, "_stream_from", broken)
+    resp = await client.get("/api/stems/files/model.onnx")
+    assert resp.status == 502 and "Couldn't download" in await resp.text()
