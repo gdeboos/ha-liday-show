@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.293
+
+- A light's parts can be put in order with **↑** and **↓** on each part's line, in the light's window under **Setup → Devices**. A part swaps places with the one next to it and keeps its length, and its effects in your shows go with it, so nothing breaks.
+
 ## 0.2.292
 
 - A new house **Style**, **Arches**, for lights hung in arches or swags. Trace the line they stand on (or hang from) under **Setup → House**, then set how many **Arches**, their **Height**, and **Curve**: **Up** or **Down**. The bulbs follow the curves on the photo, and effects run up and over each arch.

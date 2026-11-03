@@ -377,6 +377,12 @@ and works with Copy and Recolour like any other light. **Segments in no part sta
 show**: the light's window lists them as *Unused, off in shows*. Parts can't overlap, and making the light
 shorter trims them. Remove a part with ✕; its effects stay in your shows.
 
+Put the parts in order from the plug: LED 1 is the end nearest it. If they're the wrong way round,
+press **↑** (nearer the plug) or **↓** (further from it) on a part's line. It swaps places with the
+part next to it, keeping its length, and its effects in your shows go with it. Retrace moved parts
+under **Setup → House** if they're on the house photo. (Changing a part's LEDs to somewhere another
+part is using isn't allowed, so ↑ and ↓ are the easy way to swap them.)
+
 ### The whole light as one
 
 Unless you turn off **Also play as one** under the parts, the light

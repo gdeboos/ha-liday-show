@@ -389,6 +389,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
                                         message visitors read, with its starting wording
     js/app.js                           Editor state, panels, inspector and playback
     js/ask.js                           HA-liday Show's own question and name windows, in place of the browser's pop-ups
+    js/partorder.js                     Moving a light's part along it with ↑ and ↓, keeping its effects
     js/folderbrowse.js                  Going into Library folders to pick shows and playlists (public page, a playlist's Your shows)
     js/glyphs.js                        Draws the symbols on buttons (▶ ⏸ ⏩ 🔊 …) as line icons, never emoji
     js/effects.js                       Effect definitions, House lane effects and the baker
