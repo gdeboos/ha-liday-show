@@ -110,6 +110,15 @@ export function duckEnvelope(layers, placed, sources, n, rate) {
   return depth;
 }
 
+// How many dB down the song is at each step (for the shading on the waveform), or null if no layer
+// quietens it. Worked out at a low rate, such as 50 steps a second.
+export function dipCurve(layers, placed, sources, n, rate) {
+  const env = duckEnvelope(layers, placed, sources, n, rate);
+  if (!env) return null;
+  for (let i = 0; i < n; i++) env[i] = env[i] >= 1 ? 0 : -20 * Math.log10(env[i]);
+  return env;
+}
+
 const TAIL = 0.25; // seconds of a clip's EQ ringing kept after it ends
 
 // The main track's channels with the layers mixed in (a new copy). sources: {key: [channels]} at rate,

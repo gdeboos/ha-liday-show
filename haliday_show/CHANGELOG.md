@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.301
+
+- The Music editor's waveform now shows what the mixer does. A grey band hangs down from the top where a layer quietens the song (deeper for a bigger dip, labelled such as **Song −16 dB**), and thin orange, green and blue lines along the bottom show the song's bass, mid and treble, gliding into each change.
+
 ## 0.2.300
 
 - Give a show its own picture: **⚙ Show settings… → Picture → Upload picture…**. It's used instead of the song's cover art in **Library → Shows** and on the public page. **Remove** goes back to the cover art.
