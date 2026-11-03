@@ -523,3 +523,18 @@ async def test_the_season_command_puts_props_out_and_away(runner):
     with pytest.raises(ValueError, match="out"):
         await commands.handle(runner, '{"action": "season", "season": "Halloween"}')
     await runner.stop()
+
+
+def test_season_commands_typed_as_text():
+    assert commands.parse("season Christmas lights out") == {"action": "season", "season": "Christmas lights", "out": True}
+    assert commands.parse("season Halloween away")["out"] is False
+    assert commands.parse("season Halloween on")["out"] is True
+    assert commands.parse("season Christmas lights") == {"action": "season", "season": "Christmas lights"}  # no out: refused later
+    assert commands.parse("season") == {"action": "season", "season": ""}
+
+
+async def test_a_season_typed_with_extra_spaces_is_found(runner):
+    settings = runner.storage.load_settings()
+    settings["seasons"] = [{"id": "xmas", "name": "Christmas lights", "out": True}]
+    runner.storage.save_settings(settings)
+    assert await commands.handle(runner, {"action": "season", "season": " christmas   LIGHTS ", "out": False}) == "xmas packed away"

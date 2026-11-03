@@ -93,7 +93,7 @@ To start a playlist instead, send `input: {action: play, playlist: Halloween nig
 any case). Send `input: {action: stop}` to stop. For a scene, send
 `input: {action: scene, scene: Candy cane}`, or `scene: "off"` to turn it off. To put a
 [season](lights.md#seasons)'s props out, send `input: {action: season, season: Halloween, out: true}`, and
-`out: false` to pack them away. It does the same as the switch on **Setup → Devices**: packed-away props go
+`out: false` to pack them away (or just the text `season Halloween out` or `season Halloween away`). It does the same as the switch on **Setup → Devices**: packed-away props go
 dark straight away. **Setup → Speakers** shows the exact input for the open show, under Automations.
 Automations that use the older `hassio.addon_stdin` action with `addon:` keep working, and that's
 the one to use on Home Assistant before 2026.2.

@@ -60,7 +60,9 @@ def parse(raw) -> dict:
             if action.lower() == "season":
                 name, _, word = rest.strip().rpartition(" ")
                 out = {"out": True, "on": True, "away": False, "off": False}.get(word.lower())
-                return {"action": action, "season": name, **({} if out is None else {"out": out})}
+                if out is None:  # no out or away at the end: it's all the season's name
+                    return {"action": action, "season": rest.strip()}
+                return {"action": action, "season": name, "out": out}
             return {"action": action, "scene" if action.lower() == "scene" else "show": rest.strip()}
     if not isinstance(raw, dict):
         raise ValueError('expected an object like {"action": "play", "show": "..."}')
@@ -107,7 +109,7 @@ async def handle(runner: Runner, raw) -> str:
         await runner.want_scene(scene_id)
         return f"scene {scene_id}"
     if action == "season":
-        ref, out = str(cmd.get("season", "")).strip(), cmd.get("out")
+        ref, out = " ".join(str(cmd.get("season", "")).split()), cmd.get("out")
         if not isinstance(out, bool):
             raise ValueError('say whether the season\'s props are out: "out": true or false')
         storage = runner.storage
