@@ -2090,7 +2090,8 @@ Also on the **Shows** tab:
   - **Off** (to start with).
   - **A note at the top**: a boxed warning above the shows, always there.
   - **Ask visitors to accept it before Start**: the same note with an **I understand** button, and no
-    **▶ Start** buttons until it's pressed. It's asked once per visit.
+    **▶ Start** buttons until it's pressed. Each phone remembers it, so it's only asked again if you
+    change the warning's words.
 
   The warning's words, and the button's, are on the **Words** tab.
 
@@ -2104,7 +2105,7 @@ as usual.
 2. To keep it to yourself while you try it out, turn on **Needs a PIN to listen** and type a PIN of 4
    to 8 numbers.
 3. On your phone, open the visitors' link and press **🎧 Listen** in the card at the top (type the PIN
-   if you set one). Press **■ Stop** to stop.
+   if you set one). Press **■ Stop** to stop. **🎧 Listen** only shows while something's on.
 
 How it works:
 

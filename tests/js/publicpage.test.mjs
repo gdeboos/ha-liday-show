@@ -198,3 +198,9 @@ test("the Install button isn't offered inside the installed app", () => {
   assert.equal(page.runningAsApp(win(true, false)), true);
   assert.equal(page.runningAsApp(win(false, true)), true);
 });
+
+test("an accepted warning is remembered until its words change", () => {
+  assert.equal(page.warningAccepted("", "⚠ Flashing lights"), false);
+  assert.equal(page.warningAccepted("⚠ Flashing lights", "⚠ Flashing lights"), true);
+  assert.equal(page.warningAccepted("⚠ Flashing lights", "⚠ Strobes and flashing lights"), false);
+});
