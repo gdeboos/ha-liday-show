@@ -218,7 +218,9 @@ function likeness(a, b) {
 }
 
 // How well one of your lights suits one of theirs, and the reasons, best first.
-export function score(theirs, mine) {
+// seasonal: the shared show says which of its lights are props (older files don't), so an all-year
+// light of theirs can be kept off your props.
+export function score(theirs, mine, { seasonal = (theirs.seasons || []).length > 0 } = {}) {
   let s = 0;
   const why = [];
   if (theirs.sku && theirs.sku === mine.sku) { s += 5; why.push("same model"); }
@@ -243,7 +245,7 @@ export function score(theirs, mine) {
   const theirSeasons = (theirs.seasons || []).map((x) => x.toLowerCase()), mySeasons = mine.seasons || [];
   const shared = mySeasons.find((x) => theirSeasons.includes(x.toLowerCase()));
   if (shared) { s += 3; why.unshift(`both ${shared} props`); }
-  else if (!theirSeasons.length && mySeasons.length) s -= 1;
+  else if (seasonal && !theirSeasons.length && mySeasons.length) s -= 1;
   return { score: s, why };
 }
 
@@ -253,7 +255,7 @@ export function shareSeason(share, seasons) {
   if (!share.season) return { id: null, note: "" };
   const found = seasons.find((x) => x.name.toLowerCase() === share.season.toLowerCase());
   return found ? { id: found.id, note: "" }
-    : { id: null, note: `It was made for ${share.season}, a season you haven't got, so it's for any season. Pick one in Show settings.` };
+    : { id: null, note: `It was made for ${share.season}, a season you haven't got, so it's for any season. Pick one in ⚙ Show settings….` };
 }
 
 // Which of their parts plays on which of yours: in order when you have the same number (or by
@@ -281,7 +283,8 @@ export function partPlan(theirs, mine) {
 // Each of your lights is suggested once, best match first; poor matches are left out.
 export function suggest(theirs, mine) {
   const pairs = [];
-  for (const t of theirs) for (const m of mine) pairs.push({ t, m, ...score(t, m) });
+  const seasonal = theirs.some((t) => t.seasons?.length);
+  for (const t of theirs) for (const m of mine) pairs.push({ t, m, ...score(t, m, { seasonal }) });
   pairs.sort((a, b) => b.score - a.score);
   const plan = Object.fromEntries(theirs.map((t) => [t.key, { light: null, why: "", parts: {} }]));
   const taken = new Set();

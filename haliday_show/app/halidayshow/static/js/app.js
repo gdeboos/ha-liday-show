@@ -6805,8 +6805,9 @@ async function imSubmit(e) {
     await save();
     status(`${name} imported`, "saved", "show");
     // Effects from a newer HA-liday Show than this one.
-    if (dropped) status(`${plural(dropped, "effect")} in ${name} need a newer HA-liday Show, so they were left out. Update, then import it again to get them`, "hint");
-    else if (season.note) status(season.note, "hint", "show");
+    const notes = [dropped ? `${plural(dropped, "effect")} in ${name} need a newer HA-liday Show, so they were left out. Update, then import it again to get them.` : "",
+      season.note].filter(Boolean);
+    if (notes.length) status(notes.join(" "), "hint");
   } catch (err) {
     status(`Couldn't save ${name}: ${err.message}`, true, "show");
   }

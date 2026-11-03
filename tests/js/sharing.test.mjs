@@ -210,3 +210,21 @@ test("a shared show says its season and which lights are seasonal props, by name
   const old = readShare(JSON.stringify({ ...makeShare(show, lights), season: undefined }));
   assert.equal(old.season, undefined);
 });
+
+test("a show shared without seasons is matched exactly as before, props or not", async () => {
+  const { makeShare, readShare, myLights, suggest, score } = await import("../../haliday_show/app/halidayshow/static/js/sharing.js");
+  const show = { name: "Old", duration: 10, tracks: [{ device: "a", clips: [{ effect: "solid", start: 0, end: 5 }] }] };
+  const share = readShare(JSON.stringify(makeShare(show, [{ id: "a", name: "Strip", kind: "wled", segments: 40 }])));
+  const plain = myLights([{ id: "p", name: "Pumpkin", kind: "wled", segments: 30 }]);
+  const prop = myLights([{ id: "p", name: "Pumpkin", kind: "wled", segments: 30, seasons: ["h"] }], { seasons: [{ id: "h", name: "Halloween" }] });
+  assert.equal(score(share.lights[0], prop[0]).score, score(share.lights[0], plain[0]).score);
+  assert.equal(suggest(share.lights, prop)[share.lights[0].key].light, "p");
+  // A show whose season was deleted is shared with none.
+  assert.equal(readShare(JSON.stringify(makeShare({ ...show, season: "gone" }, [{ id: "a", name: "Strip", kind: "wled", segments: 40 }], { seasons: [] }))).season, undefined);
+  // Odd season data in a file is left out.
+  const odd = readShare(JSON.stringify({ ...makeShare(show, [{ id: "a", name: "Strip", kind: "wled", segments: 40 }]), season: 5,
+    lights: [{ key: "L1", name: "Strip", kind: "wled", segments: 40, seasons: ["x".repeat(99), 3, ...Array(30).fill("Easter")] }] }));
+  assert.equal(odd.season, undefined);
+  assert.equal(odd.lights[0].seasons.length, 20);
+  assert.equal(odd.lights[0].seasons[0].length, 40);
+});
