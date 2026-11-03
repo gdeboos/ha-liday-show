@@ -5621,6 +5621,37 @@ function wireData() {
   $("btn-export").addEventListener("click", () => status("Exporting… check your downloads"));
 }
 
+// Setup → Speakers → Late at night (latespeaker.py): quieter, or silent, from a time until the morning.
+async function loadLateSpeaker() {
+  try {
+    const late = await api("api/speakers/late");
+    $("late-from").value = late.from;
+    $("late-until").value = late.until;
+    $("late-mode").value = late.mode;
+    $("late-volume").value = late.volume;
+    drawLateSpeaker();
+  } catch { /* shown as it was */ }
+}
+function drawLateSpeaker() {
+  const on = !!$("late-from").value;
+  $("late-volume-wrap").hidden = $("late-mode").value !== "quieter";
+  for (const id of ["late-until", "late-mode", "late-volume"]) $(id).disabled = !on;
+  $("late-note").textContent = !on ? "Off: the speaker plays as usual at any time."
+    : $("late-mode").value === "off" ? `From ${$("late-from").value} until ${$("late-until").value || "07:00"}, the speaker stays silent.`
+      : `From ${$("late-from").value} until ${$("late-until").value || "07:00"}, the speaker plays at ${$("late-volume").value || 30}%.`;
+}
+async function saveLateSpeaker() {
+  drawLateSpeaker();
+  try {
+    await api("api/speakers/late", { method: "PUT", json: {
+      from: $("late-from").value, until: $("late-until").value || "07:00", mode: $("late-mode").value,
+      volume: Number($("late-volume").value) || 30 } });
+    status("Late at night saved", "saved");
+  } catch (e) {
+    status(`Couldn't save Late at night: ${e.message}`, true);
+  }
+}
+
 // The Public page: switched on under Setup → More, set up on its own tab. What visitors can pick
 // (shows and playlists, each with optional dates every year) and the queue they're waiting in.
 let publicView = null;
@@ -6209,6 +6240,7 @@ function wirePublic() {
   $("pub-open").addEventListener("click", () => showView("public"));
   $("pub-per-phone").addEventListener("change", savePublic);
   $("pub-repeat").addEventListener("change", () => savePublic());
+  $("late-card").addEventListener("change", saveLateSpeaker);
   $("pub-phone-wait").addEventListener("change", () => savePublic());
   $("pub-listen-card").addEventListener("change", () => savePublic());
   $("pub-listen-pin-on").addEventListener("change", () => {
@@ -10496,7 +10528,7 @@ function showView(view, { push = true } = {}) {
   if (page === "samples") renderSamplesPage(); else stopSample();
   if (page === "pictures") renderPicturesPage();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
-  if (page === "speakers") loadSpeakers();
+  if (page === "speakers") { loadSpeakers(); loadLateSpeaker(); }
   // A season switched from Home Assistant since: show it as it is now.
   if (page === "devices") {
     api("api/seasons").then((list) => {

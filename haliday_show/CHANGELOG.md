@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.338
+
+- **Late at night, for the neighbours.** Under **Setup → Speakers → Late at night**, pick a time (say 9pm) until the morning when the speaker either **plays quieter** at a volume you set, or **stays silent** (the lights still play, and visitors can listen on their phones). The volume goes back to how it was for the first show after. It applies to everything on a speaker, not only visitors' picks.
+
 ## 0.2.337
 
 - **Rest breaks, for the neighbours.** After 30 minutes of visitors' picks playing back to back, the lights rest for 5 minutes before the next pick starts, and the visitors' page says so. Set both under **Public page → Hours → For the neighbours** (0 turns rests off). Your own shows, playlists and the schedule aren't affected.

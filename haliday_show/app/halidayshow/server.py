@@ -23,7 +23,7 @@ from pathlib import Path
 import aiohttp
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, liveeffects, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songcopy, songtags, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songcopy, songtags, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -1673,6 +1673,23 @@ async def put_show_speaker(request):
     return web.json_response({"show_speaker": entity})
 
 
+async def get_late_speaker(request):
+    return web.json_response(latespeaker.clean(request.app[STORAGE].load_settings().get("late_speaker")))
+
+
+async def put_late_speaker(request):
+    """Late at night, for the neighbours: quieter, or no speaker, from a time until the morning."""
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    settings["late_speaker"] = latespeaker.clean(body)
+    storage.save_settings(settings)
+    return web.json_response(settings["late_speaker"])
+
+
 async def put_speaker_delay(request):
     body = await request.json()
     entity = str(body.get("entity_id", ""))
@@ -2870,6 +2887,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/speakers", list_speakers)
     r.add_put("/api/speakers/delay", put_speaker_delay)
     r.add_put("/api/speakers/show", put_show_speaker)
+    r.add_get("/api/speakers/late", get_late_speaker)
+    r.add_put("/api/speakers/late", put_late_speaker)
     r.add_post("/api/speakers/test", test_speaker)
     r.add_post("/api/speakers/remove", remove_speaker)
     r.add_get("/api/palettes", get_palettes)

@@ -473,6 +473,18 @@ Speakers are added on the **Speakers** tab first, and only those are offered in 
 - **Default show speaker** is where shows play when started from an automation, unless a show picks
   its own (see [Play it](#5-play-it)).
 
+### Late at night
+
+For the neighbours. Under **Late at night**, set **From** (empty means off) and **Until** (07:00 to start
+with), then what **The speaker** does in between:
+
+- **Plays quieter**, at the **Volume** you set (30% to start with). HA-liday Show remembers how loud the
+  speaker was and puts it back for the first show after **Until**. (After a restart in between it can't,
+  so set the volume yourself.)
+- **Stays silent**: shows play on the lights only. Visitors can still listen on their phones.
+
+It covers everything that plays on a speaker: visitors' picks, playlists, the schedule and automations.
+
 ## 3. Your house
 
 The **House** tab puts your lights on a photo of your house. The editor's **House** panel then plays

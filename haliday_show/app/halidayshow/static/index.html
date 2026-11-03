@@ -1033,6 +1033,21 @@
       <button type="button" class="primary" data-speaker="close">Done</button>
     </div>
   </dialog>
+  <section class="card pub-card" id="late-card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-speakers"/></svg>Late at night</h2>
+    <p class="hint">For the neighbours: from this time until the morning, shows play on the speaker quieter, or not
+      at all (the lights still play, and visitors can listen on their phones). It covers everything on a speaker:
+      visitors' picks, playlists, the schedule and automations.</p>
+    <div class="late-grid">
+      <label class="field">From <input id="late-from" type="time"><span class="hint">Leave empty to turn it off.</span></label>
+      <label class="field">Until <input id="late-until" type="time"></label>
+      <label class="field">The speaker <select id="late-mode">
+          <option value="quieter">Plays quieter</option><option value="off">Stays silent</option></select></label>
+      <label class="field" id="late-volume-wrap">Volume <span class="pub-inline"><input id="late-volume" type="number"
+          min="5" max="100" step="5"> %</span><span class="hint">Put back to what it was by the first show after.</span></label>
+    </div>
+    <p class="hint pub-note" id="late-note" aria-live="polite"></p>
+  </section>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-timing"/></svg>Timing</h2>
     <p><label title="Positive values delay the lights relative to the audio"><span id="offset-label">Light offset</span>
@@ -1312,6 +1327,8 @@
           step="1"> minutes</span>
         <span class="hint">Picks waiting start after; the page says the lights are resting.</span></label>
     </div>
+    <p class="hint">To make the speaker quieter, or silent, late at night (for everything, not only visitors), see
+      <b>Setup → Speakers → Late at night</b>.</p>
   </section>
   </div>
   <div class="pub-panel" id="pub-panel-limits" role="tabpanel" aria-labelledby="pub-tab-limits" hidden>

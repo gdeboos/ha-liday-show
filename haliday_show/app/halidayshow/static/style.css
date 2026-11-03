@@ -1437,3 +1437,5 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .now-actions { display: flex; gap: 6px; }
 /* A small heading inside a Public page card, such as "For the neighbours" on Hours. */
 .pub-sub { font-size: .9375rem; margin: 16px 0 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+/* Setup → Speakers → Late at night. */
+.late-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px 16px; }

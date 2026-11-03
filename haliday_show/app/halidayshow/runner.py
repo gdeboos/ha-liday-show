@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 
 from . import liveeffects, livemusic, playlists, react, scenelib, wled
 from .baked import decode
+from . import latespeaker
 from .ha import HAError, HomeAssistant, media_content_id, position_now
 from .player import Player
 from .storage import Storage
@@ -91,6 +92,8 @@ class Runner:
         self._last_public_end = 0.0
         self.resting_until = 0.0
         self.public_listeners: dict[str, float] = {}
+        # Each speaker's volume before it was turned down for the night, put back by the next daytime show.
+        self._day_volumes: dict[str, float] = {}
         self._public: asyncio.Task | None = None
         # Goes up whenever you play or stop something yourself, which ends a visitor's request part-way.
         self._yours = 0
@@ -143,6 +146,12 @@ class Runner:
         if use_show_speaker and not media_player:
             media_player = (show.get("media_player")
                             or self.storage.load_settings().get("show_speaker") or None)
+        late = latespeaker.now_late(self.storage.load_settings())
+        silent_late = bool(media_player and late and late["mode"] == "off")
+        if silent_late:
+            # Late at night, for the neighbours: lights only (phones can still listen).
+            log.info("late: %s stays quiet for %s", media_player, show_id)
+            media_player = None
         await self._stop()
         self.started += 1
         self.speaker_stopped = False
@@ -150,7 +159,7 @@ class Runner:
         if not media_player:
             await self.player.play(show_id, baked, devices, position=position, offset=offset)
             audio = show.get("audio") or {}
-            if use_show_speaker and audio.get("source") and audio.get("path"):
+            if (use_show_speaker or silent_late) and audio.get("source") and audio.get("path"):
                 self.song = {"source": audio["source"], "path": audio["path"]}
             return
         audio = show.get("audio")
@@ -161,6 +170,7 @@ class Runner:
         # starts) still stops the speaker.
         self.media_player = media_player
         self.speaker_stopped = False
+        await self._late_volume(media_player, late)
         await self._start_speaker(media_player, audio["path"], position)
         await self.player.play(show_id, baked, devices, position=position, offset=self.delay)
         self._follow = asyncio.create_task(self._follow_speaker(media_player))
@@ -185,6 +195,25 @@ class Runner:
             except HAError as e:
                 log.warning("couldn't stop %s after its test: %s", entity, e)
             return took
+
+    async def _late_volume(self, entity: str, late: dict | None):
+        """Late at night, turn the speaker down to the late volume, remembering how loud it was; the first
+        show after that time puts it back. Never stops the show: a speaker that won't say or change its
+        volume just plays as it is."""
+        try:
+            if late and late["mode"] == "quieter":
+                if entity not in self._day_volumes:
+                    st = await self.ha.state(entity)
+                    level = st.get("attributes", {}).get("volume_level")
+                    if isinstance(level, (int, float)):
+                        self._day_volumes[entity] = float(level)
+                await self.ha.call("media_player", "volume_set",
+                                   {"entity_id": entity, "volume_level": late["volume"] / 100})
+            elif entity in self._day_volumes:
+                await self.ha.call("media_player", "volume_set",
+                                   {"entity_id": entity, "volume_level": self._day_volumes.pop(entity)})
+        except HAError as e:
+            log.warning("late volume on %s: %s", entity, e)
 
     async def _start_speaker(self, entity: str, path: str, position: float):
         asked = datetime.now(timezone.utc)
