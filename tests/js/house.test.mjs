@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { House, arcNearest, bulbLayout, panelBulbs, defaultPanel, treeBulbs, defaultTree, bulbPositions, bulbSegment, defaultDrops, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
+import { House, arcNearest, archPoints, bulbLayout, panelBulbs, defaultPanel, treeBulbs, defaultTree, bulbPositions, bulbSegment, defaultDrops, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
   from "../../haliday_show/app/halidayshow/static/js/house.js";
 
 const close = (a, b) => a.every((p, i) => Math.abs(p[0] - b[i][0]) < 1e-9 && Math.abs(p[1] - b[i][1]) < 1e-9);
@@ -171,4 +171,22 @@ test("a matrix's shape on the photo is redrawn when its grid changes but its LED
   const before = house.bulbs(dev).map((p) => p.join());
   const after = house.bulbs({ ...dev, matrix: { w: 6, h: 4 } }).map((p) => p.join());
   assert.notDeepEqual(after, before);
+});
+
+test("arches stand on the traced line, or hang from it", () => {
+  const line = [[0.1, 0.5], [0.9, 0.5]];
+  const up = archPoints(line, 2, 0.1);
+  assert.deepEqual(up[0], [0.1, 0.5]);
+  assert.ok(Math.abs(up.at(-1)[1] - 0.5) < 1e-9);
+  // The top of the first arch, a quarter of the way along, is 0.1 above the line; between the two
+  // arches it's back on the line.
+  const near = (x) => up.reduce((b, p) => (Math.abs(p[0] - x) < Math.abs(b[0] - x) ? p : b));
+  assert.ok(Math.abs(near(0.3)[1] - 0.4) < 0.005);
+  assert.ok(Math.abs(near(0.5)[1] - 0.5) < 0.005);
+  const down = archPoints(line, 2, 0.1, true);
+  assert.ok(Math.abs(down.reduce((b, p) => (Math.abs(p[0] - 0.3) < Math.abs(b[0] - 0.3) ? p : b))[1] - 0.6) < 0.005);
+  // Bulbs follow the curve.
+  const bulbs = bulbLayout(up, 9);
+  assert.ok(bulbs.some(([, y]) => y < 0.45));
+  assert.deepEqual(archPoints([[0.1, 0.5]], 3, 0.1), [[0.1, 0.5]]);
 });

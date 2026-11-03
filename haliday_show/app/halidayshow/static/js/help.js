@@ -348,7 +348,7 @@ export const HELP = {
         "Trace past a stretch round the back of the house anyway (a short line will do), then click it and choose <b>Out of view</b> with how many bulbs are on it.",
       ] },
       { id: "styles", title: "Light styles", guide: ["house.md", "light-styles"], tips: [
-        "<b>Line</b> for strips and string lights, <b>Icicle</b> for icicle lights (set <b>Drops</b> and <b>Length</b>), and <b>Spots</b> for spotlights.",
+        "<b>Line</b> for strips and string lights, <b>Icicle</b> for icicle lights (set <b>Drops</b> and <b>Length</b>), <b>Arches</b> for lights in arches or swags (set how many, their height, and up or down), and <b>Spots</b> for spotlights.",
       ] },
     ],
   },

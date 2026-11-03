@@ -1653,3 +1653,11 @@ async def test_baked_frames_can_arrive_gzipped(client):
     r = await client.post(f"{q}&offset={half}&done=1&gz=1", data=packed[half:])
     assert r.status == 200 and (await r.json())["bytes"] == len(blob)
     assert (await client.put(f"/api/shows/{show_id}/baked?gz=1", data=b"not gzip")).status == 400
+
+
+async def test_arches_on_the_house_photo_are_cleaned(client):
+    body = {"paths": {"a": [[0.1, 0.5], [0.9, 0.5]]}, "dim": 0.5,
+            "styles": {"a": {"style": "arches", "arches": 500, "height": 2, "down": "yes"}}}
+    assert (await client.put("/api/house", json=body)).status == 200
+    got = (await (await client.get("/api/house")).json())["styles"]["a"]
+    assert got == {"style": "arches", "arches": 100, "height": 0.5, "down": False}

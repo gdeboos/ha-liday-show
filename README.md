@@ -157,7 +157,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   preview it on your house photo before importing
 - **Export** and **Import** everything in one file, or **Start afresh**, with a copy kept first so it
   can be undone
-- Draw icicle lights as hanging drops and spotlights as beams aimed at the wall
+- Draw icicle lights as hanging drops, arches and swags as curves, and spotlights as beams aimed at the wall
 - Mark stretches that run out of view (round a corner, or an extension lead) so the bulb count
   still lines up; those bulbs still play in the real show
 - Pin segments to where they really are when the photo is taken at an angle
