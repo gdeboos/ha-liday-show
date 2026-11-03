@@ -77,6 +77,10 @@ test("a matrix clip on the timeline is a row of grid snapshots, each the grid's 
   assert.ok(tiles.every((t) => t.x + t.w <= 200 + 1e-9));
   assert.equal(tiles.length, 2); // 60 + 2 gap + the last, trimmed
   assert.equal(tiles[1].w, 38);
+  assert.equal(tiles[0].frac, 1);
+  assert.ok(Math.abs(tiles[1].frac - 38 / 60) < 1e-9); // the part of the grid the trimmed one shows
+  assert.equal(gridTiles(0, 63, 30, { w: 32, h: 16 }).length, 1); // a 1 px sliver after the gap is left out
+  assert.equal(gridTiles(0, 3, 30, { w: 32, h: 16 }).length, 1); // but a very short clip still gets one
   const tall = gridTiles(0, 100, 30, { w: 8, h: 32 });
   assert.equal(tall[0].w, 8); // never narrower than 8 px
 });

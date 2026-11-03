@@ -301,7 +301,9 @@ export class Timeline {
     this.tileCanvas ||= document.createElement("canvas");
     const tc = this.tileCanvas;
     if (tc.width !== grid.w || tc.height !== grid.h) { tc.width = grid.w; tc.height = grid.h; }
-    const tctx = tc.getContext("2d"), img = tctx.createImageData(grid.w, grid.h);
+    const tctx = tc.getContext("2d");
+    if (this.tileImage?.width !== grid.w || this.tileImage?.height !== grid.h) this.tileImage = tctx.createImageData(grid.w, grid.h);
+    const img = this.tileImage;
     ctx.save();
     ctx.beginPath(); ctx.rect(left, top, right - left, height); ctx.clip();
     ctx.imageSmoothingEnabled = false;
@@ -317,8 +319,7 @@ export class Timeline {
       }
       tctx.putImageData(img, 0, 0);
       // Trimmed at the clip's end: only as much of the grid as there's room for.
-      const full = Math.max(8, (height * grid.w) / grid.h);
-      ctx.drawImage(tc, 0, 0, grid.w * (tile.w / full), grid.h, tile.x, top, tile.w, height);
+      ctx.drawImage(tc, 0, 0, grid.w * tile.frac, grid.h, tile.x, top, tile.w, height);
     }
     ctx.restore();
   }
