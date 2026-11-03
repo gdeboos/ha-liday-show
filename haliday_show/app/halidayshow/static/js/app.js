@@ -5512,6 +5512,7 @@ function renderPublicLook() {
   $("pub-borders").checked = look.borders;
   $("pub-snow").checked = look.snow;
   $("pub-show-length").checked = look.show_length !== false;
+  $("pub-covers").checked = look.covers !== false;
   $("pub-warning").value = look.warning || "off";
   for (const r of document.querySelectorAll("input[name=pub-picture]")) {
     r.checked = r.value === look.picture;
@@ -5838,6 +5839,7 @@ function savePublic() {
       spacing: $("pub-spacing").value, corners: $("pub-corners").value, size: $("pub-size").value,
       borders: $("pub-borders").checked,
       show_length: $("pub-show-length").checked,
+      covers: $("pub-covers").checked,
       warning: $("pub-warning").value,
       colours: Object.fromEntries([...document.querySelectorAll("#pub-colours input[data-colour]")]
         .map((i) => [i.dataset.colour, i.value])),

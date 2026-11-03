@@ -28,7 +28,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from . import ai, imagemeta, playlists, schedule
+from . import ai, imagemeta, playlists, schedule, songtags
 from .runner import Runner
 from .storage import Storage, valid_id
 
@@ -204,6 +204,7 @@ def clean_look(x) -> dict:
             "spacing": pick("spacing", SPACINGS), "corners": pick("corners", CORNERS), "size": pick("size", SIZES),
             "borders": x.get("borders") is not False,
             "show_length": x.get("show_length") is not False,
+            "covers": x.get("covers") is not False,
             "warning": pick("warning", WARNINGS),
             "colours": {k: (c[k].lower() if isinstance(c := x.get("colours"), dict) and isinstance(c.get(k), str)
                             and _HEX.match(c[k]) else v) for k, v in DEFAULT_COLOURS.items()}}
@@ -339,6 +340,34 @@ def choices(storage: Storage, today: date | None = None) -> list[dict]:
     return out
 
 
+def _song_file(storage: Storage, show: dict | None) -> Path | None:
+    audio = (show or {}).get("audio")
+    return storage.audio_path(audio.get("source", ""), audio.get("path", "")) if isinstance(audio, dict) else None
+
+
+def _cover_file(storage: Storage, show_ids: list[str]) -> Path | None:
+    """The song whose cover art a show (or a playlist, its first show that has some) is shown with."""
+    for sid in show_ids:
+        song = _song_file(storage, storage.load_show(sid))
+        if song is not None and songtags.cached_cover(song):
+            return song
+    return None
+
+
+_COVER_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+
+
+def cover_of(storage: Storage, pick: dict) -> tuple[str, bytes] | None:
+    """A show's or playlist's cover art as visitors get it: with any hidden details taken out
+    (imagemeta), and only in a kind of picture that can be checked for them."""
+    song = _cover_file(storage, pick["shows"])
+    pic = songtags.cached_cover(song) if song else None
+    if not pic or pic[0] not in _COVER_TYPES:
+        return None
+    data = imagemeta.clean(pic[1], _COVER_TYPES[pic[0]])
+    return (pic[0], data) if data else None
+
+
 def _choices(storage: Storage, today: date) -> list[dict]:
     p = load(storage) or clean(None)
     by_id = {pl["id"]: pl for pl in playlists.load(storage)}
@@ -355,6 +384,12 @@ def _choices(storage: Storage, today: date) -> list[dict]:
             if not shows:
                 continue
             pick = {"kind": "playlist", "id": it["id"], "name": pl["name"], "shows": shows, "gap": pl["gap"]}
+        # A number that changes with the cover, so pages fetch a new one (0: none).
+        song = _cover_file(storage, pick["shows"])
+        try:
+            pick["cover"] = 1 + (song.stat().st_mtime_ns // 1_000_000) % 2_000_000_000 if song else 0
+        except OSError:
+            pick["cover"] = 0
         if available(it, today):
             pick["available"] = True
         else:
@@ -393,7 +428,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                 mine.append({"id": r["id"], "name": r["name"], "place": place, "wait": wait})
     return {
         "open": p["on"],
-        "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"],
+        "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"], "cover": c["cover"] if look["covers"] else 0,
                      "minutes": max(1, round(runner.request_seconds(c) / 60))} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"]}
@@ -406,7 +441,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "needs_location": needs_location,
         "hours": hours_now(p, where, now),
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
-                                         "corners", "size", "borders", "colours", "show_length", "warning")},
+                                         "corners", "size", "borders", "colours", "show_length", "warning",
+                                         "covers")},
                  "picture": picture_version(storage, look)},
         "words": said,
     }
@@ -530,6 +566,21 @@ async def get_picture(request):
     # The page asks with ?v=, which changes with the picture.
     return web.Response(body=data, content_type=PICTURE_TYPES[path.suffix.lower()],
                         headers={"Cache-Control": "private, max-age=86400"})
+
+
+async def get_cover(request):
+    """A show's or playlist's cover art, only for one visitors can pick now and with your code."""
+    _limit_client(request, "state", MAX_STATE_PER_CLIENT_MIN)
+    st = request.app[STORAGE]
+    p = load(st) or clean(None)
+    if not (p["on"] and p["look"]["covers"] and _code_ok(p, request.query.get("code"))):
+        raise web.HTTPNotFound()
+    q = request.query
+    pick = next((c for c in choices(st) if c["available"] and c["kind"] == q.get("kind") and c["id"] == q.get("id")), None)
+    pic = cover_of(st, pick) if pick else None
+    if pic is None:
+        raise web.HTTPNotFound()
+    return web.Response(body=pic[1], content_type=pic[0], headers={"Cache-Control": "private, max-age=86400"})
 
 
 async def get_state(request):
@@ -684,6 +735,7 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None) -> web
     r.add_get("/{name:(public\\.js|public\\.css|colours\\.js)}", page)
     r.add_get("/api/state", get_state)
     r.add_get("/picture", get_picture)
+    r.add_get("/cover", get_cover)
     r.add_post("/api/request", post_request)
     r.add_post("/api/cancel", post_cancel)
     r.add_post("/api/near", post_near)
