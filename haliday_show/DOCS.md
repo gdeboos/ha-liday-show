@@ -428,8 +428,9 @@ which season each belongs to, and switch a season off when its props are packed 
   straight away. **Test** and previews on the light are off for it, it's marked **packed away** in the
   list, and the house view draws it dimmed.
 - Deleting a season makes its lights all-year lights again.
-- With MQTT set up, each season is also a switch in Home Assistant, so an automation can put a season's
-  props out or pack them away (see [With MQTT](#with-mqtt)).
+- An automation can put a season's props out or pack them away: with MQTT, each season is a switch in
+  Home Assistant (see [With MQTT](#with-mqtt)); without it, send the app a season command (see
+  [Without MQTT](#without-mqtt)).
 - **A show's season:** in **⚙ Show settings…** (or as you make it with **+ New show**), pick its
   **Season**. A Halloween show lists your all-year lights and your Halloween props, not your Christmas
   ones. **Any season** (the start for every show) lists every light. A light that's out of the show's
@@ -2135,7 +2136,10 @@ actions:
 
 To start a playlist instead, send `input: {action: play, playlist: Halloween night}` (its name, in
 any case). Send `input: {action: stop}` to stop. For a scene, send
-`input: {action: scene, scene: Candy cane}`, or `scene: "off"` to turn it off. **Setup → Speakers** shows the exact input for the open show, under Automations.
+`input: {action: scene, scene: Candy cane}`, or `scene: "off"` to turn it off. To put a
+[season](#seasons)'s props out, send `input: {action: season, season: Halloween, out: true}`, and
+`out: false` to pack them away. It does the same as the switch on **Setup → Devices**: packed-away props go
+dark straight away. **Setup → Speakers** shows the exact input for the open show, under Automations.
 Automations that use the older `hassio.addon_stdin` action with `addon:` keep working, and that's
 the one to use on Home Assistant before 2026.2.
 

@@ -4,6 +4,7 @@
   {"action": "play", "playlist": "Halloween night"}
   {"action": "stop"}
   {"action": "scene", "scene": "Candy cane"}       (or "off"; waits for a show that's on)
+  {"action": "season", "season": "Halloween", "out": false}   (packs its props away; true puts them out)
 
 "show" (and "scene") may be an id or a name. Without "media_player" the show's saved
 speaker is used; a show with no speaker plays the lights only.
@@ -15,7 +16,7 @@ import os
 import sys
 import threading
 
-from . import playlists
+from . import playlists, seasons
 from .runner import Runner, RunnerError
 from .storage import Storage
 
@@ -54,8 +55,12 @@ def parse(raw) -> dict:
             raw = json.loads(raw)
         except ValueError:
             pass
-        if isinstance(raw, str):  # plain text: "stop", "play <show>" or "scene <scene>"
+        if isinstance(raw, str):  # plain text: "stop", "play <show>", "scene <scene>" or "season <season> out|away"
             action, _, rest = raw.strip().partition(" ")
+            if action.lower() == "season":
+                name, _, word = rest.strip().rpartition(" ")
+                out = {"out": True, "on": True, "away": False, "off": False}.get(word.lower())
+                return {"action": action, "season": name, **({} if out is None else {"out": out})}
             return {"action": action, "scene" if action.lower() == "scene" else "show": rest.strip()}
     if not isinstance(raw, dict):
         raise ValueError('expected an object like {"action": "play", "show": "..."}')
@@ -101,6 +106,20 @@ async def handle(runner: Runner, raw) -> str:
             raise ValueError(f"no scene called '{ref}'")
         await runner.want_scene(scene_id)
         return f"scene {scene_id}"
+    if action == "season":
+        ref, out = str(cmd.get("season", "")).strip(), cmd.get("out")
+        if not isinstance(out, bool):
+            raise ValueError('say whether the season\'s props are out: "out": true or false')
+        storage = runner.storage
+        found = next((s for s in seasons.load(storage.load_settings())
+                      if s["id"] == ref or s["name"].lower() == ref.lower()), None)
+        if not found or not seasons.set_out(storage, found["id"], out):
+            raise ValueError(f"no season called '{ref}'")
+        # Packed away: its props go dark straight away, as from Setup → Devices.
+        runner.player.drop(seasons.away(storage.load_devices(), seasons.load(storage.load_settings())))
+        if runner.seasons_changed:
+            runner.seasons_changed()  # Home Assistant's season switches follow, with MQTT
+        return f"{found['id']} {'out' if out else 'packed away'}"
     if action == "play" and cmd.get("playlist"):
         playlist = playlists.find(runner.storage, str(cmd["playlist"]))
         if not playlist:
