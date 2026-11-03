@@ -570,13 +570,32 @@ async def safe_headers(request, handler):
     return resp
 
 
-async def page(request):
-    name = request.match_info.get("name") or "index.html"
-    if name not in ("index.html", "public.js", "public.css", "colours.js", "listensync.js"):
+PAGE_FILES = {"index.html": "text/html", "public.js": "text/javascript", "public.css": "text/css",
+              "colours.js": "text/javascript", "listensync.js": "text/javascript"}
+# The page's own files ask for each other with ?v= and a stamp of what's in them, so a phone (or a
+# tunnel's cache, such as Cloudflare's) never mixes an old script with a new page after an update.
+_STAMP = hashlib.sha1(b"".join((PAGE / n).read_bytes() for n in sorted(PAGE_FILES))).hexdigest()[:10]
+_STAMPED = {"index.html": (('href="public.css"', f'href="public.css?v={_STAMP}"'),
+                           ('src="public.js"', f'src="public.js?v={_STAMP}"')),
+            "public.js": (('"./colours.js"', f'"./colours.js?v={_STAMP}"'),
+                          ('"./listensync.js"', f'"./listensync.js?v={_STAMP}"'))}
+
+
+def page_file(name: str) -> web.Response:
+    """One of the visitors' page's files, with the others it asks for stamped."""
+    if name not in PAGE_FILES:
         raise web.HTTPNotFound()
-    resp = web.FileResponse(PAGE / name)
-    resp.headers["Cache-Control"] = "no-cache"
-    return resp
+    text = (PAGE / name).read_text(encoding="utf-8")
+    for old, new in _STAMPED.get(name, ()):
+        text = text.replace(old, new)
+    # The page itself is always asked again; stamped files can be kept, as a new stamp is a new address.
+    cache = "no-cache" if name == "index.html" else "public, max-age=86400"
+    return web.Response(text=text, content_type=PAGE_FILES[name], charset="utf-8",
+                        headers={"Cache-Control": cache})
+
+
+async def page(request):
+    return page_file(request.match_info.get("name") or "index.html")
 
 
 def _state(request, ticket, code):

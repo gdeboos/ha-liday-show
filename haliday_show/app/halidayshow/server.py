@@ -2296,10 +2296,7 @@ async def get_public_picture(request):
 # login) rather than on the public port: the same page, shown as visitors with the code see it, but it
 # can't start or cancel anything.
 async def public_preview_page(request):
-    name = request.match_info.get("name") or "index.html"
-    if name not in ("index.html", "public.js", "public.css", "colours.js", "listensync.js"):
-        raise web.HTTPNotFound()
-    return web.FileResponse(public.PAGE / name, headers={"Cache-Control": "no-cache"})
+    return public.page_file(request.match_info.get("name") or "index.html")
 
 
 async def public_preview_state(request):

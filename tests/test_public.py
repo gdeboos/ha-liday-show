@@ -839,3 +839,20 @@ async def test_only_the_newest_copies_are_kept(tmp_path):
     copies._tidy()
     left = sorted(p.name for p in tmp_path.glob("*.m4a"))
     assert len(left) == public.songcopy.KEEP and left[0] == "003.m4a"
+
+
+async def test_the_page_asks_for_its_files_by_what_is_in_them(client):
+    await client.put("/api/public", json={"on": True})
+    status, html, headers = await _visitor(client, "/", code=False)
+    assert status == 200 and headers["Cache-Control"] == "no-cache"
+    stamp = public._STAMP
+    assert f'src="public.js?v={stamp}"' in html and f'href="public.css?v={stamp}"' in html
+    status, js, headers = await _visitor(client, f"/public.js?v={stamp}", code=False)
+    assert status == 200 and headers["Content-Type"].startswith("text/javascript")
+    assert f'"./listensync.js?v={stamp}"' in js and f'"./colours.js?v={stamp}"' in js
+    for name in ("listensync.js", "colours.js", "public.css"):
+        status, _, headers = await _visitor(client, f"/{name}?v={stamp}", code=False)
+        assert status == 200 and "max-age" in headers["Cache-Control"], name
+    # The editor's preview gets the same.
+    resp = await client.get("/public-preview/")
+    assert f"public.js?v={stamp}" in await resp.text()

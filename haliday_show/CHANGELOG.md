@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.320
+
+- Fixed **🎧 Listen on your phone** not showing on some phones after an update. A phone (or a tunnel such as Cloudflare) could keep the old copy of the visitors' page's script and use it with the new page. The page's files now change their address whenever they change, so phones always get the new ones.
+
 ## 0.2.319
 
 - A visitors' page left open on a phone now loads again by itself after HA-liday Show updates or restarts. Before, a page opened before an update carried on as the old version, so **🎧 Listen on your phone** didn't appear until it was refreshed.
