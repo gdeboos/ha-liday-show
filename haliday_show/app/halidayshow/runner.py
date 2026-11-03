@@ -80,6 +80,7 @@ class Runner:
         self.live = None  # livemusic.LiveMusic, set by the server, for scenes with React to music
         self.seasons_changed = None  # set by the server: tells MQTT a season was switched by a command
         self.scene_playing = False  # its frames are what the lights are showing now
+        self._wled_tasks: set = set()  # WLEDs being told to play their own effect
         self._idle_since: float | None = None
 
     def status(self) -> dict:
@@ -282,7 +283,8 @@ class Runner:
                 log.warning("%s: couldn't start its own effect: %s", device.get("name") or device.get("id"), e)
         for device, look in own.values():
             if device.get("ip"):  # a planned light has nothing to tell
-                asyncio.create_task(send(device, look))
+                self._wled_tasks.add(task := asyncio.create_task(send(device, look)))
+                task.add_done_callback(self._wled_tasks.discard)
 
     def _react(self, scene: dict | None):
         """Has the player follow the live music for a scene with React to music switched on: just
@@ -296,6 +298,9 @@ class Runner:
             try:
                 if blob:
                     variants[look] = decode(blob)
+                    # A light that scene hands to WLED's own effect gets none of its frames.
+                    own = scenelib.wled_looks(self.storage.load_scene(cfg[look]) or {}, self.storage.devices_by_id())
+                    variants[look].tracks = [t for t in variants[look].tracks if t.device not in own]
             except Exception as e:  # a broken bake just means no strong-bass or strong-treble look
                 log.warning("scene %s: %s", cfg[look], e)
         reactor = react.Reactor(cfg)
@@ -513,6 +518,8 @@ class Runner:
         self.playlist = None
 
     async def _stop(self):
+        for task in list(self._wled_tasks):  # a slow WLED mustn't drop out of the next show's realtime
+            task.cancel()
         self.song = None
         self.block = None
         self.scene_playing = False

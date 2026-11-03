@@ -92,9 +92,12 @@ export function setPartLook(scene, d, p, look) {
 
 // Each part on its own, starting on the light's look (all off if it was off), or the whole light
 // again, on the first part's look.
+// WLED's own effect only goes on a whole WLED light, so a look copied anywhere else becomes plain colours.
+const plainIfOwn = (look) => (EFFECTS[look?.effect]?.wledOwn ? changeEffect(look, "trio") : look);
+
 export function setByParts(scene, d, on) {
   if (on) {
-    const whole = scene.lights[d.id];
+    const whole = plainIfOwn(scene.lights[d.id]);
     if (whole) for (const p of d.parts) scene.lights[partKey(d, p)] = structuredClone(whole);
     delete scene.lights[d.id];
   } else {
@@ -173,7 +176,7 @@ export function sceneSummary(scene, lights) {
 // gives each light that look, to change one at a time.
 export function setSame(scene, on, lights) {
   if (on && !scene.all) {
-    const first = lights.flatMap((d) => looksOf(scene, d))[0] || newLook();
+    const first = plainIfOwn(lights.flatMap((d) => looksOf(scene, d))[0]) || newLook();
     scene.all = structuredClone(first);
   } else if (!on && scene.all) {
     scene.lights = Object.fromEntries(lights.map((d) => [d.id, structuredClone(scene.all)]));

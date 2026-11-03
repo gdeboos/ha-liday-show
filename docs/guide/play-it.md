@@ -79,9 +79,11 @@ and not on the schedule) and **Remove…**.
   **Speed**, **Brightness** and **Intensity** go to the WLED too. When the scene starts, HA-liday Show
   tells the WLED to play that effect and sends it nothing else; your other lights play as usual. The
   **Preview** can't show WLED's effect, so the light shows its colours, still, and its row says so.
-  WLED's sound-reactive effects follow the WLED's own microphone, while **React to music** doesn't reach
-  this light. When a show starts, the light is taken back as usual. A WLED that doesn't answer just
-  stays as it was.
+  WLED's sound-reactive effects follow the WLED's own microphone, while **React to music**, the scenes'
+  brightness, and House lane or group lane effects don't reach this light. When a show starts, the
+  light is taken back as usual. When the scene stops, the WLED carries on with its effect (as a WLED
+  goes back to its own effect after a show), so turn it off in WLED or Home Assistant if you want it
+  dark. A WLED that doesn't answer just stays as it was.
 - **Same for every light** puts one row in charge of all your lights. Turn it off again and each
   light starts from that look, ready to change one at a time.
 - The **Preview** shows the scene moving on your house photo. Changes save as you make them.
@@ -105,6 +107,7 @@ works as in a show. Each light's look becomes one effect across the whole timeli
   a Basic scene. It always covers the whole loop and is that lane's only effect: picking it replaces the
   lane's other effects, and other effects can't go on that lane until you change or delete it. Its clip
   says **WLED:** and the effect's name, and the **Selection** panel picks the WLED's effect and palette.
+  Transitions and Glitter do nothing on it, and it can't be copied to other lights or saved as a preset.
 - **Switch to Basic** goes back to a row per light. It's only offered while nothing would be lost: each
   light with one effect across the whole loop, played on the whole light, and nothing on the House lane.
 

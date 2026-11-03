@@ -2297,8 +2297,8 @@ const fitsTrack = (effect, i) => (EFFECTS[effect]?.wledOwn ? wledLane(i)
 const isTree = (id) => house.styles[id]?.style === "tree";
 const onTree = (i) => isTree(app.show.tracks[i]?.device);
 // A copy of a clip from track `from` as it goes on track `to`, or null if that lane can't take it.
-const clipOnto = (c, from, to) => clipForLane(clone(c), EFFECTS[c.effect], { lane: laneKind(to), tree: onTree(to),
-  fromMatrix: laneKind(from) === "matrix" });
+const clipOnto = (c, from, to) => (!fitsTrack(c.effect, to) || (EFFECTS[c.effect]?.wledOwn && onWledOwn(to)) ? null
+  : clipForLane(clone(c), EFFECTS[c.effect], { lane: laneKind(to), tree: onTree(to), fromMatrix: laneKind(from) === "matrix" }));
 // The group lanes as they play, for composeLight; pass the house positions when there are any.
 // Made once per animation frame or so, so the lights in a preview share each group's strip.
 const plansMemo = { at: -Infinity, pos: null, plans: [] };
@@ -3510,7 +3510,7 @@ function renderInspector() {
   box.append(...Object.values(groups).filter((g) => g.children.length > 1));
   const actions = document.createElement("div");
   actions.className = "insp-actions";
-  actions.append(button("Save as preset…", () => savePresetFrom(clip), "ghost"));
+  if (!EFFECTS[clip.effect].wledOwn) actions.append(button("Save as preset…", () => savePresetFrom(clip), "ghost")); // it's per WLED
   actions.append(button("Copy", copySelection, "ghost"));
   if (!isLane(sel.track)) {
     actions.append(button("Copy to all lights", () => copyClipsTo([clip], sel.track, otherTracks(sel.track)), "ghost"));
@@ -3885,6 +3885,7 @@ function renderPresetsTab() {
   }
   const dev = presetPreviewDev();
   for (const [key, fx] of Object.entries(EFFECTS)) {
+    if (fx.wledOwn) continue;
     const mine = app.myPresets.filter((p) => p.effect === key);
     if (!mine.length) continue;
     const h = document.createElement("h3");
@@ -5480,7 +5481,7 @@ function deleteSelected() {
 
 function duplicateSelected() {
   const sel = app.selected;
-  if (!sel?.clip) return;
+  if (!sel?.clip || EFFECTS[sel.clip.effect]?.wledOwn) return; // WLED's own effect is the whole loop already
   const len = sel.clip.end - sel.clip.start;
   const copy = { ...sel.clip, start: sel.clip.end, end: sel.clip.end + len };
   app.show.tracks[sel.track].clips.push(copy);

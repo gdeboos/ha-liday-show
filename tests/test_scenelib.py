@@ -474,3 +474,20 @@ async def test_a_wled_on_its_own_effect_gets_its_state_and_no_frames(runner, mon
     ip, state = sent[0]
     assert ip == "127.0.0.2" and len(sent) == 1
     assert state["on"] is True and state["seg"]["fx"] == 9 and state["seg"]["sx"] == 200 and state["seg"]["pal"] == 6
+
+
+async def test_a_react_scene_s_wled_on_its_own_effect_gets_no_frames_from_it(runner):
+    runner.storage.save_devices([{"id": "a", "ip": "127.0.0.1", "segments": 1},
+                                 {"id": "w", "kind": "wled", "ip": "127.0.0.2", "segments": 1}])
+    runner.storage.save_scene("bass", {"name": "Bass", "mode": "basic", "lights": {
+        "a": {"effect": "solid", "params": {}}, "w": {"effect": "wled", "params": {"fx": 2}}}})
+    runner.storage.save_scene_baked("bass", baked.encode(40, [{"device": "a", "segments": 1}, {"device": "w", "segments": 1}],
+                                                         [b"\x00\x00\xff\x00\x00\xff"] * 4))
+
+    class Live:
+        def now(self, source):
+            return {}
+
+    runner.live = Live()
+    runner._react({"react": {"on": True, "bass": "bass", "treble": ""}})
+    assert [t.device for t in runner.player.variants["bass"].tracks] == ["a"]

@@ -98,7 +98,12 @@ loop. Plan: the project doc `claude/effects-plan.md`, round 2.
   to leave realtime mode at once, rather than after the 2.5 s timeout. `bri` on a segment is its own
   brightness (newer WLED). None of this has been checked on a real WLED yet (only against a fake
   answering `/json` and `/json/state`). On the first real one, check that the effect starts straight
-  after a show, that a WLED with several segments plays it on all of them, and what `bri` does.
+  after a show, that a WLED with several segments plays it on all of them, and what `bri` does. Also
+  check whether `live: false` really leaves realtime, or whether `lor` (live override) is what's needed;
+  either way WLED leaves realtime by itself 2.5 s after the last DDP packet.
+- The background POSTs are cancelled when anything else starts (`Runner._stop`), so a slow WLED can't
+  drop out of the next show's realtime. A React to music bass or treble scene's frames skip the lights
+  that scene hands to WLED's own effects.
 - Nothing is sent when the scene stops; the WLED goes on with its effect until a show sends frames
   again (it switches to realtime on the first DDP packet, as ever).
 

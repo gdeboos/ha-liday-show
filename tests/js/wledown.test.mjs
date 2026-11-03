@@ -33,3 +33,15 @@ test("the server's default colours for WLED's own effect match the editor's", as
   const py = fs.readFileSync(new URL("../../haliday_show/app/halidayshow/wled.py", import.meta.url), "utf8");
   for (const p of EFFECTS.wled.params.filter((q) => q.type === "color")) assert.ok(py.includes(`"${p.key}": "${p.default}"`), p.key);
 });
+
+test("Same for every light and Each part on its own never copy WLED's own effect elsewhere", async () => {
+  const { setSame, setByParts } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const own = { effect: "wled", params: { fx: 5, color: "#ff0000" } };
+  const lights = [{ id: "w", kind: "wled", segments: 10 }, { id: "g", segments: 10 }];
+  const same = setSame({ mode: "basic", lights: { w: structuredClone(own) } }, true, lights);
+  assert.equal(same.all.effect, "trio");
+  assert.equal(same.all.params.color, "#ff0000"); // its colours carry over
+  const split = setByParts({ mode: "basic", lights: { w: structuredClone(own) } },
+    { id: "w", parts: [{ id: "a", from: 1, to: 5 }, { id: "b", from: 6, to: 10 }] }, true);
+  assert.ok(Object.values(split.lights).every((l) => l.effect === "trio"));
+});
