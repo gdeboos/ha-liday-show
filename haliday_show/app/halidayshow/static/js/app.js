@@ -319,7 +319,6 @@ async function saveSeasons(next, what = "Seasons saved") {
     status(what, "saved", "lights");
   } catch (e) { status(`Couldn't save your seasons: ${e.message}`, true, "lights"); }
   house.away = awayIds(app.deviceList, app.seasons);
-  if (showListCache.length) renderShowLists(showListCache);
   indexDevices(); // lanes follow: a deleted season's shows list every light again, and notes change
   renderDevices();
   if (showListCache) renderShowLists(showListCache);
@@ -6220,7 +6219,13 @@ function drawShowSeasons(picked, count) {
   tools.hidden = !seasons.length || (picked === "all" && !showListCache.some((s) => ids.has(s.season)));
   if (tools.hidden) return;
   const choice = (id, label) => {
-    const b = button(label, () => { prefs.set("showSeason", id); renderShowLists(showListCache); }, "");
+    const b = button(label, async () => {
+      prefs.set("showSeason", id);
+      await renderShowLists(showListCache);
+      // The buttons are drawn afresh: keep the keyboard on the one just pressed.
+      $("lib-season").querySelector(`[data-season="${CSS.escape(id)}"]`)?.focus();
+    }, "");
+    b.dataset.season = id;
     b.setAttribute("aria-pressed", String(id === picked));
     if (id !== "all") b.title = `${label} shows, and shows for any season`;
     return b;
