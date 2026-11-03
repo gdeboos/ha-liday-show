@@ -56,6 +56,7 @@ import {
 import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
 import { askText, askYes } from "./ask.js";
+import { movePart } from "./partorder.js";
 import { glyphIcon, watchButtons } from "./glyphs.js";
 import { browse, folderButton, pathNav } from "./folderbrowse.js";
 import {
@@ -1086,7 +1087,20 @@ function partsPanel(d) {
     const count = document.createElement("span");
     count.className = "hint";
     count.textContent = countText(d, p.to - p.from + 1);
-    chip.append(swatch, name, ` ${many} `, num("from"), "–", num("to"), count, test, del);
+    // Moving a part keeps its effects in your shows: they follow it to its new place on the light.
+    const move = (dir) => {
+      const b = button(dir < 0 ? "↑" : "↓", () => {
+        d.parts = movePart(d.parts, p.id, dir);
+        saveDevices();
+        status(`${p.name} moved ${dir < 0 ? "nearer the plug" : "further from the plug"}. If it's traced on the house photo, retrace it under Setup → House`, "info");
+      }, "ghost small");
+      const label = dir < 0 ? `Move ${p.name} nearer the plug` : `Move ${p.name} further from the plug`;
+      b.title = `${label}, swapping places with the part next to it`;
+      b.setAttribute("aria-label", label);
+      b.disabled = dir < 0 ? k === 0 : k === parts.length - 1;
+      return b;
+    };
+    chip.append(swatch, name, ` ${many} `, num("from"), "–", num("to"), count, move(-1), move(1), test, del);
     list.append(chip);
   });
   const more = button("+ Add part", add, "ghost small");
