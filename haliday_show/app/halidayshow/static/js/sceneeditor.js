@@ -2,7 +2,7 @@
 // A scene's logic is in housescenes.js; scenelib.py keeps them and the runner plays them round and
 // round. This draws the pages, saves as you go, and bakes each scene's loop for the player.
 
-import { EFFECTS, FPS, bake, composeLight, matchesPreset, presetParams, unusedColour } from "./effects.js";
+import { EFFECTS, FPS, MADE_UP, bake, composeLight, matchesPreset, presetParams, unusedColour, withMusicLevels } from "./effects.js";
 import { gatherPart } from "./parts.js";
 import {
   SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
@@ -625,7 +625,8 @@ export class SceneEditor {
       const trackOf = (id) => show.tracks.find((tr) => tr.device === id);
       const frames = new Map();
       const full = (light) => {
-        if (!frames.has(light.id)) frames.set(light.id, this.d.asShown(light, t, (at) => composeLight(light, trackOf, at)));
+        // A scene follows live music on the lights, so Music level moves to a made-up level here.
+        if (!frames.has(light.id)) frames.set(light.id, withMusicLevels(MADE_UP, () => this.d.asShown(light, t, (at) => composeLight(light, trackOf, at))));
         return frames.get(light.id);
       };
       const byId = Object.fromEntries(this.d.lights().map((l) => [l.id, l]));
