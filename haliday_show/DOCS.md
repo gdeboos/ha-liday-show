@@ -1981,6 +1981,10 @@ when:
   close).
 - **On these days**: press a day to turn it on or off.
 
+**Shows finish by closing time** (on to start with): a pick that wouldn't finish before closing,
+counting everything already waiting, isn't taken. Its button says **Too long for tonight** and the
+visitor is told when you close. Your admin phone isn't held to it.
+
 The line underneath says whether the page is open now, or when it next opens. Sunset is worked out
 for your home location, as for playlists; without one, a sunset start never opens, and it says so.
 
