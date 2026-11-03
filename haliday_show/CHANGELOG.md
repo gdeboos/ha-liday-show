@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.313
+
+- Matrices can be split into parts now. In a matrix's window, under **Parts**, drag across the grid to make a rectangle (a star in one corner, say, or each window of a panel). Each part gets its own lane in your shows, where effects made for matrices fill its rectangle. With **Also play as one** ticked, the matrix's own lane still plays across the whole grid, and the LEDs outside every part follow it.
+
 ## 0.2.312
 
 - **Music level** shows in its previews again. In the effect window and the preset previews it moves to a made-up level (the start of a song is often too quiet to show anything), and **▶ Preview** in **Library → Shows** follows that show's own song rather than staying dark.

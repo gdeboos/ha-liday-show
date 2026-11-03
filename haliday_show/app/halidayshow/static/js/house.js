@@ -5,6 +5,7 @@
 import { SAMPLE_HOUSE } from "./samplehouse.js";
 import { unitWord } from "./lightwords.js";
 import { gridOf, wireOrder } from "./matrix.js";
+import { partAt, partCells } from "./parts.js";
 
 const BULBS_PER_SEGMENT = 4; // the guess when a light's bulb count isn't set on the Devices tab
 const MAX_BULBS = 2000;
@@ -611,7 +612,7 @@ export class House {
         return out;
       }
       if (dev.parts?.length) {
-        dev.parts.forEach((p, k) => { for (let s = p.from - 1; s < p.to; s++) out.set(partRgb(k), s * 3); });
+        dev.parts.forEach((p, k) => { for (const s of partCells(dev, p)) out.set(partRgb(k), s * 3); });
         return out;
       }
       for (let i = 0; i < dev.segments; i++) {
@@ -724,7 +725,7 @@ export class House {
   // part stay out of view; segments in no part are dropped.
   splitTrace(dev) {
     const bulbs = this.bulbs(dev);
-    if (!bulbs || !dev.parts?.length) return;
+    if (!bulbs || !dev.parts?.length || gridOf(dev)) return; // a matrix's parts stay on its one shape
     const style = this.styles[dev.id];
     for (const p of dev.parts) {
       const pts = []; // [x, y] or [x, y, bulbs out of view before it]
@@ -820,7 +821,7 @@ export class House {
     ctx.font = "600 12px system-ui, sans-serif";
     for (const [k, p] of (dev.parts || []).entries()) {
       const pts = [];
-      for (let s = p.from - 1; s < p.to; s++) pts.push(...(spots[s] || []));
+      for (const s of partCells(dev, p)) pts.push(...(spots[s] || []));
       if (!pts.length) continue;
       const [x, y] = pts[Math.floor(pts.length / 2)];
       const tw = ctx.measureText(p.name).width + 10;
@@ -852,7 +853,7 @@ export class House {
           return;
         }
         const s = bulbSegment(j, bulbs.length, dev.segments, dev.reverse) + (dev.from || 1);
-        const part = dev.parts?.find((x) => x.from <= s && s <= x.to);
+        const part = dev.parts?.[partAt(dev, s - 1)];
         const where = !dev.parts?.length ? "" : part ? ` · ${part.name}` : " · unused, off";
         best = { x: q[0], y: q[1], text: `${dev.name}: ${unitWord(dev, 1)} ${s}${where}` };
       });

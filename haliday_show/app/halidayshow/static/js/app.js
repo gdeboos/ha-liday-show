@@ -22,6 +22,8 @@ import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
 import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb } from "./house.js";
+import { addRectPart, gatherPart, isRectPart, joinParts, partAt, partGrid, partSize, pickPart, rectText, scatterPart, spreadParts,
+  wholeSegments } from "./parts.js";
 import { MAX_MATRIX, ON_A_MATRIX, RUNS, clipForLane, gridOf, laneTakes, matrixTestFrame, runsDownTree, toWire } from "./matrix.js";
 import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
@@ -401,14 +403,16 @@ function seasonControls(d) {
 // stay off. app.devices holds what each track plays on; app.lights holds the physical lights.
 const partId = (d, p) => `${d.id}#${p.id}`;
 function partDevice(d, p) {
-  const segments = p.to - p.from + 1;
-  return { ...d, id: partId(d, p), name: `${d.name} · ${p.name}`, partName: p.name, parent: d.id,
-    partIndex: d.parts.indexOf(p), from: p.from, to: p.to, segments, parts: undefined,
+  const segments = partSize(p);
+  // A matrix's part is a little matrix of its own, in plain rows, so grid effects fill it.
+  const grid = partGrid(p) && { matrix: { ...partGrid(p), start: "top left", order: "rows", zigzag: false } };
+  return { ...d, id: partId(d, p), name: `${d.name} · ${p.name}`, partName: p.name, parent: d.id, part: p,
+    partIndex: d.parts.indexOf(p), from: p.from, to: p.to, segments, parts: undefined, ...grid,
     bulbs: d.bulbs ? Math.max(1, Math.round(d.bulbs * segments / d.segments)) : null };
 }
-// What a split light's own track plays on: its parts end to end, as one strip.
+// What a split light's own track plays on: a strip's parts end to end, as one strip, or a matrix whole.
 function allPartsDevice(d) {
-  const segments = d.parts.reduce((n, p) => n + p.to - p.from + 1, 0);
+  const segments = wholeSegments(d);
   return { ...d, segments, light: d, bulbs: d.bulbs ? Math.max(1, Math.round(d.bulbs * segments / d.segments)) : null };
 }
 // The device a track plays on, or null for a missing light or a split light played as parts only.
@@ -498,7 +502,13 @@ function ensureTracks() {
 async function saveDevices() {
   // Parts have to fit the light, so a light made shorter trims them.
   for (const d of app.deviceList) {
-    d.parts = (d.parts || []).filter((p) => p.from <= d.segments).map((p) => ({ ...p, to: Math.min(p.to, d.segments) }));
+    if (d.matrix) {
+      // On a matrix, parts that no longer fit the grid are dropped (and you're told).
+      const kept = (d.parts || []).filter((p) => isRectPart(p) && p.x + p.w <= d.matrix.w && p.y + p.h <= d.matrix.h);
+      const lost = (d.parts || []).filter((p) => !kept.includes(p));
+      if (lost.length) status(`${lost.map((p) => p.name).join(", ")} no longer ${lost.length === 1 ? "fits" : "fit"} ${d.name}'s grid, so ${lost.length === 1 ? "it was" : "they were"} removed. Their clips stay in your shows`, "hint");
+      d.parts = kept;
+    } else d.parts = (d.parts || []).filter((p) => !isRectPart(p) && p.from <= d.segments).map((p) => ({ ...p, to: Math.min(p.to, d.segments) }));
   }
   try {
     app.deviceList = await api("api/devices", { method: "PUT", json: app.deviceList });
@@ -521,6 +531,7 @@ const deviceTests = {}; // id -> {what: "rainbow" | "parts" | a part's id, until
 
 // A still test frame: a matrix's wiring check, or a light's parts in their colours.
 const testFrame = (d, what) => (what === "matrix" ? toWire(matrixTestFrame(gridOf(d)), d.matrix)
+  : gridOf(d) ? toWire(partsFrame(d, what === "parts" ? undefined : what), d.matrix) // a matrix's parts, in its wiring order
   : partsFrame(d, what === "parts" ? undefined : what));
 
 async function testLight(d, what = "rainbow") {
@@ -626,14 +637,14 @@ function segmentPreview(d) {
   for (let c = 0; c < cells; c++) {
     const s = Math.floor((c + 0.5) * n / cells) + 1;
     const span = document.createElement("span");
-    const k = parts.findIndex((p) => p.from <= s && s <= p.to);
+    const k = partAt(d, s - 1);
     span.style.background = k >= 0 ? colourOf(k) : parts.length ? "" : "var(--accent)";
     map.append(span);
   }
   const what = countText(d);
   const text = Object.assign(document.createElement("span"), { className: "hint",
     textContent: parts.length ? `${what} · ${parts.length} part${parts.length === 1 ? "" : "s"}` : what });
-  box.title = parts.length ? parts.map((p) => `${p.name}: ${p.from}–${p.to}`).join("\n") : "";
+  box.title = parts.length ? parts.map((p) => `${p.name}: ${isRectPart(p) ? rectText(p) : `${p.from}–${p.to}`}`).join("\n") : "";
   box.append(map, text);
   return box;
 }
@@ -654,15 +665,18 @@ function matrixControls(d) {
     d.segments = w * h;
     d.bulbs = d.segments;
   };
-  on.addEventListener("change", () => {
+  on.addEventListener("change", async () => {
     if (!on.checked) {
+      // Its rectangle parts go too (saveDevices), so check first.
+      if (d.parts?.length && !(await askYes(`Turn off ${d.name}'s grid? Its ${d.parts.length === 1 ? "part goes" : `${d.parts.length} parts go`} too, `
+        + "though their clips stay in your shows.", { yes: "Turn off" }))) { on.checked = true; return; }
       delete d.matrix;
       if (SHAPE_POINTS[house.styles[d.id]?.style]) house.setStyle(d.id, null); // back to a line through its points
       saveDevices();
       return;
     }
     if (d.parts?.length) {
-      status(`Remove ${d.name}'s parts first: a matrix can't be split into parts yet`, "hint");
+      status(`Remove ${d.name}'s parts first: a matrix's parts are rectangles of its grid, made once it's a matrix`, "hint");
       on.checked = false;
       return;
     }
@@ -887,10 +901,7 @@ function renderLightEditor() {
     grid.append(row);
   }
   body.replaceChildren(grid);
-  if (gridOf(d)) {
-    body.append(Object.assign(document.createElement("p"), { className: "hint light-parts",
-      textContent: "A matrix plays as one light, so it can't be split into parts yet." }));
-  } else if (!isHa(d)) {
+  if (!isHa(d)) {
     const parts = partsPanel(d);
     parts.classList.add("light-parts");
     body.append(parts);
@@ -1002,6 +1013,7 @@ const runText = (runs) => runs.map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`
 // Parts split a light into pieces that each get their own track, like a roof line that runs
 // round a corner. Segments outside every part stay off in shows.
 function partsPanel(d) {
+  if (gridOf(d)) return matrixPartsPanel(d);
   const tr = document.createElement("section");
   const td = tr;
   const parts = d.parts || [];
@@ -1133,6 +1145,114 @@ function partsPanel(d) {
   if (fromWled) foot.append(fromWled);
   foot.append(asOne, note);
   panel.append(foot);
+  return tr;
+}
+
+// A matrix's parts: rectangles you drag out on a picture of its grid, each with its own lane. LEDs
+// outside every part follow the light's own lane (or stay off without Also play as one).
+function matrixPartsPanel(d) {
+  const tr = document.createElement("section");
+  const parts = d.parts || [], grid = gridOf(d);
+  const colourOf = (k) => `rgb(${partRgb(k).join()})`;
+  const panel = document.createElement("div");
+  panel.className = "parts-panel";
+  const label = document.createElement("div");
+  label.className = "section-label";
+  label.textContent = "Parts";
+  const canvas = document.createElement("canvas");
+  canvas.className = "matrix-parts";
+  canvas.setAttribute("aria-label", `${d.name}'s grid: drag across it to make a part`);
+  const cell = Math.max(4, Math.min(22, Math.floor(360 / Math.max(grid.w, grid.h * 0.6))));
+  canvas.width = grid.w * cell;
+  canvas.height = grid.h * cell;
+  canvas.style.width = `${grid.w * cell}px`;
+  let drag = null;
+  const draw = () => {
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#1b1f27";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for (let y = 0; y < grid.h; y++) {
+      for (let x = 0; x < grid.w; x++) {
+        const k = partAt(d, y * grid.w + x);
+        ctx.fillStyle = k >= 0 ? colourOf(k) : "#3a404c";
+        ctx.fillRect(x * cell + 0.5, y * cell + 0.5, cell - 1, cell - 1);
+      }
+    }
+    if (drag) {
+      const x0 = Math.min(drag.a.x, drag.b.x), y0 = Math.min(drag.a.y, drag.b.y);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x0 * cell + 1, y0 * cell + 1, (Math.abs(drag.a.x - drag.b.x) + 1) * cell - 2, (Math.abs(drag.a.y - drag.b.y) + 1) * cell - 2);
+    }
+  };
+  const spot = (e) => {
+    const r = canvas.getBoundingClientRect();
+    return { x: Math.min(grid.w - 1, Math.max(0, Math.floor((e.clientX - r.left) / (r.width / grid.w)))),
+      y: Math.min(grid.h - 1, Math.max(0, Math.floor((e.clientY - r.top) / (r.height / grid.h)))) };
+  };
+  canvas.addEventListener("pointerdown", (e) => { drag = { a: spot(e), b: spot(e) }; canvas.setPointerCapture(e.pointerId); draw(); });
+  canvas.addEventListener("pointermove", (e) => { if (drag) { drag.b = spot(e); draw(); } });
+  canvas.addEventListener("pointerup", () => {
+    if (!drag) return;
+    const { part, clash } = addRectPart(parts, drag.a, drag.b);
+    drag = null;
+    if (clash) { status(`That overlaps ${clash.name}. Parts can't share LEDs`, "hint"); draw(); return; }
+    d.parts = [...parts, part];
+    saveDevices();
+    status(`${part.name} added: ${rectText(part)}. Give it a name below`, "info");
+  });
+  draw();
+  const hint1 = hint(parts.length ? "Drag across the grid to add another part." : "Drag across the grid to make a part: a rectangle "
+    + "with its own lane in your shows, such as a star in one corner or each window of a panel.");
+  panel.append(label, canvas, hint1);
+  const list = document.createElement("div");
+  list.className = "parts-list";
+  parts.forEach((p, k) => {
+    const chip = document.createElement("div");
+    chip.className = "part-chip";
+    const swatch = document.createElement("span");
+    swatch.className = "part-swatch";
+    swatch.style.background = colourOf(k);
+    const name = document.createElement("input");
+    Object.assign(name, { value: p.name, size: 10, maxLength: 40, title: "The part's name on the timeline" });
+    name.addEventListener("change", () => { p.name = name.value.trim() || p.name; saveDevices(); });
+    const where = document.createElement("span");
+    where.className = "hint";
+    where.textContent = `${rectText(p)} · ${countText(d, partSize(p))}`;
+    const test = button("Test", async () => {
+      if (await testLight(d, p.id)) status(`${p.name} is lit for a minute, white at its top left.`);
+    }, "ghost small");
+    test.title = "Light just this part on the real light, so you can see where it is";
+    test.disabled = !linked(d);
+    const del = button("✕", () => { d.parts = parts.filter((o) => o !== p); saveDevices(); }, "ghost small");
+    del.title = `Remove ${p.name}. Its clips stay in your shows.`;
+    chip.append(swatch, name, where, test, del);
+    list.append(chip);
+  });
+  if (parts.length) panel.append(list);
+  const foot = document.createElement("div");
+  foot.className = "parts-foot";
+  if (parts.length) {
+    const asOne = document.createElement("label");
+    asOne.className = "part-whole";
+    asOne.title = "Give the matrix its own lane too, playing across the whole grid; LEDs outside every part follow it. Turn off if you only use the parts.";
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = d.whole !== false;
+    box.addEventListener("change", () => { d.whole = box.checked; saveDevices(); });
+    asOne.append(box, " Also play as one");
+    const testAll = button("Test parts", async () => {
+      if (await testLight(d, "parts")) status(`${d.name}'s parts are lit in their colours for a minute, each white at its top left`);
+    }, "ghost small");
+    testAll.title = "Light every part in its colour on the real light, with the rest off";
+    testAll.disabled = !linked(d);
+    const stop = button("Stop", () => stopTest(d), "ghost small");
+    stop.disabled = !linked(d);
+    const note = hint(d.whole !== false ? "LEDs outside every part follow the matrix's own lane." : "LEDs outside every part stay off in shows.");
+    foot.append(testAll, stop, asOne, note);
+    panel.append(foot);
+  }
+  tr.append(panel);
   return tr;
 }
 
@@ -2089,7 +2209,7 @@ const house = new House({
   api, status,
   frameFor(dev) {
     if (!dev.parent) return shownFrame(dev, housePositions());
-    return shownFrame(app.lights[dev.parent], housePositions()).slice((dev.from - 1) * 3, dev.to * 3);
+    return gatherPart(shownFrame(app.lights[dev.parent], housePositions()), app.lights[dev.parent], dev.part);
   },
 });
 house.hiddenLights = new Set(prefs.get("house.hiddenLights", []));
@@ -2272,7 +2392,7 @@ function housePositionsAll() {
     const value = house.positions();
     // A part sits on its slice of the light's traced path.
     for (const d of app.deviceList) {
-      for (const p of d.parts || []) if (value[d.id]) value[partId(d, p)] = value[d.id].slice(p.from - 1, p.to);
+      for (const p of d.parts || []) if (value[d.id]) value[partId(d, p)] = pickPart(value[d.id], d, p);
     }
     Object.assign(posMemo, { at: now, value });
   }
@@ -2302,31 +2422,8 @@ function previewFrame(tr, dev, pos, composed) {
   const light = dev.light || app.lights[dev.parent];
   if (!light) return asShown(dev, app.time, (t) => lightFrame(tr, dev, t, pos));
   const full = composed[light.id] ??= shownFrame(light, pos);
-  if (dev.parent) return full.slice((dev.from - 1) * 3, dev.to * 3);
+  if (dev.parent) return gatherPart(full, light, dev.part);
   return joinParts(light, full);
-}
-
-// A split light's parts end to end, from a frame of the whole physical light.
-function joinParts(light, full) {
-  const out = new Uint8Array(light.parts.reduce((n, p) => n + p.to - p.from + 1, 0) * 3);
-  let k = 0;
-  for (const p of light.parts) {
-    out.set(full.subarray((p.from - 1) * 3, p.to * 3), k);
-    k += (p.to - p.from + 1) * 3;
-  }
-  return out;
-}
-
-// The reverse: a strip played across a split light's parts, spread back onto the whole light.
-function spreadParts(light, rgb) {
-  const out = new Uint8Array(light.segments * 3);
-  let k = 0;
-  for (const p of light.parts) {
-    const n = (p.to - p.from + 1) * 3;
-    out.set(rgb.subarray(k, k + n), (p.from - 1) * 3);
-    k += n;
-  }
-  return out;
 }
 
 function drawHouse() {
@@ -2542,7 +2639,7 @@ function withLightHeader(d, card) {
 // What gets traced on the House tab: each light, or each part of a split light. A split light
 // traced whole before it was split stays whole until its trace is split into parts.
 function houseLights() {
-  return app.deviceList.flatMap((d) => (d.parts?.length && !house.paths[d.id]?.length
+  return app.deviceList.flatMap((d) => (d.parts?.length && !gridOf(d) && !house.paths[d.id]?.length
     ? d.parts.map((p) => app.devices[partId(d, p)]) : [d]));
 }
 
@@ -2632,7 +2729,7 @@ function renderHouseLights() {
       }, "ghost"));
     }
     // Traced whole before it was split: one click gives each part its own trace where it already is.
-    if (d.parts?.length && pts && house.styles[d.id]?.style !== "spots") {
+    if (d.parts?.length && pts && house.styles[d.id]?.style !== "spots" && !gridOf(d)) { // a matrix's parts stay on its shape
       const split = button("Split trace into parts", () => {
         house.splitTrace(d);
         house.selected = partId(d, d.parts[0]);
@@ -2874,14 +2971,13 @@ function drawGrid(c, rgb, { w: gw, h: gh }, cap = 1) {
 
 function sendPreview(dev, rgb) {
   if (isAway(dev)) return; // packed away: nothing goes to it
-  if (gridOf(dev)) rgb = toWire(rgb, dev.matrix); // the editor works in rows; the light wants its wiring order
   if (dev.parent) {
-    const light = app.lights[dev.parent], full = new Uint8Array(light.segments * 3);
-    full.set(rgb.subarray(0, dev.segments * 3), (dev.from - 1) * 3);
-    [dev, rgb] = [light, full];
+    const light = app.lights[dev.parent];
+    [dev, rgb] = [light, scatterPart(rgb, light, dev.part, new Uint8Array(light.segments * 3))];
   } else if (dev.light) {
     [dev, rgb] = [dev.light, spreadParts(dev.light, rgb)];
   }
+  if (gridOf(dev)) rgb = toWire(rgb, dev.matrix); // the editor works in rows; the light wants its wiring order
   const now = performance.now();
   if (clipPreview.pending || now - clipPreview.sent < PREVIEW_SEND_MS || now - clipPreview.failedAt < 5000) return;
   if (clipPreview.dev && clipPreview.dev !== dev.id) { stopLightPreview(); return; }
@@ -3217,7 +3313,7 @@ function renderInspector() {
     field("Lights' own effects", mix);
   }
   // On a matrix: how a strip effect plays across the grid. House patterns are drawn across it as they are.
-  if (gridOf(app.lights[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house && !EFFECTS[clip.effect].grid) {
+  if (gridOf(app.devices[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house && !EFFECTS[clip.effect].grid) {
     const runs = document.createElement("select");
     const labels = { rows: "Along each row", columns: "Down each column", strip: "Whole matrix as one strip" };
     for (const r of RUNS) runs.add(new Option(labels[r], r, false, r === (clip.runs || "rows")));
@@ -6492,7 +6588,7 @@ async function previewShow(r) {
     };
     house.paint(canvas, Math.min(window.innerHeight * 0.5, 420), (dev) => {
       if (!dev.parent) return full(app.lights[dev.id] || dev);
-      return full(app.lights[dev.parent]).slice((dev.from - 1) * 3, dev.to * 3);
+      return gatherPart(full(app.lights[dev.parent]), app.lights[dev.parent], dev.part);
     });
     if (document.activeElement !== bar) bar.value = t;
     time.textContent = `${fmtTime(t, false)} / ${fmtTime(end, false)}`;
@@ -6883,7 +6979,7 @@ function imPreviewFrame() {
   };
   house.paint($("im-canvas"), Math.min(window.innerHeight * 0.35, 320), (dev) => {
     if (!dev.parent) return full(app.lights[dev.id] || dev);
-    return full(app.lights[dev.parent]).slice((dev.from - 1) * 3, dev.to * 3);
+    return gatherPart(full(app.lights[dev.parent]), app.lights[dev.parent], dev.part);
   });
   $("im-preview-time").textContent = `${fmtTime(t, false)} of ${fmtTime(end, false)} · nothing is sent to your lights`;
   imPrev.raf = requestAnimationFrame(imPreviewFrame);

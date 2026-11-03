@@ -3,6 +3,7 @@
 // round. This draws the pages, saves as you go, and bakes each scene's loop for the player.
 
 import { EFFECTS, FPS, MADE_UP, bake, composeLight, matchesPreset, presetParams, unusedColour, withMusicLevels } from "./effects.js";
+import { gatherPart } from "./parts.js";
 import {
   SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
   sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
@@ -631,7 +632,7 @@ export class SceneEditor {
       const byId = Object.fromEntries(this.d.lights().map((l) => [l.id, l]));
       this.d.house.paint($("sc-canvas"), Math.min(window.innerHeight * 0.4, 340), (dev) => {
         if (!dev.parent) return full(byId[dev.id] || dev);
-        return full(byId[dev.parent]).slice((dev.from - 1) * 3, dev.to * 3);
+        return gatherPart(full(byId[dev.parent]), byId[dev.parent], dev.part);
       });
       this.raf = requestAnimationFrame(frame);
     };

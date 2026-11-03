@@ -1416,3 +1416,4 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .pub-item.pub-under { margin-left: 20px; }
 .pub-item.dragging { opacity: .5; }
 @media (max-width: 720px) { .pub-item.pub-under { margin-left: 10px; } }
+.matrix-parts { display: block; max-width: 100%; height: auto; margin: 6px 0; border-radius: 4px; cursor: crosshair; touch-action: none; }

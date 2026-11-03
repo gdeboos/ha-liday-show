@@ -4,6 +4,7 @@
 // The song never travels; only its name and length.
 
 import { MAX_MATRIX, gridOf } from "./matrix.js";
+import { isRectPart } from "./parts.js";
 
 export const SHARE_FORMAT = "halidayshow";
 // Version 2 adds the pictures a show's Picture effects use; a show without any is still written as 1,
@@ -64,7 +65,8 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
     if (used.has(d.id)) return used.get(d.id);
     const key = `L${used.size + 1}`;
     used.set(d.id, key);
-    const parts = (d.parts || []).map((p, i) => ({ key: `P${i + 1}`, id: p.id, name: p.name, from: p.from, to: p.to }));
+    const parts = (d.parts || []).map((p, i) => ({ key: `P${i + 1}`, id: p.id, name: p.name,
+      ...(isRectPart(p) ? { x: p.x, y: p.y, w: p.w, h: p.h } : { from: p.from, to: p.to }) }));
     out.lights.push({ key, name: d.name, type: lightType(d, models[d.sku]), sku: d.kind === "govee" ? d.sku || "" : "",
       kind: d.kind || "govee", segments: d.segments, parts: parts.map(({ id, ...p }) => p),
       where: whereOf(positions[d.id]), _parts: parts });
@@ -169,7 +171,9 @@ export function readShare(text) {
       type: { label: text64(l.type?.label, "Light"), group: text64(l.type?.group, "light") },
       sku: text64(l.sku), kind: text64(l.kind, "govee"), segments: Math.max(1, Math.round(num(l.segments, 1))),
       parts: (Array.isArray(l.parts) ? l.parts : []).filter((p) => p && typeof p.key === "string")
-        .map((p) => ({ key: p.key, name: text64(p.name, "Part"), from: num(p.from, 1), to: num(p.to, 1) })),
+        .map((p) => ({ key: p.key, name: text64(p.name, "Part"),
+          // A matrix's part is a rectangle; a strip's a run.
+          ...(Number.isInteger(p.w) && Number.isInteger(p.h) ? { x: num(p.x), y: num(p.y), w: p.w, h: p.h } : { from: num(p.from, 1), to: num(p.to, 1) }) })),
       where: l.where && ["x", "y", "w", "h"].every((k) => Number.isFinite(l.where[k]))
         ? { x: l.where.x, y: l.where.y, w: l.where.w, h: l.where.h } : null,
       ...(level(l.brightness) ? { brightness: level(l.brightness) } : {}),

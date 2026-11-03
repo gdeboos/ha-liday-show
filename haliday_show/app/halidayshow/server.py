@@ -260,13 +260,16 @@ def _govee_ips(app) -> set:
     return {d["ip"] for d in app[STORAGE].load_devices() if d.get("ip") and (d.get("kind") or "govee") == "govee"}
 
 
-def _clean_parts(parts, segments: int) -> list:
+def _clean_parts(parts, segments: int, matrix: dict | None = None) -> list:
     """A light split into parts: each a named run of its segments (1-based, inclusive). Parts can't
-    overlap; segments outside every part stay off in shows."""
+    overlap; segments outside every part stay off in shows. On a matrix, each part is a rectangle of
+    the grid instead: x, y (0-based from the top left), w and h."""
     if not parts:
         return []
     if not isinstance(parts, list) or len(parts) > MAX_PARTS:
         raise web.HTTPBadRequest(text=f"parts must be a list of up to {MAX_PARTS}")
+    if matrix:
+        return _clean_rect_parts(parts, matrix)
     clean, used = [], set()
     for p in parts:
         try:
@@ -283,6 +286,24 @@ def _clean_parts(parts, segments: int) -> list:
         used |= span
         clean.append({"id": pid, "name": str(p.get("name") or f"Part {len(clean) + 1}")[:64], "from": start, "to": end})
     return sorted(clean, key=lambda c: c["from"])
+
+
+def _clean_rect_parts(parts: list, matrix: dict) -> list:
+    clean = []
+    for p in parts:
+        try:
+            pid = str(p["id"])
+            x, y, w, h = (int(p[k]) for k in ("x", "y", "w", "h"))
+        except (KeyError, TypeError, ValueError):
+            raise web.HTTPBadRequest(text="each part of a matrix needs an id, x, y, w and h")
+        if not _PART_ID.match(pid) or any(c["id"] == pid for c in clean):
+            raise web.HTTPBadRequest(text="part ids must be short and unique")
+        if not (0 <= x and 0 <= y and w >= 1 and h >= 1 and x + w <= matrix["w"] and y + h <= matrix["h"]):
+            raise web.HTTPBadRequest(text=f"a part must fit within the {matrix['w']} × {matrix['h']} grid")
+        if any(x < c["x"] + c["w"] and c["x"] < x + w and y < c["y"] + c["h"] and c["y"] < y + h for c in clean):
+            raise web.HTTPBadRequest(text="parts can't overlap")
+        clean.append({"id": pid, "name": str(p.get("name") or f"Part {len(clean) + 1}")[:64], "x": x, "y": y, "w": w, "h": h})
+    return sorted(clean, key=lambda c: (c["y"], c["x"]))
 
 
 def _clean_matrix(m) -> dict:
@@ -333,8 +354,6 @@ def _clean_device(d: dict) -> dict:
     if d.get("matrix") is not None:
         if kind not in MATRIX_KINDS:
             raise web.HTTPBadRequest(text="only WLED lights and pixel controllers can be a matrix")
-        if d.get("parts"):
-            raise web.HTTPBadRequest(text="a matrix can't be split into parts yet")
         matrix = _clean_matrix(d["matrix"])
         segments = matrix["w"] * matrix["h"]
     # Realtime messages hold the segment count in one byte; the other protocols can go further.
@@ -393,7 +412,7 @@ def _clean_device(d: dict) -> dict:
             "ip": ip, "sku": "" if kind == "wled" else str(d.get("sku", "")), "segments": segments,
             "reverse": bool(d.get("reverse")) and not matrix, "gradient": kind == "govee" and bool(d.get("gradient")),
             "protocol": protocol, "brightness": brightness, "bulbs": bulbs,
-            "parts": _clean_parts(d.get("parts"), segments),
+            "parts": _clean_parts(d.get("parts"), segments, matrix),
             # A split light's own track plays across all its parts unless this is off.
             "whole": d.get("whole", True) is not False, **extra}
 
