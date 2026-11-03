@@ -5945,6 +5945,7 @@ function renderPublicItems() {
   $("pub-all-added").hidden = left;
   $("pub-per-phone").value = view.per_phone;
   $("pub-repeat").value = view.repeat_minutes ?? 15;
+  $("pub-finish-close").checked = view.finish_by_close !== false;
   $("pub-phone-wait").value = view.phone_wait ?? 5;
   drawPublicListen(view);
   $("pub-queue").value = view.queue;
@@ -6169,6 +6170,7 @@ function savePublic() {
     else if (pin) status("A PIN is 4 to 8 numbers. The PIN you had stays until you type one.", "hint");
   }
   if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
+  if (shownPage === "public") publicView.finish_by_close = $("pub-finish-close").checked;
   for (const [id, key] of [["pub-repeat", "repeat_minutes"], ["pub-phone-wait", "phone_wait"]]) {
     const n = Number($(id).value);
     if ($(id).value !== "" && Number.isFinite(n)) publicView[key] = Math.max(0, Math.round(n));
@@ -6177,11 +6179,11 @@ function savePublic() {
   pubPending++;
   pubSaving = pubSaving.then(async () => {
     const { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin,
-      repeat_minutes, phone_wait } = publicView;
+      repeat_minutes, phone_wait, finish_by_close } = publicView;
     try {
       const view = await api("api/public", {
         method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin,
-          repeat_minutes, phone_wait },
+          repeat_minutes, phone_wait, finish_by_close },
       });
       if (pubPending === 1) {
         publicView = view;

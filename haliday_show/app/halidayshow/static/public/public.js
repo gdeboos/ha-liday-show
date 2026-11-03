@@ -955,7 +955,7 @@ export function start() {
       row.append(text);
       if (startable) {
         const label = c.taken === "queued" ? "queued_btn" : c.taken === "playing" ? "playing_btn"
-          : c.taken === "recent" ? "recent_btn" : word;
+          : c.taken === "recent" ? "recent_btn" : c.taken === "late" ? "late_btn" : word;
         const b = el("button", c.taken ? "pp-taken" : "primary", say_(w, label, { minutes: minutes(c.again_in || 60) }));
         b.type = "button";
         b.disabled = !!view.block || busy || !!c.taken;

@@ -27,6 +27,7 @@
         {"key": "queued_btn", "label": "Button on a show that's already waiting", "text": "✓ Queued"},
         {"key": "playing_btn", "label": "Button on the show that's on now", "text": "♪ On now"},
         {"key": "recent_btn", "label": "Button on a show that played a few minutes ago", "text": "Again in {minutes}"},
+        {"key": "late_btn", "label": "Button on a show too long to finish before closing", "text": "Too long for tonight"},
         {"key": "start", "label": "Start button", "text": "▶ Start"},
         {"key": "queue_btn", "label": "Button when something's on (adds to the queue)", "text": "+ Queue"},
         {"key": "length", "label": "How long a show lasts", "text": "About {minutes}"},
@@ -53,7 +54,8 @@
         {"key": "already_queued", "label": "Picking a show that's already waiting", "text": "That one's already in the queue. Pick another!"},
         {"key": "already_playing", "label": "Picking the show that's on now", "text": "That one's playing now. Pick another!"},
         {"key": "played_recently", "label": "Picking a show that played a few minutes ago", "text": "That one played a few minutes ago. Pick another, or try it again in {minutes}."},
-        {"key": "phone_wait", "label": "Picking again too soon after their own show", "text": "Thanks for picking! You can pick again in {minutes}."}
+        {"key": "phone_wait", "label": "Picking again too soon after their own show", "text": "Thanks for picking! You can pick again in {minutes}."},
+        {"key": "too_late", "label": "A pick that wouldn't finish before closing time", "text": "That one wouldn't finish before we close at {time}. Pick a shorter one?"}
       ]
     },
     {

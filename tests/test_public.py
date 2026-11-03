@@ -135,7 +135,7 @@ def test_settings_are_cleaned():
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "look": public.clean_look(None), "hours": public.DEFAULT_HOURS, "words": {},
-        "listen": False, "listen_pin": "", "admin_pin": "", "repeat_minutes": 15, "phone_wait": 5,
+        "listen": False, "listen_pin": "", "admin_pin": "", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -1108,3 +1108,31 @@ async def test_tonight_counts_picks_since_midday_and_phones_listening(client):
     view = await (await client.get("/api/public")).json()
     assert view["tonight"]["picks"] >= 1
     await runner.stop()
+
+
+async def test_picks_must_finish_before_closing_time(client, monkeypatch):
+    from datetime import datetime, timedelta
+    runner = client.app[server.RUNNER]
+    await client.put("/api/public", json={"on": True, "per_phone": 3, "repeat_minutes": 0, "phone_wait": 0,
+                                          "items": [{"kind": "show", "id": s} for s in ("party", "quiet", "extra")],
+                                          "hours": {"on": True, "start": "00:00", "end": "23:59", "days": list(range(7))}})
+    p = public.load(client.app[server.STORAGE])
+    nine = datetime(2026, 12, 20, 21, 0)
+    close = public.closes_at(p, None, nine)
+    assert close == datetime(2026, 12, 20, 23, 59) and public.clock(close) == "11:59pm"
+    assert public.clock(datetime(2026, 12, 20, 22, 0)) == "10pm"
+    pick = {"shows": ["party"]}  # 10 seconds
+    assert not public.too_late(runner, pick, close, nine)
+    assert public.too_late(runner, pick, close, close - timedelta(seconds=5))
+    assert not public.too_late(runner, pick, None, close)  # no closing time: anything goes
+    # Switched off: nothing is too late.
+    await client.put("/api/public", json={"finish_by_close": False})
+    assert public.closes_at(public.load(client.app[server.STORAGE]), None, nine) is None
+    # Through the page, a minute before closing: refused, and the page shows why.
+    await client.put("/api/public", json={"finish_by_close": True})
+    late = datetime.now().replace(second=0, microsecond=0) + timedelta(seconds=5)
+    monkeypatch.setattr(public, "closes_at", lambda p, where, now=None: late)
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    assert status == 409 and "wouldn't finish before we close" in text
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert {c["taken"] for c in st["choices"]} == {"late"}

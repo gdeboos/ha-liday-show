@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.336
+
+- **Shows finish by closing time.** With opening hours set, a visitor's pick that wouldn't finish before you close (counting what's already waiting) isn't taken: its button says **Too long for tonight**, and anyone who tries is told when you close. It's on to start with; turn it off with **Shows finish by closing time** under **Public page → Hours**.
+
 ## 0.2.335
 
 - **Tonight at a glance**, on **Public page → Queue**: how many shows visitors have picked since midday, the most picked, and how many phones are listening right now. It starts afresh when HA-liday Show restarts.

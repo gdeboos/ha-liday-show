@@ -693,4 +693,10 @@ class Runner:
         for r in self.requests:
             waits.append(round(t))
             t += self.request_seconds(r) + gap
+        self._queue_end = t
         return waits
+
+    def wait_for_new(self) -> float:
+        """Roughly how many seconds until a pick added now would start (after everything waiting)."""
+        self.queue_waits()
+        return self._queue_end

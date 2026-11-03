@@ -177,6 +177,8 @@ def clean(p) -> dict:
             # played can pick again (0: no wait).
             "repeat_minutes": _count(p.get("repeat_minutes"), 15, 120, low=0),
             "phone_wait": _count(p.get("phone_wait"), 5, 60, low=0),
+            # With opening hours on: picks that wouldn't finish before closing time aren't taken.
+            "finish_by_close": p.get("finish_by_close") is not False,
             # In every visitor's link (the QR code), so a guessed address alone doesn't let anyone in.
             "code": code if _CODE.match(code) else "",
             "nearby": p.get("nearby") is not False,
@@ -495,6 +497,29 @@ def tonight(runner: Runner, now: datetime | None = None) -> dict:
             "listening": sum(1 for at in runner.public_listeners.values() if t - at < LISTENING_FRESH_S)}
 
 
+def closes_at(p: dict, where, now: datetime | None = None) -> datetime | None:
+    """When tonight's opening hours end, if picks must finish by then (else None)."""
+    if not (p["finish_by_close"] and p["hours"]["on"]):
+        return None
+    w = schedule.window_at(p["hours"], now or datetime.now(), where)
+    return w[1] if w else None
+
+
+def too_late(runner: Runner, pick: dict, close: datetime | None, now: datetime | None = None) -> bool:
+    """Whether a pick added now would still be playing at closing time."""
+    if close is None:
+        return False
+    now = now or datetime.now()
+    finish = now + timedelta(seconds=runner.wait_for_new() + runner.request_seconds(pick))
+    return finish > close
+
+
+def clock(t: datetime) -> str:
+    """5pm, 9:30pm: as the opening hours are written on the page."""
+    h = t.hour % 12 or 12
+    return f"{h}{'' if t.minute == 0 else f':{t.minute:02d}'}{'am' if t.hour < 12 else 'pm'}"
+
+
 def taken(runner: Runner, kind: str, ref: str, repeat_minutes: int = 0) -> str:
     """Why a show or playlist can't be picked again right now: "queued" (someone's pick is waiting),
     "playing" (on now), "recent" (a visitor's pick of it played less than repeat_minutes ago), or "" if
@@ -537,6 +562,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                 "words": {k: said[k] for k in ("locked", "locked_hint", "offline")}}
     admin = admin and _code_ok(p, code)
     picks = choices(storage) if p["on"] or admin else []
+    close = closes_at(p, where, now)
     st = runner.status()
     waits = runner.queue_waits()
     mine = []
@@ -556,7 +582,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                      "colours": c["colours"] if look["covers"] else [],
                      "minutes": max(1, round(runner.request_seconds(c) / 60)),
                      "speaker": c.get("speaker", True),
-                     "taken": taken(runner, c["kind"], c["id"], p["repeat_minutes"]),
+                     "taken": taken(runner, c["kind"], c["id"], p["repeat_minutes"])
+                     or ("late" if not admin and too_late(runner, c, close) else ""),
                      "again_in": round(repeat_left(runner, c["kind"], c["id"], p["repeat_minutes"]))} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"]}
@@ -847,6 +874,8 @@ async def post_request(request):
                                else said["already_queued" if why == "queued" else "already_playing"])
     if not admin and (left := phone_wait_left(runner, ticket, p["phone_wait"])):
         raise web.HTTPConflict(text=said["phone_wait"].replace("{minutes}", _mins(left)))
+    if not admin and too_late(runner, pick, close := closes_at(p, request.app[WHERE]())):
+        raise web.HTTPConflict(text=said["too_late"].replace("{time}", clock(close)))
     yours = sum(r["ticket"] == ticket for r in runner.requests)
     if admin:
         if len(runner.requests) >= MAX_QUEUE:  # still a ceiling, however many you add
