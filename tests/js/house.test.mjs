@@ -199,7 +199,9 @@ test("a mega-tree that goes all the way round: the back half's strings are drawn
   assert.equal(r(base[0][0]), 0.3); // the first string at the left edge
   assert.equal(r(base[2][0]), 0.5); // a quarter of the way round: front and centre
   assert.equal(r(base[4][0]), 0.7); // halfway: the right edge
-  assert.equal(r(base[6][0]), 0.5); // three quarters: back and centre, behind the front one
+  // The back strings show between the front ones rather than hidden exactly behind them.
+  const front = base.slice(0, 5).map((p) => r(p[0]));
+  assert.ok(base.slice(5).every((p) => !front.includes(r(p[0])) && p[0] > 0.3 && p[0] < 0.7));
   assert.ok(base.slice(0, 5).every((p) => p[2] === undefined)); // the front half as before
   assert.ok(base.slice(5).every((p) => p[2] === 0.25)); // the back half faint
   assert.deepEqual(treeBulbs(shape, w, 2).map((p) => p.length), Array(16).fill(2)); // flat trees unchanged

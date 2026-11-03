@@ -70,10 +70,12 @@ export function treeBulbs([top, left, right], w, h, round = false) {
   for (let y = 0; y < h; y++) {
     const v = 0.1 + 0.9 * (h > 1 ? y / (h - 1) : 1);
     for (let x = 0; x < w; x++) {
-      const a = (2 * Math.PI * x) / w;
-      const u = round && w > 1 ? 0.5 - 0.5 * Math.cos(a) : w > 1 ? x / (w - 1) : 0.5;
+      const a = (2 * Math.PI * x) / w, back = round && Math.sin(a) < -1e-9;
+      // A back string would sit exactly behind a front one, so it's drawn half a string along,
+      // where it shows between them.
+      const u = round && w > 1 ? 0.5 - 0.5 * Math.cos(back ? a + Math.PI / w : a) : w > 1 ? x / (w - 1) : 0.5;
       const p = [0, 1].map((k) => top[k] + (left[k] + (right[k] - left[k]) * u - top[k]) * v);
-      if (round && Math.sin(a) < -1e-9) p.push(BACK);
+      if (back) p.push(BACK);
       out.push(p);
     }
   }
