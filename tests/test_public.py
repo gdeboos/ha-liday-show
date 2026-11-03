@@ -813,3 +813,29 @@ async def test_without_a_converter_the_song_goes_as_it_is(client, song_show, mon
     status, body, headers = await _visitor(client, "/" + now["src"], code=False)
     assert status == 200 and headers["Content-Type"] == "audio/wav" and body[:4] == b"RIFF"
     await client.app[server.RUNNER].stop()
+
+
+@pytest.mark.skipif(public.songcopy.converter() is None, reason="needs ffmpeg")
+async def test_a_song_ffmpeg_cant_read_goes_as_it_is(tmp_path):
+    copies = public.songcopy.SongCopies(tmp_path / "copies")
+    bad = tmp_path / "bad.mp3"
+    bad.write_bytes(b"not really a song" * 10)
+    assert copies.ready(bad) is None
+    copies.want(bad)
+    for _ in range(100):
+        if not copies.making:
+            break
+        await asyncio.sleep(0.05)
+    assert copies.ready(bad) == (bad, "audio/mpeg")
+    bad.write_bytes(b"saved over")  # a new file is tried afresh
+    assert copies.ready(bad) is None
+
+
+async def test_only_the_newest_copies_are_kept(tmp_path):
+    copies = public.songcopy.SongCopies(tmp_path)
+    for i in range(public.songcopy.KEEP + 3):
+        (tmp_path / f"{i:03d}.m4a").write_bytes(b"x")
+        public.os.utime(tmp_path / f"{i:03d}.m4a", (i, i))
+    copies._tidy()
+    left = sorted(p.name for p in tmp_path.glob("*.m4a"))
+    assert len(left) == public.songcopy.KEEP and left[0] == "003.m4a"

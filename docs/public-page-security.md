@@ -23,6 +23,30 @@ and the limits that remain. Re-read them before changing `public.py`.
 - It's in the URL, so it can end up in browser history and screenshots of the sign; **New code…** is
   the remedy and is in the user guide.
 
+## Listening on phones (0.2.318)
+
+Off unless `public.listen` is on. Four more routes on the public port, all needing the code:
+
+- `POST /api/listen`: the nearby check (as for `request`), then, if `listen_pin` is set, the PIN or a
+  remembered PIN pass (an HMAC of the code and PIN, so changing either ends it). Wrong PINs are
+  counted per address (`client()`): 5 within 10 minutes, then that address waits out the 10 minutes,
+  right PIN or not. Phones sharing a carrier's address share that count, so one person guessing can
+  hold up others for up to 10 minutes. Gives a pass (HMAC with an expiry) good for 15 minutes; the
+  phone renews it with its location, so walking away ends listening within 15 minutes.
+- `GET /api/listen/now`: needs a pass. Says only whether a show is on, its name, length, position and
+  a signed link to its song.
+- `GET /listen/song`: the playing show's song only (its key must match the song on now), with a
+  signature of the code, PIN and song key. The signature doesn't expire, so anyone who saw the link can
+  fetch that song while it's playing, until the code or PIN changes. Accepted: it's the song phones
+  are meant to hear anyway, and it's useless once another show is on.
+- `GET /listen/silence.wav`: a fixed fifth of a second of silence, no code needed.
+
+The passes' key is a random file, `.listen-secret`, in the config folder; backups leave out hidden
+files. The PIN is kept as typed in the settings (it's shown in the editor) and isn't a password.
+Listening polls have their own per-address limit (`MAX_LISTEN_PER_CLIENT_MIN`, 1,500 a minute, about
+25 phones on one address). Song copies (`songcopy.py`) are made with ffmpeg from the owner's own files
+only, one at a time, with a 3-minute limit, in a temporary folder.
+
 ## Fixed in 0.2.177
 
 | Finding | Seen | Fix |

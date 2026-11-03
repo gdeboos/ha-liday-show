@@ -83,6 +83,10 @@ because Windows often blocks the network traffic the lights use. It needs Python
 3. Open `http://localhost:8099/` on that computer, or `http://<its address>:8099/` from another
    device, and type your password when your browser asks.
 
+For visitors to [listen on their phones](public-page.md#listening-on-phones), install ffmpeg too (`sudo apt install
+ffmpeg` on a Raspberry Pi or Linux, `brew install ffmpeg` on a Mac). Without it, phones get each song
+file as it is, which can take a while over mobile data for a song made in the Music editor.
+
 It keeps your shows in `haliday-show/config` and your songs in `haliday-show/media`, in your home
 folder. It runs while that window is open; to keep it running, start it the way your computer
 starts other programs (on Linux, a systemd service).

@@ -180,7 +180,8 @@ How it works:
   phones that were listening are asked again. After five wrong PINs, a phone waits 10 minutes.
 - HA-liday Show makes a small copy of each song for phones (about 4 MB for a 3-minute song), so it
   loads quickly over mobile data. The first phone to listen to a song may wait a few seconds while it's
-  made. The copies aren't part of your backups.
+  made. The copies aren't part of your backups. (A Python install needs ffmpeg for this; see
+  [With Python](without-home-assistant.md#with-python).)
 - On your Wi-Fi the music is usually within a few hundredths of a second of the lights. Over mobile data
   it can be a little further out. Bluetooth headphones and speakers play a little late, as they do with
   any phone.

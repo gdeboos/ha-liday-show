@@ -2066,7 +2066,8 @@ How it works:
   phones that were listening are asked again. After five wrong PINs, a phone waits 10 minutes.
 - HA-liday Show makes a small copy of each song for phones (about 4 MB for a 3-minute song), so it
   loads quickly over mobile data. The first phone to listen to a song may wait a few seconds while it's
-  made. The copies aren't part of your backups.
+  made. The copies aren't part of your backups. (A Python install needs ffmpeg for this; see
+  [With Python](#with-python).)
 - On your Wi-Fi the music is usually within a few hundredths of a second of the lights. Over mobile data
   it can be a little further out. Bluetooth headphones and speakers play a little late, as they do with
   any phone.
@@ -2608,6 +2609,10 @@ because Windows often blocks the network traffic the lights use. It needs Python
    `HALIDAY_SHOW_PASSWORD=your-password haliday-show`
 3. Open `http://localhost:8099/` on that computer, or `http://<its address>:8099/` from another
    device, and type your password when your browser asks.
+
+For visitors to [listen on their phones](#listening-on-phones), install ffmpeg too (`sudo apt install
+ffmpeg` on a Raspberry Pi or Linux, `brew install ffmpeg` on a Mac). Without it, phones get each song
+file as it is, which can take a while over mobile data for a song made in the Music editor.
 
 It keeps your shows in `haliday-show/config` and your songs in `haliday-show/media`, in your home
 folder. It runs while that window is open; to keep it running, start it the way your computer
