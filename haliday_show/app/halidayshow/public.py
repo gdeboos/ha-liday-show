@@ -93,12 +93,12 @@ def port() -> int:
     return value if 1024 <= value <= 65535 else DEFAULT_PORT
 
 
-def _count(value, default: int, top: int) -> int:
+def _count(value, default: int, top: int, low: int = 1) -> int:
     try:
         n = int(value)
     except (TypeError, ValueError):
         return default
-    return min(max(n, 1), top)
+    return min(max(n, low), top)
 
 
 # Changes each time HA-liday Show starts (an update, say), so pages left open on phones load again and
@@ -173,6 +173,10 @@ def clean(p) -> dict:
     return {"on": p.get("on") is True, "items": items,
             "per_phone": _count(p.get("per_phone"), 1, MAX_PER_PHONE),
             "queue": _count(p.get("queue"), 5, MAX_QUEUE),
+            # Minutes before a show that played can be picked again, and before a phone whose pick
+            # played can pick again (0: no wait).
+            "repeat_minutes": _count(p.get("repeat_minutes"), 15, 120, low=0),
+            "phone_wait": _count(p.get("phone_wait"), 5, 60, low=0),
             # In every visitor's link (the QR code), so a guessed address alone doesn't let anyone in.
             "code": code if _CODE.match(code) else "",
             "nearby": p.get("nearby") is not False,
@@ -467,9 +471,15 @@ def _ticket(value) -> str:
     return ticket
 
 
-def taken(runner: Runner, kind: str, ref: str) -> str:
+def _mins(seconds: float) -> str:
+    m = max(1, math.ceil(seconds / 60))
+    return f"{m} minute{'' if m == 1 else 's'}"
+
+
+def taken(runner: Runner, kind: str, ref: str, repeat_minutes: int = 0) -> str:
     """Why a show or playlist can't be picked again right now: "queued" (someone's pick is waiting),
-    "playing" (on now), or "" if it's free. Stops the same song being queued over and over."""
+    "playing" (on now), "recent" (a visitor's pick of it played less than repeat_minutes ago), or "" if
+    it's free. Stops the same song being queued over and over."""
     if any(r["kind"] == kind and r["ref"] == ref for r in runner.requests):
         return "queued"
     now = runner.public_now
@@ -477,7 +487,23 @@ def taken(runner: Runner, kind: str, ref: str) -> str:
         return "playing"
     if kind == "show" and runner.player.playing and runner.player.show_id == ref and not runner.scene_playing:
         return "playing"
+    if repeat_minutes and repeat_left(runner, kind, ref, repeat_minutes) > 0:
+        return "recent"
     return ""
+
+
+def repeat_left(runner: Runner, kind: str, ref: str, minutes: int) -> float:
+    """Seconds until a show (or playlist) a visitor picked can be picked again."""
+    ends = [p["at"] for p in runner.public_played if p["kind"] == kind and p["ref"] == ref]
+    return max(0.0, max(ends) + minutes * 60 - time.monotonic()) if ends else 0.0
+
+
+def phone_wait_left(runner: Runner, ticket: str | None, minutes: int) -> float:
+    """Seconds until a phone whose own pick played can pick again."""
+    if not ticket or not minutes:
+        return 0.0
+    ends = [p["at"] for p in runner.public_played if p["ticket"] == ticket]
+    return max(0.0, max(ends) + minutes * 60 - time.monotonic()) if ends else 0.0
 
 
 def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None = None,
@@ -511,7 +537,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                      "colours": c["colours"] if look["covers"] else [],
                      "minutes": max(1, round(runner.request_seconds(c) / 60)),
                      "speaker": c.get("speaker", True),
-                     "taken": taken(runner, c["kind"], c["id"])} for c in picks if c["available"]],
+                     "taken": taken(runner, c["kind"], c["id"], p["repeat_minutes"]),
+                     "again_in": round(repeat_left(runner, c["kind"], c["id"], p["repeat_minutes"]))} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"]}
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
@@ -529,6 +556,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                   for r, wait in zip(runner.requests, waits)],
         "full": not admin and len(runner.requests) >= p["queue"],
         "per_phone": MAX_QUEUE if admin else p["per_phone"],
+        # Seconds before this phone can pick again, after its own pick played.
+        "wait_left": 0 if admin else round(phone_wait_left(runner, ticket, p["phone_wait"])),
         "mine": mine,
         "needs_location": needs_location and not admin,
         "listen": {"pin": bool(p["listen_pin"]) and not admin} if p["listen"] else None,
@@ -793,8 +822,12 @@ async def post_request(request):
                  and c["id"] == body.get("id")), None)
     if pick is None:
         raise web.HTTPNotFound(text=said["gone"])
-    if why := taken(runner, pick["kind"], pick["id"]):
-        raise web.HTTPConflict(text=said["already_queued" if why == "queued" else "already_playing"])
+    if why := taken(runner, pick["kind"], pick["id"], p["repeat_minutes"]):
+        left = repeat_left(runner, pick["kind"], pick["id"], p["repeat_minutes"])
+        raise web.HTTPConflict(text=said["played_recently"].replace("{minutes}", _mins(left)) if why == "recent"
+                               else said["already_queued" if why == "queued" else "already_playing"])
+    if not admin and (left := phone_wait_left(runner, ticket, p["phone_wait"])):
+        raise web.HTTPConflict(text=said["phone_wait"].replace("{minutes}", _mins(left)))
     yours = sum(r["ticket"] == ticket for r in runner.requests)
     if admin:
         if len(runner.requests) >= MAX_QUEUE:  # still a ceiling, however many you add

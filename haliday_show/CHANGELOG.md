@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.334
+
+- **A show rests after it plays.** Once a visitor's pick has played, nobody can pick it again for 15 minutes; its button says **Again in 12 minutes** (say). Set it under **Public page → Limits → Before a show can be picked again** (0 turns it off).
+- **A short wait after your own pick.** Once a phone's pick has played, that phone waits 5 minutes before picking another ("Thanks for picking! You can pick again in 5 minutes."). Set it under **Before a phone can pick again**. Your admin phone doesn't wait.
+
 ## 0.2.333
 
 - **Smaller, focused tabs with less scrolling.** What was the long **Setup → Settings** page is now its own tabs under **Setup**: **Editors** (layouts), **Live music**, **AI**, **Your data**, and **More** (the public page switch, setup guide, demo and Experimental). Nothing was removed, only moved.

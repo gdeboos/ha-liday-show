@@ -72,6 +72,9 @@ class Runner:
         self._control = asyncio.Lock()
         self.requests: list[dict] = []  # visitors' requests waiting: {id, ticket, kind, ref, name, shows, gap}
         self.public_now: dict | None = None  # the visitor's request playing
+        # Visitors' picks that have played: {kind, ref, ticket, at} (time.monotonic() when it ended), for
+        # the public page's cool-downs. Kept for two hours at most.
+        self.public_played: list[dict] = []
         self._public: asyncio.Task | None = None
         # Goes up whenever you play or stop something yourself, which ends a visitor's request part-way.
         self._yours = 0
@@ -618,6 +621,7 @@ class Runner:
         """Play a request's shows once each. Anything else started meanwhile ends it."""
         self.public_now = request
         yours = self._yours
+        played = False
         try:
             for k, show_id in enumerate(request["shows"]):
                 if k:
@@ -632,6 +636,7 @@ class Runner:
                 except Exception as e:  # a damaged or missing show is skipped
                     log.warning("visitor request %s: skipping %s: %s", request.get("name"), show_id, e)
                     continue
+                played = True
                 mine = self.started
                 while self.player.playing and self.started == mine:
                     await asyncio.sleep(0.25)
@@ -639,6 +644,11 @@ class Runner:
                     return
         finally:
             self.public_now = None
+            if played:
+                now = time.monotonic()
+                self.public_played = [p for p in self.public_played if now - p["at"] < 7200]
+                self.public_played.append({"kind": request["kind"], "ref": request["ref"],
+                                           "ticket": request["ticket"], "at": now})
 
     def show_duration(self, show_id: str) -> float:
         """How long a saved show lasts, in seconds (0 if it can't be read)."""

@@ -76,7 +76,9 @@ export function describe(st) {
   const coming = !st.choices.length && soon.length ? say_(w, "soon_page", { day: dayText(soon[0].starts) }) : "";
   const waiting = st.mine.filter((r) => !r.playing).length;
   let block = "";
-  if (waiting >= st.per_phone) {
+  if (st.wait_left > 0) {
+    block = say_(w, "phone_wait", { minutes: minutes(st.wait_left) });
+  } else if (waiting >= st.per_phone) {
     block = st.per_phone === 1 ? say_(w, "one_waiting") : say_(w, "many_waiting", { count: waiting });
   } else if (st.full) {
     block = say_(w, "full");
@@ -952,11 +954,12 @@ export function start() {
       if (detail) text.append(el("div", "pp-hint", detail));
       row.append(text);
       if (startable) {
-        const label = c.taken === "queued" ? "queued_btn" : c.taken === "playing" ? "playing_btn" : word;
-        const b = el("button", c.taken ? "pp-taken" : "primary", say_(w, label));
+        const label = c.taken === "queued" ? "queued_btn" : c.taken === "playing" ? "playing_btn"
+          : c.taken === "recent" ? "recent_btn" : word;
+        const b = el("button", c.taken ? "pp-taken" : "primary", say_(w, label, { minutes: minutes(c.again_in || 60) }));
         b.type = "button";
         b.disabled = !!view.block || busy || !!c.taken;
-        b.setAttribute("aria-label", `${say_(w, label).replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
+        b.setAttribute("aria-label", `${say_(w, label, { minutes: minutes(c.again_in || 60) }).replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
         b.addEventListener("click", () => {
           // Started in the press itself: phones only play sound that a press starts.
           if (!preview && listensToo(c, st, listener.state.on)) listener.begin("", !!st.listen?.pin);
