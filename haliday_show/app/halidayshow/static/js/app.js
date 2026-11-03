@@ -2392,7 +2392,7 @@ function houseStyleControls(d) {
   const sel = document.createElement("select");
   sel.title = "How the light looks on the photo";
   sel.innerHTML = `<option value="line">Line</option><option value="icicle">Icicle</option>
-    <option value="spots">Spots</option>${grid ? `<option value="panel">Panel</option><option value="tree">Mega-tree</option>` : ""}`;
+    <option value="arches">Arches</option><option value="spots">Spots</option>${grid ? `<option value="panel">Panel</option><option value="tree">Mega-tree</option>` : ""}`;
   sel.value = style?.style || "line";
   sel.addEventListener("change", () => {
     const need = SHAPE_POINTS[sel.value];
@@ -2405,6 +2405,7 @@ function houseStyleControls(d) {
       panel: { style: "panel" },
       tree: { style: "tree" },
       icicle: { style: "icicle", drops: defaultDrops(d), length: 0.06 },
+      arches: { style: "arches", arches: 4, height: 0.08, down: false },
       spots: { style: "spots", beam: 0.5, aims: [] },
     }[sel.value] || null);
     house.stretch = null;
@@ -2419,6 +2420,26 @@ function houseStyleControls(d) {
     return [l0, hint(style.style === "tree"
       ? "Drag the white point to the top of the tree and the other two to the ends of its base. Each column is a string. Effects you add to it start out running down each column."
       : "Drag the four corners onto the panel's corners. The white one is its top left.")];
+  }
+  if (style.style === "arches") {
+    // How many arches, how high, and whether they stand up from the line or hang down from it.
+    const count = document.createElement("input");
+    Object.assign(count, { type: "number", min: "1", max: "100", value: style.arches, title: "How many arches the light makes" });
+    count.addEventListener("change", () => {
+      house.setStyle(d.id, { ...style, arches: Math.min(Math.max(Math.round(Number(count.value)) || 1, 1), 100) });
+      renderHouseLights();
+    });
+    const height = document.createElement("input");
+    Object.assign(height, { type: "range", min: "0.01", max: "0.4", step: "0.005", value: style.height, title: "How high each arch is on the photo" });
+    height.addEventListener("input", () => { style.height = Number(height.value); house.setStyle(d.id, style); });
+    const way = document.createElement("select");
+    way.innerHTML = `<option value="up">Up</option><option value="down">Down</option>`;
+    way.value = style.down ? "down" : "up";
+    way.title = "Whether the arches stand up from the line you traced or hang down from it";
+    way.addEventListener("change", () => { house.setStyle(d.id, { ...style, down: way.value === "down" }); renderHouseLights(); });
+    const row = (label, el) => { const l = document.createElement("label"); l.className = "row"; l.append(label, el); return l; };
+    return [l0, row("Arches ", count), row("Height ", height), row("Curve ", way),
+      hint("Trace the line the arches stand on (or hang from), from the end with the plug.")];
   }
   if (style.style === "spots") {
     const beam = document.createElement("input");
@@ -2520,7 +2541,7 @@ function renderHouseLights() {
     state.className = "hint";
     const hidden = house.hiddenLights.has(d.id);
     state.textContent = house.active === d.id ? "Tracing…" : !pts ? "Not traced" : hidden ? "Hidden"
-      : { icicle: "Icicle", spots: `${pts} spots` }[house.styles[d.id]?.style] || "Traced";
+      : { icicle: "Icicle", arches: "Arches", spots: `${pts} spots` }[house.styles[d.id]?.style] || "Traced";
     // Hiding a light on the photo gets at one traced underneath it. Only the House tab's photo
     // hides it; the House panel and the show are unchanged.
     const eye = button(hidden ? "🙈" : "👁", (e) => {

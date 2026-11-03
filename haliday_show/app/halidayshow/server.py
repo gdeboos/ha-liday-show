@@ -2215,6 +2215,12 @@ def _clean_style(style) -> dict | None:
             drops = min(max(int(style.get("drops", 40)), 1), MAX_BULBS)
             length = round(min(max(float(style.get("length", 0.06)), 0.01), 0.5), 4)
             return {"style": "icicle", "drops": drops, "length": length}
+        if style.get("style") == "arches":
+            # A line of arches standing on the traced line (or hanging from it), each `height` of the
+            # photo's height at its middle.
+            arches = min(max(int(style.get("arches", 4)), 1), 100)
+            height = round(min(max(float(style.get("height", 0.08)), 0.005), 0.5), 4)
+            return {"style": "arches", "arches": arches, "height": height, "down": style.get("down") is True}
         if style.get("style") == "panel":
             # A matrix as a flat panel: its path is the four corners, from the top left round.
             return {"style": "panel"}

@@ -137,6 +137,30 @@ export function icicleDrops(points, drops, bulbs) {
   });
 }
 
+// An arches light's path: the traced line, with `arches` arches standing on it (or hanging from it,
+// `down`), each rising `height` of the photo's height at its middle. Bulbs are then spread along it
+// like any line, so they follow the curves. A stretch out of view stays as it was.
+const ARCH_STEPS = 16; // points per arch, enough to look round
+export function archPoints(points, arches, height, down = false) {
+  if (points.length < 2 || !(arches >= 1) || !(height > 0)) return points;
+  const arcs = pathArcs(points), total = arcs[arcs.length - 1];
+  if (!total) return points;
+  const bump = (a) => {
+    const [x, y] = pointAtArc(points, arcs, a);
+    const u = ((a / total) * arches) % 1;
+    const lift = height * Math.sin(Math.PI * u);
+    return [x, Math.min(Math.max(y + (down ? lift : -lift), 0), 1)];
+  };
+  const out = [points[0].slice(0, 2)];
+  for (let i = 1; i < points.length; i++) {
+    if (points[i][2] != null) { out.push(points[i]); continue; }
+    // Samples along this stretch, as many as its share of the arches needs, ending on its point.
+    const n = Math.max(1, Math.ceil(((arcs[i] - arcs[i - 1]) / total) * arches * ARCH_STEPS));
+    for (let k = 1; k <= n; k++) out.push(bump(arcs[i - 1] + ((arcs[i] - arcs[i - 1]) * k) / n));
+  }
+  return out;
+}
+
 // How many drops a light starts with as Icicle: about five bulbs to a drop, like most icicle lights.
 export function defaultDrops(dev) {
   const bulbs = Math.min(dev.bulbs || dev.segments * BULBS_PER_SEGMENT, MAX_BULBS);
@@ -400,6 +424,12 @@ export class House {
     return { ctx, w, h };
   }
 
+  // The line a light's bulbs are spread along: its trace, or for arches the curves standing on it.
+  linePoints(id) {
+    const points = this.paths[id], style = this.styles[id];
+    return style?.style === "arches" && points ? archPoints(points, style.arches, style.height, style.down) : points;
+  }
+
   // Where a light's bulbs are: [x, y] or null each for a line, or its drops for icicles.
   bulbs(dev) {
     const points = this.paths[dev.id];
@@ -416,8 +446,9 @@ export class House {
         this.cache.set(dev.id, c = { key, bulbs });
         return c.bulbs;
       }
-      const bulbs = style?.style === "icicle" ? icicleDrops(points, style.drops, count) : bulbLayout(points, count);
-      this.cache.set(dev.id, c = { key, bulbs: pinBulbs(points, bulbs, pins, dev.segments, dev.reverse) });
+      const line = this.linePoints(dev.id);
+      const bulbs = style?.style === "icicle" ? icicleDrops(points, style.drops, count) : bulbLayout(line, count);
+      this.cache.set(dev.id, c = { key, bulbs: pinBulbs(line, bulbs, pins, dev.segments, dev.reverse) });
     }
     return c.bulbs;
   }
@@ -700,7 +731,8 @@ export class House {
       }
       const id = `${dev.id}#${p.id}`;
       this.paths[id] = kept.map((q) => q.map((v, k) => (k < 2 ? +v.toFixed(5) : v)));
-      if (style && style.style !== "spots") {
+      // Arches are already in the points taken from the bulbs, so each part is a plain line.
+      if (style && style.style !== "spots" && style.style !== "arches") {
         const share = (p.to - p.from + 1) / dev.segments;
         this.styles[id] = style.style === "icicle" ? { ...style, drops: Math.max(1, Math.round(style.drops * share)) } : { ...style };
       }
@@ -1014,7 +1046,7 @@ export class House {
         const { w, h } = this.size || { w: 1, h: 1 };
         if (!d.moved && Math.hypot((p[0] - d.from[0]) * w, (p[1] - d.from[1]) * h) < 4) return;
         d.moved = true;
-        (this.pins[d.id] ||= {})[d.pin] = +arcNearest(this.paths[d.id], p, [w, h]).toFixed(5);
+        (this.pins[d.id] ||= {})[d.pin] = +arcNearest(this.linePoints(d.id), p, [w, h]).toFixed(5);
       } else if (d) {
         this.paths[d.id][d.i].splice(0, 2, ...p);
       }

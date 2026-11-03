@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.292
+
+- A new house **Style**, **Arches**, for lights hung in arches or swags. Trace the line they stand on (or hang from) under **Setup → House**, then set how many **Arches**, their **Height**, and **Curve**: **Up** or **Down**. The bulbs follow the curves on the photo, and effects run up and over each arch.
+
 ## 0.2.291
 
 - While HA-liday Show first loads, it says **Loading your shows…** over the page, so **Library → Shows** no longer looks empty for a moment. If it can't load, it says why, with **Try again**.
