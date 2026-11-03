@@ -34,7 +34,7 @@ link in a new tab.
 | **Admin** | Your [Admin PIN](#admin-pin) |
 | **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom |
 | **Words** | [Every message visitors read](#words), to change to your own |
-| **Queue** | [The visitors' queue](#visitors-queue) as it is now |
+| **Queue** | [The visitors' queue](#visitors-queue) as it is now, and **Tonight** at a glance |
 
 Beside them (below them on a narrower screen) the **Preview** shows the page as visitors with your
 code see it, and catches up as soon as you change something. Its buttons don't start anything.
@@ -308,6 +308,10 @@ Keeping it fair, on the **Limits** page:
 - **Before a phone can pick again** (5 minutes to start with): once a phone's own pick has played, that
   phone waits this long before picking another, so one person can't keep the lights to themselves on a
   quiet night. Your admin phone doesn't wait. 0 turns it off.
+
+**Tonight**, under the queue on the **Queue** page, counts visitors' picks since midday, lists the most
+picked, and says how many phones are listening right now. It starts afresh when HA-liday Show restarts
+(an update, say).
 
 You stay in charge. Playing a show from the editor or an automation goes on straight away, and the
 visitors' queue carries on afterwards. **■ Stop** (or stopping the song on the speaker) stops

@@ -75,6 +75,11 @@ class Runner:
         # Visitors' picks that have played: {kind, ref, ticket, at} (time.monotonic() when it ended), for
         # the public page's cool-downs. Kept for two hours at most.
         self.public_played: list[dict] = []
+        # For Tonight on the Public page's Queue tab (not saved, so a restart starts afresh): every
+        # visitor pick {at: wall-clock datetime, name}, a day at most, and the listening passes seen
+        # lately {pass: time.monotonic()}.
+        self.public_log: list[dict] = []
+        self.public_listeners: dict[str, float] = {}
         self._public: asyncio.Task | None = None
         # Goes up whenever you play or stop something yourself, which ends a visitor's request part-way.
         self._yours = 0

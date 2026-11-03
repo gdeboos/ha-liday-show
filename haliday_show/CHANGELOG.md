@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.335
+
+- **Tonight at a glance**, on **Public page → Queue**: how many shows visitors have picked since midday, the most picked, and how many phones are listening right now. It starts afresh when HA-liday Show restarts.
+
 ## 0.2.334
 
 - **A show rests after it plays.** Once a visitor's pick has played, nobody can pick it again for 15 minutes; its button says **Again in 12 minutes** (say). Set it under **Public page → Limits → Before a show can be picked again** (0 turns it off).

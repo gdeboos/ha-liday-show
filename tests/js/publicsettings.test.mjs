@@ -55,3 +55,9 @@ test("the sign says the opening hours in a few words", async () => {
   assert.equal(signHours({ ...h, days: [4, 5, 6] }), "Shows from 5pm to 10pm, Fri, Sat and Sun");
   assert.equal(signHours({ ...h, on: false }), "");
 });
+
+test("Tonight lists picks, phones listening and the most picked", async () => {
+  const { tonightRows } = await import("../../haliday_show/app/halidayshow/static/js/publicsettings.js");
+  assert.deepEqual(tonightRows({ picks: 0, top: [], listening: 0 }), [["Picks", "None yet"], ["Listening on phones now", "0"]]);
+  assert.deepEqual(tonightRows({ picks: 3, top: [{ name: "Party", count: 2 }], listening: 1 })[2], ["Most picked", "Party (2)"]);
+});

@@ -36,7 +36,7 @@ import os
 import re
 import secrets
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -476,6 +476,25 @@ def _mins(seconds: float) -> str:
     return f"{m} minute{'' if m == 1 else 's'}"
 
 
+LISTENING_FRESH_S = 15  # a listening phone asks about once a second; quiet this long, it's gone
+
+
+def tonight(runner: Runner, now: datetime | None = None) -> dict:
+    """Tonight's visitors so far, since midday: how many picks, the most picked, and phones listening now."""
+    now = now or datetime.now()
+    since = now.replace(hour=12, minute=0, second=0, microsecond=0)
+    if now < since:
+        since -= timedelta(days=1)
+    names = [x["name"] for x in runner.public_log if x["at"] >= since]
+    counts: dict[str, int] = {}
+    for n in names:
+        counts[n] = counts.get(n, 0) + 1
+    top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:3]
+    t = time.monotonic()
+    return {"picks": len(names), "top": [{"name": n, "count": c} for n, c in top],
+            "listening": sum(1 for at in runner.public_listeners.values() if t - at < LISTENING_FRESH_S)}
+
+
 def taken(runner: Runner, kind: str, ref: str, repeat_minutes: int = 0) -> str:
     """Why a show or playlist can't be picked again right now: "queued" (someone's pick is waiting),
     "playing" (on now), "recent" (a visitor's pick of it played less than repeat_minutes ago), or "" if
@@ -837,6 +856,9 @@ async def post_request(request):
                                said["many_waiting"].replace("{count}", str(yours)))
     elif len(runner.requests) >= p["queue"]:
         raise web.HTTPConflict(text=said["full"])
+    now = datetime.now()
+    runner.public_log = [x for x in runner.public_log if (now - x["at"]).total_seconds() < 86400]
+    runner.public_log.append({"at": now, "name": pick["name"]})
     runner.add_request({"id": secrets.token_hex(6), "ticket": ticket, "kind": pick["kind"], "ref": pick["id"],
                         "name": pick["name"], "shows": pick["shows"], "gap": pick.get("gap", 0)})
     log.info("public page: %s %s requested (%d waiting)", pick["kind"], pick["id"], len(runner.requests))
@@ -1087,6 +1109,10 @@ async def get_listen_now(request):
     _limit_client(request, "listen", MAX_LISTEN_PER_CLIENT_MIN)
     p = _listening(request, request.query.get("code"))
     _pass_ok(request, p, request.query.get("token"))
+    seen = request.app[RUNNER].public_listeners
+    if len(seen) > MAX_CLIENTS:
+        seen.clear()
+    seen[request.query.get("token", "")] = time.monotonic()
     st, path = _now_playing(request)
     if path is None:
         return _no_store(web.json_response({"playing": False}))
