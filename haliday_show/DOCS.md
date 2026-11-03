@@ -1913,6 +1913,9 @@ Also on the **Shows** tab:
 
 - **Show how long each lasts** (on to start with) puts "About 3 minutes" under each show's name,
   worked out from the show. Turn it off for just the names.
+- **Show cover art** (on to start with) puts each show's picture beside its name: its song's cover
+  art (from an MP3, M4A or FLAC's own tags), or for a playlist, its first show's that has one. Shows
+  without any just have their name. Turn it off for no pictures.
 - **Flashing lights warning**, for shows with strobes or fast flashes:
   - **Off** (to start with).
   - **A note at the top**: a boxed warning above the shows, always there.

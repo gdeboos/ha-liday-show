@@ -617,3 +617,34 @@ def test_the_visitors_page_wraps_long_words():
     # underscores did in "On now: …". Every line wraps instead.
     css = (public.PAGE / "public.css").read_text()
     assert ".pp { overflow-wrap: anywhere; }" in css
+
+
+async def test_visitors_see_each_shows_cover_art(client, tmp_path):
+    import struct
+    st = client.app[server.STORAGE]
+    frame = b"\0image/jpeg\0\x03\0" + PHOTO
+    body = b"APIC" + struct.pack(">I", len(frame)) + b"\0\0" + frame
+    n = len(body)
+    tag = b"ID3\x03\0\0" + bytes([(n >> 21) & 0x7F, (n >> 14) & 0x7F, (n >> 7) & 0x7F, n & 0x7F]) + body
+    (tmp_path / "media").mkdir(exist_ok=True)
+    (tmp_path / "media" / "art.mp3").write_bytes(tag + b"\xff\xfb" * 50)
+    st.save_show("party", {"name": "Party", "tracks": [], "audio": {"source": "media", "path": "art.mp3"}})
+    st.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * 400))
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"},
+                                                                {"kind": "show", "id": "quiet"},
+                                                                {"kind": "playlist", "id": "eve"}]})
+    public._CHOICES.clear()
+    _, view, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    covers = {c["id"]: c["cover"] for c in view["choices"]}
+    assert covers["party"] and covers["eve"] and not covers["quiet"]  # the playlist uses its first show's
+    status, pic, headers = await _visitor(client, "/cover?kind=show&id=party")
+    assert status == 200 and headers["Content-Type"] == "image/jpeg" and pic == PHOTO
+    assert (await _visitor(client, "/cover?kind=show&id=party", code=False))[0] == 404
+    assert (await _visitor(client, "/cover?kind=show&id=quiet"))[0] == 404
+    # Turned off, there are none.
+    p = await (await client.get("/api/public")).json()
+    await client.put("/api/public", json={**p, "look": {**p["look"], "covers": False}})
+    public._CHOICES.clear()
+    _, view, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert not any(c["cover"] for c in view["choices"])
+    assert (await _visitor(client, "/cover?kind=show&id=party"))[0] == 404

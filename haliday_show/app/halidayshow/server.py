@@ -2135,6 +2135,16 @@ async def public_preview_picture(request):
                         headers={"Cache-Control": "no-cache"})
 
 
+async def public_preview_cover(request):
+    st = request.app[STORAGE]
+    q = request.query
+    pick = next((c for c in public.choices(st) if c["kind"] == q.get("kind") and c["id"] == q.get("id")), None)
+    pic = public.cover_of(st, pick) if pick else None
+    if pic is None:
+        raise web.HTTPNotFound()
+    return web.Response(body=pic[1], content_type=pic[0], headers={"Cache-Control": "no-cache"})
+
+
 async def public_qr(request):
     """The QR code for the sign: an SVG of the visitors' link, which must carry your current code.
     ?download=1 hands it over as a file to use elsewhere."""
@@ -2703,6 +2713,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/public-preview/{name:(public\\.js|public\\.css|colours\\.js)}", public_preview_page)
     r.add_get("/public-preview/api/state", public_preview_state)
     r.add_get("/public-preview/picture", public_preview_picture)
+    r.add_get("/public-preview/cover", public_preview_cover)
     r.add_put("/api/public/picture", put_public_picture)
     r.add_put("/api/location", put_location)
     r.add_get("/api/house", get_house)

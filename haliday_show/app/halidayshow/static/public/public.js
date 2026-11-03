@@ -429,6 +429,15 @@ export function start() {
     $("pp-block").hidden = !view.block || !startable;
     $("pp-choices").replaceChildren(...view.choices.map((c) => {
       const row = el("div", "pp-row");
+      // The song's cover art, when it has some (and it's not turned off).
+      if (c.cover) {
+        const img = el("img", "pp-cover");
+        img.alt = "";
+        img.loading = "lazy";
+        img.src = `cover?${new URLSearchParams({ kind: c.kind, id: c.id, code: key, v: String(c.cover) })}`;
+        img.addEventListener("error", () => img.remove());
+        row.append(img);
+      }
       const text = el("div", "pp-text");
       text.append(el("div", "pp-name", c.name));
       if (c.detail) text.append(el("div", "pp-hint", c.detail));
