@@ -247,6 +247,10 @@ export const mustAccept = (look, accepted) => look?.warning === "accept" && !acc
 
 const ACCEPTED_KEY = "halidayshow.publicAccepted";
 
+// The phone remembers the warning it accepted, word for word, so it isn't asked on every visit but is
+// asked again if you change what the warning says.
+export const warningAccepted = (kept, text) => !!kept && kept === text;
+
 // Start buttons only show to phones that could use them.
 export const canStart = (needsLocation, where) => !needsLocation || where.state === "near";
 
@@ -485,8 +489,9 @@ export function start() {
   let busy = false;
   let needsLocation = false;
   let w = null; // the words from the latest answer
-  let accepted = false;
-  try { accepted = sessionStorage.getItem(ACCEPTED_KEY) === "1"; } catch { /* private browsing */ }
+  let acceptedText = "";
+  try { acceptedText = localStorage.getItem(ACCEPTED_KEY) || ""; } catch { /* private browsing */ }
+  const accepted = () => warningAccepted(acceptedText, w ? say_(w, "warning") : "");
   const snow = makeSnow($("pp-snow"));
   let pictureShown = 0;
   let bootSeen = "";
@@ -712,7 +717,8 @@ export function start() {
     const me = listener.state;
     const offered = !!(st && st.open && st.listen && !st.locked);
     const btn = $("pp-listen-btn");
-    btn.hidden = !(me.on || (offered && canStart(needsLocation, where)));
+    // Nothing on: nothing to hear yet, so no button (Start on a show with no speaker still starts listening).
+    btn.hidden = !(me.on || (offered && !!st.now && canStart(needsLocation, where)));
     const playing = me.on && me.state !== "tap";
     btn.textContent = say_(w, playing ? "listening_short" : "listen_short");
     btn.setAttribute("aria-pressed", String(playing));
@@ -865,8 +871,8 @@ export function start() {
     $("pp-where-text").textContent = whereText(where, w).text;
     // The flashing lights warning, and (if you ask for it) a press to accept it before Start.
     $("pp-warning").hidden = !st.open || !warningShown(st.look);
-    $("pp-warning").classList.toggle("pp-slim", !mustAccept(st.look, accepted));
-    $("pp-accept").hidden = !mustAccept(st.look, accepted);
+    $("pp-warning").classList.toggle("pp-slim", !mustAccept(st.look, accepted()));
+    $("pp-accept").hidden = !mustAccept(st.look, accepted());
     const closed = comeBackText(st.hours, w);
     $("pp-hours").textContent = closed;
     $("pp-hours").hidden = !closed;
@@ -878,7 +884,7 @@ export function start() {
       Object.assign(where, { state: "idle", text: "", pos: null });
     }
     if (!needsLocation) $("pp-where").hidden = true;
-    const startable = !closed && canStart(needsLocation, where) && !mustAccept(st.look, accepted);
+    const startable = !closed && canStart(needsLocation, where) && !mustAccept(st.look, accepted());
     const view = describe(st);
     $("pp-closed").hidden = !view.closed;
     $("pp-open").hidden = view.closed;
@@ -1026,8 +1032,8 @@ export function start() {
   $("pp-nudge-later").addEventListener("click", () => listener.shift(-1));
   $("pp-pin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") sendPin(); });
   $("pp-accept").addEventListener("click", () => {
-    accepted = true;
-    try { sessionStorage.setItem(ACCEPTED_KEY, "1"); } catch { /* kept for this visit */ }
+    acceptedText = say_(w, "warning");
+    try { localStorage.setItem(ACCEPTED_KEY, acceptedText); } catch { /* kept for this visit */ }
     if (last) render(last);
   });
   // The editor asks the preview to catch up as soon as something's saved.

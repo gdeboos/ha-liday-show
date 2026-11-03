@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.331
+
+- **The flashing lights warning is remembered.** Once a visitor presses **I understand**, their phone doesn't ask again on later visits, unless you change the warning's words.
+- **🎧 Listen only shows while something's on.** With nothing playing there's nothing to hear, so the button waits until a show starts (or the visitor is already listening).
+
 ## 0.2.330
 
 - **Install the visitors' page as an app.** On Android an **📲 Install app** button appears at the top of the page; on an iPhone use **Share → Add to Home Screen**. The app opens full screen, is named after your title, uses your page's colours with a string-of-bulbs icon, and has your code built in. The button's words are on the **Words** tab.
