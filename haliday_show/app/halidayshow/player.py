@@ -45,6 +45,7 @@ class Player:
         self.live_step = None
         self.bursts = liveeffects.Bursts()
         self.spectra: dict = {}  # Spectrum bars lights, put together region by region
+        self.sent: dict[str, bytes] = {}  # each light's last frame as it went out, for frame_now()
 
     @property
     def playing(self) -> bool:
@@ -74,6 +75,7 @@ class Player:
         self.live, self.live_tracks, self.live_step = None, {}, None
         self.bursts = liveeffects.Bursts()
         self.spectra = {}
+        self.sent = {}
         self.baked, self.show_id, self.devices, self.offset = baked, show_id, devices, offset
         self.length = length
         claimed = set()
@@ -92,6 +94,26 @@ class Player:
             self.output.release(ip)
         self.start = time.monotonic() - position
         self._task = asyncio.create_task(self._run())
+
+    def frame_now(self) -> tuple[list[dict], bytes] | None:
+        """What's on the lights this moment, for the editor's live preview: each track's frame as it
+        last went out (scaled and live effects and all), or, for a light with no address yet, the
+        baked frame at this point. None when nothing's playing."""
+        b = self.baked
+        if not self.playing or b is None or not b.frames:
+            return None
+        elapsed = time.monotonic() - self.start - self.offset
+        idx = max(0, int(elapsed * b.fps))
+        idx = idx % b.frames if self.length is not None else min(idx, b.frames - 1)
+        parts, tracks = [], []
+        for t in b.tracks:
+            frame = self.sent.get(t.device)
+            if frame is None or len(frame) != t.size:
+                frame = b.track_frame(t, idx)
+                frame = frame.translate(self._dim) if self._dim else frame
+            parts.append(frame)
+            tracks.append({"device": t.device, "segments": t.segments})
+        return tracks, b"".join(parts)
 
     def drop(self, ids: set[str]):
         """Stops sending to these lights (props just packed away) and lets them go, mid-show too."""
@@ -202,7 +224,9 @@ class Player:
                             else:
                                 frame = self._variant_frame(source, t, elapsed) if source else None
                                 frame = frame or b.track_frame(t, idx)
-                            dev.update(frame.translate(table) if table else frame)
+                            out = frame.translate(table) if table else frame
+                            self.sent[t.device] = out
+                            dev.update(out)
                 last = key
             await asyncio.sleep(frame_s / 4)
         log.info("%s finished", f"show {self.show_id}" if self.show_id else "block")

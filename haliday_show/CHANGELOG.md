@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.321
+
+- **Preview** on the green bar under the tabs opens your house photo showing what your lights are showing right now, whatever started it: a show, a playlist, a scene or a visitor's pick. It's what's actually going out to the lights, so brightness and music reactions show too.
+
 ## 0.2.320
 
 - A green bar under the tabs now shows whatever is on your lights, however it started (the schedule, an automation, a visitor or you): the show, playlist or scene, how far through it is, and **Restart** and **Stop** (**Turn off** for a scene).
