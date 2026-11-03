@@ -120,3 +120,11 @@ test("your own words, the length switch and the flashing lights warning", () => 
   assert.equal(page.mustAccept({ warning: "accept" }, false), true);
   assert.equal(page.mustAccept({ warning: "accept" }, true), false);
 });
+
+test("a page left open loads again once after HA-liday Show restarts", () => {
+  assert.equal(page.shouldReload("aaaa", "aaaa", ""), false);
+  assert.equal(page.shouldReload("aaaa", "bbbb", ""), true);
+  assert.equal(page.shouldReload("aaaa", "bbbb", "bbbb"), false); // already tried for this restart
+  assert.equal(page.shouldReload("", "bbbb", ""), false);
+  assert.equal(page.shouldReload("aaaa", undefined, ""), false); // an older server says nothing
+});

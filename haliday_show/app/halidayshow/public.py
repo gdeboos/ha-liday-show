@@ -96,6 +96,11 @@ def _count(value, default: int, top: int) -> int:
     return min(max(n, 1), top)
 
 
+# Changes each time HA-liday Show starts (an update, say), so pages left open on phones load again and
+# get the new page rather than carrying on with the old one. Random, so it says nothing about the version.
+BOOT = secrets.token_hex(4)
+
+
 def _item(x) -> dict | None:
     """One show or playlist on the public page: {"kind", "id", "from", "to"} with optional dates, or a
     heading {"kind": "heading", "name"} that the shows after it, up to the next one, are grouped under."""
@@ -457,7 +462,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
     said = words(p)
     if p["on"] and not _code_ok(p, code):
         # Only the colours without the code: the title, words and picture are for visitors.
-        return {"open": True, "locked": True,
+        return {"open": True, "locked": True, "boot": BOOT,
                 "look": {k: look[k] for k in ("theme", "mode", "spacing", "corners", "size", "borders", "colours")},
                 "words": {k: said[k] for k in ("locked", "locked_hint", "offline")}}
     picks = choices(storage) if p["on"] else []
@@ -473,6 +478,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                 mine.append({"id": r["id"], "name": r["name"], "place": place, "wait": wait})
     return {
         "open": p["on"],
+        "boot": BOOT,
         "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"], "group": c["group"],
                      "cover": c["cover"] if look["covers"] else 0,
                      "colours": c["colours"] if look["covers"] else [],

@@ -401,6 +401,14 @@ export function makeListener({ code, say, pos, onChange }) {
   };
 }
 
+const BOOT_KEY = "halidayshow.publicBoot";
+
+// HA-liday Show restarted (an update, say) since this page loaded: load it again, so a page left open
+// on a phone doesn't carry on as the old version. Once per restart, so a stale copy can't loop.
+export function shouldReload(loadedWith, now, reloadedFor) {
+  return !!(loadedWith && now && now !== loadedWith && now !== reloadedFor);
+}
+
 export function start() {
   const $ = (id) => document.getElementById(id);
   // Shown inside the editor's Public page tab: looks the same, but starts nothing.
@@ -414,6 +422,17 @@ export function start() {
   try { accepted = sessionStorage.getItem(ACCEPTED_KEY) === "1"; } catch { /* private browsing */ }
   const snow = makeSnow($("pp-snow"));
   let pictureShown = 0;
+  let bootSeen = "";
+  function reloadIfUpdated(boot) {
+    if (preview || !boot) return false;
+    let done = "";
+    try { done = sessionStorage.getItem(BOOT_KEY) || ""; } catch { /* private browsing */ }
+    if (!bootSeen) { bootSeen = boot; return false; }
+    if (!shouldReload(bootSeen, boot, done)) return false;
+    try { sessionStorage.setItem(BOOT_KEY, boot); } catch { /* reloads once anyway */ }
+    location.reload();
+    return true;
+  }
   const listener = makeListener({
     code: key, say: (k, vars) => say_(w, k, vars), pos: () => (needsLocation ? where.pos : null),
     onChange: () => drawListen(),
@@ -588,6 +607,7 @@ export function start() {
   };
 
   function render(st) {
+    if (reloadIfUpdated(st.boot)) return;
     w = st.words || w;
     applyLook(st.look);
     $("pp-locked-text").textContent = say_(w, "locked");
