@@ -1398,3 +1398,7 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 /* A song's cover art, from its own tags, at the start of its row (and its shows' rows). */
 .song-cover { flex: none; width: 44px; height: 44px; border-radius: 6px; object-fit: cover; background: var(--track); align-self: center; }
 @media (max-width: 720px) { .show-row .song-cover { align-self: flex-start; } }
+/* Quieten the song, and By how much, beside it on a layer's row. */
+.duck-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.duck-by[hidden] { display: none; }
+.duck-by input[type=range] { width: 90px; vertical-align: middle; }

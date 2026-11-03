@@ -82,6 +82,21 @@ test("a clip placed right at the end of a piece or the song is still in the song
   }
 });
 
+test("each layer says how far the song dips, and the deepest wins where they overlap", () => {
+  const rate = 100, n = 1000;
+  const sources = { "media:b.mp3": [new Float32Array(300).fill(0.5)] };
+  const voice = (duckDb, t = 4) => ({ name: "Voice", gain: 0, duck: true, ...(duckDb ? { duckDb } : {}),
+    clips: [{ song: B, start: 0, end: 2, anchor: { song: A, t } }] });
+  const one = (L) => duckEnvelope([L], placeClips([L], song, 0), sources, n, rate);
+  near(one(voice(null))[500], 10 ** (-8 / 20), "8 dB to start, as before");
+  near(one(voice(20))[500], 10 ** (-20 / 20), "nearly silent");
+  near(one(voice(3))[500], 10 ** (-3 / 20), "a little");
+  const both = [voice(3), voice(16, 5)];
+  const env = duckEnvelope(both, placeClips(both, song, 0), sources, n, rate);
+  near(env[450], 10 ** (-3 / 20), "only the gentle one yet");
+  near(env[620], 10 ** (-16 / 20), "the deeper one while both play");
+});
+
 test("a layer that quietens the song dips it while its clips play, smoothly, and only then", () => {
   const rate = 100, n = 1000;
   const sources = { "media:b.mp3": [new Float32Array(300).fill(0.5)] };

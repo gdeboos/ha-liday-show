@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.298
+
+- In the Music editor, a layer that quietens the song now has **By** beside **Quieten the song**: slide it to dip the song just a little (3 dB) or nearly to silence (24 dB). It starts at 8 dB, as before, so your drafts sound the same.
+
 ## 0.2.297
 
 - **Library → Shows** has season buttons above the list once a show has a season: **All**, **Halloween**, **Christmas** and your own. Pick one to see just that season's shows (and the ones for any season), from every folder. Your choice is remembered.

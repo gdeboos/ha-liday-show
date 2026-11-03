@@ -900,8 +900,10 @@ last chorus, a voice saying "Merry Christmas", or another song fading in under t
    song on a layer, split it where each part starts and ends, delete what you don't want and drag the
    rest where it goes.
 4. To make a layer stand out, such as a voice saying "Merry Christmas", tick **Quieten the song** on its
-   row. The song dips a little while that layer's clips play (starting just before each one) and comes
-   back up gently after. It's off for new layers.
+   row. The song dips while that layer's clips play (starting just before each one) and comes back up
+   gently after. **By**, beside it, sets how far: from a little (3 dB, so the song is still clearly
+   heard) to nearly silent (24 dB); it starts at 8 dB. Where two layers that quieten the song play at
+   once, the song dips by the bigger amount. It's off for new layers.
 
 Each clip is pinned to the moment in the song it starts at, so it moves with your cuts: cut a bit
 earlier in the song and it moves earlier with the music; cut the part it sits on and it's left out
