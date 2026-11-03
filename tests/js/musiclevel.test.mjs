@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bake, newClip, renderTrack, setMusicLevels } from "../../haliday_show/app/halidayshow/static/js/effects.js";
+import { MADE_UP, bake, newClip, renderTrack, setMusicLevels, withMusicLevels } from "../../haliday_show/app/halidayshow/static/js/effects.js";
 import { levelCurve, levelsFit } from "../../haliday_show/app/halidayshow/static/js/musiclevel.js";
 
 test("the loudness curve follows the song: quiet parts low, loud parts high", () => {
@@ -54,4 +54,17 @@ test("undo keeps the song's measured loudness", async () => {
   const other = { fps: 10, song: "b.mp3", values: [3] };
   assert.equal(keepLevels(now, { audio: { path: "b.mp3" }, loudness: other }).loudness, other);
   assert.equal(keepLevels(now, { audio: null }).loudness, undefined);
+});
+
+test("previews with no song behind them show a made-up level, then the open show's comes back", () => {
+  const lit = (buf) => Array.from({ length: buf.length / 3 }, (_, i) => buf[i * 3] + buf[i * 3 + 1] > 0).filter(Boolean).length;
+  const clip = { ...newClip("vumeter", 0, 10), peak: "off" };
+  setMusicLevels(null); // an open show without a song: silent
+  try {
+    assert.equal(lit(renderTrack([clip], 1, 20)), 0);
+    const moving = [0.3, 1.1, 2.7, 4.2].map((t) => withMusicLevels(MADE_UP, () => lit(renderTrack([clip], t, 20))));
+    assert.ok(moving.some((n) => n > 0) && new Set(moving).size > 1);
+    assert.equal(withMusicLevels({ fps: 10, values: Array(100).fill(100) }, () => lit(renderTrack([clip], 1, 20))), 20);
+    assert.equal(lit(renderTrack([clip], 1, 20)), 0); // put back
+  } finally { setMusicLevels(null); }
 });

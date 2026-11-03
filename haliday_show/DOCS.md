@@ -1407,7 +1407,9 @@ festive**, **Calm** and **Follows the music**.
 **Music level** needs the show's song: HA-liday Show measures how loud the song is from moment to
 moment when you open the show, and keeps that with the show when you next save it. A show with no
 song (lights only) leaves it dark, and it isn't offered in scenes or playlist blocks, which have no
-song.
+song. In the Preview and House panels and in **▶ Preview** it follows the show's song; in the effect
+window and the preset previews it moves to a made-up level, since a few seconds from a song's start are
+often too quiet to show anything.
 
 Fairy lights, Ocean waves, Aurora, Flowing colours, Juggle, Ripple, Bouncing balls and Stacking blocks take a list of up to 8 colours. Set
 **Colours** to how many to use, and only that many colour boxes show. **Apply palette** fills the

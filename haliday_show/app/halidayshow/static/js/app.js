@@ -9,7 +9,7 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
@@ -3108,8 +3108,9 @@ function drawPickerPreviews() {
     const secs = (performance.now() - set.started) / 1000;
     for (const { canvas, clip, dev } of items) {
       const n = dev?.segments || 15, grid = grids ? gridOf(dev) : null, cap = (dev?.brightness ?? 100) / 100;
-      // On a matrix, each effect moves as the grid would show it.
-      const rgb = asShown(dev, secs % clip.end, (t) => renderTrack([clip], t, n, undefined, false, grid));
+      // On a matrix, each effect moves as the grid would show it. Music level moves to a made-up
+      // level here: a few seconds from the song's start is often too quiet to show anything.
+      const rgb = withMusicLevels(MADE_UP, () => asShown(dev, secs % clip.end, (t) => renderTrack([clip], t, n, undefined, false, grid)));
       if (grid) drawGrid(canvas, rgb, grid, cap); else drawStrip(canvas, rgb, n, cap);
     }
   }
@@ -6483,7 +6484,9 @@ async function previewShow(r) {
     const frames = new Map();
     const full = (light) => {
       if (!frames.has(light.id)) {
-        frames.set(light.id, asShown(light, t, (at) => dim(composeLight(light, trackOf, at, pos, houseFx, undefined, plans), showLevel(show, light.id))));
+        // Music level follows this show's song (or a made-up level if it hasn't been measured yet).
+        frames.set(light.id, withMusicLevels(show.audio ? show.loudness || MADE_UP : null,
+          () => asShown(light, t, (at) => dim(composeLight(light, trackOf, at, pos, houseFx, undefined, plans), showLevel(show, light.id)))));
       }
       return frames.get(light.id);
     };
@@ -6872,7 +6875,10 @@ function imPreviewFrame() {
   const frames = new Map();
   const full = (light) => {
     const level = showLevel(imPrev.levels, light.id);
-    if (!frames.has(light.id)) frames.set(light.id, asShown(light, t, (at) => dim(composeLight(light, (id) => byId.get(id), at, pos, houseFx), level)));
+    if (!frames.has(light.id)) {
+      frames.set(light.id, withMusicLevels(MADE_UP,
+        () => asShown(light, t, (at) => dim(composeLight(light, (id) => byId.get(id), at, pos, houseFx), level))));
+    }
     return frames.get(light.id);
   };
   house.paint($("im-canvas"), Math.min(window.innerHeight * 0.35, 320), (dev) => {
@@ -8727,7 +8733,8 @@ let songBuffer = null; // the decoded song, for Detect
 async function loadAudio(ref) {
   app.peaks = null;
   songBuffer = null;
-  setMusicLevels(ref ? app.show?.loudness : null);
+  // An Advanced scene has no song: on the lights it follows live music, so its preview makes some up.
+  useMusicLevels(ref ? app.show?.loudness : app.sceneId ? MADE_UP : null);
   app.songMarks = [];
   loadSongMarks();
   app.audioDuration = 0;
