@@ -845,6 +845,12 @@ export class House {
         const d = Math.hypot((q[0] - p[0]) * w, (q[1] - p[1]) * h);
         if (d >= bestD) return;
         bestD = d;
+        const grid = gridOf(dev);
+        if (grid && bulbs.length === dev.segments) {
+          // A matrix's bulbs are listed by grid spot, which says more than an LED number.
+          best = { x: q[0], y: q[1], text: `${dev.name}: row ${Math.floor(j / grid.w) + 1}, column ${(j % grid.w) + 1}` };
+          return;
+        }
         const s = bulbSegment(j, bulbs.length, dev.segments, dev.reverse) + (dev.from || 1);
         const part = dev.parts?.find((x) => x.from <= s && s <= x.to);
         const where = !dev.parts?.length ? "" : part ? ` · ${part.name}` : " · unused, off";
