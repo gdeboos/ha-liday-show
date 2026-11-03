@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.303
+
+- Layers in the Music editor have a **Key**: pick **Match the song** and each clip moves up or down to the song's key, so a sample or another song doesn't clash. You can also move a layer by hand, from **+6** to **−6 semitones**. **Detect** now finds a song's key too, shown beside its tempo.
+
 ## 0.2.302
 
 - The Music editor's **EQ** panel has a **Filter**, like a DJ mixer's: slide it left to muffle the song or a layer, right to thin it out. It changes partway through with **+ Change here**, gliding like the faders, so you can sweep it for a build-up and drop. It's in **Make song file**, and a purple line on the waveform shows it.

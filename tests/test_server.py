@@ -230,6 +230,10 @@ async def test_song_info_is_kept_per_file_until_the_file_changes(client, tmp_pat
                 {"sections": [{"start": 0, "end": 1, "color": "red"}]},
                 {"sections": [{"start": 0, "end": 1, "notes": 5}]}):
         assert (await client.put("/api/audio/info", params=q, json=bad)).status == 400
+    # Its key, when Detect found one.
+    assert (await client.put("/api/audio/info", params=q, json={**info, "key": "E♭ major"})).status == 200
+    assert (await (await client.get("/api/audio/info", params=q)).json())["key"] == "E♭ major"
+    assert (await client.put("/api/audio/info", params=q, json={**info, "key": "H major"})).status == 400
     missing = {"source": "media", "path": "songs/none.mp3"}
     assert (await client.put("/api/audio/info", params=missing, json=info)).status == 404
     songs = {x["path"]: x for x in (await (await client.get("/api/songs")).json())["songs"]}
@@ -1118,6 +1122,15 @@ async def test_draft_mixer_settings_are_kept_and_checked(client, tmp_path):
     assert "filter" not in (await (await client.get(f"/api/drafts/{zero}")).json())["eq"]
     for bad_filter in (101, -101, "low", True):
         assert (await client.post("/api/drafts", json={**draft, "eq": {**eq, "filter": bad_filter}})).status == 400
+    # Key matching: a layer matches the song's key or moves by its own semitones; clips keep their key.
+    keyed = {**draft, "layers": [{**draft["layers"][0], "matchKey": True, "clips": [{**clip, "key": "A minor"}]},
+                                 {"name": "Up", "semitones": 3, "clips": []}]}
+    kid = (await (await client.post("/api/drafts", json=keyed)).json())["id"]
+    got = (await (await client.get(f"/api/drafts/{kid}")).json())["layers"]
+    assert got[0]["matchKey"] is True and got[0]["clips"][0]["key"] == "A minor" and got[1]["semitones"] == 3
+    for bad_layer in ({"name": "x", "matchKey": "yes", "clips": []}, {"name": "x", "semitones": 7, "clips": []},
+                      {"name": "x", "semitones": 1.5, "clips": []}, {"name": "x", "clips": [{**clip, "key": "Z major"}]}):
+        assert (await client.post("/api/drafts", json={**draft, "layers": [bad_layer]})).status == 400
 
 
 async def test_songs_upload_in_parts(client, tmp_path):

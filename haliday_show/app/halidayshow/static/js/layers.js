@@ -11,6 +11,7 @@
 import { arrange } from "./music.js";
 import { applyEq, isFlat, placeChanges } from "./mixer.js";
 import { speedFor } from "./tempo.js";
+import { keyShift } from "./analysis.js";
 
 export const MAX_LAYERS = 4;
 export const MAX_CLIPS = 100;
@@ -55,15 +56,22 @@ export function anchorAt(pieces, crossfade, t, refs) {
 export const clipSpeed = (layer, clip, tempo) => (layer.matchTempo ? speedFor(tempo, clip.bpm) : 1);
 
 // Where a clip's audio is in sources: the stretched copy when it plays at another speed.
-export const sourceKey = (clip, speed) => (speed === 1 ? keyOf(clip.song) : `${keyOf(clip.song)}@${speed}`);
+export const sourceKey = (clip, speed, semis = 0) => (speed === 1 && !semis ? keyOf(clip.song)
+  : `${keyOf(clip.song)}@${speed}${semis ? `~${semis}` : ""}`);
+
+// Semitones a clip is moved up or down: its layer's own (`semitones`), or with `matchKey`, from the
+// clip's key to the song's (0 while either isn't known).
+export const clipSemis = (layer, clip, songKey) => (Number.isFinite(layer.semitones) ? layer.semitones
+  : layer.matchKey ? keyShift(clip.key, songKey) : 0);
 
 // Every clip's place in the result: [{layer, clip, at, length, speed}] for the clips that are heard.
 // tempo is the song's, for layers that match it.
-export function placeClips(layers, pieces, crossfade, tempo = null) {
+export function placeClips(layers, pieces, crossfade, tempo = null, songKey = null) {
   const out = [];
   layers.forEach((layer, li) => layer.clips.forEach((clip, ci) => {
     const at = resultTime(pieces, crossfade, clip.anchor), speed = clipSpeed(layer, clip, tempo);
-    if (at !== null) out.push({ layer: li, clip: ci, at, length: (clip.end - clip.start) / speed, speed });
+    const semis = clipSemis(layer, clip, songKey);
+    if (at !== null) out.push({ layer: li, clip: ci, at, length: (clip.end - clip.start) / speed, speed, semis });
   }));
   return out;
 }
@@ -129,8 +137,8 @@ export function mixLayers(main, layers, placed, sources, rate, { pieces = [], cr
   const env = duckEnvelope(layers, placed, sources, n, rate);
   if (env) for (const ch of out) for (let i = 0; i < n; i++) ch[i] *= env[i];
   const changes = layers.map((L) => (isFlat(L.eq) ? null : placeChanges(L.eq, pieces, crossfade)));
-  for (const { layer, clip, at, speed = 1 } of placed) {
-    const L = layers[layer], c = L.clips[clip], src = sources[sourceKey(c, speed)];
+  for (const { layer, clip, at, speed = 1, semis = 0 } of placed) {
+    const L = layers[layer], c = L.clips[clip], src = sources[sourceKey(c, speed, semis)];
     if (!src || !sources[keyOf(c.song)]) continue;
     const gain = db(L.gain) * db(c.gain);
     const { from, len } = span(c, speed, src, rate);
