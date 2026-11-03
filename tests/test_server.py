@@ -1848,3 +1848,24 @@ async def test_whats_on_the_lights_now_can_be_seen(client):
     assert now["playing"] and now["tracks"] == [{"device": "a", "segments": 2}]
     assert base64.b64decode(now["rgb"]) == b"\x01\x02\x03\x04\x05\x06"
     await client.post("/api/player/stop", json={})
+
+
+def test_late_speaker_times_and_cleaning():
+    from datetime import datetime
+    from halidayshow import latespeaker
+    assert latespeaker.clean(None) == latespeaker.DEFAULT
+    assert latespeaker.clean({"from": "25:00", "mode": "loud", "volume": 500}) == {
+        "from": "", "until": "07:00", "mode": "quieter", "volume": 100}
+    s = {"late_speaker": {"from": "21:00", "until": "07:00", "mode": "quieter", "volume": 25}}
+    assert latespeaker.now_late(s, datetime(2026, 12, 20, 20, 59)) is None
+    assert latespeaker.now_late(s, datetime(2026, 12, 20, 21, 0)) == {"mode": "quieter", "volume": 25}
+    assert latespeaker.now_late(s, datetime(2026, 12, 21, 6, 59)) is not None  # past midnight
+    assert latespeaker.now_late(s, datetime(2026, 12, 21, 7, 0)) is None
+    assert latespeaker.now_late({}, datetime(2026, 12, 20, 23, 0)) is None  # off
+
+
+async def test_late_speaker_is_saved_through_the_api(client):
+    resp = await client.put("/api/speakers/late", json={"from": "21:30", "until": "06:00", "mode": "off", "volume": 40})
+    assert resp.status == 200 and (await resp.json())["mode"] == "off"
+    got = await (await client.get("/api/speakers/late")).json()
+    assert got == {"from": "21:30", "until": "06:00", "mode": "off", "volume": 40}

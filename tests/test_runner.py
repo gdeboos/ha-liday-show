@@ -538,3 +538,36 @@ async def test_a_season_typed_with_extra_spaces_is_found(runner):
     settings["seasons"] = [{"id": "xmas", "name": "Christmas lights", "out": True}]
     runner.storage.save_settings(settings)
     assert await commands.handle(runner, {"action": "season", "season": " christmas   LIGHTS ", "out": False}) == "xmas packed away"
+
+
+async def test_late_at_night_the_speaker_plays_quieter_then_goes_back(runner, monkeypatch):
+    from halidayshow import latespeaker
+    late = [{"mode": "quieter", "volume": 25}]
+    monkeypatch.setattr(latespeaker, "now_late", lambda settings, now=None: late[0])
+
+    async def state(entity):
+        now = datetime.now(timezone.utc)
+        return {"state": runner.ha.state_value, "last_updated": now.isoformat(),
+                "attributes": {"media_position": 0, "volume_level": 0.6}}
+    runner.ha.state = state
+    await commands.handle(runner, '{"action": "play", "show": "Party"}')
+    sets = [c[1] for c in runner.ha.calls if c[0] == "media_player.volume_set"]
+    assert sets == [{"entity_id": "media_player.garden", "volume_level": 0.25}]
+    await runner.stop()
+    # The first daytime show puts the speaker back as it was.
+    late[0] = None
+    runner.ha.calls.clear()
+    runner.ha.state_value = "idle"
+    await commands.handle(runner, '{"action": "play", "show": "Party"}')
+    sets = [c[1] for c in runner.ha.calls if c[0] == "media_player.volume_set"]
+    assert sets == [{"entity_id": "media_player.garden", "volume_level": 0.6}]
+
+
+async def test_late_at_night_the_speaker_can_stay_silent(runner, monkeypatch):
+    from halidayshow import latespeaker
+    monkeypatch.setattr(latespeaker, "now_late", lambda settings, now=None: {"mode": "off", "volume": 30})
+    await commands.handle(runner, '{"action": "play", "show": "Party"}')
+    assert not [c for c in runner.ha.calls if c[0] == "media_player.play_media"]
+    st = runner.status()
+    assert st["playing"] and st["media_player"] is None  # lights only
+    assert st["song"] == {"source": "media", "path": "music/Party Mix.mp3"}  # so phones can listen
