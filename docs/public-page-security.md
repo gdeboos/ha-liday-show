@@ -57,7 +57,7 @@ With no admin PIN set the route always refuses.
 
 The phone sends the pass as an `X-Admin` header (not in addresses, so it stays out of tunnel logs).
 `is_admin()` checks it on `state`, `request`, `near`, `listen` and `listen/now`, and it skips: Nearby,
-opening hours, the listening PIN, `per_phone`, `queue` (a ceiling of `MAX_QUEUE` stays) and `on`. The
+opening hours, the listening PIN, `per_phone`, `queue` (a ceiling of `MAX_QUEUE` stays) and `on`. It doesn't skip the no-repeats rule (0.2.328): a show already waiting or playing can't be queued again. The
 code is always still needed. The song link for an admin phone is signed separately
 (`song-admin|code|admin_pin|key`, with `a=1`), so only that signature gets past `on` being off.
 
