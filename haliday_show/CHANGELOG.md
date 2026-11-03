@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.307
+
+- **✨ Generate** and the AI now use your matrices properly: **Fire**, **Snowfall**, **Music bars**, **Plasma** and **Spiral** turn up there, mixed in with the usual looks, and effects on a mega-tree run down its strings.
+- **Plasma** and **Spiral** can now go on a matrix's own lane: they're under **On a matrix** in its effect chooser.
+- Pasting a clip from a strip onto a mega-tree makes it run down the strings, as adding one does.
+
 ## 0.2.306
 
 - On a matrix, the effect window's moving previews and the clips on the timeline are now drawn as the grid, so you can see **Fire**, **Scrolling text** or a picture as they'll look rather than a thin slice.

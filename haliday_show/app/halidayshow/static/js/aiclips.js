@@ -3,6 +3,7 @@
 // timeline until it has been matched to a real light and effect and clamped to valid values.
 
 import { CURVE_SHAPES, EFFECTS, MIXES, TRANSITIONS, clipPiece, defaultParams } from "./effects.js";
+import { laneTakes, runsDownTree } from "./matrix.js";
 
 const r2 = (t) => Math.round(t * 100) / 100;
 
@@ -29,17 +30,23 @@ export const EFFECT_NOTES = {
   pinwheel: "spokes spinning round a point", curtain: "curtains opening or closing across the house",
   butterfly: "swirling waves of colour over the house", housesolid: "one colour on every light (good mixed)",
   housegradient: "colours blended across the house", housestripes: "stripes at any angle, still or moving (candy cane)",
-  spiral: "stripes winding round a mega-tree matrix, turning over time; slanted moving stripes elsewhere",
-  plasma: "soft swirling blobs of colour that merge and move across the house (lava lamp, northern lights)",
+  spiral: "stripes winding round a mega-tree matrix, turning over time; slanted moving stripes elsewhere (also on a matrix light itself)",
+  plasma: "soft swirling blobs of colour that merge and move across the house (lava lamp, northern lights); also on a matrix light itself",
+  fire2d: "flames rising from the bottom of the grid", snowfall: "snow or rain falling down the grid",
+  musicbars: "a bar per column rising and falling with the song's loudness, green to red",
   housechecks: "a chequerboard of colours", housewave: "the palette rolling across the house",
   housesparkle: "sparkles over every light", spotlight: "a soft light wandering over the house", housedots: "polka dots",
 };
 
-// Every effect with its settings, as the AI sees them. Effects made for matrices are left out: the AI
-// isn't told which lights are matrices, and on a strip they'd only show a slice.
-export function effectsForAI() {
-  return Object.entries(EFFECTS).filter(([, fx]) => !fx.experimental && !fx.grid).map(([key, fx]) => ({
+// Effects made for matrices that need your own words or pictures, which the AI can't supply.
+const needsYou = (fx) => fx.params.some((p) => p.type === "text" || p.type === "picture");
+
+// Every effect with its settings, as the AI sees them. Effects made for matrices are marked "matrix"
+// and go only on matrix lights (on a strip they'd only show a slice); matrix false leaves them out.
+export function effectsForAI({ matrix = true } = {}) {
+  return Object.entries(EFFECTS).filter(([, fx]) => !fx.experimental && !(fx.grid && (needsYou(fx) || !matrix))).map(([key, fx]) => ({
     key, label: fx.label, ...(EFFECT_NOTES[key] ? { looks: EFFECT_NOTES[key] } : {}), ...(fx.house ? { house: true } : {}),
+    ...(fx.grid ? { matrix: true } : {}),
     settings: fx.params.map((p) => ({
       key: p.key, type: p.type === "range" ? "number" : p.type,
       ...(p.min !== undefined ? { min: p.min, max: p.max } : {}),
@@ -49,10 +56,10 @@ export function effectsForAI() {
   }));
 }
 
-// The show as the AI sees it. lights: [{name, trackIndex, segments, house}], with the House lane
+// The show as the AI sees it. lights: [{name, trackIndex, segments, house, slow, matrix: {w, h, shape}}], with the House lane
 // as a light named "House" (only when lights are traced on the house photo); selection: {start, end, lights: [names]} or null.
 export function buildContext({ show, lights, duration, selection = null, palettes = [] }) {
-  const effects = effectsForAI();
+  const effects = effectsForAI({ matrix: lights.some((l) => l.matrix) });
   const beats = show.beats || [];
   return {
     song: {
@@ -66,7 +73,7 @@ export function buildContext({ show, lights, duration, selection = null, palette
       })),
     },
     lights: lights.map((l) => ({ name: l.name, segments: l.segments, ...(l.house ? { house: true } : {}),
-      ...(l.slow ? { slow: true } : {}) })),
+      ...(l.slow ? { slow: true } : {}), ...(l.matrix ? { matrix: l.matrix } : {}) })),
     effects,
     palettes: palettes.map((p) => ({ name: p.name, colors: p.colors })),
     selection: selection && { start: r2(selection.start), end: r2(selection.end), lights: selection.lights },
@@ -139,11 +146,17 @@ export function checkClips(reply, lights, duration) {
     const fx = EFFECTS[c?.effect];
     if (!light) { skipped.push(`no light called "${c?.light}"`); continue; }
     if (!fx || fx.experimental) { skipped.push(`no effect called "${c?.effect}"`); continue; }
-    if (!!fx.house !== !!light.house) { skipped.push(`${fx.label} can't go on ${light.name}`); continue; }
+    if (fx.grid && (!light.matrix || needsYou(fx))) {
+      skipped.push(light.matrix ? `${fx.label} needs your own words or pictures` : `${fx.label} only works on a matrix`);
+      continue;
+    }
+    if (!laneTakes(c.effect, fx, light.house ? "house" : light.matrix ? "matrix" : "light")) { skipped.push(`${fx.label} can't go on ${light.name}`); continue; }
     const start = Math.max(0, Number(c.start)), end = Math.min(duration, Number(c.end));
     if (!Number.isFinite(start) || !Number.isFinite(end) || end - start < 0.05) { skipped.push("a clip with bad times"); continue; }
     const clip = { effect: c.effect, start: r2(start), end: r2(end), ...defaultParams(c.effect), ...checkSettings(fx, c.settings),
       ...extras(fx, c, end - start, light) };
+    // A mega-tree's strings are its columns, so effects run down them.
+    if (light.matrix?.shape === "tree" && runsDownTree(fx)) clip.runs = "columns";
     placed.push({ trackIndex: light.trackIndex, clip });
   }
   return { placed, skipped };
