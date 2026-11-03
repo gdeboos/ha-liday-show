@@ -992,3 +992,20 @@ async def test_the_same_show_cant_be_queued_twice(client):
     status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=me)
     assert status == 409
     await runner.stop()
+
+
+async def test_visitors_are_told_which_shows_have_no_speaker(client):
+    st = client.app[server.STORAGE]
+    show = st.load_show("party")
+    st.save_show("party", {**show, "media_player": "media_player.porch"})
+    st.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * 400))
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"},
+                                                                {"kind": "show", "id": "quiet"}]})
+    _, state, _ = await _visitor(client, "/api/state")
+    assert {c["id"]: c["speaker"] for c in state["choices"]} == {"party": True, "quiet": False}
+    settings = st.load_settings()
+    settings["show_speaker"] = "media_player.garden"  # a default speaker covers every show
+    st.save_settings(settings)
+    public._CHOICES.clear()
+    _, state, _ = await _visitor(client, "/api/state")
+    assert all(c["speaker"] for c in state["choices"])

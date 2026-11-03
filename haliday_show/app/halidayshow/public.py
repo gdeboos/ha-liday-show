@@ -422,6 +422,7 @@ def cover_of(storage: Storage, pick: dict) -> tuple[str, bytes] | None:
 def _choices(storage: Storage, today: date) -> list[dict]:
     p = load(storage) or clean(None)
     by_id = {pl["id"]: pl for pl in playlists.load(storage)}
+    default_speaker = storage.load_settings().get("show_speaker") or ""
     out, group = [], ""
     for it in p["items"]:
         if it["kind"] == "heading":
@@ -441,6 +442,10 @@ def _choices(storage: Storage, today: date) -> list[dict]:
             pick = {"kind": "playlist", "id": it["id"], "name": pl["name"], "shows": shows, "gap": pl["gap"]}
             pick["colours"] = _tile_colours(storage.load_show(shows[0]))
         pick["group"] = group  # the heading it's under ("" before any)
+        # Whether its music plays on a speaker (its first show's own, or your default show speaker). With
+        # none, a visitor's press on it also starts listening on their phone.
+        first = storage.load_show(pick["shows"][0]) or {}
+        pick["speaker"] = bool(first.get("media_player") or default_speaker)
         # A number that changes with the cover, so pages fetch a new one (0: none).
         song = _cover_file(storage, pick["shows"])
         try:
@@ -505,6 +510,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                      "cover": c["cover"] if look["covers"] else 0,
                      "colours": c["colours"] if look["covers"] else [],
                      "minutes": max(1, round(runner.request_seconds(c) / 60)),
+                     "speaker": c.get("speaker", True),
                      "taken": taken(runner, c["kind"], c["id"])} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"]}

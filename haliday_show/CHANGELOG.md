@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.329
+
+- **No speaker? The music plays on the visitor's phone.** With listening on, a show that has no speaker (no **Show speaker** and no default one) says **🎧 Music on your phone** on the visitors' page. Pressing **▶ Start** or **+ Queue** on it starts listening on that phone at the same time, so they hear the song when it comes on. Change the words on the **Words** tab.
+
 ## 0.2.328
 
 - **No repeats on your admin phone either.** A phone unlocked with the admin PIN now also sees **✓ Queued** or **♪ On now**, and can't queue a show that's already waiting or playing. It still skips Nearby, the opening hours, the listening PIN and the limits.
