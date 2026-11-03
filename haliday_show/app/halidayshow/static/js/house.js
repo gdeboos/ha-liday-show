@@ -5,7 +5,7 @@
 import { SAMPLE_HOUSE } from "./samplehouse.js";
 import { unitWord } from "./lightwords.js";
 import { gridOf, wireOrder } from "./matrix.js";
-import { partCells } from "./parts.js";
+import { partAt, partCells } from "./parts.js";
 
 const BULBS_PER_SEGMENT = 4; // the guess when a light's bulb count isn't set on the Devices tab
 const MAX_BULBS = 2000;
@@ -853,7 +853,7 @@ export class House {
           return;
         }
         const s = bulbSegment(j, bulbs.length, dev.segments, dev.reverse) + (dev.from || 1);
-        const part = dev.parts?.find((x) => x.from <= s && s <= x.to);
+        const part = dev.parts?.[partAt(dev, s - 1)];
         const where = !dev.parts?.length ? "" : part ? ` · ${part.name}` : " · unused, off";
         best = { x: q[0], y: q[1], text: `${dev.name}: ${unitWord(dev, 1)} ${s}${where}` };
       });

@@ -88,3 +88,28 @@ test("share files carry a matrix's rectangle parts", async () => {
   assert.deepEqual(file.lights[0].parts, [{ key: "P1", name: "Left", x: 0, y: 0, w: 2, h: 2 }, { key: "P2", name: "Right", x: 5, y: 1, w: 3, h: 3 }]);
   assert.equal(file.tracks[0].part, "P2");
 });
+
+test("a baked matrix part lands on the right LEDs in wiring order, once", async () => {
+  const { bake, newClip } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const light = { id: "z", segments: 8, matrix: { w: 4, h: 2, start: "top left", order: "rows", zigzag: true },
+    parts: [{ id: "r", name: "Row 2 right", x: 2, y: 1, w: 2, h: 1 }], whole: false };
+  const part = { ...light, id: "z#r", parent: "z", segments: 2, part: light.parts[0], matrix: { w: 2, h: 1 } };
+  const show = { duration: 1, tracks: [{ device: "z#r", clips: [{ ...newClip("solid", 0, 1), color: "#ff0000" }] }] };
+  const bytes = bake(show, { z: { ...light, light }, "z#r": part }, 2);
+  const headerLen = new DataView(bytes.buffer).getUint32(5);
+  const frame = bytes.subarray(9 + headerLen, 9 + headerLen + 8 * 3);
+  // Grid spots 6 and 7 (row 2, columns 3 and 4) are wire LEDs 5 and 4 on a zig-zag.
+  const red = [...Array(8).keys()].filter((k) => frame[k * 3] === 255);
+  assert.deepEqual(red, [4, 5]);
+});
+
+test("a group lane over a matrix part lights just that rectangle", async () => {
+  const { composeLight, newClip, planGroups, GROUP } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const light = { ...panel, whole: false };
+  const tracks = { [`${GROUP}g`]: { clips: [{ ...newClip("solid", 0, 5), color: "#0000ff" }] } };
+  const trackOf = (id) => tracks[id];
+  const plans = planGroups([{ id: "g", members: ["m#b"] }], [light], trackOf);
+  const out = composeLight(light, trackOf, 1, {}, [], undefined, plans);
+  const blue = [...Array(32).keys()].filter((i) => out[i * 3 + 2] === 255);
+  assert.deepEqual(blue, [13, 14, 15, 21, 22, 23, 29, 30, 31]);
+});

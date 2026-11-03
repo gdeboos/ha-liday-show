@@ -502,9 +502,12 @@ function ensureTracks() {
 async function saveDevices() {
   // Parts have to fit the light, so a light made shorter trims them.
   for (const d of app.deviceList) {
-    if (gridOf(d)) {
-      // On a matrix, parts that no longer fit the grid are dropped.
-      d.parts = (d.parts || []).filter((p) => isRectPart(p) && p.x + p.w <= d.matrix.w && p.y + p.h <= d.matrix.h);
+    if (d.matrix) {
+      // On a matrix, parts that no longer fit the grid are dropped (and you're told).
+      const kept = (d.parts || []).filter((p) => isRectPart(p) && p.x + p.w <= d.matrix.w && p.y + p.h <= d.matrix.h);
+      const lost = (d.parts || []).filter((p) => !kept.includes(p));
+      if (lost.length) status(`${lost.map((p) => p.name).join(", ")} no longer ${lost.length === 1 ? "fits" : "fit"} ${d.name}'s grid, so ${lost.length === 1 ? "it was" : "they were"} removed. Their clips stay in your shows`, "hint");
+      d.parts = kept;
     } else d.parts = (d.parts || []).filter((p) => !isRectPart(p) && p.from <= d.segments).map((p) => ({ ...p, to: Math.min(p.to, d.segments) }));
   }
   try {
@@ -662,9 +665,12 @@ function matrixControls(d) {
     d.segments = w * h;
     d.bulbs = d.segments;
   };
-  on.addEventListener("change", () => {
+  on.addEventListener("change", async () => {
     if (!on.checked) {
-      delete d.matrix; // its rectangle parts go too (saveDevices)
+      // Its rectangle parts go too (saveDevices), so check first.
+      if (d.parts?.length && !(await askYes(`Turn off ${d.name}'s grid? Its ${d.parts.length === 1 ? "part goes" : `${d.parts.length} parts go`} too, `
+        + "though their clips stay in your shows.", { yes: "Turn off" }))) { on.checked = true; return; }
+      delete d.matrix;
       if (SHAPE_POINTS[house.styles[d.id]?.style]) house.setStyle(d.id, null); // back to a line through its points
       saveDevices();
       return;
@@ -2723,7 +2729,7 @@ function renderHouseLights() {
       }, "ghost"));
     }
     // Traced whole before it was split: one click gives each part its own trace where it already is.
-    if (d.parts?.length && pts && house.styles[d.id]?.style !== "spots") {
+    if (d.parts?.length && pts && house.styles[d.id]?.style !== "spots" && !gridOf(d)) { // a matrix's parts stay on its shape
       const split = button("Split trace into parts", () => {
         house.splitTrace(d);
         house.selected = partId(d, d.parts[0]);

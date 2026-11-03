@@ -208,7 +208,9 @@ With **Also play as one** ticked, the matrix keeps its own lane, playing across 
 LEDs outside every part follow it, and so does a part while none of its own clips is playing.
 Untick it if you only use the parts: the LEDs outside them then stay off. **Test** lights one part
 on the real matrix, white at its top left, and **Test parts** lights them all in their colours.
-Remove a part with **✕**; its clips stay in your shows.
+Remove a part with **✕**; its clips stay in your shows. Making the grid smaller removes any part that no
+longer fits, and turning **Laid out as a grid** off removes them all (it asks first); their clips stay in
+your shows.
 
 For a mega-tree, set the matrix up with one column per string: **across** is how many strings it has,
 and **down** how many LEDs each string has. The top row is the top of the tree.
