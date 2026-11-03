@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.310
+
+- **Setup → House**: a **Mega-tree** has a new **Goes all the way round** tick. Tick it if your tree's strings go right round the pole. The strings at the back are then drawn faint behind the front ones, so a **Spiral** looks like it turns round the tree.
+
 ## 0.2.309
 
 - Shared shows now say which lights are matrices and how big they are. When you import one, their matrices are suggested for your matrices and their mega-trees for your mega-trees. The match screen tells you if the sizes differ (matrix effects stretch to fit) or if you've picked a strip for one (they show only a slice).

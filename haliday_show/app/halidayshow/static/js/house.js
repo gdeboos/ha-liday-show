@@ -62,17 +62,27 @@ export function defaultPanel({ w, h }, aspect = 1.6) {
 
 // A matrix drawn as a mega-tree: each column a string from just under the top to the base, the
 // columns spread from the base's left end to its right, row 0 at the top.
-export function treeBulbs([top, left, right], w, h) {
+// round: the strings go all the way round the pole, so they're spaced round a circle seen from the
+// front: the first half left to right across the front, the second half back across behind, those
+// marked faint ([x, y, 0.25]) so a spin looks like it goes round.
+export function treeBulbs([top, left, right], w, h, round = false) {
   const out = [];
   for (let y = 0; y < h; y++) {
     const v = 0.1 + 0.9 * (h > 1 ? y / (h - 1) : 1);
     for (let x = 0; x < w; x++) {
-      const u = w > 1 ? x / (w - 1) : 0.5;
-      out.push([0, 1].map((k) => top[k] + (left[k] + (right[k] - left[k]) * u - top[k]) * v));
+      const a = (2 * Math.PI * x) / w, back = round && Math.sin(a) < -1e-9;
+      // A back string would sit exactly behind a front one, so it's drawn half a string along,
+      // where it shows between them.
+      const u = round && w > 1 ? 0.5 - 0.5 * Math.cos(back ? a + Math.PI / w : a) : w > 1 ? x / (w - 1) : 0.5;
+      const p = [0, 1].map((k) => top[k] + (left[k] + (right[k] - left[k]) * u - top[k]) * v);
+      if (back) p.push(BACK);
+      out.push(p);
     }
   }
   return out;
 }
+const BACK = 0.25; // how bright the strings round the back are drawn
+export const roundTree = (style) => style?.style === "tree" && style.round === true;
 
 // Where a new mega-tree goes: the middle of a photo `aspect` times as wide as it is tall, a little
 // under half the photo high, its base 0.6 of its height across.
@@ -442,7 +452,7 @@ export class House {
     if (c?.key !== key) {
       const shape = style?.style, grid = points.length === SHAPE_POINTS[shape] ? gridOf(dev) : null;
       if (grid) {
-        const bulbs = shape === "tree" ? treeBulbs(points, grid.w, grid.h) : panelBulbs(points, grid.w, grid.h);
+        const bulbs = shape === "tree" ? treeBulbs(points, grid.w, grid.h, roundTree(style)) : panelBulbs(points, grid.w, grid.h);
         this.cache.set(dev.id, c = { key, bulbs });
         return c.bulbs;
       }
@@ -528,7 +538,10 @@ export class House {
           const c = colour(j), drop = icicle.length * h * b.f;
           for (let k = 0; k < b.n; k++) dot(b.top[0] * w, b.top[1] * h + (b.n > 1 ? (drop * k) / (b.n - 1) : drop), c, 0.7);
         } else {
-          dot(b[0] * w, b[1] * h, colour(j));
+          // A round tree's strings at the back: faint, and a little smaller, as they're further away.
+          const c = colour(j);
+          if (b[2] != null) dot(b[0] * w, b[1] * h, c.map((v) => Math.round(v * b[2])), 0.8);
+          else dot(b[0] * w, b[1] * h, c);
         }
       });
     }
