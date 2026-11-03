@@ -387,7 +387,8 @@ the song. The song has a row, and so does each layer.
   layer so it sits behind. The **EQ** button is highlighted when anything is changed.
 - **Filter**, under the faders, is a DJ's filter: slide it left to muffle the sound, as if it's coming
   through a wall, or right to thin it out until only the top is left. The middle is off. Sweep it with
-  changes (below) for a build-up: muffle the song, then open it up on the drop.
+  changes (below) for a build-up: muffle the song, then open it up on the drop. A change made before you
+  used the filter has it off, so the sound opens up again there; move the playhead past it to set it.
 - **Changes partway through:** put the playhead where it should change, press **+ Change here**, then
   move the faders (and the **Filter**). From there the sound glides to the new settings over **Glide** seconds (1 by
   default; 0 for an instant switch). The faders always show, and change, the setting at the playhead:
