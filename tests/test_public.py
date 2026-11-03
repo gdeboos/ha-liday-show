@@ -135,6 +135,7 @@ def test_settings_are_cleaned():
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "look": public.clean_look(None), "hours": public.DEFAULT_HOURS, "words": {},
+        "listen": False, "listen_pin": "",
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -666,3 +667,175 @@ async def test_headings_group_shows_for_visitors(client):
     _, view, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert [(c["id"], c["group"]) for c in view["choices"]] == [
         ("quiet", ""), ("party", "Christmas favourites"), ("eve", "Christmas favourites")]
+
+
+# Listening on visitors' phones ---------------------------------------------------------------------
+def _song(tmp_path, name="song.wav", seconds=1.0):
+    import struct
+    rate, n = 8000, int(8000 * seconds)
+    data = b"".join(struct.pack("<h", (i * 37) % 2000 - 1000) for i in range(n))
+    head = (b"RIFF" + struct.pack("<I", 36 + len(data)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16)
+            + b"data" + struct.pack("<I", len(data)))
+    (tmp_path / "media").mkdir(exist_ok=True)
+    (tmp_path / "media" / name).write_bytes(head + data)
+
+
+@pytest.fixture
+def song_show(client, tmp_path):
+    client.app[server.PUBLIC].copies.folder = tmp_path / "copies"
+    _song(tmp_path)
+    st = client.app[server.STORAGE]
+    st.save_show("party", {"name": "Party", "tracks": [], "audio": {"source": "media", "path": "song.wav"}})
+    st.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * 400))
+    return st
+
+
+async def test_listening_settings_are_cleaned():
+    assert public.clean(None)["listen"] is False and public.clean(None)["listen_pin"] == ""
+    p = public.clean({"listen": True, "listen_pin": " 2468 "})
+    assert p["listen"] is True and p["listen_pin"] == "2468"
+    for bad in ("12", "123456789", "12a4", None):
+        assert public.clean({"listen_pin": bad})["listen_pin"] == ""
+
+
+async def test_visitors_only_see_listen_when_it_is_on_and_never_the_pin(client):
+    await client.put("/api/public", json={"on": True})
+    _, st, _ = await _visitor(client, "/api/state")
+    assert st["listen"] is None
+    status, _, _ = await _visitor(client, "/api/listen", {})
+    assert status == 409
+    await client.put("/api/public", json={"on": True, "listen": True, "listen_pin": "4321"})
+    _, st, _ = await _visitor(client, "/api/state")
+    assert st["listen"] == {"pin": True} and "4321" not in str(st)
+    view = await (await client.get("/api/public")).json()
+    assert view["listen_pin"] == "4321" and "can_shrink_songs" in view
+    status, _, _ = await _visitor(client, "/api/listen", {}, code=False)
+    assert status == 403
+
+
+async def test_the_pin_is_checked_remembered_and_slowed_down(client):
+    await client.put("/api/public", json={"on": True, "listen": True, "listen_pin": "4321"})
+    status, text, headers = await _visitor(client, "/api/listen", {})
+    assert status == 403 and "Type the PIN" in text and headers["X-Listen"] == "pin"
+    status, text, _ = await _visitor(client, "/api/listen", {"pin": "1111"})
+    assert status == 403 and "isn't right" in text
+    status, ok, _ = await _visitor(client, "/api/listen", {"pin": "4321"})
+    assert status == 200 and ok["token"] and ok["pass"]
+    # The pass works instead of the PIN next time...
+    status, again, _ = await _visitor(client, "/api/listen", {"pass": ok["pass"]})
+    assert status == 200 and again["pass"] == ok["pass"]
+    status, _, _ = await _visitor(client, f"/api/listen/now?token={ok['token']}")
+    assert status == 200
+    # ...until the PIN changes, which also ends listening passes already given out.
+    await client.put("/api/public", json={"listen_pin": "9999"})
+    status, _, headers = await _visitor(client, "/api/listen", {"pass": ok["pass"]})
+    assert status == 403 and headers["X-Listen"] == "pin"
+    status, _, headers = await _visitor(client, f"/api/listen/now?token={ok['token']}")
+    assert status == 403 and headers["X-Listen"] == "renew"
+    # Wrong guesses: a few, then a wait, even for the right one.
+    for _ in range(public.MAX_PIN_TRIES):
+        status, _, _ = await _visitor(client, "/api/listen", {"pin": "0000"})
+        assert status == 403
+    status, text, _ = await _visitor(client, "/api/listen", {"pin": "9999"})
+    assert status == 429 and "10 minutes" in text
+
+
+async def test_no_pin_means_no_pin_needed(client):
+    await client.put("/api/public", json={"on": True, "listen": True})
+    status, ok, _ = await _visitor(client, "/api/listen", {})
+    assert status == 200 and "pass" not in ok and ok["seconds"] == public.LISTEN_FOR_S
+
+
+async def test_listening_through_a_tunnel_needs_the_pin_and_to_be_nearby(client):
+    client.app[server.SCHEDULER].where = lambda: (HOME, "you")
+    await client.put("/api/public", json={"on": True, "listen": True, "listen_pin": "4321"})
+    status, text, _ = await _visitor(client, "/api/listen", {"pin": "4321"}, headers=FAR)
+    assert status == 403 and "Turn on location" in text
+    status, text, _ = await _visitor(client, "/api/listen", {"pin": "4321", "lat": 51.5097, "lon": -0.1246},
+                                     headers=FAR)
+    assert status == 403 and "too far away" in text
+    status, _, _ = await _visitor(client, "/api/listen", {"lat": 51.5008, "lon": -0.1246}, headers=FAR)
+    assert status == 403  # nearby, but no PIN
+    status, _, _ = await _visitor(client, "/api/listen", {"pin": "4321", "lat": 51.5008, "lon": -0.1246}, headers=FAR)
+    assert status == 200
+
+
+async def test_passes_run_out(client):
+    await client.put("/api/public", json={"on": True, "listen": True})
+    st = client.app[server.STORAGE]
+    p = public.load(st)
+    old = public.listen_token(st, p, int(public.time.time()) - 5)
+    status, _, headers = await _visitor(client, f"/api/listen/now?token={old}")
+    assert status == 403 and headers["X-Listen"] == "renew"
+    for bad in ("", "x", "9999999999.zz"):
+        status, _, _ = await _visitor(client, f"/api/listen/now?token={bad}")
+        assert status == 403
+
+
+@pytest.mark.skipif(public.songcopy.converter() is None, reason="needs ffmpeg")
+async def test_a_listening_phone_gets_the_playing_song_and_where_it_is(client, song_show):
+    await client.put("/api/public", json={"on": True, "listen": True})
+    _, ok, _ = await _visitor(client, "/api/listen", {})
+    status, now, _ = await _visitor(client, f"/api/listen/now?token={ok['token']}")
+    assert status == 200 and now == {"playing": False}
+    runner = client.app[server.RUNNER]
+    await runner.play("party")  # from the editor, with no speaker: phones still hear it
+    for _ in range(100):
+        _, now, _ = await _visitor(client, f"/api/listen/now?token={ok['token']}")
+        if now["ready"]:
+            break
+        await asyncio.sleep(0.1)
+    assert now["playing"] and now["ready"] and now["name"] == "Party" and 0 <= now["position"] < 5
+    status, body, headers = await _visitor(client, "/" + now["src"])
+    assert status == 200 and headers["Content-Type"] == "audio/mp4" and len(body) > 100
+    # Ranges work, as phones ask for the song in pieces.
+    async with ClientSession() as s:
+        async with s.get(f"http://127.0.0.1:{client.public_port}/{now['src']}", headers={"Range": "bytes=0-9"}) as r:
+            assert r.status == 206 and len(await r.read()) == 10
+    # Only that song, with its own signature.
+    bad = now["src"].replace("sig=", "sig=0")[:-1]
+    status, _, _ = await _visitor(client, "/" + bad, code=False)
+    assert status == 403
+    await runner.stop()
+    status, _, _ = await _visitor(client, "/" + now["src"], code=False)
+    assert status == 404
+    status, silence, headers = await _visitor(client, "/listen/silence.wav", code=False)
+    assert status == 200 and silence[:4] == b"RIFF"
+
+
+async def test_without_a_converter_the_song_goes_as_it_is(client, song_show, monkeypatch):
+    monkeypatch.setattr(public.songcopy, "converter", lambda: None)
+    await client.put("/api/public", json={"on": True, "listen": True})
+    _, ok, _ = await _visitor(client, "/api/listen", {})
+    await client.app[server.RUNNER].play("party")
+    _, now, _ = await _visitor(client, f"/api/listen/now?token={ok['token']}")
+    assert now["ready"]
+    status, body, headers = await _visitor(client, "/" + now["src"], code=False)
+    assert status == 200 and headers["Content-Type"] == "audio/wav" and body[:4] == b"RIFF"
+    await client.app[server.RUNNER].stop()
+
+
+@pytest.mark.skipif(public.songcopy.converter() is None, reason="needs ffmpeg")
+async def test_a_song_ffmpeg_cant_read_goes_as_it_is(tmp_path):
+    copies = public.songcopy.SongCopies(tmp_path / "copies")
+    bad = tmp_path / "bad.mp3"
+    bad.write_bytes(b"not really a song" * 10)
+    assert copies.ready(bad) is None
+    copies.want(bad)
+    for _ in range(100):
+        if not copies.making:
+            break
+        await asyncio.sleep(0.05)
+    assert copies.ready(bad) == (bad, "audio/mpeg")
+    bad.write_bytes(b"saved over")  # a new file is tried afresh
+    assert copies.ready(bad) is None
+
+
+async def test_only_the_newest_copies_are_kept(tmp_path):
+    copies = public.songcopy.SongCopies(tmp_path)
+    for i in range(public.songcopy.KEEP + 3):
+        (tmp_path / f"{i:03d}.m4a").write_bytes(b"x")
+        public.os.utime(tmp_path / f"{i:03d}.m4a", (i, i))
+    copies._tidy()
+    left = sorted(p.name for p in tmp_path.glob("*.m4a"))
+    assert len(left) == public.songcopy.KEEP and left[0] == "003.m4a"

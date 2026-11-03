@@ -110,3 +110,15 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-group { display: flex; flex-direction: column; gap: calc(8px * var(--s)); padding: calc(12px * var(--s));
   border: var(--bw) solid var(--line); border-radius: var(--r); background: color-mix(in srgb, var(--panel) 50%, transparent); }
 .pp-group-name { margin: 0 0 2px; font-size: 1.05em; font-weight: 700; overflow-wrap: anywhere; }
+/* Listening on a phone. */
+.pp-listen { margin: 0 0 calc(12px * var(--s)); }
+.pp-listen-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.pp-listen-row .pp-hint { flex: 1 1 12em; margin: 0; }
+.pp-pin { margin-top: calc(12px * var(--s)); }
+.pp-pin label { display: block; font-weight: 600; margin-bottom: 6px; }
+.pp-pin-row { display: flex; gap: 8px; }
+.pp-pin input { font: inherit; min-height: 44px; width: 9em; max-width: 100%; padding: 8px 12px; letter-spacing: .2em;
+  border-radius: calc(var(--r) * .8); border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.pp-pin input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pp-listen-msg { color: var(--danger); font-weight: 600; margin: calc(10px * var(--s)) 0 0; }
+.pp-listen .pp-hint:last-child { margin-bottom: 0; }

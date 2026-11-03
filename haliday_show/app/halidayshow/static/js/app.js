@@ -5932,7 +5932,30 @@ function renderPublicItems() {
   $("pub-add").hidden = !left; // headings can still be added
   $("pub-all-added").hidden = left;
   $("pub-per-phone").value = view.per_phone;
+  drawPublicListen(view);
   $("pub-queue").value = view.queue;
+}
+
+// Listening on phones: the switch, the PIN, and what visitors need.
+function drawPublicListen(view) {
+  $("pub-listen").checked = !!view.listen;
+  $("pub-listen-more").hidden = !view.listen;
+  const pinOn = $("pub-listen-pin-on");
+  // Ticked with no PIN yet stays ticked while you type one.
+  if (document.activeElement !== $("pub-listen-pin") && !(pinOn.checked && !view.listen_pin)) pinOn.checked = !!view.listen_pin;
+  if (document.activeElement !== $("pub-listen-pin")) $("pub-listen-pin").value = view.listen_pin || "";
+  $("pub-listen-pin-wrap").hidden = !pinOn.checked;
+  $("pub-listen-note").textContent = listenNote(view, pinOn.checked);
+}
+
+// What to tell you under the listening settings.
+function listenNote(view, pinTicked) {
+  const notes = [];
+  if (pinTicked && !view.listen_pin) notes.push("Type a PIN of 4 to 8 numbers. Until then, anyone nearby can listen.");
+  else if (view.listen_pin) notes.push(`Visitors type ${view.listen_pin} to listen.`);
+  if (!view.on) notes.push("Turn on Let visitors start shows (Setup → Settings) for the page to open.");
+  if (view.can_shrink_songs === false) notes.push("Songs go to phones as they are, so big ones take a while to load on mobile data.");
+  return notes.join(" ");
 }
 
 // What could still go on the public page: {show: [{id, name, why?}], playlist: […]}. A show that isn't
@@ -6119,14 +6142,21 @@ function savePublic() {
   }
   if (shownPage === "public" && $("pub-word-list").children.length) publicView.words = publicWords();
   if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);
+  if (shownPage === "public") {
+    publicView.listen = $("pub-listen").checked;
+    const pin = $("pub-listen-pin").value.trim();
+    if (!$("pub-listen-pin-on").checked) publicView.listen_pin = "";
+    else if (/^[0-9]{4,8}$/.test(pin)) publicView.listen_pin = pin;
+    else if (pin) status("A PIN is 4 to 8 numbers. The PIN you had stays until you type one.", "hint");
+  }
   if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue, address, nearby, distance, look, hours, words } = publicView;
+    const { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin } = publicView;
     try {
       const view = await api("api/public", {
-        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words },
+        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin },
       });
       if (pubPending === 1) {
         publicView = view;
@@ -6148,6 +6178,11 @@ function wirePublic() {
   $("pub-on").addEventListener("change", () => savePublic());
   $("pub-open").addEventListener("click", () => showView("public"));
   $("pub-per-phone").addEventListener("change", savePublic);
+  $("pub-listen-card").addEventListener("change", () => savePublic());
+  $("pub-listen-pin-on").addEventListener("change", () => {
+    $("pub-listen-pin-wrap").hidden = !$("pub-listen-pin-on").checked;
+    if ($("pub-listen-pin-on").checked && !$("pub-listen-pin").value) $("pub-listen-pin").focus();
+  });
   for (const id of ["pub-address-input", "pub-nearby", "pub-distance", "pub-sign-text"]) {
     $(id).addEventListener("change", savePublic);
   }

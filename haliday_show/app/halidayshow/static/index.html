@@ -1300,6 +1300,21 @@
         <option value="accept">Ask visitors to accept it before Start</option></select>
       <span class="hint">For shows with strobes or fast flashes. Change its words on the <b>Words</b> tab.</span></label>
   </section>
+  <section class="card pub-card" id="pub-listen-card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-listen"/></svg>Listening on phones</h2>
+    <label class="check"><input id="pub-listen" type="checkbox"> Let visitors listen on their phone</label>
+    <p class="hint">Visitors press <b>🎧 Listen on your phone</b> and hear whatever's playing, in time with the
+      lights. The show's speaker plays as usual. With <b>Nearby only</b> on, they need to be nearby, as for
+      starting a show.</p>
+    <div id="pub-listen-more" class="pub-listen-more">
+      <label class="check"><input id="pub-listen-pin-on" type="checkbox"> Needs a PIN to listen</label>
+      <label class="field" id="pub-listen-pin-wrap" hidden>PIN
+        <input id="pub-listen-pin" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
+        <span class="hint">4 to 8 numbers. Handy for trying it out before your sign goes up. Phones ask for it
+          once, then remember it until you change it.</span></label>
+      <p class="hint pub-note" id="pub-listen-note"></p>
+    </div>
+  </section>
   </div>
   <div class="pub-panel" id="pub-panel-look" role="tabpanel" aria-labelledby="pub-tab-look" hidden>
   <section class="card pub-card" id="pub-look">

@@ -46,7 +46,8 @@ its own with Docker or Python.
   The music plays on any Home Assistant speaker, or in a browser left open on a computer with
   speakers. Automations can start shows too, through MQTT entities or `hassio.app_stdin`.
 - 📱 **Let passers-by join in.** A public page for a QR code on a sign: people near your house pick a
-  show on their phone and it joins a queue between your own, in a look you choose.
+  show on their phone and it joins a queue between your own, in a look you choose. They can listen to
+  the music on their phone too, in time with the lights.
 - 🐳 **Runs where you want.** A Home Assistant app, or on its own with Docker or Python.
 
 ## 📸 A closer look
@@ -261,6 +262,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     show or playlist can also have dates every year, and shows as coming soon until then
   - Guides for putting it online with Cloudflare Tunnel, Tailscale Funnel or your own proxy, or
     keeping it to your Wi-Fi
+  - Visitors can listen to the music on their own phone, in time with the lights, with an optional PIN
+    (a small copy of each song is made for phones with ffmpeg)
   - Every word visitors read can be changed, and an optional flashing lights warning (a note, or
     one to accept before Start)
   - Your own title, welcome, picture, colour theme or your own colours (with a readability check),
@@ -370,7 +373,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/schedule.py             The schedule's entries: starts and stops playlists, shows and scenes at their times
   app/halidayshow/sun.py                  Sunset times, for playlists that start at sunset
   app/halidayshow/runner.py               Starts shows on a speaker or for the browser, plays playlists and visitors' requests
-  app/halidayshow/public.py               The public page on its own port: visitors' choices and their queue
+  app/halidayshow/public.py               The public page on its own port: visitors' choices, their queue and listening on phones
+  app/halidayshow/songcopy.py             Small copies of songs (ffmpeg) for visitors listening on their phones
   app/halidayshow/imagemeta.py            Takes the GPS location and other hidden details out of photos visitors see
   app/halidayshow/songtags.py             Reads a song file's cover art (MP3, M4A, FLAC, WAV) and keeps it on WAVs made from it
   app/halidayshow/scenelib.py             Your scenes (Scene editor): checking them as they're saved
@@ -392,7 +396,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     public/                             The public page visitors see (the only files served on its port):
                                         index.html, public.js and public.css; colours.js has the
                                         readability sums shared with the editor; words.json is every
-                                        message visitors read, with its starting wording
+                                        message visitors read, with its starting wording;
+                                        listensync.js keeps a listening phone in time with the lights
     js/app.js                           Editor state, panels, inspector and playback
     js/ask.js                           HA-liday Show's own question and name windows, in place of the browser's pop-ups
     js/partorder.js                     Moving a light's part along it with ↑ and ↓, keeping its effects

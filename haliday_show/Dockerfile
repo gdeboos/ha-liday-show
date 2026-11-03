@@ -2,6 +2,9 @@
 ARG BUILD_ARCH=amd64
 FROM ghcr.io/home-assistant/${BUILD_ARCH}-base-python:3.13-alpine3.22
 
+# ffmpeg makes small copies of songs for visitors listening on their phones (songcopy.py).
+RUN apk add --no-cache ffmpeg
+
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
 

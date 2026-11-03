@@ -23,7 +23,7 @@ from pathlib import Path
 import aiohttp
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, liveeffects, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songtags, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, liveeffects, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songcopy, songtags, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -2224,6 +2224,8 @@ def _public_view(app) -> dict:
             "home": app[SCHEDULER].where()[1],
             "hours_now": public.hours_now(public.load(app[STORAGE]) or public.clean(None), app[SCHEDULER].where()[0]),
             "has_house_photo": app[STORAGE].house_photo() is not None,
+            # Whether songs can be made small for listening on phones (ffmpeg); else the song file goes as is.
+            "can_shrink_songs": songcopy.converter() is not None,
             "has_picture": app[STORAGE].public_picture() is not None,
             # Changes whenever the picture does, so the editor's thumbnail reloads after a new one.
             "picture_v": public.picture_version(app[STORAGE], (public.load(app[STORAGE]) or public.clean(None))["look"]),
@@ -2295,7 +2297,7 @@ async def get_public_picture(request):
 # can't start or cancel anything.
 async def public_preview_page(request):
     name = request.match_info.get("name") or "index.html"
-    if name not in ("index.html", "public.js", "public.css", "colours.js"):
+    if name not in ("index.html", "public.js", "public.css", "colours.js", "listensync.js"):
         raise web.HTTPNotFound()
     return web.FileResponse(public.PAGE / name, headers={"Cache-Control": "no-cache"})
 
@@ -2904,7 +2906,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/public/qr.svg", public_qr)
     r.add_get("/sign", sign_page)
     r.add_get("/public-preview/", public_preview_page)
-    r.add_get("/public-preview/{name:(public\\.js|public\\.css|colours\\.js)}", public_preview_page)
+    r.add_get("/public-preview/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js)}", public_preview_page)
     r.add_get("/public-preview/api/state", public_preview_state)
     r.add_get("/public-preview/picture", public_preview_picture)
     r.add_get("/public-preview/cover", public_preview_cover)
