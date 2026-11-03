@@ -61,6 +61,19 @@ export function gainSpans(eq, placed, n, rate) {
   return spans;
 }
 
+// Each band's setting (dB, EQ_MIN for off) at every step, gliding as the sound does: for the line
+// along the bottom of the waveform. Worked out at a low rate, such as 50 steps a second.
+export function eqCurves(eq, placed, n, rate) {
+  const out = BANDS.map(() => new Float32Array(n));
+  for (const sp of gainSpans(eq, placed, n, rate)) {
+    for (let i = sp.from; i < sp.to; i++) {
+      const u = sp.to - sp.from > 1 ? (i - sp.from) / (sp.to - sp.from) : 0;
+      for (let k = 0; k < 3; k++) { const a = Math.max(EQ_MIN, sp.a[k]), b = Math.max(EQ_MIN, sp.b[k]); out[k][i] = a + (b - a) * u; }
+    }
+  }
+  return out;
+}
+
 // A second-order filter (RBJ's cookbook) that runs over a block at a time, keeping its state between
 // blocks.
 function biquad(kind, f, rate, q = Math.SQRT1_2) {

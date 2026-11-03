@@ -400,7 +400,15 @@ the song. The song has a row, and so does each layer.
   in time at about its own speed. Line the clip's first beat up with a bar (clips snap to them).
 
 All of it is part of the draft, every change is one **Undo** step, and **Make song file** includes it.
-The waveform still shows the song as it was, without the mixer.
+The waveform still shows the song as it was, without the mixer, with two marks on top so you can see
+what the mixer does:
+
+- Where a layer quietens the song, a grey band hangs down from the top of the waveform: the deeper it
+  goes, the more the song dips (all the way to the middle is 24 dB). It's labelled with how far, such as
+  **Song −16 dB**.
+- When the song has EQ, three thin lines run along the bottom of the waveform: orange for **Bass**, green
+  for **Mid** and blue for **Treble**. A line above the others is turned up, below them turned down, and
+  each glides into a change as the sound does.
 
 #### Suggest cuts
 

@@ -9,8 +9,8 @@ import { analyseInWorker, barVectorsInWorker, toMono } from "./analysis.js";
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
-import { BANDS, EQ_MAX, EQ_MIN, MAX_CHANGES, applyEq, eqAt, faderText, flatEq, isFlat, placeChanges } from "./mixer.js";
+import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
+import { BANDS, EQ_MAX, EQ_MIN, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { stretch } from "./tempo.js";
 import { askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
@@ -24,6 +24,10 @@ const RULER_H = 22;
 const BEAT_H = 16; // the beat lane above the waveform, as in the editor
 const SEC_H = 20; // the section lane under it, where sections are picked and their edges dragged
 const WAVE_B = 210; // the bottom of the waveform; layers' lanes go under it
+// The shading over the waveform (where the song dips under a layer) and the song's EQ line along its
+// bottom are worked out this many times a second when the mix changes, not on every redraw.
+const OVERLAY_RATE = 50;
+const EQ_COLOURS = ["#e07b39", "#43a047", "#3b8ede"]; // bass, mid, treble
 const LANE_H = 56; // one layer's lane, tall enough to show its clips' waveforms
 const LAYER_HUES = [200, 30, 140, 300]; // a colour for each layer's clips
 const MIN_SECTION = 0.5;
@@ -1677,6 +1681,11 @@ export class MusicEditor {
     this.rendered = placed.length || this.mainEq !== this.main
       ? limit(mixLayers(this.mainEq, this.layers, placed, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate) : this.main;
     if (!same) this.peaks = this.main ? peaks(this.main) : null;
+    const steps = this.main ? Math.ceil((this.main[0].length / rate) * OVERLAY_RATE) + 1 : 0;
+    this.overlay = {
+      dip: steps ? dipCurve(this.layers, placed, this.sources, steps, OVERLAY_RATE) : null,
+      eq: steps && !isFlat(this.eq) ? eqCurves(this.eq, placeChanges(this.eq, this.pieces, this.crossfade), steps, OVERLAY_RATE) : null,
+    };
     if (this.h !== WAVE_B + LANE_H * this.layers.length) this.layout();
     const total = this.total;
     this.time = Math.min(this.time, total);
@@ -1907,6 +1916,52 @@ export class MusicEditor {
   x(t) { return ((t - this.view.start) / this.view.span) * this.w; }
   t(x) { return this.view.start + (x / this.w) * this.view.span; }
 
+  // Where the song dips under layers: shaded down from the top of the waveform, deeper for a bigger
+  // dip (the full half-height is 24 dB). The song's EQ: a line per band along the bottom, above the
+  // middle for a boost, below it for a cut. The waveform itself stays the song as it was.
+  drawOverlay(ctx, col, waveT, waveB) {
+    const ov = this.overlay, { w } = this;
+    if (!ov || (!ov.dip && !ov.eq)) return;
+    const at = (px) => Math.floor((this.view.start + (px / w) * this.view.span) * OVERLAY_RATE);
+    if (ov.dip) {
+      const half = (waveB - waveT) / 2, runs = [];
+      let run = null;
+      ctx.fillStyle = col("--muted");
+      ctx.globalAlpha = 0.35;
+      for (let px = 0; px < w; px++) {
+        const d = ov.dip[at(px)] || 0;
+        if (d > 0.05) {
+          ctx.fillRect(px, waveT, 1, (Math.min(d, DUCK_MAX) / DUCK_MAX) * half);
+          if (!run) runs.push(run = { from: px, most: 0 });
+          run.most = Math.max(run.most, d);
+        } else run = null;
+      }
+      ctx.globalAlpha = 1;
+      // Each dip says how far, where there's room.
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.fillStyle = col("--text");
+      for (const r of runs) {
+        const label = `Song −${Math.round(r.most)} dB`;
+        if (r.from + ctx.measureText(label).width < w) ctx.fillText(label, r.from + 6, waveT + 13);
+      }
+    }
+    if (ov.eq) {
+      const base = waveB - 16, per = 12 / -EQ_MIN; // 12 px for a band all the way down
+      ctx.lineWidth = 1.5;
+      ov.eq.forEach((band, k) => {
+        ctx.strokeStyle = EQ_COLOURS[k];
+        ctx.beginPath();
+        for (let px = 0; px < w; px++) {
+          const v = band[Math.min(band.length - 1, Math.max(0, at(px)))];
+          const y = base - v * per;
+          if (px) ctx.lineTo(px, y); else ctx.moveTo(px, y);
+        }
+        ctx.stroke();
+      });
+      ctx.lineWidth = 1;
+    }
+  }
+
   draw() {
     if (!this.w) return;
     const { ctx, w, h } = this;
@@ -1959,6 +2014,7 @@ export class MusicEditor {
       ctx.fillStyle = px >= sx0 && px < sx1 ? region : wave;
       ctx.fillRect(px, mid - hgt, 1, hgt * 2);
     }
+    this.drawOverlay(ctx, col, waveT, waveB);
 
 
     // section lane: each section in its colour with its name, the picked one outlined
