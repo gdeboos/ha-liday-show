@@ -27,6 +27,28 @@ export const songName = (path) => (path ? path.split("/").pop().replace(/\.[^.]+
 // shows as the server lists them ({id, name, duration, song, modified, season}), newest change first,
 // each with what the row says. `last` is the show this browser last had open; `seasons` names a show's
 // season (Setup → Devices → Seasons).
+// What pictures a show: its own picture, else its song's cover art, else a tile in its palette's
+// colours with its first letter. {picture: v} | {cover: {source, path, v}} | {tile: {colours, letter}}
+export function showThumb(s) {
+  if (s.picture) return { picture: s.picture };
+  if (s.cover && s.song) return { cover: { source: s.song_source || "media", path: s.song, v: s.modified } };
+  const letter = [...(s.name || "").trim()].find((ch) => /[\p{L}\p{N}]/u.test(ch)) || "♪";
+  return { tile: { colours: s.colours?.length ? s.colours : nameColours(s.name || ""), letter: letter.toLocaleUpperCase() } };
+}
+
+// Two colours picked from a show's name, for a show without a palette: the same name, the same tile.
+export function nameColours(name) {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.codePointAt(0)) % 360;
+  return [`hsl(${h}, 55%, 42%)`, `hsl(${(h + 50) % 360}, 60%, 32%)`];
+}
+
+// A tile's background: the colours as a diagonal blend, or nothing (the stylesheet's grey) without any.
+export function tileBackground(colours) {
+  if (!colours?.length) return "";
+  return colours.length === 1 ? colours[0] : `linear-gradient(135deg, ${colours.join(", ")})`;
+}
+
 export function showRows(shows, last, now = new Date(), seasons = []) {
   const seasonName = (id) => seasons.find((x) => x.id === id)?.name;
   return [...shows]
@@ -36,8 +58,7 @@ export function showRows(shows, last, now = new Date(), seasons = []) {
       name: s.name,
       last: s.id === last,
       inProgress: s.in_progress === true,
-      // Its song's cover art, when it has some.
-      cover: s.cover && s.song ? { source: s.song_source || "media", path: s.song, v: s.modified } : null,
+      thumb: showThumb(s),
       details: [seasonName(s.season), songName(s.song) || "No song yet", length(s.duration), `changed ${changed(s.modified, now)}`]
         .filter(Boolean).join(" · "),
     }));

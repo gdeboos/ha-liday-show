@@ -66,6 +66,16 @@ def safe_join(root: Path, rel: str) -> Path | None:
     return p
 
 
+
+_HEX6 = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _colours_of(show: dict) -> list[str]:
+    """Up to four of a show's palette colours, for its tile."""
+    pal = show.get("palette")
+    cols = pal.get("colors") if isinstance(pal, dict) else None
+    return [c.lower() for c in cols if isinstance(c, str) and _HEX6.match(c)][:4] if isinstance(cols, list) else []
+
 class Storage:
     def __init__(self, config_dir: Path, media_dir: Path):
         self.config_dir = config_dir
@@ -181,9 +191,31 @@ class Storage:
                         "cover": bool(song and songtags.cached_cover(song)),
                         "baked": (self.shows_dir / f"{p.stem}.gshow").exists(),
                         "in_progress": show.get("in_progress") is True,
+                        # Its own picture (a number that changes with it, 0 for none), and its
+                        # palette's colours, for a tile when it has no picture or cover art.
+                        "picture": self.show_picture_version(p.stem),
+                        "colours": _colours_of(show),
                         "season": show.get("season") if isinstance(show.get("season"), str) else None,
                         "modified": int(p.stat().st_mtime)})
         return out
+
+    # A show's own picture, shown instead of its song's cover art: shows/<id>.jpg ----------------
+    def show_picture(self, show_id: str) -> Path | None:
+        p = self.shows_dir / f"{show_id}.jpg"
+        return p if p.is_file() else None
+
+    def show_picture_version(self, show_id: str) -> int:
+        p = self.show_picture(show_id)
+        try:
+            return 1 + (p.stat().st_mtime_ns // 1_000_000) % 2_000_000_000 if p else 0
+        except OSError:
+            return 0
+
+    def save_show_picture(self, show_id: str, data: bytes):
+        _write_atomic(self.shows_dir / f"{show_id}.jpg", data)
+
+    def delete_show_picture(self, show_id: str):
+        (self.shows_dir / f"{show_id}.jpg").unlink(missing_ok=True)
 
     def load_show(self, show_id: str) -> dict | None:
         try:
@@ -320,6 +352,8 @@ class Storage:
         baked = self.load_baked(show_id)
         if baked is not None:
             self.save_baked(new_id, baked)
+        if (pic := self.show_picture(show_id)) is not None:
+            self.save_show_picture(new_id, pic.read_bytes())
         return new_id
 
     def rename_show(self, show_id: str, name: str) -> bool:
@@ -345,7 +379,7 @@ class Storage:
         return True
 
     def delete_show(self, show_id: str):
-        for ext in ("json", "gshow", "bakekey"):
+        for ext in ("json", "gshow", "bakekey", "jpg"):
             (self.shows_dir / f"{show_id}.{ext}").unlink(missing_ok=True)
 
     # song drafts: Music editor edits kept as recipes (which parts of which songs), no audio --------

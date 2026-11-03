@@ -103,3 +103,5 @@ h1, h2 { color: var(--head, var(--text)); }
 
 /* A show's cover art, from its song, beside its name. */
 .pp-cover { flex: none; width: 56px; height: 56px; border-radius: 8px; object-fit: cover; }
+.pp-tile { display: grid; place-items: center; font-weight: 700; font-size: 24px; color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); background: rgba(127, 127, 127, 0.35); }

@@ -437,6 +437,16 @@ export function start() {
         img.src = `cover?${new URLSearchParams({ kind: c.kind, id: c.id, code: key, v: String(c.cover) })}`;
         img.addEventListener("error", () => img.remove());
         row.append(img);
+      } else if (st.look?.covers !== false) {
+        // No picture: a tile in the show's colours with its first letter.
+        const tile = el("span", "pp-cover pp-tile", [...c.name.trim()].find((ch) => /[\p{L}\p{N}]/u.test(ch))?.toLocaleUpperCase() || "♪");
+        tile.setAttribute("aria-hidden", "true");
+        // Its palette's colours, or two picked from its name (as in the app's Library).
+        let h = 0;
+        for (const ch of c.name) h = (h * 31 + ch.codePointAt(0)) % 360;
+        const cols = c.colours?.length ? c.colours : [`hsl(${h}, 55%, 42%)`, `hsl(${(h + 50) % 360}, 60%, 32%)`];
+        tile.style.background = cols.length === 1 ? cols[0] : `linear-gradient(135deg, ${cols.join(", ")})`;
+        row.append(tile);
       }
       const text = el("div", "pp-text");
       text.append(el("div", "pp-name", c.name));

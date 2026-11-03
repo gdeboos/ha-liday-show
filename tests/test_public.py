@@ -641,6 +641,11 @@ async def test_visitors_see_each_shows_cover_art(client, tmp_path):
     assert status == 200 and headers["Content-Type"] == "image/jpeg" and pic == PHOTO
     assert (await _visitor(client, "/cover?kind=show&id=party", code=False))[0] == 404
     assert (await _visitor(client, "/cover?kind=show&id=quiet"))[0] == 404
+    # The show's own picture wins over its song's cover art.
+    own = PHOTO[:-2] + b"\x56\x78\xff\xd9"
+    st.save_show_picture("party", own)
+    public._CHOICES.clear()
+    assert (await _visitor(client, "/cover?kind=show&id=party"))[1] == own
     # Turned off, there are none.
     p = await (await client.get("/api/public")).json()
     await client.put("/api/public", json={**p, "look": {**p["look"], "covers": False}})

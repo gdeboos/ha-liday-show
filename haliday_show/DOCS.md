@@ -633,7 +633,7 @@ songs. They're saved with your settings, so they're in **Export…** too.
   [Finding your way](#finding-your-way)).
 
 The Show panel shows the open show's name beside **← All shows**; to switch to another show, go back
-to the list. **⚙ Show settings…** opens the show's settings: its **Name**, **In progress** (see [Shows](#shows)), its **Palette** (below), its **Show speaker**
+to the list. **⚙ Show settings…** opens the show's settings: its **Name**, **In progress** (see [Shows](#shows)), its **Palette** (below), its **Picture** (see [Songs](#songs)), its **Show speaker**
 (below), **Brightness** (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
 
 #### The show's palette
@@ -710,7 +710,11 @@ tempo and sections) or "not detected yet", and which shows use it. Type in **Fin
 list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Remove…** archives
 or deletes one. The song you last opened in the Music editor has a **Last edited** badge.
 A song with cover art (from an MP3, M4A or FLAC's own tags) shows it beside its name, and beside the
-shows that use it in **Library → Shows**. Songs are kept exactly as you added them, so their cover art,
+shows that use it in **Library → Shows**. To give a show a picture of its own, use **Picture** in its
+**⚙ Show settings…**: **Upload picture…** takes any photo or image, squares it from the middle, and uses it
+instead of the song's cover art, here and on the public page (with any hidden details, such as where a
+photo was taken, taken out). **Remove** goes back to the song's cover art. A show with neither gets a
+tile in its palette's colours with its first letter. Songs are kept exactly as you added them, so their cover art,
 title and artist are never lost.
 
 Each song you added is one card, marked **Original**. Inside it, under **Edits of this song**:
@@ -1914,8 +1918,9 @@ Also on the **Shows** tab:
 - **Show how long each lasts** (on to start with) puts "About 3 minutes" under each show's name,
   worked out from the show. Turn it off for just the names.
 - **Show cover art** (on to start with) puts each show's picture beside its name: its song's cover
-  art (from an MP3, M4A or FLAC's own tags), or for a playlist, its first show's that has one. Shows
-  without any just have their name. Turn it off for no pictures.
+  art (from an MP3, M4A or FLAC's own tags), or the show's own **Picture** when you've given it one; for
+  a playlist, its first show's. Shows without either get a tile in their colours with their first
+  letter. Turn it off for no pictures.
 - **Flashing lights warning**, for shows with strobes or fast flashes:
   - **Off** (to start with).
   - **A note at the top**: a boxed warning above the shows, always there.

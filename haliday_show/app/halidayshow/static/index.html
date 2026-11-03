@@ -257,6 +257,12 @@
             Christmas ones. Set props' seasons on <b>Setup → Devices</b>.</span></label>
         <div class="field"><span>Palette</span> <span id="show-palette"></span>
           <span class="hint">Effects you add take these colours, and the effect chooser shows them.</span></div>
+        <div class="field"><span>Picture</span>
+          <span class="show-pic-row"><span id="show-pic"></span>
+            <button type="button" id="show-pic-upload" class="ghost">Upload picture…</button>
+            <button type="button" id="show-pic-remove" class="ghost">Remove</button>
+            <input type="file" id="show-pic-file" accept="image/*" hidden></span>
+          <span class="hint" id="show-pic-hint">Shown beside the show here and on the public page, instead of its song's cover art.</span></div>
         <label class="field">Show speaker <select id="show-speaker"></select>
           <span class="hint">Where the song plays when an automation or the MQTT Play button starts this show.
             Editing uses the speaker in the Playback panel.</span></label>

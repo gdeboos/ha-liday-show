@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { changed, copyName, length, showRows } from "../../haliday_show/app/halidayshow/static/js/showlist.js";
+import { changed, copyName, length, showRows, showThumb, tileBackground } from "../../haliday_show/app/halidayshow/static/js/showlist.js";
 
 const now = new Date(2026, 9, 26, 9, 0);
 const at = (...a) => new Date(...a).getTime() / 1000;
@@ -54,4 +54,15 @@ test("the season filter keeps that season's shows and shows for any season", asy
   assert.deepEqual(pick("christmas"), ["xmas", "any", "gone"]);
   assert.deepEqual(pick("halloween"), ["spooky", "any", "gone"]);
   assert.deepEqual(pick("easter"), ["spooky", "xmas", "any", "gone"]); // a filter for a deleted season shows all
+});
+
+test("a show is pictured by its own picture, its song's cover art, or a tile in its colours", () => {
+  assert.deepEqual(showThumb({ picture: 5, cover: true, song: "a.mp3" }), { picture: 5 });
+  assert.deepEqual(showThumb({ cover: true, song: "a.mp3", modified: 9 }), { cover: { source: "media", path: "a.mp3", v: 9 } });
+  assert.deepEqual(showThumb({ name: "  ⭐ jingle", colours: ["#ff0000"] }), { tile: { colours: ["#ff0000"], letter: "J" } });
+  assert.equal(showThumb({ name: "" }).tile.letter, "♪");
+  assert.deepEqual(showThumb({ name: "Xmas" }).tile.colours, showThumb({ name: "Xmas" }).tile.colours);
+  assert.equal(showThumb({ name: "Xmas" }).tile.colours.length, 2);
+  assert.equal(tileBackground(["#f00", "#0f0"]), "linear-gradient(135deg, #f00, #0f0)");
+  assert.equal(tileBackground([]), "");
 });

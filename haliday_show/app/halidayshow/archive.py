@@ -54,7 +54,7 @@ def _move_show(src_dir: Path, dest_dir: Path, show_id: str):
     if (dest_dir / f"{show_id}.json").exists():
         raise ArchiveError("a show with that id is already there")
     dest_dir.mkdir(parents=True, exist_ok=True)
-    for ext in ("json", "gshow", "bakekey"):
+    for ext in ("json", "gshow", "bakekey", "jpg"):
         if (src_dir / f"{show_id}.{ext}").exists():
             os.replace(src_dir / f"{show_id}.{ext}", dest_dir / f"{show_id}.{ext}")
 
@@ -95,7 +95,7 @@ def delete_show(st: Storage, show_id: str, archived: bool = False):
     folder = archived_dir(st) if archived else st.shows_dir
     if not valid_id(show_id) or not (folder / f"{show_id}.json").exists():
         raise ArchiveError("that show isn't there")
-    for ext in ("json", "gshow", "bakekey"):
+    for ext in ("json", "gshow", "bakekey", "jpg"):
         (folder / f"{show_id}.{ext}").unlink(missing_ok=True)
     settings = st.load_settings()
     changed = False
