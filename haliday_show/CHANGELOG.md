@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.320
+
+- A green bar under the tabs now shows whatever is on your lights, however it started (the schedule, an automation, a visitor or you): the show, playlist or scene, how far through it is, and **Restart** and **Stop** (**Turn off** for a scene).
+
 ## 0.2.319
 
 - A visitors' page left open on a phone now loads again by itself after HA-liday Show updates or restarts. Before, a page opened before an update carried on as the old version, so **🎧 Listen on your phone** didn't appear until it was refreshed.

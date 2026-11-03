@@ -400,6 +400,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
                                         listensync.js keeps a listening phone in time with the lights
     js/app.js                           Editor state, panels, inspector and playback
     js/ask.js                           HA-liday Show's own question and name windows, in place of the browser's pop-ups
+    js/nowbar.js                        The bar saying what's on your lights now, with Restart and Stop
     js/partorder.js                     Moving a light's part along it with ↑ and ↓, keeping its effects
     js/folderbrowse.js                  Going into Library folders to pick shows and playlists (public page, a playlist's Your shows)
     js/glyphs.js                        Draws the symbols on buttons (▶ ⏸ ⏩ 🔊 …) as line icons, never emoji
