@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.311
+
+- A matrix set up as a row of arches (or drawn as a plain line) on **Setup → House** now lights along the arches in its real wiring order, so the house preview matches what your lights do.
+
 ## 0.2.310
 
 - **Setup → House**: a **Mega-tree** has a new **Goes all the way round** tick. Tick it if your tree's strings go right round the pole. The strings at the back are then drawn faint behind the front ones, so a **Spiral** looks like it turns round the tree.

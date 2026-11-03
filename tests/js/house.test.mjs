@@ -213,3 +213,24 @@ test("the round view is saved with the tree's style", async () => {
   assert.equal(roundTree({ style: "tree" }), false);
   assert.equal(roundTree({ style: "panel", round: true }), false);
 });
+
+test("a matrix drawn as a line or arches lights its LEDs in wiring order along the line", async () => {
+  const { wireOrder } = await import("../../haliday_show/app/halidayshow/static/js/matrix.js");
+  const house = new House({ api: async () => ({}), status: () => {}, frameFor: () => null });
+  const matrix = { w: 4, h: 2, start: "top left", order: "rows", zigzag: true };
+  const dev = { id: "m", segments: 8, matrix };
+  house.paths.m = [[0.1, 0.5], [0.8, 0.5]];
+  const b = house.bulbs(dev);
+  assert.equal(b.length, 8); // one bulb per LED
+  const order = wireOrder(matrix), xs = b.map((p) => p[0]);
+  // Along the line, from the plug: the wire's first LED, then its second...
+  for (let k = 1; k < 8; k++) assert.ok(xs[order[k]] > xs[order[k - 1]], `LED ${k} along the wire`);
+  assert.ok(xs[7] < xs[4]); // the second row zig-zags back, so its last grid spot comes first along the wire
+  house.styles.m = { style: "arches", arches: 2, height: 0.1, down: false };
+  const arch = house.bulbs(dev);
+  assert.equal(arch.length, 8);
+  assert.ok(arch[order[0]][0] < arch[order[7]][0]);
+  // Changing the wiring moves them.
+  const plainRows = house.bulbs({ ...dev, matrix: { ...matrix, zigzag: false } });
+  assert.notDeepEqual(plainRows.map((p) => p.join()), arch.map((p) => p.join()));
+});

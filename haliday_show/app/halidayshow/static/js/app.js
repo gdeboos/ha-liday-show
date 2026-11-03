@@ -2477,7 +2477,8 @@ function houseStyleControls(d) {
     way.addEventListener("change", () => { house.setStyle(d.id, { ...style, down: way.value === "down" }); renderHouseLights(); });
     const row = (label, el) => { const l = document.createElement("label"); l.className = "row"; l.append(label, el); return l; };
     return [l0, row("Arches ", count), row("Height ", height), row("Curve ", way),
-      hint("Trace the line the arches stand on (or hang from), from the end with the plug.")];
+      hint("Trace the line the arches stand on (or hang from), from the end with the plug."
+        + (grid ? " Its LEDs run along the arches in the wiring order set for the matrix under Setup → Devices." : ""))];
   }
   if (style.style === "spots") {
     const beam = document.createElement("input");

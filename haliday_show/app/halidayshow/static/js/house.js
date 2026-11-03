@@ -4,7 +4,7 @@
 
 import { SAMPLE_HOUSE } from "./samplehouse.js";
 import { unitWord } from "./lightwords.js";
-import { gridOf } from "./matrix.js";
+import { gridOf, wireOrder } from "./matrix.js";
 
 const BULBS_PER_SEGMENT = 4; // the guess when a light's bulb count isn't set on the Devices tab
 const MAX_BULBS = 2000;
@@ -447,7 +447,7 @@ export class House {
     const count = Math.min(dev.bulbs || dev.segments * BULBS_PER_SEGMENT, MAX_BULBS);
     const style = this.styles[dev.id];
     const pins = this.pins[dev.id];
-    const key = `${count}:${dev.segments}:${dev.reverse}:${JSON.stringify(gridOf(dev))}:${JSON.stringify(style)}:${JSON.stringify(points)}:${JSON.stringify(pins)}`;
+    const key = `${count}:${dev.segments}:${dev.reverse}:${JSON.stringify(gridOf(dev) && dev.matrix)}:${JSON.stringify(style)}:${JSON.stringify(points)}:${JSON.stringify(pins)}`;
     let c = this.cache.get(dev.id);
     if (c?.key !== key) {
       const shape = style?.style, grid = points.length === SHAPE_POINTS[shape] ? gridOf(dev) : null;
@@ -457,6 +457,14 @@ export class House {
         return c.bulbs;
       }
       const line = this.linePoints(dev.id);
+      if (gridOf(dev) && (!shape || shape === "arches")) {
+        // A matrix drawn as a line or a row of arches: one bulb per LED along it in wiring order,
+        // each listed at its grid spot (the order the editor and its colours use).
+        const along = bulbLayout(line, dev.segments), order = wireOrder(dev.matrix), bulbs = new Array(dev.segments).fill(null);
+        for (let k = 0; k < order.length; k++) bulbs[order[k]] = along[k];
+        this.cache.set(dev.id, c = { key, bulbs });
+        return c.bulbs;
+      }
       const bulbs = style?.style === "icicle" ? icicleDrops(points, style.drops, count) : bulbLayout(line, count);
       this.cache.set(dev.id, c = { key, bulbs: pinBulbs(line, bulbs, pins, dev.segments, dev.reverse) });
     }
@@ -696,7 +704,8 @@ export class House {
       ctx.font = "12px system-ui, sans-serif";
       ctx.fillStyle = "#fff";
       ctx.fillText(`${dev.name} (${shape === "tree" ? "top" : shape ? "top left" : "plug"})`, x0 * w + 8, y0 * h - 8);
-      if (active && !panel) this.drawSegmentMarks(ctx, dev, w, h);
+      // A matrix's LED numbers don't run along its line (they're its grid spots), so none are shown.
+      if (active && !panel && !gridOf(dev)) this.drawSegmentMarks(ctx, dev, w, h);
     }
     if (this.hoverBulb) {
       const { x, y, text } = this.hoverBulb;
