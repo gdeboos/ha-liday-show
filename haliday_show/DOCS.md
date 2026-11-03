@@ -1940,6 +1940,12 @@ The title, words and picture only show to people with your code.
 
 #### What visitors can pick
 
+- Visitors see the list in the order it's in here. Move a row with **↑** and **↓**, or drag it by its
+  **⠿** grip.
+- **+ Add heading…** groups shows for visitors, such as *Christmas favourites* or *For the kids*. The
+  shows below a heading, down to the next one, appear in a box with its name on visitors' phones; shows
+  above the first heading stand on their own. Move a heading like any row, change its words in place,
+  and **Remove** it to ungroup its shows (they stay on the page).
 - **+ Add shows or playlists…** opens a window of your saved shows, with **Playlists** beside them. Go into
   your folders as in the Library, or type in **Find in any folder**, tick everything you want and press
   **Add**. Shows in progress are left out unless you tick **Show in-progress shows too**, and visitors

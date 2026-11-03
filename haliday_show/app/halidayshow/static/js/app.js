@@ -5614,6 +5614,8 @@ function renderPublicGuard() {
   $("pub-nearby-hint").classList.toggle("warn", view.nearby && !view.home);
 }
 
+let pubDragging = null; // the item being dragged in What visitors can pick
+
 function renderPublicItems() {
   const view = publicView;
   renderPublicGuard();
@@ -5638,9 +5640,56 @@ function renderPublicItems() {
     month.addEventListener("change", set);
     return [day, month];
   };
+  // Order, as visitors see it: ↑ ↓ on each row, or drag it by its grip.
+  const moveTo = (from, to) => {
+    if (to < 0 || to >= publicView.items.length || to === from) return;
+    const [it] = publicView.items.splice(from, 1);
+    publicView.items.splice(to, 0, it);
+    savePublic();
+  };
+  const order = (row, k, label) => {
+    const grip = Object.assign(document.createElement("span"), { className: "pub-grip", textContent: "⠿", title: "Drag to move" });
+    grip.setAttribute("aria-hidden", "true");
+    grip.addEventListener("pointerdown", () => { row.draggable = true; });
+    row.addEventListener("dragstart", (e) => { pubDragging = k; e.dataTransfer.effectAllowed = "move"; row.classList.add("dragging"); });
+    row.addEventListener("dragend", () => { row.draggable = false; row.classList.remove("dragging"); pubDragging = null; });
+    row.addEventListener("dragover", (e) => { if (pubDragging != null && pubDragging !== k) e.preventDefault(); });
+    row.addEventListener("drop", (e) => { e.preventDefault(); if (pubDragging != null) moveTo(pubDragging, k); });
+    const up = button("↑", () => moveTo(k, k - 1), "ghost small");
+    up.disabled = k === 0;
+    up.setAttribute("aria-label", `Move ${label} up`);
+    const down = button("↓", () => moveTo(k, k + 1), "ghost small");
+    down.disabled = k === view.items.length - 1;
+    down.setAttribute("aria-label", `Move ${label} down`);
+    const box = Object.assign(document.createElement("div"), { className: "pub-order" });
+    box.append(up, down);
+    return [grip, box];
+  };
+  let underHeading = false;
   const rows = view.items.map((it, k) => {
     const row = document.createElement("div");
     row.className = "pub-item";
+    if (it.kind === "heading") {
+      // A heading: the shows after it, up to the next one, are in a box with it on visitors' phones.
+      underHeading = true;
+      row.classList.add("pub-heading");
+      const name = Object.assign(document.createElement("input"), { type: "text", value: it.name, maxLength: 60 });
+      name.setAttribute("aria-label", "Heading");
+      name.addEventListener("change", () => {
+        const v = name.value.trim().replace(/\s+/g, " ");
+        if (!v) { name.value = it.name; return; }
+        publicView.items[k].name = v;
+        savePublic();
+      });
+      const text = Object.assign(document.createElement("div"), { className: "pub-item-text" });
+      text.append(name, Object.assign(document.createElement("span"), { className: "hint", textContent: "Heading: the shows below it, up to the next heading, are grouped under it" }));
+      const remove = button("Remove", () => { publicView.items.splice(k, 1); savePublic(); }, "ghost");
+      remove.title = "Takes the heading away. The shows under it stay on the page.";
+      const [grip, box] = order(row, k, `the heading ${it.name}`);
+      row.append(grip, text, box, remove);
+      return row;
+    }
+    if (underHeading) row.classList.add("pub-under");
     const text = document.createElement("div");
     text.className = "pub-item-text";
     const name = document.createElement("div");
@@ -5678,7 +5727,8 @@ function renderPublicItems() {
     remove.textContent = "Remove";
     remove.title = "Takes it off the public page. The show or playlist itself stays.";
     remove.addEventListener("click", () => { publicView.items.splice(k, 1); savePublic(); });
-    row.append(text, remove);
+    const [grip, box] = order(row, k, name.textContent);
+    row.append(grip, text, box, remove);
     return row;
   });
   if (!rows.length) {
@@ -5689,7 +5739,7 @@ function renderPublicItems() {
   }
   $("pub-items").replaceChildren(...rows);
   const left = Object.values(publicOffer()).some((list) => list.some((x) => !x.why));
-  $("pub-add-row").hidden = !left;
+  $("pub-add").hidden = !left; // headings can still be added
   $("pub-all-added").hidden = left;
   $("pub-per-phone").value = view.per_phone;
   $("pub-queue").value = view.queue;
@@ -5975,6 +6025,14 @@ function wirePublic() {
   });
   $("pub-queue").addEventListener("change", savePublic);
   $("pub-add").addEventListener("click", () => { if (publicView) pickForPublic(); });
+  $("pub-add-heading").addEventListener("click", async () => {
+    if (!publicView) return;
+    const name = await askText("Add a heading", { label: "Heading", max: 60, yes: "Add",
+      hint: "Such as Christmas favourites. Move it above the shows it's for." });
+    if (!name) return;
+    publicView.items.push({ kind: "heading", name });
+    savePublic();
+  });
   $("pub-clear").addEventListener("click", async () => {
     try {
       renderPublicQueue(await api("api/public/clear", { method: "POST" }));
