@@ -2951,7 +2951,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       dlg.close(); app.paletteEffect = effect; onPick(effect, preset);
     }, active ? "active" : "");
     const strip = document.createElement("canvas");
-    strip.className = "fx-strip";
+    strip.className = `fx-strip${gridOf(dev) ? " grid" : ""}`; // a matrix's previews are its grid, so taller
     const span = document.createElement("span");
     span.textContent = label;
     b.append(strip, span);
@@ -3057,8 +3057,10 @@ function drawPickerPreviews() {
     if (!items.length || !items[0].canvas.isConnected || !items[0].canvas.offsetParent) continue;
     const secs = (performance.now() - set.started) / 1000;
     for (const { canvas, clip, dev } of items) {
-      const n = dev?.segments || 15;
-      drawStrip(canvas, asShown(dev, secs % clip.end, (t) => renderTrack([clip], t, n)), n, (dev?.brightness ?? 100) / 100);
+      const n = dev?.segments || 15, grid = gridOf(dev), cap = (dev?.brightness ?? 100) / 100;
+      // On a matrix, each effect moves as the grid would show it.
+      const rgb = asShown(dev, secs % clip.end, (t) => renderTrack([clip], t, n, undefined, false, grid));
+      if (grid) drawGrid(canvas, rgb, grid, cap); else drawStrip(canvas, rgb, n, cap);
     }
   }
 }

@@ -5,6 +5,7 @@
 // under the ruler, song and beat lane, which stay put.
 
 import { EFFECTS, HOUSE, isGroupTrack, renderTrack } from "./effects.js";
+import { gridOf, gridTiles } from "./matrix.js";
 import { asShown } from "./lightspeed.js";
 import { countText, rangeText } from "./lightwords.js";
 
@@ -295,6 +296,33 @@ export class Timeline {
     this.drawPlayhead();
   }
 
+  drawGridTiles(clip, dev, grid, x0, x1, top, height, left, right, buf) {
+    const { ctx } = this;
+    this.tileCanvas ||= document.createElement("canvas");
+    const tc = this.tileCanvas;
+    if (tc.width !== grid.w || tc.height !== grid.h) { tc.width = grid.w; tc.height = grid.h; }
+    const tctx = tc.getContext("2d"), img = tctx.createImageData(grid.w, grid.h);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(left, top, right - left, height); ctx.clip();
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(left, top, right - left, height);
+    for (const tile of gridTiles(x0, x1, height, grid)) {
+      if (tile.x + tile.w < left || tile.x > right) continue;
+      const t = this.t(tile.x + tile.w / 2);
+      const rgb = asShown(dev, Math.min(Math.max(t, clip.start), clip.end - 1e-6),
+        (tt) => renderTrack([clip], Math.max(tt, clip.start), dev.segments, buf, false, grid));
+      for (let i = 0; i < grid.w * grid.h; i++) {
+        img.data[i * 4] = rgb[i * 3]; img.data[i * 4 + 1] = rgb[i * 3 + 1]; img.data[i * 4 + 2] = rgb[i * 3 + 2]; img.data[i * 4 + 3] = 255;
+      }
+      tctx.putImageData(img, 0, 0);
+      // Trimmed at the clip's end: only as much of the grid as there's room for.
+      const full = Math.max(8, (height * grid.w) / grid.h);
+      ctx.drawImage(tc, 0, 0, grid.w * (tile.w / full), grid.h, tile.x, top, tile.w, height);
+    }
+    ctx.restore();
+  }
+
   // A clip shows its own animation as its light shows it (stepped on a slow light, see asShown): time
   // runs left to right, segments top to bottom. One that won't work on its light is hatched, and one
   // that only partly works gets a corner; both get a ⚠.
@@ -307,7 +335,10 @@ export class Timeline {
     const left = Math.max(x0, HEADER_W), right = Math.min(x1, w);
     const step = 3, segH = height / n;
     const buf = new Uint8Array(n * 3);
-    for (let x = left; x < right; x += step) {
+    const grid = gridOf(dev);
+    // On a matrix: snapshots of the grid along the clip, each at its own moment, rather than a strip.
+    if (grid) this.drawGridTiles(clip, dev, grid, x0, x1, top, height, left, right, buf);
+    else for (let x = left; x < right; x += step) {
       const t = this.t(x + step / 2);
       const rgb = asShown(dev, Math.min(Math.max(t, clip.start), clip.end - 1e-6),
         (tt) => renderTrack([clip], Math.max(tt, clip.start), n, buf));
