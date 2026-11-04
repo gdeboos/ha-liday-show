@@ -670,11 +670,15 @@ to the list. **⚙ Show settings…** opens the show's settings: its **Name**, *
 
 #### A song's colours
 
-A song can have its own palette, picked from its cover art when you add it, from **Colours from this
+A song can have its own palette, picked from its cover art or the AI's ideas when you add it, from **Colours from this
 song…** in its **⋯** menu under **Library → Songs**, or from **Colours…** in the Music editor's **Beats
 and sections** panel. The palette you pick is kept with the song and added to your palettes (named after
 the song), so you can edit or rename it under **Library → Palettes**. Picking again for the same song
-changes that palette rather than adding another. When a **New show** picks the song, its palette is
+changes that palette rather than adding another. The AI is told the song's name (put the
+artist in it, such as "Wham! - Last Christmas", for the best ideas) and the cover's main colours, not
+the picture itself; a song with no cover art still gets its ideas. A song file made from it in the Music editor (**Make song
+file**) comes with its colours, as it does its cover art; once the made file has colours of its own,
+making it again keeps them. When a **New show** picks the song, its palette is
 picked for you in the colours step, marked **This song's colours**, unless you've already chosen
 colours yourself in that window. Changing the song of a show you've already made doesn't change its
 colours.
@@ -803,9 +807,11 @@ Library list (see [Folders](#folders)). A song's edits and drafts go with it.
 
    Detected songs are ready to use: a show that picks one gets its beats and parts straight away.
 
-If the song has cover art, a **Colours from this song** window follows: a palette made from the cover's
-main colours, made bright for lights (black, greys and whites are left out, as they look like "off" or
-dull on lights). Press **Use these** to keep it, or **Skip**. See [A song's colours](#a-songs-colours).
+Then a **Colours from this song** window follows, if there's something to offer: a palette made from
+the cover's main colours, made bright for lights (black, greys and whites are left out, as they look
+like "off" or dull on lights), and, with an AI set up, up to two palettes from the AI that suit the song
+(listed under **From the song** when they arrive, a few seconds later). Press **Use these** on the one you
+want, or **Skip**. See [A song's colours](#a-songs-colours).
 
 The same window opens from **+ Add a song…** in the **New show** window and in a show's **Choose a
 song** window, and the song comes back picked.

@@ -117,3 +117,13 @@ export function songPaletteNow(saved, palettes) {
   const mine = palettes.find((p) => p.name === saved.name);
   return mine ? { ...saved, colors: [...mine.colors] } : { ...saved, colors: [...saved.colors] };
 }
+
+// What the AI is asked for a song's colours: the song by its name (which often has the artist in
+// it), and the cover's main colours in words, since not every AI set-up can be shown a picture.
+export function songColourRequest(songName, coverColours) {
+  const name = String(songName || "").replace(/\.[a-z0-9]{2,4}$/i, "").replace(/_+/g, " ").trim().slice(0, 120);
+  const cover = coverColours?.length ? `Its cover art's main colours are ${coverColours.join(", ")}.` : "It has no cover art to go on.";
+  return `Colour palettes for a light show to the song "${name}". ${cover} Make palettes that suit the song itself: `
+    + "its mood, its season and what it's about, as you know it from its title and artist (the cover's colours are "
+    + "a hint, not a rule). If you don't know the song, go by its title. Name each palette after the feel, not the song.";
+}
