@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.349
+
+- The public page can change its look through the year. On **Public page → Look**, **Through the year** lets you add dated looks, such as *Halloween* from 1 Oct to 2 Nov, each with its own title, welcome, picture, colours and snow. A new one starts as a copy of your everyday look. Where dates overlap, the one higher in the list wins, and outside them visitors get your everyday look. Pick a look under **Look you're changing** to edit it and see it in the preview, whatever the date.
+
 ## 0.2.348
 
 - On the public page, the small button that turns the music off on a visitor's phone now just says **🔇 Sound off**.

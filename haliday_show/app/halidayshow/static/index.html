@@ -1414,10 +1414,22 @@
   </section>
   </div>
   <div class="pub-panel" id="pub-panel-look" role="tabpanel" aria-labelledby="pub-tab-look" hidden>
+  <section class="card pub-card" id="pub-looks-card">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-schedule"/></svg>Through the year</h2>
+    <p class="hint">Give the page a different look between two dates every year: orange and black for October, say,
+      then snow for Christmas. Outside those dates visitors get your everyday look. Where dates overlap, the one
+      higher in the list wins.</p>
+    <p class="hint" id="pub-looks-today" aria-live="polite"></p>
+    <div id="pub-looks" class="pub-looks"></div>
+    <div><button id="pub-looks-add" type="button">+ Add a dated look…</button></div>
+  </section>
   <section class="card pub-card" id="pub-look">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-palettes"/></svg>How the page looks</h2>
-    <p class="hint">What visitors see at the top and bottom of the page, and its colours. The preview shows it as you
-      go. Every other word on the page is on the <b>Words</b> tab.</p>
+    <div class="pub-look-for">
+      <label class="field">Look you're changing <select id="pub-look-for"></select></label>
+    </div>
+    <p class="hint" id="pub-look-for-hint">What visitors see at the top and bottom of the page, and its colours. The
+      preview shows it as you go. Every other word on the page is on the <b>Words</b> tab.</p>
 
     <h3 class="pub-sub">Title and welcome</h3>
     <label class="field">Title <input id="pub-title" type="text" maxlength="60" placeholder="🎄 Light show"></label>
@@ -1474,6 +1486,7 @@
     </div>
     <p class="hint">Snow is left out for anyone whose phone is set to reduce motion.</p>
 
+    <div id="pub-look-link">
     <h3 class="pub-sub">Link at the bottom</h3>
     <p class="hint">A charity, donation or social page, if you like. Leave it empty for none.</p>
     <div class="pub-grid">
@@ -1481,6 +1494,7 @@
         placeholder="https://www.justgiving.com/…"></label>
       <label class="field">Its words <input id="pub-link-text" type="text" maxlength="80"
         placeholder="Enjoying the lights? Donate to …"></label>
+    </div>
     </div>
   </section>
   </div>

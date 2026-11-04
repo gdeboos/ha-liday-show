@@ -45,7 +45,8 @@ import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette, usedColour
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, entriesFor, scheduleLine, whenNext } from "./schedule.js";
 import { SchedulePage } from "./schedulepage.js";
 import { readability } from "../public/colours.js";
-import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLink, tonightRows } from "./publicsettings.js";
+import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLink, tonightRows,
+  DATED_KEYS, newDatedLook, lookFor, datedLookText, todayLookText } from "./publicsettings.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
@@ -5809,8 +5810,101 @@ function publicWords() {
   return out;
 }
 
+// Which look the Look tab is changing: "" for your everyday look, or a dated look's id.
+let pubLookFor = "";
+let pubPictureBump = 0; // a new picture uploaded, so its preview reloads
+
+// Through the year: the dated looks, in the order they win.
+function renderPublicLooks() {
+  const view = publicView;
+  view.looks ||= [];
+  if (pubLookFor && !view.looks.some((r) => r.id === pubLookFor)) pubLookFor = "";
+  $("pub-looks-today").textContent = todayLookText(view, view.today);
+  const move = (from, to) => {
+    if (to < 0 || to >= view.looks.length) return;
+    const [r] = view.looks.splice(from, 1);
+    view.looks.splice(to, 0, r);
+    savePublic();
+  };
+  $("pub-looks").replaceChildren(...view.looks.map((r, k) => {
+    const row = Object.assign(document.createElement("div"), { className: "pub-item" });
+    if (r.id === pubLookFor) row.classList.add("on");
+    const text = Object.assign(document.createElement("div"), { className: "pub-item-text" });
+    const name = Object.assign(document.createElement("input"), { type: "text", value: r.name, maxLength: 40 });
+    name.setAttribute("aria-label", "Name of this look");
+    name.addEventListener("change", () => {
+      const v = name.value.trim().replace(/\s+/g, " ");
+      if (!v) { name.value = r.name; return; }
+      r.name = v;
+      savePublic();
+    });
+    const hint = Object.assign(document.createElement("div"), { className: "hint", textContent: datedLookText(r, view.today, view) });
+    const dates = Object.assign(document.createElement("div"), { className: "row" });
+    const pick = (key, label) => {
+      const day = document.createElement("select"), month = document.createElement("select");
+      for (let d = 1; d <= 31; d++) day.add(new Option(String(d), String(d).padStart(2, "0")));
+      MONTHS.forEach((m, i) => month.add(new Option(m, String(i + 1).padStart(2, "0"))));
+      day.setAttribute("aria-label", `${label} day`);
+      month.setAttribute("aria-label", `${label} month`);
+      [month.value, day.value] = r[key].split("-");
+      const set = () => {
+        const most = new Date(Date.UTC(2000, Number(month.value), 0)).getUTCDate();
+        if (Number(day.value) > most) day.value = String(most).padStart(2, "0");
+        r[key] = `${month.value}-${day.value}`;
+        savePublic();
+      };
+      day.addEventListener("change", set);
+      month.addEventListener("change", set);
+      return [day, month];
+    };
+    dates.append("From", ...pick("from", "First"), "until", ...pick("to", "Last"));
+    text.append(name, hint, dates);
+    const up = button("↑", () => move(k, k - 1), "ghost small");
+    up.disabled = k === 0;
+    up.setAttribute("aria-label", `Move ${r.name} up`);
+    const down = button("↓", () => move(k, k + 1), "ghost small");
+    down.disabled = k === view.looks.length - 1;
+    down.setAttribute("aria-label", `Move ${r.name} down`);
+    const order = Object.assign(document.createElement("div"), { className: "pub-order" });
+    order.append(up, down);
+    const edit = button(r.id === pubLookFor ? "Changing it below" : "Change this look", () => pickPublicLook(r.id),
+      r.id === pubLookFor ? "small" : "ghost small");
+    edit.disabled = r.id === pubLookFor;
+    const remove = button("Remove", async () => {
+      if (!(await askYes(`Remove ${r.name}? Visitors get your everyday look on those dates instead.`, { yes: "Remove", danger: true }))) return;
+      view.looks.splice(view.looks.indexOf(r), 1);
+      if (pubLookFor === r.id) pickPublicLook("");
+      savePublic();
+    }, "ghost small");
+    const actions = Object.assign(document.createElement("div"), { className: "pub-look-actions" });
+    actions.append(edit, remove);
+    row.append(text, order, actions);
+    return row;
+  }));
+  const sel = $("pub-look-for");
+  sel.replaceChildren(new Option("Everyday look", ""), ...view.looks.map((r) => new Option(r.name, r.id)));
+  sel.value = pubLookFor;
+}
+
+// Point the Look tab, and the preview, at one look.
+function pickPublicLook(id) {
+  // Let go of a box being typed in first: that saves it to the look it belongs to, and a box with focus
+  // keeps its words when redrawn, so it would show the other look's.
+  if ($("pub-look").contains(document.activeElement)) document.activeElement.blur();
+  pubLookFor = id;
+  renderPublicLook();
+  const frame = $("pub-preview-frame");
+  if (frame.src || shownPage === "public") frame.src = `public-preview/${id ? `?look=${encodeURIComponent(id)}` : ""}`;
+}
+
 function renderPublicLook() {
-  const view = publicView, look = view.look;
+  renderPublicLooks();
+  const view = publicView, look = lookFor(view, pubLookFor);
+  const dated = !!pubLookFor;
+  $("pub-look-link").hidden = dated;
+  $("pub-look-for-hint").textContent = dated
+    ? "The title, welcome, picture, colours and snow for these dates. The link at the bottom, and everything on the other tabs, stay as they are every day."
+    : "What visitors see at the top and bottom of the page, and its colours. The preview shows it as you go. Every other word on the page is on the Words tab.";
   const keep = (id, value) => { if (document.activeElement !== $(id)) $(id).value = value; };
   keep("pub-title", look.title);
   keep("pub-welcome", look.welcome);
@@ -5835,21 +5929,25 @@ function renderPublicLook() {
   $("pub-show-length").checked = look.show_length !== false;
   $("pub-covers").checked = look.covers !== false;
   $("pub-warning").value = look.warning || "off";
+  const ownPicture = dated && (view.look_pictures || []).includes(pubLookFor);
+  const hasPicture = view.has_picture || ownPicture;
   for (const r of document.querySelectorAll("input[name=pub-picture]")) {
     r.checked = r.value === look.picture;
     if (r.value === "house") r.disabled = !view.has_house_photo;
-    if (r.value === "upload") r.disabled = !view.has_picture;
+    if (r.value === "upload") r.disabled = !hasPicture;
   }
-  $("pub-picture-hint").textContent = !view.has_house_photo && !view.has_picture
+  $("pub-picture-hint").textContent = !view.has_house_photo && !hasPicture
     ? "Add a photo under Setup → House, or choose a picture of your own."
-    : !view.has_house_photo ? "There's no house photo yet (Setup → House)." : "";
-  const src = look.picture === "house" ? "api/house/photo" : look.picture === "upload" ? "api/public/picture" : "";
+    : !view.has_house_photo ? "There's no house photo yet (Setup → House)."
+      : dated && look.picture === "upload" && !ownPicture ? "This look shows your everyday picture until you choose one for it." : "";
+  const src = look.picture === "house" ? "api/house/photo"
+    : look.picture === "upload" ? `api/public/picture${ownPicture ? `?look=${encodeURIComponent(pubLookFor)}` : ""}` : "";
   const preview = $("pub-picture-preview");
   // Reload when the picture itself changes (a new upload, or a new house photo), not only its kind.
-  const key = `${src}#${view.picture_v || 0}`;
+  const key = `${src}#${view.picture_v || 0}#${pubPictureBump}`;
   if (src && preview.dataset.src !== key) {
     preview.dataset.src = key;
-    preview.src = `${src}?v=${view.picture_v || Date.now()}`;
+    preview.src = `${src}${src.includes("?") ? "&" : "?"}v=${view.picture_v || 0}-${pubPictureBump}`;
   }
   preview.hidden = !src;
   $("pub-open-page").href = visitorLink(view, location.hostname);
@@ -6238,10 +6336,11 @@ function savePublic() {
     if (hours.start !== hours.end) publicView.hours = hours;
     else status("Opening and closing can't be the same time. Pick a different time for one of them.", "hint");
     const picked = document.querySelector("input[name=pub-picture]:checked");
-    publicView.look = {
+    const shown = lookFor(publicView, pubLookFor);
+    const form = {
       ...publicView.look,
       title: $("pub-title").value, welcome: $("pub-welcome").value, theme: $("pub-theme").value,
-      mode: $("pub-mode").value, snow: $("pub-snow").checked, picture: picked ? picked.value : publicView.look.picture,
+      mode: $("pub-mode").value, snow: $("pub-snow").checked, picture: picked ? picked.value : shown.picture,
       link: $("pub-link-url").value.trim(), link_text: $("pub-link-text").value,
       sign_text: $("pub-sign-text").value,
       spacing: $("pub-spacing").value, corners: $("pub-corners").value, size: $("pub-size").value,
@@ -6252,6 +6351,12 @@ function savePublic() {
       colours: Object.fromEntries([...document.querySelectorAll("#pub-colours input[data-colour]")]
         .map((i) => [i.dataset.colour, i.value])),
     };
+    // A dated look takes only what it can change; the rest (the link, say) stays on your everyday look.
+    const row = pubLookFor && publicView.looks.find((r) => r.id === pubLookFor);
+    if (row) {
+      row.look = Object.fromEntries(DATED_KEYS.map((k) => [k, form[k]]));
+      publicView.look = { ...form, ...Object.fromEntries(DATED_KEYS.map((k) => [k, publicView.look[k]])) };
+    } else publicView.look = form;
   }
   if (shownPage === "public" && $("pub-word-list").children.length) publicView.words = publicWords();
   if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);
@@ -6272,11 +6377,11 @@ function savePublic() {
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin,
+    const { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
       repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for } = publicView;
     try {
       const view = await api("api/public", {
-        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, hours, words, listen, listen_pin, admin_pin,
+        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
           repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for },
       });
       if (pubPending === 1) {
@@ -6312,7 +6417,20 @@ function wirePublic() {
   }
   $("pub-hours-card").addEventListener("change", () => savePublic());
   $("pub-admin-pin").addEventListener("change", () => savePublic());
-  $("pub-look").addEventListener("change", (e) => { if (e.target.id !== "pub-picture-file") savePublic(); });
+  $("pub-look").addEventListener("change", (e) => {
+    if (e.target.id === "pub-look-for") pickPublicLook(e.target.value);
+    else if (e.target.id !== "pub-picture-file") savePublic();
+  });
+  $("pub-looks-add").addEventListener("click", async () => {
+    const name = await askText("Add a dated look", { label: "Name", yes: "Add", max: 40,
+      hint: "Such as Halloween or Christmas. It starts as a copy of your everyday look, from today for a month." });
+    if (!name?.trim()) return;
+    await pubSaving;
+    const row = newDatedLook(publicView, name.trim().replace(/\s+/g, " "), publicView.today);
+    (publicView.looks ||= []).push(row);
+    await savePublic();
+    pickPublicLook(publicView.looks.some((r) => r.id === row.id) ? row.id : "");
+  });
   $("pub-showing").addEventListener("change", () => savePublic());
   $("pub-word-list").addEventListener("change", () => savePublic());
   $("pub-words-reset").addEventListener("click", async () => {
@@ -6344,8 +6462,10 @@ function wirePublic() {
     try {
       await pubSaving;
       status("Uploading the picture…");
-      const view = await api("api/public/picture", { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      const where = pubLookFor ? `?look=${encodeURIComponent(pubLookFor)}` : "";
+      const view = await api(`api/public/picture${where}`, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
       publicView = { ...view, items: publicView.items };
+      pubPictureBump++;
       renderPublicItems();
       refreshPreview();
       status("Public page picture saved", "saved", "public");

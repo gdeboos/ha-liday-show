@@ -1454,3 +1454,10 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
    and scrolling to the end of a window doesn't carry on into the page. */
 html:has(dialog:modal), html:has(.app-loading:not([hidden])) { overflow: hidden; scrollbar-gutter: stable; }
 dialog { overscroll-behavior: contain; }
+/* Look tab → Through the year: dated looks, in the order they win. */
+.pub-looks { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.pub-looks .pub-item-text input[type=text] { font-weight: 600; width: min(100%, 280px); }
+.pub-looks .pub-item.on { border-color: var(--accent); }
+.pub-look-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.pub-look-for { margin-bottom: 4px; }
+.pub-look-for select { width: auto; min-width: 200px; }

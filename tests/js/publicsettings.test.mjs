@@ -61,3 +61,28 @@ test("Tonight lists picks, phones listening and the most picked", async () => {
   assert.deepEqual(tonightRows({ picks: 0, top: [], listening: 0 }), [["Picks", "None yet"], ["Listening on phones now", "0"]]);
   assert.deepEqual(tonightRows({ picks: 3, top: [{ name: "Party", count: 2 }], listening: 1 })[2], ["Most picked", "Party (2)"]);
 });
+
+test("dated looks: a copy of the everyday look, the first that takes in today wins", async () => {
+  const { newDatedLook, datedLookOn, lookFor, todayLookText, datedLookText } =
+    await import("../../haliday_show/app/halidayshow/static/js/publicsettings.js");
+  const view = { look: { title: "Lights", welcome: "", picture: "house", theme: "plain", mode: "auto",
+    colours: { bg: "#000000" }, snow: false, spacing: "normal", corners: "soft", size: "normal", borders: true,
+    link: "https://x" }, looks: [] };
+  const row = newDatedLook(view, "Halloween!", "2026-10-01");
+  assert.deepEqual([row.id, row.from, row.to], ["halloween", "10-01", "10-31"]);
+  assert.equal(row.look.link, undefined);
+  row.look.colours.bg = "#ff8800";
+  assert.equal(view.look.colours.bg, "#000000");
+  view.looks.push(row);
+  view.looks.push({ ...newDatedLook(view, "Halloween", "2026-12-20"), from: "10-20", to: "01-05" });
+  assert.equal(view.looks[1].id, "halloween-2");
+  assert.equal(datedLookOn(view, "2026-10-25").id, "halloween");
+  assert.equal(datedLookOn(view, "2027-01-02").id, "halloween-2");
+  assert.equal(datedLookOn(view, "2026-06-01"), null);
+  assert.equal(lookFor(view, "halloween").colours.bg, "#ff8800");
+  assert.equal(lookFor(view, "halloween").link, "https://x");
+  assert.equal(lookFor(view, ""), view.look);
+  assert.equal(todayLookText(view, "2026-06-01"), "Today visitors see your everyday look.");
+  assert.equal(todayLookText(view, "2026-10-25"), "Today visitors see Halloween!.");
+  assert.match(datedLookText(view.looks[1], "2026-10-25", view), /Halloween! is higher in the list/);
+});

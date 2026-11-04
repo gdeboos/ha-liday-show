@@ -92,3 +92,44 @@ export function tonightRows(t) {
   if (t.top?.length) rows.push(["Most picked", t.top.map((x) => `${x.name} (${x.count})`).join(", ")]);
   return rows;
 }
+
+// Dated looks (Look tab → Through the year). What a dated look can change; the rest stays everyday.
+export const DATED_KEYS = ["title", "welcome", "picture", "theme", "mode", "colours", "snow", "spacing", "corners",
+  "size", "borders"];
+
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "look";
+
+// A new dated look: a copy of your everyday look, from today for a month.
+export function newDatedLook(view, name, todayIso) {
+  const ids = new Set((view.looks || []).map((r) => r.id));
+  let id = slug(name);
+  for (let n = 2; ids.has(id); n++) id = `${slug(name)}-${n}`;
+  const start = new Date(`${todayIso.slice(0, 10)}T00:00:00Z`);
+  const end = new Date(start.getTime() + 30 * 86400000);
+  const md2 = (d) => `${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  const look = Object.fromEntries(DATED_KEYS.map((k) => [k, structuredClone(view.look[k])]));
+  return { id, name, from: md2(start), to: md2(end), look };
+}
+
+// The look visitors get on a day: the first dated look whose dates take it in, or null for the everyday one.
+export function datedLookOn(view, todayIso) {
+  return (view.looks || []).find((r) => inDates(r, todayIso)) || null;
+}
+
+// The look the Look tab edits: your everyday look, or a dated look laid over it.
+export function lookFor(view, id) {
+  const row = id && (view.looks || []).find((r) => r.id === id);
+  return row ? { ...view.look, ...row.look } : view.look;
+}
+
+export function datedLookText(row, todayIso, view) {
+  const on = datedLookOn(view, todayIso);
+  const covered = on && on.id !== row.id && inDates(row, todayIso);
+  return `${md(row.from)} to ${md(row.to)} every year${on?.id === row.id ? " · on now"
+    : covered ? ` · ${on.name} is higher in the list, so that one shows` : ""}`;
+}
+
+export function todayLookText(view, todayIso) {
+  const on = datedLookOn(view, todayIso);
+  return on ? `Today visitors see ${on.name}.` : "Today visitors see your everyday look.";
+}

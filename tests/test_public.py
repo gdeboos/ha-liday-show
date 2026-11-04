@@ -134,7 +134,7 @@ def test_settings_are_cleaned():
                                                 {"kind": "show", "id": "c", "from": "02-30", "to": "03-01"}],
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
-        "look": public.clean_look(None), "hours": public.DEFAULT_HOURS, "words": {},
+        "look": public.clean_look(None), "looks": [], "hours": public.DEFAULT_HOURS, "words": {},
         "listen": False, "listen_pin": "", "admin_pin": "", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
@@ -1203,3 +1203,64 @@ async def test_your_admin_phone_can_queue_a_coming_soon_show(client):
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers=me)
     assert st["soon"][0]["taken"] == "queued"
     await runner.stop()
+
+
+def test_dated_looks_are_cleaned_and_the_first_that_takes_in_today_wins():
+    from datetime import date
+    rows = public.clean_looks([
+        {"name": "  Halloween ", "from": "10-01", "to": "11-02", "look": {"theme": "halloween", "link": "https://x.org"}},
+        {"name": "Halloween", "from": "10-25", "to": "01-06", "look": {"theme": "frosty", "snow": True}},
+        {"name": "No dates", "from": "", "to": ""},
+        {"name": "", "from": "01-01", "to": "01-02"},
+        {"name": "Bad", "from": "13-01", "to": "01-02"},
+        "junk",
+    ])
+    assert [(r["id"], r["name"]) for r in rows] == [("halloween", "Halloween"), ("halloween-2", "Halloween")]
+    assert set(rows[0]["look"]) == set(public.DATED_KEYS) and "link" not in rows[0]["look"]
+    p = public.clean({"look": {"title": "Everyday", "link": "https://give.org"}, "looks": rows})
+    assert public.look_now(p, date(2026, 10, 28))["theme"] == "halloween"  # higher in the list wins
+    assert public.look_now(p, date(2027, 1, 3))["row"] == "halloween-2"
+    assert public.look_now(p, date(2027, 1, 3))["link"] == "https://give.org"  # the link stays everyday
+    assert public.look_now(p, date(2026, 6, 1)) == {**p["look"], "row": ""}
+    assert public.look_now(p, date(2026, 6, 1), force="halloween-2")["snow"] is True
+    assert public.clean(None)["looks"] == []
+
+
+async def test_a_dated_look_has_its_own_picture_and_visitors_get_it_on_its_dates(client, monkeypatch):
+    st = client.app[server.STORAGE]
+    looks = [{"id": "spooky", "name": "Spooky", "from": "10-01", "to": "10-31",
+              "look": {"title": "Boo", "theme": "halloween", "picture": "upload"}}]
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}],
+                                          "look": {"title": "Everyday", "picture": "upload"}, "looks": looks})
+    await client.put("/api/public/picture", data=b"\x89PNGeveryday", headers={"Content-Type": "image/png"})
+    # Before it has a picture of its own, a dated look shows your everyday one.
+    assert public.picture_path(st, public.look_now(public.load(st), force="spooky")) == st.public_picture()
+    assert (await client.put("/api/public/picture?look=nope", data=b"\x89PNGx",
+                             headers={"Content-Type": "image/png"})).status == 404
+    resp = await client.put("/api/public/picture?look=spooky", data=PHOTO, headers={"Content-Type": "image/jpeg"})
+    view = await resp.json()
+    assert view["look_pictures"] == ["spooky"] and view["looks"][0]["look"]["picture"] == "upload"
+    assert (await (await client.get("/api/public/picture?look=spooky")).read()) == PHOTO
+    assert (await (await client.get("/api/public/picture")).read()) == b"\x89PNGeveryday"
+    # The editor's preview can show either look, whatever the date.
+    spooky = await (await client.get("/public-preview/api/state?look=spooky")).json()
+    assert spooky["look"]["title"] == "Boo" and spooky["look"]["theme"] == "halloween"
+    assert (await client.get("/public-preview/picture?look=spooky")).status == 200
+    assert (await client.get("/public-preview/picture")).status == 404  # the everyday one can't be read
+
+    class October(public.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 10, 15, 19, 0)
+
+    class OctoberDay(public.date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 10, 15)
+    monkeypatch.setattr(public, "datetime", October)
+    monkeypatch.setattr(public, "date", OctoberDay)
+    _, state, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert state["look"]["title"] == "Boo"
+    # Removing a dated look tidies its picture away.
+    await client.put("/api/public", json={"looks": []})
+    assert st.public_picture("spooky") is None and st.public_picture() is not None

@@ -213,6 +213,10 @@ export function codeFrom(search, kept) {
   return c && /^[A-Za-z0-9]{6,16}$/.test(c) ? c : kept || "";
 }
 
+// The editor's preview asks for one dated look (?look=…); the page on the public port ignores it.
+const LOOK = typeof location === "undefined" ? "" : new URLSearchParams(location.search).get("look") || "";
+const lookParam = LOOK ? `&look=${encodeURIComponent(LOOK)}` : "";
+
 function code() {
   let kept = null;
   try { kept = localStorage.getItem(CODE_KEY); } catch { /* private browsing */ }
@@ -626,7 +630,7 @@ export function start() {
     $("pp-welcome").textContent = look.welcome || "";
     $("pp-welcome").hidden = !look.welcome;
     if (look.picture && look.picture !== pictureShown) {
-      $("pp-picture").src = `picture?code=${encodeURIComponent(key)}&v=${look.picture}`;
+      $("pp-picture").src = `picture?code=${encodeURIComponent(key)}&v=${look.picture}${lookParam}`;
     }
     pictureShown = look.picture || 0;
     $("pp-picture").hidden = !look.picture;
@@ -1002,7 +1006,7 @@ export function start() {
 
   async function refresh() {
     try {
-      const res = await fetch(`api/state?ticket=${encodeURIComponent(me)}&code=${encodeURIComponent(key)}`,
+      const res = await fetch(`api/state?ticket=${encodeURIComponent(me)}&code=${encodeURIComponent(key)}${lookParam}`,
         { cache: "no-store", headers: adminHeaders() });
       if (!res.ok) throw new Error();
       gotAt = Date.now();

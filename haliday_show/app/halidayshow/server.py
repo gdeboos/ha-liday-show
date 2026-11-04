@@ -2246,6 +2246,10 @@ def _public_view(app) -> dict:
             "has_picture": app[STORAGE].public_picture() is not None,
             # Changes whenever the picture does, so the editor's thumbnail reloads after a new one.
             "picture_v": public.picture_version(app[STORAGE], (public.load(app[STORAGE]) or public.clean(None))["look"]),
+            # The dated looks with a picture of their own.
+            "look_pictures": sorted(app[STORAGE].public_picture_rows()),
+            # Which look visitors get today ("" for the everyday one).
+            "look_today": public.look_now(public.load(app[STORAGE]) or public.clean(None))["row"],
             # Every word visitors read, grouped, with the wording each starts with, for the Words tab.
             "word_groups": public.WORD_GROUPS,
             "now": runner.public_now["name"] if runner.public_now else None,
@@ -2277,6 +2281,8 @@ async def put_public(request):
         merged.pop("items")
     settings["public"] = {**public.clean(merged), "code": stored["code"]}
     storage.save_settings(settings)
+    for gone in storage.public_picture_rows() - {r["id"] for r in settings["public"]["looks"]}:
+        storage.delete_public_picture(gone)
     await request.app[PUBLIC].apply()
     return web.json_response(_public_view(request.app))
 
@@ -2294,17 +2300,33 @@ async def put_public_picture(request):
     if not data:
         raise web.HTTPBadRequest(text="no picture")
     storage = request.app[STORAGE]
-    storage.save_public_picture(bytes(data), ext)
-    settings = storage.load_settings()
     p = public.load(storage) or public.clean(None)
-    settings["public"] = {**p, "look": {**p["look"], "picture": "upload"}}
+    row = _dated_look(request, p)
+    storage.save_public_picture(bytes(data), ext, row)
+    settings = storage.load_settings()
+    if row:
+        settings["public"] = {**p, "looks": [{**r, "look": {**r["look"], "picture": "upload"}} if r["id"] == row else r
+                                             for r in p["looks"]]}
+    else:
+        settings["public"] = {**p, "look": {**p["look"], "picture": "upload"}}
     storage.save_settings(settings)
     await request.app[PUBLIC].apply()
     return web.json_response(_public_view(request.app))
 
 
+def _dated_look(request, p: dict) -> str | None:
+    """The dated look a request names (?look=…), or None for the everyday look."""
+    row = request.query.get("look") or ""
+    if not row:
+        return None
+    if not any(r["id"] == row for r in p["looks"]):
+        raise web.HTTPNotFound(text="no such dated look; save it first")
+    return row
+
+
 async def get_public_picture(request):
-    p = request.app[STORAGE].public_picture()
+    st = request.app[STORAGE]
+    p = st.public_picture(_dated_look(request, public.load(st) or public.clean(None)))
     if p is None:
         raise web.HTTPNotFound()
     return web.FileResponse(p, headers={"Cache-Control": "no-cache"})
@@ -2320,7 +2342,8 @@ async def public_preview_page(request):
 async def public_preview_state(request):
     st = request.app[STORAGE]
     p = public.load(st) or public.clean(None)
-    view = public.state(st, request.app[RUNNER], None, p["code"], where=request.app[SCHEDULER].where()[0])
+    view = public.state(st, request.app[RUNNER], None, p["code"], where=request.app[SCHEDULER].where()[0],
+                        look_id=request.query.get("look") or None)
     return web.json_response({**view, "preview": True},
                              headers={"Cache-Control": "no-store"})
 
@@ -2328,7 +2351,7 @@ async def public_preview_state(request):
 async def public_preview_picture(request):
     # The copy visitors get, so a picture they won't see doesn't show in the preview either.
     st = request.app[STORAGE]
-    path = public.picture_path(st, (public.load(st) or public.clean(None))["look"])
+    path = public.picture_path(st, public.look_now(public.load(st) or public.clean(None), force=request.query.get("look") or None))
     try:
         data = public.stripped_picture(path) if path is not None else None
     except OSError:
