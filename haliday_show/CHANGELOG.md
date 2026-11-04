@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.341
+
+- **HA-liday Show opens quicker.** It no longer waits for every picture in your Library before showing the app: pictures load in the background, and anything that needs one (making a show with a Picture effect ready) waits for them by itself.
+- **The loading box says what it's doing**: **Loading your lights…**, **Loading the public page…**, **Loading your shows…**, then **Opening your song…** (or show, scene or playlist) if you had one open, so it's easy to see if one step is slow.
+
 ## 0.2.340
 
 - **Clearer names on Public page → Limits.** **Before a show can be picked again** is now **Same song again after**, and **Before a phone can pick again** is now **Same phone again after**, each with a plainer explanation underneath. They work as before.
