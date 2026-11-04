@@ -135,6 +135,7 @@ A dashed card then says your phone is in admin mode, and **Close** tucks it away
 - **Nearby only** and the opening hours don't apply: **▶ Start** shows wherever you are, at any time.
 - The listening PIN isn't asked for.
 - The limit per phone and **Queue length** don't apply (up to 20 waiting, as a ceiling).
+- The cool-down after a show plays doesn't apply, so you can queue it again straight away.
 - You still can't queue a show that's already waiting or playing now.
 
 While a show is on, your admin phone also gets, under what's on:
@@ -313,7 +314,7 @@ Keeping it fair, on the **Limits** page:
   asked to try again in a few minutes.
 - **Before a show can be picked again** (15 minutes to start with): once a visitor's pick has played,
   nobody can pick it again for this long, so the same song isn't on a loop. Its button says
-  **Again in 12 minutes** (say) until then. This applies to your admin phone too. 0 turns it off.
+  **Again in 12 minutes** (say) until then. Your admin phone isn't held to it. 0 turns it off.
 - **Before a phone can pick again** (5 minutes to start with): once a phone's own pick has played, that
   phone waits this long before picking another, so one person can't keep the lights to themselves on a
   quiet night. Your admin phone doesn't wait. 0 turns it off.

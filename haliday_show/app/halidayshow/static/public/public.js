@@ -558,7 +558,7 @@ export function start() {
     if ($("pp-admin").hidden) return;
     $("pp-admin-pin").hidden = on;
     $("pp-admin-out").hidden = !on;
-    if (on) $("pp-admin-text").textContent = "🔓 Admin: this phone skips Nearby, the opening hours, the listening PIN and the limits (but not repeats).";
+    if (on) $("pp-admin-text").textContent = "🔓 Admin: this phone skips Nearby, the opening hours, the listening PIN, the limits and cool-downs.";
     else if (!$("pp-admin-text").dataset.said) $("pp-admin-text").textContent = "";
     $("pp-admin-text").hidden = !$("pp-admin-text").textContent;
   }

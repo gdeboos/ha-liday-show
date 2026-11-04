@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.339
+
+- **Your admin phone skips the cool-down.** A show that's resting after it played (**Again in 12 minutes**) now shows **+ Queue** on your phone unlocked with the admin PIN, so you can play it again straight away. You still can't queue a show that's already waiting or playing.
+
 ## 0.2.338
 
 - **Late at night, for the neighbours.** Under **Setup → Speakers → Late at night**, pick a time (say 9pm) until the morning when the speaker either **plays quieter** at a volume you set, or **stays silent** (the lights still play, and visitors can listen on their phones). The volume goes back to how it was for the first show after. It applies to everything on a speaker, not only visitors' picks.
