@@ -727,6 +727,8 @@ export function start() {
     btn.textContent = say_(w, playing ? "listening_short" : "listen_short");
     btn.setAttribute("aria-pressed", String(playing));
     btn.setAttribute("aria-label", say_(w, playing ? "listen_stop" : "listen").replace(/^[^\p{L}\p{N}]+/u, ""));
+    // Says it's only this phone's sound: Stop on its own looked like it would stop the show.
+    btn.title = say_(w, playing ? "listen_stop" : "listen_hint").replace(/^[^\p{L}\p{N}]+/u, "");
     const panel = $("pp-listen");
     panel.hidden = !(me.on || me.state === "pin" || me.message);
     if (panel.hidden) return;

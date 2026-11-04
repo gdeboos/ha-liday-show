@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.346
+
+- On the public page, the button for stopping the music on a visitor's phone now says **🔇 Phone sound off** (and the long one **Turn the music off on this phone (the lights carry on)**), instead of just **Stop**, which looked as if it would stop the show. If you've changed these words under **Public page → Words**, yours stay.
+
 ## 0.2.345
 
 - While a window is open (the effect chooser, Add a song, Show settings and the rest), the page behind it no longer scrolls. Scrolling to the end of a window stops there too.

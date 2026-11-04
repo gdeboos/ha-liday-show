@@ -91,9 +91,9 @@
       "words": [
         {"key": "listen", "label": "Listen button", "text": "🎧 Listen on your phone"},
         {"key": "listen_hint", "label": "Under the button", "text": "Hear the music on your phone, in time with the lights."},
-        {"key": "listen_stop", "label": "Stop button", "text": "■ Stop listening"},
+        {"key": "listen_stop", "label": "Stop button", "text": "🔇 Turn the music off on this phone (the lights carry on)"},
         {"key": "listen_short", "label": "Small Listen button at the top", "text": "🎧 Listen"},
-        {"key": "listening_short", "label": "Small button while listening (press to stop)", "text": "■ Stop"},
+        {"key": "listening_short", "label": "Small button while listening (press to turn the phone's sound off)", "text": "🔇 Phone sound off"},
         {"key": "out_of_time", "label": "Link to Music ahead / behind", "text": "Music out of time?"},
         {"key": "on_phone", "label": "On a show with no speaker (Start also starts listening)", "text": "🎧 Music on your phone"},
         {"key": "listen_on", "label": "While listening", "text": "🎧 Listening: {name}"},
