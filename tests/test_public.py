@@ -1287,3 +1287,18 @@ async def test_coming_soon_shows_carry_their_cover(client):
     if not st["soon"]:
         return  # by chance it's the 29th of February
     assert "cover" in st["soon"][0] and "colours" in st["soon"][0]
+
+
+async def test_each_show_carries_its_colours_as_dots(client):
+    st = client.app[server.STORAGE]
+    show = st.load_show("party")
+    st.save_show("party", {**show, "palette": {"colors": ["#E53935", "#fdd835", "#43a047", "#1e88e5", "#8e24aa",
+                                                          "#ffffff", "#000000", "nope"]}})
+    st.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * 400))
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}, {"kind": "show", "id": "quiet"}],
+                                          "look": {"covers": False}})
+    public._CHOICES.clear()
+    _, state, _ = await _visitor(client, "/api/state")
+    dots = {c["id"]: c["dots"] for c in state["choices"]}
+    assert dots["party"] == ["#e53935", "#fdd835", "#43a047", "#1e88e5", "#8e24aa", "#ffffff"]  # six at most, even with covers off
+    assert dots["quiet"] == []  # no palette: no dots

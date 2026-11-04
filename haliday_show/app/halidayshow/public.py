@@ -442,11 +442,14 @@ def _cover_file(storage: Storage, show_ids: list[str]) -> Path | None:
     return None
 
 
-def _tile_colours(show: dict | None) -> list[str]:
+MAX_DOTS = 6  # colour dots beside a show's name on the visitors' page: the colours it plays on the house
+
+
+def _tile_colours(show: dict | None, most: int = 4) -> list[str]:
     """A show's palette colours, for the tile visitors see when it has no picture or cover art."""
     pal = (show or {}).get("palette")
     cols = pal.get("colors") if isinstance(pal, dict) else None
-    return [c.lower() for c in cols if isinstance(c, str) and _HEX.match(c)][:4] if isinstance(cols, list) else []
+    return [c.lower() for c in cols if isinstance(c, str) and _HEX.match(c)][:most] if isinstance(cols, list) else []
 
 
 _COVER_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
@@ -483,6 +486,7 @@ def _choices(storage: Storage, today: date) -> list[dict]:
                 continue
             pick = {"kind": "show", "id": it["id"], "name": show.get("name") or it["id"], "shows": [it["id"]]}
             pick["colours"] = _tile_colours(show)
+            pick["dots"] = _tile_colours(show, MAX_DOTS)
         else:
             pl = by_id.get(it["id"])
             shows = [s for s in pl["shows"] if _offered(storage, s)] if pl else []
@@ -490,6 +494,7 @@ def _choices(storage: Storage, today: date) -> list[dict]:
                 continue
             pick = {"kind": "playlist", "id": it["id"], "name": pl["name"], "shows": shows, "gap": pl["gap"]}
             pick["colours"] = _tile_colours(storage.load_show(shows[0]))
+            pick["dots"] = _tile_colours(storage.load_show(shows[0]), MAX_DOTS)
         pick["group"] = group  # the heading it's under ("" before any)
         # Whether its music plays on a speaker (its first show's own, or your default show speaker). With
         # none, a visitor's press on it also starts listening on their phone.
@@ -640,6 +645,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "choices": [{"kind": c["kind"], "id": c["id"], "name": c["name"], "group": c["group"],
                      "cover": c["cover"] if look["covers"] else 0,
                      "colours": c["colours"] if look["covers"] else [],
+                     "dots": c.get("dots", []),
                      "minutes": max(1, round(runner.request_seconds(c) / 60)),
                      "speaker": c.get("speaker", True),
                      # Your admin phone isn't held to the cool-down, only to what's waiting or playing.
@@ -649,6 +655,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"],
                          "cover": c["cover"] if look["covers"] else 0, "colours": c["colours"] if look["covers"] else [],
+                         "dots": c.get("dots", []),
                          # Your admin phone can queue these early, to try them out.
                          **({"taken": taken(runner, c["kind"], c["id"])} if admin else {})}
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
