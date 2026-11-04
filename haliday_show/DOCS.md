@@ -668,6 +668,17 @@ The Show panel shows the open show's name beside **← All shows**; to switch to
 to the list. **⚙ Show settings…** opens the show's settings: its **Name**, **In progress** (see [Shows](#shows)), its **Palette** (below), its **Picture** (see [Songs](#songs)), its **Show speaker**
 (below), **Brightness** (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
 
+#### A song's colours
+
+A song can have its own palette, picked from its cover art when you add it, from **Colours from this
+song…** in its **⋯** menu under **Library → Songs**, or from **Colours…** in the Music editor's **Beats
+and sections** panel. The palette you pick is kept with the song and added to your palettes (named after
+the song), so you can edit or rename it under **Library → Palettes**. Picking again for the same song
+changes that palette rather than adding another. When a **New show** picks the song, its palette is
+picked for you in the colours step, marked **This song's colours**, unless you've already chosen
+colours yourself in that window. Changing the song of a show you've already made doesn't change its
+colours.
+
 #### The show's palette
 
 Each show can have its own palette, picked in the **New show** window and changed in **⚙ Show
@@ -791,6 +802,10 @@ Library list (see [Folders](#folders)). A song's edits and drafts go with it.
    - **Add it as it is**: leaves it for later (**Detect** in the Music editor).
 
    Detected songs are ready to use: a show that picks one gets its beats and parts straight away.
+
+If the song has cover art, a **Colours from this song** window follows: a palette made from the cover's
+main colours, made bright for lights (black, greys and whites are left out, as they look like "off" or
+dull on lights). Press **Use these** to keep it, or **Skip**. See [A song's colours](#a-songs-colours).
 
 The same window opens from **+ Add a song…** in the **New show** window and in a show's **Choose a
 song** window, and the song comes back picked.

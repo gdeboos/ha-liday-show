@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.358
+
+- **Colours from a song.** When you add a song with cover art, a small window offers a colour palette made from the cover: its main colours, made bright and vivid for lights, without black, greys or whites. Press **Use these** or **Skip**.
+- The palette you pick is kept with the song and added to **Library → Palettes**, named after the song. Edit it there like any of your palettes.
+- **+ New show** with that song picks its palette for you in the colours step (marked "This song's colours"). Change it there or later in **Show settings**. If you've already picked colours yourself, they're left alone.
+- For songs you already have: **Colours from this song…** in a song's **⋯** menu, or **Colours…** in the Music editor's **Beats and sections** panel.
+
 ## 0.2.357
 
 - **Moving the join between two effects moves both.** Where one effect ends exactly as the next starts, drag the line between them and the first gets longer as the second gets shorter (or the other way), so no gap or overlap opens up. The pointer shows a double arrow there. Hold **Ctrl** while dragging to move just one effect's edge, as before.

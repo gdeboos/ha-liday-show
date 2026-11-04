@@ -1870,3 +1870,25 @@ async def test_late_speaker_is_saved_through_the_api(client):
     assert resp.status == 200 and (await resp.json())["mode"] == "off"
     got = await (await client.get("/api/speakers/late")).json()
     assert got == {"from": "21:30", "until": "06:00", "mode": "off", "volume": 40}
+
+
+async def test_a_songs_palette_is_kept_through_detect_and_cleared_on_request(client, tmp_path):
+    (tmp_path / "media" / "carol.mp3").write_bytes(b"id3")
+    q = {"source": "media", "path": "carol.mp3"}
+    assert await (await client.get("/api/audio/palette", params=q)).json() is None
+    pal = {"name": "  Carol  of the bells ", "colors": ["#FF0000", "#00aa44"], "from": "cover"}
+    assert (await client.put("/api/audio/palette", params=q, json=pal)).status == 200
+    want = {"name": "Carol of the bells", "colors": ["#ff0000", "#00aa44"], "from": "cover"}
+    assert await (await client.get("/api/audio/palette", params=q)).json() == want
+    # No palette yet doesn't look like Detect has run; a later Detect keeps it.
+    assert await (await client.get("/api/audio/info", params=q)).json() is None
+    info = {"tempo": 100, "beats": [], "bars": [], "sections": []}
+    assert (await client.put("/api/audio/info", params=q, json=info)).status == 200
+    assert await (await client.get("/api/audio/palette", params=q)).json() == want
+    assert (await (await client.get("/api/audio/info", params=q)).json())["tempo"] == 100
+    for bad in ({"name": "x", "colors": [], "from": "cover"}, {"name": "x", "colors": ["red"], "from": "cover"},
+                {"name": "", "colors": ["#ffffff"], "from": "ai"}, {"name": "x", "colors": ["#ffffff"], "from": "me"}, [1]):
+        assert (await client.put("/api/audio/palette", params=q, json=bad)).status == 400
+    assert (await client.put("/api/audio/palette", params=q, data="null", headers={"Content-Type": "application/json"})).status == 200
+    assert await (await client.get("/api/audio/palette", params=q)).json() is None
+    assert (await client.put("/api/audio/palette", params={"source": "media", "path": "../x.mp3"}, json=pal)).status == 404

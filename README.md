@@ -187,6 +187,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   fill to a level, and xLights' morph and VU meter, which follows the song's loudness) with live, segment-level previews, built-in presets for each, and your own
   presets saved from any clip
 - A palette for each show and scene: new effects take its colours and the effect chooser previews in them
+- A palette from each song's cover art, offered when you add it and picked for you when a new show uses that song
 - Transitions on any clip (fade, wipe, from the middle or dissolve, in and out), with crossfades
   between clips back to back
 - Glitter on any clip: sparkles in the colour you choose over its effect

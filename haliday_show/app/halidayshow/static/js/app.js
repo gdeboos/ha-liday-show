@@ -4,6 +4,7 @@ import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, pl
 import { analyseInWorker, toMono } from "./analysis.js";
 import { keepLevels, levelCurve, levelsFit } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
+import { coverPalette, songPaletteName, songPaletteNow } from "./coverpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
 import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
 import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
@@ -244,7 +245,7 @@ volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
   opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia,
-  draftsChanged: () => draftsChanged() });
+  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
 // Show settings → Brightness ------------------------------------------------
@@ -7965,7 +7966,10 @@ function songRow(r) {
     dup.title = "A copy of the song file beside it, to cut a different way";
     actions.append(ren, dup);
   }
-  actions.append(splitButton(r));
+  const colours = button("Colours from this song…", () => offerSongColours(r.ref), "ghost");
+  colours.setAttribute("aria-label", `Colours from ${r.name}`);
+  colours.title = "A colour palette from the song's cover art, kept with the song and in your palettes";
+  actions.append(colours, splitButton(r));
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   if (!r.own) {
@@ -8101,7 +8105,87 @@ async function asSubmit(e) {
   renderSongsPage();
   if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
   else status(addedMessage(name, info, { ai: withAI && info?.sections.length > 0 }), "saved", "songs");
+  // Then colours from its cover, to pick or skip (only when there's something to offer).
+  await offerSongColours(ref, { justAdded: true }).catch(() => {});
   addSong.onAdded?.([...$("audio-select").options].find((o) => o.value && JSON.parse(o.value).path === ref.path)?.value || "");
+}
+
+// Colours from a song ----------------------------------------------------------------------------
+// A palette from the song's cover art, picked in a small window after the song is added (or from
+// its ⋯ menu, or the Music editor). The pick goes into your palettes, named after the song, and is
+// kept with the song (coverpalette.js), so New show picks it for a show of that song.
+const songPaletteUrl = (ref) => `api/audio/palette?${new URLSearchParams({ source: ref.source, path: ref.path })}`;
+
+async function songPalette(ref) {
+  try { return ref ? songPaletteNow(await api(songPaletteUrl(ref)), allPalettes()) : null; } catch { return null; }
+}
+
+// The cover's colours, or null without a cover (or one with no colour to speak of).
+async function coverColours(ref) {
+  const img = new Image();
+  img.src = `api/audio/cover?${new URLSearchParams({ source: ref.source, path: ref.path, v: String(Date.now()) })}`;
+  try { await img.decode(); } catch { return null; }
+  const size = 64, canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, size, size);
+  return coverPalette(ctx.getImageData(0, 0, size, size).data);
+}
+
+async function keepSongPalette(ref, colors, from) {
+  const current = await api(songPaletteUrl(ref)).catch(() => null);
+  // Picking again for the same song changes its palette rather than adding another.
+  let mine = current && app.palettes.find((p) => p.name === current.name);
+  if (mine) mine.colors = [...colors];
+  else {
+    mine = { name: songPaletteName(songLabel(ref), allPalettes().map((p) => p.name)), colors: [...colors] };
+    app.palettes.push(mine);
+  }
+  savePalettes();
+  renderPalettes();
+  await api(songPaletteUrl(ref), { method: "PUT", json: { name: mine.name, colors: mine.colors, from } });
+  status(`Kept ${mine.name}'s colours with the song and in your palettes`, "saved", "songs");
+}
+
+// justAdded: straight after adding the song, where it says nothing if there's nothing to offer.
+async function offerSongColours(ref, { justAdded = false } = {}) {
+  const [current, cover] = await Promise.all([songPalette(ref), coverColours(ref)]);
+  const options = cover ? [{ label: "From the cover", colors: cover, from: "cover" }] : [];
+  if (!options.length) {
+    if (!justAdded) status(`${songLabel(ref)} has no cover art with colours to use`, "hint", "songs");
+    return;
+  }
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+  await new Promise((resolve) => {
+    const dlg = el("dialog", { className: "effect-dialog form-dialog ask-dialog song-colours-dialog" });
+    const close = el("button", { type: "button", textContent: justAdded ? "Skip" : "Close" });
+    const body = el("div", { className: "form-dialog-body" },
+      el("p", { className: "ask-text", textContent: `Colours for ${songLabel(ref)}. The one you pick is kept with the song, so a new show of it starts in these colours, and it's added to your palettes.` }));
+    if (current) {
+      body.append(el("div", { className: "ai-preset-idea" }, paletteBar(current.colors),
+        el("span", { className: "ai-preset-idea-name", textContent: `Now: ${current.name}` })));
+    }
+    for (const o of options) {
+      const use = button("Use these", async () => {
+        use.disabled = true;
+        try { await keepSongPalette(ref, o.colors, o.from); dlg.close(); } catch (err) {
+          use.disabled = false;
+          status(`Couldn't keep the colours: ${err.message}`, true, "songs");
+        }
+      }, "primary");
+      body.append(el("div", { className: "ai-preset-idea" }, paletteBar(o.colors),
+        el("span", { className: "ai-preset-idea-name", textContent: o.label }), el("div", { className: "insp-actions" }, use)));
+    }
+    const head = el("div", { className: "effect-dialog-head" }, el("h3", { textContent: "Colours from this song" }));
+    const foot = el("div", { className: "form-dialog-foot" }, el("span", { className: "spacer" }), close);
+    dlg.append(el("form", { method: "dialog" }, head, body, foot));
+    close.addEventListener("click", () => dlg.close());
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+    dlg.addEventListener("close", () => { dlg.remove(); resolve(); });
+    document.body.append(dlg);
+    dlg.showModal();
+    body.querySelector("button.primary")?.focus();
+  });
 }
 
 // Song lengths, read from each file's header by the browser, a few at a time. Kept for the visit,
@@ -10266,17 +10350,26 @@ function nsSongs() {
 
 // Until you type a name of your own, the show is named after its song.
 function nsSongPicked() {
-  if (!newShow.named) {
-    const ref = newShow.song ? JSON.parse(newShow.song) : null;
-    $("ns-name").value = freeName(ref ? songLabel(ref) : "Untitled show", newShow.taken);
-  }
+  const ref = newShow.song ? JSON.parse(newShow.song) : null;
+  if (!newShow.named) $("ns-name").value = freeName(ref ? songLabel(ref) : "Untitled show", newShow.taken);
   nsSongs();
+  // The song's own colours become the show's, unless you've picked colours yourself.
+  const asked = newShow.song;
+  (ref ? songPalette(ref) : Promise.resolve(null)).then((pal) => {
+    if (newShow.song !== asked) return;
+    newShow.songPalette = pal && allPalettes().some((p) => p.name === pal.name) ? pal.name : "";
+    if (!newShow.paletteChosen) newShow.palette = newShow.songPalette || newShow.defaultPalette;
+    if (!$("ns-step-colour").hidden) nsPalettes();
+  });
 }
 
 function nsPalettes() {
+  const own = newShow.songPalette, all = allPalettes();
+  const row = (p) => ({ value: p.name, label: p.name, picture: paletteBar(p.colors),
+    detail: p.name === own ? `This song's colours · ${p.colors.length} colours` : `${p.colors.length} colours` });
   const rows = [{ value: "", label: "None", detail: "Each effect keeps its own colours" },
-    ...allPalettes().map((p) => ({ value: p.name, label: p.name, detail: `${p.colors.length} colours`, picture: paletteBar(p.colors) }))];
-  nsRadioRows($("ns-palettes"), "ns-palette", rows, newShow.palette, (v) => { newShow.palette = v; nsPalettes(); });
+    ...all.filter((p) => p.name === own).map(row), ...all.filter((p) => p.name !== own).map(row)];
+  nsRadioRows($("ns-palettes"), "ns-palette", rows, newShow.palette, (v) => { newShow.palette = v; newShow.paletteChosen = true; nsPalettes(); });
 }
 
 function nsStarts() {
@@ -10313,10 +10406,10 @@ async function openNewShow() {
   await refreshAudio().catch(() => {});
   newShow.taken = (await api("api/shows").catch(() => [])).map((s) => s.name);
   await nsLoadFolders();
-  Object.assign(newShow, { song: "", start: "empty", named: false, at: folderAt("songs"),
+  Object.assign(newShow, { song: "", start: "empty", named: false, at: folderAt("songs"), songPalette: "", paletteChosen: false,
     gen: generateControls({ paletteFrom: () => newShow.palette }) });
   $("ns-gen").replaceChildren(...newShow.gen.nodes);
-  newShow.palette = (seasonalPalette() || allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0]).name;
+  newShow.palette = newShow.defaultPalette = (seasonalPalette() || allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0]).name;
   $("ns-find").value = "";
   nsSongPicked();
   $("ns-length").value = 60;
