@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.352
+
+- While a phone is listening, the line under **Sound off** now just says **Listening on this phone**, rather than repeating the name of what's on (the card already shows it). If you'd changed this line on the **Words** tab, yours stays as it was.
+
 ## 0.2.351
 
 - **Proper icons on the visitors' page.** Every button now has a simple drawn icon in the page's own colours instead of an emoji: **Start**, **Queue**, **Queued**, **On now**, **Listen**, **Sound off**, **Earlier** and **Later**, **Install app**, **Cancel**, **Try again**, and your admin buttons. So do **Music on your phone** and the line that says you're listening. Emoji look different on every phone and clashed with the colour themes.
