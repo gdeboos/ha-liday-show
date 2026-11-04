@@ -70,11 +70,21 @@ def safe_join(root: Path, rel: str) -> Path | None:
 _HEX6 = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
-def _colours_of(show: dict) -> list[str]:
+def _colours_of(show: dict, most: int = 4) -> list[str]:
     """Up to four of a show's palette colours, for its tile."""
     pal = show.get("palette")
     cols = pal.get("colors") if isinstance(pal, dict) else None
-    return [c.lower() for c in cols if isinstance(c, str) and _HEX6.match(c)][:4] if isinstance(cols, list) else []
+    return [c.lower() for c in cols if isinstance(c, str) and _HEX6.match(c)][:most] if isinstance(cols, list) else []
+
+
+def _palette_of(show: dict) -> dict | None:
+    """A show's palette for Library → Shows: its name and (up to 12) colours, or None without one."""
+    pal = show.get("palette")
+    cols = _colours_of(show, 12)
+    if not cols:
+        return None
+    name = pal.get("name") if isinstance(pal.get("name"), str) else ""
+    return {"name": name[:60], "colours": cols}
 
 class Storage:
     def __init__(self, config_dir: Path, media_dir: Path):
@@ -203,6 +213,7 @@ class Storage:
                         # palette's colours, for a tile when it has no picture or cover art.
                         "picture": self.show_picture_version(p.stem),
                         "colours": _colours_of(show),
+                        "palette": _palette_of(show),
                         "season": show.get("season") if isinstance(show.get("season"), str) else None,
                         "modified": int(p.stat().st_mtime)})
         return out
