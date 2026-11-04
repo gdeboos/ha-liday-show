@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.356
+
+- **Move a whole stretch to another lane.** Select a stretch on the timeline (drag across it, holding **Alt** if it starts on a clip), then:
+  - **Drag it**: press inside the selection and drag it up or down to another light, or along to another time. Every effect in it moves together, and if you selected several lights they all move together.
+  - **Cut and paste it**: **Ctrl+X** (or **Ctrl+C** to copy), click another light's name and press **Ctrl+V**. It lands at the same times, so it stays in step with the music.
+  - **Move to**: pick a light in the new **Move to** list in the Selection panel and press **Move**. Handy on a phone or tablet.
+- Whatever was already on that light in that stretch is replaced, and effects crossing the selection's edges are cut there. **Ctrl+Z** undoes the whole move in one go.
+- **Ctrl+X** also cuts a single selected clip.
+
 ## 0.2.355
 
 - **Colour dots on the visitors' page.** Each show (and Coming soon show) with a palette now has a row of small dots in its colours before how long it lasts, so people can choose by colour as well as by song. A playlist shows its first show's.

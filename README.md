@@ -200,7 +200,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   sparkle, a spotlight and polka dots
 - Colour palettes for holidays and moods, plus your own (or ones the AI makes from a description), to
   recolour an effect, a light or the whole show in one click
-- Copy and paste effects between lights, play and loop just a region, undo and redo
+- Copy and paste effects between lights, move or cut and paste a whole stretch across lights, play and loop just a region, undo and redo
 - A **Playlist editor**: drag shows into a running order, with building blocks between them (a pause,
   one colour, lights off, an effect or one of your scenes), and a bar showing how long each plays
 - **Scenes**: one-tap looks for the whole house, like the Govee app's, that play until you choose

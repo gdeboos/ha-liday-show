@@ -77,6 +77,7 @@ import { Timeline, fmtTime } from "./timeline.js";
 import { convertProblem, showUses, toWled } from "./convert.js";
 import { PART, packed, putWithProgress, sendBaked, sendParts, uploadSong } from "./upload.js";
 import { bakeNote, lightsBakeKey } from "./bakekey.js";
+import { piecesIn, placeStretch, rowsBy } from "./stretch.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
 watchButtons();
@@ -173,7 +174,7 @@ const app = {
   // {track, clip}; clip is null when a whole light is selected, and range is set
   // ({tracks, start, end}) when a stretch of time is selected on one or more lights.
   selected: null,
-  clipboard: null, // {clips, track, whole}
+  clipboard: null, // {clips, track, whole}, or {stretch: {rows: [{track, pieces}], start, end}}
   region: null, // {start, end}: the part of the show Play plays (and loops), while designing
   loop: prefs.get("loop", false),
   paletteEffect: "solid",
@@ -3643,12 +3644,23 @@ const clone = (clip) => JSON.parse(JSON.stringify(clip));
 
 function copySelection() {
   const sel = app.selected;
-  if (!sel || sel.range) { status("Select a clip or a light to copy", "hint"); return; }
+  if (sel?.range) return copyStretch(sel.range);
+  if (!sel) { status("Select a clip, a light or a stretch to copy", "hint"); return false; }
   const clips = sel.clip ? [sel.clip] : app.show.tracks[sel.track].clips;
-  if (!clips.length) { status("Nothing to copy on this light", "hint"); return; }
+  if (!clips.length) { status("Nothing to copy on this light", "hint"); return false; }
   app.clipboard = { clips: clips.map(clone), track: sel.track, whole: !sel.clip };
   status(`Copied ${clips.length} effect${clips.length > 1 ? "s" : ""}`);
   renderInspector();
+  return true;
+}
+
+// Ctrl+X: copies, then takes the clip or the stretch's effects out. (A whole light stays, as Clear does that.)
+function cutSelection() {
+  const sel = app.selected;
+  if (!sel?.range && !sel?.clip) { status("Select a clip or a stretch to cut", "hint"); return; }
+  if (!copySelection()) return;
+  const n = sel.range ? deleteRange({ quiet: true }) : (deleteSelected(), 1);
+  status(`Cut ${n} effect${n === 1 ? "" : "s"}. Select where they go and press Ctrl+V`);
 }
 
 // Onto another light, effects keep their times so the lights match.
@@ -3657,6 +3669,7 @@ function paste() {
   const cb = app.clipboard, sel = app.selected;
   if (!cb) { status("Copy a clip or a light first", "hint"); return; }
   if (!sel) { status("Select the light to paste onto", "hint"); return; }
+  if (cb.stretch) { pasteStretch(cb.stretch); return; }
   let shift = 0;
   if (sel.track === cb.track && !cb.whole) shift = app.time - Math.min(...cb.clips.map((c) => c.start));
   const fits = cb.clips.map((c) => clipOnto(c, cb.track, sel.track)).filter(Boolean);
@@ -5456,7 +5469,101 @@ function renderRangeInspector(r) {
   times.className = "group";
   times.append(timeInput("start"), timeInput("end"),
     button("▶ Play this part", () => { app.setRegion(r); app.seek(r.start); play(); }, "ghost"));
-  box.append(actions, times, del);
+  box.append(actions, times, moveToRow(r, overlaps), del);
+}
+
+// Move to…: the stretch's effects go to another lane at the same times (the top lane, with several).
+function moveToRow(r, overlaps) {
+  const rows = timeline.rows(), from = rangeTracks(r);
+  const row = document.createElement("div");
+  row.className = "group stretch-move";
+  const target = document.createElement("select");
+  target.setAttribute("aria-label", "Lane to move to");
+  for (const t of rows) {
+    if (!rowsBy(rows, from, rows.indexOf(t) - rows.indexOf(from[0]))) continue;
+    const o = new Option(trackName(t), t);
+    o.selected = t === from[0];
+    target.add(o);
+  }
+  const go = button("Move", () => {
+    const by = rows.indexOf(Number(target.value)) - rows.indexOf(from[0]);
+    if (!by) { status("Pick another lane to move to", "hint"); return; }
+    moveStretch(r, by, 0);
+  }, "ghost");
+  go.disabled = !overlaps || target.options.length < 2;
+  const l = document.createElement("label");
+  l.append(from.length > 1 ? "Move to (top lane)" : "Move to", target);
+  row.append(l, go);
+  const hint = document.createElement("p");
+  hint.className = "hint";
+  hint.textContent = "Or drag the selection to another lane or time, or cut it (Ctrl+X) and paste it (Ctrl+V) on another light. What's already there is replaced.";
+  return [row, hint].reduce((f, el) => (f.append(el), f), document.createDocumentFragment());
+}
+
+// The selected stretch moves and copies --------------------------------------------
+// A clip as it goes on lane `to`, or null where it can't. WLED's own effect and Live music
+// effects play the whole loop on their own light, so they never move with a stretch.
+const stretchOnto = (c, from, to) => {
+  if (EFFECTS[c.effect]?.wholeLoop) return null;
+  const x = clipOnto(c, from, to);
+  return x && !unfit(x, to) ? x : null;
+};
+
+const stretchNote = (res, rows) => [
+  res.left ? `${res.left} effect${res.left === 1 ? " stays" : "s stay"} where ${res.left === 1 ? "it was" : "they were"}, as ${res.left === 1 ? "it won't" : "they won't"} work there` : "",
+  res.skipped && rows > 1 ? `${res.skipped} lane${res.skipped === 1 ? "" : "s"} left as ${res.skipped === 1 ? "it was" : "they were"}` : "",
+].filter(Boolean).join("; ");
+
+// Moves the selected stretch `by` lanes down (up when negative) and `dt` seconds later, replacing
+// what's there. Live moves (while dragging) only redraw; the timeline puts the show back first.
+function moveStretch(r, by, dt, { live = false } = {}) {
+  const rows = timeline.rows(), from = rangeTracks(r), to = rowsBy(rows, from, by);
+  if (!to) { if (!live) status("There aren't enough lanes there for the whole selection", "hint"); return null; }
+  dt = Math.max(dt, -r.start);
+  const moves = from.map((t, k) => ({ from: t, to: to[k], pieces: piecesIn(app.show.tracks[t].clips, r.start, r.end) }));
+  const res = placeStretch({ lanes: (i) => app.show.tracks[i].clips, moves, start: r.start, end: r.end, dt, onto: stretchOnto, lift: true });
+  for (const [i, clips] of res.lanes) app.show.tracks[i].clips = clips;
+  app.selected = { track: to[0], clip: null, range: { tracks: to, start: r.start + dt, end: r.end + dt } };
+  if (live) { app.changed({ live: true }); return res; }
+  const where = by ? (to.length === 1 ? trackName(to[0]) : `${trackName(to[0])} and the lanes below`) : "";
+  const when = dt ? `${Math.abs(dt).toFixed(2)} s ${dt > 0 ? "later" : "earlier"}` : "";
+  const note = stretchNote(res, from.length);
+  status(res.placed.length
+    ? `Moved ${res.placed.length} effect${res.placed.length === 1 ? "" : "s"}${where ? ` to ${where}` : ""}${where && when ? "," : ""}${when ? ` ${when}` : ""}${note ? `. ${note}` : ""}`
+    : note || "No effects in the selection", res.placed.length ? undefined : "hint");
+  app.changed();
+  return res;
+}
+app.moveStretch = moveStretch;
+
+function copyStretch(r) {
+  const rows = rangeTracks(r).map((t) => ({ track: t, pieces: piecesIn(app.show.tracks[t].clips, r.start, r.end).map(clone) }));
+  const n = rows.reduce((s, x) => s + x.pieces.length, 0);
+  if (!n) { status("No effects in the selection", "hint"); return false; }
+  app.clipboard = { stretch: { rows, start: r.start, end: r.end } };
+  status(`Copied ${n} effect${n === 1 ? "" : "s"} from ${fmtTime(r.start)} to ${fmtTime(r.end)}`);
+  renderInspector();
+  return true;
+}
+
+// A copied stretch goes onto the selected light (and the lanes under it, for several), replacing
+// what's there: at the selection's start if a stretch is selected, at the playhead on the light it
+// came from, otherwise at the same times so it stays in step with the music.
+function pasteStretch(s) {
+  const sel = app.selected, rows = timeline.rows();
+  const top = sel.range ? rangeTracks(sel.range)[0] : sel.track;
+  const i0 = rows.indexOf(top);
+  if (i0 < 0) { status("Select the light to paste onto", "hint"); return; }
+  const at = sel.range ? sel.range.start : top === s.rows[0].track ? app.time : s.start;
+  const moves = s.rows.map((x, k) => ({ from: x.track, to: rows[i0 + k], pieces: x.pieces.map(clone) })).filter((m) => m.to !== undefined);
+  const res = placeStretch({ lanes: (i) => app.show.tracks[i].clips, moves, start: s.start, end: s.end, dt: at - s.start, onto: stretchOnto });
+  for (const [i, clips] of res.lanes) app.show.tracks[i].clips = clips;
+  const off = s.rows.length - moves.length;
+  const note = [stretchNote(res, moves.length), off ? `${off} lane${off === 1 ? "" : "s"} didn't fit below` : ""].filter(Boolean).join("; ");
+  if (!res.placed.length) { status(note || "Nothing to paste there", "hint"); return; }
+  app.selected = { track: top, clip: null, range: { tracks: moves.map((m) => m.to), start: at, end: at + s.end - s.start } };
+  status(`Pasted ${res.placed.length} effect${res.placed.length === 1 ? "" : "s"} onto ${moves.length === 1 ? trackName(top) : `${trackName(top)} and the lanes below`}${note ? `. ${note}` : ""}`);
+  app.changed();
 }
 
 // Looks that suit the selected part of the song, in the current palette's colours.
@@ -5514,7 +5621,7 @@ function addToRange(effect, preset = null) {
 }
 
 // Clears the selected stretch: clips inside it go, clips crossing its edges are trimmed.
-function deleteRange() {
+function deleteRange({ quiet = false } = {}) {
   const r = app.selected.range;
   let n = 0;
   for (const t of rangeTracks(r)) {
@@ -5527,9 +5634,10 @@ function deleteRange() {
     }
     app.show.tracks[t].clips = kept;
   }
-  if (!n) { status("No effects in the selection"); return; }
-  status(`Cleared ${n} effect${n > 1 ? "s" : ""} from the selection`);
+  if (!n) { if (!quiet) status("No effects in the selection"); return 0; }
+  if (!quiet) status(`Cleared ${n} effect${n > 1 ? "s" : ""} from the selection`);
   app.changed();
+  return n;
 }
 
 function deleteSelected() {
@@ -11172,6 +11280,7 @@ function wire() {
     else if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); restore(1); }
     else if (mod && e.key.toLowerCase() === "c") { e.preventDefault(); copySelection(); }
     else if (mod && e.key.toLowerCase() === "v") { e.preventDefault(); paste(); }
+    else if (mod && e.key.toLowerCase() === "x") { e.preventDefault(); cutSelection(); }
     else if (e.key === " ") { e.preventDefault(); app.playing ? stop() : play(); }
     else if (e.key === "b" || e.key === "B") tapBeat();
     else if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
