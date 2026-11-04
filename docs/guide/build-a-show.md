@@ -819,6 +819,26 @@ in step; pasting onto the same light puts them at the playhead. With a light's n
 can also **Copy all effects to** another light or all of them, optionally replacing what they had.
 Effects scale to each light's segment count. **D** duplicates the selected clip.
 
+### Moving a stretch
+
+To move a whole section of a show, select the stretch (drag across it, or hold **Alt** if you start
+on a clip; drag up or down to take in several lights). Then either:
+
+- **Drag it.** Press inside the selection and drag it to another light, or along to another time.
+  Everything in it moves together, and with several lights selected they all move down or up together.
+  A click inside the selection, without dragging, still selects the clip under the pointer.
+- **Cut and paste it.** **Ctrl+X** cuts it (**Ctrl+C** copies it). Click another light's name and press
+  **Ctrl+V**: it lands at the same times, so it stays in step with the music. Pasting onto the light it
+  came from puts it at the playhead, and pasting onto a selected stretch puts it at that stretch's start.
+  Several lights paste onto the light you clicked and the ones under it.
+- **Move to.** In the Selection panel, pick a light under **Move to** and press **Move**. The effects
+  keep their times. With several lights selected, the one you pick is where the top light goes.
+
+Whatever was already there in that stretch is replaced, and effects crossing the selection's edges are
+cut at them. Effects that won't work on the new light (a House effect onto a light, say) stay where they
+were. WLED's own effect and Live music effects never move with a stretch. **Ctrl+Z** undoes the whole
+move. **Ctrl+X** also cuts a single selected clip.
+
 ### Colour palettes
 
 An effect's settings show the **Palette** in use, with its colours: press **Change…** to pick

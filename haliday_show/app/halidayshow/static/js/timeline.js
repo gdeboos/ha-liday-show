@@ -596,6 +596,14 @@ export class Timeline {
       app.changed();
       return;
     }
+    // Pressing inside a selected stretch drags all its effects together, to other lanes or times.
+    const sr = app.selected?.range;
+    if (sr && !e.altKey && this.inStretch(sr, x, y)) {
+      this.drag = { mode: "stretch", r0: { ...sr, tracks: [...sr.tracks] }, t0: this.t(x), x0: x, y0: y,
+        row0: this.rows().indexOf(this.trackAt(y)), hit: this.hitClip(x, y), snap: app.show.tracks.map((tr) => tr.clips),
+        by: 0, dt: 0, moved: false };
+      return;
+    }
     // Alt-drag selects a stretch of time even over clips, e.g. to cut a piece out of one.
     const hit = e.altKey ? null : this.hitClip(x, y);
     if (hit) {
@@ -609,6 +617,19 @@ export class Timeline {
     const t = Math.max(0, this.snapTime(this.t(x), e));
     this.drag = { mode: "range", track: ti, anchor: t, moved: false };
     this.setRange(ti, ti, t, t + MIN_LEN);
+  }
+
+  inStretch(r, x, y) {
+    const t = this.t(x), ti = this.trackAt(y);
+    return ti >= 0 && r.tracks.includes(ti) && t >= r.start && t <= r.end;
+  }
+
+  // Puts the show back as it was when the stretch drag began, then moves the stretch from there.
+  dragStretch(d, by, dt) {
+    this.app.show.tracks.forEach((tr, i) => { tr.clips = d.snap[i] ?? tr.clips; });
+    this.app.selected = { track: d.r0.tracks[0], clip: null, range: { ...d.r0, tracks: [...d.r0.tracks] } };
+    if (by || dt) this.app.moveStretch(d.r0, by, dt, { live: true });
+    else this.app.changed({ live: true });
   }
 
   setRange(a, b, start, end) {
@@ -632,6 +653,8 @@ export class Timeline {
         return;
       }
       this.canvas.title = "";
+      const sr = this.app.selected?.range;
+      if (sr && !e.altKey && this.inStretch(sr, x, y)) { this.canvas.style.cursor = "move"; return; }
       this.canvas.style.cursor = !hit ? (y < RULER_H && x > HEADER_W ? "col-resize"
         : y < RULER_H + WAVE_H && x > HEADER_W ? "text" : "crosshair")
         : hit.mode === "move" && !e.altKey ? "grab" : e.altKey ? "crosshair" : "ew-resize";
@@ -644,6 +667,23 @@ export class Timeline {
       d.moved = true;
       const s = Math.max(0, this.snapTime(t, e));
       this.app.setRegion(s >= d.anchor ? { start: d.anchor, end: s } : { start: s, end: d.anchor });
+      return;
+    }
+    if (d.mode === "stretch") {
+      if (!d.moved && Math.hypot(x - d.x0, y - d.y0) < 4) return;
+      d.moved = true;
+      if (y > this.h - 24) this.scroll.scrollTop += 12;
+      else if (y < TOP + 12 && this.sy > 0) this.scroll.scrollTop -= 12;
+      const rows = this.rows(), r0 = d.r0;
+      const from = r0.tracks.filter((k) => rows.includes(k));
+      const at = rows.indexOf(this.trackAt(Math.min(Math.max(y, TOP), this.h - 1)));
+      const idx = from.map((k) => rows.indexOf(k));
+      const by = at < 0 || d.row0 < 0 ? d.by
+        : Math.min(Math.max(at - d.row0, -Math.min(...idx)), rows.length - 1 - Math.max(...idx));
+      const dt = Math.max(this.snapTime(r0.start + t - d.t0, e) - r0.start, -r0.start);
+      if (by === d.by && Math.abs(dt - d.dt) < 1e-6) return;
+      Object.assign(d, { by, dt });
+      this.dragStretch(d, by, dt);
       return;
     }
     d.moved = true;
@@ -697,6 +737,22 @@ export class Timeline {
     if (!d || d.mode === "seek") return;
     if (d.mode === "region") {
       if (!d.moved) this.app.seek(Math.max(0, this.t(this.pos(e)[0])));
+      return;
+    }
+    if (d.mode === "stretch") {
+      if (d.moved) {
+        // Put back what the drag showed and make the move for real, so it's one Undo step.
+        this.app.show.tracks.forEach((tr, i) => { tr.clips = d.snap[i] ?? tr.clips; });
+        if (d.by || d.dt) this.app.moveStretch(d.r0, d.by, d.dt);
+        else this.app.select({ track: d.r0.tracks[0], clip: null, range: d.r0 });
+      } else if (d.hit) {
+        // A click (no drag) inside the stretch picks the clip there, as before.
+        this.app.select({ track: d.hit.track, clip: d.hit.clip });
+      } else {
+        const t = Math.max(0, this.snapTime(d.t0, e)), ti = this.trackAt(d.y0);
+        const next = this.app.show.beats.find((b) => b > t + MIN_LEN);
+        this.app.select({ track: ti, clip: null, range: { tracks: [ti], start: t, end: next ?? t + 2 } });
+      }
       return;
     }
     if (d.mode === "range") {
