@@ -2153,6 +2153,9 @@ Also on the **Shows** tab:
   a playlist, its first show's. Shows without either get a tile in their colours with their first
   letter. The pictures show in the list, under **Coming soon**, and beside what's on in the card at the
   top. Turn it off for no pictures.
+- Each show with a palette also gets a row of small **colour dots** before how long it lasts (up to six,
+  from its palette, and its first show's for a playlist), so visitors can see what colours it plays on the
+  house. A show with no palette has no dots.
 - **Flashing lights warning**, for shows with strobes or fast flashes:
   - **Off** (to start with).
   - **A note at the top**: a boxed warning above the shows, always there.

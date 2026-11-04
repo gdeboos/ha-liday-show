@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.355
+
+- **Colour dots on the visitors' page.** Each show (and Coming soon show) with a palette now has a row of small dots in its colours before how long it lasts, so people can choose by colour as well as by song. A playlist shows its first show's.
+
 ## 0.2.353
 
 - **Music on your phone** under a show's name now sits on the same line as how long it lasts, rather than a little higher. On a narrow phone it moves to the next line with its icon.

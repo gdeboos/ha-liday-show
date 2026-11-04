@@ -847,6 +847,20 @@ export function start() {
     return tile;
   }
 
+  // A show's colours as a row of small dots, the colours it plays on the house (none without a palette).
+  function dotsOf(c) {
+    const cols = (c.dots || []).filter((x) => /^#[0-9a-f]{6}$/i.test(x));
+    if (!cols.length) return null;
+    const row = el("span", "pp-dots");
+    row.setAttribute("aria-hidden", "true");
+    for (const col of cols) {
+      const d = el("span", "pp-dot");
+      d.style.background = col;
+      row.append(d);
+    }
+    return row;
+  }
+
   function drawProgress() {
     const p = progressOf(last?.now, Date.now() - gotAt);
     $("pp-progress").hidden = p === null;
@@ -946,7 +960,11 @@ export function start() {
       const art = coverOf(c, st);
       if (art) row.append(art);
       const text = el("div", "pp-text");
-      text.append(el("div", "pp-name", c.name), el("div", "pp-hint", c.detail));
+      const hint = el("div", "pp-hint");
+      const dots = dotsOf(c);
+      if (dots) hint.append(dots);
+      hint.append(el("span", "pp-len", c.detail));
+      text.append(el("div", "pp-name", c.name), hint);
       row.append(text);
       if (st.admin) {
         const label = c.taken === "queued" ? "queued_btn" : c.taken === "playing" ? "playing_btn" : "queue_btn";
@@ -990,9 +1008,14 @@ export function start() {
         : queued.has(`${c.kind}:${c.id}`) ? say_(w, "row_queued") : "";
       const phone = st.listen && c.speaker === false ? say_(w, "on_phone") : "";
       const detail = [c.detail, status].filter(Boolean).join(" · ");
-      if (detail || phone) {
-        const hint = el("div", "pp-hint", detail);
-        if (phone) hint.append(detail ? " · " : "", iconLabel(el("span", "pp-inline-ico"), "headphones", phone));
+      const dots = dotsOf(c);
+      if (detail || phone || dots) {
+        // The dots and how long it lasts stay together on one line.
+        const hint = el("div", "pp-hint");
+        // How long it lasts stays in one piece (its dots may sit on the line above on a narrow phone).
+        if (dots) hint.append(dots);
+        if (detail) hint.append(el("span", "pp-len", phone ? `${detail} ·` : detail), " ");
+        if (phone) hint.append(iconLabel(el("span", "pp-inline-ico"), "headphones", phone));
         text.append(hint);
       }
       row.append(text);
