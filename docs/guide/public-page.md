@@ -233,7 +233,7 @@ as usual.
 2. To keep it to yourself while you try it out, turn on **Needs a PIN to listen** and type a PIN of 4
    to 8 numbers.
 3. On your phone, open the visitors' link and press **🎧 Listen** in the card at the top (type the PIN
-   if you set one). Press **■ Stop** to stop. **🎧 Listen** only shows while something's on.
+   if you set one). Press **🔇 Phone sound off** to stop the music on their phone; the show carries on, on your lights. **🎧 Listen** only shows while something's on.
 
 How it works:
 
