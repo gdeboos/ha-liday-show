@@ -1757,12 +1757,23 @@ async def test_cover_art_is_served_and_kept_on_wavs_made_from_a_song(client, tmp
 
     wav = b"RIFF" + struct.pack("<I", 36) + b"WAVE" + b"fmt " + struct.pack("<I", 16) + b"\1\0\1\0" \
         + struct.pack("<II", 8000, 16000) + b"\2\0\x10\0" + b"data" + struct.pack("<I", 0)
+    pal = {"name": "Art", "colors": ["#ff0000"], "from": "cover"}
+    await client.put("/api/audio/palette", params={"source": "media", "path": "songs/art.mp3"}, json=pal)
     form = aiohttp.FormData()
     form.add_field("file", wav, filename="art (edit).wav")
     r = await client.post("/api/audio?cover_source=media&cover_path=songs/art.mp3", data=form)
     made = (await r.json())["path"]
     r = await client.get("/api/audio/cover", params={"source": "media", "path": made})
     assert r.status == 200 and await r.read() == jpeg
+    # The song's colours come with it, and a file that already has its own keeps them.
+    made_q = {"source": "media", "path": made}
+    assert await (await client.get("/api/audio/palette", params=made_q)).json() == pal
+    own = {**pal, "name": "Mine", "colors": ["#00ff00"]}
+    await client.put("/api/audio/palette", params=made_q, json=own)
+    form = aiohttp.FormData()
+    form.add_field("file", wav, filename="art (edit).wav")
+    await client.post("/api/audio?cover_source=media&cover_path=songs/art.mp3", data=form)
+    assert await (await client.get("/api/audio/palette", params=made_q)).json() == own
     songs = {s["path"]: s for s in (await (await client.get("/api/songs")).json())["songs"]}
     assert songs["songs/art.mp3"]["cover"] is True and songs["songs/tune.mp3"]["cover"] is False
 

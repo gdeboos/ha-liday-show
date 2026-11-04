@@ -4,6 +4,7 @@
 
 - **The AI suggests colours for a song too.** With an AI set up, the **Colours from this song** window also asks it for palettes that suit the song: its mood, its season and what it's about, going by the song's name and its cover's colours. Up to two show up under **From the song** a few seconds after the window opens, beside the cover's colours. Pick whichever you like.
 - A song with no cover art now gets colours too, when an AI is set up.
+- **Edits keep the song's colours.** A song file made in the Music editor (**Make song file**) now comes with the original song's colours, as it already did its cover art. If you've given the made file colours of its own, making it again keeps them.
 
 ## 0.2.358
 

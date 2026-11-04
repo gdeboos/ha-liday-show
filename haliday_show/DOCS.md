@@ -676,7 +676,9 @@ and sections** panel. The palette you pick is kept with the song and added to yo
 the song), so you can edit or rename it under **Library → Palettes**. Picking again for the same song
 changes that palette rather than adding another. The AI is told the song's name (put the
 artist in it, such as "Wham! - Last Christmas", for the best ideas) and the cover's main colours, not
-the picture itself; a song with no cover art still gets its ideas. When a **New show** picks the song, its palette is
+the picture itself; a song with no cover art still gets its ideas. A song file made from it in the Music editor (**Make song
+file**) comes with its colours, as it does its cover art; once the made file has colours of its own,
+making it again keeps them. When a **New show** picks the song, its palette is
 picked for you in the colours step, marked **This song's colours**, unless you've already chosen
 colours yourself in that window. Changing the song of a show you've already made doesn't change its
 colours.

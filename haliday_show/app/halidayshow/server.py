@@ -1015,13 +1015,23 @@ async def get_stem_file(request):
 
 
 async def _carry_cover(request, dest: Path):
-    """A WAV the Music editor made from a song (?cover_source=&cover_path=) keeps that song's cover."""
+    """A WAV the Music editor made from a song (?cover_source=&cover_path=) keeps that song's cover,
+    and its colours (a song file made again keeps the colours it has)."""
     q = request.query
     if dest.suffix.lower() != ".wav" or not q.get("cover_path"):
         return
-    src = request.app[STORAGE].audio_path(q.get("cover_source", ""), q.get("cover_path", ""))
-    if src is not None:
-        await asyncio.to_thread(lambda: songtags.add_cover(dest, songtags.cached_cover(src)))
+    storage = request.app[STORAGE]
+    source, path = q.get("cover_source", ""), q.get("cover_path", "")
+    src = storage.audio_path(source, path)
+    if src is None:
+        return
+    await asyncio.to_thread(lambda: songtags.add_cover(dest, songtags.cached_cover(src)))
+    if q.get("kind") == "sample":
+        return
+    rel = dest.relative_to(storage.media_dir).as_posix()
+    palette = storage.load_song_palette(source, path)
+    if palette and not storage.load_song_palette("media", rel):
+        storage.save_song_palette("media", rel, palette)
 
 
 async def get_audio_cover(request):
