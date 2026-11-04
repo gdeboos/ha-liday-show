@@ -1934,7 +1934,7 @@ link in a new tab.
 | --- | --- |
 | **Access** | [Who can start shows](#who-can-start-shows): the link and code, the sign and **Nearby only** (and [Installing the page as an app](#installing-the-page-as-an-app)) |
 | **Hours** | [Opening hours](#opening-hours), finishing by closing time and rest breaks |
-| **Limits** | **Requests per phone**, **Queue length** and how soon a show, or a phone, can pick again ([Keeping it fair](#visitors-queue)) |
+| **Limits** | **Requests per phone**, **Queue length**, **Same song again after** and **Same phone again after** ([Keeping it fair](#visitors-queue)) |
 | **Shows** | [What visitors can pick](#what-visitors-can-pick) and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
 | **Listening** | [Listening on phones](#listening-on-phones) |
 | **Admin** | Your [Admin PIN](#admin-pin) |
@@ -2218,12 +2218,12 @@ Keeping it fair, on the **Limits** page:
   get round; **Queue length** is the one that holds.
 - **Queue length** is how many shows can wait in all (5 to start with). When it's full, visitors are
   asked to try again in a few minutes.
-- **Before a show can be picked again** (15 minutes to start with): once a visitor's pick has played,
-  nobody can pick it again for this long, so the same song isn't on a loop. Its button says
+- **Same song again after** (15 minutes to start with): once a song has played, nobody can pick that
+  song again for this long. Any other song is fine. It stops one favourite playing on a loop. Its button says
   **Again in 12 minutes** (say) until then. Your admin phone isn't held to it. 0 turns it off.
-- **Before a phone can pick again** (5 minutes to start with): once a phone's own pick has played, that
-  phone waits this long before picking another, so one person can't keep the lights to themselves on a
-  quiet night. Your admin phone doesn't wait. 0 turns it off.
+- **Same phone again after** (5 minutes to start with): once someone's song has played, their phone
+  waits this long before picking another. Other phones aren't affected. It stops one person keeping the
+  lights to themselves on a quiet night. Your admin phone doesn't wait. 0 turns it off.
 
 **Tonight**, under the queue on the **Queue** page, counts visitors' picks since midday, lists the most
 picked, and says how many phones are listening right now. It starts afresh when HA-liday Show restarts
