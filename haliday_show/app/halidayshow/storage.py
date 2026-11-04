@@ -600,7 +600,41 @@ class Storage:
             return False
         self.songs_dir.mkdir(parents=True, exist_ok=True)
         body = {"source": source, "path": rel, "stamp": self._stamp(p), "analysis": analysis}
+        palette = self.load_song_palette(source, rel)
+        if palette:
+            body["palette"] = palette
         _write_atomic(self._song_info_file(source, rel), json.dumps(body).encode())
+        return True
+
+    # A song's colours, picked from its cover art or by the AI. Kept in the same file as what Detect
+    # found but not tied to the file's size and time, so they outlive a re-detect or the file being
+    # saved over.
+    def load_song_palette(self, source: str, rel: str) -> dict | None:
+        if self.audio_path(source, rel) is None:
+            return None
+        try:
+            pal = json.loads(self._song_info_file(source, rel).read_text()).get("palette")
+        except (OSError, ValueError, AttributeError):
+            return None
+        return pal if isinstance(pal, dict) else None
+
+    def save_song_palette(self, source: str, rel: str, palette: dict | None) -> bool:
+        p = self.audio_path(source, rel)
+        if p is None:
+            return False
+        f = self._song_info_file(source, rel)
+        try:
+            body = json.loads(f.read_text())
+            if not isinstance(body, dict):
+                raise ValueError
+        except (OSError, ValueError):
+            body = {"source": source, "path": rel}
+        if palette:
+            body["palette"] = palette
+        else:
+            body.pop("palette", None)
+        self.songs_dir.mkdir(parents=True, exist_ok=True)
+        _write_atomic(f, json.dumps(body).encode())
         return True
 
     def upload_path(self, filename: str, sample: bool = False) -> Path | None:

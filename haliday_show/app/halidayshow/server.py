@@ -1227,6 +1227,37 @@ def _clean_song_info(body) -> dict | None:
     return out
 
 
+MAX_PALETTE_COLOURS = 12
+
+
+def _clean_song_palette(body) -> dict | None:
+    """A song's colours: {name, colors, from: "cover" | "ai"}. Null clears them; anything else
+    that doesn't fit is refused (raises)."""
+    if body is None:
+        return None
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text="expected {name, colors, from} or null")
+    name, colors, source = body.get("name"), body.get("colors"), body.get("from")
+    if not isinstance(name, str) or not name.strip() or not isinstance(colors, list) \
+            or not 1 <= len(colors) <= MAX_PALETTE_COLOURS \
+            or not all(isinstance(c, str) and _HEX.match(c) for c in colors) or source not in ("cover", "ai"):
+        raise web.HTTPBadRequest(text="expected {name, colors: up to 12 #rrggbb, from: cover or ai}")
+    return {"name": " ".join(name.split())[:80], "colors": [c.lower() for c in colors], "from": source}
+
+
+async def get_song_palette(request):
+    q = request.query
+    return web.json_response(request.app[STORAGE].load_song_palette(q.get("source", ""), q.get("path", "")))
+
+
+async def put_song_palette(request):
+    palette = _clean_song_palette(await request.json())
+    q = request.query
+    if not request.app[STORAGE].save_song_palette(q.get("source", ""), q.get("path", ""), palette):
+        raise web.HTTPNotFound()
+    return web.json_response({"ok": True})
+
+
 # song drafts --------------------------------------------------------------------
 MAX_PIECES = 500
 
@@ -2894,6 +2925,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/songs/delete", delete_song)
     r.add_get("/api/audio/info", get_song_info)
     r.add_put("/api/audio/info", put_song_info)
+    r.add_get("/api/audio/palette", get_song_palette)
+    r.add_put("/api/audio/palette", put_song_palette)
     r.add_get("/api/seasons", get_seasons)
     r.add_put("/api/seasons", put_seasons)
     r.add_get("/api/pictures", list_pictures)

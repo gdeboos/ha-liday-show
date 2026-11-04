@@ -1788,6 +1788,7 @@ export class MusicEditor {
     $("music-undo").disabled = !this.history.length;
     $("music-detect").disabled = !this.base || this.dirty;
     $("music-describe").disabled = !this.base || this.dirty || !this.info?.sections?.length;
+    $("music-colours").disabled = !this.base;
     $("music-detect").title = this.dirty
       ? "Make the song file first: it's detected when it's made, and the beats here follow your edits until then"
       : "Find the tempo, beats, bars and sections (verse, chorus…) and keep them with this song. A show that picks the song uses them.";
@@ -2772,6 +2773,7 @@ export class MusicEditor {
     $("music-name").addEventListener("change", () => { if (this.draft) this.draftChanged(); });
     $("music-detect").addEventListener("click", () => this.detect());
     $("music-describe").addEventListener("click", () => this.describe());
+    $("music-colours").addEventListener("click", () => { if (this.base) this.host.songColours?.(this.base); });
     $("music-suggest").addEventListener("click", () => this.openCuts(this.secSel >= 0 ? this.secSel : null));
     $("music-cuts-scope").addEventListener("change", () => { this.cutNote(""); this.defaultCutTarget(); });
     $("cuts-form").addEventListener("submit", (e) => { e.preventDefault(); this.findCuts(); });
