@@ -199,3 +199,14 @@ h1, h2 { color: var(--head, var(--text)); }
   border-top: 1px dashed var(--line); }
 .pp-admin-ctl button { min-height: 40px; padding: 4px 12px; font-size: .875em; background: transparent; }
 #pp-admin-stop { color: var(--danger); border-color: var(--danger); }
+/* What's on: its cover art beside its name. On a narrow phone (a Fold's front screen) the Listen or
+   Sound off button goes on its own line under them, full width, so the name keeps room to read. */
+.pp-now-art { flex: none; display: block; }
+.pp-now-art .pp-cover { width: 52px; height: 52px; border-radius: 8px; }
+.pp-now-art .pp-tile { font-size: 22px; }
+.pp-bar-row { flex-wrap: wrap; }
+@media (max-width: 420px) {
+  .pp-bar .pp-listen-btn { flex: 1 1 100%; }
+}
+#pp-soon .pp-cover { width: 44px; height: 44px; border-radius: 6px; }
+#pp-soon .pp-tile { font-size: 20px; }

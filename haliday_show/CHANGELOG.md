@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.349
+
+- **Cover art in the card at the top of the visitors' page.** What's on now shows its song's cover art beside its name (or a tile with its first letter, as in the list). On a narrow phone, such as a Fold's front screen, **🎧 Listen** and **Sound off** move to their own line underneath, full width, so the name keeps room to read.
+- **Coming soon shows have their cover art too.**
+
 ## 0.2.348
 
 - On the public page, the small button that turns the music off on a visitor's phone now just says **🔇 Sound off**.

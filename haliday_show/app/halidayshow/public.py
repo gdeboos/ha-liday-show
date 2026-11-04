@@ -554,6 +554,22 @@ def phone_wait_left(runner: Runner, ticket: str | None, minutes: int) -> float:
     return max(0.0, max(ends) + minutes * 60 - _runner.clock()) if ends else 0.0
 
 
+def now_art(storage: Storage, runner: Runner, picks: list[dict], look: dict) -> dict:
+    """What's on now, for its picture in the card at the top: the pick it is (so the page can fetch its
+    cover, only for a show or playlist visitors can pick) and its colours for a tile otherwise."""
+    if look["covers"] is False or runner.scene_playing:
+        return {}
+    pub = runner.public_now
+    kind, ref = (pub["kind"], pub["ref"]) if pub else ("show", runner.player.show_id)
+    if not ref:
+        return {}
+    pick = next((c for c in picks if c["kind"] == kind and c["id"] == ref), None)
+    if pick:
+        return {"kind": pick["kind"], "id": pick["id"], "cover": pick["cover"], "colours": pick["colours"]}
+    show = storage.load_show(ref) if kind == "show" else None
+    return {"colours": _tile_colours(show)} if show else {}
+
+
 def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None = None,
           needs_location: bool = False, where=None, now: datetime | None = None, admin: bool = False) -> dict:
     p = load(storage) or clean(None)
@@ -592,10 +608,11 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                      "again_in": round(repeat_left(runner, c["kind"], c["id"], p["repeat_minutes"]))} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
         "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"],
+                         "cover": c["cover"] if look["covers"] else 0, "colours": c["colours"] if look["covers"] else [],
                          # Your admin phone can queue these early, to try them out.
                          **({"taken": taken(runner, c["kind"], c["id"])} if admin else {})}
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
-        "now": {"name": st["name"], "visitor": runner.public_now is not None,
+        "now": {"name": st["name"], "visitor": runner.public_now is not None, **now_art(storage, runner, picks, look),
                 # How far through, for the bar under its name (a scene goes round with no end: none).
                 **({"position": round(st["position"], 1), "duration": round(st["duration"], 1)}
                    if st["duration"] and not (st.get("scene") or {}).get("playing") else {})}
@@ -765,14 +782,14 @@ async def get_picture(request):
 
 
 async def get_cover(request):
-    """A show's or playlist's cover art, only for one visitors can pick now and with your code."""
+    """A show's or playlist's cover art, only for one on the page (to pick now, or coming soon) and with your code."""
     _limit_client(request, "state", MAX_STATE_PER_CLIENT_MIN)
     st = request.app[STORAGE]
     p = load(st) or clean(None)
     if not (p["on"] and p["look"]["covers"] and _code_ok(p, request.query.get("code"))):
         raise web.HTTPNotFound()
     q = request.query
-    pick = next((c for c in choices(st) if c["available"] and c["kind"] == q.get("kind") and c["id"] == q.get("id")), None)
+    pick = next((c for c in choices(st) if c["kind"] == q.get("kind") and c["id"] == q.get("id")), None)
     pic = cover_of(st, pick) if pick else None
     if pic is None:
         raise web.HTTPNotFound()
