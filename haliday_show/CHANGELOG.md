@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.343
+
+- **The app stays responsive while it gets shows ready.** Baking shows, scenes and playlist blocks (after an update, or when you change a light) now happens in the background, so the tabs and buttons keep working while it runs. Before, the page could freeze for a second or two at a time.
+
 ## 0.2.342
 
 - **HA-liday Show opens quicker again.** Getting your scenes and playlist blocks ready (which keeps the page busy for a while, most after an update) now starts once the app is on screen, rather than holding up the loading box. The public page's settings are only waited for when that's the page you're opening.
