@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.343
+
+- The effect chooser has filters along its top: **Find an effect**, and chips for **Moving**, **Sparkles and twinkles**, **Flashing**, **Steady**, **Colourful**, **Calm**, **Lively** and **Follows the music** (tick more than one to narrow further). Each kind of effect now sits in its own box with a count, so the list is easier to scan.
+- Effects for a matrix (Scrolling text, Picture, Fire, Snowfall, Music bars) are only offered on a light set up as a matrix, or with **Allow effects that won't work** on.
+
 ## 0.2.342
 
 - **HA-liday Show opens quicker again.** Getting your scenes and playlist blocks ready (which keeps the page busy for a while, most after an update) now starts once the app is on screen, rather than holding up the loading box. The public page's settings are only waited for when that's the page you're opening.

@@ -1332,6 +1332,17 @@ segments can't show a chase wider than itself.
 - A light whose realtime mode only reaches part of it, like the 30 m Christmas String Lights 2 (H70C5)
   at 44 bulbs, shows **⚠ first 44 bulbs only** under its name on the timeline.
 
+### Finding an effect
+
+The effect chooser groups effects into boxes (**Basics**, **Movement**, **Sparkle and festive**,
+**Calm**, **Follows the music**…), each with how many there are. Along its top, **Find an effect** looks
+for a name, and the chips narrow the list to effects that are like that: **Moving**, **Sparkles and
+twinkles**, **Flashing**, **Steady**, **Colourful**, **Calm**, **Lively** and **Follows the music**. Tick
+more than one for effects that are all of them (**Sparkles and twinkles** and **Calm** gives Flicker,
+Twinkle, Candles, Snow and Fairy lights). **Clear** shows them all again; the chips you ticked are
+remembered for next time. Effects made for a matrix (**On a matrix**) are only offered on a light set
+up as a matrix, or with **Allow effects that won't work** on.
+
 ### Presets
 
 Most effects can look very different depending on their settings (Three colours can sit
