@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.346
+
+- **Try a Coming soon show early from your admin phone.** On the visitors' page unlocked with the admin PIN, shows under **Coming soon** now have **+ Queue**, so you can check one on the lights before its dates. They stay under **Coming soon**, greyed out with no button, for everyone else.
+
 ## 0.2.345
 
 - While a window is open (the effect chooser, Add a song, Show settings and the rest), the page behind it no longer scrolls. Scrolling to the end of a window stops there too.

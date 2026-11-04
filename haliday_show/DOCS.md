@@ -2055,6 +2055,8 @@ A dashed card then says your phone is in admin mode, and **Close** tucks it away
 - The listening PIN isn't asked for.
 - The limit per phone and **Queue length** don't apply (up to 20 waiting, as a ceiling).
 - The cool-down after a show plays doesn't apply, so you can queue it again straight away.
+- Shows under **Coming soon** get **+ Queue** too, so you can try one on the lights before its dates. They
+  stay under **Coming soon** for everyone else.
 - You still can't queue a show that's already waiting or playing now.
 
 While a show is on, your admin phone also gets, under what's on:

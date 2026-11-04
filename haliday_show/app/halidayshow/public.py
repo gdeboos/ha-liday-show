@@ -591,7 +591,9 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                      or ("late" if not admin and too_late(runner, c, close) else ""),
                      "again_in": round(repeat_left(runner, c["kind"], c["id"], p["repeat_minutes"]))} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
-        "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"]}
+        "soon": sorted(({"kind": c["kind"], "id": c["id"], "name": c["name"], "starts": c["starts"], "group": c["group"],
+                         # Your admin phone can queue these early, to try them out.
+                         **({"taken": taken(runner, c["kind"], c["id"])} if admin else {})}
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
         "now": {"name": st["name"], "visitor": runner.public_now is not None,
                 # How far through, for the bar under its name (a scene goes round with no end: none).
@@ -871,7 +873,7 @@ async def post_request(request):
             _check_near(request, p, body)
         except NotNear as e:
             raise web.HTTPForbidden(text=said[e.word])
-    pick = next((c for c in choices(storage) if c["available"] and c["kind"] == body.get("kind")
+    pick = next((c for c in choices(storage) if (c["available"] or admin) and c["kind"] == body.get("kind")
                  and c["id"] == body.get("id")), None)
     if pick is None:
         raise web.HTTPNotFound(text=said["gone"])
