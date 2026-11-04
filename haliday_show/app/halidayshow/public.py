@@ -586,7 +586,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                      "colours": c["colours"] if look["covers"] else [],
                      "minutes": max(1, round(runner.request_seconds(c) / 60)),
                      "speaker": c.get("speaker", True),
-                     "taken": taken(runner, c["kind"], c["id"], p["repeat_minutes"])
+                     # Your admin phone isn't held to the cool-down, only to what's waiting or playing.
+                     "taken": taken(runner, c["kind"], c["id"], 0 if admin else p["repeat_minutes"])
                      or ("late" if not admin and too_late(runner, c, close) else ""),
                      "again_in": round(repeat_left(runner, c["kind"], c["id"], p["repeat_minutes"]))} for c in picks if c["available"]],
         # Later ones, soonest first, so visitors know to come back.
@@ -874,7 +875,7 @@ async def post_request(request):
                  and c["id"] == body.get("id")), None)
     if pick is None:
         raise web.HTTPNotFound(text=said["gone"])
-    if why := taken(runner, pick["kind"], pick["id"], p["repeat_minutes"]):
+    if why := taken(runner, pick["kind"], pick["id"], 0 if admin else p["repeat_minutes"]):
         left = repeat_left(runner, pick["kind"], pick["id"], p["repeat_minutes"])
         raise web.HTTPConflict(text=said["played_recently"].replace("{minutes}", _mins(left)) if why == "recent"
                                else said["already_queued" if why == "queued" else "already_playing"])

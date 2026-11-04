@@ -1164,3 +1164,21 @@ async def test_the_lights_rest_after_a_long_run_of_visitors_picks(client, monkey
     await runner._rest_if_due()
     assert runner.resting_until == 0 and runner._run_since == clock[0]
     runner.requests = []
+
+
+async def test_your_admin_phone_skips_the_cool_down_but_not_repeats(client, monkeypatch):
+    await client.put("/api/public", json={"on": True, "per_phone": 3, "repeat_minutes": 15, "admin_pin": "8642",
+                                          "items": [{"kind": "show", "id": s} for s in ("party", "quiet")]})
+    runner = client.app[server.RUNNER]
+    monkeypatch.setattr(public._runner, "clock", lambda: 1000.0)
+    runner.public_played = [{"kind": "show", "ref": "party", "ticket": T2, "at": 1000.0}]  # just played
+    me = await _unlock(client)
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers=me)
+    assert {c["id"]: c["taken"] for c in st["choices"]}["party"] == ""
+    await runner.play("quiet")  # something's on, so picks wait
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=me)
+    assert status == 200
+    # Still no doubling up: it's waiting now.
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=me)
+    assert status == 409 and "already in the queue" in text
+    await runner.stop()
