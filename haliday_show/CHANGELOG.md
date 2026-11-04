@@ -1,10 +1,14 @@
 # Changelog
 
-## 0.2.343
+## 0.2.344
 
 - The effect chooser has filters along its top: **Find an effect**, and chips for **Moving**, **Sparkles and twinkles**, **Flashing**, **Steady**, **Colourful**, **Calm**, **Lively** and **Follows the music** (tick more than one to narrow further). Each kind of effect now sits in its own box with a count, so the list is easier to scan.
 - Effects for a matrix (Scrolling text, Picture, Fire, Snowfall, Music bars) are only offered on a light set up as a matrix.
 - **Allow effects that won't work** only appears when something in the list really won't work on that light (some Govee lights). On WLED and other lights where every effect works, it's gone.
+
+## 0.2.343
+
+- **The app stays responsive while it gets shows ready.** Baking shows, scenes and playlist blocks (after an update, or when you change a light) now happens in the background, so the tabs and buttons keep working while it runs. Before, the page could freeze for a second or two at a time.
 
 ## 0.2.342
 

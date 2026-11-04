@@ -411,6 +411,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/folderbrowse.js                  Going into Library folders to pick shows and playlists (public page, a playlist's Your shows)
     js/glyphs.js                        Draws the symbols on buttons (▶ ⏸ ⏩ 🔊 …) as line icons, never emoji
     js/effects.js                       Effect definitions, House lane effects and the baker
+    js/bakeoff.js, js/bakeworker.js     Bakes (and gzips) in a worker, so the editor stays responsive
     js/timeline.js                      Timeline canvas: waveform, clips, selection, zoom
     js/help.js                          The Help drawer's words: tips per page and panel, search
     js/helpui.js                        The Help drawer and the editors' ? bubbles

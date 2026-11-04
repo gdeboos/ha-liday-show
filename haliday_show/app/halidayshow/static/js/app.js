@@ -9,9 +9,10 @@ import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectio
 import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
-  EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, bake, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
+  EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
   renderTrack, showDuration,
 } from "./effects.js";
+import { bakeOff } from "./bakeoff.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
 import { splitVocals } from "./splitvocals.js";
@@ -1671,7 +1672,7 @@ async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
       const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
       if (!uses(show)) continue;
       await picturesReady;
-      await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
+      await uploadBake(s.id, await bakeOff(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
       if (s.id === app.showId) app.bakedKey = showBakeKey(pos);
       done++;
     } catch { failed++; }
@@ -1694,7 +1695,7 @@ function keepShowsReady() {
       try {
         const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
         await picturesReady;
-        await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
+        await uploadBake(s.id, await bakeOff(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
         made++;
       } catch { /* tried again next time */ }
     }
@@ -4858,7 +4859,7 @@ async function bakeBlocksOnce() {
     const look = (t) => lights.flatMap((l) => [...composeLight(l, trackOf, t)]);
     const loop = loopLength(block, FPS, look);
     await picturesReady;
-    const blob = bake(blockShow(block, lights, loop), app.devices, FPS);
+    const blob = await bakeOff(blockShow(block, lights, loop), app.devices, FPS);
     const path = `api/blocks/${encodeURIComponent(block.id)}/baked`;
     try {
       await sendBaked(api, path, blob);
@@ -9004,7 +9005,7 @@ async function save({ stage = null } = {}) {
   if (app.bakedKey !== key) {
     if (stage) { stage("Preparing…"); await drawn(); }
     await picturesReady;
-    const blob = bake(app.show, app.devices, FPS, pos, app.groups);
+    const blob = await bakeOff(app.show, app.devices, FPS, pos, app.groups);
     stage?.("Sending…");
     await uploadBake(app.showId, blob, stage ? (f) => stage(`Sending… ${Math.round(f * 100)}%`) : undefined, bakeNoteFor(pos));
     app.bakedKey = key;

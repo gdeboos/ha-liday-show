@@ -47,12 +47,22 @@ export function fromBase64(text) {
 
 // Every picture the editor knows: id -> {name, w, h, frames: [Uint8ClampedArray RGBA], delays, total}.
 const known = new Map();
+let changes = 0; // goes up whenever a picture is kept or forgotten, so the bake worker knows to take them again
+export const picturesVersion = () => changes;
+// Every picture as it's kept here (decoded), for the bake worker, which keeps its own copy.
+export const allPictures = () => [...known];
+export function setPictures(list) {
+  known.clear();
+  for (const [id, p] of list) known.set(id, p);
+  changes++;
+}
 export function keepPicture(id, saved) {
+  changes++;
   const delays = saved.delays.map((d) => Math.max(Number(d) || 100, 20));
   known.set(id, { name: saved.name, w: saved.w, h: saved.h, frames: saved.frames.map(fromBase64), delays,
     total: delays.reduce((a, b) => a + b, 0) });
 }
-export const forgetPicture = (id) => known.delete(id);
+export const forgetPicture = (id) => { changes++; return known.delete(id); };
 export const getPicture = (id) => known.get(id);
 export const pictureList = () => [...known].map(([id, p]) => ({ id, name: p.name })).sort((a, b) => a.name.localeCompare(b.name));
 
