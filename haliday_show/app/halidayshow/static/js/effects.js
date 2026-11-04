@@ -1537,7 +1537,7 @@ export function applyGroups(plans, light, time, positions, out) {
 // Transitions: a clip's In (transIn, over transInSecs) and Out (transOut, transOutSecs). Optional
 // clip fields; a clip without them starts and stops at once, as before.
 export const TRANSITIONS = ["none", "fade", "wipe", "wipe back", "from the middle", "dissolve"];
-const ADJACENT = 0.02; // seconds: clips this close count as back to back, and crossfade
+export const ADJACENT = 0.02; // seconds: clips this close count as back to back, and crossfade
 
 // How much of the incoming look shows (0..1) at progress u (0..1) for a segment at x (0..1 along
 // the light, or across the house) and index i.

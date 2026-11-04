@@ -9,6 +9,7 @@ import { gridOf, gridTiles, laneTakes } from "./matrix.js";
 import { isRectPart, rectText } from "./parts.js";
 import { asShown } from "./lightspeed.js";
 import { countText, rangeText } from "./lightwords.js";
+import { joinPartner, moveJoin } from "./joins.js";
 
 const HEADER_W = 150;
 const RULER_H = 22;
@@ -539,7 +540,7 @@ export class Timeline {
     this.app.show.beats.forEach(consider);
     for (const m of this.app.songMarks || []) consider(m.t);
     for (const tr of this.app.show.tracks) {
-      for (const c of tr.clips) if (c !== ignore) { consider(c.start); consider(c.end); }
+      for (const c of tr.clips) if (c !== ignore && !(Array.isArray(ignore) && ignore.includes(c))) { consider(c.start); consider(c.end); }
     }
     return best;
   }
@@ -556,6 +557,14 @@ export class Timeline {
       }
     }
     return null;
+  }
+
+  // The two clips either side of a hit clip edge, when it touches another clip there.
+  joinAt(hit) {
+    if (!hit || hit.mode === "move") return null;
+    const other = joinPartner(this.app.show.tracks[hit.track].clips, hit.clip, hit.mode);
+    if (!other) return null;
+    return hit.mode === "end" ? { left: hit.clip, right: other } : { left: other, right: hit.clip };
   }
 
   pos(e) {
@@ -609,6 +618,9 @@ export class Timeline {
     if (hit) {
       app.select({ track: hit.track, clip: hit.clip });
       this.drag = { ...hit, t0: this.t(x), start: hit.clip.start, end: hit.clip.end, moved: false };
+      // Where it touches the next effect, the join moves both; Ctrl moves just this one's edge.
+      const other = !(e.ctrlKey || e.metaKey) && this.joinAt(hit);
+      if (other) Object.assign(this.drag, { mode: "join", ...other });
       return;
     }
     // Otherwise drag to select a stretch of time, across lights too, then add or delete effects there.
@@ -657,7 +669,11 @@ export class Timeline {
       if (sr && !e.altKey && this.inStretch(sr, x, y)) { this.canvas.style.cursor = "move"; return; }
       this.canvas.style.cursor = !hit ? (y < RULER_H && x > HEADER_W ? "col-resize"
         : y < RULER_H + WAVE_H && x > HEADER_W ? "text" : "crosshair")
-        : hit.mode === "move" && !e.altKey ? "grab" : e.altKey ? "crosshair" : "ew-resize";
+        : hit.mode === "move" && !e.altKey ? "grab" : e.altKey ? "crosshair"
+        : !(e.ctrlKey || e.metaKey) && this.joinAt(hit) ? "col-resize" : "ew-resize";
+      if (hit && !e.altKey && this.joinAt(hit)) {
+        this.canvas.title = "Drag to move the join between these two effects (hold Ctrl to move just one)";
+      }
       return;
     }
     const t = this.t(x);
@@ -697,6 +713,8 @@ export class Timeline {
       const [a, b] = s >= d.anchor ? [d.anchor, Math.max(s, d.anchor + MIN_LEN)] : [s, d.anchor];
       this.setRange(d.track, ti >= 0 ? ti : d.track, a, b);
       return;
+    } else if (d.mode === "join") {
+      moveJoin(d.left, d.right, this.snapTime(t, e, [d.left, d.right]), MIN_LEN);
     } else if (d.mode === "start") {
       c.start = Math.min(Math.max(0, this.snapTime(t, e, c)), c.end - MIN_LEN);
     } else if (d.mode === "end") {
