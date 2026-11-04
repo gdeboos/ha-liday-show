@@ -2,7 +2,8 @@
 // A scene's logic is in housescenes.js; scenelib.py keeps them and the runner plays them round and
 // round. This draws the pages, saves as you go, and bakes each scene's loop for the player.
 
-import { EFFECTS, FPS, MADE_UP, bake, bakeLive, composeLight, withoutLive, matchesPreset, presetParams, unusedColour, withMusicLevels } from "./effects.js";
+import { bakeLiveOff, bakeOff } from "./bakeoff.js";
+import { EFFECTS, FPS, MADE_UP, composeLight, withoutLive, matchesPreset, presetParams, unusedColour, withMusicLevels } from "./effects.js";
 import { gatherPart } from "./parts.js";
 import {
   LIVE_EFFECTS, SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
@@ -618,12 +619,12 @@ export class SceneEditor {
     const advanced = scene.mode === "advanced";
     const show = sceneShow(scene, lights, loop);
     await this.d.picturesReady?.();
-    const blob = bake(show, this.d.devices(), FPS, advanced ? this.d.positions() : {},
+    const blob = await bakeOff(show, this.d.devices(), FPS, advanced ? this.d.positions() : {},
       advanced ? this.d.groups?.() || [] : []);
     const path = `api/house-scenes/${encodeURIComponent(id)}/baked`;
     await sendBaked(this.d.api, path, blob);
     // Live music effects at every level, for the player to pick from (or none to keep).
-    const live = bakeLive(show, this.d.devices());
+    const live = await bakeLiveOff(show, this.d.devices());
     if (live) await sendBaked(this.d.api, `api/house-scenes/${encodeURIComponent(id)}/live`, live);
     else await this.d.api(`api/house-scenes/${encodeURIComponent(id)}/live`, { method: "DELETE" });
     const made = this.d.prefs.get("sceneBakes", {});

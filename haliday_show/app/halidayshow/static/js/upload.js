@@ -50,7 +50,11 @@ export async function sendParts(api, url, blob, last = {}, progress = null) {
 
 // Baked frames are mostly the same colours over and over, so gzipped they're many times smaller and
 // go up much sooner. {data, gz}: gz is false (and data as it was) where the browser can't gzip.
+// Bakes the worker has gzipped already (bakeoff.js), so they aren't gzipped twice.
+export const alreadyGzipped = new WeakSet();
+
 export async function packed(data) {
+  if (alreadyGzipped.has(data)) return { data, gz: true };
   if (typeof CompressionStream !== "function") return { data, gz: false };
   try {
     const out = await new Response(new Blob([data]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer();
