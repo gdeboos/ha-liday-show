@@ -1236,7 +1236,9 @@ ones crossing its edges are trimmed.
 ### Editing a clip
 
 Click a clip to select it. Drag it to move it (onto another light too), drag
-its edges to resize it, and change its effect, colours and settings in the Selection panel. While a
+its edges to resize it (where it touches the next effect, dragging the join moves both, so no gap
+opens up; hold **Ctrl** to move just the one), and change its effect, colours and settings in the
+Selection panel. While a
 clip is selected it loops on its own in a strip at the top of its settings, so changes show
 straight away. To swap the effect, press **Change…** beside **Effect**: it opens the same effect
 chooser used to add one, playing on that light for the clip's length, with the current effect

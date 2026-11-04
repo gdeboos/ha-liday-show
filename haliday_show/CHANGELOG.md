@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.357
+
+- **Moving the join between two effects moves both.** Where one effect ends exactly as the next starts, drag the line between them and the first gets longer as the second gets shorter (or the other way), so no gap or overlap opens up. The pointer shows a double arrow there. Hold **Ctrl** while dragging to move just one effect's edge, as before.
+
 ## 0.2.356
 
 - **Move a whole stretch to another lane.** Select a stretch on the timeline (drag across it, holding **Alt** if it starts on a clip), then:
