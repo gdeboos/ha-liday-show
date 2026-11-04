@@ -1776,6 +1776,7 @@ async def test_a_show_can_have_its_own_picture(client):
     listed = lambda rows: next(s for s in rows if s["id"] == sid)  # noqa: E731
     s = listed(await (await client.get("/api/shows")).json())
     assert s["picture"] == 0 and s["colours"] == ["#ff0000", "#00ff00"]
+    assert s["palette"] == {"name": "X", "colours": ["#ff0000", "#00ff00"]}
     assert (await client.put(f"/api/shows/{sid}/picture", data=b"not a jpeg")).status == 400
     r = await client.put(f"/api/shows/{sid}/picture", data=photo)
     assert r.status == 200 and (await r.json())["picture"] > 0

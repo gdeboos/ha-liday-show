@@ -66,3 +66,14 @@ test("a show is pictured by its own picture, its song's cover art, or a tile in 
   assert.equal(tileBackground(["#f00", "#0f0"]), "linear-gradient(135deg, #f00, #0f0)");
   assert.equal(tileBackground([]), "");
 });
+
+test("a show's row carries its palette, named, or nothing without one", () => {
+  const [a, b, c] = showRows([
+    { id: "a", name: "A", modified: 3, palette: { name: "Candy cane", colours: ["#ff0000", "#ffffff"] } },
+    { id: "b", name: "B", modified: 2, palette: { name: "", colours: ["#00ff00"] } },
+    { id: "c", name: "C", modified: 1, palette: null },
+  ], null);
+  assert.deepEqual(a.palette, { name: "Candy cane", colours: ["#ff0000", "#ffffff"] });
+  assert.equal(b.palette.name, "Its own colours");
+  assert.equal(c.palette, null);
+});

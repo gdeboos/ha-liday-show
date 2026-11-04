@@ -1461,3 +1461,8 @@ dialog { overscroll-behavior: contain; }
 .pub-look-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .pub-look-for { margin-bottom: 4px; }
 .pub-look-for select { width: auto; min-width: 200px; }
+/* Library → Shows: each show's palette under its details. */
+.show-palette { display: flex; align-items: center; gap: 8px; margin-top: 4px; min-width: 0; }
+.show-palette-strip { display: inline-flex; flex: none; border-radius: 4px; overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line); }
+.show-palette-strip span { width: 14px; height: 14px; }

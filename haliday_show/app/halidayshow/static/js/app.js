@@ -6820,6 +6820,20 @@ function showRow(r) {
   details.className = "hint";
   details.textContent = r.details;
   main.append(head, details);
+  if (r.palette) {
+    // Its palette, as a strip of its colours with the palette's name.
+    const pal = Object.assign(document.createElement("div"), { className: "show-palette hint" });
+    const strip = Object.assign(document.createElement("span"), { className: "show-palette-strip" });
+    strip.setAttribute("aria-hidden", "true");
+    for (const c of r.palette.colours) {
+      const chip = document.createElement("span");
+      chip.style.background = c;
+      strip.append(chip);
+    }
+    pal.append(strip, r.palette.name);
+    pal.title = `Palette: ${r.palette.name}`;
+    main.append(pal);
+  }
   const actions = document.createElement("div");
   actions.className = "group show-actions";
   const open = button("Edit", () => openFromList(r.id, open), "primary");
