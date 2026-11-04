@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.353
+
+- **Music on your phone** under a show's name now sits on the same line as how long it lasts, rather than a little higher. On a narrow phone it moves to the next line with its icon.
+
 ## 0.2.352
 
 - While a phone is listening, the line under **Sound off** now just says **Listening on this phone**, rather than repeating the name of what's on (the card already shows it). If you'd changed this line on the **Words** tab, yours stays as it was.
