@@ -764,8 +764,19 @@ export function start() {
   }
 
   // What's on and how far through, the queue under it.
+  let artShown = "";
   function drawBar(st, view) {
     $("pp-now").textContent = view.now;
+    // Its cover art (or a tile in its colours), drawn again only when what's on changes.
+    const n = st.now;
+    // (No picture of its own: a tile with its first letter, as in the list. Covers turned off: none.)
+    const art = n && n.name && ("kind" in n || "colours" in n) ? `${n.kind}:${n.id}:${n.cover}:${n.name}` : "";
+    if (art !== artShown) {
+      artShown = art;
+      const pic = art ? coverOf({ kind: n.kind, id: n.id, name: n.name || "", cover: n.cover || 0, colours: n.colours || [] }, st) : null;
+      $("pp-now-art").replaceChildren(...(pic ? [pic] : []));
+      $("pp-now-art").hidden = !pic;
+    }
     // Your own pick stays in sight while the shows scroll: playing, or where it is in the queue.
     const yours = view.mine[0];
     $("pp-now-yours").textContent = yours ? yours.text : "";
@@ -924,6 +935,8 @@ export function start() {
     $("pp-soon").replaceChildren(...view.soon.map((c) => {
       // On your admin phone they're full strength, with + Queue to try one out before its date.
       const row = el("div", st.admin ? "pp-row" : "pp-row pp-later");
+      const art = coverOf(c, st);
+      if (art) row.append(art);
       const text = el("div", "pp-text");
       text.append(el("div", "pp-name", c.name), el("div", "pp-hint", c.detail));
       row.append(text);
