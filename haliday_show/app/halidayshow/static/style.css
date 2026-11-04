@@ -1449,3 +1449,8 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .fx-count { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--panel); border: 1px solid var(--line);
   border-radius: 999px; padding: 0 7px; }
 .fx-kind .effect-picker button { background: var(--panel); }
+
+/* While a window (or the loading box) is open, the page behind it stays put: no scrolling under it,
+   and scrolling to the end of a window doesn't carry on into the page. */
+html:has(dialog:modal), html:has(.app-loading:not([hidden])) { overflow: hidden; scrollbar-gutter: stable; }
+dialog { overscroll-behavior: contain; }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.345
+
+- While a window is open (the effect chooser, Add a song, Show settings and the rest), the page behind it no longer scrolls. Scrolling to the end of a window stops there too.
+
 ## 0.2.344
 
 - The effect chooser has filters along its top: **Find an effect**, and chips for **Moving**, **Sparkles and twinkles**, **Flashing**, **Steady**, **Colourful**, **Calm**, **Lively** and **Follows the music** (tick more than one to narrow further). Each kind of effect now sits in its own box with a count, so the list is easier to scan.
