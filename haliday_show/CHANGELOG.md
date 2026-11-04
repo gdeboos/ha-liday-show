@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.348
+
+- On the public page, the small button that turns the music off on a visitor's phone now just says **🔇 Sound off**.
+
 ## 0.2.347
 
 - On the public page, the button for stopping the music on a visitor's phone now says **🔇 Phone sound off** (and the long one **Turn the music off on this phone (the lights carry on)**), instead of just **Stop**, which looked as if it would stop the show. If you've changed these words under **Public page → Words**, yours stay.
