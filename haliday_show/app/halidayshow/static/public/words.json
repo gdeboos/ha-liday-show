@@ -96,7 +96,7 @@
         {"key": "listening_short", "label": "Small button while listening (press to turn the phone's sound off)", "text": "Sound off"},
         {"key": "out_of_time", "label": "Link to Music ahead / behind", "text": "Music out of time?"},
         {"key": "on_phone", "label": "On a show with no speaker (Start also starts listening)", "text": "Music on your phone"},
-        {"key": "listen_on", "label": "While listening", "text": "Listening: {name}"},
+        {"key": "listen_on", "label": "While listening (the card already shows what's on; {name} adds its name)", "text": "Listening on this phone"},
         {"key": "listen_nothing", "label": "Listening, with nothing playing", "text": "Listening. The music starts here when a show does."},
         {"key": "listen_loading", "label": "While the song loads", "text": "Getting the music ready…"},
         {"key": "listen_tap", "label": "When the phone needs a press to play", "text": "Press Listen again to hear the music."},
