@@ -215,5 +215,7 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-ico { width: 1.15em; height: 1.15em; flex: none; fill: none; stroke: currentColor; stroke-width: 2;
   stroke-linecap: round; stroke-linejoin: round; }
 .pp-ico .pp-ico-fill { fill: currentColor; stroke: none; }
-.pp-inline-ico { display: inline-flex; gap: .3em; }
+/* An icon in a line of small print: on the line, not lifting the words off it. */
+.pp-inline-ico.pp-has-ico { display: inline-block; max-width: 100%; }
+.pp-inline-ico .pp-ico { width: 1em; height: 1em; vertical-align: -0.15em; margin-right: .25em; }
 #pp-listen-text.pp-has-ico { justify-content: flex-start; }
