@@ -213,7 +213,8 @@ Also on the **Shows** tab:
 - **Show cover art** (on to start with) puts each show's picture beside its name: its song's cover
   art (from an MP3, M4A or FLAC's own tags), or the show's own **Picture** when you've given it one; for
   a playlist, its first show's. Shows without either get a tile in their colours with their first
-  letter. Turn it off for no pictures.
+  letter. The pictures show in the list, under **Coming soon**, and beside what's on in the card at the
+  top. Turn it off for no pictures.
 - **Flashing lights warning**, for shows with strobes or fast flashes:
   - **Off** (to start with).
   - **A note at the top**: a boxed warning above the shows, always there.

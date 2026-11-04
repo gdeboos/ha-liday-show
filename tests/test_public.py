@@ -1203,3 +1203,26 @@ async def test_your_admin_phone_can_queue_a_coming_soon_show(client):
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers=me)
     assert st["soon"][0]["taken"] == "queued"
     await runner.stop()
+
+
+async def test_whats_on_comes_with_its_picture(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}]})
+    runner = client.app[server.RUNNER]
+    await runner.play("party")
+    _, st, _ = await _visitor(client, "/api/state")
+    assert st["now"]["kind"] == "show" and st["now"]["id"] == "party" and "cover" in st["now"]
+    await runner.play("quiet")  # one of yours that isn't on the page: colours only, no cover to fetch
+    _, st, _ = await _visitor(client, "/api/state")
+    assert "id" not in st["now"] and "colours" in st["now"]
+    await client.put("/api/public", json={"look": {"covers": False}})
+    _, st, _ = await _visitor(client, "/api/state")
+    assert "colours" not in st["now"]
+    await runner.stop()
+
+
+async def test_coming_soon_shows_carry_their_cover(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "quiet", "from": "02-29", "to": "02-29"}]})
+    _, st, _ = await _visitor(client, "/api/state")
+    if not st["soon"]:
+        return  # by chance it's the 29th of February
+    assert "cover" in st["soon"][0] and "colours" in st["soon"][0]
