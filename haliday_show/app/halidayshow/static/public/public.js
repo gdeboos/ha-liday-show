@@ -558,7 +558,7 @@ export function start() {
     if ($("pp-admin").hidden) return;
     $("pp-admin-pin").hidden = on;
     $("pp-admin-out").hidden = !on;
-    if (on) $("pp-admin-text").textContent = "🔓 Admin: this phone skips Nearby, the opening hours, the listening PIN, the limits and cool-downs.";
+    if (on) $("pp-admin-text").textContent = "🔓 Admin: this phone skips Nearby, the opening hours, the listening PIN, the limits and cool-downs, and can queue Coming soon shows.";
     else if (!$("pp-admin-text").dataset.said) $("pp-admin-text").textContent = "";
     $("pp-admin-text").hidden = !$("pp-admin-text").textContent;
   }
@@ -918,10 +918,20 @@ export function start() {
     $("pp-none").hidden = view.choices.length > 0 || view.soon.length > 0;
     $("pp-soon-head").hidden = !view.soon.length;
     $("pp-soon").replaceChildren(...view.soon.map((c) => {
-      const row = el("div", "pp-row pp-later");
+      // On your admin phone they're full strength, with + Queue to try one out before its date.
+      const row = el("div", st.admin ? "pp-row" : "pp-row pp-later");
       const text = el("div", "pp-text");
       text.append(el("div", "pp-name", c.name), el("div", "pp-hint", c.detail));
       row.append(text);
+      if (st.admin) {
+        const label = c.taken === "queued" ? "queued_btn" : c.taken === "playing" ? "playing_btn" : "queue_btn";
+        const b = el("button", c.taken ? "pp-taken" : "primary", say_(w, label));
+        b.type = "button";
+        b.disabled = busy || !!c.taken;
+        b.setAttribute("aria-label", `${say_(w, label).replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
+        b.addEventListener("click", () => send("api/request", { kind: c.kind, id: c.id }));
+        row.append(b);
+      }
       return row;
     }));
     $("pp-pick-hint").textContent = say_(w, "pick_hint");

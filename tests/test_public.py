@@ -1182,3 +1182,24 @@ async def test_your_admin_phone_skips_the_cool_down_but_not_repeats(client, monk
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"}, headers=me)
     assert status == 409 and "already in the queue" in text
     await runner.stop()
+
+
+async def test_your_admin_phone_can_queue_a_coming_soon_show(client):
+    await client.put("/api/public", json={"on": True, "admin_pin": "8642", "items": [
+        {"kind": "show", "id": "party"}, {"kind": "show", "id": "quiet", "from": "02-29", "to": "02-29"}]})
+    runner = client.app[server.RUNNER]
+    await runner.play("carols")  # something's on, so picks wait
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    if not st["soon"]:
+        return  # by chance it's the 29th of February
+    assert "taken" not in st["soon"][0]
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    assert status == 404  # visitors can't
+    me = await _unlock(client)
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers=me)
+    assert st["soon"][0]["id"] == "quiet" and st["soon"][0]["taken"] == ""
+    status, _, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"}, headers=me)
+    assert status == 200
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}", headers=me)
+    assert st["soon"][0]["taken"] == "queued"
+    await runner.stop()

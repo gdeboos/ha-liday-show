@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.2.346
+## 0.2.347
 
 - On the public page, the button for stopping the music on a visitor's phone now says **🔇 Phone sound off** (and the long one **Turn the music off on this phone (the lights carry on)**), instead of just **Stop**, which looked as if it would stop the show. If you've changed these words under **Public page → Words**, yours stay.
+
+## 0.2.346
+
+- **Try a Coming soon show early from your admin phone.** On the visitors' page unlocked with the admin PIN, shows under **Coming soon** now have **+ Queue**, so you can check one on the lights before its dates. They stay under **Coming soon**, greyed out with no button, for everyone else.
 
 ## 0.2.345
 
