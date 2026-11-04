@@ -64,6 +64,7 @@ import { askText, askYes } from "./ask.js";
 import { movePart } from "./partorder.js";
 import { glyphIcon, watchButtons } from "./glyphs.js";
 import { KIND_WORDS, nowOn } from "./nowbar.js";
+import { FILTERS as FX_FILTERS, matches } from "./effecttags.js";
 import { browse, folderButton, pathNav } from "./folderbrowse.js";
 import {
   addFolder, childrenOf, countIn, deleteFolder, flatTree, folderOf, fromSongFolders, moveFolder, moveItems, moveProblem,
@@ -3136,7 +3137,40 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
   head.append(h, tl, ml, al, close, note);
   const body = document.createElement("div");
   body.className = "effect-dialog-body";
+  // Filters: what the effect is like (Moving, Sparkles, Calm…; every one ticked must fit) and its name.
+  const filters = document.createElement("div");
+  filters.className = "fx-filters";
+  const find = Object.assign(document.createElement("input"), { type: "search", placeholder: "Find an effect", autocomplete: "off" });
+  find.setAttribute("aria-label", "Find an effect");
+  const chips = document.createElement("div");
+  chips.className = "day-chips";
+  chips.setAttribute("role", "group");
+  chips.setAttribute("aria-label", "Show effects that are");
+  const picked = new Set((prefs.get("fxFilters", []) || []).filter((t) => FX_FILTERS.some(([k]) => k === t)));
+  for (const [tag, label, means] of FX_FILTERS) {
+    const l = document.createElement("label");
+    l.title = means;
+    const c = Object.assign(document.createElement("input"), { type: "checkbox", checked: picked.has(tag) });
+    c.addEventListener("change", () => {
+      if (c.checked) picked.add(tag); else picked.delete(tag);
+      prefs.set("fxFilters", [...picked]);
+      render();
+    });
+    l.append(c, ` ${label}`);
+    chips.append(l);
+  }
+  const clear = button("Clear", () => {
+    picked.clear();
+    prefs.set("fxFilters", []);
+    find.value = "";
+    for (const c of chips.querySelectorAll("input")) c.checked = false;
+    render();
+  }, "link-button");
+  find.addEventListener("input", () => render());
+  filters.append(find, chips, clear);
+  head.append(filters); // in the header, so they stay put as you scroll
   dlg.append(head, body);
+  const shows = (key, fx) => matches(key, fx, [...picked], find.value);
   const len = Math.min(Math.max(length, 1), 6);
 
   const choice = (effect, preset, label, active) => {
@@ -3157,6 +3191,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       if (!r || r.level === "ok") return;
       if (r.level === "no" && !allow.checked && effect !== current) blocked = r.reasons.join(" ");
       b.classList.add(blocked ? "unfit" : "limited");
+      if (blocked) al.hidden = false;
       b.title = fitText(r);
       span.textContent = `⚠ ${label}`;
     };
@@ -3176,8 +3211,10 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       sh.textContent = suggested.heading;
       const row = document.createElement("div");
       row.className = "effect-picker";
-      for (const look of suggested.looks) row.append(choice(look.effect, look, look.label, false));
-      body.append(sh, row);
+      for (const look of suggested.looks) {
+        if (shows(look.effect, EFFECTS[look.effect])) row.append(choice(look.effect, look, look.label, false));
+      }
+      if (row.children.length) body.append(sh, row);
     }
     for (const [named, house] of groups) {
       const heading = named || (suggested?.looks.length ? "All effects" : null);
@@ -3193,22 +3230,30 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       // in an Advanced scene.
       const sceneHere = (fx) => !!app.sceneId && house === false && sceneLight(dev, fx);
       const all = visibleEffects(current ?? undefined, house, matrix)
-        .filter(([key, fx]) => (!only || only.includes(key)) && (!fx.sceneOnly || (only ? only.includes(key) : sceneHere(fx))));
+        .filter(([key, fx]) => (!only || only.includes(key)) && (!fx.sceneOnly || (only ? only.includes(key) : sceneHere(fx))))
+        .filter(([key, fx]) => shows(key, fx) || key === current)
+        // Effects drawn on a grid only on a matrix (or with Allow effects that won't work): on a
+        // strip they show one row of the picture, so Scrolling text and Picture show next to nothing.
+        .filter(([key, fx]) => !fx.grid || !dev || !!gridOf(dev) || allow.checked || key === current);
       // Under small headings (Basics, Movement, ...) when there's more than one kind.
       const kinds = EFFECT_GROUPS.map(([g, label]) => [label, all.filter(([key, fx]) => shownGroup(key, fx, house, matrix) === g)])
         .filter(([, e]) => e.length);
       for (const [kind, effects] of kinds) {
+        // Each kind in its own box, its name and how many there are on top.
+        const box = document.createElement("section");
+        box.className = "fx-kind";
         if (kinds.length > 1 && !(toggle.checked && onlyMine)) {
           const sub = document.createElement("div");
           sub.className = "effect-dialog-kind";
-          sub.textContent = kind;
-          body.append(sub);
+          sub.append(kind, Object.assign(document.createElement("span"), { className: "fx-count", textContent: String(effects.length) }));
+          box.append(sub);
         }
+        body.append(box);
         if (!toggle.checked) {
           const row = document.createElement("div");
           row.className = "effect-picker";
           for (const [key, fx] of effects) row.append(choice(key, null, fx.label, key === current));
-          body.append(row);
+          box.append(row);
           continue;
         }
         const grid = document.createElement("div");
@@ -3229,9 +3274,19 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
           g.append(legend, row);
           grid.append(g);
         }
-        if (grid.children.length) body.append(grid);
+        if (grid.children.length) box.append(grid);
+        else box.remove();
       }
     }
+    if ((picked.size || find.value.trim()) && !body.querySelector(".effect-picker button")) {
+      const none = Object.assign(document.createElement("p"), { className: "hint fx-none", textContent: "No effects are like that. " });
+      none.append(button("Clear the filters", () => clear.click(), "link-button"));
+      body.append(none);
+    }
+    clear.hidden = !picked.size && !find.value.trim();
+    // Only offered when something here won't work on this light (a Govee light's limits, say).
+    // On lights where every effect works, such as WLED, it doesn't show.
+    al.hidden = !fit || (!allow.checked && !body.querySelector(".unfit"));
     if (toggle.checked && onlyMine && !body.querySelector(".preset-group")) {
       body.insertAdjacentHTML("beforeend", `<p class="hint">No presets of your own yet. Select a clip and press <b>Save as preset</b>.</p>`);
     }
