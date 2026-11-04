@@ -4,7 +4,7 @@ import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, pl
 import { analyseInWorker, toMono } from "./analysis.js";
 import { keepLevels, levelCurve, levelsFit } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
-import { coverPalette, songPaletteName, songPaletteNow } from "./coverpalette.js";
+import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
 import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
 import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
@@ -8148,13 +8148,15 @@ async function keepSongPalette(ref, colors, from) {
 }
 
 // justAdded: straight after adding the song, where it says nothing if there's nothing to offer.
+// With an AI set up, its ideas for the song join the cover's colours when they come.
 async function offerSongColours(ref, { justAdded = false } = {}) {
   const [current, cover] = await Promise.all([songPalette(ref), coverColours(ref)]);
-  const options = cover ? [{ label: "From the cover", colors: cover, from: "cover" }] : [];
-  if (!options.length) {
-    if (!justAdded) status(`${songLabel(ref)} has no cover art with colours to use`, "hint", "songs");
+  const withAI = Boolean(aiVia);
+  if (!cover && !withAI) {
+    if (!justAdded) status(`${songLabel(ref)} has no cover art with colours to use. With an AI set up (Setup → AI), it can suggest some from the song's name`, "hint", "songs");
     return;
   }
+  const options = cover ? [{ label: "From the cover", colors: cover, from: "cover" }] : [];
   const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
   await new Promise((resolve) => {
     const dlg = el("dialog", { className: "effect-dialog form-dialog ask-dialog song-colours-dialog" });
@@ -8165,7 +8167,7 @@ async function offerSongColours(ref, { justAdded = false } = {}) {
       body.append(el("div", { className: "ai-preset-idea" }, paletteBar(current.colors),
         el("span", { className: "ai-preset-idea-name", textContent: `Now: ${current.name}` })));
     }
-    for (const o of options) {
+    const option = (o) => {
       const use = button("Use these", async () => {
         use.disabled = true;
         try { await keepSongPalette(ref, o.colors, o.from); dlg.close(); } catch (err) {
@@ -8173,8 +8175,23 @@ async function offerSongColours(ref, { justAdded = false } = {}) {
           status(`Couldn't keep the colours: ${err.message}`, true, "songs");
         }
       }, "primary");
-      body.append(el("div", { className: "ai-preset-idea" }, paletteBar(o.colors),
-        el("span", { className: "ai-preset-idea-name", textContent: o.label }), el("div", { className: "insp-actions" }, use)));
+      return el("div", { className: "ai-preset-idea" }, paletteBar(o.colors),
+        el("span", { className: "ai-preset-idea-name", textContent: o.label }), el("div", { className: "insp-actions" }, use));
+    };
+    for (const o of options) body.append(option(o));
+    if (withAI) {
+      const waiting = el("p", { className: "hint", textContent: "Asking the AI for colours that suit the song…" });
+      waiting.setAttribute("aria-live", "polite");
+      body.append(waiting);
+      api("api/ai/palettes", { method: "POST", json: { request: songColourRequest(songLabel(ref), cover),
+        context: { palettes: allPalettes().map((p) => ({ name: p.name, colors: p.colors })) } } })
+        .then((reply) => {
+          const ideas = checkPalettes(reply).palettes.slice(0, 2);
+          if (!ideas.length) { waiting.textContent = "The AI had no colours to suggest this time."; return; }
+          waiting.replaceWith(...ideas.map((p) => option({ label: `From the song: ${p.name}`, colors: p.colors, from: "ai" })));
+          if (!cover && dlg.open) body.querySelector("button.primary")?.focus();
+        })
+        .catch((err) => { waiting.textContent = `The AI couldn't suggest colours: ${err.message}`; });
     }
     const head = el("div", { className: "effect-dialog-head" }, el("h3", { textContent: "Colours from this song" }));
     const foot = el("div", { className: "form-dialog-foot" }, el("span", { className: "spacer" }), close);

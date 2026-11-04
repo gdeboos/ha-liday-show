@@ -67,3 +67,11 @@ test("a song's palette follows your palette of that name, else its own copy", ()
   assert.deepEqual(songPaletteNow(saved, []).colors, ["#ff0000"]);
   assert.equal(songPaletteNow(null, []), null);
 });
+
+test("the AI is told the song and its cover's colours", async () => {
+  const { songColourRequest } = await import("../../haliday_show/app/halidayshow/static/js/coverpalette.js");
+  const r = songColourRequest("Wham! - Last_Christmas.mp3", ["#d90012", "#ffffff"]);
+  assert.match(r, /"Wham! - Last Christmas"/);
+  assert.match(r, /#d90012, #ffffff/);
+  assert.match(songColourRequest("x", null), /no cover art/);
+});

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.359
+
+- **The AI suggests colours for a song too.** With an AI set up, the **Colours from this song** window also asks it for palettes that suit the song: its mood, its season and what it's about, going by the song's name and its cover's colours. Up to two show up under **From the song** a few seconds after the window opens, beside the cover's colours. Pick whichever you like.
+- A song with no cover art now gets colours too, when an AI is set up.
+
 ## 0.2.358
 
 - **Colours from a song.** When you add a song with cover art, a small window offers a colour palette made from the cover: its main colours, made bright and vivid for lights, without black, greys or whites. Press **Use these** or **Skip**.
