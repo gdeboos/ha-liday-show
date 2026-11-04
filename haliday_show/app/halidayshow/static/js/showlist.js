@@ -59,6 +59,7 @@ export function showRows(shows, last, now = new Date(), seasons = []) {
       last: s.id === last,
       inProgress: s.in_progress === true,
       thumb: showThumb(s),
+      palette: s.palette?.colours?.length ? { name: s.palette.name || "Its own colours", colours: s.palette.colours } : null,
       details: [seasonName(s.season), songName(s.song) || "No song yet", length(s.duration), `changed ${changed(s.modified, now)}`]
         .filter(Boolean).join(" · "),
     }));

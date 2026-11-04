@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.354
+
+- **Library → Shows** shows each show's palette: a strip of its colours and the palette's name, under the show's details.
+
 ## 0.2.353
 
 - **Music on your phone** under a show's name now sits on the same line as how long it lasts, rather than a little higher. On a narrow phone it moves to the next line with its icon.
