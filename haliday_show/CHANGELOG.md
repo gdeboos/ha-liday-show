@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.340
+
+- **Clearer names on Public page → Limits.** **Before a show can be picked again** is now **Same song again after**, and **Before a phone can pick again** is now **Same phone again after**, each with a plainer explanation underneath. They work as before.
+
 ## 0.2.339
 
 - **Your admin phone skips the cool-down.** A show that's resting after it played (**Again in 12 minutes**) now shows **+ Queue** on your phone unlocked with the admin PIN, so you can play it again straight away. You still can't queue a show that's already waiting or playing.

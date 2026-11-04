@@ -1344,12 +1344,14 @@
         <span class="hint">How many can wait in all.</span></label>
     </div>
     <div class="pub-grid">
-      <label class="field">Before a show can be picked again <span class="pub-inline"><input id="pub-repeat" type="number"
+      <label class="field">Same song again after <span class="pub-inline"><input id="pub-repeat" type="number"
           min="0" max="120" step="5"> minutes</span>
-        <span class="hint">After a visitor's pick plays, how long before anyone can pick it again. 0 for no wait.</span></label>
-      <label class="field">Before a phone can pick again <span class="pub-inline"><input id="pub-phone-wait" type="number"
+        <span class="hint">Once a song has played, nobody can pick that song again for this long (any other song is
+          fine). Stops one favourite playing on a loop. 0 for no limit.</span></label>
+      <label class="field">Same phone again after <span class="pub-inline"><input id="pub-phone-wait" type="number"
           min="0" max="60" step="1"> minutes</span>
-        <span class="hint">After a phone's own pick plays, how long before it can pick another. 0 for no wait.</span></label>
+        <span class="hint">Once someone's song has played, their phone waits this long before picking another. Gives
+          everyone else a turn. 0 for no limit.</span></label>
     </div>
   </section>
   </div>
