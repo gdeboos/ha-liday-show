@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.351
+
+- **Proper icons on the visitors' page.** Every button now has a simple drawn icon in the page's own colours instead of an emoji: **Start**, **Queue**, **Queued**, **On now**, **Listen**, **Sound off**, **Earlier** and **Later**, **Install app**, **Cancel**, **Try again**, and your admin buttons. So do **Music on your phone** and the line that says you're listening. Emoji look different on every phone and clashed with the colour themes.
+- If you'd changed any of those words on the **Words** tab and started them with an emoji, the page now leaves the emoji off and shows the icon.
+
 ## 0.2.350
 
 - The public page can change its look through the year. On **Public page → Look**, **Through the year** lets you add dated looks, such as *Halloween* from 1 Oct to 2 Nov, each with its own title, welcome, picture, colours and snow. A new one starts as a copy of your everyday look. Where dates overlap, the one higher in the list wins, and outside them visitors get your everyday look. Pick a look under **Look you're changing** to edit it and see it in the preview, whatever the date.

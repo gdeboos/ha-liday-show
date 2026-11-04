@@ -752,14 +752,15 @@ async def safe_headers(request, handler):
 
 
 PAGE_FILES = {"index.html": "text/html", "public.js": "text/javascript", "public.css": "text/css",
-              "colours.js": "text/javascript", "listensync.js": "text/javascript"}
+              "colours.js": "text/javascript", "listensync.js": "text/javascript", "icons.js": "text/javascript"}
 # The page's own files ask for each other with ?v= and a stamp of what's in them, so a phone (or a
 # tunnel's cache, such as Cloudflare's) never mixes an old script with a new page after an update.
 _STAMP = hashlib.sha1(b"".join((PAGE / n).read_bytes() for n in sorted(PAGE_FILES))).hexdigest()[:10]
 _STAMPED = {"index.html": (('href="public.css"', f'href="public.css?v={_STAMP}"'),
                            ('src="public.js"', f'src="public.js?v={_STAMP}"')),
             "public.js": (('"./colours.js"', f'"./colours.js?v={_STAMP}"'),
-                          ('"./listensync.js"', f'"./listensync.js?v={_STAMP}"'))}
+                          ('"./listensync.js"', f'"./listensync.js?v={_STAMP}"'),
+                          ('"./icons.js"', f'"./icons.js?v={_STAMP}"'))}
 
 
 def page_file(name: str) -> web.Response:
@@ -1329,7 +1330,7 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
     app[COPIES] = copies or songcopy.SongCopies()
     r = app.router
     r.add_get("/", page)
-    r.add_get("/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js)}", page)
+    r.add_get("/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js|icons\\.js)}", page)
     r.add_get("/api/state", get_state)
     r.add_get("/manifest.webmanifest", get_manifest)
     r.add_get("/icon.png", get_icon)

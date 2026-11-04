@@ -1979,7 +1979,7 @@ without the code just says "Scan the code on the sign to start a show".
   reaching the page through the internet must be that close to your house to start a show.
   - As the page opens, the phone asks to share its location. It's only used for this check and isn't
     kept.
-  - **▶ Start** only appears once they're close enough. Further away, they see "You're too far away to
+  - **Start** only appears once they're close enough. Further away, they see "You're too far away to
     start a show", with the shows listed but no buttons. The page keeps checking while it's open, so
     walking up brings the buttons.
   - A phone that won't share its location is told how to allow it, with **Try again**.
@@ -2019,7 +2019,7 @@ The line underneath says whether the page is open now, or when it next opens. Su
 for your home location, as for playlists; without one, a sunset start never opens, and it says so.
 
 Outside the hours, visitors see when to come back ("Shows start at 5pm. Come back then!", "Shows
-start tomorrow at 4:32pm" or "on Saturday at 5pm"), with your shows listed but no **▶ Start**
+start tomorrow at 4:32pm" or "on Saturday at 5pm"), with your shows listed but no **Start**
 buttons. Their phones aren't asked for their location until it opens. Anyone already waiting in the
 queue at closing time still gets their show. Each show's own dates (below) still apply within the
 hours.
@@ -2029,7 +2029,7 @@ hours.
 Visitors (and you) can put the page on their home screen as an app. It opens full screen with no
 address bar, with your code built in, so it keeps working however long ago it was installed.
 
-- **Android (Chrome)**: an **📲 Install app** button appears at the top of the page when the phone
+- **Android (Chrome)**: an **Install app** button appears at the top of the page when the phone
   offers it. Press it and confirm. It doesn't show once the page is installed, or inside the app.
 - **iPhone**: press **Share**, then **Add to Home Screen**. (iPhones don't let a page offer its own
   install button.)
@@ -2051,18 +2051,18 @@ There's no button for it on the visitors' page, so nobody else goes looking. To 
 
 A dashed card then says your phone is in admin mode, and **Close** tucks it away. On that phone:
 
-- **Nearby only** and the opening hours don't apply: **▶ Start** shows wherever you are, at any time.
+- **Nearby only** and the opening hours don't apply: **Start** shows wherever you are, at any time.
 - The listening PIN isn't asked for.
 - The limit per phone and **Queue length** don't apply (up to 20 waiting, as a ceiling).
 - The cool-down after a show plays doesn't apply, so you can queue it again straight away.
-- Shows under **Coming soon** get **+ Queue** too, so you can try one on the lights before its dates. They
+- Shows under **Coming soon** get **Queue** too, so you can try one on the lights before its dates. They
   stay under **Coming soon** for everyone else.
 - You still can't queue a show that's already waiting or playing now.
 
 While a show is on, your admin phone also gets, under what's on:
 
-- **⏭ Skip**: ends a visitor's pick that's playing now; the next one waiting starts as usual.
-- **■ Stop the lights**: stops whatever is on and clears the queue (it asks first).
+- **Skip**: ends a visitor's pick that's playing now; the next one waiting starts as usual.
+- **Stop the lights**: stops whatever is on and clears the queue (it asks first).
 - **Remove** beside anyone's pick in **Up next**, to take it out of the queue.
 - The page works even with **Let visitors start shows** off, so you can check everything before you
   open. Other people still see it as closed.
@@ -2157,7 +2157,7 @@ Also on the **Shows** tab:
   - **Off** (to start with).
   - **A note at the top**: a boxed warning above the shows, always there.
   - **Ask visitors to accept it before Start**: the same note with an **I understand** button, and no
-    **▶ Start** buttons until it's pressed. Each phone remembers it, so it's only asked again if you
+    **Start** buttons until it's pressed. Each phone remembers it, so it's only asked again if you
     change the warning's words.
 
   The warning's words, and the button's, are on the **Words** tab.
@@ -2171,8 +2171,8 @@ as usual.
 1. On the **Listening** page, turn on **Let visitors listen on their phone**.
 2. To keep it to yourself while you try it out, turn on **Needs a PIN to listen** and type a PIN of 4
    to 8 numbers.
-3. On your phone, open the visitors' link and press **🎧 Listen** in the card at the top (type the PIN
-   if you set one). Press **🔇 Sound off** to stop the music on their phone; the show carries on, on your lights. **🎧 Listen** only shows while something's on.
+3. On your phone, open the visitors' link and press **Listen** in the card at the top (type the PIN
+   if you set one). Press **Sound off** to stop the music on their phone; the show carries on, on your lights. **Listen** only shows while something's on.
 
 How it works:
 
@@ -2191,14 +2191,14 @@ How it works:
   it can be a little further out. Bluetooth headphones and speakers play a little late, as they do with
   any phone.
 - If the music and lights aren't together, visitors can fix it on their own phone while listening: they
-  press **Music out of time?** under the button, then **◀ Earlier** if they hear the beat after the lights flash (usual with Bluetooth), **Later ▶** if
+  press **Music out of time?** under the button, then **Earlier** if they hear the beat after the lights flash (usual with Bluetooth), **Later** if
   they hear it before. Each press moves the music 0.05 s, up to a second either way, and the phone
   remembers it for next time.
-- **Shows with no speaker** (no **Show speaker** of their own and no default one) say **🎧 Music on your
-  phone** on the visitors' page. A visitor who presses **▶ Start** or **+ Queue** on one starts listening
+- **Shows with no speaker** (no **Show speaker** of their own and no default one) say **Music on your
+  phone** on the visitors' page. A visitor who presses **Start** or **Queue** on one starts listening
   with the same press, so the music plays on their phone when it comes on. (Phones only play sound that
-  a press starts, so it can't begin by itself for everyone.) Others can press **🎧 Listen** as usual.
-- Keep the page open. On some phones the music stops when the screen locks; press **🎧 Listen** again
+  a press starts, so it can't begin by itself for everyone.) Others can press **Listen** as usual.
+- Keep the page open. On some phones the music stops when the screen locks; press **Listen** again
   to carry on.
 - Every word visitors see while listening is on the **Words** tab, under **Listening on a phone**.
 
@@ -2224,12 +2224,12 @@ on the **Look** tab.)
 What visitors get:
 
 - **A card at the top** of the page says what's on, with a bar showing how far through it is, and
-  **🎧 Listen** if listening is on. It stays in view as they scroll down the shows.
+  **Listen** if listening is on. It stays in view as they scroll down the shows.
 - **Up next** under it lists everyone's waiting picks, with each show's cover art and name (never who
   picked them) and roughly when each starts. The first three show, plus their own wherever it is, and **Show all**
   opens the rest.
-- **If nothing's on**, each show has **▶ Start** and their pick starts straight away. While something's
-  on (or others are waiting) the button says **+ Queue** instead.
+- **If nothing's on**, each show has **Start** and their pick starts straight away. While something's
+  on (or others are waiting) the button says **Queue** instead.
 - **If something's on**, the card at the top tells them where they are in the queue and roughly how long
   it'll be, such as "You're next, starting in about 2 minutes". Their picks are highlighted in **Up next**,
   with **Cancel** beside each.
@@ -2242,7 +2242,7 @@ What visitors get:
   A show with no speaker plays its lights only, unless the
   [Show player](#music-with-no-speaker-the-show-player) is open.
 - **No repeats:** a show (or playlist) that's already waiting in the queue, or playing now, can't be
-  picked again until it's played. Its button says **✓ Queued** or **♪ On now** instead. This applies to
+  picked again until it's played. Its button says **Queued** or **On now** instead. This applies to
   your own phone with the [Admin PIN](#admin-pin) too.
 - Visitors can't stop or skip anyone else's show.
 
