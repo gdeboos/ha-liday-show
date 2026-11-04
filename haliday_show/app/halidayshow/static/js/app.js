@@ -1669,6 +1669,7 @@ async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
     try {
       const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
       if (!uses(show)) continue;
+      await picturesReady;
       await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
       if (s.id === app.showId) app.bakedKey = showBakeKey(pos);
       done++;
@@ -1691,6 +1692,7 @@ function keepShowsReady() {
       if (s.id === app.showId && app.dirty) continue; // the open show's are made when it saves
       try {
         const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
+        await picturesReady;
         await uploadBake(s.id, bake(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
         made++;
       } catch { /* tried again next time */ }
@@ -2263,6 +2265,7 @@ const sceneEd = new SceneEditor({
   lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
   palettes: () => allPalettes(), askYes, presetsFor: (effect) => presetsFor(effect), afterList: (box) => foldLibraryList("scenes", box),
   positions: () => housePositionsAll(), groups: () => app.groups, editAdvanced: (id) => openSceneInEditor(id),
+  picturesReady: () => picturesReady,
   scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => (entriesFor(scheduleState.entries || [], "scene", id).length
     ? scheduleLine(scheduleState.entries, "scene", id, scheduleState) : ""),
   chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }), wledPicker,
@@ -4799,6 +4802,7 @@ async function bakeBlocksOnce() {
     const trackOf = (id) => probe.tracks.find((tr) => tr.device === id);
     const look = (t) => lights.flatMap((l) => [...composeLight(l, trackOf, t)]);
     const loop = loopLength(block, FPS, look);
+    await picturesReady;
     const blob = bake(blockShow(block, lights, loop), app.devices, FPS);
     const path = `api/blocks/${encodeURIComponent(block.id)}/baked`;
     try {
@@ -7812,6 +7816,11 @@ const songSeen = typeof IntersectionObserver === "function"
   }) : null;
 // Library → Pictures: images and GIFs for the Picture effect on matrices ---------------------------
 // Every picture is fetched when the editor starts and kept decoded (pictures.js), as effects can't wait.
+// Pictures load in the background at start-up; anything that bakes (the Picture effect reads them)
+// waits for this first, so a show is never sent with a picture missing.
+let picturesReady = Promise.resolve();
+let picturesLoaded = false;
+
 async function loadPictures() {
   try {
     const list = await api("api/pictures");
@@ -7821,7 +7830,10 @@ async function loadPictures() {
     }));
     for (const { id } of pictureList()) if (!list.some((p) => p.id === id)) forgetPicture(id);
   } catch (e) { status(`Couldn't load your pictures: ${e.message}`, true, "pictures"); }
+  picturesLoaded = true;
   if (!$("view-pictures").hidden) renderPicturesPage();
+  // A show opened while they loaded may be showing a Picture effect's picker: draw it again.
+  if (!$("view-editor").hidden) renderInspector();
 }
 
 // The Picture effect's picture: a list of yours, with a note when there are none yet.
@@ -7830,7 +7842,7 @@ function picturePicker(value) {
   const list = pictureList();
   el.add(new Option(list.length ? "Pick a picture" : "None yet: add one under Library → Pictures", "", false, !value));
   for (const p of list) el.add(new Option(p.name, p.id, false, p.id === value));
-  if (value && !getPicture(value)) el.add(new Option("A picture that's been deleted", value, false, true));
+  if (value && !getPicture(value)) el.add(new Option(picturesLoaded ? "A picture that's been deleted" : "Loading pictures…", value, false, true));
   return el;
 }
 
@@ -8936,6 +8948,7 @@ async function save({ stage = null } = {}) {
   }
   if (app.bakedKey !== key) {
     if (stage) { stage("Preparing…"); await drawn(); }
+    await picturesReady;
     const blob = bake(app.show, app.devices, FPS, pos, app.groups);
     stage?.("Sending…");
     await uploadBake(app.showId, blob, stage ? (f) => stage(`Sending… ${Math.round(f * 100)}%`) : undefined, bakeNoteFor(pos));
@@ -11142,9 +11155,12 @@ async function init() {
     $("tab-labs").hidden = !e.target.checked;
     if (!e.target.checked && sectionPage.setup === "labs") sectionPage.setup = "settings";
   });
+  // Says what it's waiting for, so a slow step is easy to spot.
+  const loading = (text) => { $("app-loading-text").textContent = text; };
   try {
+    loading("Loading your lights…");
     await loadDevices();
-    await loadPictures(); // before any show is previewed or baked, as the Picture effect reads them
+    picturesReady = loadPictures(); // in the background: bakes wait for it, the page doesn't
     keepBlocksReady();
     sceneEd.keepReady();
     loadSpeakers();
@@ -11153,8 +11169,10 @@ async function init() {
     loadPresets();
     loadLibraryFolders();
     loadAiStatus();
+    loading("Loading the public page…");
     await loadPublic();
     house.load().then(() => { renderHouseLights(); keepShowsReady(); });
+    loading("Loading your shows…");
     const shows = await api("api/shows");
     await openShow(null, { chosen: false });
     // Reloaded, bookmarked, or back in the app after a while: open the page you were on, with what
@@ -11165,6 +11183,8 @@ async function init() {
     // It opens on the Library: your shows and songs, with the editors a tab away.
     showView("library");
     if (isPage(wanted) && wanted !== shownPage) {
+      loading({ editor: "Opening your show…", music: "Opening your song…", scene: "Opening your scene…",
+        playlist: "Opening your playlist…" }[wanted] || "Opening where you were…");
       const last = prefs.get("lastShow", null);
       if (same && wanted === "editor" && shows.some((x) => x.id === last)) { await openShow(last, { chosen: false }); app.chosen = true; }
       if (same && wanted === "playlist" && place.playlist) { openPlaylistId = place.playlist; app.playlistChosen = true; }

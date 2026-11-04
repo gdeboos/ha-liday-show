@@ -617,6 +617,7 @@ export class SceneEditor {
     const loop = withoutLive(() => sceneLoop(scene, lights, FPS)); // live effects loop on their idle glow
     const advanced = scene.mode === "advanced";
     const show = sceneShow(scene, lights, loop);
+    await this.d.picturesReady?.();
     const blob = bake(show, this.d.devices(), FPS, advanced ? this.d.positions() : {},
       advanced ? this.d.groups?.() || [] : []);
     const path = `api/house-scenes/${encodeURIComponent(id)}/baked`;
