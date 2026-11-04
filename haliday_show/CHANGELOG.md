@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.342
+
+- **HA-liday Show opens quicker again.** Getting your scenes and playlist blocks ready (which keeps the page busy for a while, most after an update) now starts once the app is on screen, rather than holding up the loading box. The public page's settings are only waited for when that's the page you're opening.
+
 ## 0.2.341
 
 - **HA-liday Show opens quicker.** It no longer waits for every picture in your Library before showing the app: pictures load in the background, and anything that needs one (making a show with a Picture effect ready) waits for them by itself.

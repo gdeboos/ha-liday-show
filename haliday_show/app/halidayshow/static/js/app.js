@@ -11161,16 +11161,15 @@ async function init() {
     loading("Loading your lights…");
     await loadDevices();
     picturesReady = loadPictures(); // in the background: bakes wait for it, the page doesn't
-    keepBlocksReady();
-    sceneEd.keepReady();
     loadSpeakers();
     loadModels();
     loadPalettes();
     loadPresets();
     loadLibraryFolders();
     loadAiStatus();
-    loading("Loading the public page…");
-    await loadPublic();
+    // The public page's settings are only waited for when that's the page opening (its tab shows once
+    // they're in).
+    const publicLoaded = loadPublic();
     house.load().then(() => { renderHouseLights(); keepShowsReady(); });
     loading("Loading your shows…");
     const shows = await api("api/shows");
@@ -11182,6 +11181,7 @@ async function init() {
     const same = place?.page === wanted;
     // It opens on the Library: your shows and songs, with the editors a tab away.
     showView("library");
+    if (wanted === "public") { loading("Opening the public page…"); await publicLoaded; }
     if (isPage(wanted) && wanted !== shownPage) {
       loading({ editor: "Opening your show…", music: "Opening your song…", scene: "Opening your scene…",
         playlist: "Opening your playlist…" }[wanted] || "Opening where you were…");
@@ -11196,6 +11196,9 @@ async function init() {
     }
     window.addEventListener("popstate", pageFromHistory);
     $("app-loading").hidden = true;
+    // Only now, with the app on screen: getting scenes and playlist blocks ready bakes them in this
+    // browser, which keeps the page busy for a while (most after an update).
+    setTimeout(() => { keepBlocksReady(); sceneEd.keepReady(); }, 500);
     // A fresh install opens the setup guide, once.
     if (!app.deviceList.length && !shows.length && !prefs.get("wizard.done", false)) openWizard();
     tellRetired();
