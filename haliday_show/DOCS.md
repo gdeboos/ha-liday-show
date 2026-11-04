@@ -1341,7 +1341,9 @@ twinkles**, **Flashing**, **Steady**, **Colourful**, **Calm**, **Lively** and **
 more than one for effects that are all of them (**Sparkles and twinkles** and **Calm** gives Flicker,
 Twinkle, Candles, Snow and Fairy lights). **Clear** shows them all again; the chips you ticked are
 remembered for next time. Effects made for a matrix (**On a matrix**) are only offered on a light set
-up as a matrix, or with **Allow effects that won't work** on.
+up as a matrix. **Allow effects that won't work** only appears when some effects can't work on the light
+you're adding to (some Govee lights' limits); on WLED and other lights where everything works, it isn't
+there.
 
 ### Presets
 

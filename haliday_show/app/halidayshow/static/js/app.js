@@ -3190,6 +3190,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       if (!r || r.level === "ok") return;
       if (r.level === "no" && !allow.checked && effect !== current) blocked = r.reasons.join(" ");
       b.classList.add(blocked ? "unfit" : "limited");
+      if (blocked) al.hidden = false;
       b.title = fitText(r);
       span.textContent = `⚠ ${label}`;
     };
@@ -3282,6 +3283,9 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       body.append(none);
     }
     clear.hidden = !picked.size && !find.value.trim();
+    // Only offered when something here won't work on this light (a Govee light's limits, say).
+    // On lights where every effect works, such as WLED, it doesn't show.
+    al.hidden = !fit || (!allow.checked && !body.querySelector(".unfit"));
     if (toggle.checked && onlyMine && !body.querySelector(".preset-group")) {
       body.insertAdjacentHTML("beforeend", `<p class="hint">No presets of your own yet. Select a clip and press <b>Save as preset</b>.</p>`);
     }
