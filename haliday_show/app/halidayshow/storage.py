@@ -158,20 +158,28 @@ class Storage:
             p.unlink()
 
     # the public page's own picture (Public page tab → How the page looks) ----------------
-    def public_picture(self) -> Path | None:
+    # Dated looks (public.clean_looks) each keep their own, as public-picture-<look id>.
+    def public_picture(self, row: str | None = None) -> Path | None:
+        name = f"public-picture-{row}" if row and valid_id(row) else "public-picture"
         for ext in PHOTO_EXT:
-            p = self.config_dir / f"public-picture{ext}"
+            p = self.config_dir / f"{name}{ext}"
             if p.exists():
                 return p
         return None
 
-    def save_public_picture(self, data: bytes, ext: str):
-        self.delete_public_picture()
-        _write_atomic(self.config_dir / f"public-picture{ext}", data)
+    def save_public_picture(self, data: bytes, ext: str, row: str | None = None):
+        self.delete_public_picture(row)
+        name = f"public-picture-{row}" if row and valid_id(row) else "public-picture"
+        _write_atomic(self.config_dir / f"{name}{ext}", data)
 
-    def delete_public_picture(self):
-        while (p := self.public_picture()):
+    def delete_public_picture(self, row: str | None = None):
+        while (p := self.public_picture(row)):
             p.unlink()
+
+    def public_picture_rows(self) -> set[str]:
+        """The dated looks that have a picture of their own."""
+        return {p.stem[len("public-picture-"):] for p in self.config_dir.glob("public-picture-*")
+                if p.suffix.lower() in PHOTO_EXT}
 
     # shows ---------------------------------------------------------------
     def list_shows(self) -> list[dict]:

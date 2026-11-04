@@ -46,7 +46,7 @@ its own with Docker or Python.
   The music plays on any Home Assistant speaker, or in a browser left open on a computer with
   speakers. Automations can start shows too, through MQTT entities or `hassio.app_stdin`.
 - 📱 **Let passers-by join in.** A public page for a QR code on a sign: people near your house pick a
-  show on their phone and it joins a queue between your own, in a look you choose. They can listen to
+  show on their phone and it joins a queue between your own, in a look you choose (a different one for Halloween or Christmas, if you like). They can listen to
   the music on their phone too, in time with the lights.
 - 🐳 **Runs where you want.** A Home Assistant app, or on its own with Docker or Python.
 

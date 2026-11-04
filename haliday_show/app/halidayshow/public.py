@@ -189,6 +189,7 @@ def clean(p) -> dict:
             "distance": min(max(distance, MIN_DISTANCE_M), MAX_DISTANCE_M),
             "address": address if len(address) <= 200 and _ADDRESS.match(address) else "",
             "look": clean_look(p.get("look")),
+            "looks": clean_looks(p.get("looks")),
             "hours": clean_hours(p.get("hours")),
             "words": clean_words(p.get("words")),
             # Visitors can listen on their own phone, with a PIN as well (4 to 8 digits) if one is set.
@@ -196,6 +197,44 @@ def clean(p) -> dict:
             "listen_pin": pin if _PIN.match(pin := str(p.get("listen_pin") or "").strip()) else "",
             # Yours, to get past every check but the code (see the top of this file).
             "admin_pin": apin if _PIN.match(apin := str(p.get("admin_pin") or "").strip()) else ""}
+
+
+# Dated looks: between two days of every year (1 Oct to 2 Nov, say) the page takes one of these instead
+# of your everyday look. Only how it looks changes; the first in the list wins where dates overlap.
+DATED_KEYS = ("title", "welcome", "picture", "theme", "mode", "colours", "snow", "spacing", "corners", "size", "borders")
+MAX_LOOKS = 12
+
+
+def clean_looks(x) -> list[dict]:
+    """[{id, name, from, to, look: {DATED_KEYS}}]; rows without both dates, or a name, are left out."""
+    out, ids = [], set()
+    for r in (x if isinstance(x, list) else [])[:MAX_LOOKS]:
+        if not isinstance(r, dict):
+            continue
+        name = " ".join(str(r.get("name") or "").split())[:40]
+        frm, to = str(r.get("from") or ""), str(r.get("to") or "")
+        if not name or not (playlists.valid_day(frm) and playlists.valid_day(to)):
+            continue
+        rid = str(r.get("id") or "")
+        if not valid_id(rid) or rid in ids:
+            base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:30] or "look"
+            rid, n = base, 2
+            while rid in ids:
+                rid, n = f"{base}-{n}", n + 1
+        ids.add(rid)
+        look = clean_look(r.get("look"))
+        out.append({"id": rid, "name": name, "from": frm, "to": to, "look": {k: look[k] for k in DATED_KEYS}})
+    return out
+
+
+def look_now(p: dict, today: date | None = None, force: str | None = None) -> dict:
+    """The look visitors get today: the first dated look whose dates take in today, over your everyday
+    one, or (force) a given dated look, for the editor's preview. "row" says which dated look it is."""
+    today = today or date.today()
+    rows = p.get("looks") or []
+    row = next((r for r in rows if r["id"] == force), None) if force else \
+        next((r for r in rows if schedule.in_dates(r, today)), None)
+    return {**p["look"], **row["look"], "row": row["id"]} if row else {**p["look"], "row": ""}
 
 
 DEFAULT_HOURS = {"on": False, "start": "17:00", "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""}
@@ -571,9 +610,10 @@ def now_art(storage: Storage, runner: Runner, picks: list[dict], look: dict) -> 
 
 
 def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None = None,
-          needs_location: bool = False, where=None, now: datetime | None = None, admin: bool = False) -> dict:
+          needs_location: bool = False, where=None, now: datetime | None = None, admin: bool = False,
+          look_id: str | None = None) -> dict:
     p = load(storage) or clean(None)
-    look = p["look"]
+    look = look_now(p, (now or datetime.now()).date(), look_id)
     said = words(p)
     if p["on"] and not _code_ok(p, code):
         # Only the colours without the code: the title, words and picture are for visitors.
@@ -655,7 +695,8 @@ def picture_path(storage: Storage, look: dict) -> Path | None:
     if look["picture"] == "house":
         return storage.house_photo()
     if look["picture"] == "upload":
-        return storage.public_picture()
+        # A dated look without a picture of its own shows your everyday one.
+        return (look.get("row") and storage.public_picture(look["row"])) or storage.public_picture()
     return None
 
 
@@ -767,7 +808,7 @@ def stripped_picture(path: Path) -> bytes | None:
 async def get_picture(request):
     _limit_client(request, "state", MAX_STATE_PER_CLIENT_MIN)
     p = load(request.app[STORAGE]) or clean(None)
-    path = picture_path(request.app[STORAGE], p["look"]) if p["on"] and _code_ok(p, request.query.get("code")) else None
+    path = picture_path(request.app[STORAGE], look_now(p)) if p["on"] and _code_ok(p, request.query.get("code")) else None
     if path is None or path.suffix.lower() not in PICTURE_TYPES:
         raise web.HTTPNotFound()
     try:
@@ -1235,9 +1276,9 @@ def app_colours(look: dict) -> tuple[str, str]:
 
 
 def manifest(p: dict) -> dict:
-    bg, head = app_colours(p["look"])
+    bg, head = app_colours(look_now(p))
     v = hashlib.sha1(f"{bg}{head}".encode()).hexdigest()[:8]
-    name = p["look"]["title"] or "Light show"
+    name = look_now(p)["title"] or "Light show"
     icons = [{"src": f"icon.png?{urlencode({'s': n, 'v': v})}", "sizes": f"{n}x{n}", "type": "image/png",
               "purpose": purpose} for n in ICON_SIZES for purpose in ("any", "maskable")]
     # The code goes in the address the app opens, so it works however long ago it was installed.
@@ -1265,7 +1306,7 @@ async def get_icon(request):
     if size not in ICON_SIZES:
         raise web.HTTPNotFound()
     p = load(request.app[STORAGE]) or clean(None)
-    bg, head = app_colours(p["look"])
+    bg, head = app_colours(look_now(p))
     key = (size, bg, head)
     if key not in _ICONS:
         if len(_ICONS) > 8:

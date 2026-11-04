@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.350
+
+- The public page can change its look through the year. On **Public page → Look**, **Through the year** lets you add dated looks, such as *Halloween* from 1 Oct to 2 Nov, each with its own title, welcome, picture, colours and snow. A new one starts as a copy of your everyday look. Where dates overlap, the one higher in the list wins, and outside them visitors get your everyday look. Pick a look under **Look you're changing** to edit it and see it in the preview, whatever the date.
+
 ## 0.2.349
 
 - **Cover art in the card at the top of the visitors' page.** What's on now shows its song's cover art beside its name (or a tile with its first letter, as in the list). On a narrow phone, such as a Fold's front screen, **🎧 Listen** and **Sound off** move to their own line underneath, full width, so the name keeps room to read.

@@ -1951,7 +1951,7 @@ link in a new tab.
 | **Shows** | [What visitors can pick](#what-visitors-can-pick) and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
 | **Listening** | [Listening on phones](#listening-on-phones) |
 | **Admin** | Your [Admin PIN](#admin-pin) |
-| **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom |
+| **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom, and [looks through the year](#looks-through-the-year) |
 | **Words** | [Every message visitors read](#words), to change to your own |
 | **Queue** | [The visitors' queue](#visitors-queue) as it is now, and **Tonight** at a glance |
 
@@ -2097,6 +2097,25 @@ style** and **Link at the bottom**. The preview beside them shows each change as
   you like.
 
 The title, words and picture only show to people with your code.
+
+#### Looks through the year
+
+**Through the year**, at the top of the **Look** tab, gives the page a different look between two dates
+every year: orange and black with a spooky title for October, say, then snow for Christmas. Outside
+those dates visitors get your everyday look.
+
+- **+ Add a dated look…** asks for a name (such as *Halloween*). It starts as a copy of your everyday
+  look, from today for a month. Change its dates with **From … until …**; they can run over New Year,
+  such as 20 Dec until 6 Jan.
+- **Change this look** (or **Look you're changing**, above the title) points the rest of the tab at that
+  look, and the preview shows it whatever the date. A dated look has its own **Title**, **Welcome**,
+  **Picture at the top**, **Colours**, **Light or dark**, style and **Falling snow**. The link at the
+  bottom, the words on the **Words** tab and everything on the other tabs stay the same every day.
+- **Choose picture…** while you're changing a dated look gives that look a picture of its own. Until it
+  has one, **Your own picture** shows your everyday picture.
+- Where two looks' dates overlap, the one higher in the list wins. Move them with **↑** and **↓**.
+  Each row says whether it's on now, and the line at the top says which look visitors see today.
+- **Remove** takes a dated look away (and its picture); visitors get your everyday look on those dates.
 
 #### What visitors can pick
 
