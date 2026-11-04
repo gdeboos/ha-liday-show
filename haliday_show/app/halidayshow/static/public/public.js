@@ -1,4 +1,5 @@
 import { bestOn } from "./colours.js";
+import { bare, label as iconLabel } from "./icons.js";
 import { NUDGE_STEP, addSample, clampNudge, learnLead, median, steer, target } from "./listensync.js";
 
 // The public page: people passing by pick a show and queue it up, and (if you allow it) listen to
@@ -127,6 +128,10 @@ export function queueView(st, w, open = false) {
 
 // Installed as an app (or added to the home screen on an iPhone): the Install button isn't needed.
 export const runningAsApp = (win) => !!(win.matchMedia?.("(display-mode: standalone)").matches || win.navigator?.standalone);
+
+// The icon for each show button's word.
+export const BUTTON_ICON = { start: "play", queue_btn: "plus", queued_btn: "check", playing_btn: "music",
+  recent_btn: "clock", late_btn: "clock" };
 
 // Pressing Start or Queue on a show with no speaker also starts listening on this phone, if listening
 // is on and it isn't already (the press is what lets a phone play sound).
@@ -541,7 +546,7 @@ export function start() {
   function drawInstall() {
     const b = $("pp-install");
     b.hidden = !installOffer || runningAsApp(window) || !last;
-    if (!b.hidden) b.textContent = say_(w, "install");
+    if (!b.hidden) iconLabel(b, "install", say_(w, "install"));
   }
   async function install() {
     if (!installOffer) return;
@@ -728,7 +733,7 @@ export function start() {
     // Nothing on: nothing to hear yet, so no button (Start on a show with no speaker still starts listening).
     btn.hidden = !(me.on || (offered && !!st.now && canStart(needsLocation, where)));
     const playing = me.on && me.state !== "tap";
-    btn.textContent = say_(w, playing ? "listening_short" : "listen_short");
+    iconLabel(btn, playing ? "soundoff" : "headphones", say_(w, playing ? "listening_short" : "listen_short"));
     btn.setAttribute("aria-pressed", String(playing));
     btn.setAttribute("aria-label", say_(w, playing ? "listen_stop" : "listen").replace(/^[^\p{L}\p{N}]+/u, ""));
     // Says it's only this phone's sound: Stop on its own looked like it would stop the show.
@@ -740,11 +745,12 @@ export function start() {
       off: "", pin: "", starting: "listen_loading", loading: "listen_loading", tap: "listen_tap",
       playing: me.name ? "listen_on" : "listen_nothing", idle: "listen_nothing",
     }[me.state];
-    $("pp-listen-text").textContent = text ? say_(w, text, { name: me.name }) : "";
+    if (text) iconLabel($("pp-listen-text"), "headphones", say_(w, text, { name: me.name }));
+    else $("pp-listen-text").textContent = "";
     $("pp-listen-text").hidden = !text;
     $("pp-pin").hidden = me.state !== "pin";
     $("pp-pin-label").textContent = say_(w, "pin_ask");
-    $("pp-pin-ok").textContent = say_(w, "pin_ok");
+    iconLabel($("pp-pin-ok"), "check", say_(w, "pin_ok"));
     $("pp-listen-msg").textContent = me.message;
     $("pp-listen-msg").hidden = !me.message;
     $("pp-listen-tip").textContent = say_(w, "listen_lock");
@@ -756,8 +762,8 @@ export function start() {
     $("pp-nudge-open").setAttribute("aria-expanded", String(nudgeOpen));
     $("pp-nudge").hidden = !(listening && nudgeOpen);
     $("pp-nudge-label").textContent = say_(w, "nudge_label");
-    $("pp-nudge-earlier").textContent = say_(w, "nudge_earlier");
-    $("pp-nudge-later").textContent = say_(w, "nudge_later");
+    iconLabel($("pp-nudge-earlier"), "left", say_(w, "nudge_earlier"));
+    iconLabel($("pp-nudge-later"), "right", say_(w, "nudge_later"), true);
     const nw = nudgeWord(listener.nudge);
     $("pp-nudge-value").textContent = say_(w, nw.key, { seconds: nw.seconds });
     $("pp-nudge-hint").textContent = say_(w, "nudge_hint");
@@ -800,14 +806,14 @@ export function start() {
       text.append(meta);
       li.append(text);
       if (!r.yours && r.id && st.admin) {
-        const b = el("button", "", "Remove");
+        const b = iconLabel(el("button"), "x", "Remove");
         b.type = "button";
         b.setAttribute("aria-label", `Remove: ${r.name}`);
         b.addEventListener("click", () => send("api/admin/remove", { id: r.id }));
         li.append(b);
       }
       if (r.yours && r.id) {
-        const b = el("button", "", say_(w, "cancel"));
+        const b = iconLabel(el("button"), "x", say_(w, "cancel"));
         b.type = "button";
         b.setAttribute("aria-label", `${say_(w, "cancel")}: ${r.name}`);
         b.addEventListener("click", () => send("api/cancel", { id: r.id }));
@@ -895,8 +901,10 @@ export function start() {
     // A pass that no longer works (the admin PIN changed, or was taken off): forget it.
     if (adminPass && !st.admin) keepAdmin("");
     drawAdmin(st);
-    for (const [id, key] of [["pp-closed-text", "closed"], ["pp-closed-hint", "closed_hint"], ["pp-retry", "try_again"],
-      ["pp-soon-head", "soon_head"], ["pp-none", "no_shows"], ["pp-warning-text", "warning"], ["pp-accept", "accept"]]) {
+    iconLabel($("pp-retry"), "again", say_(w, "try_again"));
+    iconLabel($("pp-accept"), "check", say_(w, "accept"));
+    for (const [id, key] of [["pp-closed-text", "closed"], ["pp-closed-hint", "closed_hint"],
+      ["pp-soon-head", "soon_head"], ["pp-none", "no_shows"], ["pp-warning-text", "warning"]]) {
       $(id).textContent = say_(w, key);
     }
     $("pp-where-text").textContent = whereText(where, w).text;
@@ -942,10 +950,10 @@ export function start() {
       row.append(text);
       if (st.admin) {
         const label = c.taken === "queued" ? "queued_btn" : c.taken === "playing" ? "playing_btn" : "queue_btn";
-        const b = el("button", c.taken ? "pp-taken" : "primary", say_(w, label));
+        const b = iconLabel(el("button", c.taken ? "pp-taken" : "primary"), BUTTON_ICON[label], say_(w, label));
         b.type = "button";
         b.disabled = busy || !!c.taken;
-        b.setAttribute("aria-label", `${say_(w, label).replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
+        b.setAttribute("aria-label", `${bare(say_(w, label))}: ${c.name}`);
         b.addEventListener("click", () => send("api/request", { kind: c.kind, id: c.id }));
         row.append(b);
       }
@@ -981,16 +989,21 @@ export function start() {
       const status = c.taken ? "" : c.name === nowName ? say_(w, "row_playing")
         : queued.has(`${c.kind}:${c.id}`) ? say_(w, "row_queued") : "";
       const phone = st.listen && c.speaker === false ? say_(w, "on_phone") : "";
-      const detail = [c.detail, status, phone].filter(Boolean).join(" · ");
-      if (detail) text.append(el("div", "pp-hint", detail));
+      const detail = [c.detail, status].filter(Boolean).join(" · ");
+      if (detail || phone) {
+        const hint = el("div", "pp-hint", detail);
+        if (phone) hint.append(detail ? " · " : "", iconLabel(el("span", "pp-inline-ico"), "headphones", phone));
+        text.append(hint);
+      }
       row.append(text);
       if (startable) {
         const label = c.taken === "queued" ? "queued_btn" : c.taken === "playing" ? "playing_btn"
           : c.taken === "recent" ? "recent_btn" : c.taken === "late" ? "late_btn" : word;
-        const b = el("button", c.taken ? "pp-taken" : "primary", say_(w, label, { minutes: minutes(c.again_in || 60) }));
+        const words = say_(w, label, { minutes: minutes(c.again_in || 60) });
+        const b = iconLabel(el("button", c.taken ? "pp-taken" : "primary"), BUTTON_ICON[label], words);
         b.type = "button";
         b.disabled = !!view.block || busy || !!c.taken;
-        b.setAttribute("aria-label", `${say_(w, label, { minutes: minutes(c.again_in || 60) }).replace(/^[^\p{L}\p{N}]+/u, "")}: ${c.name}`);
+        b.setAttribute("aria-label", `${bare(words)}: ${c.name}`);
         b.addEventListener("click", () => {
           // Started in the press itself: phones only play sound that a press starts.
           if (!preview && listensToo(c, st, listener.state.on)) listener.begin("", !!st.listen?.pin);
@@ -1063,6 +1076,9 @@ export function start() {
   $("pp-retry").addEventListener("click", watchWhere);
   $("pp-title").addEventListener("click", tapTitle);
   $("pp-install").addEventListener("click", install);
+  // The buttons whose words are fixed in the page get their icons once.
+  for (const [id, ico] of [["pp-admin-ok", "unlock"], ["pp-admin-out", "lock"], ["pp-admin-close", "x"],
+    ["pp-admin-skip", "skip"], ["pp-admin-stop", "stop"]]) iconLabel($(id), ico, $(id).textContent);
   $("pp-admin-skip").addEventListener("click", () => send("api/admin/skip", {}));
   $("pp-admin-stop").addEventListener("click", () => {
     if (confirm("Stop the lights and clear the queue?")) send("api/admin/stop", {});

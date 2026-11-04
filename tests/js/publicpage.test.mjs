@@ -204,3 +204,12 @@ test("an accepted warning is remembered until its words change", () => {
   assert.equal(page.warningAccepted("⚠ Flashing lights", "⚠ Flashing lights"), true);
   assert.equal(page.warningAccepted("⚠ Flashing lights", "⚠ Strobes and flashing lights"), false);
 });
+
+test("button words lose an emoji at either end, as the icon stands in for it", async () => {
+  const { bare } = await import("../../haliday_show/app/halidayshow/static/public/icons.js");
+  assert.equal(bare("🎧 Listen"), "Listen");
+  assert.equal(bare("Later ▶"), "Later");
+  assert.equal(bare("▶ Start"), "Start");
+  assert.equal(bare("Again in 5 minutes"), "Again in 5 minutes");
+  assert.equal(bare("Turn the music off (the lights carry on)"), "Turn the music off (the lights carry on)");
+});

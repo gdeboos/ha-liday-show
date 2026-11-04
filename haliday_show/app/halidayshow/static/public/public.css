@@ -210,3 +210,10 @@ h1, h2 { color: var(--head, var(--text)); }
 }
 #pp-soon .pp-cover { width: 44px; height: 44px; border-radius: 6px; }
 #pp-soon .pp-tile { font-size: 20px; }
+/* Icons on buttons (icons.js), in the button's own colour. */
+.pp-has-ico { display: inline-flex; align-items: center; justify-content: center; gap: .45em; }
+.pp-ico { width: 1.15em; height: 1.15em; flex: none; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; }
+.pp-ico .pp-ico-fill { fill: currentColor; stroke: none; }
+.pp-inline-ico { display: inline-flex; gap: .3em; }
+#pp-listen-text.pp-has-ico { justify-content: flex-start; }
