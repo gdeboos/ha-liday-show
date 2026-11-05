@@ -79,7 +79,7 @@ import { convertProblem, showUses, toWled } from "./convert.js";
 import { PART, packed, putWithProgress, sendBaked, sendParts, uploadSong } from "./upload.js";
 import { bakeNote, lightsBakeKey } from "./bakekey.js";
 import { piecesIn, placeStretch, rowsBy } from "./stretch.js";
-import { finalGroups, headline, lastText, tally } from "./preshow.js";
+import { finalGroups, headline, lastText, nextOffset, tally, timingText } from "./preshow.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
 watchButtons();
@@ -599,7 +599,10 @@ async function checkSegments(d) {
 
 // Pre-show check (Setup → Devices): the server's checks (preshow.py), then each light blinks in turn for
 // you to say whether you see it, then the results, the last of which Setup shows.
-const preshow = { groups: [], look: [], seen: [], lit: null, asking: null, run: 0 };
+const preshow = { groups: [], look: [], seen: [], lit: null, asking: null, run: 0, pub: null, timing: [], steps: [] };
+// "Step 2 of 4: light 1 of 3": the steps are Checking, Looking (with lights to look at), Timing (with
+// phones listening on the visitors' page) and Results.
+const psStep = (name, what = name.toLowerCase()) => `Step ${preshow.steps.indexOf(name) + 1} of ${preshow.steps.length}: ${what}`;
 
 async function loadPreshowLast() {
   $("preshow-last").textContent = lastText(await api("api/preshow/last").catch(() => null));
@@ -653,11 +656,11 @@ async function openPreshow() {
   const run = ++preshow.run;
   preshowLetGo();
   if (!$("preshow-dialog").open) $("preshow-dialog").showModal();
-  preshowShow({ step: "Step 1 of 3: checking", foot: [psClose()],
+  preshowShow({ step: "Checking…", foot: [psClose()],
     body: [Object.assign(document.createElement("p"), { textContent: "Asking your lights whether they're there, and checking how tonight's shows start and the sound. This takes a few seconds…" })] });
-  let got;
+  let got, pub;
   try {
-    got = await api("api/preshow/run", { method: "POST" });
+    [got, pub] = await Promise.all([api("api/preshow/run", { method: "POST" }), api("api/public").catch(() => null)]);
   } catch (e) {
     if (run !== preshow.run) return;
     preshowShow({ step: "", foot: [psClose(), button("Try again", openPreshow, "primary")],
@@ -665,23 +668,26 @@ async function openPreshow() {
     return;
   }
   if (run !== preshow.run) return;
-  Object.assign(preshow, { groups: got.groups, look: got.look.map((id) => app.lights[id]).filter(Boolean), seen: [] });
-  const n = preshow.look.length;
+  Object.assign(preshow, { groups: got.groups, look: got.look.map((id) => app.lights[id]).filter(Boolean), seen: [],
+    pub, timing: [] });
+  const n = preshow.look.length, timing = !!(pub?.on && pub?.listen);
+  preshow.steps = ["Checking", ...(n ? ["Looking"] : []), ...(timing ? ["Timing"] : []), "Results"];
   const next = n ? button(`Next: look at your lights →`, () => preshowLook(0, run), "primary")
-    : button("Finish", () => preshowFinish(run), "primary");
+    : timing ? button("Next: timing with your phone →", () => preshowTiming(run), "primary")
+      : button("Finish", () => preshowFinish(run), "primary");
   const note = Object.assign(document.createElement("p"), { className: "hint",
     textContent: n ? `Next, ${n === 1 ? "your light blinks" : `each of your ${n} lights blinks in turn`} for you to say whether you see it. That stops anything playing.`
       : "There are no lights to look at." });
-  preshowShow({ step: "Step 1 of 3: checked", body: [preshowList(preshow.groups), note], foot: [psClose(), next] });
+  preshowShow({ step: psStep("Checking", "checked"), body: [preshowList(preshow.groups), note], foot: [psClose(), next] });
 }
 
 async function preshowLook(i, run) {
   if (run !== preshow.run) return;
   preshowLetGo();
-  if (i >= preshow.look.length) { preshowFinish(run); return; }
+  if (i >= preshow.look.length) { preshowTiming(run); return; }
   const d = preshow.look[i], still = isHa(d);
   const answer = (a) => { preshow.seen[i] = { name: d.name, answer: a }; };
-  const step = `Step 2 of 3: light ${i + 1} of ${preshow.look.length}`;
+  const step = psStep("Looking", `light ${i + 1} of ${preshow.look.length}`);
   const ask = () => {
     const q = Object.assign(document.createElement("p"), { className: "ps-question",
       textContent: still ? `Is ${d.name} lit white?` : `Is ${d.name} blinking white?` });
@@ -704,7 +710,8 @@ async function preshowLook(i, run) {
     const acts = document.createElement("div");
     acts.className = "ps-answers";
     acts.append(button("Check segments", () => checkSegments(d)), button("Blink it again", () => { delete preshow.seen[i]; patternLight(d, "blink"); ask(); }, "ghost"),
-      button(i + 1 < preshow.look.length ? "Next light →" : "See the results →", () => preshowLook(i + 1, run), "primary"));
+      button(i + 1 < preshow.look.length ? "Next light →" : preshow.steps.includes("Timing") ? "Next: timing →" : "See the results →",
+        () => preshowLook(i + 1, run), "primary"));
     preshowShow({ step, body: [q, tips, acts], foot: [psClose()] });
   };
   preshow.lit = d;
@@ -717,13 +724,78 @@ async function preshowLook(i, run) {
   }, 55000);
 }
 
+// Timing with a phone: every light flashes once a second while phones listening on the visitors' page
+// beep (timingtest.py). Each answer moves every phone's music a step, until the beep lands on the flash.
+async function preshowTiming(run) {
+  if (run !== preshow.run) return;
+  preshowLetGo();
+  if (!preshow.steps.includes("Timing")) { preshowFinish(run); return; }
+  const step = psStep("Timing", "timing with your phone");
+  const pub = preshow.pub;
+  let offset = pub.listen_offset || 0, startedAt = 0;
+  const done = (line) => {
+    preshow.timing = [line];
+    if (startedAt) api("api/preshow/timing", { method: "POST", json: { stop: true } }).catch(() => {});
+    preshowFinish(run);
+  };
+  const p = (text, className = "") => Object.assign(document.createElement("p"), { className, textContent: text });
+  const start = async () => {
+    try {
+      await api("api/preshow/timing", { method: "POST" });
+      startedAt = Date.now();
+      return true;
+    } catch (e) {
+      status(`Couldn't start the timing test: ${e.message}`, true);
+      return false;
+    }
+  };
+  const save = async (v) => {
+    try {
+      const view = await api("api/public", { method: "PUT", json: { listen_offset: v } });
+      offset = view.listen_offset;
+      if (publicView) publicView.listen_offset = offset;
+      drawPublicListen(view);
+    } catch (e) { status(`Couldn't change the phones' timing: ${e.message}`, true); }
+  };
+  const asking = (note = "") => {
+    if (run !== preshow.run) return;
+    const answers = document.createElement("div");
+    answers.className = "ps-answers";
+    const heard = (which) => async () => {
+      await save(nextOffset(offset, which));
+      // It runs for half a minute: start it again when it's nearly over, so there's more to listen to.
+      if (Date.now() - startedAt > 22000) await start();
+      asking(`${which === "beep" ? "Phones now play a little later." : "Phones now play a little earlier."} Listen to a few more, then answer again.`);
+    };
+    answers.append(
+      button("Yes, in time", () => done({ level: "ok", text: "Your phone's beeps landed with the lights' flashes.", ...(offset ? { fix: timingText(offset) } : {}) }), "primary"),
+      button("Beep comes first", heard("beep")), button("Flash comes first", heard("flash")),
+      button("Play it again", async () => { if (await start()) asking(); }, "ghost"),
+      button("Can't hear it", () => done({ level: "warn", text: "The timing wasn't checked: your phone didn't play the beeps.",
+        fix: "Check Listen is on and your phone's sound is up, then run the check again." }), "ghost"));
+    preshowShow({ step, foot: [psClose()], body: [p("Does the beep land with the flash?", "ps-question"),
+      p(note || "Press Listen on your phone now if you haven't. Your lights flash white once a second and your phone beeps, for half a minute.", "hint"),
+      p(timingText(offset), "hint"), answers] });
+    answers.querySelector(".primary").focus();
+  };
+  const go = button("Start the timing test", async () => { if (await start()) asking(); }, "primary");
+  const link = visitorLink(pub, location.hostname);
+  preshowShow({ step, foot: [psClose(), button("Skip this step", () => done({ level: "info", text: "The timing with phones wasn't checked." }), "ghost"), go],
+    body: [p("Last, check phones listening keep time with your lights. Stand where you can see them."),
+      p(`1. On your phone, open the visitors' page${link ? ` (${link})` : ""}.`),
+      p("2. Press Start the timing test: your lights flash white once a second, for half a minute."),
+      p("3. On your phone, press Listen. It shows once the test is playing, and your phone beeps."),
+      p("4. Say whether the beep lands on the flash. Each answer moves every phone's music a little, until it does. "
+        + "Starting the test stops anything playing.", "hint")] });
+}
+
 async function preshowFinish(run) {
   if (run !== preshow.run) return;
   preshowLetGo();
-  const groups = finalGroups(preshow.groups, preshow.seen.filter(Boolean));
+  const groups = finalGroups(preshow.groups, preshow.seen.filter(Boolean), preshow.timing);
   const sum = tally(groups);
   const head = Object.assign(document.createElement("p"), { className: `ps-headline ps-${sum.level}`, textContent: headline(sum) });
-  preshowShow({ step: "Step 3 of 3: results", body: [head, preshowList(groups)],
+  preshowShow({ step: psStep("Results"), body: [head, preshowList(groups)],
     foot: [button("Run again", openPreshow, "ghost"), button("Done", () => $("preshow-dialog").close(), "primary")] });
   try {
     await api("api/preshow/last", { method: "PUT", json: sum });
@@ -6420,6 +6492,9 @@ function drawPublicListen(view) {
   if (document.activeElement !== $("pub-listen-pin")) $("pub-listen-pin").value = view.listen_pin || "";
   $("pub-listen-pin-wrap").hidden = !pinOn.checked;
   $("pub-listen-note").textContent = listenNote(view, pinOn.checked);
+  // Set with the pre-show check's timing test, for every phone.
+  $("pub-listen-timing").textContent = `${timingText(view.listen_offset)} Set it with the timing step of the pre-show check (Setup → Devices).`;
+  $("pub-listen-timing-reset").hidden = !view.listen_offset;
 }
 
 // What to tell you under the listening settings.
@@ -11468,10 +11543,22 @@ function wire() {
   });
   $("btn-add-light").addEventListener("click", openAddLight);
   $("btn-preshow").addEventListener("click", openPreshow);
+  $("pub-listen-timing-reset").addEventListener("click", async () => {
+    try {
+      const view = await api("api/public", { method: "PUT", json: { listen_offset: 0 } });
+      if (publicView) publicView.listen_offset = view.listen_offset;
+      drawPublicListen(view);
+      status("Phones play the music as they get it again", "saved", "public");
+    } catch (e) { status(`Couldn't reset the phones' timing: ${e.message}`, true, "public"); }
+  });
   $("preshow-dialog").addEventListener("click", (e) => {
     if (e.target.closest("[data-preshow='close']") || e.target === $("preshow-dialog")) $("preshow-dialog").close();
   });
-  $("preshow-dialog").addEventListener("close", () => { preshow.run++; preshowLetGo(); });
+  $("preshow-dialog").addEventListener("close", () => {
+    preshow.run++;
+    preshowLetGo();
+    if (preshow.steps.includes("Timing")) api("api/preshow/timing", { method: "POST", json: { stop: true } }).catch(() => {});
+  });
   $("btn-add-speaker").addEventListener("click", openAddSpeaker);
   $("btn-demo").addEventListener("click", tryDemo);
   $("btn-demo-remove").addEventListener("click", removeDemo);

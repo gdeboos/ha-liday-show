@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { finalGroups, headline, lastText, lookLines, tally, when, worst } from "../../haliday_show/app/halidayshow/static/js/preshow.js";
+import { finalGroups, headline, lastText, lookLines, nextOffset, tally, timingText, when, worst } from "../../haliday_show/app/halidayshow/static/js/preshow.js";
 
 test("the worst level wins", () => {
   assert.equal(worst([]), "ok");
@@ -53,4 +53,21 @@ test("Setup's line", () => {
   assert.equal(lastText({ at: "2026-11-05T18:40", level: "ok", problems: 0, warnings: 0 }, now), "Last checked tonight at 18:40: all good.");
   assert.equal(lastText({ at: "2026-11-04T18:40", level: "fail", problems: 1, warnings: 0 }, now), "Last checked yesterday at 18:40: 1 problem.");
   assert.equal(lastText({ at: "2026-11-05T18:40", level: "warn", problems: 0, warnings: 2 }, now), "Last checked tonight at 18:40: 2 things to look at.");
+});
+
+test("the timing test moves every phone's music a step at a time", () => {
+  assert.equal(nextOffset(0, "beep"), -0.1); // the beep came first: phones play later
+  assert.equal(nextOffset(-0.1, "flash"), 0);
+  assert.equal(nextOffset(0.15, "flash"), 0.25);
+  assert.equal(nextOffset(1.95, "flash"), 2);
+  assert.equal(nextOffset(undefined, "beep"), -0.1);
+  assert.equal(timingText(0), "Phones play the music as they get it, without moving it.");
+  assert.equal(timingText(-0.1), "Every phone plays the music 0.1 s later, to land with your lights.");
+  assert.equal(timingText(0.25), "Every phone plays the music 0.25 s earlier, to land with your lights.");
+});
+
+test("the timing test's line goes with the sound, in place of a note", () => {
+  const groups = [{ key: "lights", items: [] }, { key: "sound", items: [{ level: "info", text: "No sound." }] }];
+  const done = finalGroups(groups, [], [{ level: "ok", text: "Your phone kept time." }]);
+  assert.deepEqual(done[1].items, [{ level: "ok", text: "Your phone kept time." }]);
 });

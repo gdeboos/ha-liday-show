@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 
 from . import liveeffects, livemusic, playlists, react, scenelib, wled
 from .baked import decode
-from . import latespeaker
+from . import latespeaker, timingtest
 from .ha import HAError, HomeAssistant, media_content_id, position_now
 from .player import Player
 from .storage import Storage
@@ -112,7 +112,8 @@ class Runner:
         playlist = self.playlist if self._playlist and not self._playlist.done() else None
         block = self.block if st["playing"] else None
         return {**st, "media_player": self.media_player if st["playing"] else None,
-                "name": show.get("name") if show else f"{block['type'].title()} block" if block
+                "name": show.get("name") if show else timingtest.NAME if st["show"] == timingtest.TIMING_ID
+                else f"{block['type'].title()} block" if block
                 else self.scene["name"] if scene and scene["playing"] else None,
                 "playlist": {"id": playlist["id"], "name": playlist["name"], "finishing": self.finishing}
                 if playlist else None,
@@ -175,6 +176,18 @@ class Runner:
         await self.player.play(show_id, baked, devices, position=position, offset=self.delay)
         self._follow = asyncio.create_task(self._follow_speaker(media_player))
         log.info("playing %s on %s", show_id, media_player)
+
+    async def play_timing_test(self):
+        """The pre-show check's timing test (timingtest.py) on every light that isn't packed away, for
+        phones listening to follow as they do a show. Stops whatever's playing first."""
+        devices = self.storage.devices_by_id()
+        lights = [d for d in devices.values() if d.get("ip") or d.get("entity")]
+        if not lights:
+            raise RunnerError("there are no lights to flash")
+        await self._stop()
+        self.started += 1
+        self.speaker_stopped = False
+        await self.player.play(timingtest.TIMING_ID, decode(timingtest.baked(lights)), devices)
 
     async def test_speaker(self, entity: str) -> float:
         """Play a short chime on a speaker the way a show would, then stop it.

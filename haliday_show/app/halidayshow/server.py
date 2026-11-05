@@ -23,7 +23,7 @@ from pathlib import Path
 import aiohttp
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, preshow, public, scenelib, schedule, seasons, songcopy, songtags, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, preshow, public, scenelib, schedule, seasons, songcopy, songtags, timingtest, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -2094,6 +2094,21 @@ async def preshow_run(request):
         "look": look})
 
 
+async def preshow_timing(request):
+    """The timing test (timingtest.py): every light flashes once a second while phones listening beep.
+    {"stop": true} stops it (only if it's still what's playing)."""
+    runner = request.app[RUNNER]
+    body = await request.json() if request.can_read_body else {}
+    if isinstance(body, dict) and body.get("stop"):
+        await runner.stop(timingtest.TIMING_ID)
+        return web.json_response({"ok": True})
+    try:
+        await runner.play_timing_test()
+    except RunnerError as e:
+        raise web.HTTPBadRequest(text=str(e)[:1].upper() + str(e)[1:])
+    return web.json_response({"ok": True, "seconds": timingtest.SECONDS})
+
+
 def _clean_preshow_last(body) -> dict:
     """What the last pre-show check found, for Setup to show: {level, problems, warnings}."""
     if not isinstance(body, dict) or body.get("level") not in preshow.LEVELS:
@@ -3089,6 +3104,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/blocks/{id}/baked", put_block)
     r.add_post("/api/blocks/{id}/baked/part", put_block_part)
     r.add_post("/api/preshow/run", preshow_run)
+    r.add_post("/api/preshow/timing", preshow_timing)
     r.add_get("/api/preshow/last", get_preshow_last)
     r.add_put("/api/preshow/last", put_preshow_last)
     r.add_get("/api/schedule", get_schedule)

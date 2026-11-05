@@ -25,9 +25,28 @@ export function lookLines(seen) {
 // The "How shows start tonight" line only counts on its own when there's nothing under it.
 // Problems first, as the server lists them.
 const ORDER = ["fail", "warn", "ok", "info"];
-export function finalGroups(groups, seen) {
-  return groups.map((g) => (g.key !== "lights" ? g : { ...g,
-    items: [...g.items, ...lookLines(seen)].sort((a, b) => ORDER.indexOf(a.level) - ORDER.indexOf(b.level)) }));
+// `timing`: the timing test's line, if it ran, which goes with the sound.
+export function finalGroups(groups, seen, timing = []) {
+  return groups.map((g) => (g.key === "lights" ? { ...g,
+    items: [...g.items, ...lookLines(seen)].sort((a, b) => ORDER.indexOf(a.level) - ORDER.indexOf(b.level)) }
+    : g.key === "sound" && timing.length ? { ...g, items: [...g.items.filter((x) => x.level !== "info"), ...timing] } : g));
+}
+
+// The timing test: every phone's music is moved by `offset` seconds (ahead of the lights when more
+// than 0), on top of each phone's own Earlier and Later.
+export const TIMING_STEP = 0.1;
+export const MAX_TIMING = 2;
+
+// After "beep" (the beep comes before the flash, so phones play later) or "flash" (the other way).
+export function nextOffset(offset, heard) {
+  const v = (Number(offset) || 0) + (heard === "beep" ? -TIMING_STEP : heard === "flash" ? TIMING_STEP : 0);
+  return Math.max(-MAX_TIMING, Math.min(MAX_TIMING, Math.round(v * 20) / 20));
+}
+
+export function timingText(offset) {
+  const v = Math.round((Number(offset) || 0) * 100) / 100;
+  if (!v) return "Phones play the music as they get it, without moving it.";
+  return `Every phone plays the music ${Math.abs(v).toFixed(2).replace(/0$/, "")} s ${v > 0 ? "earlier" : "later"}, to land with your lights.`;
 }
 
 export function tally(groups) {

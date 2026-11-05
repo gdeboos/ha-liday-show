@@ -274,10 +274,13 @@ How it works:
 - On your Wi-Fi the music is usually within a few hundredths of a second of the lights. Over mobile data
   it can be a little further out. Bluetooth headphones and speakers play a little late, as they do with
   any phone.
-- If the music and lights aren't together, visitors can fix it on their own phone while listening: they
+- To put the music in time for everyone, use the timing step of the [pre-show check](lights.md#pre-show-check):
+  it moves every phone's music by the same amount. **Public page → Listening** says how much, with
+  **Reset** to put it back.
+- If the music and lights still aren't together on a phone, visitors can fix it on their own phone while listening: they
   press **Music out of time?** under the button, then **Earlier** if they hear the beat after the lights flash (usual with Bluetooth), **Later** if
-  they hear it before. Each press moves the music 0.05 s, up to a second either way, and the phone
-  remembers it for next time.
+  they hear it before. Each press moves the music 0.05 s, up to a second either way, on top of the timing for
+  every phone, and the phone remembers it for next time.
 - **Shows with no speaker** (no **Show speaker** of their own and no default one) say **Music on your
   phone** on the visitors' page. A visitor who presses **Start** or **Queue** on one starts listening
   with the same press, so the music plays on their phone when it comes on. (Phones only play sound that

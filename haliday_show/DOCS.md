@@ -166,7 +166,7 @@ way round.
 ### Pre-show check
 
 Before your lights go on for the night, press **✓ Pre-show check** at the top of the **Devices** tab. It
-takes about a minute, in three steps:
+takes a few minutes, in up to four steps:
 
 1. **Checking.** Without you doing anything, it:
    - asks every light whether it's there: Govee lights by a network scan, WLED and Twinkly lights
@@ -184,7 +184,15 @@ takes about a minute, in three steps:
 2. **Looking.** Each light that answered (and each pixel controller) blinks white in turn: press **Yes**
    if you see it, **No** if you don't or only part of it lights, or **Skip**. After **No**, **Check
    segments** runs on it so you can see which part works. This stops anything that's playing.
-3. **Results.** Everything in green (fine), amber (worth a look) or red (needs fixing), problems first,
+3. **Timing with your phone**, when the visitors' page and **Listen on your phone** are on. Stand where you
+   can see your lights, open the visitors' page on your phone, and press **Start the timing test**: every
+   light flashes white once a second for half a minute. Press **Listen** on your phone (it shows once the
+   test is playing) and it beeps. Then say whether the beep lands on the flash:
+   - **Beep comes first** or **Flash comes first** moves every phone's music a tenth of a second the
+     right way. Listen to a few more and answer again; the test starts again by itself if it runs out.
+   - **Yes, in time** keeps that timing for every phone, visitors' too.
+   - **Can't hear it** or **Skip this step** leaves the timing as it was.
+4. **Results.** Everything in green (fine), amber (worth a look) or red (needs fixing), problems first,
    each with what to do about it. **Run again** starts over.
 
 Under the button, **Devices** shows what the last check found and when, such as "Last checked tonight at
@@ -2269,10 +2277,13 @@ How it works:
 - On your Wi-Fi the music is usually within a few hundredths of a second of the lights. Over mobile data
   it can be a little further out. Bluetooth headphones and speakers play a little late, as they do with
   any phone.
-- If the music and lights aren't together, visitors can fix it on their own phone while listening: they
+- To put the music in time for everyone, use the timing step of the [pre-show check](#pre-show-check):
+  it moves every phone's music by the same amount. **Public page → Listening** says how much, with
+  **Reset** to put it back.
+- If the music and lights still aren't together on a phone, visitors can fix it on their own phone while listening: they
   press **Music out of time?** under the button, then **Earlier** if they hear the beat after the lights flash (usual with Bluetooth), **Later** if
-  they hear it before. Each press moves the music 0.05 s, up to a second either way, and the phone
-  remembers it for next time.
+  they hear it before. Each press moves the music 0.05 s, up to a second either way, on top of the timing for
+  every phone, and the phone remembers it for next time.
 - **Shows with no speaker** (no **Show speaker** of their own and no default one) say **Music on your
   phone** on the visitors' page. A visitor who presses **Start** or **Queue** on one starts listening
   with the same press, so the music plays on their phone when it comes on. (Phones only play sound that
