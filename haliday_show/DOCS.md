@@ -178,6 +178,8 @@ takes a few minutes, in up to four steps:
      tonight, has shows to pick and has its queue ready. With rows switched on in the **Schedule**, it
      checks one starts a show tonight. Either is fine on its own. With neither, it's amber, not red:
      nothing will start shows unless you start them yourself or from Home Assistant.
+   - checks the shows that could play tonight (the visitors' picks and tonight's schedule), as
+     [**Check all shows**](#checking-your-shows) does, under **Shows that could play tonight**.
    - checks the sound: each speaker tonight's shows play on, when a show uses one, and with the
      visitors' page on, that phone listening is on (or that visitors' picks have a speaker instead) and
      the songs are there.
@@ -1490,6 +1492,21 @@ up with **↑**, take it out with **✕**, or **+ Add a colour** (up to 12). **S
 "frosty winter night" or "tropical sunset", and press **✨ Make palettes**: the AI suggests up to three, each
 shown as a colour bar, and **Keep** adds one to your palettes (it needs an AI set up, as for
 **Describe it**). Your palettes are available in every show.
+
+### Checking your shows
+
+**✓ Check all shows**, under the list on **Library → Shows**, looks through every show without opening
+them and lists what won't play as you'd expect, problems first:
+
+- **Clips that won't show** on their light (red), or only partly show (amber), as they're marked on the
+  timeline (see [Effects a light can't show](#effects-a-light-cant-show)).
+- **Saved before a change to your lights, groups or house tracing**: a show plays the frames it was
+  saved with, so it plays as it was then. **Fix** saves it again as things are now, without opening it.
+  Shows saved after a change are fine.
+- **Effects on a light you've removed**: they don't play (see below).
+
+Each has **Open**, which opens that show. Nothing is changed unless you press **Fix**. The
+[pre-show check](#pre-show-check) does the same for the shows that could play tonight.
 
 ### Lights that are gone
 

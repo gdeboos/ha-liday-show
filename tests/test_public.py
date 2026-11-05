@@ -1361,3 +1361,9 @@ async def test_each_show_carries_its_colours_as_dots(client):
     dots = {c["id"]: c["dots"] for c in state["choices"]}
     assert dots["party"] == ["#e53935", "#fdd835", "#43a047", "#1e88e5", "#8e24aa", "#ffffff"]  # six at most, even with covers off
     assert dots["quiet"] == []  # no palette: no dots
+
+
+async def test_the_pre_show_check_lists_the_shows_visitors_can_pick(client):
+    await client.put("/api/public", json={"on": True, "shows": ["party", "quiet"]})
+    got = await (await client.post("/api/preshow/run")).json()
+    assert got["shows"] == ["party", "quiet"]

@@ -186,6 +186,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   sunrise, theatre chase, juggle, ripple, dissolve, bouncing balls, lighthouse, stacking blocks and
   fill to a level, and xLights' morph and VU meter, which follows the song's loudness) with live, segment-level previews, built-in presets for each, and your own
   presets saved from any clip
+- Show health: every show checked for clips your lights can't show, shows saved before your lights changed (with Fix) and lights you've removed
 - A pre-show check: every light asked whether it's there and blinked for you to see, how tonight's shows start, the sound, and a timing test that puts every listening phone in time
 - A palette for each show and scene: new effects take its colours and the effect chooser previews in them
 - A palette from each song's cover art (and, with an AI, ideas that suit the song), offered when you add it and picked for you when a new show uses that song
@@ -437,6 +438,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/stretch.js                       Moving, cutting and pasting a selected stretch of time across lanes
     js/joins.js                         Moving the join between two back-to-back effects
     js/preshow.js                       The pre-show check's sums and words: what you saw, the results, Setup's last-checked line
+    js/showhealth.js                    Show health: a saved show's problems (clips that won't show, out of date, removed lights), in words
     js/schedule.js                      Schedule entries in words, and small helpers for them
     js/schedulepage.js                  The Schedule tab: entries in priority order, saved as you go
     js/playlisteditor.js                Playlist editor: where a dragged card lands, running time, building blocks

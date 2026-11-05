@@ -52,6 +52,8 @@ takes a few minutes, in up to four steps:
      tonight, has shows to pick and has its queue ready. With rows switched on in the **Schedule**, it
      checks one starts a show tonight. Either is fine on its own. With neither, it's amber, not red:
      nothing will start shows unless you start them yourself or from Home Assistant.
+   - checks the shows that could play tonight (the visitors' picks and tonight's schedule), as
+     [**Check all shows**](build-a-show.md#checking-your-shows) does, under **Shows that could play tonight**.
    - checks the sound: each speaker tonight's shows play on, when a show uses one, and with the
      visitors' page on, that phone listening is on (or that visitors' picks have a speaker instead) and
      the songs are there.

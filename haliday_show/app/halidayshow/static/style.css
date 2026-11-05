@@ -1489,3 +1489,5 @@ dialog { overscroll-behavior: contain; }
   background: color-mix(in srgb, var(--ok) 14%, var(--panel)); }
 .ps-headline.ps-warn { background: color-mix(in srgb, var(--warn) 16%, var(--panel)); }
 .ps-headline.ps-fail { background: color-mix(in srgb, var(--danger) 14%, var(--panel)); }
+.ps-line > span:nth-child(2) { flex: 1 1 auto; }
+.ps-acts { display: inline-flex; gap: 6px; flex: 0 0 auto; align-self: center; }
