@@ -213,3 +213,15 @@ test("button words lose an emoji at either end, as the icon stands in for it", a
   assert.equal(bare("Again in 5 minutes"), "Again in 5 minutes");
   assert.equal(bare("Turn the music off (the lights carry on)"), "Turn the music off (the lights carry on)");
 });
+
+test("with voting on, visitors vote and see the counts", () => {
+  const vote = { counts: { "show:party": 2, "playlist:eve": 1 }, mine: "playlist:eve" };
+  const view = describe(st({ vote, now: { name: "Frozen" }, waiting: 0, full: true, wait_left: 0 }));
+  assert.equal(view.now, "On now: Frozen · vote for what's next");
+  assert.equal(view.block, ""); // the queue's limits don't apply
+  assert.equal(describe(st({ vote: { counts: {}, mine: "" } })).now, "Nothing's on right now. Vote for a show to start it.");
+  const s = st({ vote });
+  assert.deepEqual(page.voteOf(s.choices[0], s), { key: "show:party", count: 2, mine: false, leading: true, text: "2 votes" });
+  assert.deepEqual(page.voteOf(s.choices[1], s), { key: "playlist:eve", count: 1, mine: true, leading: false, text: "1 vote" });
+  assert.equal(page.voteOf(s.choices[0], st()), null);
+});

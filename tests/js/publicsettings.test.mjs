@@ -15,6 +15,9 @@ test("the public page's address uses the home address HA-liday Show was opened o
 test("the queue says what visitors are waiting for", () => {
   assert.equal(queueText(view()), "No visitors' shows waiting.");
   assert.equal(queueText(view({ on: false })), "");
+  assert.equal(queueText(view({ pick: "vote" })), "No votes yet.");
+  assert.equal(queueText(view({ pick: "vote", votes: [{ name: "Party", count: 2 }, { name: "Eve", count: 1 }] })),
+    "Votes for what's next: Party (2), Eve (1).");
   assert.equal(queueText(view({ now: "Party", waiting: [{ name: "Frozen", wait: 130 }] })),
     "A visitor's show is on now: Party. Waiting: Frozen (in about 2 min).");
 });

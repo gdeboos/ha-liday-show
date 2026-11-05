@@ -188,6 +188,8 @@ def clean(p) -> dict:
     except (TypeError, ValueError):
         distance = 100
     return {"on": p.get("on") is True, "items": items,
+            # How visitors pick: "queue" (first come, first served) or "vote" (the most-voted plays next).
+            "pick": "vote" if p.get("pick") == "vote" else "queue",
             "per_phone": _count(p.get("per_phone"), 1, MAX_PER_PHONE),
             "queue": _count(p.get("queue"), 5, MAX_QUEUE),
             # Minutes before a show that played can be picked again, and before a phone whose pick
@@ -692,10 +694,14 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                    # Your admin phone can remove anyone's pick, so it gets every id (never tickets).
                    **({"id": r["id"]} if admin or (ticket and r["ticket"] == ticket) else {})}
                   for r, wait in zip(runner.requests, waits)],
-        "full": not admin and len(runner.requests) >= p["queue"],
+        "full": not admin and p["pick"] == "queue" and len(runner.requests) >= p["queue"],
+        # Voting: every show's votes so far ("kind:id": count) and this phone's vote, if any.
+        "vote": {"counts": {f"{v['kind']}:{v['ref']}": v["count"] for v in runner.vote_counts()},
+                 "mine": (lambda v: f"{v['kind']}:{v['ref']}" if v else "")(runner.votes.get(ticket or ""))}
+        if p["pick"] == "vote" else None,
         "per_phone": MAX_QUEUE if admin else p["per_phone"],
         # Seconds before this phone can pick again, after its own pick played.
-        "wait_left": 0 if admin else round(phone_wait_left(runner, ticket, p["phone_wait"])),
+        "wait_left": 0 if admin or p["pick"] == "vote" else round(phone_wait_left(runner, ticket, p["phone_wait"])),
         "mine": mine,
         "needs_location": needs_location and not admin,
         "listen": {"pin": bool(p["listen_pin"]) and not admin} if p["listen"] else None,
@@ -966,6 +972,15 @@ async def post_request(request):
         left = repeat_left(runner, pick["kind"], pick["id"], p["repeat_minutes"])
         raise web.HTTPConflict(text=said["played_recently"].replace("{minutes}", _mins(left)) if why == "recent"
                                else said["already_queued" if why == "queued" else "already_playing"])
+    if p["pick"] == "vote" and not admin:
+        # A vote for what plays next: one per phone, changeable until the winner starts. No queue
+        # limits; your admin phone still picks outright, ahead of the votes.
+        if too_late(runner, pick, close := closes_at(p, request.app[WHERE]())):
+            raise web.HTTPConflict(text=said["too_late"].replace("{time}", clock(close)))
+        runner.cast_vote(ticket, {"kind": pick["kind"], "ref": pick["id"], "name": pick["name"],
+                                  "shows": pick["shows"], "gap": pick.get("gap", 0)})
+        log.info("public page: a vote for %s %s (%d votes)", pick["kind"], pick["id"], len(runner.votes))
+        return _no_store(web.json_response(_state(request, ticket, body.get("code"))))
     if not admin and (left := phone_wait_left(runner, ticket, p["phone_wait"])):
         raise web.HTTPConflict(text=said["phone_wait"].replace("{minutes}", _mins(left)))
     if not admin and too_late(runner, pick, close := closes_at(p, request.app[WHERE]())):
@@ -1014,7 +1029,10 @@ async def post_cancel(request):
     if not _code_ok(p, body.get("code")):
         raise web.HTTPForbidden(text=words(p)["locked"])
     _throttle(request.app)
-    request.app[RUNNER].cancel_request(str(body.get("id", "")), ticket)
+    if body.get("vote") is True:  # taking back this phone's vote
+        request.app[RUNNER].drop_vote(ticket)
+    else:
+        request.app[RUNNER].cancel_request(str(body.get("id", "")), ticket)
     return _no_store(web.json_response(_state(request, ticket, body.get("code"))))
 
 

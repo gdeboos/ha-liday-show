@@ -2410,7 +2410,9 @@ def _public_view(app) -> dict:
             "word_groups": public.WORD_GROUPS,
             "now": runner.public_now["name"] if runner.public_now else None,
             "tonight": public.tonight(runner),
-            "waiting": [{"name": r["name"], "wait": w} for r, w in zip(runner.requests, waits)]}
+            "waiting": [{"name": r["name"], "wait": w} for r, w in zip(runner.requests, waits)],
+            # With voting on: what's been voted for so far this round, the leader first.
+            "votes": [{"name": v["name"], "count": v["count"]} for v in runner.vote_counts()]}
 
 
 async def get_public(request):

@@ -77,16 +77,20 @@ export function describe(st) {
   const coming = !st.choices.length && soon.length ? say_(w, "soon_page", { day: dayText(soon[0].starts) }) : "";
   const waiting = st.mine.filter((r) => !r.playing).length;
   let block = "";
-  if (st.wait_left > 0) {
+  if (st.vote) {
+    // Voting: one vote per phone, changed by pressing another, so nothing holds a phone back.
+  } else if (st.wait_left > 0) {
     block = say_(w, "phone_wait", { minutes: minutes(st.wait_left) });
   } else if (waiting >= st.per_phone) {
     block = st.per_phone === 1 ? say_(w, "one_waiting") : say_(w, "many_waiting", { count: waiting });
   } else if (st.full) {
     block = say_(w, "full");
   }
-  let now = say_(w, "idle");
+  let now = say_(w, st.vote ? "idle_vote" : "idle");
   if (st.resting > 0 && !st.now) {
     now = say_(w, "resting");
+  } else if (st.now && st.vote) {
+    now = say_(w, "on_now_vote", { name: st.now.name || "…" });
   } else if (st.now) {
     const name = st.now.name || "…";
     now = !st.mine.some((r) => r.playing) && st.waiting
@@ -131,7 +135,20 @@ export const runningAsApp = (win) => !!(win.matchMedia?.("(display-mode: standal
 
 // The icon for each show button's word.
 export const BUTTON_ICON = { start: "play", queue_btn: "plus", queued_btn: "check", playing_btn: "music",
-  recent_btn: "clock", late_btn: "clock" };
+  recent_btn: "clock", late_btn: "clock", vote_btn: "plus", voted_btn: "check" };
+
+// With voting on: a show's votes in words, and whether it's winning (the first listed is the leader).
+export function voteOf(c, st) {
+  const v = st.vote;
+  if (!v) return null;
+  const key = `${c.kind}:${c.id}`, count = v.counts?.[key] || 0;
+  const w = st.words;
+  return {
+    key, count, mine: v.mine === key,
+    leading: count > 0 && Object.keys(v.counts || {})[0] === key,
+    text: count ? say_(w, count === 1 ? "vote_count_one" : "vote_count", { count }) : "",
+  };
+}
 
 // Pressing Start or Queue on a show with no speaker also starts listening on this phone, if listening
 // is on and it isn't already (the press is what lets a phone play sound).
@@ -982,9 +999,9 @@ export function start() {
       }
       return row;
     }));
-    $("pp-pick-hint").textContent = say_(w, "pick_hint");
+    $("pp-pick-hint").textContent = say_(w, st.vote ? "vote_hint" : "pick_hint");
     $("pp-pick-hint").hidden = !startable;
-    $("pp-pick-head").textContent = say_(w, startable ? "pick_head" : "shows_head");
+    $("pp-pick-head").textContent = say_(w, startable ? (st.vote ? "vote_head" : "pick_head") : "shows_head");
     $("pp-block").hidden = !view.block || !startable;
     // Buttons for your headings, once there are two or more.
     const heads = headingsOf(view.choices);
@@ -1012,6 +1029,7 @@ export function start() {
       const status = c.taken ? "" : c.name === nowName ? say_(w, "row_playing")
         : queued.has(`${c.kind}:${c.id}`) ? say_(w, "row_queued") : "";
       const phone = st.listen && c.speaker === false ? say_(w, "on_phone") : "";
+      const vote = voteOf(c, st);
       const detail = [c.detail, status].filter(Boolean).join(" · ");
       const dots = dotsOf(c);
       if (detail || phone || dots) {
@@ -1023,16 +1041,26 @@ export function start() {
         if (phone) hint.append(iconLabel(el("span", "pp-inline-ico"), "headphones", phone));
         text.append(hint);
       }
+      if (vote?.text) {
+        // Its votes on a line of their own, so they never run under the button on a narrow phone.
+        const votes = el("div", "pp-hint pp-votes", vote.text);
+        if (vote.leading) votes.append(" · ", el("b", "pp-leading", say_(w, "vote_leading")));
+        text.append(votes);
+      }
       row.append(text);
       if (startable) {
         const label = c.taken === "queued" ? "queued_btn" : c.taken === "playing" ? "playing_btn"
-          : c.taken === "recent" ? "recent_btn" : c.taken === "late" ? "late_btn" : word;
+          : c.taken === "recent" ? "recent_btn" : c.taken === "late" ? "late_btn"
+            : vote ? (vote.mine ? "voted_btn" : "vote_btn") : word;
         const words = say_(w, label, { minutes: minutes(c.again_in || 60) });
-        const b = iconLabel(el("button", c.taken ? "pp-taken" : "primary"), BUTTON_ICON[label], words);
+        const b = iconLabel(el("button", c.taken ? "pp-taken" : vote?.mine ? "pp-voted" : "primary"), BUTTON_ICON[label], words);
         b.type = "button";
         b.disabled = !!view.block || busy || !!c.taken;
         b.setAttribute("aria-label", `${bare(words)}: ${c.name}`);
+        if (vote) b.setAttribute("aria-pressed", String(vote.mine));
         b.addEventListener("click", () => {
+          // Pressing your vote again takes it back.
+          if (vote?.mine) { send("api/cancel", { vote: true }); return; }
           // Started in the press itself: phones only play sound that a press starts.
           if (!preview && listensToo(c, st, listener.state.on)) listener.begin("", !!st.listen?.pin);
           send("api/request", { kind: c.kind, id: c.id });

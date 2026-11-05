@@ -227,6 +227,39 @@ async def test_the_timing_test_ends_the_playlist_and_flashes_every_light(runner)
         await runner.play_timing_test()
 
 
+async def test_votes_pick_the_next_show_and_a_tie_goes_to_the_first_there(runner):
+    for name, frames in (("long", 24), ("two", 400), ("three", 400)):
+        _short_show(runner.storage, name, frames=frames)
+    pick = lambda s: {"kind": "show", "ref": s, "name": s.title(), "shows": [s], "gap": 0}
+    await runner.play("long")
+    for ticket, show in (("t1", "two"), ("t2", "three"), ("t3", "three"), ("t4", "two")):
+        runner.cast_vote(ticket, pick(show))
+        await asyncio.sleep(0.01)
+    # Two each: Three got its second vote before Two did.
+    assert [(c["ref"], c["count"]) for c in runner.vote_counts()] == [("three", 2), ("two", 2)]
+    runner.cast_vote("t2", pick("two"))  # a phone changes its vote
+    assert [(c["ref"], c["count"]) for c in runner.vote_counts()] == [("two", 3), ("three", 1)]
+    for _ in range(60):  # Long ends after 0.6 s; the winner follows
+        if runner.player.show_id == "two":
+            break
+        await asyncio.sleep(0.05)
+    assert runner.player.show_id == "two" and runner.votes == {}  # a new round
+    assert runner.public_log[-1]["name"] == "Two"
+
+
+async def test_with_nothing_on_the_first_vote_plays_straight_away(runner):
+    _short_show(runner.storage, "two", frames=400)
+    runner.cast_vote("t1", {"kind": "show", "ref": "two", "name": "Two", "shows": ["two"], "gap": 0})
+    for _ in range(40):
+        if runner.player.show_id == "two":
+            break
+        await asyncio.sleep(0.05)
+    assert runner.player.show_id == "two" and runner.public_now["name"] == "Two"
+    runner.cast_vote("t2", {"kind": "show", "ref": "two", "name": "Two", "shows": ["two"], "gap": 0})
+    await runner.stop()
+    assert runner.votes == {}  # stopping ends the round too
+
+
 async def test_playlist_with_nothing_to_play(runner):
     with pytest.raises(RunnerError):
         await runner.play_playlist({"id": "x", "name": "X", "shows": ["gone"], "gap": 0})

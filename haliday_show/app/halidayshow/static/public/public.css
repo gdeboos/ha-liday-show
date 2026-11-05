@@ -190,6 +190,10 @@ h1, h2 { color: var(--head, var(--text)); }
 /* A show already waiting or on now: a quiet label where its button was, so it isn't picked twice. */
 #pp-choices .pp-row button.pp-taken:disabled { opacity: 1; background: transparent; color: var(--muted);
   border-color: var(--line); cursor: default; }
+.pp-votes .pp-leading { color: var(--text); }
+/* Your vote: outlined in the accent colour, pressed, so it reads as chosen (press again to take it back). */
+#pp-choices .pp-row button.pp-voted { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text);
+  border: 2px solid var(--accent); font-weight: 700; }
 /* Install app: top right of the banner, or under the title without a picture. */
 .pp-install { min-height: 36px; padding: 4px 12px; font-size: .8125em; font-weight: 600; margin-top: 8px; }
 .pp-banner .pp-install { position: absolute; top: 10px; right: 12px; margin: 0;

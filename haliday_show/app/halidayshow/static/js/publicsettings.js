@@ -22,7 +22,10 @@ export function queueText(view) {
   if (view.waiting.length) {
     parts.push(`Waiting: ${view.waiting.map((w) => `${w.name} (in about ${mins(w.wait)})`).join(", ")}.`);
   }
-  if (!parts.length) return view.on ? "No visitors' shows waiting." : "";
+  if (view.votes?.length) {
+    parts.push(`Votes for what's next: ${view.votes.map((v) => `${v.name} (${v.count})`).join(", ")}.`);
+  }
+  if (!parts.length) return view.on ? (view.pick === "vote" ? "No votes yet." : "No visitors' shows waiting.") : "";
   return parts.join(" ");
 }
 
