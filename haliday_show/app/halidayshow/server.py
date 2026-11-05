@@ -17,6 +17,7 @@ import math
 import os
 import urllib.parse
 import re
+import secrets
 import time
 import zlib
 from pathlib import Path
@@ -24,7 +25,7 @@ from pathlib import Path
 import aiohttp
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, preshow, public, report, scenelib, schedule, seasons, songcopy, songtags, timingtest, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, preshow, public, report, scenelib, schedule, seasons, songcopy, songtags, timingtest, twinkly, video, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -56,6 +57,7 @@ OUTPUT = web.AppKey("output", Output)
 PLAYER = web.AppKey("player", Player)
 STORAGE = web.AppKey("storage", Storage)
 TESTS = web.AppKey("tests", dict)
+VIDEOS = web.AppKey("videos", video.Exports)
 PREVIEWS = web.AppKey("previews", dict)
 HA = web.AppKey("ha", HomeAssistant)
 RUNNER = web.AppKey("runner", Runner)
@@ -147,15 +149,103 @@ async def info(request):
                               "retired": migrate.retired(request.app[STORAGE].config_dir)})
 
 
+# Export video (video.py) ------------------------------------------------------------------------
+_VIDEO_ID = re.compile(r"^[a-z0-9]{12}$")
+
+
+def _video(request) -> video.Export:
+    job_id = request.match_info["id"]
+    job = request.app[VIDEOS].get(job_id) if _VIDEO_ID.match(job_id) else None
+    if job is None:
+        raise web.HTTPNotFound(text="that video has gone: export it again")
+    return job
+
+
+def _clean_video(body) -> dict:
+    """What the editor will send: {show, name, codec, fps, start, duration, tail}."""
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text="expected the video's details")
+    num = lambda k, lo, hi: (lambda v: v if isinstance(v, (int, float)) and not isinstance(v, bool)
+                             and math.isfinite(v) and lo <= v <= hi else None)(body.get(k))
+    fps, start = num("fps", 10, 60), num("start", 0, 3 * 3600)
+    duration, tail = num("duration", 0.5, video.MAX_SECONDS), num("tail", 0, 10)
+    if body.get("codec") not in video.CODECS or None in (fps, start, duration, tail) or int(fps) != fps:
+        raise web.HTTPBadRequest(text="expected codec, fps, start, duration and tail")
+    show = body.get("show")
+    if not isinstance(show, str) or not valid_id(show):
+        raise web.HTTPBadRequest(text="bad show id")
+    name = " ".join(str(body.get("name") or show).split())[:80]
+    return {"show": show, "name": name, "codec": body["codec"], "fps": int(fps), "start": float(start),
+            "duration": float(duration), "tail": float(tail)}
+
+
+async def video_start(request):
+    try:
+        want = _clean_video(await request.json())
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    storage = request.app[STORAGE]
+    show = storage.load_show(want["show"])
+    if show is None:
+        raise web.HTTPNotFound(text="that show has gone")
+    song = public._song_file(storage, show)
+    try:
+        job = request.app[VIDEOS].start(secrets.token_hex(6), codec=want["codec"], fps=want["fps"], start=want["start"],
+                                        duration=want["duration"], tail=want["tail"], song=song, name=want["name"])
+    except video.VideoError as e:
+        raise web.HTTPConflict(text=str(e)[:1].upper() + str(e)[1:])
+    return web.json_response({**job.view(), "song": song is not None})
+
+
+async def video_part(request):
+    job = _video(request)
+    try:
+        request.app[VIDEOS].add(job, await request.read())
+    except video.VideoError as e:
+        raise web.HTTPConflict(text=str(e)[:1].upper() + str(e)[1:])
+    return web.json_response(job.view())
+
+
+async def video_finish(request):
+    job = _video(request)
+    try:
+        request.app[VIDEOS].finish(job)
+    except video.VideoError as e:
+        raise web.HTTPConflict(text=str(e)[:1].upper() + str(e)[1:])
+    return web.json_response(job.view())
+
+
+async def video_status(request):
+    return web.json_response(_video(request).view())
+
+
+async def video_file(request):
+    job = _video(request)
+    if job.state != "done":
+        raise web.HTTPConflict(text="the video isn't ready yet")
+    # A plain name for every browser, and the real one (any language) for those that read filename*.
+    name = re.sub(r'[\\/:*?"<>|;\x00-\x1f]+', " ", job.name)
+    name = " ".join(name.split())[:80] or "show"
+    plain = name.encode("ascii", "replace").decode().replace("?", "_")
+    return web.FileResponse(job.out, headers={
+        "Content-Disposition": f'attachment; filename="{plain}.mp4"; filename*=UTF-8\'\'{urllib.parse.quote(name)}.mp4',
+        "Cache-Control": "no-store"})
+
+
+async def video_cancel(request):
+    request.app[VIDEOS].drop(_video(request).id)
+    return web.json_response({"ok": True})
+
+
 # Report a problem (report.py) ------------------------------------------------------------------
 async def get_report(request):
     """What a bug report needs: version, install, light kinds and recent warnings, all scrubbed."""
     storage = request.app[STORAGE]
     p = public.load(storage) or public.clean(None)
     hosts = [urllib.parse.urlsplit(u).hostname or "" for u in (p["address"], os.environ.get("HA_URL", ""))]
-    secrets = [p["code"], p["listen_pin"], p["admin_pin"], *hosts]
+    hidden = [p["code"], p["listen_pin"], p["admin_pin"], *hosts]
     names = await asyncio.to_thread(report.names_in, storage)
-    clean = lambda text: report.scrub(text, secrets, names)
+    clean = lambda text: report.scrub(text, hidden, names)
     # The message it's reported from (the editor's own words, which often name a light or show).
     error = clean(str(request.query.get("error", ""))[:500])
     return web.json_response({
@@ -2980,6 +3070,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     except OSError as e:
         logging.getLogger(__name__).error("couldn't move lights off the old Govee protocols: %s", e)
     app[TESTS] = {}
+    app[VIDEOS] = video.Exports(songcopy.converter)
     app[UPLOADING] = set()
     app[PREVIEWS] = {}
     app[LISTENING] = {"listener": None, "options": {}}
@@ -3013,6 +3104,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         await app[PUBLIC].close()
         app[LIVE].close()
         await stop_tests(app)
+        app[VIDEOS].close()
         await app[RUNNER].close()
         await app[OUTPUT].close()
         await app[HA].close()
@@ -3024,6 +3116,12 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_static("/static/", STATIC)
     r.add_get("/api/info", info)
     r.add_get("/api/report", get_report)
+    r.add_post("/api/video", video_start)
+    r.add_post("/api/video/{id}/part", video_part)
+    r.add_post("/api/video/{id}/finish", video_finish)
+    r.add_get("/api/video/{id}", video_status)
+    r.add_get("/api/video/{id}/file", video_file)
+    r.add_post("/api/video/{id}/cancel", video_cancel)
     r.add_get("/api/devices", get_devices)
     r.add_put("/api/devices", put_devices)
     r.add_post("/api/devices/scan", scan_devices)

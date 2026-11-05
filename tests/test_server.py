@@ -1,3 +1,4 @@
+import shutil
 import asyncio
 import base64
 import json
@@ -1970,3 +1971,111 @@ async def test_a_problem_report_says_what_it_needs_and_nothing_private(client):
     assert got["lights"] == "1 Govee (H70C5)" and got["install"] and got["version"]
     assert any("<name> at <ip> didn't answer" in x for x in got["log"]) and not any("192.168" in x for x in got["log"])
     assert got["error"] == "Couldn't reach <name> at <ip>"
+
+
+async def _video_frames(tmp_path, codec):
+    """A second of test picture, encoded as the editor would send it."""
+    import asyncio as aio
+    out = tmp_path / ("v.h264" if codec == "h264" else "v.ivf")
+    args = ["-c:v", "libx264", "-f", "h264"] if codec == "h264" else ["-c:v", "libvpx-vp9", "-f", "ivf"]
+    proc = await aio.create_subprocess_exec("ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc=size=160x90:rate=30", "-t", "1",
+                                            *args, str(out), stdout=aio.subprocess.DEVNULL, stderr=aio.subprocess.DEVNULL)
+    await proc.wait()
+    return out.read_bytes()
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+@pytest.mark.parametrize("codec", ["h264", "ivf"])
+async def test_a_show_becomes_an_mp4_with_its_song(client, tmp_path, codec):
+    import asyncio as aio
+    import struct
+    import wave
+    song = tmp_path / "media" / "carol.wav"
+    with wave.open(str(song), "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(8000)
+        w.writeframes(b"".join(struct.pack("<h", (i * 50) % 8000) for i in range(8000 * 3)))
+    sid = (await (await client.post("/api/shows", json={"name": "Carol"})).json())["id"]
+    await client.put(f"/api/shows/{sid}", json={"name": "Carol", "tracks": [], "audio": {"source": "media", "path": "carol.wav"}})
+    for bad in ({"show": sid, "codec": "gif", "fps": 30, "start": 0, "duration": 1, "tail": 0},
+                {"show": "../x", "codec": codec, "fps": 30, "start": 0, "duration": 1, "tail": 0},
+                {"show": sid, "codec": codec, "fps": 30, "start": 0, "duration": 0, "tail": 0}):
+        assert (await client.post("/api/video", json=bad)).status == 400
+    job = await (await client.post("/api/video", json={"show": sid, "name": "Carol", "codec": codec, "fps": 30,
+                                                       "start": 1, "duration": 0.5, "tail": 0.5})).json()
+    assert job["state"] == "receiving" and job["song"] is True
+    data = await _video_frames(tmp_path, codec)
+    for k in range(0, len(data), 4000):  # in pieces, as the editor sends it
+        assert (await client.post(f"/api/video/{job['id']}/part", data=data[k:k + 4000])).status == 200
+    assert (await client.get(f"/api/video/{job['id']}/file")).status == 409  # not made yet
+    await client.post(f"/api/video/{job['id']}/finish")
+    for _ in range(100):
+        st = await (await client.get(f"/api/video/{job['id']}")).json()
+        if st["state"] != "making":
+            break
+        await aio.sleep(0.1)
+    assert st["state"] == "done", st
+    r = await client.get(f"/api/video/{job['id']}/file")
+    body = await r.read()
+    assert r.status == 200 and body[4:8] == b"ftyp" and 'filename="Carol.mp4"' in r.headers["Content-Disposition"]
+    # A video and a sound stream, lasting the show's half second and the half-second closing card.
+    mp4 = tmp_path / "out.mp4"
+    mp4.write_bytes(body)
+    proc = await aio.create_subprocess_exec("ffprobe", "-v", "error", "-show_entries", "stream=codec_name,duration,r_frame_rate:format=duration",
+                                            "-of", "json", str(mp4), stdout=aio.subprocess.PIPE)
+    probe = json.loads((await proc.communicate())[0])
+    assert sorted(x["codec_name"] for x in probe["streams"]) == ["aac", "h264"]
+    assert 0.9 <= float(probe["format"]["duration"]) <= 1.2
+    picture = next(x for x in probe["streams"] if x["codec_name"] == "h264")
+    assert picture["r_frame_rate"] == "30/1" and 0.9 <= float(picture["duration"]) <= 1.1  # at 30 a second
+    await client.post(f"/api/video/{job['id']}/cancel")
+    assert (await client.get(f"/api/video/{job['id']}")).status == 404
+
+
+async def test_video_exports_are_limited_and_tidied(tmp_path, monkeypatch):
+    import asyncio as aio
+    from halidayshow import video
+    ex = video.Exports(converter=lambda: "ffmpeg")
+    kw = dict(codec="h264", fps=30, start=0, duration=1, tail=0, song=None, name='Snow: "Day"/Été')
+    a, b = ex.start("a" * 12, **kw), ex.start("b" * 12, **kw)
+    with pytest.raises(video.VideoError):  # two at once at most
+        ex.start("c" * 12, **kw)
+    monkeypatch.setattr(video, "MAX_BYTES", 10)
+    with pytest.raises(video.VideoError):  # too big: let go of at once
+        ex.add(a, b"x" * 11)
+    assert ex.get(a.id) is None and not a.folder.exists()
+    ex.add(b, b"x")
+    ex.tidy(now=b.touched + video.IDLE_S - 1)
+    assert ex.get(b.id)
+    ex.tidy(now=b.touched + video.IDLE_S + 1)  # stopped getting frames
+    assert ex.get(b.id) is None and not b.folder.exists()
+    # A finished one makes way for the next.
+    c = ex.start("c" * 12, **kw)
+    c.state = "done"
+    ex.start("d" * 12, **kw)
+    assert ex.get(c.id) is None
+    # Cancelling one being made stops ffmpeg.
+    d = ex.get("d" * 12)
+    d.proc = await aio.create_subprocess_exec("sleep", "30")
+    ex.drop(d.id)
+    assert await aio.wait_for(d.proc.wait(), 5) != 0
+    ex.close()
+    assert not ex.jobs and ex._sweeper is None
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="needs ffmpeg")
+async def test_a_video_download_has_a_safe_file_name(client, tmp_path):
+    import asyncio as aio
+    sid = (await (await client.post("/api/shows", json={"name": "x"})).json())["id"]
+    await client.put(f"/api/shows/{sid}", json={"name": "x", "tracks": []})
+    job = await (await client.post("/api/video", json={"show": sid, "name": 'Noël: "Snow"/day', "codec": "h264",
+                                                       "fps": 30, "start": 0, "duration": 0.5, "tail": 0})).json()
+    assert job["song"] is False
+    await client.post(f"/api/video/{job['id']}/part", data=await _video_frames(tmp_path, "h264"))
+    await client.post(f"/api/video/{job['id']}/finish")
+    for _ in range(100):
+        if (await (await client.get(f"/api/video/{job['id']}")).json())["state"] != "making":
+            break
+        await aio.sleep(0.1)
+    r = await client.get(f"/api/video/{job['id']}/file")
+    cd = r.headers["Content-Disposition"]
+    assert r.status == 200 and 'filename="No_l Snow day.mp4"' in cd and "filename*=UTF-8''No%C3%ABl%20Snow%20day.mp4" in cd, cd

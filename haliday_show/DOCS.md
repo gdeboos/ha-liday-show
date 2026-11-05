@@ -684,13 +684,28 @@ songs. They're saved with your settings, so they're in **Export…** too.
      made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
 
   **Create show** (or **Create and generate**) saves it straight away; **Cancel** makes nothing.
-- Each show's row has **Edit**, **▶ Preview**, and **⋯** for the rest: **Duplicate**, **Rename**, **Share**, its
+- Each show's row has **Edit**, **▶ Preview**, and **⋯** for the rest: **Duplicate**, **Rename**, **Share**,
+  **Export video…** (see [Making a video of a show](#making-a-video-of-a-show)), its
   **Move to…** (see [Folders](#folders)) and, last, **Remove…**. Rows elsewhere in the Library work the same
   way: their main button, then **⋯**.
 - **▶ Preview**, beside **Edit**, plays the show on your house photo in a window, with its song.
   Nothing is sent to your lights. Under the house are the player controls: **⏮** back to the start, **⏪** and
   **⏩** back and on 5 seconds, **▶**/**⏸** to play and pause, a bar to jump to any point, and the volume. On a
   keyboard, Space plays and pauses, the arrow keys move 5 seconds and Home goes back to the start. **Edit** opens it.
+- <a id="making-a-video-of-a-show"></a>**Making a video of a show**: **Export video…** in a show's **⋯** (or
+  **🎬 Video…** in the Show editor's top bar) makes an MP4 of it playing on your house photo, as **▶ Preview**
+  shows it, with its song, to post on YouTube, a forum or social media.
+  - Pick **Landscape** (1920 × 1080) or **Upright** (1080 × 1920, for Shorts, Reels and TikTok), and **The
+    whole show** or, from the Show editor with a [play region](#working-on-one-part) set, **The play region**
+    for a short clip.
+  - The video starts with the show's name (and its song's, if that's different), shows a bar along the
+    bottom with the song's sections and beats moving as it plays, has a small "Made with HA-liday Show" in
+    the corner, and ends with a three-second card with HA-liday Show's web address.
+  - It's drawn and encoded in your browser, much faster than the show plays, then HA-liday Show adds the
+    song and makes the MP4, which downloads by itself. **Cancel** stops it. Nothing is kept afterwards.
+  - It needs a house photo (or the sample house) under **Setup → House**, with your lights traced to see them,
+    and a browser that can make videos: Chrome, Edge and Safari can. A show open with changes is saved first.
+    A Python install needs ffmpeg (the app and the Docker image have it).
 - **In progress** or finished: a new show starts **In progress**, shown by a badge on its row, until you
   mark it finished with **Mark as finished** in its **⋯** menu (or untick **In progress** in
   **⚙ Show settings…**). **Mark as in progress** puts it back. Shows in progress still play everywhere

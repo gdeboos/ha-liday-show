@@ -186,6 +186,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   sunrise, theatre chase, juggle, ripple, dissolve, bouncing balls, lighthouse, stacking blocks and
   fill to a level, and xLights' morph and VU meter, which follows the song's loudness) with live, segment-level previews, built-in presets for each, and your own
   presets saved from any clip
+- Export a show as an MP4 video of it playing on your house photo, with its song, landscape or upright, to share
 - Show health: every show checked for clips your lights can't show, shows saved before your lights changed (with Fix) and lights you've removed
 - A pre-show check: every light asked whether it's there and blinked for you to see, how tonight's shows start, the sound, and a timing test that puts every listening phone in time
 - A palette for each show and scene: new effects take its colours and the effect chooser previews in them
@@ -375,6 +376,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/discovery.py            Govee multicast scan (WLED's scan is in wled.py)
   app/halidayshow/preshow.py              Pre-show check: asks each light whether it's there, how tonight's shows start, the sound
   app/halidayshow/report.py               Report a problem: recent warnings (in memory), light kinds, install, and taking out anything private
+  app/halidayshow/video.py                Export video: takes the editor's encoded frames, adds the song with ffmpeg, makes the MP4
   app/halidayshow/timingtest.py           The pre-show check's timing test: a flash on every light and a beep for phones, each second
   app/halidayshow/listen.py               Records other Govee traffic (Labs → Listen)
   app/halidayshow/lab.py                  Packet lab: hand-made messages to one Govee light
@@ -441,6 +443,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/preshow.js                       The pre-show check's sums and words: what you saw, the results, Setup's last-checked line
     js/showhealth.js                    Show health: a saved show's problems (clips that won't show, out of date, removed lights), in words
     js/report.js                        Report a problem: the GitHub issue's title, body and link, and the browser in words
+    js/video.js                         Export video: where things go on the frame, the sections bar, IVF wrapping for VP9
     js/schedule.js                      Schedule entries in words, and small helpers for them
     js/schedulepage.js                  The Schedule tab: entries in priority order, saved as you go
     js/playlisteditor.js                Playlist editor: where a dragged card lands, running time, building blocks

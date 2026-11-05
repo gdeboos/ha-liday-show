@@ -499,6 +499,12 @@ export class House {
   // light's segment colours; `skip(dev)` leaves a light out.
   paint(canvas, maxH, colours, skip, zoom = 1) {
     const { ctx, w, h } = this.fit(canvas, maxH, zoom);
+    this.paintInto(ctx, w, h, colours, skip);
+    return { ctx, w, h };
+  }
+
+  // The photo and the lights on it, w × h from the context's origin (also for Export video's frames).
+  paintInto(ctx, w, h, colours, skip) {
     ctx.globalCompositeOperation = "source-over";
     ctx.drawImage(this.photo, 0, 0, w, h);
     ctx.fillStyle = `rgba(0,0,0,${this.dim})`;
@@ -555,7 +561,6 @@ export class House {
       });
     }
     ctx.globalCompositeOperation = "source-over";
-    return { ctx, w, h };
   }
 
   // How bright a light is drawn: its Brightness %, and dim while it's packed away.
