@@ -374,6 +374,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/twinkly.py              Twinkly (experimental): HTTP login and modes, realtime packets
   app/halidayshow/discovery.py            Govee multicast scan (WLED's scan is in wled.py)
   app/halidayshow/preshow.py              Pre-show check: asks each light whether it's there, how tonight's shows start, the sound
+  app/halidayshow/report.py               Report a problem: recent warnings (in memory), light kinds, install, and taking out anything private
   app/halidayshow/timingtest.py           The pre-show check's timing test: a flash on every light and a beep for phones, each second
   app/halidayshow/listen.py               Records other Govee traffic (Labs → Listen)
   app/halidayshow/lab.py                  Packet lab: hand-made messages to one Govee light
@@ -439,6 +440,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/joins.js                         Moving the join between two back-to-back effects
     js/preshow.js                       The pre-show check's sums and words: what you saw, the results, Setup's last-checked line
     js/showhealth.js                    Show health: a saved show's problems (clips that won't show, out of date, removed lights), in words
+    js/report.js                        Report a problem: the GitHub issue's title, body and link, and the browser in words
     js/schedule.js                      Schedule entries in words, and small helpers for them
     js/schedulepage.js                  The Schedule tab: entries in priority order, saved as you go
     js/playlisteditor.js                Playlist editor: where a dragged card lands, running time, building blocks
@@ -506,7 +508,8 @@ and a test build before it's released. Govee models with a **✓ works** or **�
 model list have been tried on real lights; ones marked **? untested** are best effort. WLED,
 pixel controllers, Home Assistant lights and Twinkly have so far only been tested against pretend
 devices on the wire, so reports from real ones are especially welcome. If something doesn't work on yours, please
-[open an issue](https://github.com/gdeboos/ha-liday-show/issues).
+[open an issue](https://github.com/gdeboos/ha-liday-show/issues): **Help → Report a problem…** in the app
+fills one in for you, with the details that help, and takes out names, addresses and codes first.
 
 ## 📄 Licence
 

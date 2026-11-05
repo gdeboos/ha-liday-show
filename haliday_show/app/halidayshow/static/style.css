@@ -1491,3 +1491,11 @@ dialog { overscroll-behavior: contain; }
 .ps-headline.ps-fail { background: color-mix(in srgb, var(--danger) 14%, var(--panel)); }
 .ps-line > span:nth-child(2) { flex: 1 1 auto; }
 .ps-acts { display: inline-flex; gap: 6px; flex: 0 0 auto; align-self: center; }
+
+/* Report a problem */
+.report-dialog { width: min(620px, calc(100vw - 32px)); }
+.report-dialog textarea { width: 100%; resize: vertical; font: inherit; }
+.report-preview { max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 12px;
+  background: var(--track); border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin: 6px 0 0; }
+.status-report { margin-left: 8px; padding: 2px 8px; font-size: 0.85em; }
+.help-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }

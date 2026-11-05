@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.364
+
+- **Report a problem.** Under **Help** (bottom of the Help panel) there's now **Report a problem…**, and any error message in the top bar has a **Report this** button beside it.
+  - Say what went wrong (and, if you like, what you expected). Then **Open on GitHub** opens a new issue already filled in, or **Copy** puts the report on the clipboard to paste into a forum, Reddit or Discord.
+  - It adds by itself: your HA-liday Show version and how it's installed, what kinds of lights you have (such as "2 Govee (H706A, H70C5), 1 WLED"), whether Home Assistant is connected, your browser and screen, and the app's recent warnings and errors.
+  - Light names, IP and device addresses, Home Assistant entity names, song names, web addresses, and your public code and PINs are taken out first. You see everything before you send it.
+
 ## 0.2.363
 
 - **Show health.** HA-liday Show can now look through your shows for problems without opening them:

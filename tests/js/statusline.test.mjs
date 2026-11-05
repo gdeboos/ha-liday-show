@@ -100,3 +100,18 @@ test("the polite and alert regions stay put while messages change", () => {
 test("times are shown as hours and minutes", () => {
   assert.equal(clock(new Date(2026, 0, 1, 7, 5)), "07:05");
 });
+
+test("a failure can be reported from the status line", () => {
+  const el = new El("span");
+  const said = [];
+  const line = new StatusLine(el, { later: () => {}, doc, onReport: (m) => said.push(m) });
+  line.show("Couldn't start the show", "error");
+  const report = el.find((e) => e.tag === "button" && e.className === "status-report");
+  assert.ok(report);
+  report.click();
+  assert.deepEqual(said, ["Couldn't start the show"]);
+  // Without onReport there's no such button.
+  const { el: plain, line: other } = setup();
+  other.show("Couldn't save", "error");
+  assert.equal(plain.find((e) => e.className === "status-report"), null);
+});
