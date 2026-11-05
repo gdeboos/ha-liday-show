@@ -850,7 +850,18 @@
 <main id="view-devices" class="view" hidden>
   <section class="toolbar">
     <button id="btn-add-light" class="primary">+ Add a light</button>
+    <span class="preshow-open">
+      <button id="btn-preshow" title="Checks every light, how tonight's shows start and the sound, then blinks each light for you to look at">✓ Pre-show check</button>
+      <span id="preshow-last" class="hint"></span>
+    </span>
   </section>
+  <dialog id="preshow-dialog" class="effect-dialog form-dialog preshow-dialog" aria-labelledby="preshow-title">
+    <div class="effect-dialog-head"><h3 id="preshow-title">Pre-show check</h3>
+      <span id="preshow-step" class="hint"></span>
+      <button class="ghost" data-preshow="close" aria-label="Close">✕</button></div>
+    <div id="preshow-body" class="form-dialog-body" aria-live="polite"></div>
+    <div id="preshow-foot" class="form-dialog-foot"></div>
+  </dialog>
   <p class="hint">Press a light to change its settings or split it into parts. <b>Test</b> runs a rainbow with a white
     dot stepping along it: set <b>LEDs</b> (<b>Segments</b> on a Govee light) so the dot visits each one once per lap.</p>
   <dialog id="add-dialog" class="effect-dialog form-dialog add-dialog" aria-labelledby="add-title">
@@ -933,6 +944,7 @@
     <div class="form-dialog-foot">
       <button type="button" class="ghost danger" data-light="remove">Remove light</button>
       <span class="spacer"></span>
+      <button type="button" id="light-chase" data-light="chase" title="A white bar goes from the first segment to the last, so you can see a stretch that doesn't light or a light that starts at the wrong end">Check segments</button>
       <button type="button" id="light-test" data-light="test">Test</button>
       <button type="button" class="primary" data-light="close">Done</button>
     </div>

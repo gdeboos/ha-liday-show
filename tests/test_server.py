@@ -1903,3 +1903,23 @@ async def test_a_songs_palette_is_kept_through_detect_and_cleared_on_request(cli
     assert (await client.put("/api/audio/palette", params=q, data="null", headers={"Content-Type": "application/json"})).status == 200
     assert await (await client.get("/api/audio/palette", params=q)).json() is None
     assert (await client.put("/api/audio/palette", params={"source": "media", "path": "../x.mp3"}, json=pal)).status == 404
+
+
+async def test_the_pre_show_check_with_nothing_set_up_yet(client):
+    got = await (await client.post("/api/preshow/run")).json()
+    groups = {g["key"]: g for g in got["groups"]}
+    assert groups["lights"]["items"] == [{"level": "fail", "text": "You haven't added any lights yet.", "fix": "Press + Add a light."}]
+    # Neither the visitors' page nor the schedule: amber, and nothing under it.
+    assert groups["start"]["summary"]["level"] == "warn" and groups["start"]["items"] == []
+    assert groups["sound"]["items"][0]["level"] == "info"
+    assert got["look"] == []
+
+
+async def test_the_pre_show_check_keeps_its_last_result(client):
+    assert await (await client.get("/api/preshow/last")).json() is None
+    for bad in ({"level": "great", "problems": 0, "warnings": 0}, {"level": "ok", "problems": -1, "warnings": 0},
+                {"level": "ok", "problems": True, "warnings": 0}, [1]):
+        assert (await client.put("/api/preshow/last", json=bad)).status == 400
+    saved = await (await client.put("/api/preshow/last", json={"level": "warn", "problems": 0, "warnings": 2})).json()
+    assert saved["level"] == "warn" and saved["warnings"] == 2 and saved["at"]
+    assert await (await client.get("/api/preshow/last")).json() == saved

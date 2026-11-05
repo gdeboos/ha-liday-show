@@ -79,6 +79,7 @@ import { convertProblem, showUses, toWled } from "./convert.js";
 import { PART, packed, putWithProgress, sendBaked, sendParts, uploadSong } from "./upload.js";
 import { bakeNote, lightsBakeKey } from "./bakekey.js";
 import { piecesIn, placeStretch, rowsBy } from "./stretch.js";
+import { finalGroups, headline, lastText, tally } from "./preshow.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
 watchButtons();
@@ -576,6 +577,153 @@ async function stopTest(d) {
   try { await api("api/devices/test", { method: "POST", json: { ...d, stop: true } }); } catch { /* it lets go by itself */ }
 }
 
+// A light blinking white (the pre-show check) or a white bar going along it (Check segments).
+async function patternLight(d, pattern, seconds = 120) {
+  if (isAway(d)) { status(`${d.name} is packed away. Switch its season to Out under Seasons first`, "hint"); return false; }
+  delete deviceTests[d.id];
+  try {
+    await api("api/devices/test", { method: "POST", json: { ...d, seconds, pattern } });
+    return true;
+  } catch (e) {
+    status(`Couldn't light ${d.name}: ${e.message}`, true);
+    return false;
+  }
+}
+
+async function checkSegments(d) {
+  if (await patternLight(d, "chase", 90)) {
+    status(`A white bar is going along ${d.name} for a minute and a half, from its first ${unitWord(d, 1)} to its last. `
+      + "Watch for a stretch it skips, or a bar that starts at the wrong end", "info");
+  }
+}
+
+// Pre-show check (Setup → Devices): the server's checks (preshow.py), then each light blinks in turn for
+// you to say whether you see it, then the results, the last of which Setup shows.
+const preshow = { groups: [], look: [], seen: [], lit: null, run: 0 };
+
+async function loadPreshowLast() {
+  $("preshow-last").textContent = lastText(await api("api/preshow/last").catch(() => null));
+}
+
+function preshowLetGo() {
+  if (preshow.lit) stopTest(preshow.lit);
+  preshow.lit = null;
+}
+
+const PS_MARK = { ok: "✓", info: "i", warn: "!", fail: "✕" };
+const PS_WORD = { ok: "Good", info: "Note", warn: "Look at this", fail: "Problem" };
+
+function preshowLine(x) {
+  const li = document.createElement("li");
+  li.className = `ps-line ps-${x.level}`;
+  const mark = Object.assign(document.createElement("span"), { className: "ps-mark", textContent: PS_MARK[x.level] });
+  mark.setAttribute("aria-hidden", "true");
+  const text = document.createElement("span");
+  text.append(Object.assign(document.createElement("span"), { className: "sr-only", textContent: `${PS_WORD[x.level]}: ` }), x.text);
+  if (x.fix) text.append(Object.assign(document.createElement("span"), { className: "ps-fix", textContent: x.fix }));
+  li.append(mark, text);
+  return li;
+}
+
+function preshowList(groups) {
+  const box = document.createElement("div");
+  box.className = "ps-groups";
+  for (const g of groups) {
+    const h = Object.assign(document.createElement("h4"), { textContent: g.title });
+    const ul = document.createElement("ul");
+    ul.className = "ps-lines";
+    if (g.summary) ul.append(preshowLine({ ...g.summary, fix: g.items.length ? "" : g.summary.fix }));
+    ul.append(...g.items.map(preshowLine));
+    if (g.summary && g.items.length) ul.classList.add("ps-under");
+    box.append(h, ul);
+  }
+  return box;
+}
+
+function preshowShow({ step = "", body = [], foot = [] }) {
+  $("preshow-step").textContent = step;
+  $("preshow-body").replaceChildren(...body);
+  $("preshow-foot").replaceChildren(Object.assign(document.createElement("span"), { className: "spacer" }), ...foot);
+  $("preshow-foot").querySelector(".primary")?.focus();
+}
+
+const psClose = () => button("Close", () => $("preshow-dialog").close(), "ghost");
+
+async function openPreshow() {
+  const run = ++preshow.run;
+  preshowLetGo();
+  if (!$("preshow-dialog").open) $("preshow-dialog").showModal();
+  preshowShow({ step: "Step 1 of 3: checking", foot: [psClose()],
+    body: [Object.assign(document.createElement("p"), { textContent: "Asking your lights whether they're there, and checking how tonight's shows start and the sound. This takes a few seconds…" })] });
+  let got;
+  try {
+    got = await api("api/preshow/run", { method: "POST" });
+  } catch (e) {
+    if (run !== preshow.run) return;
+    preshowShow({ step: "", foot: [psClose(), button("Try again", openPreshow, "primary")],
+      body: [Object.assign(document.createElement("p"), { className: "hint warn", textContent: `The check couldn't run: ${e.message}` })] });
+    return;
+  }
+  if (run !== preshow.run) return;
+  Object.assign(preshow, { groups: got.groups, look: got.look.map((id) => app.lights[id]).filter(Boolean), seen: [] });
+  const n = preshow.look.length;
+  const next = n ? button(`Next: look at your lights →`, () => preshowLook(0, run), "primary")
+    : button("Finish", () => preshowFinish(run), "primary");
+  const note = Object.assign(document.createElement("p"), { className: "hint",
+    textContent: n ? `Next, ${n === 1 ? "your light blinks" : `each of your ${n} lights blinks in turn`} for you to say whether you see it. That stops anything playing.`
+      : "There are no lights to look at." });
+  preshowShow({ step: "Step 1 of 3: checked", body: [preshowList(preshow.groups), note], foot: [psClose(), next] });
+}
+
+async function preshowLook(i, run) {
+  if (run !== preshow.run) return;
+  preshowLetGo();
+  if (i >= preshow.look.length) { preshowFinish(run); return; }
+  const d = preshow.look[i], still = isHa(d);
+  const answer = (a) => { preshow.seen[i] = { name: d.name, answer: a }; };
+  const step = `Step 2 of 3: light ${i + 1} of ${preshow.look.length}`;
+  const ask = () => {
+    const q = Object.assign(document.createElement("p"), { className: "ps-question",
+      textContent: still ? `Is ${d.name} lit white?` : `Is ${d.name} blinking white?` });
+    const hint = Object.assign(document.createElement("p"), { className: "hint",
+      textContent: still ? "A Home Assistant light holds still white rather than blinking." : "The whole light goes white, then off, about once a second." });
+    const answers = document.createElement("div");
+    answers.className = "ps-answers";
+    answers.append(button("Yes", () => { answer("yes"); preshowLook(i + 1, run); }, "primary"),
+      button("No", () => { answer("no"); wrong(); }), button("Skip", () => { answer("skip"); preshowLook(i + 1, run); }, "ghost"));
+    preshowShow({ step, body: [q, hint, answers], foot: [psClose()] });
+    answers.querySelector(".primary").focus();
+  };
+  const wrong = () => {
+    const q = Object.assign(document.createElement("p"), { className: "ps-question", textContent: `${d.name} isn't right` });
+    const tips = Object.assign(document.createElement("p"), { className: "hint",
+      textContent: "Not lit at all? Check it's plugged in and switched on. Only part of it lit, or the wrong part? "
+        + "Press Check segments: a white bar goes from its first bulb to its last, so you can see where it stops." });
+    const acts = document.createElement("div");
+    acts.className = "ps-answers";
+    acts.append(button("Check segments", () => checkSegments(d)), button("Blink it again", () => { delete preshow.seen[i]; patternLight(d, "blink"); ask(); }, "ghost"),
+      button(i + 1 < preshow.look.length ? "Next light →" : "See the results →", () => preshowLook(i + 1, run), "primary"));
+    preshowShow({ step, body: [q, tips, acts], foot: [psClose()] });
+  };
+  preshow.lit = d;
+  await patternLight(d, "blink");
+  if (run === preshow.run) ask();
+}
+
+async function preshowFinish(run) {
+  if (run !== preshow.run) return;
+  preshowLetGo();
+  const groups = finalGroups(preshow.groups, preshow.seen.filter(Boolean));
+  const sum = tally(groups);
+  const head = Object.assign(document.createElement("p"), { className: `ps-headline ps-${sum.level}`, textContent: headline(sum) });
+  preshowShow({ step: "Step 3 of 3: results", body: [head, preshowList(groups)],
+    foot: [button("Run again", openPreshow, "ghost"), button("Done", () => $("preshow-dialog").close(), "primary")] });
+  try {
+    await api("api/preshow/last", { method: "PUT", json: sum });
+    loadPreshowLast();
+  } catch { /* the result is still on screen */ }
+}
+
 function renderDevices() {
   renderLab();
   renderGroups();
@@ -925,6 +1073,9 @@ function renderLightEditor() {
   const test = $("light-test");
   test.disabled = !linked(d);
   test.title = linked(d) ? "" : plannedTip(d);
+  const chase = $("light-chase");
+  chase.disabled = !linked(d);
+  chase.hidden = isHa(d) && d.segments <= 1;
 }
 
 // Moves light `d` to position `to` in the list. Every show's tracks follow the list's order.
@@ -1399,6 +1550,7 @@ $("light-dialog").addEventListener("click", async (e) => {
   const d = app.lights[lightEdit.id];
   if (what === "close" || !d) $("light-dialog").close();
   else if (what === "test") { if (await testLight(d)) status(`Testing ${d.name} for 20 seconds`); }
+  else if (what === "chase") checkSegments(d);
   else if (what === "remove") {
     if (!(await askYes(`Remove ${d.name}? Its clips stay in your shows.`, { yes: "Remove", danger: true }))) return;
     $("light-dialog").close();
@@ -10959,6 +11111,7 @@ function showView(view, { push = true } = {}) {
       renderDevices();
     }).catch(() => {});
   }
+  if (page === "devices") loadPreshowLast();
   if (page === "house") renderHouseLights();
   if (page === "data") renderCopies();
   if (page === "settings") loadPublic();
@@ -11307,6 +11460,11 @@ function wire() {
     if (haPick.picked.size) addLightNow();
   });
   $("btn-add-light").addEventListener("click", openAddLight);
+  $("btn-preshow").addEventListener("click", openPreshow);
+  $("preshow-dialog").addEventListener("click", (e) => {
+    if (e.target.closest("[data-preshow='close']") || e.target === $("preshow-dialog")) $("preshow-dialog").close();
+  });
+  $("preshow-dialog").addEventListener("close", () => { preshow.run++; preshowLetGo(); });
   $("btn-add-speaker").addEventListener("click", openAddSpeaker);
   $("btn-demo").addEventListener("click", tryDemo);
   $("btn-demo-remove").addEventListener("click", removeDemo);

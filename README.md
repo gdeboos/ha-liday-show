@@ -186,6 +186,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   sunrise, theatre chase, juggle, ripple, dissolve, bouncing balls, lighthouse, stacking blocks and
   fill to a level, and xLights' morph and VU meter, which follows the song's loudness) with live, segment-level previews, built-in presets for each, and your own
   presets saved from any clip
+- A pre-show check: every light asked whether it's there and blinked for you to see, plus how tonight's shows start and the sound
 - A palette for each show and scene: new effects take its colours and the effect chooser previews in them
 - A palette from each song's cover art (and, with an AI, ideas that suit the song), offered when you add it and picked for you when a new show uses that song
 - Transitions on any clip (fade, wipe, from the middle or dissolve, in and out), with crossfades
@@ -370,6 +371,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/e131.py                 E1.31 (sACN) packets and each controller's shared universes
   app/halidayshow/twinkly.py              Twinkly (experimental): HTTP login and modes, realtime packets
   app/halidayshow/discovery.py            Govee multicast scan (WLED's scan is in wled.py)
+  app/halidayshow/preshow.py              Pre-show check: asks each light whether it's there, how tonight's shows start, the sound
   app/halidayshow/listen.py               Records other Govee traffic (Labs → Listen)
   app/halidayshow/lab.py                  Packet lab: hand-made messages to one Govee light
   app/halidayshow/output.py               Streaming to each kind of light: pace, keepalive, putting back, test pattern
@@ -429,6 +431,10 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/libfolders.js                    The Library lists that keep their folders together, and keeping a renamed item in its folder
     js/palettepicker.js                 The window for picking a palette by its colours
     js/showpalette.js                   A show's own palette: followed by name, with a copy of its colours
+    js/coverpalette.js                  A song's colours: a palette from its cover art for lights, its name, the AI's request
+    js/stretch.js                       Moving, cutting and pasting a selected stretch of time across lanes
+    js/joins.js                         Moving the join between two back-to-back effects
+    js/preshow.js                       The pre-show check's sums and words: what you saw, the results, Setup's last-checked line
     js/schedule.js                      Schedule entries in words, and small helpers for them
     js/schedulepage.js                  The Schedule tab: entries in priority order, saved as you go
     js/playlisteditor.js                Playlist editor: where a dragged card lands, running time, building blocks

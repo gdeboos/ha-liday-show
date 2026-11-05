@@ -611,6 +611,39 @@ async def run_hold(output: Output, ip: str, rgb: bytes, segments: int, seconds: 
     output.release(ip)
 
 
+def blink_frame(segments: int, t: float) -> bytes:
+    """The whole light white, then off, about once a second: the pre-show check's "is this one lit?"."""
+    return (b"\xff\xff\xff" if t % 1.2 < 0.7 else b"\0\0\0") * segments
+
+
+def chase_lap(segments: int) -> float:
+    """Seconds for Check segments' white bar to go from the first segment to the last: slow enough to
+    follow by eye, about a tenth of a second a segment, between 8 seconds and half a minute."""
+    return min(max(segments * 0.1, 8.0), 30.0)
+
+
+def chase_frame(segments: int, t: float) -> bytes:
+    """Check segments: a short white bar going from the first segment to the last over a dark light,
+    then starting again, so a dead stretch or a light that starts at the wrong end shows."""
+    width = max(1, segments // 40)
+    lap = chase_lap(segments)
+    head = int((t % lap) / lap * segments)
+    return b"".join(b"\xff\xff\xff" if head - width < i <= head else b"\0\0\0" for i in range(segments))
+
+
+async def run_frames(output: Output, ip: str, segments: int, frame, seconds: float = 60, fps: int = 20,
+                     **settings):
+    """Plays frame(segments, t) on the light until it times out or is replaced (blink, chase)."""
+    dev = output.claim(ip, segments, **settings)
+    t0 = time.monotonic()
+    try:
+        while (t := time.monotonic() - t0) < seconds:
+            dev.update(frame(segments, t))
+            await asyncio.sleep(1 / fps)
+    finally:
+        output.release(ip)
+
+
 PROBE_MAX = 128  # the most segments Find segments will look for
 
 
