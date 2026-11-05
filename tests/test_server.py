@@ -1959,3 +1959,12 @@ async def test_the_timing_test_starts_and_stops(client):
     assert (await (await client.get("/api/player")).json())["name"] == "Timing test"
     await client.post("/api/preshow/timing", json={"stop": True})
     assert not (await (await client.get("/api/player")).json())["playing"]
+
+
+async def test_a_problem_report_says_what_it_needs_and_nothing_private(client):
+    await client.put("/api/devices", json=[{"id": "p", "name": "Pillars", "kind": "govee", "sku": "H70C5", "ip": "192.168.2.155", "segments": 15}])
+    import logging
+    logging.getLogger("halidayshow.test").warning("192.168.2.155 didn't answer")
+    got = await (await client.get("/api/report")).json()
+    assert got["lights"] == "1 Govee (H70C5)" and got["install"] and got["version"]
+    assert any("<ip> didn't answer" in x for x in got["log"]) and not any("192.168" in x for x in got["log"])

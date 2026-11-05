@@ -81,6 +81,7 @@ import { bakeNote, lightsBakeKey } from "./bakekey.js";
 import { piecesIn, placeStretch, rowsBy } from "./stretch.js";
 import { finalGroups, headline, lastText, nextOffset, tally, timingText } from "./preshow.js";
 import { healthLines, showProblems } from "./showhealth.js";
+import { browserText, issueUrl, reportText } from "./report.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
 watchButtons();
@@ -114,6 +115,50 @@ const prefs = {
 };
 
 
+// Report a problem (report.js): a GitHub issue filled in with what a bug report needs, or the same to
+// copy for a forum. `error` is the message it was reported from, if any.
+async function openReport(error = "") {
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+  let info = {};
+  try { info = await api("api/report"); } catch { /* what's typed still goes */ }
+  const what = el("textarea", { rows: 3, placeholder: "What you did, and what happened" });
+  const expected = el("textarea", { rows: 2, placeholder: "Optional" });
+  const preview = el("pre", { className: "report-preview" });
+  const args = () => ({ what: what.value, expected: expected.value, info, error,
+    browser: browserText(navigator.userAgent), screen: `${innerWidth} × ${innerHeight}` });
+  const draw = () => { preview.textContent = reportText(args()).body; };
+  what.addEventListener("input", draw);
+  expected.addEventListener("input", draw);
+  draw();
+  const copy = el("button", { type: "button", textContent: "Copy" });
+  copy.addEventListener("click", async () => {
+    const { title, body } = reportText(args());
+    try { await navigator.clipboard.writeText(`${title}\n\n${body}`); status("Report copied: paste it where you're asking for help", "saved"); }
+    catch { status("Couldn't copy it: select the text under What's sent and copy that", "hint"); }
+  });
+  const open = el("button", { type: "button", className: "primary", textContent: "Open on GitHub" });
+  open.addEventListener("click", () => {
+    if (!what.value.trim()) { status("Say what went wrong first", "hint"); what.focus(); return; }
+    window.open(issueUrl(args()), "_blank", "noopener");
+  });
+  const close = el("button", { type: "button", className: "ghost", textContent: "Close" });
+  const dlg = el("dialog", { className: "effect-dialog form-dialog report-dialog" },
+    el("div", { className: "effect-dialog-head" }, el("h3", { textContent: "Report a problem" })),
+    el("div", { className: "form-dialog-body" },
+      el("p", { className: "hint", textContent: "This opens a new issue on GitHub (you'll need a free account), where it's easy to follow up. No GitHub? Copy it and paste it where you're asking for help." }),
+      el("label", { className: "field" }, "What went wrong?", what),
+      el("label", { className: "field" }, "What did you expect?", expected),
+      el("details", {}, el("summary", { textContent: "What's sent with it" }),
+        el("p", { className: "hint", textContent: "Your version, kinds of lights, browser and the app's recent warnings. Names, addresses, song names and your codes and PINs are taken out. You see it all on GitHub before sending." }),
+        preview)),
+    el("div", { className: "form-dialog-foot" }, el("span", { className: "spacer" }), close, copy, open));
+  close.addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", () => dlg.remove());
+  document.body.append(dlg);
+  dlg.showModal();
+  what.focus();
+}
+
 // A message in the top bar. Pass error = true for a failure (it stays until pressed), "saved" when
 // something has just been saved (it lights up, then settles to the time), or "hint".
 let statusLine;
@@ -124,7 +169,7 @@ const errorKind = (e) => (e instanceof Nudge ? "hint" : true);
 // "hint" is a nudge such as "Choose a song first", which fades. `topic` names what a failure was
 // about, so a later save of it, or status("", "info", topic), takes the failure away.
 function status(msg, error = false, topic = null) {
-  statusLine ||= new StatusLine($("status"));
+  statusLine ||= new StatusLine($("status"), { onReport: (m) => openReport(m) });
   const kind = error === true ? "error" : error || "info";
   statusLine.show(msg, kind, topic);
   noteInDialog(msg, kind);
@@ -11684,6 +11729,7 @@ function wire() {
   });
   $("btn-add-light").addEventListener("click", openAddLight);
   $("btn-preshow").addEventListener("click", openPreshow);
+  $("help-report").addEventListener("click", () => openReport());
   $("pub-listen-timing-reset").addEventListener("click", async () => {
     try {
       const view = await api("api/public", { method: "PUT", json: { listen_offset: 0 } });

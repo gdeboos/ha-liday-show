@@ -16,8 +16,9 @@ export const clock = (date) =>
 
 export class StatusLine {
   // el: the element to fill. now(), later(fn, ms) and doc can be swapped out for tests.
-  constructor(el, { now = () => new Date(), later = (fn, ms) => setTimeout(fn, ms), doc = globalThis.document } = {}) {
-    Object.assign(this, { el, now, later, doc });
+  // onReport(msg), if given, puts a Report this button beside a failure.
+  constructor(el, { now = () => new Date(), later = (fn, ms) => setTimeout(fn, ms), doc = globalThis.document, onReport = null } = {}) {
+    Object.assign(this, { el, now, later, doc, onReport });
     this.error = null; // {msg, topic} while a failure shows
     this.lastSaved = null;
     this.serial = 0;
@@ -79,6 +80,14 @@ export class StatusLine {
       b.addEventListener("click", () => this.dismiss());
       this.live.replaceChildren();
       this.alert.replaceChildren(b);
+      if (this.onReport) {
+        const r = this.doc.createElement("button");
+        r.type = "button";
+        r.className = "status-report";
+        r.textContent = "Report this";
+        r.addEventListener("click", () => this.onReport(msg));
+        this.alert.append(r);
+      }
       return;
     }
     const parts = [];

@@ -2773,6 +2773,14 @@ If it hears nothing, the lights are talking to each other directly, where Home A
 
 ## Troubleshooting
 
+Something wrong, or not as you expected? **Report a problem…** at the bottom of the **Help** panel (or
+**Report this** beside an error message in the top bar) opens a short window: say what went wrong, then
+**Open on GitHub** for a new issue already filled in (you'll need a free GitHub account), or **Copy** to
+paste it anywhere else. It adds your version, how HA-liday Show is installed, the kinds of lights you
+have, your browser and the app's recent warnings and errors. Names, addresses, song names and your
+codes and PINs are taken out first, and **What's sent with it** shows exactly what goes. The recent
+warnings are kept in memory only, never written anywhere, and start afresh when HA-liday Show restarts.
+
 | Problem | Try |
 | --- | --- |
 | Scan finds no WLED strips | Check they're switched on and on the same network. Add the strip by IP instead (it's on the WLED app's **Info** page). |

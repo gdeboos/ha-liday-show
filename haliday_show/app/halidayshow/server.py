@@ -23,7 +23,7 @@ from pathlib import Path
 import aiohttp
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, preshow, public, scenelib, schedule, seasons, songcopy, songtags, timingtest, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, preshow, public, report, scenelib, schedule, seasons, songcopy, songtags, timingtest, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -144,6 +144,18 @@ async def info(request):
                               "mqtt": request.app[MQTT].client is not None,
                               # what 0.2.207's Govee clear-out changed, for the editor to say once
                               "retired": migrate.retired(request.app[STORAGE].config_dir)})
+
+
+# Report a problem (report.py) ------------------------------------------------------------------
+async def get_report(request):
+    """What a bug report needs: version, install, light kinds and recent warnings, all scrubbed."""
+    storage = request.app[STORAGE]
+    p = public.load(storage) or public.clean(None)
+    secrets = [p["code"], p["listen_pin"], p["admin_pin"]]
+    return web.json_response({
+        "version": __version__, "install": report.install(), "ha": request.app[HA].available,
+        "lights": report.scrub(report.lights(storage.load_devices()), secrets),
+        "log": [report.scrub(line, secrets) for line in report.recent()]})
 
 
 # diagnostics -------------------------------------------------------------
@@ -2943,6 +2955,7 @@ async def download_copy(request):
 # app ---------------------------------------------------------------------
 def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, password: str = "",
              read_stdin: bool = False) -> web.Application:
+    report.keep_recent()  # the last warnings and errors, for Report a problem
     app = web.Application(middlewares=[ingress_only], client_max_size=MAX_UPLOAD)
     app.on_response_prepare.append(no_cache_static)
     app[ALLOW_ALL] = allow_all
@@ -3004,6 +3017,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/player", show_player_page)
     r.add_static("/static/", STATIC)
     r.add_get("/api/info", info)
+    r.add_get("/api/report", get_report)
     r.add_get("/api/devices", get_devices)
     r.add_put("/api/devices", put_devices)
     r.add_post("/api/devices/scan", scan_devices)
