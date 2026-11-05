@@ -15,6 +15,7 @@ import json
 import logging
 import math
 import os
+import urllib.parse
 import re
 import time
 import zlib
@@ -151,11 +152,16 @@ async def get_report(request):
     """What a bug report needs: version, install, light kinds and recent warnings, all scrubbed."""
     storage = request.app[STORAGE]
     p = public.load(storage) or public.clean(None)
-    secrets = [p["code"], p["listen_pin"], p["admin_pin"]]
+    hosts = [urllib.parse.urlsplit(u).hostname or "" for u in (p["address"], os.environ.get("HA_URL", ""))]
+    secrets = [p["code"], p["listen_pin"], p["admin_pin"], *hosts]
+    names = await asyncio.to_thread(report.names_in, storage)
+    clean = lambda text: report.scrub(text, secrets, names)
+    # The message it's reported from (the editor's own words, which often name a light or show).
+    error = clean(str(request.query.get("error", ""))[:500])
     return web.json_response({
         "version": __version__, "install": report.install(), "ha": request.app[HA].available,
-        "lights": report.scrub(report.lights(storage.load_devices()), secrets),
-        "log": [report.scrub(line, secrets) for line in report.recent()]})
+        "lights": clean(report.lights(storage.load_devices())), "error": error,
+        "log": [clean(line) for line in report.recent()]})
 
 
 # diagnostics -------------------------------------------------------------

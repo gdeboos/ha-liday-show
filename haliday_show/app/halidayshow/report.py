@@ -78,11 +78,19 @@ def lights(devices: list[dict]) -> str:
     return ", ".join(parts) or "none yet"
 
 
+# Endings of web addresses that turn up in connection errors (a tunnel, a dynamic DNS name, a .local
+# Home Assistant), without the "http". A short list, so a module or file name (runner.py) isn't caught.
+_TLDS = ("com|net|org|io|dev|app|uk|co|local|lan|home|internal|arpa|de|nl|fr|eu|info|me|xyz|cloud|online|site|"
+         "tech|us|ca|au|nz|ie|be|ch|at|se|no|dk|fi|es|it|pl|cz|pt|gr|biz|link|live|duckdns|ts")
+
 _PATTERNS = [
     (re.compile(r"https?://[^\s\"'<>)]+"), "<address>"),
+    (re.compile(r"\b(?:[a-z0-9-]+\.)+(?:" + _TLDS + r")(?::\d+)?\b(?!\.\w)", re.IGNORECASE), "<address>"),
+    (re.compile(r"/(?:config|media|homeassistant|share|addon_configs|data)/[^\s\"'<>]*"), "<path>"),
     (re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"), "<email>"),
     (re.compile(r"\b(?:[0-9A-Fa-f]{2}[:-]){5,7}[0-9A-Fa-f]{2}\b"), "<device>"),
     (re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"), "<ip>"),
+    (re.compile(r"\b[0-9A-Fa-f]{16}\b|\b[0-9A-Fa-f]{12}\b"), "<device>"),  # a Govee device id or a MAC, unseparated
     # IPv6: four or more groups, or shortened with "::" (never a time such as 17:18:53).
     (re.compile(r"\b(?:[0-9A-Fa-f]{1,4}:){4,7}[0-9A-Fa-f]{1,4}\b"), "<ip>"),
     (re.compile(r"(?:\b[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?::(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*\b)?"), "<ip>"),
@@ -94,10 +102,31 @@ _PATTERNS = [
 ]
 
 
-def scrub(text: str, secrets=()) -> str:
-    """Takes out addresses, device and entity ids, song names, tokens, your own folders and the
-    secrets given (the public code and PINs)."""
+def names_in(storage) -> list[str]:
+    """Every name you've given something, as they turn up in log lines and messages: lights and their
+    parts, groups, seasons, shows, playlists, scenes, palettes and song files."""
+    from . import playlists  # here, as playlists imports a lot
+    settings = storage.load_settings()
+    out = []
+    for d in storage.load_devices():
+        out += [d.get("name")] + [p.get("name") for p in d.get("parts") or []]
+    for key in ("light_groups", "seasons", "palettes"):
+        out += [x.get("name") for x in settings.get(key) or [] if isinstance(x, dict)]
+    out += [s.get("name") for s in storage.list_shows()]
+    out += [p.get("name") for p in playlists.load(storage)]
+    out += [s.get("name") for s in storage.list_scenes()]
+    out += [Path(r["path"]).stem for r in storage.list_audio(2000)]
+    return [n for n in out if isinstance(n, str)]
+
+
+def scrub(text: str, secrets=(), names=()) -> str:
+    """Takes out addresses, device and entity ids, song names, tokens, your own folders, the names
+    you've given things (`names`) and the secrets given (the public code and PINs, your Home Assistant
+    and public page addresses)."""
     text = str(text)
+    # Longest first, so "Pillars Left" goes before "Pillars". Whole words only, any case.
+    for n in sorted({n.strip() for n in names if len(n.strip()) >= 3}, key=len, reverse=True):
+        text = re.sub(r"(?<!\w)" + re.escape(n) + r"(?!\w)", "<name>", text, flags=re.IGNORECASE)
     for folder, name in ((os.environ.get("HALIDAY_SHOW_MEDIA"), "<media>"), (os.environ.get("HALIDAY_SHOW_CONFIG"), "<config>"),
                          (str(Path.home()), "~")):
         if folder and len(folder) > 1:

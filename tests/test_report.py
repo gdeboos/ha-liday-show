@@ -34,3 +34,16 @@ def test_recent_warnings_are_kept_in_memory():
     lines = report.recent()
     assert lines[-1].endswith("WARNING halidayshow.test: the queue jammed at 10.0.0.9")
     assert not any("not kept" in x for x in lines)
+
+
+def test_names_hosts_paths_and_bare_ids_are_taken_out_too():
+    names = ["Pillars", "Pillars Left", "Front Yard", "Jingle Bell Rock", "ab"]
+    line = ("12:00:01 WARNING halidayshow.runner: wled 'Front Yard' unreachable; KeyError: 'pillars left'; "
+            "Cannot connect to host my-house.duckdns.org:443 or homeassistant.local:8123 or foo.trycloudflare.com; "
+            "show Jingle Bell Rock on /config/shows/abc.json; device 1F80C53238362D1E mac a4c1385ffe11; ab stays")
+    out = report.scrub(line, names=names)
+    for gone in ("Front Yard", "pillars left", "duckdns", "homeassistant.local", "trycloudflare", "Jingle", "/config/shows",
+                 "1F80C5", "a4c138"):
+        assert gone.lower() not in out.lower(), gone
+    assert "halidayshow.runner" in out and "ab stays" in out  # module names and short words are left
+    assert "<name>" in out and "<address>" in out and "<path>" in out and "<device>" in out

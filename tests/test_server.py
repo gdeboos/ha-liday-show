@@ -1965,6 +1965,8 @@ async def test_a_problem_report_says_what_it_needs_and_nothing_private(client):
     await client.put("/api/devices", json=[{"id": "p", "name": "Pillars", "kind": "govee", "sku": "H70C5", "ip": "192.168.2.155", "segments": 15}])
     import logging
     logging.getLogger("halidayshow.test").warning("192.168.2.155 didn't answer")
-    got = await (await client.get("/api/report")).json()
+    logging.getLogger("halidayshow.test").warning("Pillars at 192.168.2.155 didn't answer")
+    got = await (await client.get("/api/report", params={"error": "Couldn't reach Pillars at 192.168.2.155"})).json()
     assert got["lights"] == "1 Govee (H70C5)" and got["install"] and got["version"]
-    assert any("<ip> didn't answer" in x for x in got["log"]) and not any("192.168" in x for x in got["log"])
+    assert any("<name> at <ip> didn't answer" in x for x in got["log"]) and not any("192.168" in x for x in got["log"])
+    assert got["error"] == "Couldn't reach <name> at <ip>"

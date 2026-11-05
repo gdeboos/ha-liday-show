@@ -120,7 +120,9 @@ const prefs = {
 async function openReport(error = "") {
   const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
   let info = {};
-  try { info = await api("api/report"); } catch { /* what's typed still goes */ }
+  // The server takes names and addresses out of the message too.
+  try { info = await api(`api/report${error ? `?${new URLSearchParams({ error })}` : ""}`); } catch { error = ""; }
+  error = info.error ?? error;
   const what = el("textarea", { rows: 3, placeholder: "What you did, and what happened" });
   const expected = el("textarea", { rows: 2, placeholder: "Optional" });
   const preview = el("pre", { className: "report-preview" });
@@ -149,7 +151,7 @@ async function openReport(error = "") {
       el("label", { className: "field" }, "What went wrong?", what),
       el("label", { className: "field" }, "What did you expect?", expected),
       el("details", {}, el("summary", { textContent: "What's sent with it" }),
-        el("p", { className: "hint", textContent: "Your version, kinds of lights, browser and the app's recent warnings. Names, addresses, song names and your codes and PINs are taken out. You see it all on GitHub before sending." }),
+        el("p", { className: "hint", textContent: "Your version, kinds of lights, browser and the app's recent warnings. Names, addresses, song names and your codes and PINs are taken out of those. What you type goes as you type it. You see it all on GitHub before sending." }),
         preview)),
     el("div", { className: "form-dialog-foot" }, el("span", { className: "spacer" }), close, copy, open));
   close.addEventListener("click", () => dlg.close());
