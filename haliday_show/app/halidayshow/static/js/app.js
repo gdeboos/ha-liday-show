@@ -614,24 +614,23 @@ function trackPlaysOn(t) {
   return dev ? { kind: "light", name: dev.name, dev } : { kind: "missing" };
 }
 
-async function checkShowHealth(ids) {
-  let list = [];
-  try { list = await api("api/shows"); } catch { /* checked as not ready below */ }
+async function checkShowHealth(ids, list = null) {
+  if (!list) { try { list = await api("api/shows"); } catch { list = []; } }
+  await picturesReady; // their ids are part of each bake note
   const pos = housePositionsAll();
   // As fitContext does for the House lane: every light, with where it's traced on the photo.
   const houseOpts = () => ({ house: { lights: houseLights().map((d) => ({ name: d.name, placed: !!pos[d.id],
     positions: pos[d.id] || null, device: { protocol: d.protocol, segments: d.segments } })) } });
-  const out = [];
-  for (const id of ids) {
+  const one = async (id) => {
     const row = list.find((s) => s.id === id);
     let show;
-    try { show = id === app.showId && app.dirty ? app.show : await api(`api/shows/${encodeURIComponent(id)}`); } catch { continue; }
+    try { show = id === app.showId && app.dirty ? app.show : await api(`api/shows/${encodeURIComponent(id)}`); } catch { return null; }
     // The open show with changes not saved yet gets its frames when it's saved, so it isn't out of date.
     const open = id === app.showId && app.dirty;
     let current = true;
     if (row?.baked && !open) {
       const saved = (await api(`api/shows/${encodeURIComponent(id)}/baked/key`).catch(() => null))?.key;
-      current = !saved || saved === bakeNoteFor(pos, show);
+      current = !saved || saved === bakeNoteFor(housePositionsFor(show), show);
     }
     const problems = await showProblems(show, {
       track: trackPlaysOn, ready: open || !!row?.baked, current,
@@ -640,16 +639,22 @@ async function checkShowHealth(ids) {
         return on.kind === "house" ? fitLater(c, null, houseOpts()) : fitLater(c, on.dev, {});
       },
     });
-    out.push({ id, name: show.name || row?.name || id, problems });
-  }
-  return out;
+    return { id, name: show.name || row?.name || id, problems };
+  };
+  // A few at a time: each needs the show and its bake note from the server.
+  const out = new Array(ids.length).fill(null);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(4, ids.length) }, async () => {
+    while (next < ids.length) { const k = next++; out[k] = await one(ids[k]); }
+  }));
+  return out.filter(Boolean);
 }
 
 // Saves a show's frames again with the lights, groups and tracing as they are now (Fix).
 async function resaveShow(id) {
-  const pos = housePositionsAll();
   const show = id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(id)}`);
   await picturesReady;
+  const pos = housePositionsFor(show);
   await uploadBake(id, await bakeOff(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
   if (id === app.showId) app.bakedKey = showBakeKey(pos);
   await refreshShows();
@@ -693,7 +698,7 @@ async function openShowHealth() {
   dlg.showModal();
   let list = [];
   try { list = await api("api/shows"); } catch (e) { body.replaceChildren(el("p", { className: "hint warn", textContent: `Couldn't list your shows: ${e.message}` })); return; }
-  const results = await checkShowHealth(list.map((s) => s.id));
+  const results = await checkShowHealth(list.map((s) => s.id), list);
   if (!dlg.open) return;
   const ul = el("ul", { className: "ps-lines" });
   for (const x of healthLines(results)) {
@@ -2014,7 +2019,6 @@ async function saveGroups(next, what, { rebake = true } = {}) {
 // at its new length straight away. The open show re-bakes when it next saves.
 async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
   let done = 0, failed = 0, open = false, list;
-  const pos = housePositionsAll();
   app.bakedKey = null;
   try { list = await api("api/shows"); } catch { return { done, failed: true, open }; }
   for (const s of list) {
@@ -2023,8 +2027,9 @@ async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
       const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
       if (!uses(show)) continue;
       await picturesReady;
-      await uploadBake(s.id, await bakeOff(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
-      if (s.id === app.showId) app.bakedKey = showBakeKey(pos);
+      const at = housePositionsFor(show);
+      await uploadBake(s.id, await bakeOff(show, app.devices, FPS, at, app.groups), undefined, bakeNoteFor(at, show));
+      if (s.id === app.showId) app.bakedKey = showBakeKey(at);
       done++;
     } catch { failed++; }
   }
@@ -2039,14 +2044,14 @@ function keepShowsReady() {
   showsReadying ||= (async () => {
     let list;
     try { list = await api("api/shows"); } catch { return; }
-    const pos = housePositionsAll();
     let made = 0;
     for (const s of list.filter((x) => !x.baked)) {
       if (s.id === app.showId && app.dirty) continue; // the open show's are made when it saves
       try {
         const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
         await picturesReady;
-        await uploadBake(s.id, await bakeOff(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
+        const at = housePositionsFor(show);
+        await uploadBake(s.id, await bakeOff(show, app.devices, FPS, at, app.groups), undefined, bakeNoteFor(at, show));
         made++;
       } catch { /* tried again next time */ }
     }
@@ -2787,6 +2792,10 @@ app.trackNote = (dev) => {
 function housePositions() {
   return houseClips().length || groupsUseHouse() ? housePositionsAll() : {};
 }
+// The same for any saved show, so a show saved in the background (or checked by show health) gets the
+// same bake note as when it's saved from the editor.
+const housePositionsFor = (show) => ((show.tracks || []).some((t) => t.device === HOUSE && t.clips?.length) || groupsUseHouse(show)
+  ? housePositionsAll() : {});
 
 // Worked out at most every 100 ms: the preview, House panel and every light's frame share it.
 const posMemo = { at: -Infinity, value: {} };
