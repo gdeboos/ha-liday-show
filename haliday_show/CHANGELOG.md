@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.360
+
+- **Pre-show check.** A new **✓ Pre-show check** button at the top of **Setup → Devices** checks everything is ready before your lights go on:
+  1. It asks every light whether it's there. Planned lights and props that are packed away are left out.
+  2. It checks **How shows start tonight**, but only what you've set up: the visitors' page (it's running, can be reached at its **Public address**, is open tonight, has shows to pick and its queue is ready), the schedule, both, or neither. With neither, it's amber rather than red, as you may be starting shows yourself.
+  3. It checks the sound: a speaker where a show uses one, otherwise phone listening.
+  4. Then each light blinks white in turn, and you press **Yes**, **No** or **Skip**. On **No**, **Check segments** shows which part of it works.
+  5. You get a list in green, amber and red, each problem with what to do about it. Setup shows the last result, such as "Last checked tonight at 18:40: all good."
+- **Check segments** in a light's window: a white bar goes slowly from the first bulb (or LED) to the last, so you can see a stretch that doesn't light, or a light that starts at the wrong end.
+
 ## 0.2.359
 
 - **The AI suggests colours for a song too.** With an AI set up, the **Colours from this song** window also asks it for palettes that suit the song: its mood, its season and what it's about, going by the song's name and its cover's colours. Up to two show up under **From the song** a few seconds after the window opens, beside the cover's colours. Pick whichever you like.

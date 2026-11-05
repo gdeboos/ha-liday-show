@@ -23,7 +23,7 @@ from pathlib import Path
 import aiohttp
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, public, scenelib, schedule, seasons, songcopy, songtags, twinkly, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, preshow, public, scenelib, schedule, seasons, songcopy, songtags, twinkly, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -31,7 +31,7 @@ from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as
 from .listen import Listener
 from .livemusic import LiveMusic
 from .mqtt import MqttBridge
-from .output import PROBE_MAX, LivePreview, Output, address, linked, run_hold, run_probe, run_test_pattern
+from .output import PROBE_MAX, LivePreview, Output, address, blink_frame, chase_frame, linked, run_frames, run_hold, run_probe, run_test_pattern
 from .player import Player
 from .protocol import LONG_PROTOCOLS, PROTOCOLS
 from .runner import Runner, RunnerError
@@ -507,6 +507,11 @@ async def test_device(request):
         raise web.HTTPBadRequest(text="link this device to a real light before testing it")
     target = address(d)
     seconds = min(max(float(body.get("seconds", 15)), 1), 60)
+    pattern = body.get("pattern")
+    if pattern not in (None, "blink", "chase"):
+        raise web.HTTPBadRequest(text="pattern must be blink or chase")
+    if pattern == "chase" and d["kind"] == "ha":
+        raise web.HTTPBadRequest(text="a Home Assistant light shows one colour, so it has no segments to check")
     rgb = None
     if body.get("rgb") is not None:
         # A still frame instead of the rainbow, e.g. the light's parts in their colours.
@@ -528,7 +533,15 @@ async def test_device(request):
     if app[RUNNER].player.playing or app[RUNNER].playlist:  # stopping lets go of every light, which makes a lit test blink
         await app[RUNNER].stop(keep_scene=True)
     settings = dict(reverse=d["reverse"], gradient=d["gradient"], protocol=d["protocol"], brightness=d["brightness"])
-    if rgb is None:
+    # The pre-show check's patterns: the whole light blinking white, or a white bar going from the
+    # first segment to the last (Check segments). A Home Assistant light holds still white instead of
+    # blinking, as switching a plug on and off every second isn't good for it.
+    if pattern == "blink" and d["kind"] == "ha":
+        rgb = b"\xff\xff\xff" * d["segments"]
+    if pattern in ("blink", "chase") and rgb is None:
+        task = run_frames(app[OUTPUT], target, d["segments"], blink_frame if pattern == "blink" else chase_frame,
+                          seconds, **settings)
+    elif rgb is None:
         task = run_test_pattern(app[OUTPUT], target, d["segments"], seconds, **settings)
     else:
         task = run_hold(app[OUTPUT], target, rgb, d["segments"], seconds, **settings)
@@ -2023,6 +2036,93 @@ def _schedule_view(app) -> dict:
     return {**app[SCHEDULER].state(), "entries": schedule.load_entries(app[STORAGE])}
 
 
+# pre-show check (preshow.py) --------------------------------------------------------------------
+async def preshow_run(request):
+    """The checks that need nobody looking: lights, how tonight's shows start, and the sound."""
+    app = request.app
+    storage, settings = app[STORAGE], app[STORAGE].load_settings()
+    devices = storage.load_devices()
+    away = seasons.away(devices, seasons.load(settings))
+    light_lines, look = await preshow.lights(devices, away, app[HA])
+    where = app[SCHEDULER].where()[0]
+    today = datetime.date.today()
+    p = public.load(storage) or public.clean(None)
+    picks = public.choices(storage) if p["on"] else []
+    page = []
+    if p["on"]:
+        site = app[PUBLIC]
+        answers = site.listening and await preshow.reach(f"http://127.0.0.1:{site.port}/api/state?code={p['code']}") == ""
+        outside = await preshow.reach(f"{p['address']}/api/state?code={p['code']}") if p["address"] else None
+        page = preshow.page_lines(p, running=site.listening, error=site.error, hours=public.hours_now(p, where),
+                                  picks=picks, answers=answers, outside=outside, waiting=len(app[RUNNER].requests))
+    entries = schedule.load_entries(storage)
+    sched_on, sched, tonight = any(e.get("on") for e in entries), [], []
+    if sched_on:
+        lists = {pl["id"]: pl for pl in playlists.load(storage)}
+        have = {"playlist": set(lists), "scene": {x["id"] for x in storage.list_scenes()},
+                "show": {x["id"] for x in storage.list_shows()}}
+        alive = {e["id"] for e in entries if e["play"]["id"] in have[e["play"]["type"]]}
+        slots = schedule.week(entries, today, where, alive)["slots"]
+        sched = preshow.schedule_lines(slots, today.isoformat())
+        by_id = {e["id"]: e for e in entries}
+        for slot in slots:
+            e = by_id.get(slot["entry"])
+            if slot["day"] == today.isoformat() and slot["plays"] and e and e["play"]["type"] != "scene":
+                tonight += lists[e["play"]["id"]]["shows"] if e["play"]["type"] == "playlist" else [e["play"]["id"]]
+    summary, start_lines = preshow.starting(p["on"], page, sched_on, sched)
+    # The sound: each speaker tonight's shows play on (their own, else your show speaker), and phones.
+    default = settings.get("show_speaker") or ""
+    shows = {sid: storage.load_show(sid) or {} for sid in {*tonight, *(s for c in picks if c.get("available") for s in c["shows"])}}
+    used = {sh.get("media_player") or default for sh in shows.values()} - {""}
+    speakers = {}
+    for entity in sorted(used):
+        got = await preshow._ask_ha(app[HA], entity)
+        name = entity
+        if got == "ok":
+            with contextlib.suppress(Exception):
+                name = (await app[HA].state(entity)).get("attributes", {}).get("friendly_name") or entity
+        speakers[name] = got
+    missing = sorted({(shows[c["shows"][0]].get("name") or c["name"]) for c in picks
+                      if c.get("available") and not c.get("speaker") and p["listen"]
+                      and shows[c["shows"][0]].get("audio") and public._song_file(storage, shows[c["shows"][0]]) is None})
+    sound = preshow.sound_lines(page_on=p["on"], listen=p["listen"], picks=picks, missing_songs=missing,
+                                speakers=speakers, can_shrink=songcopy.converter() is not None)
+    return web.json_response({
+        "groups": [{"key": "lights", "title": "Lights", "items": light_lines},
+                   {"key": "start", "title": "How shows start tonight", "summary": summary, "items": start_lines},
+                   {"key": "sound", "title": "Sound", "items": sound}],
+        "look": look})
+
+
+def _clean_preshow_last(body) -> dict:
+    """What the last pre-show check found, for Setup to show: {level, problems, warnings}."""
+    if not isinstance(body, dict) or body.get("level") not in preshow.LEVELS:
+        raise web.HTTPBadRequest(text="expected {level, problems, warnings}")
+    count = lambda k: body.get(k) if isinstance(body.get(k), int) and not isinstance(body.get(k), bool) and 0 <= body.get(k) <= 999 else None
+    if count("problems") is None or count("warnings") is None:
+        raise web.HTTPBadRequest(text="problems and warnings must be counts")
+    return {"level": body["level"], "problems": body["problems"], "warnings": body["warnings"],
+            "at": datetime.datetime.now().isoformat(timespec="minutes")}
+
+
+async def get_preshow_last(request):
+    last = request.app[STORAGE].load_settings().get("preshow")
+    return web.json_response(last if isinstance(last, dict) else None)
+
+
+async def put_preshow_last(request):
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    last = _clean_preshow_last(body)
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    settings["preshow"] = last
+    storage.save_settings(settings)
+    return web.json_response(last)
+
+
 async def get_schedule(request):
     """The schedule's entries, HA-liday Show's clock, and when each entry next starts."""
     return web.json_response(_schedule_view(request.app))
@@ -2988,6 +3088,9 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/blocks", get_blocks)
     r.add_put("/api/blocks/{id}/baked", put_block)
     r.add_post("/api/blocks/{id}/baked/part", put_block_part)
+    r.add_post("/api/preshow/run", preshow_run)
+    r.add_get("/api/preshow/last", get_preshow_last)
+    r.add_put("/api/preshow/last", put_preshow_last)
     r.add_get("/api/schedule", get_schedule)
     r.add_get("/api/schedule/week", get_schedule_week)
     r.add_put("/api/schedule", put_schedule)

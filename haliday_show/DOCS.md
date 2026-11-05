@@ -158,6 +158,38 @@ else on the line (or **Edit**) to open the light's window, which has all its set
 
 A Home Assistant light has neither **LEDs** nor **Segments**: it shows one colour at a time.
 
+**Check segments**, at the bottom of a light's window beside **Test**, sends a white bar slowly from the
+light's first bulb (or LED, or segment) to its last, over a dark light, for a minute. Watch it
+go: a stretch it skips isn't lighting, and a bar that starts at the far end means **Reverse** is the wrong
+way round.
+
+### Pre-show check
+
+Before your lights go on for the night, press **✓ Pre-show check** at the top of the **Devices** tab. It
+takes about a minute, in three steps:
+
+1. **Checking.** Without you doing anything, it:
+   - asks every light whether it's there: Govee lights by a network scan, WLED and Twinkly lights
+     directly, and Home Assistant lights by whether Home Assistant says they're available. Pixel
+     controllers (DDP and E1.31) can't be asked, so you watch them in the next step. Planned lights and
+     props whose season is packed away are left out.
+   - checks **How shows start tonight**, as far as you've set it up. With the visitors' page switched on,
+     it checks the page is running and answering, can be reached at its **Public address**, is open
+     tonight, has shows to pick and has its queue ready. With rows switched on in the **Schedule**, it
+     checks one starts a show tonight. Either is fine on its own. With neither, it's amber, not red:
+     nothing will start shows unless you start them yourself or from Home Assistant.
+   - checks the sound: each speaker tonight's shows play on, when a show uses one, and with the
+     visitors' page on, that phone listening is on (or that visitors' picks have a speaker instead) and
+     the songs are there.
+2. **Looking.** Each light that answered (and each pixel controller) blinks white in turn: press **Yes**
+   if you see it, **No** if you don't or only part of it lights, or **Skip**. After **No**, **Check
+   segments** runs on it so you can see which part works. This stops anything that's playing.
+3. **Results.** Everything in green (fine), amber (worth a look) or red (needs fixing), problems first,
+   each with what to do about it. **Run again** starts over.
+
+Under the button, **Devices** shows what the last check found and when, such as "Last checked tonight at
+18:40: all good".
+
 Some kinds have a little more in their window: **first LED** for a pixel controller over DDP, **universe**
 and **channel** for one over E1.31, and the light or switch for a Home Assistant one.
 
