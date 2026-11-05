@@ -148,6 +148,7 @@ def words(p: dict) -> dict:
     return {**DEFAULT_WORDS, **p["words"]}
 
 
+MAX_VOTES = 500  # votes held at once, however many phones (or made-up tickets) there are
 MAX_OFFSET_S = 2.0
 OFFSET_STEP_S = 0.05
 
@@ -977,6 +978,8 @@ async def post_request(request):
         # limits; your admin phone still picks outright, ahead of the votes.
         if too_late(runner, pick, close := closes_at(p, request.app[WHERE]())):
             raise web.HTTPConflict(text=said["too_late"].replace("{time}", clock(close)))
+        if ticket not in runner.votes and len(runner.votes) >= MAX_VOTES:
+            raise web.HTTPConflict(text=said["full"])
         runner.cast_vote(ticket, {"kind": pick["kind"], "ref": pick["id"], "name": pick["name"],
                                   "shows": pick["shows"], "gap": pick.get("gap", 0)})
         log.info("public page: a vote for %s %s (%d votes)", pick["kind"], pick["id"], len(runner.votes))
@@ -1428,6 +1431,17 @@ class PublicSite:
                 log.exception("listening: getting songs ready")
             await asyncio.sleep(2)
 
+    def _vote_ok(self, vote: dict) -> bool:
+        """Whether a vote's pick can play now: still on the page and available, not on its cool-down
+        (your admin phone may have just played it) and finishing before closing time."""
+        p = load(self.storage)
+        if not p or not p["on"] or p["pick"] != "vote":
+            return False
+        pick = next((c for c in choices(self.storage) if c["available"] and c["kind"] == vote["kind"]
+                     and c["id"] == vote["ref"]), None)
+        return bool(pick) and not taken(self.runner, pick["kind"], pick["id"], p["repeat_minutes"]) \
+            and not too_late(self.runner, pick, closes_at(p, self.where()))
+
     @property
     def listening(self) -> bool:
         return self._runner is not None
@@ -1441,6 +1455,9 @@ class PublicSite:
             p = load(self.storage)
         if p is None or not p["on"]:
             self.runner.clear_requests()
+        elif p["pick"] != "vote":  # back to the queue: votes would otherwise still play
+            self.runner.votes.clear()
+        self.runner.vote_ok = self._vote_ok
         if p is None or self._runner is not None:
             return
         if self._watch is None:

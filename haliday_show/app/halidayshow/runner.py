@@ -83,6 +83,9 @@ class Runner:
         # Visitors' votes for what plays next, when the public page is set to Vote: one per phone (by its
         # ticket), {kind, ref, name, shows, gap, at}. Cleared once the winner starts.
         self.votes: dict[str, dict] = {}
+        # Set by the public page: whether a vote's pick can still play now (still on the page, not just
+        # played, would finish before closing). Votes that can't are dropped when the round ends.
+        self.vote_ok = None
         # Visitors' picks that have played: {kind, ref, ticket, at} (time.monotonic() when it ended), for
         # the public page's cool-downs. Kept for two hours at most.
         self.public_played: list[dict] = []
@@ -586,6 +589,7 @@ class Runner:
                     if self.speaker_stopped:  # paused or stopped on the speaker: stop the playlist too
                         log.info("playlist %s stopped with its speaker", playlist.get("name"))
                         self.requests.clear()
+                        self.votes.clear()
                         return
                     if self.finishing:
                         log.info("playlist %s finished its last show", playlist.get("name"))
@@ -681,6 +685,8 @@ class Runner:
 
     def _take_winner(self) -> dict | None:
         """The round's winner as a request to play, starting a new round."""
+        if self.vote_ok:
+            self.votes = {t: v for t, v in self.votes.items() if self.vote_ok(v)}
         counts = self.vote_counts()
         self.votes.clear()
         if not counts:

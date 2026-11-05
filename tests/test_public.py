@@ -136,11 +136,17 @@ async def test_visitors_vote_for_what_plays_next(client):
     await client.put("/api/public", json={"shows": ["party", "carols"]})
     status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "carols"})
     assert status == 409 and "playing now" in text.lower()
-    await runner.stop()
-    # Back to the queue: picks wait their turn again.
+    # A show taken off the page can't win any more; one still on it can.
+    await client.put("/api/public", json={"shows": ["quiet", "carols"]})
+    assert runner.vote_ok(runner.votes[T2]) is False
+    await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    assert runner.vote_ok(runner.votes[T1]) is True
+    # Back to the queue: the votes go, and picks wait their turn again.
     await client.put("/api/public", json={"pick": "queue"})
+    assert runner.votes == {}
     _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
     assert st["vote"] is None
+    await runner.stop()
 
 
 async def test_bad_tickets_and_turning_visitors_off(client):

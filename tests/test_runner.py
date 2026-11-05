@@ -260,6 +260,33 @@ async def test_with_nothing_on_the_first_vote_plays_straight_away(runner):
     assert runner.votes == {}  # stopping ends the round too
 
 
+async def test_votes_that_cant_play_any_more_are_dropped(runner):
+    for name in ("long", "two", "three"):
+        _short_show(runner.storage, name, frames=24 if name == "long" else 400)
+    pick = lambda s: {"kind": "show", "ref": s, "name": s.title(), "shows": [s], "gap": 0}
+    await runner.play("long")
+    runner.vote_ok = lambda v: v["ref"] != "two"  # Two came off the page meanwhile
+    for ticket, show in (("t1", "two"), ("t2", "two"), ("t3", "three")):
+        runner.cast_vote(ticket, pick(show))
+    for _ in range(60):
+        if runner.player.show_id == "three":
+            break
+        await asyncio.sleep(0.05)
+    assert runner.player.show_id == "three"
+
+
+async def test_a_vote_plays_between_a_playlists_shows(runner):
+    _short_show(runner.storage, "one", frames=16)
+    _short_show(runner.storage, "two", frames=400)
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one"], "gap": 0})
+    runner.cast_vote("t1", {"kind": "show", "ref": "two", "name": "Two", "shows": ["two"], "gap": 0})
+    for _ in range(60):
+        if runner.player.show_id == "two":
+            break
+        await asyncio.sleep(0.05)
+    assert runner.player.show_id == "two" and runner.public_now["name"] == "Two" and runner.votes == {}
+
+
 async def test_playlist_with_nothing_to_play(runner):
     with pytest.raises(RunnerError):
         await runner.play_playlist({"id": "x", "name": "X", "shows": ["gone"], "gap": 0})
