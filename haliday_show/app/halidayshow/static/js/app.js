@@ -736,6 +736,7 @@ async function preshowTiming(run) {
   const done = (line) => {
     preshow.timing = [line];
     if (startedAt) api("api/preshow/timing", { method: "POST", json: { stop: true } }).catch(() => {});
+    preshow.timingOn = false;
     preshowFinish(run);
   };
   const p = (text, className = "") => Object.assign(document.createElement("p"), { className, textContent: text });
@@ -743,6 +744,7 @@ async function preshowTiming(run) {
     try {
       await api("api/preshow/timing", { method: "POST" });
       startedAt = Date.now();
+      preshow.timingOn = true;
       return true;
     } catch (e) {
       status(`Couldn't start the timing test: ${e.message}`, true);
@@ -11557,7 +11559,8 @@ function wire() {
   $("preshow-dialog").addEventListener("close", () => {
     preshow.run++;
     preshowLetGo();
-    if (preshow.steps.includes("Timing")) api("api/preshow/timing", { method: "POST", json: { stop: true } }).catch(() => {});
+    if (preshow.timingOn) api("api/preshow/timing", { method: "POST", json: { stop: true } }).catch(() => {});
+    preshow.timingOn = false;
   });
   $("btn-add-speaker").addEventListener("click", openAddSpeaker);
   $("btn-demo").addEventListener("click", tryDemo);

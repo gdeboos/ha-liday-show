@@ -211,6 +211,22 @@ async def test_playing_a_show_ends_the_playlist(runner):
     assert runner.status()["playlist"] is None and runner.player.show_id == "party"
 
 
+async def test_the_timing_test_ends_the_playlist_and_flashes_every_light(runner):
+    from halidayshow import timingtest
+    _short_show(runner.storage, "one", frames=400)
+    await runner.play_playlist({"id": "night", "name": "Night", "shows": ["one"], "gap": 0})
+    await asyncio.sleep(0.05)
+    await runner.play_timing_test()
+    st = runner.status()
+    assert st["playlist"] is None and st["name"] == "Timing test" and runner.player.show_id == timingtest.TIMING_ID
+    assert [t.device for t in runner.player.baked.tracks] == ["a"]
+    await runner.stop(timingtest.TIMING_ID)
+    assert not runner.status()["playing"]
+    runner.storage.save_devices([{"id": "p", "ip": "", "segments": 5}])  # planned only: nothing to flash
+    with pytest.raises(RunnerError):
+        await runner.play_timing_test()
+
+
 async def test_playlist_with_nothing_to_play(runner):
     with pytest.raises(RunnerError):
         await runner.play_playlist({"id": "x", "name": "X", "shows": ["gone"], "gap": 0})

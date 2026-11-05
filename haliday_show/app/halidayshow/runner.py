@@ -24,6 +24,7 @@ from . import liveeffects, livemusic, playlists, react, scenelib, wled
 from .baked import decode
 from . import latespeaker, timingtest
 from .ha import HAError, HomeAssistant, media_content_id, position_now
+from .output import linked
 from .player import Player
 from .storage import Storage
 
@@ -180,14 +181,20 @@ class Runner:
     async def play_timing_test(self):
         """The pre-show check's timing test (timingtest.py) on every light that isn't packed away, for
         phones listening to follow as they do a show. Stops whatever's playing first."""
-        devices = self.storage.devices_by_id()
-        lights = [d for d in devices.values() if d.get("ip") or d.get("entity")]
+        devices = self.storage.devices_by_id()  # packed-away props are left out
+        lights = [d for d in devices.values() if linked(d)]
         if not lights:
             raise RunnerError("there are no lights to flash")
-        await self._stop()
-        self.started += 1
-        self.speaker_stopped = False
-        await self.player.play(timingtest.TIMING_ID, decode(timingtest.baked(lights)), devices)
+        test = decode(timingtest.baked(lights))
+        # As play() does, so a playlist (or the schedule) can't start its next show over it.
+        self._yours += 1
+        async with self._control:
+            await self._end_playlist()
+            async with self._lock:
+                await self._stop()
+                self.started += 1
+                self.speaker_stopped = False
+                await self.player.play(timingtest.TIMING_ID, test, devices)
 
     async def test_speaker(self, entity: str) -> float:
         """Play a short chime on a speaker the way a show would, then stop it.
