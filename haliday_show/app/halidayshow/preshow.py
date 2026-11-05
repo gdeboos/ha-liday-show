@@ -75,6 +75,7 @@ async def lights(devices: list[dict], away: set[str], ha=None, *, scan=discovery
     (those that answered, and those that can't be asked, such as pixel controllers)."""
     out, look, answered = [], [], []
     real = []
+    devices = [{**d, "name": d.get("name") or d.get("ip") or d["id"]} for d in devices]
     for d in devices:
         if not (d.get("ip") or d.get("entity")):
             out.append(line("info", f"{d['name']} is planned, not linked to a real light yet, so it's left out."))

@@ -2091,7 +2091,9 @@ async def preshow_run(request):
         "groups": [{"key": "lights", "title": "Lights", "items": light_lines},
                    {"key": "start", "title": "How shows start tonight", "summary": summary, "items": start_lines},
                    {"key": "sound", "title": "Sound", "items": sound}],
-        "look": look})
+        "look": look,
+        # The shows that could play tonight, for the editor to check (showhealth.js).
+        "shows": sorted(sid for sid, sh in shows.items() if sh)})
 
 
 async def preshow_timing(request):

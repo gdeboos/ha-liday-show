@@ -80,6 +80,7 @@ import { PART, packed, putWithProgress, sendBaked, sendParts, uploadSong } from 
 import { bakeNote, lightsBakeKey } from "./bakekey.js";
 import { piecesIn, placeStretch, rowsBy } from "./stretch.js";
 import { finalGroups, headline, lastText, nextOffset, tally, timingText } from "./preshow.js";
+import { healthLines, showProblems } from "./showhealth.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
 watchButtons();
@@ -597,6 +598,112 @@ async function checkSegments(d) {
   }
 }
 
+// Show health (showhealth.js): what in saved shows won't play as you'd expect, without opening them.
+// The fits are the timeline's own (fitFor), worked out a few at a time so the page stays smooth.
+function fitLater(clip, dev, opts) {
+  return new Promise((resolve) => {
+    const now = fitFor(clip, dev, opts, resolve);
+    if (now) resolve(now);
+  });
+}
+
+function trackPlaysOn(t) {
+  if (t.device === HOUSE) return { kind: "house" };
+  if (isGroupTrack(t.device)) return { kind: "group" };
+  const dev = app.devices[t.device];
+  return dev ? { kind: "light", name: dev.name, dev } : { kind: "missing" };
+}
+
+async function checkShowHealth(ids) {
+  let list = [];
+  try { list = await api("api/shows"); } catch { /* checked as not ready below */ }
+  const pos = housePositionsAll();
+  // As fitContext does for the House lane: every light, with where it's traced on the photo.
+  const houseOpts = () => ({ house: { lights: houseLights().map((d) => ({ name: d.name, placed: !!pos[d.id],
+    positions: pos[d.id] || null, device: { protocol: d.protocol, segments: d.segments } })) } });
+  const out = [];
+  for (const id of ids) {
+    const row = list.find((s) => s.id === id);
+    let show;
+    try { show = id === app.showId && app.dirty ? app.show : await api(`api/shows/${encodeURIComponent(id)}`); } catch { continue; }
+    // The open show with changes not saved yet gets its frames when it's saved, so it isn't out of date.
+    const open = id === app.showId && app.dirty;
+    let current = true;
+    if (row?.baked && !open) {
+      const saved = (await api(`api/shows/${encodeURIComponent(id)}/baked/key`).catch(() => null))?.key;
+      current = !saved || saved === bakeNoteFor(pos, show);
+    }
+    const problems = await showProblems(show, {
+      track: trackPlaysOn, ready: open || !!row?.baked, current,
+      fit: (c, t) => {
+        const on = trackPlaysOn(t);
+        return on.kind === "house" ? fitLater(c, null, houseOpts()) : fitLater(c, on.dev, {});
+      },
+    });
+    out.push({ id, name: show.name || row?.name || id, problems });
+  }
+  return out;
+}
+
+// Saves a show's frames again with the lights, groups and tracing as they are now (Fix).
+async function resaveShow(id) {
+  const pos = housePositionsAll();
+  const show = id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(id)}`);
+  await picturesReady;
+  await uploadBake(id, await bakeOff(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
+  if (id === app.showId) app.bakedKey = showBakeKey(pos);
+  await refreshShows();
+}
+
+// Open and Fix beside a show's problem. `leave()` closes the window it's in before opening the show.
+function healthButtons(x, li, leave) {
+  const acts = document.createElement("span");
+  acts.className = "ps-acts";
+  const open = button("Open", async () => { leave(); await openFromList(x.show); }, "ghost small");
+  open.setAttribute("aria-label", `Open ${x.name}`);
+  acts.append(open);
+  if (x.resave) {
+    const fix = button("Fix", async () => {
+      const done = busyButton(fix, "Saving…");
+      try {
+        await resaveShow(x.show);
+        li.replaceWith(preshowLine({ level: "ok", text: `${x.name}: saved again as things are now.` }));
+      } catch (e) {
+        status(`Couldn't save ${x.name} again: ${e.message}`, true);
+      } finally { done(); }
+    }, "ghost small");
+    fix.setAttribute("aria-label", `Save ${x.name} again`);
+    acts.append(fix);
+  }
+  li.append(acts);
+}
+
+// Library → Shows → Check all shows.
+async function openShowHealth() {
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+  const dlg = el("dialog", { className: "effect-dialog form-dialog preshow-dialog" });
+  const body = el("div", { className: "form-dialog-body" }, el("p", { textContent: "Checking every show…" }));
+  const close = el("button", { type: "button", className: "primary", textContent: "Done" });
+  // Not a form: Open and Fix would submit it and close the window.
+  dlg.append(el("div", { className: "effect-dialog-head" }, el("h3", { textContent: "Check all shows" })), body,
+    el("div", { className: "form-dialog-foot" }, el("span", { className: "spacer" }), close));
+  close.addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", () => dlg.remove());
+  document.body.append(dlg);
+  dlg.showModal();
+  let list = [];
+  try { list = await api("api/shows"); } catch (e) { body.replaceChildren(el("p", { className: "hint warn", textContent: `Couldn't list your shows: ${e.message}` })); return; }
+  const results = await checkShowHealth(list.map((s) => s.id));
+  if (!dlg.open) return;
+  const ul = el("ul", { className: "ps-lines" });
+  for (const x of healthLines(results)) {
+    const li = preshowLine(x);
+    if (x.show) healthButtons(x, li, () => dlg.close());
+    ul.append(li);
+  }
+  body.replaceChildren(el("p", { className: "hint", textContent: "Nothing is changed unless you press Fix. Clips that won't work stay in your shows, and play as they always did." }), ul);
+}
+
 // Pre-show check (Setup → Devices): the server's checks (preshow.py), then each light blinks in turn for
 // you to say whether you see it, then the results, the last of which Setup shows.
 const preshow = { groups: [], look: [], seen: [], lit: null, asking: null, run: 0, pub: null, timing: [], steps: [] };
@@ -636,7 +743,11 @@ function preshowList(groups) {
     const ul = document.createElement("ul");
     ul.className = "ps-lines";
     if (g.summary) ul.append(preshowLine({ ...g.summary, fix: g.items.length ? "" : g.summary.fix }));
-    ul.append(...g.items.map(preshowLine));
+    ul.append(...g.items.map((x) => {
+      const li = preshowLine(x);
+      if (x.show) healthButtons(x, li, () => $("preshow-dialog").close());
+      return li;
+    }));
     if (g.summary && g.items.length) ul.classList.add("ps-under");
     box.append(h, ul);
   }
@@ -657,7 +768,7 @@ async function openPreshow() {
   preshowLetGo();
   if (!$("preshow-dialog").open) $("preshow-dialog").showModal();
   preshowShow({ step: "Checking…", foot: [psClose()],
-    body: [Object.assign(document.createElement("p"), { textContent: "Asking your lights whether they're there, and checking how tonight's shows start and the sound. This takes a few seconds…" })] });
+    body: [Object.assign(document.createElement("p"), { textContent: "Asking your lights whether they're there, and checking how tonight's shows start, the shows themselves and the sound. This takes a few seconds…" })] });
   let got, pub;
   try {
     [got, pub] = await Promise.all([api("api/preshow/run", { method: "POST" }), api("api/public").catch(() => null)]);
@@ -668,7 +779,11 @@ async function openPreshow() {
     return;
   }
   if (run !== preshow.run) return;
-  Object.assign(preshow, { groups: got.groups, look: got.look.map((id) => app.lights[id]).filter(Boolean), seen: [],
+  const health = healthLines(await checkShowHealth(got.shows || []));
+  if (run !== preshow.run) return;
+  const groups = [...got.groups];
+  groups.splice(groups.findIndex((g) => g.key === "sound"), 0, { key: "shows", title: "Shows that could play tonight", items: health });
+  Object.assign(preshow, { groups, look: got.look.map((id) => app.lights[id]).filter(Boolean), seen: [],
     pub, timing: [] });
   const n = preshow.look.length, timing = !!(pub?.on && pub?.listen);
   preshow.steps = ["Checking", ...(n ? ["Looking"] : []), ...(timing ? ["Timing"] : []), "Results"];
@@ -11395,6 +11510,7 @@ function wire() {
     app.show.duration = v;
     app.changed();
   });
+  for (const b of document.querySelectorAll("[data-show-health]")) b.addEventListener("click", openShowHealth);
   for (const b of document.querySelectorAll("[data-show-new]")) {
     b.addEventListener("click", openNewShow);
   }

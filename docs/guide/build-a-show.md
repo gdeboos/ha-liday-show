@@ -877,6 +877,21 @@ up with **↑**, take it out with **✕**, or **+ Add a colour** (up to 12). **S
 shown as a colour bar, and **Keep** adds one to your palettes (it needs an AI set up, as for
 **Describe it**). Your palettes are available in every show.
 
+### Checking your shows
+
+**✓ Check all shows**, under the list on **Library → Shows**, looks through every show without opening
+them and lists what won't play as you'd expect, problems first:
+
+- **Clips that won't show** on their light (red), or only partly show (amber), as they're marked on the
+  timeline (see [Effects a light can't show](#effects-a-light-cant-show)).
+- **Saved before a change to your lights, groups or house tracing**: a show plays the frames it was
+  saved with, so it plays as it was then. **Fix** saves it again as things are now, without opening it.
+  Shows saved after a change are fine.
+- **Effects on a light you've removed**: they don't play (see below).
+
+Each has **Open**, which opens that show. Nothing is changed unless you press **Fix**. The
+[pre-show check](lights.md#pre-show-check) does the same for the shows that could play tonight.
+
 ### Lights that are gone
 
 A track whose light was removed from the Devices tab shows as **Missing

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.363
+
+- **Show health.** HA-liday Show can now look through your shows for problems without opening them:
+  - **Clips that won't show** (red) or only partly show (amber) on their light, such as a chase on a light set to one colour, or effects past what a light can reach.
+  - **Shows saved before you changed your lights**, groups or house tracing, which play as they were. **Fix** saves the show again as things are now, without opening it.
+  - **Effects on lights you've removed**, which don't play.
+  - Each problem has **Open**, to go straight to that show.
+- It runs in two places:
+  - **✓ Check all shows** on **Library → Shows** checks every show.
+  - The **pre-show check** has a new **Shows that could play tonight** section, for the visitors' picks and tonight's schedule.
+- Nothing in a show is changed unless you press **Fix**.
+- The pre-show check no longer stops with an error on a light saved without a name.
+
 ## 0.2.362
 
 - **Visitors can vote for what's next.** On the **Public page**, under **Limits**, the new **How visitors pick** setting has two choices:

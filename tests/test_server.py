@@ -1912,7 +1912,7 @@ async def test_the_pre_show_check_with_nothing_set_up_yet(client):
     # Neither the visitors' page nor the schedule: amber, and nothing under it.
     assert groups["start"]["summary"]["level"] == "warn" and groups["start"]["items"] == []
     assert groups["sound"]["items"][0]["level"] == "info"
-    assert got["look"] == []
+    assert got["look"] == [] and got["shows"] == []
 
 
 async def test_the_pre_show_check_keeps_its_last_result(client):
