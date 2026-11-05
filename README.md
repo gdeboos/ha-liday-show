@@ -257,6 +257,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - A **public page** for people passing by, on its own port, with its own **Public page** tab:
   - They pick a show or playlist on their phone and it joins a queue, slotting in between your
     playlist's shows; one request per phone and a queue limit keep it fair
+  - Or they vote for what plays next, with live counts, and the most-voted show plays when the current one ends
   - A printable A4 sign with a QR code, your title, opening hours and a message
   - A code in the link (the QR code on the sign) and a nearby-only location check keep it to people
     near your house; **Start** only appears once they're close enough

@@ -6482,6 +6482,18 @@ function renderPublicItems() {
   $("pub-phone-wait").value = view.phone_wait ?? 5;
   drawPublicListen(view);
   $("pub-queue").value = view.queue;
+  drawPublicPick(view.pick);
+}
+
+// Queue or vote: with voting, one vote per phone each round, so the queue's limits don't apply.
+function drawPublicPick(pick = "queue") {
+  $("pub-pick").value = pick;
+  const vote = pick === "vote";
+  $("pub-queue-only").hidden = vote;
+  $("pub-phone-wait-field").hidden = vote;
+  $("pub-pick-hint").textContent = vote
+    ? "While a show plays, visitors vote for the next one, one vote per phone, changeable until it starts. The most-voted plays next (a tie goes to the first to get there). With nothing on, the first vote plays straight away; with no votes, the lights rest. Your admin phone still picks outright, ahead of the votes."
+    : "Each pick waits its turn in the queue, and plays in the order they came.";
 }
 
 // Listening on phones: the switch, the PIN, and what visitors need.
@@ -6713,6 +6725,7 @@ function savePublic() {
     else if (pin) status("A PIN is 4 to 8 numbers. The PIN you had stays until you type one.", "hint");
   }
   if (Number($("pub-queue").value)) publicView.queue = Number($("pub-queue").value);
+  if (shownPage === "public") publicView.pick = $("pub-pick").value === "vote" ? "vote" : "queue";
   if (shownPage === "public") publicView.finish_by_close = $("pub-finish-close").checked;
   for (const [id, key] of [["pub-repeat", "repeat_minutes"], ["pub-phone-wait", "phone_wait"],
     ["pub-rest-after", "rest_after"], ["pub-rest-for", "rest_for"]]) {
@@ -6723,11 +6736,11 @@ function savePublic() {
   pubPending++;
   pubSaving = pubSaving.then(async () => {
     const { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
-      repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for } = publicView;
+      repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, pick } = publicView;
     try {
       const view = await api("api/public", {
         method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
-          repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for },
+          repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, ...(pick ? { pick } : {}) },
       });
       if (pubPending === 1) {
         publicView = view;
@@ -6839,6 +6852,7 @@ function wirePublic() {
     }
   });
   $("pub-queue").addEventListener("change", savePublic);
+  $("pub-pick").addEventListener("change", () => { drawPublicPick($("pub-pick").value); savePublic(); });
   $("pub-add").addEventListener("click", () => { if (publicView) pickForPublic(); });
   $("pub-add-heading").addEventListener("click", async () => {
     if (!publicView) return;

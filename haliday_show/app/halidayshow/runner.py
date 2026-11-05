@@ -80,6 +80,12 @@ class Runner:
         self._control = asyncio.Lock()
         self.requests: list[dict] = []  # visitors' requests waiting: {id, ticket, kind, ref, name, shows, gap}
         self.public_now: dict | None = None  # the visitor's request playing
+        # Visitors' votes for what plays next, when the public page is set to Vote: one per phone (by its
+        # ticket), {kind, ref, name, shows, gap, at}. Cleared once the winner starts.
+        self.votes: dict[str, dict] = {}
+        # Set by the public page: whether a vote's pick can still play now (still on the page, not just
+        # played, would finish before closing). Votes that can't are dropped when the round ends.
+        self.vote_ok = None
         # Visitors' picks that have played: {kind, ref, ticket, at} (time.monotonic() when it ended), for
         # the public page's cool-downs. Kept for two hours at most.
         self.public_played: list[dict] = []
@@ -298,6 +304,7 @@ class Runner:
         if show is not None and (self.player.show_id != show or self.scene_playing):
             return
         self.requests.clear()
+        self.votes.clear()
         self._yours += 1
         async with self._control:
             if self.scene_playing and not keep_scene:
@@ -316,6 +323,7 @@ class Runner:
             raise RunnerError("that scene doesn't exist or hasn't been saved in the editor")
         baked = decode(blob)
         self.requests.clear()
+        self.votes.clear()
         self._yours += 1
         async with self._control:
             await self._end_playlist()
@@ -537,10 +545,14 @@ class Runner:
     async def _visitors(self, playlist: dict) -> bool:
         """Play visitors' requests waiting, each followed by the playlist's pause. True if the playlist
         should end now."""
-        while self.requests and not self.finishing:
-            await self._play_request(self.requests.pop(0))
+        while (self.requests or self.votes) and not self.finishing:
+            request = self.requests.pop(0) if self.requests else self._take_winner()
+            if request is None:
+                break
+            await self._play_request(request)
             if self.speaker_stopped:
                 self.requests.clear()
+                self.votes.clear()
                 return True
             if self.finishing:  # its end time came during a visitor's show
                 return True
@@ -577,6 +589,7 @@ class Runner:
                     if self.speaker_stopped:  # paused or stopped on the speaker: stop the playlist too
                         log.info("playlist %s stopped with its speaker", playlist.get("name"))
                         self.requests.clear()
+                        self.votes.clear()
                         return
                     if self.finishing:
                         log.info("playlist %s finished its last show", playlist.get("name"))
@@ -642,6 +655,48 @@ class Runner:
 
     def clear_requests(self):
         self.requests.clear()
+        self.votes.clear()
+
+    def cast_vote(self, ticket: str, pick: dict):
+        """A phone's vote for what plays next ({kind, ref, name, shows, gap}), replacing any it had.
+        With nothing playing, the first vote starts at once."""
+        old = self.votes.get(ticket)
+        if old and (old["kind"], old["ref"]) == (pick["kind"], pick["ref"]):
+            return
+        self.votes[ticket] = {**pick, "at": clock()}
+        if not self._public or self._public.done():
+            self._public = asyncio.create_task(self._run_requests())
+
+    def drop_vote(self, ticket: str) -> bool:
+        return self.votes.pop(ticket, None) is not None
+
+    def vote_counts(self) -> list[dict]:
+        """Each show or playlist voted for: {kind, ref, name, count}, the winner first. A tie goes to the
+        one that reached that number of votes first."""
+        by: dict[tuple, dict] = {}
+        for v in self.votes.values():
+            k = (v["kind"], v["ref"])
+            row = by.setdefault(k, {"kind": v["kind"], "ref": v["ref"], "name": v["name"], "count": 0, "reached": 0.0,
+                                    "pick": v})
+            row["count"] += 1
+            row["reached"] = max(row["reached"], v["at"])
+        rows = sorted(by.values(), key=lambda r: (-r["count"], r["reached"]))
+        return [{k: r[k] for k in ("kind", "ref", "name", "count")} | {"pick": r["pick"]} for r in rows]
+
+    def _take_winner(self) -> dict | None:
+        """The round's winner as a request to play, starting a new round."""
+        if self.vote_ok:
+            self.votes = {t: v for t, v in self.votes.items() if self.vote_ok(v)}
+        counts = self.vote_counts()
+        self.votes.clear()
+        if not counts:
+            return None
+        w = counts[0]["pick"]
+        self.public_log = [x for x in self.public_log if (datetime.now() - x["at"]).total_seconds() < 86400]
+        self.public_log.append({"at": datetime.now(), "name": w["name"]})
+        log.info("visitors' vote: %s %s won with %d", w["kind"], w["ref"], counts[0]["count"])
+        return {"id": f"vote-{self.started}", "ticket": "", "kind": w["kind"], "ref": w["ref"], "name": w["name"],
+                "shows": w["shows"], "gap": w.get("gap", 0)}
 
     def remove_request(self, request_id: str) -> bool:
         """Take anyone's pick out of the queue (yours, from the public page as admin)."""
@@ -690,7 +745,7 @@ class Runner:
         self.resting_until = now + rest
         log.info("visitors' picks: resting for %d minutes", round(rest / 60))
         try:
-            while clock() < self.resting_until and self.requests:
+            while clock() < self.resting_until and (self.requests or self.votes):
                 await asyncio.sleep(0.5)
         finally:
             self.resting_until = 0.0
@@ -699,17 +754,22 @@ class Runner:
     async def _run_requests(self):
         """Play visitors' requests whenever nothing else is on. A playlist plays them itself."""
         try:
-            while self.requests:
+            while self.requests or self.votes:
                 if self._playlist_running() or self.player.playing or self._lock.locked():
                     await asyncio.sleep(0.25)
                     continue
                 await self._rest_if_due()
-                if not self.requests or self._playlist_running() or self.player.playing:
+                if not (self.requests or self.votes) or self._playlist_running() or self.player.playing:
                     continue
-                await self._play_request(self.requests.pop(0))
+                # Your admin phone's picks go first; otherwise the round's most-voted.
+                request = self.requests.pop(0) if self.requests else self._take_winner()
+                if request is None:
+                    continue
+                await self._play_request(request)
                 self._last_public_end = clock()
                 if self.speaker_stopped:  # paused or stopped on the speaker: the house wants quiet
                     self.requests.clear()
+                    self.votes.clear()
         except asyncio.CancelledError:
             pass
 

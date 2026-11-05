@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.362
+
+- **Visitors can vote for what's next.** On the **Public page**, under **Limits**, the new **How visitors pick** setting has two choices:
+  - **Queue**: first come, first served, as before.
+  - **Vote**: while a show plays, visitors vote on their phones for the next one, and the show with the most votes plays next.
+- How voting works:
+  - Each phone gets one vote per round. Pressing another show changes it, and pressing **Your vote** takes it back.
+  - Everyone sees each show's votes as they come in, with **Winning** on the leader.
+  - With nothing on, the first vote plays straight away. When a show ends with no votes, the lights rest until someone votes.
+  - A tie goes to the show that got there first.
+  - **Same song again after**, opening hours, **Nearby only** and rest breaks still apply. **Requests per phone**, **Queue length** and **Same phone again after** don't, so they're hidden in Vote mode.
+  - Your admin phone still picks a show outright, and it plays ahead of the votes.
+- The **Queue** page shows the votes so far. The new words visitors read are under **Words → Voting**.
+
 ## 0.2.361
 
 - **Timing with your phone, in the pre-show check.** With the visitors' page and **Listen on your phone** switched on, the pre-show check has a timing step after looking at your lights. Open the visitors' page on your phone and press **Start the timing test**. Every light flashes white once a second for half a minute. Press **Listen** on your phone and it beeps along. Then answer:

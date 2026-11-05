@@ -2031,7 +2031,7 @@ link in a new tab.
 | --- | --- |
 | **Access** | [Who can start shows](#who-can-start-shows): the link and code, the sign and **Nearby only** (and [Installing the page as an app](#installing-the-page-as-an-app)) |
 | **Hours** | [Opening hours](#opening-hours), finishing by closing time and rest breaks |
-| **Limits** | **Requests per phone**, **Queue length**, **Same song again after** and **Same phone again after** ([Keeping it fair](#visitors-queue)) |
+| **Limits** | **How visitors pick** ([queue or vote](#voting-for-whats-next)), **Requests per phone**, **Queue length**, **Same song again after** and **Same phone again after** ([Keeping it fair](#visitors-queue)) |
 | **Shows** | [What visitors can pick](#what-visitors-can-pick) and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
 | **Listening** | [Listening on phones](#listening-on-phones) |
 | **Admin** | Your [Admin PIN](#admin-pin) |
@@ -2336,7 +2336,25 @@ What visitors get:
   your own phone with the [Admin PIN](#admin-pin) too.
 - Visitors can't stop or skip anyone else's show.
 
-Keeping it fair, on the **Limits** page:
+### Voting for what's next
+
+**How visitors pick**, at the top of the **Limits** page, is **Queue** (first come, first served, as
+above) or **Vote**. With **Vote**:
+
+- While a show plays, visitors see **Vote for what's next**, with a **Vote** button on each show and its
+  votes so far. The one ahead says **Winning**.
+- Each phone has one vote per round. Pressing another show moves it; pressing **Your vote** takes it back.
+- When the show ends, the one with the most votes plays next, and a new round starts. A tie goes to the
+  show that reached that number of votes first.
+- With nothing on, the first vote plays straight away, and the voting is for the one after.
+- When a show ends and nobody has voted, the lights rest until someone does.
+- **Same song again after**, opening hours (and finishing before closing time), **Nearby only** and rest
+  breaks work as they do for the queue. **Requests per phone**, **Queue length** and **Same phone again
+  after** don't apply, so they're hidden.
+- Your phone with the [Admin PIN](#admin-pin) still picks a show outright: it plays next, ahead of the votes.
+- The **Queue** page shows the votes so far. The words visitors read for voting are under **Words → Voting**.
+
+Keeping it fair, on the **Limits** page (with **Queue**; with **Vote**, only **Same song again after**):
 
 - **Requests per phone** is how many shows one phone can have waiting (1 to start with). Once a
   visitor's show starts, they can pick another. It's a courtesy limit that someone determined could

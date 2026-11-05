@@ -1350,7 +1350,11 @@
     <p class="hint">How many picks visitors can have waiting, and how soon they can pick again, so everyone gets a
       turn and the same song isn't on a loop. Your admin phone skips these, but still can't queue a show that's
       already waiting or playing.</p>
-    <div class="pub-grid">
+    <label class="field">How visitors pick <select id="pub-pick">
+        <option value="queue">Queue: first come, first served</option>
+        <option value="vote">Vote: the show with the most votes plays next</option></select>
+      <span class="hint" id="pub-pick-hint"></span></label>
+    <div class="pub-grid" id="pub-queue-only">
       <label class="field">Requests per phone <input id="pub-per-phone" type="number" min="1" max="5" step="1">
         <span class="hint">How many shows one phone can have waiting.</span></label>
       <label class="field">Queue length <input id="pub-queue" type="number" min="1" max="20" step="1">
@@ -1361,7 +1365,7 @@
           min="0" max="120" step="5"> minutes</span>
         <span class="hint">Once a song has played, nobody can pick that song again for this long (any other song is
           fine). Stops one favourite playing on a loop. 0 for no limit.</span></label>
-      <label class="field">Same phone again after <span class="pub-inline"><input id="pub-phone-wait" type="number"
+      <label class="field" id="pub-phone-wait-field">Same phone again after <span class="pub-inline"><input id="pub-phone-wait" type="number"
           min="0" max="60" step="1"> minutes</span>
         <span class="hint">Once someone's song has played, their phone waits this long before picking another. Gives
           everyone else a turn. 0 for no limit.</span></label>

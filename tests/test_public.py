@@ -113,6 +113,42 @@ async def test_one_request_per_phone_and_a_full_queue(client):
     assert runner.requests == []
 
 
+async def test_visitors_vote_for_what_plays_next(client):
+    T3 = "c" * 20
+    await client.put("/api/public", json={"on": True, "pick": "vote", "shows": ["party", "quiet", "extra"],
+                                          "per_phone": 1, "queue": 1})
+    runner = client.app[server.RUNNER]
+    await runner.play("carols")  # something's on, so votes are for the next one
+    status, st, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    assert status == 200 and st["vote"] == {"counts": {"show:quiet": 1}, "mine": "show:quiet"}
+    assert st["queue"] == [] and st["full"] is False  # no queue: the queue's limits don't apply
+    await _visitor(client, "/api/request", {"ticket": T2, "kind": "show", "id": "party"})
+    _, st, _ = await _visitor(client, "/api/request", {"ticket": T3, "kind": "show", "id": "party"})
+    assert st["vote"] == {"counts": {"show:party": 2, "show:quiet": 1}, "mine": "show:party"}
+    # Changing a vote, and taking it back.
+    _, st, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "party"})
+    assert st["vote"]["counts"] == {"show:party": 3}
+    _, st, _ = await _visitor(client, "/api/cancel", {"ticket": T1, "vote": True})
+    assert st["vote"] == {"counts": {"show:party": 2}, "mine": ""}
+    view = await (await client.get("/api/public")).json()
+    assert view["pick"] == "vote" and view["votes"] == [{"name": "Party", "count": 2}]
+    # The show on now can't be voted for.
+    await client.put("/api/public", json={"shows": ["party", "carols"]})
+    status, text, _ = await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "carols"})
+    assert status == 409 and "playing now" in text.lower()
+    # A show taken off the page can't win any more; one still on it can.
+    await client.put("/api/public", json={"shows": ["quiet", "carols"]})
+    assert runner.vote_ok(runner.votes[T2]) is False
+    await _visitor(client, "/api/request", {"ticket": T1, "kind": "show", "id": "quiet"})
+    assert runner.vote_ok(runner.votes[T1]) is True
+    # Back to the queue: the votes go, and picks wait their turn again.
+    await client.put("/api/public", json={"pick": "queue"})
+    assert runner.votes == {}
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert st["vote"] is None
+    await runner.stop()
+
+
 async def test_bad_tickets_and_turning_visitors_off(client):
     await client.put("/api/public", json={"on": True, "shows": ["party"]})
     status, _, _ = await _visitor(client, "/api/request", {"ticket": "short", "kind": "show", "id": "party"})
@@ -135,7 +171,7 @@ def test_settings_are_cleaned():
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "look": public.clean_look(None), "looks": [], "hours": public.DEFAULT_HOURS, "words": {},
-        "listen": False, "listen_pin": "", "listen_offset": 0.0, "admin_pin": "", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
+        "listen": False, "listen_pin": "", "listen_offset": 0.0, "admin_pin": "", "pick": "queue", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year

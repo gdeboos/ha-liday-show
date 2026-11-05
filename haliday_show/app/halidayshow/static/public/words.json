@@ -6,9 +6,9 @@
       "words": [
         {"key": "idle", "label": "When nothing's playing", "text": "Nothing's on right now. Pick a show to start it."},
         {"key": "on_now", "label": "When a show's playing", "text": "On now: {name}"},
-{"key": "install", "label": "Button to install the page as an app (where the phone offers it)", "text": "Install app"},
+        {"key": "install", "label": "Button to install the page as an app (where the phone offers it)", "text": "Install app"},
         {"key": "resting", "label": "During a rest break", "text": "The lights are resting for a few minutes, for the neighbours. Picks waiting start after."},
-                {"key": "on_now_waiting", "label": "When a show's playing and others are waiting", "text": "On now: {name} · {count} waiting"},
+        {"key": "on_now_waiting", "label": "When a show's playing and others are waiting", "text": "On now: {name} · {count} waiting"},
         {"key": "up_next", "label": "Above the queue", "text": "Up next"},
         {"key": "queue_yours", "label": "Their own pick in the queue", "text": "Yours · in {minutes}"},
         {"key": "queue_when", "label": "When others in the queue start", "text": "in {minutes}"},
@@ -57,6 +57,20 @@
         {"key": "played_recently", "label": "Picking a show that played a few minutes ago", "text": "That one played a few minutes ago. Pick another, or try it again in {minutes}."},
         {"key": "phone_wait", "label": "Picking again too soon after their own show", "text": "Thanks for picking! You can pick again in {minutes}."},
         {"key": "too_late", "label": "A pick that wouldn't finish before closing time", "text": "That one wouldn't finish before we close at {time}. Pick a shorter one?"}
+      ]
+    },
+    {
+      "group": "Voting (when visitors vote for what's next)",
+      "words": [
+        {"key": "idle_vote", "label": "When nothing's playing", "text": "Nothing's on right now. Vote for a show to start it."},
+        {"key": "on_now_vote", "label": "When a show's playing", "text": "On now: {name} · vote for what's next"},
+        {"key": "vote_head", "label": "Heading", "text": "Vote for what's next"},
+        {"key": "vote_hint", "label": "Under the heading", "text": "The show with the most votes plays next. You get one vote, and can change it until then."},
+        {"key": "vote_btn", "label": "Vote button", "text": "Vote"},
+        {"key": "voted_btn", "label": "Button on the show you voted for (press to take it back)", "text": "Your vote"},
+        {"key": "vote_count", "label": "How many votes a show has", "text": "{count} votes"},
+        {"key": "vote_count_one", "label": "A show with one vote", "text": "1 vote"},
+        {"key": "vote_leading", "label": "On the show that's winning", "text": "Winning"}
       ]
     },
     {
