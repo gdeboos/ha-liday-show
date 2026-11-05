@@ -33,7 +33,7 @@ else on the line (or **Edit**) to open the light's window, which has all its set
 A Home Assistant light has neither **LEDs** nor **Segments**: it shows one colour at a time.
 
 **Check segments**, at the bottom of a light's window beside **Test**, sends a white bar slowly from the
-light's first bulb (or LED, or segment) to its last, over a dark light, for a minute and a half. Watch it
+light's first bulb (or LED, or segment) to its last, over a dark light, for a minute. Watch it
 go: a stretch it skips isn't lighting, and a bar that starts at the far end means **Reverse** is the wrong
 way round.
 

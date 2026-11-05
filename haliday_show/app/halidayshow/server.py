@@ -507,6 +507,11 @@ async def test_device(request):
         raise web.HTTPBadRequest(text="link this device to a real light before testing it")
     target = address(d)
     seconds = min(max(float(body.get("seconds", 15)), 1), 60)
+    pattern = body.get("pattern")
+    if pattern not in (None, "blink", "chase"):
+        raise web.HTTPBadRequest(text="pattern must be blink or chase")
+    if pattern == "chase" and d["kind"] == "ha":
+        raise web.HTTPBadRequest(text="a Home Assistant light shows one colour, so it has no segments to check")
     rgb = None
     if body.get("rgb") is not None:
         # A still frame instead of the rainbow, e.g. the light's parts in their colours.
@@ -531,7 +536,6 @@ async def test_device(request):
     # The pre-show check's patterns: the whole light blinking white, or a white bar going from the
     # first segment to the last (Check segments). A Home Assistant light holds still white instead of
     # blinking, as switching a plug on and off every second isn't good for it.
-    pattern = body.get("pattern")
     if pattern == "blink" and d["kind"] == "ha":
         rgb = b"\xff\xff\xff" * d["segments"]
     if pattern in ("blink", "chase") and rgb is None:

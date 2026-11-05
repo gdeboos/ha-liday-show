@@ -578,7 +578,7 @@ async function stopTest(d) {
 }
 
 // A light blinking white (the pre-show check) or a white bar going along it (Check segments).
-async function patternLight(d, pattern, seconds = 120) {
+async function patternLight(d, pattern, seconds = 60) {
   if (isAway(d)) { status(`${d.name} is packed away. Switch its season to Out under Seasons first`, "hint"); return false; }
   delete deviceTests[d.id];
   try {
@@ -591,15 +591,15 @@ async function patternLight(d, pattern, seconds = 120) {
 }
 
 async function checkSegments(d) {
-  if (await patternLight(d, "chase", 90)) {
-    status(`A white bar is going along ${d.name} for a minute and a half, from its first ${unitWord(d, 1)} to its last. `
+  if (await patternLight(d, "chase", 60)) {
+    status(`A white bar is going along ${d.name} for a minute, from its first ${unitWord(d, 1)} to its last. `
       + "Watch for a stretch it skips, or a bar that starts at the wrong end", "info");
   }
 }
 
 // Pre-show check (Setup → Devices): the server's checks (preshow.py), then each light blinks in turn for
 // you to say whether you see it, then the results, the last of which Setup shows.
-const preshow = { groups: [], look: [], seen: [], lit: null, run: 0 };
+const preshow = { groups: [], look: [], seen: [], lit: null, asking: null, run: 0 };
 
 async function loadPreshowLast() {
   $("preshow-last").textContent = lastText(await api("api/preshow/last").catch(() => null));
@@ -607,7 +607,7 @@ async function loadPreshowLast() {
 
 function preshowLetGo() {
   if (preshow.lit) stopTest(preshow.lit);
-  preshow.lit = null;
+  preshow.lit = preshow.asking = null;
 }
 
 const PS_MARK = { ok: "✓", info: "i", warn: "!", fail: "✕" };
@@ -693,8 +693,10 @@ async function preshowLook(i, run) {
       button("No", () => { answer("no"); wrong(); }), button("Skip", () => { answer("skip"); preshowLook(i + 1, run); }, "ghost"));
     preshowShow({ step, body: [q, hint, answers], foot: [psClose()] });
     answers.querySelector(".primary").focus();
+    preshow.asking = d;
   };
   const wrong = () => {
+    preshow.asking = null; // Check segments may be running on it now
     const q = Object.assign(document.createElement("p"), { className: "ps-question", textContent: `${d.name} isn't right` });
     const tips = Object.assign(document.createElement("p"), { className: "hint",
       textContent: "Not lit at all? Check it's plugged in and switched on. Only part of it lit, or the wrong part? "
@@ -708,6 +710,11 @@ async function preshowLook(i, run) {
   preshow.lit = d;
   await patternLight(d, "blink");
   if (run === preshow.run) ask();
+  // A test lasts a minute at most, so it blinks again while the question is still up.
+  const again = setInterval(() => {
+    if (run !== preshow.run || preshow.lit !== d || !$("preshow-dialog").open) { clearInterval(again); return; }
+    if (preshow.asking === d) patternLight(d, "blink");
+  }, 55000);
 }
 
 async function preshowFinish(run) {
@@ -1075,7 +1082,7 @@ function renderLightEditor() {
   test.title = linked(d) ? "" : plannedTip(d);
   const chase = $("light-chase");
   chase.disabled = !linked(d);
-  chase.hidden = isHa(d) && d.segments <= 1;
+  chase.hidden = isHa(d); // one colour at a time: no segments to check
 }
 
 // Moves light `d` to position `to` in the list. Every show's tracks follow the list's order.

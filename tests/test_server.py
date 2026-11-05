@@ -1923,3 +1923,29 @@ async def test_the_pre_show_check_keeps_its_last_result(client):
     saved = await (await client.put("/api/preshow/last", json={"level": "warn", "problems": 0, "warnings": 2})).json()
     assert saved["level"] == "warn" and saved["warnings"] == 2 and saved["at"]
     assert await (await client.get("/api/preshow/last")).json() == saved
+
+
+async def test_the_pre_show_check_leaves_out_planned_and_packed_away_lights(client):
+    assert (await client.put("/api/seasons", json=[{"id": "xmas", "name": "Christmas", "out": False}])).status == 200
+    await client.put("/api/devices", json=[
+        {"id": "plan", "name": "Porch", "ip": "", "segments": 10},
+        {"id": "deer", "name": "Reindeer", "kind": "ddp", "ip": "127.0.0.1", "segments": 10, "seasons": ["xmas"]},
+        {"id": "strip", "name": "Strip", "kind": "wled", "ip": "127.0.0.1", "segments": 30},
+        {"id": "tree", "name": "Tree", "kind": "ddp", "ip": "127.0.0.1", "first": 31, "segments": 10}])
+    got = await (await client.post("/api/preshow/run")).json()
+    lights = [x["text"] for x in got["groups"][0]["items"]]
+    assert "Porch is planned, not linked to a real light yet, so it's left out." in lights
+    assert "Reindeer is packed away, so it's left out." in lights
+    assert "Strip didn't answer." in lights  # no WLED at that address
+    assert got["look"] == ["tree"]
+
+
+async def test_the_pre_show_checks_light_patterns(client):
+    tree = {"id": "tree", "name": "Tree", "kind": "ddp", "ip": "127.0.0.1", "segments": 10}
+    for pattern in ("blink", "chase"):
+        assert (await client.post("/api/devices/test", json={**tree, "seconds": 1, "pattern": pattern})).status == 200
+    assert (await client.post("/api/devices/test", json={**tree, "pattern": "blnik"})).status == 400
+    lamp = {"id": "lamp", "name": "Lamp", "kind": "ha", "entity": "light.lamp", "protocol": "ha_light"}
+    r = await client.post("/api/devices/test", json={**lamp, "pattern": "chase"})
+    assert r.status == 400 and "no segments" in await r.text()
+    await client.post("/api/devices/test", json={**tree, "stop": True})
