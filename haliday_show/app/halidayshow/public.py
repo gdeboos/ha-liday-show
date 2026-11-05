@@ -42,7 +42,7 @@ from urllib.parse import urlencode
 
 from aiohttp import web
 
-from . import ai, appicon, imagemeta, playlists, schedule, songcopy, songtags
+from . import ai, appicon, imagemeta, playlists, schedule, songcopy, songtags, timingtest
 from . import runner as _runner
 from .runner import Runner
 from .storage import Storage, valid_id
@@ -148,6 +148,22 @@ def words(p: dict) -> dict:
     return {**DEFAULT_WORDS, **p["words"]}
 
 
+MAX_OFFSET_S = 2.0
+OFFSET_STEP_S = 0.05
+
+
+def clean_offset(v) -> float:
+    if isinstance(v, bool):
+        return 0.0
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return 0.0
+    if not math.isfinite(x):
+        return 0.0
+    return round(max(-MAX_OFFSET_S, min(MAX_OFFSET_S, round(x / OFFSET_STEP_S) * OFFSET_STEP_S)), 2)
+
+
 def clean(p) -> dict:
     """The public settings as stored; anything missing or wrong falls back to the defaults.
 
@@ -195,6 +211,9 @@ def clean(p) -> dict:
             # Visitors can listen on their own phone, with a PIN as well (4 to 8 digits) if one is set.
             "listen": p.get("listen") is True,
             "listen_pin": pin if _PIN.match(pin := str(p.get("listen_pin") or "").strip()) else "",
+            # Seconds every phone plays ahead of the lights (negative: behind), set with the pre-show
+            # check's timing test; each phone's own Earlier and Later go on top.
+            "listen_offset": clean_offset(p.get("listen_offset")),
             # Yours, to get past every check but the code (see the top of this file).
             "admin_pin": apin if _PIN.match(apin := str(p.get("admin_pin") or "").strip()) else ""}
 
@@ -1187,6 +1206,8 @@ def playing_song(storage: Storage, runner: Runner) -> tuple[dict, Path | None]:
     pl = runner.player
     if not pl.playing or not pl.show_id:
         return {}, None
+    if pl.show_id == timingtest.TIMING_ID:  # the pre-show check's beeps
+        return {"name": timingtest.NAME, "duration": pl.status()["duration"]}, timingtest.song_path()
     which = (pl.show_id, runner.started)
     known = _SONG_NOW.get(storage.config_dir)
     if not known or known[0] != which:
@@ -1227,7 +1248,8 @@ async def get_listen_now(request):
     except OSError:
         return _no_store(web.json_response({"playing": False}))
     ready = copies.ready(path) is not None
-    out = {"playing": True, "key": key, "ready": ready, "name": st.get("name"), "duration": st.get("duration")}
+    out = {"playing": True, "key": key, "ready": ready, "name": st.get("name"), "duration": st.get("duration"),
+           "offset": p["listen_offset"]}
     if ready:
         # Its own signature rather than the pass, so a phone still loading the song when its pass is
         # renewed carries on.

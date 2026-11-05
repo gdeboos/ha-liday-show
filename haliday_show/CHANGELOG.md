@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.361
+
+- **Timing with your phone, in the pre-show check.** With the visitors' page and **Listen on your phone** switched on, the pre-show check has a timing step after looking at your lights. Open the visitors' page on your phone and press **Start the timing test**. Every light flashes white once a second for half a minute. Press **Listen** on your phone and it beeps along. Then answer:
+  - **Beep comes first** or **Flash comes first**: every phone's music moves a tenth of a second the right way. Listen to a few more and answer again.
+  - **Yes, in time** when they land together.
+- The timing is kept for **every phone**, so visitors start in time too. Each phone's own **Earlier** and **Later** still go on top.
+- **Public page → Listening** shows the phones' timing, with **Reset** to put it back.
+
 ## 0.2.360
 
 - **Pre-show check.** A new **✓ Pre-show check** button at the top of **Setup → Devices** checks everything is ready before your lights go on:

@@ -1949,3 +1949,13 @@ async def test_the_pre_show_checks_light_patterns(client):
     r = await client.post("/api/devices/test", json={**lamp, "pattern": "chase"})
     assert r.status == 400 and "no segments" in await r.text()
     await client.post("/api/devices/test", json={**tree, "stop": True})
+
+
+async def test_the_timing_test_starts_and_stops(client):
+    r = await client.post("/api/preshow/timing")
+    assert r.status == 400 and "no lights" in await r.text()
+    await client.put("/api/devices", json=[{"id": "tree", "name": "Tree", "kind": "ddp", "ip": "127.0.0.1", "segments": 10}])
+    assert (await (await client.post("/api/preshow/timing")).json())["seconds"] == 30
+    assert (await (await client.get("/api/player")).json())["name"] == "Timing test"
+    await client.post("/api/preshow/timing", json={"stop": True})
+    assert not (await (await client.get("/api/player")).json())["playing"]

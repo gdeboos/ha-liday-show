@@ -311,6 +311,8 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
   };
   let samples = [], song = null, src = "", errs = [], lead = 0.15, seekedAt = 0, learning = false;
   let nudge = 0; // seconds earlier than the lights, kept on this phone
+  let house = 0; // and for every phone, set with the pre-show check's timing test
+  const ahead = () => nudge + house;
   try { nudge = clampNudge(localStorage.getItem(NUDGE_KEY)); } catch { /* private browsing */ }
   let pollTimer = null, steerTimer = null, polling = false, gen = 0;
   const passKey = `${PASS_KEY}.${code}`;
@@ -419,6 +421,9 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
       return;
     }
     me.name = now.name || "";
+    const was = house;
+    house = Math.max(-2, Math.min(2, Number(now.offset) || 0));
+    if (house !== was) errs = []; // a new timing: steer to it afresh
     if (song !== now.key) { song = now.key; samples = []; errs = []; }
     samples = addSample(samples, { sent, recv, position: now.position });
     if (!now.ready) { set("loading"); return; }
@@ -440,7 +445,7 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
   function seekTo() {
     const t = target(samples, performance.now());
     if (t === null) return;
-    try { audio.currentTime = Math.max(0, t + nudge + lead); } catch { /* not loaded yet: the next steer tries again */ }
+    try { audio.currentTime = Math.max(0, t + ahead() + lead); } catch { /* not loaded yet: the next steer tries again */ }
     seekedAt = performance.now();
     learning = true;
     errs = [];
@@ -454,7 +459,7 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
     const t = target(samples, now);
     if (t === null) return;
     if (now - seekedAt < 1000) return; // let a jump settle first
-    errs = [...errs, audio.currentTime - (t + nudge)].slice(-8);
+    errs = [...errs, audio.currentTime - (t + ahead())].slice(-8);
     if (errs.length < 4) return;
     const err = median(errs);
     if (learning) { lead = learnLead(lead, err); learning = false; }

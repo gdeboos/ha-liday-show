@@ -186,7 +186,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   sunrise, theatre chase, juggle, ripple, dissolve, bouncing balls, lighthouse, stacking blocks and
   fill to a level, and xLights' morph and VU meter, which follows the song's loudness) with live, segment-level previews, built-in presets for each, and your own
   presets saved from any clip
-- A pre-show check: every light asked whether it's there and blinked for you to see, plus how tonight's shows start and the sound
+- A pre-show check: every light asked whether it's there and blinked for you to see, how tonight's shows start, the sound, and a timing test that puts every listening phone in time
 - A palette for each show and scene: new effects take its colours and the effect chooser previews in them
 - A palette from each song's cover art (and, with an AI, ideas that suit the song), offered when you add it and picked for you when a new show uses that song
 - Transitions on any clip (fade, wipe, from the middle or dissolve, in and out), with crossfades
@@ -372,6 +372,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/twinkly.py              Twinkly (experimental): HTTP login and modes, realtime packets
   app/halidayshow/discovery.py            Govee multicast scan (WLED's scan is in wled.py)
   app/halidayshow/preshow.py              Pre-show check: asks each light whether it's there, how tonight's shows start, the sound
+  app/halidayshow/timingtest.py           The pre-show check's timing test: a flash on every light and a beep for phones, each second
   app/halidayshow/listen.py               Records other Govee traffic (Labs → Listen)
   app/halidayshow/lab.py                  Packet lab: hand-made messages to one Govee light
   app/halidayshow/output.py               Streaming to each kind of light: pace, keepalive, putting back, test pattern

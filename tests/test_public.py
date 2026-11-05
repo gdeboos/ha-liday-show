@@ -135,7 +135,7 @@ def test_settings_are_cleaned():
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "look": public.clean_look(None), "looks": [], "hours": public.DEFAULT_HOURS, "words": {},
-        "listen": False, "listen_pin": "", "admin_pin": "", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
+        "listen": False, "listen_pin": "", "listen_offset": 0.0, "admin_pin": "", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -803,6 +803,29 @@ async def test_a_listening_phone_gets_the_playing_song_and_where_it_is(client, s
     assert status == 404
     status, silence, headers = await _visitor(client, "/listen/silence.wav", code=False)
     assert status == 200 and silence[:4] == b"RIFF"
+
+
+async def test_the_timing_test_beeps_on_phones_and_every_phone_gets_the_timing(client, monkeypatch):
+    monkeypatch.setattr(public.songcopy, "converter", lambda: None)  # the beeps go as they are
+    await client.put("/api/devices", json=[{"id": "tree", "name": "Tree", "kind": "ddp", "ip": "127.0.0.1", "segments": 10}])
+    await client.put("/api/public", json={"on": True, "listen": True, "listen_offset": 0.33})
+    _, ok, _ = await _visitor(client, "/api/listen", {})
+    started = await client.post("/api/preshow/timing")
+    assert started.status == 200
+    st = await (await client.get("/api/player")).json()
+    assert st["playing"] and st["name"] == "Timing test"
+    _, now, _ = await _visitor(client, f"/api/listen/now?token={ok['token']}")
+    assert now["playing"] and now["name"] == "Timing test" and now["offset"] == 0.35
+    status, body, _ = await _visitor(client, "/" + now["src"], code=False)
+    assert status == 200 and body[:4] == b"RIFF"
+    await client.post("/api/preshow/timing", json={"stop": True})
+    assert not (await (await client.get("/api/player")).json())["playing"]
+
+
+async def test_the_phones_timing_is_kept_within_bounds():
+    assert public.clean(None)["listen_offset"] == 0
+    for given, kept in ((0.12, 0.1), (-0.33, -0.35), (5, 2.0), (-9, -2.0), ("x", 0), (float("nan"), 0), (True, 0.0)):
+        assert public.clean({"listen_offset": given})["listen_offset"] == kept
 
 
 async def test_without_a_converter_the_song_goes_as_it_is(client, song_show, monkeypatch):

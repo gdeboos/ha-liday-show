@@ -40,7 +40,7 @@ way round.
 ### Pre-show check
 
 Before your lights go on for the night, press **✓ Pre-show check** at the top of the **Devices** tab. It
-takes about a minute, in three steps:
+takes a few minutes, in up to four steps:
 
 1. **Checking.** Without you doing anything, it:
    - asks every light whether it's there: Govee lights by a network scan, WLED and Twinkly lights
@@ -58,7 +58,15 @@ takes about a minute, in three steps:
 2. **Looking.** Each light that answered (and each pixel controller) blinks white in turn: press **Yes**
    if you see it, **No** if you don't or only part of it lights, or **Skip**. After **No**, **Check
    segments** runs on it so you can see which part works. This stops anything that's playing.
-3. **Results.** Everything in green (fine), amber (worth a look) or red (needs fixing), problems first,
+3. **Timing with your phone**, when the visitors' page and **Listen on your phone** are on. Stand where you
+   can see your lights, open the visitors' page on your phone, and press **Start the timing test**: every
+   light flashes white once a second for half a minute. Press **Listen** on your phone (it shows once the
+   test is playing) and it beeps. Then say whether the beep lands on the flash:
+   - **Beep comes first** or **Flash comes first** moves every phone's music a tenth of a second the
+     right way. Listen to a few more and answer again; the test starts again by itself if it runs out.
+   - **Yes, in time** keeps that timing for every phone, visitors' too.
+   - **Can't hear it** or **Skip this step** leaves the timing as it was.
+4. **Results.** Everything in green (fine), amber (worth a look) or red (needs fixing), problems first,
    each with what to do about it. **Run again** starts over.
 
 Under the button, **Devices** shows what the last check found and when, such as "Last checked tonight at
