@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.365
+
+- **Export a show as a video.** **🎬 Video…** in the Show editor's top bar, or **Export video…** in a show's **⋯** under **Library → Shows**, makes an MP4 of the show playing on your house photo, with its song, to share anywhere.
+  - Pick **Landscape** (1920 × 1080, for YouTube and forums) or **Upright** (1080 × 1920, for Shorts, Reels and TikTok).
+  - Pick **The whole show**, or **The play region** if you've set one, for a short clip.
+  - It starts with the show's name (and song, if it's named differently), has a bar along the bottom showing the song's sections and beats as it plays, a small "Made with HA-liday Show" in the corner, and ends with a short closing card.
+  - It's made in your browser, then HA-liday Show adds the song, so it takes a few seconds for a short show and a minute or two for a long one. It downloads by itself when it's done. Nothing is kept afterwards.
+  - It needs a house photo (or the sample house) with your lights traced on it, and a browser that can make videos, such as Chrome, Edge or Safari.
+
 ## 0.2.364
 
 - **Report a problem.** Under **Help** (bottom of the Help panel) there's now **Report a problem…**, and any error message in the top bar has a **Report this** button beside it.

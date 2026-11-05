@@ -82,6 +82,7 @@ import { piecesIn, placeStretch, rowsBy } from "./stretch.js";
 import { finalGroups, headline, lastText, nextOffset, tally, timingText } from "./preshow.js";
 import { healthLines, showProblems } from "./showhealth.js";
 import { browserText, issueUrl, reportText } from "./report.js";
+import { BRAND, FPS as VIDEO_FPS, LINK, SHAPES, TAIL_S, barParts, fileName, ivfFrame, ivfHeader, titleAlpha, videoLayout } from "./video.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
 watchButtons();
@@ -7385,7 +7386,10 @@ function showRow(r) {
   pv.title = "Watch it on your house photo, with its song; nothing is sent to your lights";
   const mark = button(r.inProgress ? "Mark as finished" : "Mark as in progress", () => markShow(r.id, !r.inProgress), "ghost");
   mark.title = r.inProgress ? "Finished shows can go on the public page" : "Shows in progress aren't offered to visitors";
-  actions.append(open, pv, mark, dup, ren, share, rm);
+  const vid = button("Export video…", () => exportVideo(r), "ghost");
+  vid.setAttribute("aria-label", `Export ${r.name} as a video`);
+  vid.title = "An MP4 of the show playing on your house photo, with its song, to share";
+  actions.append(open, pv, mark, dup, ren, share, vid, rm);
   withMore(actions, 2);
   row.append(main, actions);
   return row;
@@ -7420,6 +7424,272 @@ async function markShow(id, inProgress) {
 
 // ▶ Preview on a show's row: the show playing on your house photo, with its song, in a window. Nothing
 // is sent to your lights, and the show open in the editor isn't touched.
+// What each light (or part) of a saved show shows at time t, as on the real light: showColours(show)(t)(dev).
+// For ▶ Preview and Export video, which play a show without opening it.
+function showColours(show) {
+  const byId = new Map((show.tracks || []).map((t) => [t.device, t]));
+  const trackOf = (id) => byId.get(id);
+  const houseFx = byId.get(HOUSE)?.clips || [];
+  return (t) => {
+    const pos = housePositionsAll();
+    const plans = planGroups(app.groups, app.deviceList, trackOf, pos);
+    const frames = new Map();
+    const full = (light) => {
+      if (!frames.has(light.id)) {
+        // Music level follows this show's song (or a made-up level if it hasn't been measured yet).
+        frames.set(light.id, withMusicLevels(show.audio ? show.loudness || MADE_UP : null,
+          () => asShown(light, t, (at) => dim(composeLight(light, trackOf, at, pos, houseFx, undefined, plans), showLevel(show, light.id)))));
+      }
+      return frames.get(light.id);
+    };
+    return (dev) => (!dev.parent ? full(app.lights[dev.id] || dev)
+      : gatherPart(full(app.lights[dev.parent]), app.lights[dev.parent], dev.part));
+  };
+}
+
+// Export video (video.js, video.py): the show on the house photo, frame by frame, encoded here and made
+// into an MP4 with its song by the app. `r` is {id, name}.
+const SECTION_COLOURS = ["#5b8def", "#e0a03a", "#47b37a", "#c062c8", "#e2605b", "#3fb8c4"];
+
+function drawVideoFrame(ctx, L, v) {
+  const { width: W, height: H } = L;
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#0b0d10";
+  ctx.fillRect(0, 0, W, H);
+  const font = (size, weight = 600) => `${weight} ${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+  if (v.t >= v.duration) {
+    // The closing card.
+    ctx.globalAlpha = Math.min(1, (v.t - v.duration) / 0.5);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = font(Math.round(Math.min(W, H) * 0.06), 700);
+    ctx.fillText(BRAND, W / 2, H / 2);
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.font = font(Math.round(Math.min(W, H) * 0.032), 500);
+    ctx.fillText(LINK, W / 2, H / 2 + Math.min(W, H) * 0.07);
+    ctx.globalAlpha = 1;
+    return;
+  }
+  ctx.save();
+  ctx.translate(L.photo.x, L.photo.y);
+  house.paintInto(ctx, L.photo.w, L.photo.h, v.colours);
+  ctx.restore();
+  // The title, fading out after a few seconds.
+  const a = titleAlpha(v.t);
+  if (a > 0) {
+    ctx.globalAlpha = a;
+    const tl = L.title;
+    if (!L.upright) {
+      const g = ctx.createLinearGradient(0, L.photo.y, 0, L.photo.y + tl.size * 4);
+      g.addColorStop(0, "rgba(0,0,0,0.6)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(L.photo.x, L.photo.y, L.photo.w, tl.size * 4);
+    }
+    ctx.textAlign = tl.align;
+    ctx.fillStyle = "#ffffff";
+    ctx.font = font(tl.size, 700);
+    ctx.fillText(v.name, tl.x, tl.y, L.upright ? W - L.pad * 2 : L.photo.w - L.pad * 2);
+    if (v.song) {
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.font = font(Math.round(tl.size * 0.55), 500);
+      ctx.fillText(v.song, tl.x, tl.y + tl.size * 1.05, L.upright ? W - L.pad * 2 : L.photo.w - L.pad * 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // The bar: the song's sections and beats, brighter where it's played, and where it is now.
+  const b = L.bar, at = v.t / v.duration;
+  ctx.fillStyle = "rgba(255,255,255,0.10)";
+  ctx.fillRect(b.x, b.y, b.w, b.h);
+  for (const s of v.bar.blocks) {
+    const x0 = b.x + s.from * b.w, x1 = b.x + s.to * b.w;
+    ctx.fillStyle = s.colour || SECTION_COLOURS[s.k % SECTION_COLOURS.length];
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(x0 + 1, b.y, Math.max(x1 - x0 - 2, 1), b.h);
+    ctx.globalAlpha = 0.9;
+    ctx.fillRect(x0 + 1, b.y, Math.max(Math.min(x1, b.x + at * b.w) - x0 - 2, 0), b.h);
+    ctx.globalAlpha = 1;
+    if (s.label && x1 - x0 > b.h * 3) {
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "left";
+      ctx.font = font(Math.round(b.h * 0.42), 600);
+      ctx.fillText(s.label, x0 + b.h * 0.3, b.y + b.h * 0.64, x1 - x0 - b.h * 0.6);
+    }
+  }
+  if (!v.bar.blocks.length) {
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.fillRect(b.x, b.y, at * b.w, b.h);
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.35)";
+  for (const k of v.bar.ticks) ctx.fillRect(b.x + k * b.w, b.y + b.h * 0.72, 2, b.h * 0.28);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(b.x + at * b.w - 2, b.y - b.h * 0.2, 4, b.h * 1.4);
+  // Made with HA-liday Show, in the corner.
+  ctx.textAlign = "right";
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  ctx.font = font(L.brand.size, 600);
+  ctx.fillText(BRAND, L.brand.x, L.brand.y);
+}
+
+async function makeVideo(show, job, onProgress, stopped) {
+  if (typeof VideoEncoder === "undefined") throw new Nudge("This browser can't make videos: try Chrome, Edge or Safari");
+  await picturesReady;
+  if (!house.photo) throw new Nudge("Add a photo of your house, or use the sample house, under Setup → House first");
+  house.devices = houseLights();
+  const { width, height } = job;
+  let config = null;
+  for (const c of [{ codec: "avc1.640028", kind: "h264", avc: { format: "annexb" } }, { codec: "avc1.4d0028", kind: "h264", avc: { format: "annexb" } },
+    { codec: "vp09.00.40.08", kind: "ivf" }]) {
+    const want = { codec: c.codec, width, height, bitrate: 10_000_000, framerate: VIDEO_FPS, ...(c.avc ? { avc: c.avc } : {}) };
+    try { if ((await VideoEncoder.isConfigSupported(want)).supported) { config = { ...c, want }; break; } } catch { /* the next */ }
+  }
+  if (!config) throw new Nudge("This browser can't make videos this size: try Chrome, Edge or Safari");
+  const total = Math.round((job.duration + TAIL_S) * VIDEO_FPS);
+  const made = await api("api/video", { method: "POST", json: { show: job.id, name: job.name, codec: config.kind, fps: VIDEO_FPS,
+    start: job.start, duration: job.duration, tail: TAIL_S } });
+  job.video = made.id;
+  // Encoded frames go to the app a few MB at a time, one piece after another.
+  let pending = config.kind === "ivf" ? [ivfHeader(width, height, VIDEO_FPS, total)] : [], size = 0, sent = Promise.resolve(), failed = null, index = 0;
+  const send = (all = false) => {
+    if (!all && size < 4_000_000) return;
+    const blob = new Blob(pending);
+    pending = [];
+    size = 0;
+    sent = sent.then(() => api(`api/video/${made.id}/part`, { method: "POST", body: blob, headers: { "Content-Type": "application/octet-stream" } }));
+    sent.catch((e) => { failed ||= e; });
+  };
+  const enc = new VideoEncoder({
+    output: (chunk) => {
+      const data = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(data);
+      const piece = config.kind === "ivf" ? ivfFrame(data, index++) : data;
+      pending.push(piece);
+      size += piece.byteLength;
+      send();
+    },
+    error: (e) => { failed ||= e; },
+  });
+  enc.configure(config.want);
+  const canvas = Object.assign(document.createElement("canvas"), { width, height });
+  const ctx = canvas.getContext("2d");
+  const L = videoLayout(width, height, house.photo.naturalWidth / house.photo.naturalHeight);
+  const coloursAt = showColours(show);
+  const songName = show.audio ? songLabel(show.audio) : "", title = show.name || job.name;
+  // The song under the title, unless the show is named after it.
+  const v = { name: title, song: songName.toLowerCase() === title.toLowerCase() ? "" : songName, duration: job.duration,
+    bar: barParts(show, job.start, job.duration) };
+  try {
+    for (let k = 0; k < total; k++) {
+      if (stopped() || failed) break;
+      v.t = k / VIDEO_FPS;
+      v.colours = v.t < job.duration ? coloursAt(job.start + v.t) : null;
+      drawVideoFrame(ctx, L, v);
+      const frame = new VideoFrame(canvas, { timestamp: Math.round((k * 1e6) / VIDEO_FPS) });
+      enc.encode(frame, { keyFrame: k % (VIDEO_FPS * 2) === 0 });
+      frame.close();
+      while (enc.encodeQueueSize > 6) await new Promise((r) => setTimeout(r, 4));
+      if (k % 10 === 0) { onProgress(0.85 * (k / total), "Drawing the show…"); await new Promise((r) => setTimeout(r, 0)); }
+    }
+    if (!stopped() && !failed) await enc.flush();
+  } finally {
+    if (enc.state !== "closed") enc.close();
+  }
+  if (stopped()) return null;
+  if (failed) throw failed;
+  send(true);
+  await sent;
+  if (failed) throw failed;
+  await api(`api/video/${made.id}/finish`, { method: "POST" });
+  for (;;) {
+    const st = await api(`api/video/${made.id}`);
+    if (st.state === "done") return made.id;
+    if (st.state === "failed") throw new Error(st.error || "the app couldn't make the video");
+    if (stopped()) return null;
+    onProgress(0.85 + 0.15 * st.progress, made.song ? "Adding the song…" : "Finishing…");
+    await new Promise((r) => setTimeout(r, 500));
+  }
+}
+
+async function exportVideo(r) {
+  // A show open with changes not saved yet is saved first, so the video and its song match the editor.
+  if (r.id === app.showId && app.dirty) { try { await save(); } catch (e) { status(`Couldn't save the show first: ${e.message}`, true); return; } }
+  if (!r.id) { status("Save the show first", "hint"); return; }
+  let show;
+  try { show = r.id === app.showId ? structuredClone(app.show) : await api(`api/shows/${encodeURIComponent(r.id)}`); }
+  catch (e) { status(`Couldn't open ${r.name}: ${e.message}`, true); return; }
+  const w = editWindow(`Export video: ${r.name}`);
+  w.dlg.classList.add("video-dialog");
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+  const end = show.duration || 60;
+  const region = r.id === app.showId && app.region ? app.region : null;
+  const choice = { shape: prefs.get("video.shape", "landscape"), part: region ? "region" : "all" };
+  const radios = (name, rows) => {
+    const box = el("div", { className: "video-choices", role: "radiogroup" });
+    for (const [value, label, hint] of rows) {
+      const input = el("input", { type: "radio", name, value, checked: choice[name] === value });
+      input.addEventListener("change", () => { choice[name] = value; if (name === "shape") prefs.set("video.shape", value); });
+      box.append(el("label", { className: "video-choice" }, input, el("span", {}, el("b", { textContent: label }), el("span", { className: "hint", textContent: hint }))));
+    }
+    return box;
+  };
+  const traced = Object.keys(house.paths || {}).length;
+  const status_ = el("p", { className: "hint", textContent: house.photo
+    ? `The show plays on your house photo${traced ? "" : " (trace your lights on it under Setup → House to see them)"}, with ${show.audio ? "its song" : "no song"}. It's made here and downloads as an MP4.`
+    : "Add a photo of your house, or use the sample house, under Setup → House first." });
+  const progress = el("progress", { max: 1, value: 0, hidden: true });
+  const stage = el("p", { className: "hint", hidden: true });
+  w.body.append(el("h4", { textContent: "Shape" }),
+    radios("shape", [["landscape", "Landscape", "1920 × 1080, for YouTube and forums"], ["upright", "Upright", "1080 × 1920, for Shorts, Reels and TikTok"]]),
+    el("h4", { textContent: "How much" }),
+    radios("part", [["all", "The whole show", fmtTime(end, false)],
+      ...(region ? [["region", "The play region", `${fmtTime(region.start, false)} to ${fmtTime(region.end, false)}`]] : [])]),
+    status_, progress, stage);
+  let stop = false, busy = false, jobId = null;
+  const cancel = button("Close", () => w.dlg.close(), "ghost");
+  const go = button("Export video", async () => {
+    busy = true;
+    go.disabled = true;
+    cancel.textContent = "Cancel";
+    progress.hidden = stage.hidden = false;
+    for (const i of w.body.querySelectorAll("input")) i.disabled = true;
+    const part = choice.part === "region" && region ? region : { start: 0, end };
+    const job = { id: r.id, name: r.name, ...SHAPES[choice.shape], start: part.start, duration: Math.max(part.end - part.start, 0.5) };
+    try {
+      jobId = await makeVideo(show, job, (p, text) => { progress.value = p; stage.textContent = `${text} ${Math.round(p * 100)}%`; }, () => stop);
+      jobId ??= job.video;
+      if (stop) { if (jobId) api(`api/video/${jobId}/cancel`, { method: "POST" }).catch(() => {}); return; }
+      progress.value = 1;
+      stage.textContent = "Done. It's downloading now.";
+      const download = () => {
+        const a = el("a", { href: `api/video/${jobId}/file`, download: fileName(r.name) });
+        document.body.append(a);
+        a.click();
+        a.remove();
+      };
+      download();
+      go.replaceWith(button("Download again", download, "primary"));
+    } catch (e) {
+      stage.textContent = "";
+      status(e instanceof Nudge ? e.message : `Couldn't make the video: ${e.message}`, errorKind(e));
+      go.disabled = false;
+      for (const i of w.body.querySelectorAll("input")) i.disabled = false;
+      jobId = job.video || jobId;
+    } finally {
+      busy = false;
+      cancel.textContent = "Close";
+    }
+  }, "primary");
+  go.disabled = !house.photo;
+  w.foot.append(el("span", { className: "spacer" }), cancel, go);
+  w.dlg.addEventListener("close", () => {
+    stop = true;
+    // The app keeps it an hour at most; once you're done here it's let go, after a moment for the download.
+    const id = jobId;
+    if (id) setTimeout(() => api(`api/video/${id}/cancel`, { method: "POST" }).catch(() => {}), busy ? 0 : 120000);
+  });
+  w.dlg.showModal();
+}
+
 async function previewShow(r) {
   let show;
   try { show = r.id === app.showId ? structuredClone(app.show) : await api(`api/shows/${encodeURIComponent(r.id)}`); }
@@ -7441,8 +7711,6 @@ async function previewShow(r) {
   // The time: the song's own when there is one, else a clock that can be paused and moved.
   let base = 0, since = performance.now(), playing = false, raf = 0;
   const now = () => (audio ? audio.currentTime : playing ? base + (performance.now() - since) / 1000 : base);
-  const byId = new Map((show.tracks || []).map((t) => [t.device, t]));
-  const trackOf = (id) => byId.get(id);
   const ctl = (text, label, fn, cls = "ghost") => {
     const b = button(text, fn, cls);
     b.setAttribute("aria-label", label);
@@ -7468,23 +7736,10 @@ async function previewShow(r) {
   w.body.insertBefore(controls, w.body.children[1]);
   const edit = button("Edit", () => { w.dlg.close(); openFromList(r.id); });
   w.foot.append(Object.assign(document.createElement("span"), { className: "spacer" }), edit, button("Close", () => w.dlg.close()));
+  const coloursAt = showColours(show);
   const paint = () => {
     const t = Math.min(now(), end);
-    const pos = housePositionsAll(), houseFx = byId.get(HOUSE)?.clips || [];
-    const plans = planGroups(app.groups, app.deviceList, trackOf, pos);
-    const frames = new Map();
-    const full = (light) => {
-      if (!frames.has(light.id)) {
-        // Music level follows this show's song (or a made-up level if it hasn't been measured yet).
-        frames.set(light.id, withMusicLevels(show.audio ? show.loudness || MADE_UP : null,
-          () => asShown(light, t, (at) => dim(composeLight(light, trackOf, at, pos, houseFx, undefined, plans), showLevel(show, light.id)))));
-      }
-      return frames.get(light.id);
-    };
-    house.paint(canvas, Math.min(window.innerHeight * 0.5, 420), (dev) => {
-      if (!dev.parent) return full(app.lights[dev.id] || dev);
-      return gatherPart(full(app.lights[dev.parent]), app.lights[dev.parent], dev.part);
-    });
+    house.paint(canvas, Math.min(window.innerHeight * 0.5, 420), coloursAt(t));
     if (document.activeElement !== bar) bar.value = t;
     time.textContent = `${fmtTime(t, false)} / ${fmtTime(end, false)}`;
   };
@@ -9692,6 +9947,7 @@ async function saveScene() {
 function renderSceneBanner() {
   const on = !!app.sceneId;
   $("scene-banner").hidden = !on;
+  $("btn-export-video").hidden = on; // a scene has no song or end to make a video of
   if (!on) return;
   const ok = canBasic(sceneNow(), app.deviceList || []);
   $("sb-basic").disabled = !ok;
@@ -11731,6 +11987,7 @@ function wire() {
   });
   $("btn-add-light").addEventListener("click", openAddLight);
   $("btn-preshow").addEventListener("click", openPreshow);
+  $("btn-export-video").addEventListener("click", () => exportVideo({ id: app.showId, name: app.show.name }));
   $("help-report").addEventListener("click", () => openReport());
   $("pub-listen-timing-reset").addEventListener("click", async () => {
     try {

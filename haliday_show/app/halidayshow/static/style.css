@@ -1499,3 +1499,12 @@ dialog { overscroll-behavior: contain; }
   background: var(--track); border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin: 6px 0 0; }
 .status-report { margin-left: 8px; padding: 2px 8px; font-size: 0.85em; }
 .help-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* Export video */
+.video-dialog { width: min(560px, calc(100vw - 32px)); }
+.video-dialog h4 { margin: 12px 0 6px; }
+.video-dialog h4:first-child { margin-top: 0; }
+.video-choices { display: flex; flex-direction: column; gap: 6px; }
+.video-choice { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.video-choice > span { display: flex; flex-direction: column; }
+.video-dialog progress { width: 100%; height: 10px; margin-top: 10px; }
