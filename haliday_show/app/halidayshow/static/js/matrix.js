@@ -110,7 +110,8 @@ export function laneTakes(key, fx, lane) {
   if (!fx) return false;
   // The Phones lane takes light effects and its own (House colour); nothing else takes those.
   if (fx.phones) return lane === "phones";
-  if (lane === "phones") return !fx.house && !fx.grid && !fx.wholeLoop;
+  // A phone's screen is a matrix: light effects, matrix effects, and Plasma and Spiral.
+  if (lane === "phones") return !fx.wholeLoop && (!fx.house || ON_A_MATRIX.includes(key));
   if (lane === "group") return true;
   if (lane === "house") return !!fx.house;
   if (fx.house) return lane === "matrix" && ON_A_MATRIX.includes(key);

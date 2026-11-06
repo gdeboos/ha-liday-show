@@ -60,5 +60,23 @@ test("House colour on a Phones lane shows the house's main colour, only there", 
   assert.deepEqual(colourAt(h.phones.colours, 1.5), [0, 0, 255]); // designed by hand
   assert.ok(laneTakes("housecolour", EFFECTS.housecolour, "phones"));
   for (const lane of ["light", "group", "house", "matrix"]) assert.ok(!laneTakes("housecolour", EFFECTS.housecolour, lane));
-  assert.ok(laneTakes("solid", EFFECTS.solid, "phones") && !laneTakes("plasma", EFFECTS.plasma, "phones"));
+  // A phone's screen is a matrix: light and matrix effects, Plasma and Spiral, but no whole-loop ones.
+  assert.ok(laneTakes("solid", EFFECTS.solid, "phones") && laneTakes("plasma", EFFECTS.plasma, "phones"));
+  assert.ok(laneTakes("fire2d", EFFECTS.fire2d, "phones") && laneTakes("picture", EFFECTS.picture, "phones"));
+  assert.ok(!laneTakes("wled", EFFECTS.wled, "phones") && !laneTakes("sweep", EFFECTS.sweep, "phones"));
+  // Phones draw the lane themselves, so the house's own colour comes too.
+  assert.deepEqual(colourAt(h.phones.house, 1.5), [0, 255, 0]);
+});
+
+
+test("a phone's screen is the lane drawn as an upright matrix", async () => {
+  const { phoneScreen } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const { PHONE_GRID } = await import("../../haliday_show/app/halidayshow/static/js/phones.js");
+  const n = PHONE_GRID.w * PHONE_GRID.h;
+  const red = phoneScreen([{ ...newClip("solid", 0, 1), color: "#ff0000" }], 0.5);
+  assert.equal(red.length, n * 3);
+  assert.deepEqual([...red.subarray(0, 3)], [255, 0, 0]);
+  assert.deepEqual([...phoneScreen([newClip("housecolour", 0, 1)], 0.5, [1, 2, 200]).subarray(0, 3)], [1, 2, 200]);
+  assert.deepEqual([...phoneScreen([{ ...newClip("solid", 0, 1), color: "#ff0000" }], 0.5, null, 0.5).subarray(0, 3)], [128, 0, 0]);
+  assert.ok(phoneScreen([], 0.5).every((v) => v === 0)); // dark in the gaps
 });

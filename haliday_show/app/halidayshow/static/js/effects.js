@@ -7,7 +7,7 @@ import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } fr
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
-import { PHONES, PHONE_FPS, hasPhonesLane, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
+import { PHONES, PHONE_FPS, PHONE_GRID, hasPhonesLane, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
 
 export const FPS = 40;
 
@@ -1873,14 +1873,24 @@ let phoneMain = STAND_IN;
 // Whether a Phones lane needs the lights' frames: it has a House colour clip.
 export const laneUsesHouse = (lane) => !!lane?.clips?.some((c) => EFFECTS[c.effect]?.phones);
 
-// What visitors' phones show at `time` (phones.js): the show's Phones lane where it has one (dark in
-// its gaps, the house's main colour in its House colour clips), else the house's main colour, from
-// `lightFrames`, the lights' frames at that moment.
+// A phone's screen at `time` (phones.js): the Phones lane's clips drawn on PHONE_GRID, rows from the top
+// left, dark in its gaps. `main` is the house's main colour then, for its House colour clips; `level`
+// the show's own dimming of the lane. The editor's phone and visitors' phones both draw it with this.
+export function phoneScreen(clips, time, main = null, level = 1, out = undefined) {
+  phoneMain = main || STAND_IN;
+  try {
+    return dim(renderTrack(clips || [], time, PHONE_GRID.w * PHONE_GRID.h, out, false, PHONE_GRID), level);
+  } finally { phoneMain = STAND_IN; }
+}
+
+// What visitors' phones show at `time`, as one colour (phones.js): the house's main colour, from
+// `lightFrames` (the lights' frames at that moment), or with a Phones lane, its screen's main colour.
+// That's what a phone shows if it can't draw the screen itself.
 export function phoneColourAt(show, time, lightFrames) {
   const lane = (show.tracks || []).find((t) => t.device === PHONES);
   if (!lane) return mainColour(lightFrames);
-  phoneMain = laneUsesHouse(lane) ? mainColour(lightFrames) : STAND_IN;
-  try { return Array.from(dim(renderTrack(lane.clips || [], time, 1), showLevel(show, PHONES))); } finally { phoneMain = STAND_IN; }
+  const main = laneUsesHouse(lane) ? mainColour(lightFrames) : null;
+  return mainColour([phoneScreen(lane.clips, time, main, showLevel(show, PHONES))]);
 }
 
 // Bake every frame into the layout the Python player reads (see baked.py): one track per physical
@@ -1962,15 +1972,19 @@ function bakeFrames(show, devices, fps, positions, groups) {
   const frames = Math.ceil(showDuration(show) * fps);
   // The phones' colours go first in the header, filled in as the frames are made (each "rrggbb").
   const phones = phoneCount(frames, fps);
+  // With a Phones lane that has House colour in it, the house's own main colour too, for phones to draw
+  // the lane with.
+  const laneHouse = laneUsesHouse(show.tracks?.find((t) => t.device === PHONES));
   const header = {
-    phones: { fps: PHONE_FPS, colours: "0".repeat(phones * 6) },
+    phones: { fps: PHONE_FPS, colours: "0".repeat(phones * 6), ...(laneHouse ? { house: "0".repeat(phones * 6) } : {}) },
     fps,
     frames,
     tracks: lights.map((l) => ({ device: l.id, segments: l.segments })),
   };
   const headerBytes = new TextEncoder().encode(JSON.stringify(header));
   const phonesAt = 9 + JSON.stringify({ phones: { fps: PHONE_FPS, colours: "" } }).length - 3;
-  const needFrames = !hasPhonesLane(show) || laneUsesHouse(show.tracks.find((t) => t.device === PHONES));
+  const houseAt = phonesAt + phones * 6 + '","house":"'.length;
+  const needFrames = !hasPhonesLane(show) || laneHouse;
   let phone = 0;
   const stride = header.tracks.reduce((s, t) => s + t.segments * 3, 0);
   const out = new Uint8Array(9 + headerBytes.length + header.frames * stride);
@@ -1994,6 +2008,10 @@ function bakeFrames(show, devices, fps, positions, groups) {
     for (; phone < phones && phoneFrame(phone, fps) === f; phone++) {
       const code = hex(phoneColourAt(show, time, taken));
       for (let i = 0; i < 6; i++) out[phonesAt + phone * 6 + i] = code.charCodeAt(i);
+      if (laneHouse) {
+        const main = hex(mainColour(taken));
+        for (let i = 0; i < 6; i++) out[houseAt + phone * 6 + i] = main.charCodeAt(i);
+      }
     }
   }
   return out;

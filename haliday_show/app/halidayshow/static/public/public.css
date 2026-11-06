@@ -241,6 +241,10 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-join { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; flex-direction: column;
   justify-content: flex-end; align-items: center; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
 .pp-join.pp-soft { transition: background-color 0.4s linear; }
+/* A Phones lane, drawn on the phone: as big as fits, the show's main colour around it. */
+.pp-join-screen { position: absolute; inset: 0; margin: auto; width: min(100vw, calc(100vh * 27 / 48));
+  height: min(100vh, calc(100vw * 48 / 27)); }
+.pp-join-text, .pp-join-leave { position: relative; }
 .pp-join-text { color: #fff; text-align: center; max-width: 30em; text-shadow: 0 1px 3px #000; }
 /* The flashing warning, in the middle of the dark screen for the first few seconds. */
 .pp-join-text.pp-join-warning { margin: auto 0; font-size: 1.25em; font-weight: 600; }

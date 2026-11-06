@@ -586,7 +586,16 @@ export function start() {
   // Join the show: the screen glows with the colours the show carries for phones, ten a second, kept in
   // time as listening is (listensync.js). Phones set to reduce motion fade between colours instead of flashing.
   // One press joins: the screen opens dark with the flashing warning, then the colours fade in.
-  const join = { on: false, samples: [], key: "", colours: "", fps: 10, timer: 0, raf: 0, wake: null, gen: 0, since: 0 };
+  const join = { on: false, samples: [], key: "", colours: "", house: "", lane: null, fps: 10, timer: 0, raf: 0, wake: null,
+    gen: 0, since: 0 };
+  // The editor's effect code (effects.js), loaded the first time a show with a Phones lane plays here.
+  let fx = null, fxPictures = null, img = null;
+  async function loadFx() {
+    if (!fx) {
+      [fx, fxPictures] = await Promise.all([import("./fx/effects.js"), import("./fx/pictures.js")]);
+    }
+    return fx;
+  }
   const JOIN_POLL_MS = 1000, WARN_MS = 3000, FADE_IN_MS = 1000;
 
   async function joinPoll(gen) {
@@ -599,9 +608,12 @@ export function start() {
       if (res.status === 403 || res.status === 409) { leaveShow(await res.text()); return; }
       if (res.ok) {
         const now = await res.json();
-        if (!now.playing) { join.key = ""; join.samples = []; join.colours = ""; }
+        if (!now.playing) { join.key = ""; join.samples = []; join.colours = ""; join.lane = null; }
         else {
-          if (now.key !== join.key) { join.key = now.key; join.samples = []; join.colours = ""; joinColours(now.key, gen); }
+          if (now.key !== join.key) {
+            join.key = now.key; join.samples = []; join.colours = ""; join.lane = null;
+            joinColours(now.key, gen);
+          }
           join.samples = addSample(join.samples, { sent, recv, position: now.position });
         }
       }
@@ -614,7 +626,17 @@ export function start() {
       const res = await fetch(`api/phones/colours?${new URLSearchParams({ code: key, key: want })}`, { cache: "no-store", headers: adminHeaders() });
       if (!res.ok || gen !== join.gen || join.key !== want) return;
       const got = await res.json();
+      // A Phones lane: drawn here, with its pictures kept for the Picture effect. If the effect code
+      // won't load, the show's colours (one at a time) still do.
+      if (got.lane && Array.isArray(got.lane.clips)) {
+        try {
+          await loadFx();
+          for (const [id, pic] of Object.entries(got.lane.pictures || {})) fxPictures.keepPicture(id, pic);
+          if (gen === join.gen && join.key === want) join.lane = got.lane;
+        } catch { /* one colour at a time, then */ }
+      }
       join.colours = String(got.colours || "");
+      join.house = String(got.house || "");
       join.fps = Number(got.fps) || 10;
     } catch { /* asked again with the next show */ }
   }
@@ -624,16 +646,30 @@ export function start() {
     const t = join.colours ? target(join.samples, performance.now()) : null;
     const shown = performance.now() - join.since;
     const level = Math.max(0, Math.min(1, (shown - WARN_MS) / FADE_IN_MS));
+    const colourOf = (list, at) => {
+      const k = Math.floor(at * join.fps);
+      return k >= 0 && (k + 1) * 6 <= list.length ? [0, 2, 4].map((i) => parseInt(list.slice(k * 6 + i, k * 6 + i + 2), 16)) : null;
+    };
     let rgb = "rgb(0, 0, 0)";
-    if (t !== null && level > 0) {
-      const k = Math.floor(t * join.fps);
-      if (k >= 0 && (k + 1) * 6 <= join.colours.length) {
-        const c = [0, 2, 4].map((i) => Math.round(parseInt(join.colours.slice(k * 6 + i, k * 6 + i + 2), 16) * level));
-        rgb = `rgb(${c.join(", ")})`;
-      }
-    }
+    const c = t !== null && level > 0 ? colourOf(join.colours, t) : null;
+    if (c) rgb = `rgb(${c.map((v) => Math.round(v * level)).join(", ")})`;
     const box = $("pp-join");
     if (box.style.backgroundColor !== rgb) box.style.backgroundColor = rgb;
+    // The show's Phones lane, drawn on the screen (its main colour all round it).
+    const screen = $("pp-join-screen"), lane = t !== null && level > 0 && fx ? join.lane : null;
+    screen.hidden = !lane;
+    if (lane) {
+      const { w: gw, h: gh } = { w: screen.width, h: screen.height };
+      const main = join.house ? colourOf(join.house, t) : null;
+      const frame = fx.withMusicLevels(lane.loudness || null, () => fx.phoneScreen(lane.clips, t, main, lane.level ?? 1));
+      const ctx = screen.getContext("2d");
+      if (!img) img = ctx.createImageData(gw, gh);
+      for (let i = 0, n = gw * gh; i < n; i++) {
+        img.data[i * 4] = frame[i * 3] * level; img.data[i * 4 + 1] = frame[i * 3 + 1] * level;
+        img.data[i * 4 + 2] = frame[i * 3 + 2] * level; img.data[i * 4 + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+    }
     const warning = shown < WARN_MS;
     const text = warning ? say_(w, "join_warn") : t === null ? say_(w, "join_waiting") : "";
     if ($("pp-join-text").textContent !== text) $("pp-join-text").textContent = text;

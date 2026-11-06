@@ -1410,6 +1410,46 @@ async def test_phones_join_the_show_playing_now(client):
         await client.app[server.RUNNER].stop()
 
 
+async def test_phones_get_the_shows_phones_lane_to_draw(client):
+    st = client.app[server.STORAGE]
+    pic = st.save_picture({"name": "Snowflake", "w": 1, "h": 1, "frames": ["AAAA/w=="], "delays": [100]})
+    st.save_show("party", {"name": "Party", "brightness": 50, "lightBrightness": {"@phones": 50},
+                           "loudness": {"fps": 10, "values": [0.5] * 10},
+                           "tracks": [{"device": "a", "clips": []},
+                                      {"device": "@phones", "clips": [{"effect": "picture", "start": 0, "end": 5, "picture": pic},
+                                                                      {"effect": "picture", "start": 5, "end": 6, "picture": "../x"}]}]})
+    st.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * 400,
+                                        {"phones": {"fps": 10, "colours": "00ff00" * 100, "house": "0000ff" * 100}}))
+    await client.put("/api/public", json={"on": True, "phones": True})
+    await client.app[server.RUNNER].play("party")
+    try:
+        _, now, _ = await _visitor(client, "/api/phones/now")
+        _, got, _ = await _visitor(client, f"/api/phones/colours?key={now['key']}")
+        assert got["house"] == "0000ff" * 100
+        lane = got["lane"]
+        assert len(lane["clips"]) == 2 and lane["level"] == 0.25 and lane["loudness"]["values"][0] == 0.5
+        assert list(lane["pictures"]) == [pic] and lane["pictures"][pic]["name"] == "Snowflake"
+        # The effect code phones draw it with, and nothing else of the editor.
+        status, body, headers = await _visitor(client, "/fx/effects.js", code=False)
+        assert status == 200 and "phoneScreen" in body and headers["Content-Type"].startswith("text/javascript")
+        for bad in ("/fx/app.js", "/fx/..%2Fserver.py", "/fx/house.js"):
+            status, _, _ = await _visitor(client, bad, code=False)
+            assert status == 404
+    finally:
+        await client.app[server.RUNNER].stop()
+
+
+def test_a_phones_lane_sends_pictures_up_to_a_size(tmp_path, monkeypatch):
+    from halidayshow.storage import Storage
+    st = Storage(tmp_path / "config", tmp_path / "media")
+    small = st.save_picture({"name": "Small", "w": 1, "h": 1, "frames": ["AAAA/w=="], "delays": [100]})
+    big = st.save_picture({"name": "Big", "w": 1, "h": 1, "frames": ["A" * 4000], "delays": [100]})
+    monkeypatch.setattr(public, "MAX_PHONE_PICTURE_BYTES", 1000)
+    show = {"tracks": [{"device": "@phones", "clips": [{"effect": "picture", "picture": small}, {"effect": "picture", "picture": big}]}]}
+    assert list(public.phone_lane(st, show)["pictures"]) == [small]
+    assert public.phone_lane(st, {"tracks": [{"device": "a", "clips": []}]}) is None
+
+
 def test_phone_colours_are_checked(tmp_path):
     ok = {"phones": {"fps": 10, "colours": "a0b0c0"}}
     assert baked.phone_colours(ok) == {"fps": 10, "colours": "a0b0c0"}
