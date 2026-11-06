@@ -335,8 +335,8 @@ What phones show:
   - **House colour** is in the effect chooser's **Basics** on the Phones lane only. Phones show only
     what's on the lane, and stay dark in its gaps. **Remove the Phones lane** goes back to the house's
     main colour everywhere. ✨ **Generate** leaves the Phones lane alone.
-  - **Singing face** turns the phone into a singing character, a snowman, pumpkin, gingerbread person,
-    Santa or ghost, whose mouth follows the singer (see the [matrix effects](lights.md#matrices-panels-and-mega-trees)).
+  - **Singing face** turns the phone into a singing character (14 to pick from, from a snowman
+    to a black cat), whose mouth follows the singer (see the [matrix effects](lights.md#matrices-panels-and-mega-trees)).
 
 While you edit, a small phone in the top corner of the **House** panel shows the phone's screen at
 that moment, worked out just as the phones' colours are, and the **Preview** panel has a **Phones** row too. It shows while phones join the show (or it has a

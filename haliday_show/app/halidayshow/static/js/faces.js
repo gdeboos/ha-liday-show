@@ -4,7 +4,10 @@
 // right)}. Each is drawn in a box 3 wide by 4 high; (u, v) runs 0 to 1 across and down it. Pure, so it
 // can be tested in node.
 
-export const CHARACTERS = ["snowman", "pumpkin", "gingerbread", "santa", "ghost"];
+// The first five are drawn by hand (DRAW below); the rest are recipes (BUILT_IN), drawn by drawRecipe,
+// the same way the faces you make are.
+export const CHARACTERS = ["snowman", "pumpkin", "gingerbread", "santa", "ghost", "reindeer", "elf",
+  "christmas tree", "penguin", "robin", "teddy bear", "skull", "witch", "black cat"];
 export const FACE_ASPECT = 3 / 4; // the box's width over its height
 export const SHAPES = "aoem";
 
@@ -121,15 +124,274 @@ const DRAW = {
   },
 };
 
+// ---- Faces from a recipe ----
+// A recipe says what a face is made of, each part chosen from a short list:
+// {head: {shape, colour, patch, patchColour}, eyes: {style, colour}, nose: {style, colour},
+//  mouth: {style, colour}, cheeks: colour or "", top: {style, colour, colour2}, extras: {name: colour}}.
+export const RECIPE_PARTS = {
+  head: ["round", "oval", "wide", "tree", "ghost", "skull"],
+  patch: ["none", "face", "muzzle", "chest"],
+  eyes: ["dots", "ovals", "big", "triangles", "sockets", "cat"],
+  nose: ["none", "button", "carrot", "triangle", "beak", "long"],
+  mouth: ["open", "grin", "teeth", "small"],
+  top: ["none", "top hat", "santa hat", "witch hat", "elf hat", "bobble hat", "antlers", "cat ears", "bear ears", "star"],
+  extras: ["beard", "moustache", "whiskers", "pointy ears", "baubles", "scarf", "bow tie"],
+};
+
+// Where the features sit on each head shape: eyes' height and spacing, nose and mouth heights, the
+// mouth's half-width, and the head's top and bottom.
+const LAYOUT = {
+  round: { eye: 0.5, dx: 0.14, nose: 0.6, mouth: 0.74, w: 0.16, top: 0.27, bottom: 0.93 },
+  oval: { eye: 0.5, dx: 0.13, nose: 0.6, mouth: 0.76, w: 0.14, top: 0.2, bottom: 0.96 },
+  wide: { eye: 0.55, dx: 0.16, nose: 0.63, mouth: 0.76, w: 0.18, top: 0.32, bottom: 0.92 },
+  tree: { eye: 0.6, dx: 0.1, nose: 0.68, mouth: 0.8, w: 0.13, top: 0.14, bottom: 0.95 },
+  ghost: { eye: 0.4, dx: 0.13, nose: 0.5, mouth: 0.6, w: 0.09, top: 0.08, bottom: 0.93 },
+  skull: { eye: 0.5, dx: 0.14, nose: 0.62, mouth: 0.8, w: 0.13, top: 0.19, bottom: 0.94 },
+};
+
+function inHead(shape, u, v) {
+  switch (shape) {
+    case "oval": return ell(u, v, 0.5, 0.58, 0.36, 0.38);
+    case "wide": return ell(u, v, 0.5, 0.62, 0.46, 0.3);
+    case "tree": return tri(u, v, [0.5, 0.14], [0.06, 0.95], [0.94, 0.95]);
+    case "ghost": return ell(u, v, 0.5, 0.42, 0.38, 0.34) || (rect(u, v, 0.12, 0.42, 0.88, 1) && v <= 0.88 + 0.05 * Math.sin(u * Math.PI * 6));
+    case "skull": return ell(u, v, 0.5, 0.52, 0.4, 0.33) || ell(u, v, 0.5, 0.8, 0.24, 0.14);
+    default: return ell(u, v, 0.5, 0.6, 0.42, 0.33);
+  }
+}
+
+// Near the segment a-b, `r` thick (in box units, wider across than down as the box is).
+function near(u, v, [ax, ay], [bx, by], r) {
+  const px = (u - ax) * 3, py = (v - ay) * 4, qx = (bx - ax) * 3, qy = (by - ay) * 4;
+  const k = Math.min(Math.max((px * qx + py * qy) / (qx * qx + qy * qy || 1), 0), 1);
+  return Math.hypot(px - k * qx, py - k * qy) <= r * 3;
+}
+
+// A five-pointed star of radius r (across) round (cx, cy).
+function star(u, v, cx, cy, r) {
+  const x = (u - cx) * 3, y = (v - cy) * 4, R = r * 3, a = Math.atan2(x, -y), d = Math.hypot(x, y);
+  if (d > R) return false;
+  const sector = (2 * Math.PI) / 5, phi = Math.abs(((a % sector) + sector * 1.5) % sector - sector / 2);
+  const ri = R * 0.42, vx = ri * Math.cos(sector / 2), vy = ri * Math.sin(sector / 2);
+  const px = d * Math.cos(phi), py = d * Math.sin(phi);
+  return (vx - R) * py - vy * (px - R) >= 0;
+}
+
+const mix = (c, k) => c.map((x) => Math.round(x * k));
+const hex = (h, fallback) => (typeof h === "string" && /^#[0-9a-f]{6}$/i.test(h) ? C(h) : fallback);
+
+// The hats and tops that sit in front of the head.
+function topAt(u, v, top, L) {
+  const c = hex(top.colour, C("#d0202a")), c2 = hex(top.colour2, WHITE), ht = L.top;
+  switch (top.style) {
+    case "top hat":
+      if (rect(u, v, 0.33, ht - 0.25, 0.67, ht - 0.03)) return rect(u, v, 0.33, ht - 0.09, 0.67, ht - 0.03) ? c2 : c;
+      return rect(u, v, 0.18, ht - 0.04, 0.82, ht + 0.01) ? c : null;
+    case "santa hat":
+      if (ell(u, v, 0.83, ht - 0.17, 0.08, 0.06)) return c2;
+      if (rect(u, v, 0.16, ht, 0.84, ht + 0.07)) return c2;
+      return tri(u, v, [0.2, ht + 0.02], [0.8, ht + 0.02], [0.8, ht - 0.17]) ? c : null;
+    case "witch hat": {
+      if (ell(u, v, 0.5, ht + 0.01, 0.48, 0.035)) return c;
+      if (!tri(u, v, [0.27, ht + 0.01], [0.73, ht + 0.01], [0.62, Math.max(ht - 0.3, 0)])) return null;
+      return v >= ht - 0.06 ? c2 : c;
+    }
+    case "elf hat":
+      if (ell(u, v, 0.94, ht - 0.21, 0.05, 0.04)) return c2;
+      if (rect(u, v, 0.15, ht, 0.85, ht + 0.06)) return c2;
+      return tri(u, v, [0.18, ht + 0.03], [0.82, ht + 0.03], [0.94, ht - 0.21]) ? c : null;
+    case "bobble hat":
+      if (ell(u, v, 0.5, ht - 0.13, 0.08, 0.06)) return c2;
+      if (rect(u, v, 0.1, ht + 0.01, 0.9, ht + 0.07)) return Math.floor(u * 24) % 2 ? c2 : mix(c2, 0.82);
+      return ell(u, v, 0.5, ht + 0.03, 0.4, 0.15) && v <= ht + 0.03 ? c : null;
+    case "star":
+      return star(u, v, 0.5, Math.max(ht - 0.04, 0.11), 0.11) ? c : null;
+    default: return null;
+  }
+}
+
+// What sits behind the head: antlers and ears.
+function behindAt(u, v, top, extras, recipeHead, L) {
+  const c = hex(top.colour, C("#d8b888")), c2 = hex(top.colour2, C("#f07090")), ht = L.top;
+  if (top.style === "antlers") {
+    for (const s of [1, -1]) {
+      const x = (k) => 0.5 + s * (k - 0.5);
+      if (near(u, v, [x(0.36), ht + 0.06], [x(0.2), ht - 0.2], 0.025) || near(u, v, [x(0.27), ht - 0.07], [x(0.1), ht - 0.12], 0.02)
+        || near(u, v, [x(0.23), ht - 0.14], [x(0.32), ht - 0.24], 0.02)) return c;
+    }
+  }
+  if (top.style === "cat ears") {
+    for (const s of [1, -1]) {
+      const x = (k) => 0.5 + s * (k - 0.5);
+      if (tri(u, v, [x(0.2), ht + 0.06], [x(0.4), ht + 0.03], [x(0.17), ht - 0.13])) return c2;
+      if (tri(u, v, [x(0.1), ht + 0.12], [x(0.46), ht + 0.04], [x(0.13), ht - 0.18])) return c;
+    }
+  }
+  if (top.style === "bear ears") {
+    for (const s of [1, -1]) {
+      const cx = 0.5 + s * 0.29;
+      if (ell(u, v, cx, ht + 0.04, 0.06, 0.045)) return c2;
+      if (ell(u, v, cx, ht + 0.03, 0.1, 0.075)) return c;
+    }
+  }
+  if (extras["pointy ears"]) {
+    const e = hex(extras["pointy ears"], hex(recipeHead.colour, C("#f5c8a8")));
+    if (tri(u, v, [0.14, L.eye - 0.06], [0.14, L.eye + 0.08], [0.0, L.eye - 0.16])
+      || tri(u, v, [0.86, L.eye - 0.06], [0.86, L.eye + 0.08], [1.0, L.eye - 0.16])) return e;
+  }
+  return null;
+}
+
+function eyesAt(u, v, f, eyes, L) {
+  const c = hex(eyes.colour, COAL);
+  for (const s of [-1, 1]) {
+    const cx = 0.5 + s * L.dx, cy = L.eye;
+    let got = null;
+    switch (eyes.style) {
+      case "dots": got = eyeAt(u, v, f, cx, cy, 0.045, 0.04, c); break;
+      case "ovals": got = eyeAt(u, v, f, cx, cy, 0.065, 0.075, WHITE, c); break;
+      case "big": got = eyeAt(u, v, f, cx, cy, 0.095, 0.105, WHITE, c); break;
+      case "triangles": {
+        const lid = cy - 0.07 + 0.12 * f.blink;
+        if (v >= lid && tri(u, v, [cx - 0.08, cy + 0.04], [cx + 0.08, cy + 0.04], [cx, cy - 0.1])) got = c;
+        break;
+      }
+      case "sockets":
+        if (ell(u, v, cx, cy, 0.1, 0.09 * (1 - 0.7 * f.blink))) {
+          got = f.blink < 0.5 && ell(u, v, cx + f.look * 0.03, cy, 0.025, 0.02) ? c : C("#141414");
+        }
+        break;
+      case "cat":
+        if (ell(u, v, cx, cy, 0.075, 0.07 * (1 - 0.85 * f.blink))) {
+          got = f.blink < 0.5 && ell(u, v, cx + f.look * 0.03, cy, 0.016, 0.06) ? COAL : c;
+        }
+        break;
+      default: break;
+    }
+    if (got) return got;
+  }
+  return null;
+}
+
+function noseAt(u, v, nose, L) {
+  const ny = L.nose;
+  switch (nose.style) {
+    case "button": return ell(u, v, 0.5, ny, 0.045, 0.035) ? hex(nose.colour, C("#3a1a10")) : null;
+    case "carrot": return tri(u, v, [0.48, ny - 0.03], [0.48, ny + 0.03], [0.75, ny + 0.02]) ? hex(nose.colour, C("#ff8a1e")) : null;
+    case "triangle": return tri(u, v, [0.45, ny + 0.03], [0.55, ny + 0.03], [0.5, ny - 0.05]) ? hex(nose.colour, COAL) : null;
+    case "beak": return tri(u, v, [0.42, ny - 0.04], [0.58, ny - 0.04], [0.5, ny + 0.06]) ? hex(nose.colour, C("#ff9a1e")) : null;
+    case "long": return tri(u, v, [0.46, ny - 0.07], [0.54, ny - 0.07], [0.64, ny + 0.05]) ? hex(nose.colour, C("#5a9a3a")) : null;
+    default: return null;
+  }
+}
+
+function recipeMouthAt(u, v, f, mouth, L, skin) {
+  const dark = hex(mouth.colour, DARK), cy = L.mouth, w = L.w;
+  switch (mouth.style) {
+    case "grin": {
+      const [rx, ry] = mouthSize(f, w * 1.6, 0.09);
+      if (ell(u, v, 0.5, cy, rx, ry + 0.018) && !(rect(u, v, 0.5 - rx * 0.5, cy - ry, 0.5 - rx * 0.28, cy - ry * 0.2)
+        || rect(u, v, 0.5 + rx * 0.28, cy, 0.5 + rx * 0.5, cy + ry))) return hex(mouth.colour, C("#ffd24a"));
+      return null;
+    }
+    case "teeth": {
+      const [rx, ry] = mouthSize(f, w, 0.07);
+      if (!rect(u, v, 0.5 - rx, cy - ry - 0.03, 0.5 + rx, cy + ry + 0.03)) return null;
+      if (Math.abs(v - cy) <= ry) return C("#141414");
+      return Math.floor((u - 0.5 + rx) * 28) % 2 ? mix(skin, 0.6) : skin;
+    }
+    case "small": {
+      const [rx, ry] = mouthSize(f, w * 0.6, 0.11);
+      return ell(u, v, 0.5, cy, rx * (f.shape === "e" ? 1.6 : 1), ry + 0.015) ? dark : null;
+    }
+    default: return mouthAt(u, v, f, 0.5, cy, w, 0.09, dark);
+  }
+}
+
+// A face from its recipe at (u, v), or null for the background.
+export function drawRecipe(r, u, v, f) {
+  const head = r.head || {}, L = LAYOUT[head.shape] || LAYOUT.round, extras = r.extras || {};
+  const skin = hex(head.colour, WHITE), top = r.top || {};
+  const hat = topAt(u, v, top, L);
+  if (hat) return hat;
+  const inside = inHead(head.shape, u, v);
+  if (!inside) {
+    if (head.shape === "tree" && rect(u, v, 0.42, 0.95, 0.58, 1)) return C("#6a3a1a"); // the trunk
+    if (extras.scarf && rect(u, v, 0.2, L.bottom - 0.04, 0.8, Math.min(L.bottom + 0.05, 1))) {
+      const s = hex(extras.scarf, C("#d0202a"));
+      return Math.floor(u * 12) % 2 ? s : mix(s, 0.75);
+    }
+    if (extras["bow tie"] && (tri(u, v, [0.5, L.bottom], [0.36, L.bottom - 0.04], [0.36, L.bottom + 0.05])
+      || tri(u, v, [0.5, L.bottom], [0.64, L.bottom - 0.04], [0.64, L.bottom + 0.05]))) return hex(extras["bow tie"], C("#d0202a"));
+    return behindAt(u, v, top, extras, head, L);
+  }
+  const m = recipeMouthAt(u, v, f, r.mouth || {}, L, skin);
+  if (m) return m;
+  const n = noseAt(u, v, r.nose || {}, L);
+  if (n) return n;
+  const e = eyesAt(u, v, f, r.eyes || {}, L);
+  if (e) return e;
+  if (extras.moustache && (ell(u, v, 0.4, L.mouth - 0.07, 0.11, 0.035) || ell(u, v, 0.6, L.mouth - 0.07, 0.11, 0.035))) return hex(extras.moustache, WHITE);
+  if (r.cheeks && (ell(u, v, 0.5 - L.dx - 0.08, L.mouth - 0.08, 0.06, 0.04) || ell(u, v, 0.5 + L.dx + 0.08, L.mouth - 0.08, 0.06, 0.04))) return hex(r.cheeks, C("#f07090"));
+  if (extras.whiskers) {
+    for (const s of [-1, 1]) for (const dy of [-0.04, 0, 0.04]) {
+      if (near(u, v, [0.5 + s * 0.13, L.nose + 0.02], [0.5 + s * 0.44, L.nose + 0.02 + dy * 1.4], 0.008)) return hex(extras.whiskers, C("#dddddd"));
+    }
+  }
+  if (extras.beard && v > L.nose + 0.02 && ell(u, v, 0.5, L.mouth - 0.02, 0.44, 0.3)) {
+    const b = hex(extras.beard, WHITE);
+    return ell(u, v, 0.5, L.mouth - 0.04, 0.38, 0.25) ? b : mix(b, 0.82);
+  }
+  if (extras.baubles) {
+    const b = hex(extras.baubles, C("#d0202a")), gold = C("#ffd24a");
+    for (const [x, y, k] of [[0.24, 0.88, 0], [0.76, 0.88, 1], [0.5, 0.42, 1], [0.7, 0.77, 0], [0.3, 0.77, 1]]) {
+      if (ell(u, v, x, y, 0.045, 0.034)) return k ? gold : b;
+    }
+  }
+  const patch = head.patch || "none";
+  if (patch !== "none") {
+    const pc = hex(head.patchColour, WHITE);
+    if (patch === "face" && ell(u, v, 0.5, L.eye + 0.1, 0.3, 0.26)) return pc;
+    if (patch === "muzzle" && ell(u, v, 0.5, L.nose + 0.07, 0.2, 0.15)) return pc;
+    if (patch === "chest" && ell(u, v, 0.5, L.bottom + 0.02, 0.34, 0.24)) return pc;
+  }
+  // Lit from the top left: the far edge a little darker.
+  return inHead(head.shape, u + 0.035, v + 0.03) ? skin : mix(skin, 0.8);
+}
+
+// The built-in recipes (original characters made from the parts above).
+export const BUILT_IN = {
+  reindeer: { head: { shape: "oval", colour: "#8a5a2c", patch: "muzzle", patchColour: "#d8b080" }, eyes: { style: "ovals", colour: "#1a1a1a" },
+    nose: { style: "button", colour: "#3a1a10" }, mouth: { style: "open" }, top: { style: "antlers", colour: "#e0c08a" } },
+  elf: { head: { shape: "round", colour: "#f5c8a8" }, eyes: { style: "ovals", colour: "#2a6a2a" }, nose: { style: "button", colour: "#e8a080" },
+    mouth: { style: "open" }, cheeks: "#f07090", top: { style: "elf hat", colour: "#1f8a3a", colour2: "#d0202a" }, extras: { "pointy ears": "#f5c8a8" } },
+  "christmas tree": { head: { shape: "tree", colour: "#1f8a3a" }, eyes: { style: "ovals", colour: "#1a1a1a" }, nose: { style: "none" },
+    mouth: { style: "open" }, top: { style: "star", colour: "#ffd24a" }, extras: { baubles: "#d0202a" } },
+  penguin: { head: { shape: "oval", colour: "#34406a", patch: "face", patchColour: "#f4f8ff" }, eyes: { style: "ovals", colour: "#1a1a1a" },
+    nose: { style: "beak", colour: "#ff9a1e" }, mouth: { style: "small" }, top: { style: "bobble hat", colour: "#d0202a", colour2: "#f4f8ff" },
+    extras: { scarf: "#d0202a" } },
+  robin: { head: { shape: "round", colour: "#8a5a2c", patch: "chest", patchColour: "#e8501e" }, eyes: { style: "ovals", colour: "#1a1a1a" },
+    nose: { style: "beak", colour: "#3a2a1a" }, mouth: { style: "small" }, top: { style: "none" } },
+  "teddy bear": { head: { shape: "round", colour: "#a06a3a", patch: "muzzle", patchColour: "#e0b888" }, eyes: { style: "dots", colour: "#1a1a1a" },
+    nose: { style: "button", colour: "#2a1a10" }, mouth: { style: "open" }, top: { style: "bear ears", colour: "#a06a3a", colour2: "#e0b888" },
+    extras: { "bow tie": "#d0202a" } },
+  skull: { head: { shape: "skull", colour: "#efe8d8" }, eyes: { style: "sockets", colour: "#ff3020" }, nose: { style: "triangle", colour: "#141414" },
+    mouth: { style: "teeth" } },
+  witch: { head: { shape: "oval", colour: "#7ac05a" }, eyes: { style: "ovals", colour: "#1a1a1a" }, nose: { style: "long", colour: "#3f7a26" },
+    mouth: { style: "open" }, top: { style: "witch hat", colour: "#3a2a5a", colour2: "#9a50d0" } },
+  "black cat": { head: { shape: "round", colour: "#2c2c34" }, eyes: { style: "cat", colour: "#ffd24a" }, nose: { style: "button", colour: "#f07090" },
+    mouth: { style: "small" }, top: { style: "cat ears", colour: "#2c2c34", colour2: "#f07090" }, extras: { whiskers: "#dddddd" } },
+};
+
 const still = { mouth: 0, shape: "a", blink: 0, look: 0 };
 
 // The character's colour at (u, v) in its box doing `face` (or, for older callers, with the mouth this
 // open), or null for the background.
 export function faceColour(character, u, v, face = 0) {
-  const draw = DRAW[character] || DRAW.snowman;
   const f = typeof face === "number" ? { ...still, mouth: face } : { ...still, ...face };
   f.mouth = Math.min(Math.max(f.mouth, 0), 1);
-  return draw(u, v, f);
+  if (BUILT_IN[character]) return drawRecipe(BUILT_IN[character], u, v, f);
+  return (DRAW[character] || DRAW.snowman)(u, v, f);
 }
 
 // How far open the mouth is for a voice level (0 to 1), shut when it's quiet. sensitivity (0-100, 50
