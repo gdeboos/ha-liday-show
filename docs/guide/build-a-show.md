@@ -208,6 +208,8 @@ players can play them. For a lights-only show, choose **No song, lights only** a
 tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
 list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Remove…** archives
 or deletes one. The song you last opened in the Music editor has a **Last edited** badge.
+**▶** beside a song, an edit or a split plays it there and then, in a bar along the bottom of the page:
+**⏸** pauses, the slider jumps to any point, and **✕** stops it. It stops when you leave **Songs**.
 A song with cover art (from an MP3, M4A or FLAC's own tags) shows it beside its name, and beside the
 shows that use it in **Library → Shows**. To give a show a picture of its own, use **Picture** in its
 **⚙ Show settings…**: **Upload picture…** takes any photo or image, squares it from the middle, and uses it

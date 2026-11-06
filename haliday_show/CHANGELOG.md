@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.383
+
+- **Listen to songs in Library → Songs.** Each song, edit and split has a **▶** button that plays it in a bar along the bottom of the page, with pause, a slider to jump about, the volume and **✕** to stop. No need to open the Music editor just to hear one.
+
 ## 0.2.382
 
 - **Singing faces sing wherever they are in the show.** A Singing face that didn't start at the very beginning of the show followed the wrong part of the song (usually the quiet intro), so its mouth stayed shut. It now follows the singer at its own place in the song. Phones pick this up straight away; if a face is on one of your matrices, save the show once so the lights get it too.
