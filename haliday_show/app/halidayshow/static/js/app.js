@@ -8453,7 +8453,8 @@ async function editFor(ref) {
 
 // Adds songs to the line (first: to its front), and starts it if it isn't going.
 function prepareParts(refs, { first = false } = {}) {
-  const key = (r) => `${r.source}:${r.path}`, now = partsLine.now && key(partsLine.now);
+  // A song only being listened to (its parts left for later) is a different job from splitting it.
+  const key = (r) => `${r.source}:${r.path}${r.listenOnly ? ":listen" : ""}`, now = partsLine.now && key(partsLine.now);
   const fresh = refs.filter((r) => key(r) !== now && !partsLine.queue.some((x) => key(x) === key(r)));
   partsLine.queue = first ? [...fresh, ...partsLine.queue.filter((x) => !fresh.some((r) => key(r) === key(x)))] : [...partsLine.queue, ...fresh];
   showPartsLine();
@@ -8468,11 +8469,11 @@ async function runPartsLine() {
   while (partsLine.queue.length && !partsLine.stopped) {
     const ref = partsLine.now = partsLine.queue.shift();
     partsLine.stop = null;
-    showPartsLine(`Getting ready to split ${songLabel(ref)}…`, null);
+    showPartsLine(`Getting ready to ${ref.listenOnly ? "listen to" : "split"} ${songLabel(ref)}…`, null);
     try {
       const edit = await editFor(ref).catch(() => null);
       if (partsLine.stopped) break;
-      const out = await makeParts(ref, api, { edit, say: (text, done) => showPartsLine(text, done),
+      const out = await makeParts({ source: ref.source, path: ref.path }, api, { edit, listenOnly: !!ref.listenOnly, say: (text, done) => showPartsLine(text, done),
         started: (stop) => { partsLine.stop = stop; if (partsLine.stopped) stop(); } });
       if (out.made) partsLine.done++;
       else if (out.listened) partsLine.listened++;
@@ -9154,7 +9155,7 @@ function asStep(step) {
   $("as-step-2").hidden = step !== 2;
   $("as-back").hidden = step !== 2;
   $("as-next").textContent = step === 1 ? "Next →" : "Add song";
-  if (step === 2) { asStarts(); $("as-starts").querySelector("input:checked")?.focus(); }
+  if (step === 2) { asStarts(); $("as-split").checked = prefs.get("addSplit", true); $("as-starts").querySelector("input:checked")?.focus(); }
 }
 
 function asBusy(on, text = "") {
@@ -9245,8 +9246,11 @@ async function asSubmit(e) {
   renderSongsPage();
   if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
   else status(addedMessage(name, info, { ai: withAI && info?.sections.length > 0 }), "saved", "songs");
-  // Its parts are split out in the background (see the banner in Library → Songs).
-  prepareParts([ref]);
+  // Its parts are split out in the background (see the banner in Library → Songs), unless that was
+  // left for later: then it's only listened to (sounds.js), which takes seconds.
+  const split = $("as-split").checked;
+  prefs.set("addSplit", split);
+  prepareParts([split ? ref : { ...ref, listenOnly: true }]);
   // Then colours from its cover, to pick or skip (only when there's something to offer).
   await offerSongColours(ref, { justAdded: true }).catch(() => {});
   addSong.onAdded?.([...$("audio-select").options].find((o) => o.value && JSON.parse(o.value).path === ref.path)?.value || "");

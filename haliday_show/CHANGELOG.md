@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.410
+
+- **Add a song without splitting it.** The second step of **Add a song** has a new switch, **Split it into parts afterwards**. Turn it off on a slower computer, and the song is only listened to for its sounds (seconds). Split it later with **Split all songs into parts** in **Library → Songs**, overnight say. Your choice is remembered.
+
 ## 0.2.409
 
 - **HA-liday Show listens to your songs.** Once a song is split into parts, a small AI listens to it for sleigh bells, bells and chimes, xylophone, a choir, brass, strings, piano, organ, guitar, synthesiser, woodwind, harp, whistling and clapping, and for how it sounds (happy, sad, tender, exciting, angry, scary or Christmassy). It takes seconds. The **Song** panel in the editor says what it heard.

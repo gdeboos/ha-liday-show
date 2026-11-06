@@ -164,15 +164,15 @@ async function listenTo(ref, api, say, track) {
 // its parts cut from the original's instead. say(text, done 0-1 or null) hears how it's going;
 // started(stop) is given a function that stops it. One song at a time: anything else waits its turn.
 let turn = Promise.resolve(), waiting = 0;
-export function makeParts(ref, api, { again = false, edit = null, say = () => {}, started = () => {} } = {}) {
+export function makeParts(ref, api, { again = false, edit = null, listenOnly = false, say = () => {}, started = () => {} } = {}) {
   waiting++;
-  const run = () => makePartsNow(ref, api, { again, edit, say, started });
+  const run = () => makePartsNow(ref, api, { again, edit, listenOnly, say, started });
   const mine = turn.then(run, run).finally(() => { waiting--; });
   turn = mine.catch(() => {});
   return mine;
 }
 
-async function makePartsNow(ref, api, { again, edit, say, started }) {
+async function makePartsNow(ref, api, { again, edit, listenOnly, say, started }) {
   busy = true;
   let worker = null, cancelled = false, stop = null;
   const stopped = new Promise((_, reject) => { stop = reject; });
@@ -192,7 +192,7 @@ async function makePartsNow(ref, api, { again, edit, say, started }) {
   try {
     const have = await api(`api/audio/parts?${q(ref)}`).catch(() => ({}));
     const heard = !again && await api(`api/audio/sounds?${q(ref)}`).catch(() => null);
-    if (!again && prepared(have)) {
+    if (!again && (prepared(have) || listenOnly)) { // listenOnly: its parts are left for later
       if (heard) return { made: false };
       await listen(true);
       return { made: false, listened: true };
