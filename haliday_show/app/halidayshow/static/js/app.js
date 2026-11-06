@@ -19,7 +19,7 @@ import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, p
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
 import { makeParts, prepared, splitVocals, splitting, stemNames } from "./splitvocals.js";
-import { mashFit } from "./mashfit.js";
+import { FITS, mashFit, rankFits } from "./mashfit.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic } from "./housescenes.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
@@ -12229,7 +12229,14 @@ async function nsLoadFolders() {
 // finding it by name. Edits of a song sit with it, as in the Library. With parts, a song that's been
 // split offers its parts too (Vocals, Drums…), so you take the whole song or just a part of it.
 // Resolves to the ref picked (a part's own ref when a part is picked), or null if you close it.
-async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds = ["songs"], parts = false } = {}) {
+async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds = ["songs"], parts = false, fitTo = null, sections = false } = {}) {
+  // fitTo ({tempo, key}): songs can be sorted by how well they'd fit over that (mashfit.js), each saying
+  // how. sections: a song's sections can be picked, so only that stretch of it is used. Then the result
+  // also carries {from, to} (seconds in it, or none for all of it) and lineUp (its bars on the song's).
+  const facts = new Map(); // each song's tempo and key (from Detect)
+  if (fitTo && (fitTo.tempo || fitTo.key)) {
+    try { for (const s of (await api("api/songs")).songs) facts.set(songKey(s), { tempo: s.tempo, key: s.key }); } catch { /* sorted by name */ }
+  }
   const shelves = {};
   if (kinds.includes("samples")) {
     let samples = [];
@@ -12252,7 +12259,8 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
     shelves.songs = { label: "Songs", one: "song", folders, family, at: folderAt("songs") };
   }
   const tabs = Object.keys(shelves);
-  const st = { tab: tabs.includes("songs") && !shelves.samples?.family.size ? "songs" : tabs[0], picked: null, part: "" };
+  const st = { tab: tabs.includes("songs") && !shelves.samples?.family.size ? "songs" : tabs[0], picked: null, part: "",
+    byFit: facts.size > 0, section: null, lineUp: true, info: null };
   const label = (r) => songLabel(r);
   const { dlg, body, foot } = editWindow(title);
   dlg.classList.add("pick-dialog");
@@ -12270,6 +12278,22 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
   find.addEventListener("input", () => draw());
   const findBox = Object.assign(document.createElement("div"), { className: "ns-find" });
   findBox.append(find);
+  // Sort by name, or best fit first for the song being edited.
+  const sortBox = Object.assign(document.createElement("div"), { className: "pick-sort" });
+  if (facts.size) {
+    const seg = Object.assign(document.createElement("span"), { className: "seg-buttons" });
+    seg.setAttribute("role", "group");
+    seg.setAttribute("aria-label", "Sort");
+    for (const [v, t] of [[false, "By name"], [true, "Best fit first"]]) {
+      const b = button(t, () => { st.byFit = v; draw(); });
+      b.dataset.fit = String(v);
+      seg.append(b);
+    }
+    sortBox.append(Object.assign(document.createElement("span"), { className: "hint", textContent: "Sort" }), seg,
+      Object.assign(document.createElement("span"), { className: "hint",
+        textContent: `for this draft: ${[fitTo.tempo && `${Math.round(fitTo.tempo)} BPM`, fitTo.key].filter(Boolean).join(", ")}` }));
+  }
+  sortBox.hidden = !facts.size;
   const nav = Object.assign(document.createElement("nav"), { className: "folder-path" });
   nav.setAttribute("aria-label", "Folder");
   const subs = Object.assign(document.createElement("div"), { className: "song-list ns-folders" });
@@ -12278,14 +12302,21 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
   // The picked song's parts: all of it, or one part.
   const partBox = Object.assign(document.createElement("fieldset"), { className: "pick-parts" });
   partBox.hidden = true;
-  body.append(tabBox, findBox, nav, subs, list);
+  const sectionBox = Object.assign(document.createElement("fieldset"), { className: "pick-parts pick-sections" });
+  sectionBox.hidden = true;
+  body.append(tabBox, findBox, sortBox, nav, subs, list);
   const note = Object.assign(document.createElement("span"), { className: "hint" });
   note.setAttribute("aria-live", "polite");
   let done = null;
-  const result = () => (st.part && st.picked?.parts?.[st.part] ? { source: st.picked.source, path: st.picked.parts[st.part] } : st.picked);
+  const result = () => {
+    const ref = st.part && st.picked?.parts?.[st.part] ? { source: st.picked.source, path: st.picked.parts[st.part] } : st.picked;
+    if (!ref || !sections) return ref;
+    return { source: ref.source, path: ref.path, ...(st.section ? { from: st.section.start, to: st.section.end } : {}), lineUp: st.lineUp };
+  };
   const choose = button(yes, () => { done = result(); dlg.close(); }, "primary");
   foot.append(note, Object.assign(document.createElement("span"), { className: "spacer" }), button("Cancel", () => dlg.close()), choose);
   foot.before(partBox);
+  foot.before(sectionBox);
   const go = (id) => { shelves[st.tab].at = id; find.value = ""; draw(); subs.querySelector("button")?.focus() || list.querySelector("input")?.focus(); };
   function drawParts() {
     const have = parts && st.picked ? PART_ORDER.filter((p) => st.picked.parts?.[p]) : [];
@@ -12302,9 +12333,32 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
     };
     partBox.replaceChildren(legend, opt("", "The whole song"), ...have.map((p) => opt(p, PART_WORDS[p])));
   }
+  // Which stretch of it: all of it, or one of its sections; and lined up on the bar.
+  async function drawSections() {
+    if (!sections || !st.picked) { sectionBox.hidden = true; return; }
+    const ref = st.picked, info = st.info?.ref === ref ? st.info.info : await songInfo(ref).catch(() => null);
+    if (st.picked !== ref) return;
+    st.info = { ref, info };
+    const secs = info?.sections || [];
+    sectionBox.hidden = false;
+    const chip = (text, sec) => {
+      const on = sec ? st.section?.start === sec.start : !st.section;
+      const b = button(text, () => { st.section = sec; drawSections(); drawNote(); }, on ? "on" : "");
+      b.setAttribute("aria-pressed", String(on));
+      return b;
+    };
+    const chips = Object.assign(document.createElement("div"), { className: "chips" });
+    chips.append(chip("All of it", null), ...secs.map((x) => chip(`${x.label} ${fmtTime(x.start, false)} – ${fmtTime(x.end, false)}`, x)));
+    const lu = Object.assign(document.createElement("input"), { type: "checkbox", checked: st.lineUp });
+    lu.addEventListener("change", () => { st.lineUp = lu.checked; });
+    const luLabel = Object.assign(document.createElement("label"), { title: "Its first bar lands on the song's nearest bar, where both have been detected" });
+    luLabel.append(lu, " Line up on the bar");
+    sectionBox.replaceChildren(Object.assign(document.createElement("legend"), { textContent: "Which part of it" }),
+      secs.length ? chips : Object.assign(document.createElement("p"), { className: "hint", textContent: "All of it (it hasn't been detected, so it has no sections yet)" }), luLabel);
+  }
   function drawNote() {
     note.textContent = st.picked ? `Picked: ${label(st.picked)}${st.part ? ` (${PART_WORDS[st.part].toLowerCase()})` : ""}`
-      : `Pick a ${shelves[st.tab].one}`;
+      + (st.section ? `, its ${st.section.label}` : "") : `Pick a ${shelves[st.tab].one}`;
     choose.disabled = !st.picked;
   }
   function draw() {
@@ -12313,6 +12367,13 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
       b.setAttribute("aria-pressed", String(b.dataset.tab === st.tab));
       b.classList.toggle("active", b.dataset.tab === st.tab);
     }
+    for (const b of sortBox.querySelectorAll("button")) {
+      b.setAttribute("aria-pressed", String(b.dataset.fit === String(st.byFit)));
+      b.classList.toggle("active", b.dataset.fit === String(st.byFit));
+    }
+    sortBox.hidden = !facts.size || st.tab !== "songs";
+    const fits = st.tab === "songs" && facts.size ? new Map(rankFits([...shelf.family.values()].flat(), fitTo, (r) => facts.get(songKey(r)) || {})
+      .map((f, i) => [songKey(f.song), { ...f, rank: i }])) : null;
     list.setAttribute("aria-label", shelf.label);
     const nameOf = (k) => shelf.family.get(k).map((r) => `${label(r)} ${r.path}`).join(" ");
     const view = browse({ folders: shelf.folders, keys: [...shelf.family.keys()], at: shelf.at, find: find.value, nameOf });
@@ -12324,19 +12385,22 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
     const rows = view.items.flatMap(({ key, where }) => shelf.family.get(key)
       .filter((r) => !words.length || words.every((w) => `${label(r)} ${r.path}`.toLowerCase().includes(w)))
       .map((r) => ({ r, where })))
-      .sort((a, b) => label(a.r).localeCompare(label(b.r), undefined, { numeric: true }))
+      .sort((a, b) => (st.byFit && fits ? fits.get(songKey(a.r)).rank - fits.get(songKey(b.r)).rank : 0)
+        || label(a.r).localeCompare(label(b.r), undefined, { numeric: true }))
       .map(({ r, where }) => {
         const key = songKey(r), on = st.picked && songKey(st.picked) === key;
         const row = Object.assign(document.createElement("label"), { className: `song-row${on ? " picked" : ""}` });
         const radio = Object.assign(document.createElement("input"), { type: "radio", name: "pick-song", checked: on });
-        radio.addEventListener("change", () => { st.picked = r; st.part = ""; draw(); list.querySelector("input:checked")?.focus(); });
+        radio.addEventListener("change", () => { st.picked = r; st.part = ""; st.section = null; draw(); drawSections(); list.querySelector("input:checked")?.focus(); });
         // A double-click takes it whole.
         row.addEventListener("dblclick", () => { st.picked = r; st.part = ""; done = r; dlg.close(); });
         const text = document.createElement("span");
         const has = parts ? partsText(r.parts) : "";
-        text.append(Object.assign(document.createElement("b"), { textContent: label(r) }),
-          Object.assign(document.createElement("span"), { className: "hint",
-            textContent: [where ? `in ${where}` : r.path.split("/").pop(), has && `parts: ${has}`].filter(Boolean).join(" · ") }));
+        const fit = fits?.get(key), known = fit && (facts.get(key)?.tempo || facts.get(key)?.key);
+        const hint = Object.assign(document.createElement("span"), { className: "hint",
+          textContent: [known && `${fit.tempo} · ${fit.key}`, where ? `in ${where}` : r.path.split("/").pop(), has && `parts: ${has}`].filter(Boolean).join(" · ") });
+        if (known) hint.prepend(Object.assign(document.createElement("span"), { className: `fitb fit-${fit.fit}`, textContent: FITS[fit.fit] }), " ");
+        text.append(Object.assign(document.createElement("b"), { textContent: label(r) }), hint);
         row.append(radio, text);
         return row;
       });

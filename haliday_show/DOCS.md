@@ -1241,6 +1241,16 @@ sample saved with **Save as sample…** includes the layers.
    (the Mixer's **Vocals** row) and the singing on a layer of its own, ready to play. Neither song is
    changed. Fine-tune it as you would any draft, then **Make song file**.
 
+**Find a match.** In **⋯ → + Add a clip at the playhead…**, under **Songs**, **Sort: Best fit first**
+(beside **By name**) puts the songs that would fit best over this one at the top, going by the tempo and
+key **Detect** found. Each says how well: **Great fit**, **Good fit**, **Fits with a change** or **Big
+change**, and why, such as "4 BPM faster · C major, fits A minor" (relative keys share their notes, so
+need no change). Songs not detected yet come last.
+
+**Add just a section.** Once you've picked a song, **Which part of it** lists its sections with their
+times, such as **Chorus 0:48 – 1:12**: pick one to add just that stretch (it fades in and out a little),
+or **All of it**. **Line up on the bar** (on to start with) lands its first bar on the song's nearest bar.
+
 **Clips line up on the bar.** Wherever both songs have been detected, a clip you add or drag on a layer
 lands with its first bar on the song's nearest bar, so the two stay in step. Hold **Alt** (or **Shift**)
 while dragging to place it anywhere.

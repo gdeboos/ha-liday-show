@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.419
+
+- **Find a match.** When you add a clip in the Music editor, **Sort: Best fit first** puts the songs that would fit best over yours at the top, each with **Great fit**, **Good fit**, **Fits with a change** or **Big change** and why ("4 BPM faster · C major, fits A minor").
+- **Add just a section.** After picking a song, **Which part of it** lists its sections (**Chorus 0:48 – 1:12**…): pick one to add just that stretch, lined up on the bar.
+
 ## 0.2.418
 
 - **✨ New mashup.** In **Library → Songs**, pick a song for the singing and one for the music: it says how well they fit and what it'll change, then opens a ready-made draft in the Music editor, the music's own vocals muted and the other song's singing on a layer, matched in tempo and key and lined up on the bar.

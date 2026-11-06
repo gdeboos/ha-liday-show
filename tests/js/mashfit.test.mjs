@@ -29,7 +29,7 @@ test("says how much a song's tempo and key change to fit another", () => {
 
 test("ranks songs by how well they fit", () => {
   const info = { a: { tempo: 80, key: "F# major" }, b: { tempo: 120, key: "A minor" }, c: { tempo: 125, key: "C major" } };
-  assert.deepEqual(rankFits(["a", "b", "c"], { tempo: 121, key: "A minor" }, (s) => info[s]).map((r) => r.song), ["b", "c", "a"]);
+  assert.deepEqual(rankFits(["d", "a", "b", "c"], { tempo: 121, key: "A minor" }, (s) => info[s]).map((r) => r.song), ["b", "c", "a", "d"]); // d: not detected
 });
 
 test("a clip's first bar is lined up with the song's nearest bar", () => {
