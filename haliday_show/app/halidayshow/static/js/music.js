@@ -364,6 +364,38 @@ export function mapLyrics(lyrics, pieces, crossfade, src) {
   return out.length ? { text: out.map((l) => l.text).join("\n"), lines: out.map(({ text: _, ...l }) => l) } : null;
 }
 
+// The words of a mashup, as heard in the result: the song's own (mapLyrics) except where its vocals are
+// muted or another song's vocals with lyrics take over, and each such clip's song's words where the
+// clip plays them. muted: [[start, end]] result stretches where the song's vocals are off (or true for
+// all of it). clips: [{lyrics, at, start, end, speed}]: where a clip starts in the result, the stretch
+// of its song it plays and how fast. Returns saved lyrics ({text, lines}) or null.
+export function mashLyrics(base, pieces, crossfade, src, { muted = [], clips = [] } = {}) {
+  const r3 = (t) => Math.round(t * 1000) / 1000;
+  const spans = clips.map((c) => [c.at, c.at + (c.end - c.start) / c.speed]);
+  const off = (t) => muted === true || muted.some(([a, b]) => t >= a - EPS && t < b) || spans.some(([a, b]) => t >= a - EPS && t < b);
+  const mapped = base ? mapLyrics(base, pieces, crossfade, src) : null, texts = mapped?.text.split("\n") || [];
+  const own = (mapped?.lines || []).map((l, k) => ({ ...l, text: texts[k] })).filter((l) => !off(l.start));
+  const theirs = [];
+  for (const c of clips) {
+    const lines = savedLines(c.lyrics) || [];
+    const end = c.at + (c.end - c.start) / c.speed, to = (t) => r3(Math.min(end, c.at + (t - c.start) / c.speed));
+    const kept = (t) => t >= c.start - EPS && t < c.end;
+    for (const l of lines) {
+      if (l.times) {
+        const left = l.times.map((t, k) => ({ t, word: l.words[k] })).filter(({ t }) => kept(t.start));
+        if (!left.length) continue;
+        const words = left.map(({ t }) => ({ start: to(t.start), end: Math.max(to(t.start) + 0.05, to(t.end)) }));
+        theirs.push({ text: left.map((x) => x.word).join(" "), start: words[0].start, end: words[words.length - 1].end, words });
+      } else if (kept(l.start)) {
+        const start = to(l.start);
+        theirs.push({ text: l.text, start, end: Math.max(start + 0.05, to(l.end)) });
+      }
+    }
+  }
+  const out = [...own, ...theirs].sort((a, b) => a.start - b.start);
+  return out.length ? { text: out.map((l) => l.text).join("\n"), lines: out.map(({ text: _, ...l }) => l) } : null;
+}
+
 // Where the base song's words ([{start, end, ...}] in its own time) are heard in the edited result:
 // each copy of a word whose start is kept, cut short where its part ends.
 export function mapWords(words, pieces, crossfade, src) {
@@ -2594,7 +2626,20 @@ export class MusicEditor {
     const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
     // The song's lyrics follow the cuts into the new file, for Singing faces.
     const words = this.base ? await this.host.api(lyricsUrl(this.base)).catch(() => null) : null;
-    const lyrics = words && (this.pieces.length ? mapLyrics(words, this.pieces, this.crossfade, baseKey) : words);
+    let lyrics = words && (this.pieces.length ? mapLyrics(words, this.pieces, this.crossfade, baseKey) : words);
+    // A mashup sings the words of the vocals you hear: another song's where its vocals are layered on,
+    // and none of the song's own where its vocals are muted.
+    const vocalsLevel = partLevel(this.parts, "vocals", this.pieces, this.crossfade);
+    const muted = !vocalsLevel.base ? true : vocalsLevel.segs.filter(([, , v]) => v === 0).map(([a, b]) => [a, b]);
+    const sung = [];
+    for (const p of cut.placed) {
+      const c = cut.layers[p.layer].clips[p.clip], part = partOfPath.get(c.song.path)?.part;
+      if (part && part !== "vocals") continue; // no singing in its drums, bass or the rest
+      const from = songOfClip(c.song), theirs = from && await this.host.api(lyricsUrl(from)).catch(() => null);
+      if (theirs) sung.push({ lyrics: theirs, at: p.at, start: c.start, end: c.end, speed: p.speed });
+    }
+    const mashed = this.pieces.length > 0 && (sung.length > 0 || muted === true || muted.length > 0);
+    if (mashed) lyrics = mashLyrics(words, this.pieces, this.crossfade, baseKey, { muted, clips: sung });
     try {
       const ref = await uploadSong(this.host.api, blob, file, (done) => {
         if (done < 1) this.host.status(`Making ${file}… ${Math.round(done * 100)}%`);
@@ -2611,7 +2656,7 @@ export class MusicEditor {
       this.host.status(`Made ${ref.path}${level}. Pick it under Song in a show; the draft stays open to change`, "saved", "music-save");
       if (carry) await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
       else await this.detectMade(ref, rendered, rate, marks);
-      if (lyrics) await this.host.api(lyricsUrl(ref), { method: "PUT", json: lyrics }).catch(() => {});
+      if (lyrics || mashed) await this.host.api(lyricsUrl(ref), { method: "PUT", json: lyrics }).catch(() => {});
       await this.makeParts(ref, cut).catch((e) => this.host.status(`Made ${ref.path}, but couldn't keep its parts with it: ${e.message}`, true, "music-save"));
       this.host.songsChanged();
     } catch (e) {

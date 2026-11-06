@@ -10901,8 +10901,11 @@ async function syncLyrics(show, ref, duration) {
 // original's, through its cuts), for Drum hits and Generate, brought up to date.
 async function syncDrums(show, ref, duration) {
   const edit = await editOf(ref, duration);
-  const hits = edit?.drums ? mapHits(edit.drums, edit.pieces, edit.crossfade, edit.src)
-    : await api(songExtraUrl("drums", ref)).catch(() => undefined);
+  // A mashup's file has its own (from its drums part, layers and all); one made without parts falls
+  // back to its original's through the cuts.
+  const fileHits = () => api(songExtraUrl("drums", ref)).catch(() => undefined);
+  let hits = edit?.layered ? await fileHits() : null;
+  if (!hits) hits = edit?.drums ? mapHits(edit.drums, edit.pieces, edit.crossfade, edit.src) : edit?.layered ? hits : await fileHits();
   if (hits === undefined || app.show !== show || show.audio !== ref) return;
   const mine = show.drums, next = hits ? { song: ref.path, ...hits } : mine && mine.song !== ref.path ? mine : undefined;
   if (JSON.stringify(next) === JSON.stringify(mine)) return;
@@ -10989,7 +10992,10 @@ async function editOf(ref, duration) {
       const k = (r) => `${r.source}:${r.path}`;
       const [words, voice, drums] = await Promise.all(["lyrics", "voice", "drums"].map((w) => api(songExtraUrl(w, draft.base)).catch(() => null)));
       const pieces = draft.pieces.map((p) => ({ src: k(p.song), start: p.start, end: p.end })), crossfade = draft.crossfade || 0;
-      return { id: d.id, base: draft.base, name: draft.base.path.replace(/^.*\//, "").replace(/\.[^.]+$/, ""),
+      // A mashup (layers heard, or the song's own parts changed): its file's own lyrics and drum hits,
+      // made with it, are what's heard, not the original's.
+      const layered = (draft.layers || []).some((l) => !l.muted && l.clips?.length) || Boolean(draft.parts);
+      return { id: d.id, base: draft.base, name: draft.base.path.replace(/^.*\//, "").replace(/\.[^.]+$/, ""), layered,
         pieces, crossfade, src: k(draft.base), words, voice, drums, length: arrange(pieces, crossfade).total,
         cuts: JSON.stringify([pieces, crossfade]) };
     })();
@@ -11004,7 +11010,7 @@ async function editOf(ref, duration) {
 // else the song's own. lyrics undefined when they couldn't be asked for.
 async function songWords(ref, duration) {
   const edit = await editOf(ref, duration);
-  const mapped = edit?.words && mapLyrics(edit.words, edit.pieces, edit.crossfade, edit.src);
+  const mapped = edit?.words && !edit.layered && mapLyrics(edit.words, edit.pieces, edit.crossfade, edit.src);
   if (mapped) return { lyrics: mapped, edit };
   return { lyrics: await api(songExtraUrl("lyrics", ref)).catch(() => undefined) };
 }
@@ -11017,7 +11023,7 @@ async function openShowLyrics() {
   const show = app.show, ref = show.audio;
   // An edit's lyrics are its original's: they're changed on the original, in the Music editor.
   const edit = await editOf(ref, songBuffer.duration);
-  if (edit?.words) { await openDraft(edit.id); return; }
+  if (edit?.words && !edit.layered) { await openDraft(edit.id); return; } // a mashup's words are its file's own
   const kept = await api(songExtraUrl("lyrics", ref)).catch(() => null);
   const mine = show.lyrics && (!show.lyrics.song || show.lyrics.song === ref.path) ? show.lyrics : null;
   openLyrics({ ref, duration: songBuffer.duration, voice: show.voice || null, lyrics: kept || mine,
