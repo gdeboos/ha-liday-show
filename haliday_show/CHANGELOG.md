@@ -1,9 +1,21 @@
 # Changelog
 
-## 0.2.421
+## 0.2.424
 
 - **Edits get their parts from their original by themselves.** Once a song is split, its edits have their parts cut from it in seconds whenever **Library → Songs** is open, so you don't need to split them. An edit's **⋯** says **Get parts from the original** to do it there and then.
 - **Split all songs into parts counts only the songs that need splitting.** Edits are no longer counted as songs to split: it splits the originals first, then cuts their edits' parts from them in seconds.
+
+## 0.2.423
+
+- **Repeat a stretch.** In the Music editor's **Selection** panel, **Repeat ×2** and **Repeat ×4** play what you've selected twice or four times in a row, and what comes after moves on. Select whole bars for a seamless loop. While you're editing a layer on its own, it repeats just that layer.
+
+## 0.2.422
+
+- **Splice a song into a layer.** While you're editing a layer on its own in the Music editor, **Add another song** puts the song into that layer: **Insert into Choir at playhead** moves the rest of the layer on to make room, and **Add to end of Choir** adds it after the layer's last clip. The song and your other layers stay where they are.
+
+## 0.2.421
+
+- **Shows follow your mashups.** A song file made from a mashup now carries the words you actually hear: the layered song's lyrics where its vocals play (timed through the clip, at its tempo), and none of the song's own where you've muted its vocals. A **Singing face** on it mouths the right words, and **Drum hits** follow the drums that are really there rather than the original song's.
 
 ## 0.2.420
 

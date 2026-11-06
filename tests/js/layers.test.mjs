@@ -242,3 +242,42 @@ test("cutting a layer follows tempo-matched clips and a song that's been cut", a
   assert.deepEqual(moved.clips[0].anchor, { song: A, t: 43 });
   assert.deepEqual(placeClips([moved], pieces, 0).map((q) => q.at), [23]);
 });
+
+test("splicing a song into a layer moves the rest of that layer on, and nothing else", async () => {
+  const { insertIntoLayer } = await import("../../haliday_show/app/halidayshow/static/js/layers.js");
+  const refs = { "media:a.mp3": A };
+  const clip = (t, s0, s1) => ({ song: B, start: s0, end: s1, anchor: { song: A, t }, gain: 0, fadeIn: 0, fadeOut: 0 });
+  const layers = [{ name: "L", gain: 0, clips: [clip(0, 0, 10), clip(20, 0, 10), clip(52, 0, 6)] }, { name: "M", gain: 0, clips: [clip(30, 0, 1)] }];
+  const add = { song: { source: "media", path: "c.mp3" }, start: 0, end: 4, gain: 0, fadeIn: 0, fadeOut: 0 };
+  // 4 s spliced in at 5: the first clip's split there, everything after moves 4 s on; the last would
+  // now run from 56, so it's kept, and the clip at 52 + 4 = 56 still fits a 60 s song.
+  const { layers: out, dropped } = insertIntoLayer(layers, 0, 5, add, { pieces: song, crossfade: 0, refs });
+  const at = placeClips(out, song, 0).filter((p) => p.layer === 0)
+    .map((p) => [p.at, out[0].clips[p.clip].song.path, out[0].clips[p.clip].start, out[0].clips[p.clip].end]).sort((x, y) => x[0] - y[0]);
+  assert.deepEqual(at, [[0, "b.mp3", 0, 5], [5, "c.mp3", 0, 4], [9, "b.mp3", 5, 10], [24, "b.mp3", 0, 10], [56, "b.mp3", 0, 6]]);
+  assert.equal(dropped, 0);
+  assert.equal(out[1], layers[1]);
+  // 8 s more and the last clip would start past the song's end: it's left out.
+  assert.equal(insertIntoLayer(layers, 0, 5, { ...add, end: 9 }, { pieces: song, crossfade: 0, refs }).dropped, 1);
+});
+
+test("loopLayer repeats a stretch of one layer and moves the rest on", async () => {
+  const { loopLayer } = await import("../../haliday_show/app/halidayshow/static/js/layers.js");
+  const refs = { "media:a.mp3": A };
+  const clip = (t, s0, s1) => ({ song: B, start: s0, end: s1, anchor: { song: A, t }, gain: 0, fadeIn: 0, fadeOut: 0 });
+  const layers = [{ name: "L", gain: 0, clips: [clip(0, 0, 10), clip(20, 0, 10)] }, { name: "M", gain: 0, clips: [clip(30, 0, 1)] }];
+  // 4 to 12 twice: the first clip's 4 to 10 plays again from 12, the second clip moves 8 s on.
+  const { layers: out, dropped } = loopLayer(layers, 0, 4, 12, 2, { pieces: song, crossfade: 0, refs });
+  const at = placeClips(out, song, 0).filter((p) => p.layer === 0)
+    .map((p) => [p.at, out[0].clips[p.clip].start, out[0].clips[p.clip].end]).sort((x, y) => x[0] - y[0]);
+  assert.deepEqual(at, [[0, 0, 10], [12, 4, 10], [28, 0, 10]]);
+  assert.equal(dropped, 0);
+  assert.equal(out[1], layers[1]);
+  // A clip across the end is split there; four times over, the copies past the song's end are left out.
+  const r = loopLayer(layers, 0, 18, 25, 4, { pieces: song, crossfade: 0, refs });
+  const at2 = placeClips(r.layers, song, 0).filter((p) => p.layer === 0)
+    .map((p) => [p.at, r.layers[0].clips[p.clip].start, r.layers[0].clips[p.clip].end]).sort((x, y) => x[0] - y[0]);
+  assert.deepEqual(at2, [[0, 0, 10], [20, 0, 5], [27, 0, 5], [34, 0, 5], [41, 0, 5], [46, 5, 10]]);
+  assert.equal(r.dropped, 0);
+  assert.equal(loopLayer(layers, 0, 18, 25, 8, { pieces: song, crossfade: 0, refs }).dropped > 0, true);
+});

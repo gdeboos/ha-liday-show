@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, keyFrom, keyShift, toMono } from "
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, keepLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, sourceKey } from "./layers.js";
+import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, insertIntoLayer, keepLayer, loopLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
 import { lineUpOnBar, mashFit } from "./mashfit.js";
@@ -361,6 +361,38 @@ export function mapLyrics(lyrics, pieces, crossfade, src) {
     }
   });
   out.sort((a, b) => a.start - b.start);
+  return out.length ? { text: out.map((l) => l.text).join("\n"), lines: out.map(({ text: _, ...l }) => l) } : null;
+}
+
+// The words of a mashup, as heard in the result: the song's own (mapLyrics) except where its vocals are
+// muted or another song's vocals with lyrics take over, and each such clip's song's words where the
+// clip plays them. muted: [[start, end]] result stretches where the song's vocals are off (or true for
+// all of it). clips: [{lyrics, at, start, end, speed}]: where a clip starts in the result, the stretch
+// of its song it plays and how fast. Returns saved lyrics ({text, lines}) or null.
+export function mashLyrics(base, pieces, crossfade, src, { muted = [], clips = [] } = {}) {
+  const r3 = (t) => Math.round(t * 1000) / 1000;
+  const spans = clips.map((c) => [c.at, c.at + (c.end - c.start) / c.speed]);
+  const off = (t) => muted === true || muted.some(([a, b]) => t >= a - EPS && t < b) || spans.some(([a, b]) => t >= a - EPS && t < b);
+  const mapped = base ? mapLyrics(base, pieces, crossfade, src) : null, texts = mapped?.text.split("\n") || [];
+  const own = (mapped?.lines || []).map((l, k) => ({ ...l, text: texts[k] })).filter((l) => !off(l.start));
+  const theirs = [];
+  for (const c of clips) {
+    const lines = savedLines(c.lyrics) || [];
+    const end = c.at + (c.end - c.start) / c.speed, to = (t) => r3(Math.min(end, c.at + (t - c.start) / c.speed));
+    const kept = (t) => t >= c.start - EPS && t < c.end;
+    for (const l of lines) {
+      if (l.times) {
+        const left = l.times.map((t, k) => ({ t, word: l.words[k] })).filter(({ t }) => kept(t.start));
+        if (!left.length) continue;
+        const words = left.map(({ t }) => ({ start: to(t.start), end: Math.max(to(t.start) + 0.05, to(t.end)) }));
+        theirs.push({ text: left.map((x) => x.word).join(" "), start: words[0].start, end: words[words.length - 1].end, words });
+      } else if (kept(l.start)) {
+        const start = to(l.start);
+        theirs.push({ text: l.text, start, end: Math.max(start + 0.05, to(l.end)) });
+      }
+    }
+  }
+  const out = [...own, ...theirs].sort((a, b) => a.start - b.start);
   return out.length ? { text: out.map((l) => l.text).join("\n"), lines: out.map(({ text: _, ...l }) => l) } : null;
 }
 
@@ -1713,6 +1745,29 @@ export class MusicEditor {
 
   layerCtx() { return { pieces: this.pieces, crossfade: this.crossfade, refs: this.refs, tempo: this.songTempo }; }
 
+  // Another song into the focused layer: at the playhead (the rest of the layer moves on), or after its
+  // last clip. The song and the other layers don't move.
+  async spliceIntoLayer(ref, atEnd) {
+    const i = this.focus, L = this.layers[i];
+    if (L.clips.length >= MAX_CLIPS) return this.host.status(`A layer can have up to ${MAX_CLIPS} clips`, "hint");
+    let key;
+    try { key = await this.source(ref); } catch (e) { return this.host.status(songLoadMessage(e), true); }
+    const rate = this.audio.sampleRate, whole = this.sources[key][0].length / rate;
+    const bpm = L.matchTempo ? await this.tempoOf(ref) : null;
+    const ends = this.placed().filter((p) => p.layer === i).map((p) => p.at + p.length);
+    const t = atEnd ? (ends.length ? Math.max(...ends) : 0) : this.time;
+    if (t >= this.total - 0.5) return this.host.status(`There's no song left after ${fmtTime(t)} to add it to`, "hint");
+    const speed = clipSpeed(L, { bpm }, this.songTempo), end = Math.round(Math.min(whole, (this.total - t) * speed) * 1000) / 1000;
+    this.songLufs ??= loudness(this.main, rate);
+    let clip = { song: ref, start: 0, end, gain: matchGain(this.songLufs, loudness(this.sources[key], rate)), fadeIn: 0.02, fadeOut: 0.02, ...(bpm ? { bpm } : {}) };
+    if (L.matchKey) { this.findSongKey(); const k = this.keyOfSong(ref, clip); if (k) clip = { ...clip, key: k }; }
+    const { layers, dropped } = insertIntoLayer(this.layers, i, t, clip, this.layerCtx());
+    this.sel = { start: t, end: Math.min(this.total, t + end / speed) }; // selected, to trim
+    this.editLayers(layers, null);
+    this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} to ${L.name} at ${fmtTime(t)}${atEnd ? "" : ", moving the rest of it on"}`
+      + (dropped ? `. ${dropped} clip${dropped === 1 ? " was" : "s were"} pushed past the song's end and left out (Ctrl+Z brings ${dropped === 1 ? "it" : "them"} back)` : ""), dropped ? "hint" : "saved");
+  }
+
   // New mashup (app.js): the open song becomes the music, with its own vocals muted, and another song's
   // vocals go on a layer of their own, matched to its tempo and key, starting at `at` (the song's
   // seconds) from `from` in theirs, their first bar on its nearest bar. vocals: the singing song's
@@ -1872,10 +1927,37 @@ export class MusicEditor {
     this.edit(keep(this.pieces, this.crossfade, start, end), true);
   }
 
+  // The selection played `times` times in a row: on the song (it gets longer, and what's after moves on),
+  // or with a layer being edited, on that layer only.
+  loopSelection(times) {
+    if (!this.sel) return this.host.status("Drag across the waveform to select the part to repeat", "hint");
+    const { start, end } = this.sel;
+    if (end - start < 0.25) return this.host.status("Select a longer stretch to repeat", "hint");
+    if (this.focus != null) {
+      const name = this.layers[this.focus].name;
+      const { layers, dropped, repeated } = loopLayer(this.layers, this.focus, start, end, times, this.layerCtx());
+      if (!repeated) return this.host.status(`Nothing of ${name} plays there to repeat`, "hint");
+      if (layers[this.focus].clips.length > MAX_CLIPS) return this.host.status(`That would put more than ${MAX_CLIPS} clips on ${name}`, true);
+      this.sel = { start, end: Math.min(this.total, end + (end - start) * (times - 1)) };
+      this.editLayers(layers, null);
+      return this.host.status(`${fmtTime(start)} to ${fmtTime(end)} of ${name} now plays ${times === 2 ? "twice" : `${times} times`}`
+        + (dropped ? `; ${dropped} bit${dropped === 1 ? "" : "s"} past the end of the song left out` : "") + ". Ctrl+Z undoes it", dropped ? "hint" : "saved");
+    }
+    const xf = this.crossfade, part = slice(this.pieces, xf, start, end);
+    if (!part.length) return;
+    const pieces = insert(this.pieces, xf, end, Array.from({ length: times - 1 }, () => part).flat());
+    this.time = start;
+    this.edit(pieces);
+    this.sel = { start, end: Math.min(this.total, start + (end - start) * times - xf * (times - 1)) };
+    this.changed();
+    this.host.status(`${fmtTime(start)} to ${fmtTime(end)} now plays ${times === 2 ? "twice" : `${times} times`}. Ctrl+Z undoes it`, "saved");
+  }
+
   async addSong(atEnd) {
     // Nothing chosen yet: choose now, then add it.
     const ref = this.insertRef || await this.pickInsertSong();
     if (!ref) return;
+    if (this.focus != null) return this.spliceIntoLayer(ref, atEnd);
     try {
       const key = await this.source(ref);
       const piece = { src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate };
@@ -2456,7 +2538,7 @@ export class MusicEditor {
     const has = this.pieces.length > 0, sel = this.sel;
     for (const id of ["music-play", "music-home", "music-back", "music-fwd", "music-insert", "music-append", "music-save", "music-zoom-in", "music-zoom-out", "music-fit",
       "music-xf", "music-fadein", "music-fadeout", "music-name"]) $(id).disabled = !has;
-    for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview", "music-sample", "music-sel-clear"]) $(id).disabled = !sel;
+    for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview", "music-sample", "music-loop2", "music-loop4", "music-sel-clear"]) $(id).disabled = !sel;
     $("music-undo").disabled = !this.history.length;
     $("music-detect").disabled = !this.base || this.dirty;
     $("music-describe").disabled = !this.base || this.dirty || !this.info?.sections?.length;
@@ -2489,6 +2571,12 @@ export class MusicEditor {
     $("music-sel-len").textContent = sel ? `${(sel.end - sel.start).toFixed(2)} s selected` : "";
     this.renderRange();
     this.renderParts();
+    // Add another song: into the song, or into the layer being edited.
+    const into = this.focus != null ? this.layers[this.focus]?.name : null;
+    $("music-insert").textContent = into ? `Insert into ${into} at playhead` : "Insert at playhead";
+    $("music-append").textContent = into ? `Add to end of ${into}` : "Add to end";
+    $("music-insert").title = into ? `Put the song into ${into} at the playhead; the rest of ${into} moves on. The song and other layers don't move`
+      : "Insert the whole song at the playhead; it's selected afterwards so you can trim it";
     const canParts = this.partsAvailable && this.focus == null;
     $("music-view").hidden = !canParts;
     for (const b of $("music-view").querySelectorAll("button")) {
@@ -2594,7 +2682,20 @@ export class MusicEditor {
     const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
     // The song's lyrics follow the cuts into the new file, for Singing faces.
     const words = this.base ? await this.host.api(lyricsUrl(this.base)).catch(() => null) : null;
-    const lyrics = words && (this.pieces.length ? mapLyrics(words, this.pieces, this.crossfade, baseKey) : words);
+    let lyrics = words && (this.pieces.length ? mapLyrics(words, this.pieces, this.crossfade, baseKey) : words);
+    // A mashup sings the words of the vocals you hear: another song's where its vocals are layered on,
+    // and none of the song's own where its vocals are muted.
+    const vocalsLevel = partLevel(this.parts, "vocals", this.pieces, this.crossfade);
+    const muted = !vocalsLevel.base ? true : vocalsLevel.segs.filter(([, , v]) => v === 0).map(([a, b]) => [a, b]);
+    const sung = [];
+    for (const p of cut.placed) {
+      const c = cut.layers[p.layer].clips[p.clip], part = partOfPath.get(c.song.path)?.part;
+      if (part && part !== "vocals") continue; // no singing in its drums, bass or the rest
+      const from = songOfClip(c.song), theirs = from && await this.host.api(lyricsUrl(from)).catch(() => null);
+      if (theirs) sung.push({ lyrics: theirs, at: p.at, start: c.start, end: c.end, speed: p.speed });
+    }
+    const mashed = this.pieces.length > 0 && (sung.length > 0 || muted === true || muted.length > 0);
+    if (mashed) lyrics = mashLyrics(words, this.pieces, this.crossfade, baseKey, { muted, clips: sung });
     try {
       const ref = await uploadSong(this.host.api, blob, file, (done) => {
         if (done < 1) this.host.status(`Making ${file}… ${Math.round(done * 100)}%`);
@@ -2611,7 +2712,7 @@ export class MusicEditor {
       this.host.status(`Made ${ref.path}${level}. Pick it under Song in a show; the draft stays open to change`, "saved", "music-save");
       if (carry) await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
       else await this.detectMade(ref, rendered, rate, marks);
-      if (lyrics) await this.host.api(lyricsUrl(ref), { method: "PUT", json: lyrics }).catch(() => {});
+      if (lyrics || mashed) await this.host.api(lyricsUrl(ref), { method: "PUT", json: lyrics }).catch(() => {});
       await this.makeParts(ref, cut).catch((e) => this.host.status(`Made ${ref.path}, but couldn't keep its parts with it: ${e.message}`, true, "music-save"));
       this.host.songsChanged();
     } catch (e) {
@@ -3782,6 +3883,8 @@ export class MusicEditor {
     $("music-cut").addEventListener("click", () => this.cutSelection());
     $("music-keep").addEventListener("click", () => this.keepSelection());
     $("music-sample").addEventListener("click", () => this.saveSample());
+    $("music-loop2").addEventListener("click", () => this.loopSelection(2));
+    $("music-loop4").addEventListener("click", () => this.loopSelection(4));
     $("music-split").addEventListener("click", () => {
       if (!this.base) return this.host.status("Open a song first", "hint");
       splitVocals(this.base, { ...this.host, askYes, later: this.host.partsLater }).then(() => { this.loadLyrics(); this.renderParts(); }); // its drum hits and parts, now found
