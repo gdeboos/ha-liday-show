@@ -17,7 +17,6 @@ import { drumHits } from "./drumhits.js";
 import { askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
-import { flatTree, fromSongFolders, itemsIn, keyOfRef, pathTo } from "./folders.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { lineWords, moveWord, savedLines, savedLyrics, songLyrics } from "./lyrics.js";
@@ -578,7 +577,7 @@ export class MusicEditor {
   }
 
   async pickInsertSong() {
-    const ref = await this.host.pickSong?.({ title: "Choose a song to splice in", yes: "Choose" });
+    const ref = await this.host.pickSong?.({ title: "Choose a song to splice in", yes: "Choose", parts: true });
     if (!ref) return null;
     this.insertRef = ref;
     this.showInsertSong();
@@ -1280,26 +1279,14 @@ export class MusicEditor {
         keySel.value = l.matchKey ? "match" : l.semitones ? String(l.semitones) : "";
         keySel.addEventListener("change", () => this.setKey(i, keySel.value));
         const keyLabel = el("label", {}, "Key ", keySel);
-        const add = el("select", { title: "Put a sample or song on this layer at the playhead" });
-        add.setAttribute("aria-label", `Add to ${l.name}`);
-        add.append(new Option("+ Add a clip at the playhead…", ""));
-        const group = (label, refs) => {
-          if (!refs.length) return;
-          const g = el("optgroup", { label });
-          for (const r of refs) g.append(new Option(nameOf(r).replace(/\.[^.]+$/, ""), JSON.stringify({ source: r.source, path: r.path })));
-          add.append(g);
-        };
-        // Samples by their folders (Library → Samples), then those in none.
-        const folders = fromSongFolders(this.sampleFolders || []), keyed = new Map(samples.map((r) => [keyOfRef(r), r]));
-        const inPlace = (at) => itemsIn([...keyed.keys()], folders, at).map((k) => keyed.get(k));
-        group("Samples", inPlace(""));
-        for (const { folder } of flatTree(folders)) {
-          group(`Samples › ${pathTo(folders, folder.id).map((f) => f.name).join(" › ")}`, inPlace(folder.id));
-        }
-        group("Songs", songs);
-        // A song's parts, for its vocals over another song, say, or a song without its drums.
-        group("Song parts", songs.filter((r) => r.source === "media").flatMap((r) => Object.values(r.parts || {}).map((path) => ({ source: "media", path }))));
-        add.addEventListener("change", () => { const v = add.value; add.value = ""; if (v) this.addClip(i, JSON.parse(v)); });
+        // A window with your samples and songs in their folders, and a song's parts (its vocals over
+        // another song, say, or a song without its drums).
+        const add = el("button", { type: "button", textContent: "+ Add a clip…", title: "Put a sample, a song or part of a song on this layer at the playhead" });
+        add.setAttribute("aria-label", `Add a clip to ${l.name} at the playhead`);
+        add.addEventListener("click", async () => {
+          const ref = await this.host.pickSong?.({ title: `Add to ${l.name} at the playhead`, yes: "Add", kinds: ["samples", "songs"], parts: true });
+          if (ref) this.addClip(i, { source: ref.source, path: ref.path });
+        });
         const remove = el("button", { type: "button", className: "ghost", textContent: "Remove" });
         remove.title = "Remove this layer and its clips";
         remove.addEventListener("click", () => this.removeLayer(i));

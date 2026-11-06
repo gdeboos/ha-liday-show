@@ -12008,23 +12008,48 @@ async function nsLoadFolders() {
   Object.assign(newShow, await songFolderInfo());
 }
 
-// A window for picking one song by going into Library → Songs' folders, or finding it by name. Edits
-// of a song sit with it, as in the Library. Resolves to the song's ref, or null if you close it.
-async function pickSong({ title = "Choose a song", yes = "Choose", refs } = {}) {
-  const { folders, homeOf } = await songFolderInfo();
-  refs ||= app.songs || [];
-  const family = new Map(); // the folder key a song sits under (its original's) → its songs
-  for (const r of refs) {
-    const k = homeOf.get(songKey(r)) || songKey(r);
-    if (!family.has(k)) family.set(k, []);
-    family.get(k).push(r);
+// A window for picking one song (or sample) by going into Library → Songs' (or Samples') folders, or
+// finding it by name. Edits of a song sit with it, as in the Library. With parts, a song that's been
+// split offers its parts too (Vocals, Drums…), so you take the whole song or just a part of it.
+// Resolves to the ref picked (a part's own ref when a part is picked), or null if you close it.
+async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds = ["songs"], parts = false } = {}) {
+  const shelves = {};
+  if (kinds.includes("samples")) {
+    let samples = [];
+    try {
+      const [list, saved] = await Promise.all([api("api/samples"), api("api/sample-folders").catch(() => null)]);
+      foldersRead("samples", saved);
+      samples = list.map((x) => ({ source: x.source, path: x.path }));
+    } catch { /* none to offer */ }
+    const family = new Map(samples.map((r) => [songKey(r), [r]]));
+    shelves.samples = { label: "Samples", one: "sample", folders: foldersOf("samples"), family, at: folderAt("samples") };
   }
-  const nameOf = (k) => family.get(k).map((r) => `${songLabel(r)} ${r.path}`).join(" ");
-  const st = { at: folderAt("songs"), picked: null };
+  if (kinds.includes("songs")) {
+    const { folders, homeOf } = await songFolderInfo();
+    const family = new Map(); // the folder key a song sits under (its original's) → its songs
+    for (const r of refs || app.songs || []) {
+      const k = homeOf.get(songKey(r)) || songKey(r);
+      if (!family.has(k)) family.set(k, []);
+      family.get(k).push(r);
+    }
+    shelves.songs = { label: "Songs", one: "song", folders, family, at: folderAt("songs") };
+  }
+  const tabs = Object.keys(shelves);
+  const st = { tab: tabs.includes("songs") && !shelves.samples?.family.size ? "songs" : tabs[0], picked: null, part: "" };
+  const label = (r) => songLabel(r);
   const { dlg, body, foot } = editWindow(title);
   dlg.classList.add("pick-dialog");
+  const tabBox = Object.assign(document.createElement("span"), { className: "seg-buttons pick-tabs" });
+  tabBox.setAttribute("role", "group");
+  tabBox.setAttribute("aria-label", "Look in");
+  for (const t of tabs) {
+    const b = button(shelves[t].label, () => { st.tab = t; find.value = ""; draw(); });
+    b.dataset.tab = t;
+    tabBox.append(b);
+  }
+  tabBox.hidden = tabs.length < 2;
   const find = Object.assign(document.createElement("input"), { type: "search", placeholder: "Find in any folder", autocomplete: "off" });
-  find.setAttribute("aria-label", "Find a song");
+  find.setAttribute("aria-label", "Find by name");
   find.addEventListener("input", () => draw());
   const findBox = Object.assign(document.createElement("div"), { className: "ns-find" });
   findBox.append(find);
@@ -12033,47 +12058,84 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs } = {}) 
   const subs = Object.assign(document.createElement("div"), { className: "song-list ns-folders" });
   const list = Object.assign(document.createElement("div"), { className: "song-list" });
   list.setAttribute("role", "radiogroup");
-  list.setAttribute("aria-label", "Songs");
-  body.append(findBox, nav, subs, list);
+  // The picked song's parts: all of it, or one part.
+  const partBox = Object.assign(document.createElement("fieldset"), { className: "pick-parts" });
+  partBox.hidden = true;
+  body.append(tabBox, findBox, nav, subs, list);
   const note = Object.assign(document.createElement("span"), { className: "hint" });
   note.setAttribute("aria-live", "polite");
   let done = null;
-  const choose = button(yes, () => { done = st.picked; dlg.close(); }, "primary");
+  const result = () => (st.part && st.picked?.parts?.[st.part] ? { source: st.picked.source, path: st.picked.parts[st.part] } : st.picked);
+  const choose = button(yes, () => { done = result(); dlg.close(); }, "primary");
   foot.append(note, Object.assign(document.createElement("span"), { className: "spacer" }), button("Cancel", () => dlg.close()), choose);
-  const go = (id) => { st.at = id; find.value = ""; draw(); subs.querySelector("button")?.focus() || list.querySelector("input")?.focus(); };
+  foot.before(partBox);
+  const go = (id) => { shelves[st.tab].at = id; find.value = ""; draw(); subs.querySelector("button")?.focus() || list.querySelector("input")?.focus(); };
+  function drawParts() {
+    const have = parts && st.picked ? PART_ORDER.filter((p) => st.picked.parts?.[p]) : [];
+    partBox.hidden = !have.length;
+    if (!have.length) { st.part = ""; return; }
+    if (!have.includes(st.part)) st.part = "";
+    const legend = Object.assign(document.createElement("legend"), { textContent: `Use from ${label(st.picked)}` });
+    const opt = (value, text) => {
+      const l = Object.assign(document.createElement("label"), { className: "pick-part" });
+      const r = Object.assign(document.createElement("input"), { type: "radio", name: "pick-part", value, checked: st.part === value });
+      r.addEventListener("change", () => { st.part = value; drawNote(); });
+      l.append(r, ` ${text}`);
+      return l;
+    };
+    partBox.replaceChildren(legend, opt("", "The whole song"), ...have.map((p) => opt(p, PART_WORDS[p])));
+  }
+  function drawNote() {
+    note.textContent = st.picked ? `Picked: ${label(st.picked)}${st.part ? ` (${PART_WORDS[st.part].toLowerCase()})` : ""}`
+      : `Pick a ${shelves[st.tab].one}`;
+    choose.disabled = !st.picked;
+  }
   function draw() {
-    const view = browse({ folders, keys: [...family.keys()], at: st.at, find: find.value, nameOf });
-    st.at = view.at;
-    pathNav(nav, view.trail, "Songs", go);
-    subs.replaceChildren(...view.subs.map((sub) => folderButton(sub, "song", go)));
+    const shelf = shelves[st.tab];
+    for (const b of tabBox.querySelectorAll("button")) {
+      b.setAttribute("aria-pressed", String(b.dataset.tab === st.tab));
+      b.classList.toggle("active", b.dataset.tab === st.tab);
+    }
+    list.setAttribute("aria-label", shelf.label);
+    const nameOf = (k) => shelf.family.get(k).map((r) => `${label(r)} ${r.path}`).join(" ");
+    const view = browse({ folders: shelf.folders, keys: [...shelf.family.keys()], at: shelf.at, find: find.value, nameOf });
+    shelf.at = view.at;
+    pathNav(nav, view.trail, shelf.label, go);
+    subs.replaceChildren(...view.subs.map((sub) => folderButton(sub, shelf.one, go)));
     subs.hidden = !view.subs.length;
     const words = find.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const rows = view.items.flatMap(({ key, where }) => family.get(key)
-      .filter((r) => !words.length || words.every((w) => `${songLabel(r)} ${r.path}`.toLowerCase().includes(w)))
+    const rows = view.items.flatMap(({ key, where }) => shelf.family.get(key)
+      .filter((r) => !words.length || words.every((w) => `${label(r)} ${r.path}`.toLowerCase().includes(w)))
       .map((r) => ({ r, where })))
-      .sort((a, b) => songLabel(a.r).localeCompare(songLabel(b.r), undefined, { numeric: true }))
+      .sort((a, b) => label(a.r).localeCompare(label(b.r), undefined, { numeric: true }))
       .map(({ r, where }) => {
         const key = songKey(r), on = st.picked && songKey(st.picked) === key;
         const row = Object.assign(document.createElement("label"), { className: `song-row${on ? " picked" : ""}` });
         const radio = Object.assign(document.createElement("input"), { type: "radio", name: "pick-song", checked: on });
-        radio.addEventListener("change", () => { st.picked = r; draw(); list.querySelector("input:checked")?.focus(); });
-        row.addEventListener("dblclick", () => { st.picked = r; done = r; dlg.close(); });
+        radio.addEventListener("change", () => { st.picked = r; st.part = ""; draw(); list.querySelector("input:checked")?.focus(); });
+        // A double-click takes it whole.
+        row.addEventListener("dblclick", () => { st.picked = r; st.part = ""; done = r; dlg.close(); });
         const text = document.createElement("span");
-        text.append(Object.assign(document.createElement("b"), { textContent: songLabel(r) }),
-          Object.assign(document.createElement("span"), { className: "hint", textContent: where ? `in ${where}` : r.path.split("/").pop() }));
+        const has = parts ? partsText(r.parts) : "";
+        text.append(Object.assign(document.createElement("b"), { textContent: label(r) }),
+          Object.assign(document.createElement("span"), { className: "hint",
+            textContent: [where ? `in ${where}` : r.path.split("/").pop(), has && `parts: ${has}`].filter(Boolean).join(" · ") }));
         row.append(radio, text);
         return row;
       });
     list.replaceChildren(...(rows.length ? rows : [Object.assign(document.createElement("p"), { className: "hint",
-      textContent: words.length ? "No songs match that." : view.subs.length ? "" : "No songs in this folder." })]));
-    note.textContent = st.picked ? `Picked: ${songLabel(st.picked)}` : "Pick a song";
-    choose.disabled = !st.picked;
+      textContent: words.length ? "Nothing matches that." : view.subs.length ? "" : `No ${shelf.one}s in this folder.` })]));
+    drawParts();
+    drawNote();
   }
   draw();
   dlg.showModal();
   find.focus();
   return new Promise((resolve) => dlg.addEventListener("close", () => resolve(done)));
 }
+
+const PART_ORDER = ["vocals", "drums", "bass", "rest", "music"];
+const PART_WORDS = { vocals: "Just the vocals", drums: "Just the drums", bass: "Just the bass", rest: "The rest (no vocals, drums or bass)", music: "The music (no vocals)" };
 
 function nsSongs() {
   const folders = newShow.folders, find = $("ns-find").value.trim().toLowerCase();
