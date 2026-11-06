@@ -193,6 +193,37 @@ export function cutLayer(layers, li, start, end, { closeUp = false, pieces, cros
   return layers.map((l, k) => (k === li ? { ...l, clips: out.filter(Boolean) } : l));
 }
 
+// Another song spliced into one layer at result time t: `clip` (its song, start and end, gain, fades,
+// bpm…, no anchor) goes in there, and what of the layer comes after t moves later by its length (a clip
+// running across t is split there). What would move past the song's end is left out. Returns
+// {layers, dropped (how many clips were left out)}.
+export function insertIntoLayer(layers, li, t, clip, { pieces, crossfade = 0, refs, tempo = null }) {
+  const L = layers[li], total = arrange(pieces, crossfade).total;
+  const pin = (x) => anchorAt(pieces, crossfade, Math.max(0, x), refs);
+  const len = (clip.end - clip.start) / clipSpeed(L, clip, tempo), out = [];
+  let dropped = 0;
+  const later = (c, at) => {
+    if (at + len >= total - 0.05) { dropped++; return; }
+    const anchor = pin(at + len);
+    if (anchor) out.push({ ...c, anchor }); else dropped++;
+  };
+  for (const c of L.clips) {
+    const at = resultTime(pieces, crossfade, c.anchor);
+    if (at === null) { out.push(c); continue; }
+    const speed = clipSpeed(L, c, tempo), e = at + (c.end - c.start) / speed;
+    if (e <= t + EPS) out.push(c);
+    else if (at >= t - EPS) later(c, at);
+    else { // across t: its first part stays, the rest moves on
+      out.push(clipPart_(c, at, speed, at, t, c.anchor, { fadeOut: 0.02 }));
+      const rest = clipPart_(c, at, speed, t, e, pin(t), { fadeIn: 0.02 });
+      if (rest) later(rest, t);
+    }
+  }
+  const anchor = pin(t);
+  if (anchor) out.push({ ...clip, anchor });
+  return { layers: layers.map((l, k) => (k === li ? { ...l, clips: out.filter(Boolean) } : l)), dropped };
+}
+
 // Only a stretch of one layer kept (its clips trimmed to it); nothing moves.
 export function keepLayer(layers, li, start, end, { pieces, crossfade = 0, refs, tempo = null }) {
   const L = layers[li], out = [];
