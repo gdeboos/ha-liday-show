@@ -2,6 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
+import { fromStarts, parseLyrics, placeLines, savedLines, savedLyrics } from "./lyrics.js";
 import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, voiceFits, voiceShapes } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
@@ -14,7 +15,7 @@ import {
   renderTrack, showDuration, phoneColourAt, phoneScreen, laneUsesHouse, newClip, setVoiceLevels, withVoiceLevels,
 } from "./effects.js";
 import { bakeOff } from "./bakeoff.js";
-import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin } from "./phones.js";
+import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin, singerOf } from "./phones.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
 import { splitVocals, stemNames } from "./splitvocals.js";
@@ -358,7 +359,7 @@ function restore(step) {
   app.historyIndex = i;
   app.show = keepLevels(app.show, JSON.parse(app.history[i]));
   setMusicLevels(app.show.audio ? app.show.loudness : null);
-  setVoiceLevels(app.show.audio ? app.show.voice : null);
+  setVoiceLevels(app.show.audio ? singerOf(app.show) : null);
   app.dirty = true;
   app.edits++;
   app.selected = null;
@@ -7532,7 +7533,7 @@ function showColours(show) {
       if (!frames.has(light.id)) {
         // Music level follows this show's song (or a made-up level if it hasn't been measured yet).
         frames.set(light.id, withMusicLevels(show.audio ? show.loudness || MADE_UP : null,
-          () => withVoiceLevels(show.audio ? show.voice : null,
+          () => withVoiceLevels(show.audio ? singerOf(show) : null,
             () => asShown(light, t, (at) => dim(composeLight(light, trackOf, at, pos, houseFx, undefined, plans), showLevel(show, light.id))))));
       }
       return frames.get(light.id);
@@ -7853,7 +7854,7 @@ async function previewShow(r) {
     phoneAt = at;
     const frames = () => { const c = coloursAt(at); return physical.map((id) => c(app.lights[id])); };
     const n = PHONE_GRID.w * PHONE_GRID.h;
-    const frame = withMusicLevels(show.audio ? show.loudness || MADE_UP : null, () => withVoiceLevels(show.audio ? show.voice : null, () => {
+    const frame = withMusicLevels(show.audio ? show.loudness || MADE_UP : null, () => withVoiceLevels(show.audio ? singerOf(show) : null, () => {
       if (!lane) {
         const [r, g, b] = phoneColourAt(show, at, frames()), out = new Uint8Array(n * 3);
         for (let i = 0; i < n; i++) out.set([r, g, b], i * 3);
@@ -10279,7 +10280,7 @@ async function ensureVoice() {
     const curve = levelCurve(samples, rate, ref.path, VOICE_FPS);
     show.voice = { ...curve, shapes: voiceShapes(samples, rate, VOICE_FPS, curve.values), from,
       seconds: Math.round(song.duration * 100) / 100 };
-    setVoiceLevels(show.voice);
+    setVoiceLevels(singerOf(show));
     app.changed();
   })().finally(() => { measuringVoice = null; });
   return measuringVoice;
@@ -10307,8 +10308,128 @@ function singerNote() {
     renderInspector();
   }, "ghost small");
   again.hidden = !ref;
-  box.append(note, again);
+  const placed = app.show.lyrics?.shapes && (!app.show.lyrics.song || app.show.lyrics.song === ref?.path);
+  const lyrics = button(placed ? "Lyrics… (placed)" : "Lyrics…", openLyrics, "ghost small");
+  lyrics.title = "Paste the song's words for the mouth to sing them, placed for you, then tweaked if you like";
+  lyrics.hidden = !ref;
+  box.append(note, again, lyrics);
   return box;
+}
+
+// Lyrics… (lyrics.js): the song's words, placed across the singing for the Singing face to mouth, then
+// tweaked line by line: each line's start typed in, or tapped in time with the song.
+async function openLyrics() {
+  if (!songBuffer) { status("Wait for the song to load first", "hint"); return; }
+  await ensureVoice().catch(() => {});
+  const voice = app.show.voice || null, duration = songBuffer.duration;
+  const w = editWindow("Lyrics");
+  w.dlg.classList.add("lyrics-dialog");
+  const intro = Object.assign(document.createElement("p"), { className: "hint",
+    textContent: "Paste the words, one line of the song per line. They're placed across the singing for you; "
+      + "if a line comes in early or late, type its start or tap along with the song." });
+  const text = Object.assign(document.createElement("textarea"), { rows: 7, className: "lyrics-text",
+    value: app.show.lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
+  text.setAttribute("aria-label", "The song's words");
+  // Lyrics placed for another song (the show's song has changed since) are placed afresh.
+  const sameSong = !app.show.lyrics?.song || app.show.lyrics.song === app.show.audio.path;
+  let lines = (sameSong && savedLines(app.show.lyrics)) || [];
+  const list = Object.assign(document.createElement("div"), { className: "lyrics-lines" });
+  const hint = Object.assign(document.createElement("p"), { className: "hint" });
+  const audio = new Audio(audioUrl(app.show.audio));
+  audio.volume = volume.gain ?? 1;
+  let stopAt = null, tapping = -1;
+  audio.addEventListener("timeupdate", () => { if (stopAt != null && audio.currentTime >= stopAt) { audio.pause(); stopAt = null; } });
+  const time = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
+  const place = () => { lines = placeLines(parseLyrics(text.value), voice, duration); draw(); };
+  const draw = () => {
+    list.replaceChildren(...lines.map((l, i) => {
+      const row = document.createElement("div");
+      row.className = "lyrics-line" + (i === tapping ? " tapping" : "");
+      const start = Object.assign(document.createElement("input"), { type: "number", min: 0, max: Math.floor(duration), step: 0.05,
+        value: l.start.toFixed(2), className: "lyrics-start" });
+      start.setAttribute("aria-label", `When "${l.text}" starts, in seconds`);
+      start.addEventListener("change", () => {
+        const starts = lines.map((x) => x.start);
+        starts[i] = Math.min(Math.max(Number(start.value) || 0, 0), duration);
+        lines = fromStarts(lines, starts, voice, duration);
+        draw();
+      });
+      const play = button("▶", () => { audio.currentTime = Math.max(0, l.start - 0.3); stopAt = l.end + 0.3; audio.play(); }, "ghost small");
+      play.setAttribute("aria-label", `Play "${l.text}"`);
+      const words = Object.assign(document.createElement("span"), { className: "lyrics-words", textContent: l.text });
+      const when = Object.assign(document.createElement("span"), { className: "hint", textContent: time(l.start) });
+      row.append(start, play, words, when);
+      return row;
+    }));
+    hint.textContent = !lines.length ? "" : voice ? `${lines.length} lines, placed across the singing.`
+      : `${lines.length} lines, spread evenly (the singer hasn't been measured).`;
+  };
+  text.addEventListener("change", () => {
+    const now = parseLyrics(text.value);
+    // The same number of lines: keep their starts; otherwise place them all again.
+    if (now.length && now.length === lines.length) { lines = fromStarts(now, lines.map((l) => l.start), voice, duration); draw(); } else place();
+  });
+  const auto = button("Place automatically", place, "ghost");
+  // Tap along: the song plays from the start, and each press of Next line (or the space bar) starts the
+  // next line there.
+  const next = button("Next line", () => tap(), "primary");
+  next.hidden = true;
+  const tapAlong = button("Tap along…", () => {
+    if (!lines.length) place();
+    if (!lines.length) return;
+    tapping = 0;
+    starts = lines.map((l) => l.start);
+    audio.currentTime = 0;
+    stopAt = null;
+    audio.play();
+    next.hidden = false;
+    hint.textContent = "Press Next line (or the space bar) as each line starts.";
+    draw();
+    next.focus();
+  }, "ghost");
+  let starts = [];
+  function tap() {
+    if (tapping < 0) return;
+    starts[tapping] = audio.currentTime;
+    tapping++;
+    if (tapping >= lines.length) {
+      tapping = -1;
+      next.hidden = true;
+      audio.pause();
+      hint.textContent = "Done. Press ▶ on a line to check it.";
+    }
+    lines = fromStarts(lines, starts, voice, duration);
+    draw();
+  }
+  // Space taps, once: its keyup is stopped too, as some browsers press a focused button on keyup.
+  w.dlg.addEventListener("keydown", (e) => { if (tapping >= 0 && e.code === "Space") { e.preventDefault(); if (!e.repeat) tap(); } });
+  w.dlg.addEventListener("keyup", (e) => { if (e.code === "Space") e.preventDefault(); });
+  const tools = Object.assign(document.createElement("div"), { className: "row" });
+  tools.append(auto, tapAlong, next);
+  w.body.append(intro, text, tools, hint, list);
+  const remove = button("Remove lyrics", () => {
+    delete app.show.lyrics;
+    finish();
+  }, "ghost danger");
+  remove.hidden = !app.show.lyrics;
+  const save = button("Save", () => {
+    if (!lines.length) place();
+    if (!lines.length) { w.dlg.close(); return; }
+    app.show.lyrics = savedLyrics(text.value, lines, voice, duration, app.show.audio.path);
+    finish();
+  }, "primary");
+  const spacer = Object.assign(document.createElement("span"), { className: "spacer" });
+  w.foot.append(remove, spacer, button("Cancel", () => w.dlg.close(), "ghost"), save);
+  w.dlg.addEventListener("close", () => audio.pause());
+  function finish() {
+    setVoiceLevels(singerOf(app.show));
+    app.changed();
+    renderInspector();
+    w.dlg.close();
+    status(app.show.lyrics ? "Lyrics saved: the Singing face mouths them" : "Lyrics removed", "saved", "show");
+  }
+  if (!lines.length && text.value) place(); else draw();
+  w.dlg.showModal();
 }
 
 // stage(text), if given, hears what's happening while the lights are got ready (Play shows it).
@@ -10412,7 +10533,7 @@ async function loadAudio(ref) {
   songBuffer = null;
   // An Advanced scene has no song: on the lights it follows live music, so its preview makes some up.
   useMusicLevels(ref ? app.show?.loudness : app.sceneId ? MADE_UP : null);
-  setVoiceLevels(ref ? app.show?.voice : null);
+  setVoiceLevels(ref ? singerOf(app.show) : null);
   app.songMarks = [];
   loadSongMarks();
   app.audioDuration = 0;
@@ -10443,7 +10564,7 @@ async function loadAudio(ref) {
       // A show already using Music level (its song changed) needs saving and baking again.
       if (app.show.tracks?.some((t) => t.clips.some((c) => EFFECTS[c.effect]?.music))) app.changed();
     }
-    if (app.show?.audio === ref) { setMusicLevels(app.show.loudness); setVoiceLevels(app.show.voice); ensureVoice(); }
+    if (app.show?.audio === ref) { setMusicLevels(app.show.loudness); setVoiceLevels(singerOf(app.show)); ensureVoice(); }
     status("", "info", "song");
   } catch (e) {
     status(songLoadMessage(e), true, "song");

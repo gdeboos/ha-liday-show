@@ -1547,3 +1547,11 @@ dialog { overscroll-behavior: contain; }
 .song-player .preview-vol { width: 80px; accent-color: var(--accent); }
 #view-songs:has(.song-player:not([hidden])) { padding-bottom: 80px; }
 @media (max-width: 560px) { .song-player-name { flex-basis: calc(100% - 100px); } .song-player .preview-volume { display: none; } }
+/* Lyrics… for the Singing face: the words, then each line with its start, ▶ and its time. */
+.lyrics-dialog { width: min(40em, calc(100vw - 32px)); }
+.lyrics-text { width: 100%; font: inherit; }
+.lyrics-lines { display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow: auto; }
+.lyrics-line { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border-radius: 6px; }
+.lyrics-line.tapping { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.lyrics-start { width: 6em; }
+.lyrics-words { flex: 1; min-width: 0; }

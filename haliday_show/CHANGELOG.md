@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.386
+
+- **Lyrics for Singing faces.** Select a **Singing face** clip and press **Lyrics…** to make it mouth the actual words. Paste the song's words, one line per line, and they're placed across the singing for you. If a line comes in early or late, type its start, or press **Tap along…** and press **Next line** as each line starts while the song plays. Each word's mouth shapes come from its spelling, and the mouth shuts between words.
+
 ## 0.2.385
 
 - **Singing faces sing better.**

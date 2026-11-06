@@ -8,7 +8,7 @@ import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
 import { CHARACTERS, FACE_ASPECT, SHAPES, blinkAt, faceColour, lookAt, mouthFor } from "./faces.js";
-import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_SAMPLE, hasPhonesLane, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
+import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_SAMPLE, hasPhonesLane, singerOf, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
 
 export const FPS = 40;
 
@@ -796,7 +796,7 @@ let faceMemo = { p: null, song: NaN };
 function shapeAt(time) {
   const s = voiceLevels?.shapes;
   if (typeof s !== "string" || !s.length) return "a";
-  const c = s[Math.min(Math.max(Math.floor(time * (voiceLevels.fps || 10)), 0), s.length - 1)];
+  const c = s[Math.min(Math.max(Math.floor(time * (voiceLevels.shapesFps || voiceLevels.fps || 10)), 0), s.length - 1)];
   return SHAPES.includes(c) ? c : "a";
 }
 
@@ -882,8 +882,14 @@ Object.assign(EFFECTS, {
           const l = voiceAt(song - back) * keep;
           if (l > best) { best = l; at = song - back; }
         }
-        const mouth = mouthFor(best, p.sensitivity);
-        const shape = shapeAt(at);
+        let mouth = mouthFor(best, p.sensitivity);
+        const shape = shapeAt(voiceLevels?.lyrics ? song : at);
+        // With lyrics, a word being sung (if the singer can be heard then, when measured) opens the
+        // mouth at least half way, and between words it shuts.
+        if (voiceLevels?.lyrics) {
+          const heard = !voiceLevels.values?.length || best >= 0.15;
+          mouth = shape === "m" ? 0 : Math.max(mouth, heard ? 0.5 : 0);
+        }
         faceMemo = { p, song, face: { mouth, shape: shape === "m" && mouth > 0 ? "a" : shape,
           blink: life ? blinkAt(song) : 0, look: life ? lookAt(song) : 0 },
         bob: life ? levelAt(song) * 0.025 : 0 }; // a little bob with the music
@@ -1974,7 +1980,7 @@ export function bake(show, devices, fps = FPS, positions = {}, groups = []) {
   const before = musicLevels, live = liveSource, voice = voiceLevels;
   musicLevels = show.loudness?.values ? show.loudness : null; // a show without a song's loudness has a silent meter
   liveSource = null; // live effects bake their idle look; the level set (bakeLive) has the rest
-  setVoiceLevels(show.voice);
+  setVoiceLevels(singerOf(show));
   try { return bakeFrames(show, devices, fps, positions, groups); } finally { musicLevels = before; liveSource = live; voiceLevels = voice; }
 }
 
