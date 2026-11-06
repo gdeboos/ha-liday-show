@@ -296,3 +296,9 @@ test("a song's lyrics follow cuts and repeats into the file made from it", () =>
   assert.equal(mapLyrics(lyrics, [{ src: "b", start: 0, end: 60 }], 0, "a"), null);
   assert.equal(mapLyrics({ text: "x", lines: [] }, song, 0, "a"), null);
 });
+
+test("words with their own times follow the cuts too", () => {
+  const lyrics = { text: "a b", lines: [{ start: 31, end: 34, words: [{ start: 31, end: 32 }, { start: 33, end: 34 }] }] };
+  const out = mapLyrics(lyrics, [{ src: "a", start: 0, end: 10 }, { src: "a", start: 30, end: 50 }], 0, "a");
+  assert.deepEqual(out.lines, [{ start: 11, end: 14, words: [{ start: 11, end: 12 }, { start: 13, end: 14 }] }]);
+});

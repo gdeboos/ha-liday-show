@@ -1574,7 +1574,10 @@ dialog { overscroll-behavior: contain; }
 #view-songs:has(.song-player:not([hidden])) { padding-bottom: 80px; }
 @media (max-width: 560px) { .song-player-name { flex-basis: calc(100% - 100px); } .song-player .preview-volume { display: none; } }
 /* Lyrics… for the Singing face: the words, then each line with its start, ▶ and its time. */
-.lyrics-dialog { width: min(40em, calc(100vw - 32px)); }
+.lyrics-dialog { width: min(56em, calc(100vw - 32px)); }
+.lyrics-strip canvas { display: block; width: 100%; touch-action: none; border-radius: 6px; background: color-mix(in srgb, var(--muted, #888) 10%, transparent); }
+.lyrics-strip-bar { align-items: center; gap: 6px; margin-top: 4px; }
+.lyrics-strip-scroll { flex: 1; min-width: 0; width: auto; max-width: none; }
 .lyrics-text { width: 100%; font: inherit; }
 .lyrics-lines { display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow: auto; }
 .lyrics-line { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border-radius: 6px; }
