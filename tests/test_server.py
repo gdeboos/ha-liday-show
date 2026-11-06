@@ -1082,6 +1082,12 @@ async def test_draft_layers_are_kept_and_checked(client, tmp_path):
     deep = (await (await client.post("/api/drafts", json={**draft, "layers": [
         {"name": "Voice", "duck": True, "duckDb": 18, "clips": []}]})).json())["id"]
     assert (await (await client.get(f"/api/drafts/{deep}")).json())["layers"][0]["duckDb"] == 18
+    # Going quieter under the song's singing instead: kept; anything else refused.
+    under = (await (await client.post("/api/drafts", json={**draft, "layers": [
+        {"name": "Horn", "duck": True, "duckFrom": "vocals", "clips": []}]})).json())["id"]
+    assert (await (await client.get(f"/api/drafts/{under}")).json())["layers"][0]["duckFrom"] == "vocals"
+    for bad_from in ("drums", True, 1):
+        assert (await client.post("/api/drafts", json={**draft, "layers": [{"name": "x", "duck": True, "duckFrom": bad_from, "clips": []}]})).status == 400
     # Muted: kept when on, left out when off.
     muted = (await (await client.post("/api/drafts", json={**draft, "layers": [
         {"name": "Voice", "muted": True, "clips": []}, {"name": "Bells", "muted": False, "clips": []}]})).json())["id"]

@@ -99,7 +99,7 @@ export function duckEnvelope(layers, placed, sources, n, rate) {
   const dips = new Map();
   for (const { layer, clip, at, speed = 1 } of placed) {
     const L = layers[layer], c = L.clips[clip], src = sources[keyOf(c.song)];
-    if (!L.duck || !src) continue;
+    if (!L.duck || L.duckFrom === "vocals" || !src) continue; // one that goes quiet itself doesn't dip the song
     const len = Math.round(((c.end - c.start) / speed) * rate);
     const a = Math.max(0, Math.round(at * rate)), b = Math.min(n, Math.round(at * rate) + len);
     if (b <= a) continue;
@@ -127,13 +127,41 @@ export function dipCurve(layers, placed, sources, n, rate) {
   return env;
 }
 
+// Where the song is singing, for layers that go quieter while it does (duckFrom: "vocals"): from the
+// song's vocals as heard (channels at rate), how far down such a layer is at each step (0 to 1, STEPS a
+// second), gliding down and back up as the song's dips do. Quiet breaths and bleed don't count: a step
+// is singing when it's within GATE_DB of the loudest singing.
+export const STEPS = 100;
+const GATE_DB = 30, GATE_MIN = 0.004;
+export function singingCurve(voice, rate) {
+  const n = voice?.[0]?.length || 0, per = rate / STEPS, m = Math.ceil(n / per);
+  if (!m) return null;
+  const level = new Float32Array(m);
+  let peak = 0;
+  for (let j = 0; j < m; j++) {
+    const a = Math.round(j * per), b = Math.min(n, Math.round((j + 1) * per));
+    let sum = 0;
+    for (const ch of voice) for (let i = a; i < b; i++) sum += ch[i] * ch[i];
+    level[j] = Math.sqrt(sum / Math.max(1, (b - a) * voice.length));
+    if (level[j] > peak) peak = level[j];
+  }
+  const gate = Math.max(GATE_MIN, peak * 10 ** (-GATE_DB / 20));
+  const down = new Float32Array(m);
+  for (let j = 0; j < m; j++) down[j] = level[j] >= gate ? 1 : 0;
+  const up = 1 / (DUCK_UP * STEPS), fall = 1 / (DUCK_DOWN * STEPS);
+  for (let j = 1; j < m; j++) down[j] = Math.max(down[j], down[j - 1] - up);
+  for (let j = m - 2; j >= 0; j--) down[j] = Math.max(down[j], down[j + 1] - fall);
+  return down;
+}
+
 const TAIL = 0.25; // seconds of a clip's EQ ringing kept after it ends
 
 // The main track's channels with the layers mixed in (a new copy). sources: {key: [channels]} at rate,
 // with each stretched clip's audio under sourceKey. pieces and crossfade place layers' EQ changes.
 // heard: the sources that decide where the song dips (the clips' own audio), when `sources` are
-// something else, such as one part of each clip for a made file's parts.
-export function mixLayers(main, layers, placed, sources, rate, { pieces = [], crossfade = 0, heard = sources } = {}) {
+// something else, such as one part of each clip for a made file's parts. singing: singingCurve of the
+// song's vocals, for layers that go quieter while it sings (without it they play as they are).
+export function mixLayers(main, layers, placed, sources, rate, { pieces = [], crossfade = 0, heard = sources, singing = null } = {}) {
   const out = main.map((ch) => Float32Array.from(ch));
   const n = out[0]?.length || 0;
   const env = duckEnvelope(layers, placed, heard, n, rate);
@@ -150,12 +178,20 @@ export function mixLayers(main, layers, placed, sources, rate, { pieces = [], cr
     const tail = changes[layer] ? Math.round(TAIL * rate) : 0;
     const k1 = Math.min(len + tail, n - off);
     if (k1 <= skip) continue;
+    // Going quieter while the song sings: its dip at each step, eased between steps.
+    const under = L.duck && L.duckFrom === "vocals" && singing ? duckDbOf(L) : 0, per = rate / STEPS;
+    const gq = under ? singing.map((d) => 10 ** (-under * d / 20)) : null;
+    const quiet = (i) => {
+      const x = i / per, j = Math.min(gq.length - 1, Math.floor(x)), f = Math.min(1, x - j);
+      return gq[j] + f * ((gq[j + 1] ?? gq[j]) - gq[j]);
+    };
     const bits = out.map((_, c2) => {
       const s = src[Math.min(c2, src.length - 1)], bit = new Float32Array(k1 - skip);
       for (let k = skip; k < Math.min(k1, len); k++) {
         let g = gain;
         if (fi && k < fi) g *= k / fi;
         if (fo && k > len - fo) g *= (len - k) / fo;
+        if (under) g *= quiet(off + k);
         bit[k - skip] = g * s[from + k];
       }
       return bit;

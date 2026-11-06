@@ -1174,7 +1174,7 @@ last chorus, a voice saying "Merry Christmas", or another song fading in under t
 
 1. Under the waveform, in the **Mixer**, press **+ Add layer** (up to four). Its row has its name,
    **M** and **S** (mute and solo), **Volume**, **EQ** (see [Mixer](#mixer-bass-mid-treble-filter-tempo-and-key)),
-   **Quieten the song**, **Match tempo**, **Key** and **⋯**, and a lane appears under the waveform for its
+   **Quieten**, **Match tempo**, **Key** and **⋯**, and a lane appears under the waveform for its
    clips. Double-click the name (or use **⋯ → Rename**) to rename it; **⋯ → Remove** removes it.
 2. Put the playhead where you want a clip to start, then press **⋯ → + Add a clip at the playhead…** on the layer's row. A
    window opens with your **Samples** and **Songs** in their folders (type in the box to find one in any
@@ -1189,11 +1189,16 @@ last chorus, a voice saying "Merry Christmas", or another song fading in under t
    its sections in their colours, so you can see where its chorus or drop is. To use just parts of a
    song on a layer, split it where each part starts and ends, delete what you don't want and drag the
    rest where it goes.
-4. To make a layer stand out, such as a voice saying "Merry Christmas", tick **Quieten the song** on its
-   row. The song dips while that layer's clips play (starting just before each one) and comes back up
+4. To make a layer stand out, such as a voice saying "Merry Christmas", turn on **Quieten** on its row,
+   with **the song** picked beside it. The song dips while that layer's clips play (starting just before each one) and comes back up
    gently after. **By**, beside it, sets how far: from a little (3 dB, so the song is still clearly
    heard) to nearly silent (24 dB); it starts at 8 dB. Where two layers that quieten the song play at
    once, the song dips by the bigger amount. It's off for new layers.
+
+   Or the other way round: pick **this layer** and the layer goes down while the song sings, and back up
+   between lines, so a horn or a choir doesn't fight the singer. It follows the song's vocals as you hear
+   them (none where you've muted them), so the song needs splitting into parts first. **By** sets how far
+   here too.
 
 **Editing a layer on its own.** Click a layer's name at the left of its lane (or **⋯ → ✎ Edit this
 layer** in the Mixer) and the big waveform shows that layer instead of the song: its own sound, in the

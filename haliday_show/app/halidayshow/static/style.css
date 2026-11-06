@@ -1183,7 +1183,7 @@ a.button { text-decoration: none; }
 .music-layers { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .layer-row { align-items: center; }
 /* The Mixer: one row per channel, its controls in aligned columns (each row's cells sit in the grid). */
-.mixer-grid { display: grid; grid-template-columns: minmax(110px, 180px) auto minmax(150px, 210px) auto minmax(150px, 1fr) auto minmax(110px, 170px) auto;
+.mixer-grid { display: grid; grid-template-columns: minmax(110px, 180px) auto minmax(150px, 210px) auto minmax(210px, 1fr) auto minmax(110px, 170px) auto;
   gap: 6px 12px; align-items: center; margin-top: 6px; }
 .mixer-row { display: contents; }
 .mixer-head { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
@@ -1519,9 +1519,12 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 @media (max-width: 720px) { .show-row .song-cover { align-self: flex-start; } }
 /* Quieten the song, and By how much, beside it on a layer's row. */
 .duck-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
-.duck-by[hidden] { display: none; }
+.duck-by[hidden], .duck-from[hidden] { display: none; }
 .duck-by input[type=range] { width: 90px; vertical-align: middle; }
-.mixer-cell .duck-group { flex-wrap: nowrap; white-space: nowrap; }
+.mixer-cell .duck-group { flex-wrap: wrap; row-gap: 4px; }
+.mixer-cell .duck-by, .duck-what { white-space: nowrap; }
+.duck-what { display: inline-flex; align-items: center; gap: 6px; }
+.mixer-cell .duck-from { max-width: 165px; }
 .mixer-cell .duck-by input[type=range] { width: 70px; }
 /* A show with no picture or cover art: its palette's colours and its first letter. */
 .show-tile { display: grid; place-items: center; font-weight: 700; font-size: 20px; color: #fff;
