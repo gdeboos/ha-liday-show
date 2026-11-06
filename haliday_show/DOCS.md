@@ -644,7 +644,7 @@ A show is a song plus effects on each light's track. The usual path is: pick a s
 beats and sections, then **Generate** a draft or **Describe it**, and fine-tune clips on the
 timeline.
 
-- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Layers](#layers) · [Mixer](#mixer-bass-mid-treble-filter-tempo-and-key) · [Suggest cuts](#suggest-cuts) ·
+- **The song:** [Shows](#shows) · [Sharing shows](#sharing-shows) · [Songs](#songs) · [Samples](#samples) · [Editing a song](#editing-a-song) · [Drafts](#drafts) · [Layers](#layers) · [Mashups](#mashups) · [Mixer](#mixer-bass-mid-treble-filter-tempo-and-key) · [Suggest cuts](#suggest-cuts) ·
   [Marks](#marks) ·
   [Detecting](#detecting-in-the-music-editor) · [Sections](#editing-sections) · [Beats](#beats)
 - **Let it help:** [Suggestions](#suggestions) · [Describe it](#describe-it) · [Generate](#generate)
@@ -1222,6 +1222,32 @@ the sample back. Layers are part of the draft and every change is one
 **Undo** step. **Make song file** mixes the layers into the new file, keeping the mix from
 distorting where they pile up. The waveform, **Detect** and **Suggest cuts** go by the song alone, and a
 sample saved with **Save as sample…** includes the layers.
+
+#### Mashups
+
+**✨ New mashup…** in **Library → Songs** puts one song's singing over another's music. Both need to be
+[split into parts](#split-into-parts).
+
+1. Pick **The singing from** (its vocals are used) and **The music from** (everything but its vocals).
+   Each shows its tempo and key once it's been detected.
+2. A box says how well they fit and what will change, such as "A good fit. The singing is sped up 3% to
+   121 BPM, and moved up 2 semitones into A minor". **Great fit** and **Good fit** need little change; a
+   **Big change** (more than about 10% faster or slower, or a key far away) can start to sound odd.
+3. **Start the singing at** picks where in the music the singing comes in (one of its sections, or the
+   start), and **From the singing's** where in the singing song it starts from.
+4. **Match tempo**, **Match key** and **Line up on the bar** are on to start with: the singing plays at
+   the music's tempo, in its key, with its bars on the music's bars.
+5. Press **Make mashup**. The Music editor opens a draft of the music song with its own vocals muted
+   (the Mixer's **Vocals** row) and the singing on a layer of its own, ready to play. Neither song is
+   changed. Fine-tune it as you would any draft, then **Make song file**.
+
+**Clips line up on the bar.** Wherever both songs have been detected, a clip you add or drag on a layer
+lands with its first bar on the song's nearest bar, so the two stay in step. Hold **Alt** (or **Shift**)
+while dragging to place it anywhere.
+
+**Two songs' tempos and keys.** Click a clip of another song: its panel shows that song's tempo and key
+beside this one's and what it'd take to fit, with **Match tempo and key** to set both on its layer in
+one go.
 
 #### Mixer: bass, mid, treble, filter, tempo and key
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.418
+
+- **✨ New mashup.** In **Library → Songs**, pick a song for the singing and one for the music: it says how well they fit and what it'll change, then opens a ready-made draft in the Music editor, the music's own vocals muted and the other song's singing on a layer, matched in tempo and key and lined up on the bar.
+- **Clips line up on the bar.** A clip you add or drag on a layer lands with its first bar on the song's nearest bar (hold **Alt** to place it freely).
+- **Tempo and key side by side.** A clip of another song shows its tempo and key beside this song's, with **Match tempo and key** in one click.
+
 ## 0.2.417
 
 - **Faders for the song's parts.** In the Music editor, a song split into parts has **Vocals**, **Drums**, **Bass** and **Rest** under it in the **Mixer**, each with mute, solo and volume, like stems on a DJ controller: mute the vocals for an instrumental, or turn the drums down.

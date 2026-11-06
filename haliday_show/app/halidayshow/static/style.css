@@ -1206,6 +1206,18 @@ a.button { text-decoration: none; }
 .mixer-parts-hint { grid-column: 1 / -1; font-size: 13px; color: var(--muted); padding-left: 18px; }
 #music-range-parts-btns button.on { background: color-mix(in srgb, var(--danger) 14%, var(--panel)); }
 .music-view { margin-right: 8px; }
+.mash-dialog { width: min(600px, 100vw - 32px); }
+.mash .field { display: block; margin-bottom: 12px; }
+.mash .field > b { display: block; margin-bottom: 4px; }
+.mash select { width: 100%; box-sizing: border-box; }
+.mash-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mash-toggles { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 4px 0 10px; }
+.mash-fit { border-radius: 8px; padding: 10px 12px; margin: 2px 0 14px; line-height: 1.45; border: 1px solid var(--line); }
+.mash-fit.great, .mash-fit.good { background: color-mix(in srgb, #2e9e6b 12%, var(--panel)); border-color: color-mix(in srgb, #2e9e6b 40%, var(--panel)); }
+.mash-fit.big { background: color-mix(in srgb, #e8a33d 14%, var(--panel)); border-color: color-mix(in srgb, #e8a33d 45%, var(--panel)); }
+@media (max-width: 600px) { .mash-two { grid-template-columns: 1fr; } }
+.music-clip-fit { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; flex-basis: 100%; }
+.music-clip-fit[hidden] { display: none; }
 .music-view[hidden] { display: none; }
 .editing-badge { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 999px; background: var(--accent); color: #fff; }
 .music-focus { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 10px; margin-bottom: 6px; border-radius: 6px;
