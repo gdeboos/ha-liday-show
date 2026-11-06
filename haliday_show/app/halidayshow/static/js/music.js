@@ -3026,7 +3026,7 @@ export class MusicEditor {
     $("music-sample").addEventListener("click", () => this.saveSample());
     $("music-split").addEventListener("click", () => {
       if (!this.base) return this.host.status("Open a song first", "hint");
-      splitVocals(this.base, { ...this.host, askYes }).then(() => this.loadLyrics()); // its drum hits, now found
+      splitVocals(this.base, { ...this.host, askYes, later: this.host.partsLater }).then(() => this.loadLyrics()); // its drum hits, now found
     });
     $("music-insert").addEventListener("click", () => this.addSong(false));
     $("music-append").addEventListener("click", () => this.addSong(true));

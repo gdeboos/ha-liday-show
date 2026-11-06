@@ -300,7 +300,7 @@ volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
   opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia,
-  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref), songLyrics: (ref) => openSongLyrics(ref), lyricsChanged: () => madeFrom.clear(),
+  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref), songLyrics: (ref) => openSongLyrics(ref), lyricsChanged: () => madeFrom.clear(), partsLater: (ref) => prepareParts([ref], { first: true }),
   pickSong: (o) => pickSong(o) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
@@ -8358,14 +8358,16 @@ let songRowsCache = [], songsMore = false, songsAsked = 0;
 // Songs split into parts one after another, in the background (splitvocals.js makeParts): each song as
 // it's added, and every song not yet split from Split all songs into parts. Only while this page is
 // open; anything not done is picked up next time Split all is pressed.
-const partsLine = { queue: [], now: null, stop: null, done: 0 };
+const partsLine = { queue: [], now: null, stop: null, stopped: false, done: 0, failed: 0 };
 
 // The draft a song file was made from, as makeParts takes it, so its parts can be cut from its original's.
 async function editFor(ref) {
   const drafts = await api("api/drafts").catch(() => []);
   const d = drafts.find((x) => x.made?.source === ref.source && x.made?.path === ref.path && x.base);
   const draft = d && await api(`api/drafts/${encodeURIComponent(d.id)}`).catch(() => null);
-  const base = draft && (app.songs || []).find((s) => s.source === draft.base.source && s.path === draft.base.path);
+  // A file with layers mixed in, or the song's EQ, isn't just the song cut up: it's split instead.
+  if (!Array.isArray(draft?.pieces) || draft.layers?.length || draft.eq) return null;
+  const base = (app.songs || []).find((s) => s.source === draft.base.source && s.path === draft.base.path);
   if (!base) return null;
   const key = (r) => `${r.source}:${r.path}`;
   return { base: draft.base, baseParts: base.parts || {}, crossfade: draft.crossfade || 0, fadeIn: draft.fadeIn || 0, fadeOut: draft.fadeOut || 0,
@@ -8383,25 +8385,34 @@ function prepareParts(refs, { first = false } = {}) {
 
 async function runPartsLine() {
   if (partsLine.now) return;
-  while (partsLine.queue.length) {
+  partsLine.stopped = false;
+  const refresh = async () => { await refreshAudio().catch(() => {}); if (!$("view-songs")?.hidden) renderSongsPage(); };
+  let lastError = "";
+  while (partsLine.queue.length && !partsLine.stopped) {
     const ref = partsLine.now = partsLine.queue.shift();
+    partsLine.stop = null;
     showPartsLine(`Getting ready to split ${songLabel(ref)}…`, null);
     try {
-      const out = await makeParts(ref, api, { edit: await editFor(ref), say: (text, done) => showPartsLine(text, done),
-        started: (stop) => { partsLine.stop = stop; } });
+      const edit = await editFor(ref).catch(() => null);
+      if (partsLine.stopped) break;
+      const out = await makeParts(ref, api, { edit, say: (text, done) => showPartsLine(text, done),
+        started: (stop) => { partsLine.stop = stop; if (partsLine.stopped) stop(); } });
       if (out.made) partsLine.done++;
     } catch (e) {
-      if (e.cancelled) { partsLine.queue = []; break; }
-      status(`Couldn't split ${songLabel(ref)} into parts: ${e.message}`, true, "parts");
+      if (e.cancelled) break;
+      partsLine.failed++;
+      lastError = `Couldn't split ${songLabel(ref)} into parts: ${e.message}`;
+      status(lastError, true, "parts");
     }
-    await refreshAudio().catch(() => {});
-    if (!$("view-songs")?.hidden) renderSongsPage();
+    await refresh();
   }
-  const done = partsLine.done;
-  partsLine.now = partsLine.stop = null;
-  partsLine.done = 0;
+  const { done, failed, stopped } = partsLine;
+  Object.assign(partsLine, { now: null, stop: null, done: 0, failed: 0, queue: stopped ? [] : partsLine.queue });
+  if (stopped) await refresh();
   showPartsLine();
-  if (done) status(`Split ${done} song${done === 1 ? "" : "s"} into parts`, "saved", "parts");
+  const said = [done && `Split ${done} song${done === 1 ? "" : "s"} into parts`, failed && `${failed} couldn't be split (${lastError})`,
+    stopped && "stopped: any part already made is kept"].filter(Boolean).join("; ");
+  if (said) status(said, failed ? true : stopped ? "hint" : "saved", "parts");
 }
 
 // The line's banner in Library → Songs: what it's doing, how far along, and Stop.
@@ -8738,6 +8749,7 @@ function splitButton(r) {
   const split = button(again ? "Split into parts again…" : "Split into parts…", async () => {
     if (splitting() || partsLine.now) { prepareParts([r.ref], { first: true }); return; }
     splitVocals(r.ref, { api, askYes, status: (text, kind) => status(text, kind, "songs"), edit: await editFor(r.ref),
+      later: (ref) => prepareParts([ref], { first: true }),
       songsChanged: async () => { await refreshAudio().catch(() => {}); renderSongsPage(); } });
   }, "ghost");
   split.setAttribute("aria-label", `Split ${r.name} into its parts`);
@@ -12852,7 +12864,7 @@ function wire() {
   }
   $("btn-add-song").addEventListener("click", openAddSong);
   $("btn-prepare-songs").addEventListener("click", () => prepareAllSongs());
-  $("parts-queue-stop").addEventListener("click", () => { partsLine.queue = []; partsLine.stop?.(); showPartsLine(); });
+  $("parts-queue-stop").addEventListener("click", () => { partsLine.stopped = true; partsLine.queue = []; partsLine.stop?.(); showPartsLine("Stopping…"); });
   $("btn-add-sample").addEventListener("click", () => $("sample-upload").click());
   $("btn-new-sample-folder").addEventListener("click", () => newFolder("samples"));
   $("sample-upload").addEventListener("change", (e) => { const files = [...e.target.files]; e.target.value = ""; if (files.length) addSamples(files); });

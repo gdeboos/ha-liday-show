@@ -98,7 +98,8 @@ const rms = (x) => { let s = 0; for (let i = 0; i < x.length; i += 7) s += x[i] 
 // the way the draft cuts the song, in seconds, rather than split again by the AI. edit: {pieces (each
 // {src: "source:path", start, end}), crossfade, fadeIn, fadeOut, base, baseParts}. The file's volume may
 // have been evened out when it was made: its parts are matched to it.
-async function cutFromOriginal(ref, api, edit, say) {
+async function cutFromOriginal(ref, api, edit, say, cancelled) {
+  const check = () => { if (cancelled()) throw new Error("cancelled"); };
   const { render } = await import("./music.js"); // music.js uses this module too
   const baseKey = `${edit.base.source}:${edit.base.path}`;
   if (edit.pieces.some((p) => p.src !== baseKey)) return false; // other songs spliced in: split it instead
@@ -106,12 +107,16 @@ async function cutFromOriginal(ref, api, edit, say) {
   const opts = { crossfade: edit.crossfade || 0, fadeIn: edit.fadeIn || 0, fadeOut: edit.fadeOut || 0 };
   say(`Cutting ${songName(ref)}'s parts from ${songName(edit.base)}…`, null);
   const [file, base] = await Promise.all([decodeAt(ref), decodeAt(edit.base)]);
+  check();
   const mix = render(pieces, { song: base }, MDX.rate, opts);
   if (Math.abs(mix[0].length - file[0].length) > MDX.rate / 2) return false; // the draft's changed since
   const k = rms(file[0]) / Math.max(1e-9, rms(mix[0]));
+  if (!(k > 0.25 && k < 4)) return false; // not the same song any more, or silent: split it instead
   for (const part of [...PARTS, "music"]) {
     if (!edit.baseParts[part]) continue;
+    check();
     const ch = render(pieces, { song: await decodeAt(edit.base, edit.baseParts[part]) }, MDX.rate, opts);
+    check();
     if (Math.abs(k - 1) > 0.01) for (const c of ch) for (let i = 0; i < c.length; i++) c[i] *= k;
     await savePart(api, ref, part, ch, MDX.rate);
     if (part === "drums") await api(`api/audio/drums?${q(ref)}`, { method: "PUT", json: drumHits(mono(ch), MDX.rate) }).catch(() => {});
@@ -125,10 +130,11 @@ async function cutFromOriginal(ref, api, edit, say) {
 // say) aren't made again, unless `again`. An edit of a song with parts (edit: see cutFromOriginal) has
 // its parts cut from the original's instead. say(text, done 0-1 or null) hears how it's going;
 // started(stop) is given a function that stops it. One song at a time: anything else waits its turn.
-let turn = Promise.resolve();
+let turn = Promise.resolve(), waiting = 0;
 export function makeParts(ref, api, { again = false, edit = null, say = () => {}, started = () => {} } = {}) {
+  waiting++;
   const run = () => makePartsNow(ref, api, { again, edit, say, started });
-  const mine = turn.then(run, run);
+  const mine = turn.then(run, run).finally(() => { waiting--; });
   turn = mine.catch(() => {});
   return mine;
 }
@@ -144,7 +150,7 @@ async function makePartsNow(ref, api, { again, edit, say, started }) {
   try {
     const have = await api(`api/audio/parts?${q(ref)}`).catch(() => ({}));
     if (!again && prepared(have)) return { made: false };
-    if (!again && edit && prepared(edit.baseParts) && await unlessCancelled(cutFromOriginal(ref, api, edit, say))) return { made: true, cut: true };
+    if (!again && edit && prepared(edit.baseParts) && await unlessCancelled(cutFromOriginal(ref, api, edit, say, () => cancelled))) return { made: true, cut: true };
     const want = ["drums", "bass", "rest", ...(have.music && !again ? [] : ["music"])];
     say(`Loading ${song}…`, null);
     let left, right, vocals = null;
@@ -201,13 +207,21 @@ async function makePartsNow(ref, api, { again, edit, say, started }) {
   }
 }
 
-export const splitting = () => busy;
+// Whether a song is being split, or waiting its turn.
+export const splitting = () => busy || waiting > 0;
 
 // Split into parts… on a song (its row in Library → Songs, or the Music editor), with a window over the
 // page saying how it's going. host: {api, status(text, kind), askYes(text, opts), songsChanged(),
-// edit (as makeParts takes, or null)}.
+// edit (as makeParts takes, or null), later(ref) (puts it next in a line of songs being split, if
+// there's one)}.
 export async function splitVocals(ref, host) {
-  if (busy) return host.status("Already splitting a song into parts: wait for it to finish", "hint");
+  const busyNow = () => {
+    if (!splitting()) return false;
+    if (host.later) host.later(ref);
+    else host.status("Already splitting a song into parts: try again when it's finished", "hint");
+    return true;
+  };
+  if (busyNow()) return;
   const song = songName(ref);
   let win = null;
   try {
@@ -218,6 +232,7 @@ export async function splitVocals(ref, host) {
       + (again ? "It has them already: this makes them again. " : "")
       + "The first time, your browser downloads the AI that does it (about 130 MB). It takes several minutes; "
       + "keep this page open meanwhile.", { yes: "Split into parts" }))) return;
+    if (busyNow()) return; // another started while you were deciding
     let stop = () => {};
     win = progressWindow(`Splitting ${song}`, () => stop());
     const say = (text, done = null) => { win.say(text, done); host.status(text); };
