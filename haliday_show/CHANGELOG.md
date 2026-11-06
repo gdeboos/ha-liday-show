@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.396
+
+- **Place lyrics on the Music editor's waveform.** Open a song in the Music editor and you'll find a **Lyrics** lane under the sections, with each word as a block. Drag a word to move it, drag its edges to make it longer or shorter, and click it to hear it. It zooms and scrolls with the waveform, and changes are kept with the song as you go. With a draft open, the words follow your cuts.
+- The **Lyrics…** window is back to the words, **Place automatically** and **Tap along…**; the small waveform in it has gone in favour of the lane.
+
 ## 0.2.395
 
 - **Sharper Singing faces on phones.** On visitors' phones (and the phone preview in the editor), a Singing face is now drawn four times finer each way, so it looks smooth instead of blocky. Everything else on the Phones lane keeps its LED-dot look, matching your matrices. The phone draws it itself, so nothing extra is sent and the timing is unchanged.

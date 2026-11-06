@@ -19,12 +19,13 @@ import { uploadSong } from "./upload.js";
 import { flatTree, fromSongFolders, itemsIn, keyOfRef, pathTo } from "./folders.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
-import { savedLines } from "./lyrics.js";
+import { lineWords, moveWord, savedLines, savedLyrics, songLyrics } from "./lyrics.js";
 
 const EPS = 1e-6;
 const RULER_H = 22;
 const BEAT_H = 16; // the beat lane above the waveform, as in the editor
 const SEC_H = 20; // the section lane under it, where sections are picked and their edges dragged
+const LYR_H = 22; // the lyrics lane under that: each word of the song's lyrics, to drag or stretch
 const WAVE_B = 210; // the bottom of the waveform; layers' lanes go under it
 // The shading over the waveform (where the song dips under a layer) and the song's EQ line along its
 // bottom are worked out this many times a second when the mix changes, not on every redraw.
@@ -353,6 +354,25 @@ export function mapLyrics(lyrics, pieces, crossfade, src) {
   return out.length ? { text: out.map((l) => l.text).join("\n"), lines: out.map(({ text: _, ...l }) => l) } : null;
 }
 
+// Where the base song's words ([{start, end, ...}] in its own time) are heard in the edited result:
+// each copy of a word whose start is kept, cut short where its part ends.
+export function mapWords(words, pieces, crossfade, src) {
+  const { places, total } = arrange(pieces, crossfade);
+  const out = [];
+  pieces.forEach((p, i) => {
+    if (p.src !== src) return;
+    const { at, xf } = places[i];
+    const own0 = i === 0 ? 0 : at + xf / 2;
+    const own1 = i === pieces.length - 1 ? total : places[i + 1].at + places[i + 1].xf / 2;
+    const map = (t) => at + (t - p.start);
+    for (const w of words) {
+      if (w.start < p.start || w.start > p.end || map(w.start) < own0 - EPS || map(w.start) >= own1 - EPS) continue;
+      out.push({ ...w, base: { start: w.start, end: w.end }, start: map(w.start), end: Math.min(map(Math.min(w.end, p.end)), own1) });
+    }
+  });
+  return out.sort((a, b) => a.start - b.start);
+}
+
 // rendering ---------------------------------------------------------------------
 // sources: { [src]: Float32Array[] } (one array per channel), all at `rate`.
 export function render(pieces, sources, rate, { crossfade = 0, fadeIn = 0, fadeOut = 0 } = {}) {
@@ -441,6 +461,7 @@ const query = (ref) => `source=${encodeURIComponent(ref.source)}&path=${encodeUR
 const urlOf = (ref) => `api/audio/file?${query(ref)}`;
 const infoUrl = (ref) => `api/audio/info?${query(ref)}`;
 const lyricsUrl = (ref) => `api/audio/lyrics?${query(ref)}`;
+const voiceUrl = (ref) => `api/audio/voice?${query(ref)}`;
 
 export class MusicEditor {
   // host provides: api(path, opts), status(msg, error), songs() -> [ref], songsChanged() -> Promise,
@@ -572,6 +593,7 @@ export class MusicEditor {
       this.sel = null;
       $("music-name").value = editName(ref.path, this.host.songs().map((r) => r.path)).replace(/\.wav$/i, "");
       this.changed(true);
+      this.loadLyrics();
       const info = await this.host.api(infoUrl(ref)).catch(() => null);
       if (this.base === ref) { this.info = info; this.secSel = -1; this.tempoKnown(); }
     } catch (e) {
@@ -633,6 +655,7 @@ export class MusicEditor {
     this.dirty = !untouched(this.pieces, baseKey, length) || !!(d.fadeIn || d.fadeOut);
     this.changed(true);
     const ref = this.base;
+    this.loadLyrics();
     const info = await this.host.api(infoUrl(ref)).catch(() => null);
     if (this.base === ref) { this.info = info; this.tempoKnown(); }
     if (!missing.length) this.host.status(`Opened the draft "${d.name}"`);
@@ -2115,7 +2138,8 @@ export class MusicEditor {
     }
     const rate = this.audio.sampleRate;
 
-    const laneT = RULER_H + BEAT_H, waveT = laneT + SEC_H, waveB = WAVE_B; // beats, sections, then the waveform
+    // beats, sections, lyrics, then the waveform
+    const laneT = RULER_H + BEAT_H, lyrT = laneT + SEC_H, waveT = lyrT + LYR_H, waveB = WAVE_B;
     const info = this.shown;
     const names = info ? [...new Set(info.sections.map((x) => x.label))] : [];
 
@@ -2153,6 +2177,8 @@ export class MusicEditor {
     }
     this.drawOverlay(ctx, col, waveT, waveB);
 
+
+    this.drawLyrics(ctx, col, lyrT);
 
     // section lane: each section in its colour with its name, the picked one outlined
     ctx.fillStyle = col("--panel");
@@ -2432,6 +2458,84 @@ export class MusicEditor {
     ctx.restore();
   }
 
+  // lyrics (lyrics.js): the base song's, with the singer kept with it (for where its words fall when
+  // they haven't been moved). this.lyrics: {ref, text, lines, voice}, or null.
+  async loadLyrics() {
+    const ref = this.base;
+    this.lyrics = null;
+    this.wordSel = null;
+    if (!ref) return;
+    const [words, voice] = await Promise.all([lyricsUrl, voiceUrl].map((u) => this.host.api(u(ref)).catch(() => null)));
+    if (this.base !== ref) return;
+    const lines = savedLines(words);
+    this.lyrics = lines ? { ref, text: words.text, lines, voice } : null;
+    this.draw();
+  }
+
+  // The words as heard in the result: {word, i (its line), k, start, end, base: its own times}.
+  lyricWords() {
+    const l = this.lyrics;
+    if (!l || l.ref !== this.base) return [];
+    const words = l.lines.flatMap((line, i) => lineWords(line, l.voice).map((w, k) => ({ ...w, i, k })));
+    return mapWords(words, this.pieces, this.crossfade, keyOf(this.base));
+  }
+
+  inLyrics(y) { const t = RULER_H + BEAT_H + SEC_H; return y >= t && y < t + LYR_H; }
+
+  // The word (and which part of it) under x in the lyrics lane, or null.
+  wordAt(x) {
+    let best = null;
+    for (const w of this.lyricWords()) {
+      const x0 = this.x(w.start), x1 = this.x(w.end);
+      if (x < x0 - EDGE_PX || x > x1 + EDGE_PX) continue;
+      const part = Math.abs(x - x0) <= EDGE_PX && x < (x0 + x1) / 2 ? "start" : Math.abs(x - x1) <= EDGE_PX ? "end"
+        : x >= x0 && x <= x1 ? "move" : null;
+      if (part && (!best || part !== "move")) best = { ...w, part };
+    }
+    return best;
+  }
+
+  // Keeps the lyrics with the song a moment after a word stops moving.
+  saveLyricsSoon() {
+    const l = this.lyrics;
+    if (!l) return;
+    clearTimeout(this.lyricsTimer);
+    this.lyricsTimer = setTimeout(() => {
+      const length = this.sources[keyOf(l.ref)]?.[0].length / this.audio.sampleRate || this.total;
+      this.host.api(lyricsUrl(l.ref), { method: "PUT", json: songLyrics(savedLyrics(l.text, l.lines, l.voice, length)) })
+        .then(() => this.host.status("Lyrics saved with the song", "saved", "music-lyrics"))
+        .catch((e) => this.host.status(`Couldn't save the lyrics: ${e.message}`, true));
+    }, 400);
+  }
+
+  drawLyrics(ctx, col, y) {
+    const w = this.w;
+    ctx.fillStyle = col("--panel");
+    ctx.fillRect(0, y, w, LYR_H);
+    ctx.font = "11px system-ui, sans-serif";
+    const words = this.lyricWords();
+    if (!words.length) {
+      ctx.fillStyle = col("--muted");
+      ctx.fillText(this.lyrics ? "Lyrics: none in this part of the song" : "Lyrics: press Lyrics… to add the song's words", 6, y + 15);
+      return;
+    }
+    for (const wd of words) {
+      const x0 = this.x(wd.start), x1 = this.x(wd.end);
+      if (x1 < 0 || x0 > w) continue;
+      const on = this.wordSel && this.wordSel.i === wd.i && this.wordSel.k === wd.k;
+      ctx.fillStyle = `hsl(${(wd.i * 67) % 360} 65% ${on ? 62 : 74}%)`;
+      ctx.fillRect(x0, y + 2, Math.max(x1 - x0 - 1, 2), LYR_H - 4);
+      if (on) { ctx.strokeStyle = col("--text"); ctx.lineWidth = 2; ctx.strokeRect(x0 + 1, y + 3, Math.max(x1 - x0 - 3, 1), LYR_H - 6); ctx.lineWidth = 1; }
+      if (x1 - x0 > 10) {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x0 + 2, y, x1 - x0 - 4, LYR_H); ctx.clip();
+        ctx.fillStyle = "#111";
+        ctx.fillText(wd.word, x0 + 3, y + 15);
+        ctx.restore();
+      }
+    }
+  }
+
   // input ---------------------------------------------------------------------
   inLane(y) { return y >= RULER_H + BEAT_H && y < RULER_H + BEAT_H + SEC_H; }
 
@@ -2522,6 +2626,16 @@ export class MusicEditor {
       this.drag = { mark, base: this.info?.marks || [], shown: this.marks, x, moved: false };
       return;
     }
+    if (this.inLyrics(e.offsetY)) {
+      const word = this.wordAt(x);
+      if (word) {
+        this.wordSel = { i: word.i, k: word.k };
+        this.drag = { word, t0: this.t(x), lines: this.lyrics.lines, moved: false, x };
+        this.draw();
+        return;
+      }
+      this.wordSel = null;
+    }
     if (this.inLane(e.offsetY) && this.shown) {
       const edge = this.sections ? this.edgeNear(x) : -1;
       if (edge > 0) { this.drag = { section: edge, before: this.sections }; return; }
@@ -2592,6 +2706,23 @@ export class MusicEditor {
       const hit = this.clipAt(x, e.offsetY);
       this.canvas.style.cursor = !hit ? "text" : hit.part === "body" ? "grab" : "ew-resize";
       this.canvas.title = hit ? "Drag to move this clip, or its ends to trim it" : "";
+      return;
+    }
+    if (d?.word) {
+      if (!d.moved && Math.abs(x - d.x) < 3) return;
+      d.moved = true;
+      const by = this.t(x) - d.t0, { start, end } = d.word.base, l = this.lyrics;
+      const next = d.word.part === "move" ? [start + by, end + by] : d.word.part === "start" ? [Math.min(start + by, end - 0.05), end]
+        : [start, Math.max(end + by, start + 0.05)];
+      const length = this.sources[keyOf(l.ref)]?.[0].length / this.audio.sampleRate || this.total;
+      l.lines = moveWord(d.lines, d.word.i, d.word.k, next[0], next[1], l.voice, length);
+      this.draw();
+      return;
+    }
+    if (!d && this.inLyrics(e.offsetY)) {
+      const hit = this.wordAt(x);
+      this.canvas.style.cursor = !hit ? "text" : hit.part === "move" ? "grab" : "ew-resize";
+      this.canvas.title = hit ? `"${hit.word}": drag to move it, or its edges to make it longer or shorter; click to hear it` : "";
       return;
     }
     if (d?.mark !== undefined) {
@@ -2666,6 +2797,14 @@ export class MusicEditor {
         this.updateControls();
         this.draw();
       }
+      return;
+    }
+    if (d?.word) {
+      if (d.moved) { this.saveLyricsSoon(); return; }
+      // A click plays the word.
+      this.time = d.word.start;
+      this.updateControls();
+      this.play(Math.max(0, d.word.start - 0.15), Math.min(this.total, d.word.end + 0.15));
       return;
     }
     if (d?.mark !== undefined) {
@@ -2821,7 +2960,11 @@ export class MusicEditor {
     $("music-detect").addEventListener("click", () => this.detect());
     $("music-describe").addEventListener("click", () => this.describe());
     $("music-colours").addEventListener("click", () => { if (this.base) this.host.songColours?.(this.base); });
-    $("music-lyrics").addEventListener("click", () => { if (this.base) this.host.songLyrics?.(this.base); });
+    $("music-lyrics").addEventListener("click", async () => {
+      if (!this.base) return;
+      await this.host.songLyrics?.(this.base);
+      this.loadLyrics(); // the words or their places may have changed
+    });
     $("music-suggest").addEventListener("click", () => this.openCuts(this.secSel >= 0 ? this.secSel : null));
     $("music-cuts-scope").addEventListener("change", () => { this.cutNote(""); this.defaultCutTarget(); });
     $("cuts-form").addEventListener("submit", (e) => { e.preventDefault(); this.findCuts(); });
