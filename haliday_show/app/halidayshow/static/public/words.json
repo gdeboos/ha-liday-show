@@ -136,9 +136,7 @@
       "words": [
         {"key": "join_short", "label": "Small Join button at the top", "text": "Join"},
         {"key": "join", "label": "What the Join button does", "text": "Join the show: your screen glows with the lights"},
-        {"key": "join_warn", "label": "Before joining", "text": "Your screen will light up and flash in time with the lights. Turn your brightness up and hold your phone up."},
-        {"key": "join_ok", "label": "Button to join", "text": "Join"},
-        {"key": "join_cancel", "label": "Button not to join", "text": "Not now"},
+        {"key": "join_warn", "label": "On the dark screen for a few seconds as a phone joins, before the colours fade in", "text": "Your screen will light up and flash in time with the lights. Turn your brightness up and hold your phone up."},
         {"key": "join_leave", "label": "Button to leave, while joined", "text": "Leave"},
         {"key": "join_waiting", "label": "Joined, waiting for the next show", "text": "You're in. Your screen lights up when the next show starts."},
         {"key": "join_off", "label": "Joining switched off", "text": "Joining the show isn't on right now."}
