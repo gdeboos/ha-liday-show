@@ -464,12 +464,24 @@ export class MusicEditor {
   get total() { return arrange(this.pieces, this.crossfade).total; }
 
   // songs ---------------------------------------------------------------------
+  // The song Splice adds (this.insertRef), dropped if it's gone from your songs.
   fillSongLists() {
     const songs = this.host.songs();
-    const sel = $("music-insert-src"), cur = sel.value;
-    sel.replaceChildren(new Option("Another song…", ""));
-    for (const r of songs) sel.append(new Option(r.path, JSON.stringify(r)));
-    sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "";
+    if (this.insertRef && !songs.some((r) => keyOf(r) === keyOf(this.insertRef))) this.insertRef = null;
+    this.showInsertSong();
+  }
+
+  showInsertSong() {
+    $("music-insert-name").textContent = this.insertRef ? nameOf(this.insertRef) : "No song chosen";
+    $("music-insert-pick").textContent = this.insertRef ? "Change…" : "Choose song…";
+  }
+
+  async pickInsertSong() {
+    const ref = await this.host.pickSong?.({ title: "Choose a song to splice in", yes: "Choose" });
+    if (!ref) return null;
+    this.insertRef = ref;
+    this.showInsertSong();
+    return ref;
   }
 
   // Everything played here goes through one gain node so the volume slider covers previews too.
@@ -1282,10 +1294,11 @@ export class MusicEditor {
   }
 
   async addSong(atEnd) {
-    const v = $("music-insert-src").value;
-    if (!v) return this.host.status("Choose the song to add first", "hint");
+    // Nothing chosen yet: choose now, then add it.
+    const ref = this.insertRef || await this.pickInsertSong();
+    if (!ref) return;
     try {
-      const key = await this.source(JSON.parse(v));
+      const key = await this.source(ref);
       const piece = { src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate };
       const at = atEnd ? this.total : this.time;
       const xf = this.crossfade;
@@ -2727,8 +2740,9 @@ export class MusicEditor {
       const f = e.target.files[0];
       e.target.value = "";
       const ref = f && await this.upload(f);
-      if (ref) $("music-insert-src").value = JSON.stringify(ref);
+      if (ref) { this.insertRef = ref; this.showInsertSong(); }
     });
+    $("music-insert-pick").addEventListener("click", () => this.pickInsertSong());
     this.host.volume?.bind($("music-volume"), (g) => { if (this.gainNode) this.gainNode.gain.value = g; });
     $("music-play").addEventListener("click", () => (this.playing ? this.stop() : this.play()));
     $("music-home").addEventListener("click", () => this.seek(0));

@@ -602,7 +602,8 @@
     <section class="panel" data-panel="splice">
       <div class="panel-head"><span class="section-label">Splice</span></div>
       <div class="group">
-        <select id="music-insert-src" title="A song to add"></select>
+        <button id="music-insert-pick" type="button" title="Choose the song to add, from your songs' folders">Choose song…</button>
+        <span id="music-insert-name" class="hint">No song chosen</span>
         <label class="button ghost" title="Upload a song to add">Upload<input id="music-insert-upload" type="file" accept="audio/*" hidden></label>
         <button id="music-insert" title="Insert the whole song at the playhead; it's selected afterwards so you can trim it">Insert at playhead</button>
         <button id="music-append" title="Add the whole song to the end">Add to end</button>
