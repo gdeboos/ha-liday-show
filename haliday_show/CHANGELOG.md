@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.389
+
+- **Tap along is clearer.** In **Lyrics…**, the button now says which line it's waiting for (**Line 1 starts**, **Line 2 starts**…), so your first press marks the first line, not the second. **Done** now stays shown once you've tapped the last line.
+
 ## 0.2.388
 
 - **Lyrics are kept with the song.** Place them once and every show on that song sings them. You can now add them in the Music editor too: open the song and press **Lyrics…** under **Beats and sections**. Lyrics you've already placed in a show move to its song the next time you open the show.

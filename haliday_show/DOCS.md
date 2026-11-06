@@ -1693,7 +1693,8 @@ or open the song in the Music editor and press **Lyrics…** under **Beats and s
 2. They're placed across the singing for you, each word taking longer the more syllables it has. Each
    line shows its start time; press **▶** beside one to hear it.
 3. If a line comes in early or late, type its start, or press **Tap along…**: the song plays from the
-   beginning and you press **Next line** (or the space bar) as each line starts. The words of each line
+   beginning and you press **Line 1 starts** (or the space bar) as the first line starts, then again for
+   each line after (the button says which line it's waiting for). The words of each line
    are spread across the singing after its start.
 4. Press **Save**. **Lyrics… (placed)** shows it has them; **Remove lyrics** goes back to the shapes
    guessed from the sound.
