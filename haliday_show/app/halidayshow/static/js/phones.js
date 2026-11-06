@@ -9,6 +9,10 @@ export const PHONE_FPS = 10;
 export const PHONE_GRID = { w: 54, h: 96 };
 // The same shape, smaller: enough for the screen's main colour in the bake, at a quarter of the work.
 export const PHONE_SAMPLE = { w: 27, h: 48 };
+// A Singing face on a phone is drawn this many times finer each way, so it's smooth at the phone's own
+// resolution; everything else on the lane keeps PHONE_GRID's dots (each drawn as a block of dots).
+// Phones draw the lane themselves, so this costs the phone's processor, not any delay.
+export const PHONE_SHARP = 4;
 const LIT = 8; // a channel this bright or more counts as lit
 
 // The house's main colour from its lights' frames (each r g b r g b …): the lit bulbs' colours

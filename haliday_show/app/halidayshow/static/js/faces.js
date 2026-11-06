@@ -11,7 +11,18 @@ export const CHARACTERS = ["snowman", "pumpkin", "gingerbread", "santa", "ghost"
 export const FACE_ASPECT = 3 / 4; // the box's width over its height
 export const SHAPES = "aoem";
 
-const C = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+// Colours are read once and kept: faces are drawn dot by dot, many thousands of times a frame on a phone.
+// (The arrays are shared, so nothing changes them.)
+const colours = new Map();
+const C = (hex) => {
+  let c = colours.get(hex);
+  if (!c) {
+    c = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+    if (colours.size > 500) colours.clear();
+    colours.set(hex, c);
+  }
+  return c;
+};
 const ell = (u, v, cx, cy, rx, ry) => ((u - cx) / rx) ** 2 + ((v - cy) / ry) ** 2 <= 1;
 const rect = (u, v, x0, y0, x1, y1) => u >= x0 && u <= x1 && v >= y0 && v <= y1;
 // Inside the triangle a, b, c (each [u, v]).
@@ -177,8 +188,26 @@ function star(u, v, cx, cy, r) {
   return (vx - R) * py - vy * (px - R) >= 0;
 }
 
-const mix = (c, k) => c.map((x) => Math.round(x * k));
-const hex = (h, fallback) => (typeof h === "string" && /^#[0-9a-f]{6}$/i.test(h) ? C(h) : fallback);
+// A colour made darker (k < 1), kept like C's.
+const mixed = new WeakMap();
+const mix = (c, k) => {
+  let m = mixed.get(c);
+  if (!m) mixed.set(c, (m = new Map()));
+  let out = m.get(k);
+  if (!out) m.set(k, (out = c.map((x) => Math.round(x * k))));
+  return out;
+};
+const goodHex = new Map();
+const hex = (h, fallback) => {
+  if (typeof h !== "string") return fallback;
+  let ok = goodHex.get(h);
+  if (ok === undefined) {
+    ok = /^#[0-9a-f]{6}$/i.test(h);
+    if (goodHex.size > 500) goodHex.clear();
+    goodHex.set(h, ok);
+  }
+  return ok ? C(h) : fallback;
+};
 
 // The hats and tops that sit in front of the head.
 function topAt(u, v, top, L) {
@@ -211,24 +240,26 @@ function topAt(u, v, top, L) {
 }
 
 // What sits behind the head: antlers and ears.
+const SIDES = [1, -1];
 function behindAt(u, v, top, extras, recipeHead, L) {
+  if (top.style !== "antlers" && top.style !== "cat ears" && top.style !== "bear ears" && !extras["pointy ears"]) return null;
   const c = hex(top.colour, C("#d8b888")), c2 = hex(top.colour2, C("#f07090")), ht = L.top;
-  if (top.style === "antlers") {
-    for (const s of [1, -1]) {
+  if (top.style === "antlers" && v < ht + 0.1) {
+    for (const s of SIDES) {
       const x = (k) => 0.5 + s * (k - 0.5);
       if (near(u, v, [x(0.36), ht + 0.06], [x(0.2), ht - 0.2], 0.025) || near(u, v, [x(0.27), ht - 0.07], [x(0.1), ht - 0.12], 0.02)
         || near(u, v, [x(0.23), ht - 0.14], [x(0.32), ht - 0.24], 0.02)) return c;
     }
   }
   if (top.style === "cat ears") {
-    for (const s of [1, -1]) {
+    for (const s of SIDES) {
       const x = (k) => 0.5 + s * (k - 0.5);
       if (tri(u, v, [x(0.2), ht + 0.06], [x(0.4), ht + 0.03], [x(0.17), ht - 0.13])) return c2;
       if (tri(u, v, [x(0.1), ht + 0.12], [x(0.46), ht + 0.04], [x(0.13), ht - 0.18])) return c;
     }
   }
   if (top.style === "bear ears") {
-    for (const s of [1, -1]) {
+    for (const s of SIDES) {
       const cx = 0.5 + s * 0.29;
       if (ell(u, v, cx, ht + 0.04, 0.06, 0.045)) return c2;
       if (ell(u, v, cx, ht + 0.03, 0.1, 0.075)) return c;
@@ -333,7 +364,7 @@ export function drawRecipe(r, u, v, f) {
   if (e) return e;
   if (extras.moustache && (ell(u, v, 0.4, L.mouth - 0.07, 0.11, 0.035) || ell(u, v, 0.6, L.mouth - 0.07, 0.11, 0.035))) return hex(extras.moustache, WHITE);
   if (r.cheeks && (ell(u, v, 0.5 - L.dx - 0.08, L.mouth - 0.08, 0.06, 0.04) || ell(u, v, 0.5 + L.dx + 0.08, L.mouth - 0.08, 0.06, 0.04))) return hex(r.cheeks, C("#f07090"));
-  if (extras.whiskers) {
+  if (extras.whiskers && Math.abs(v - L.nose) < 0.12) {
     for (const s of [-1, 1]) for (const dy of [-0.04, 0, 0.04]) {
       if (near(u, v, [0.5 + s * 0.13, L.nose + 0.02], [0.5 + s * 0.44, L.nose + 0.02 + dy * 1.4], 0.008)) return hex(extras.whiskers, C("#dddddd"));
     }
@@ -459,6 +490,44 @@ export function facesUsed(show) {
 }
 
 const still = { mouth: 0, shape: "a", blink: 0, look: 0 };
+
+// The drawing for a character, to call dot by dot with a face that's already complete ({mouth 0-1,
+// shape, blink, look}): what faceColour does, without its checks each time.
+export function faceDrawer(character) {
+  if (BUILT_IN[character]) { const r = BUILT_IN[character]; return (u, v, f) => drawRecipe(r, u, v, f); }
+  if (DRAW[character]) return DRAW[character];
+  const own = yours.get(character);
+  if (own) { const r = own.recipe; return (u, v, f) => drawRecipe(r, u, v, f); }
+  return DRAW.snowman;
+}
+
+// For a big face (a phone's sharp one), the same as faceDrawer but much quicker: the parts that never
+// move are drawn once for the box's size (cw x ch dots) and kept; only round the eyes and mouth is the
+// face drawn afresh each time. Hand-drawn faces are quick enough as they are.
+const stills = new WeakMap(); // recipe -> Map("cw x ch" -> [colour or null per dot])
+export function quickDrawer(character, cw, ch) {
+  const r = BUILT_IN[character] || (!DRAW[character] && yours.get(character)?.recipe);
+  const draw = faceDrawer(character);
+  if (!r || cw < 8 || ch < 8) return draw;
+  cw = Math.round(cw); ch = Math.round(ch);
+  let sizes = stills.get(r);
+  if (!sizes) stills.set(r, (sizes = new Map()));
+  const key = `${cw}x${ch}`;
+  let still = sizes.get(key);
+  if (!still) {
+    if (sizes.size > 3) sizes.clear();
+    still = new Array(cw * ch);
+    const f = { mouth: 0, shape: "m", blink: 0, look: 0 };
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) still[y * cw + x] = drawRecipe(r, (x + 0.5) / cw, (y + 0.5) / ch, f);
+    sizes.set(key, still);
+  }
+  const L = LAYOUT[r.head?.shape] || LAYOUT.round, eyeW = L.dx + 0.13, mouthW = L.w * 1.9 + 0.03;
+  return (u, v, f) => {
+    const du = Math.abs(u - 0.5);
+    if ((Math.abs(v - L.eye) < 0.14 && du < eyeW) || (Math.abs(v - L.mouth) < 0.16 && du < mouthW)) return draw(u, v, f);
+    return still[Math.min(Math.floor(v * ch), ch - 1) * cw + Math.min(Math.floor(u * cw), cw - 1)];
+  };
+}
 
 // The character's colour at (u, v) in its box doing `face` (or, for older callers, with the mouth this
 // open), or null for the background.

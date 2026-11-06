@@ -180,3 +180,38 @@ test("a quiet moment straight after a word, or quiet singing at high sensitivity
   const quiet = { fps: 20, values: Array(40).fill(10), shapes: "m".repeat(40) };
   assert.ok(dark(quiet, 1, { sensitivity: 100 }) > dark(shut, 1, { sensitivity: 100 }));
 });
+
+test("on a phone a Singing face is drawn finer, and everything else in blocks exactly as before", async () => {
+  const { phoneView, phoneScreen, withVoiceLevels } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const { PHONE_GRID, PHONE_SHARP } = await import("../../haliday_show/app/halidayshow/static/js/phones.js");
+  const fire = { ...newClip("fire2d", 0, 4) };
+  const plain = phoneView([fire], 1);
+  assert.deepEqual([plain.w, plain.h], [PHONE_GRID.w, PHONE_GRID.h]);
+  const face = { ...newClip("singingface", 2, 4), character: "elf" };
+  const fine = phoneView([fire, face], 1); // the fire is playing, the face is still to come
+  assert.deepEqual([fine.w, fine.h], [PHONE_GRID.w * PHONE_SHARP, PHONE_GRID.h * PHONE_SHARP]);
+  const coarse = phoneScreen([fire, face], 1);
+  for (const [x, y] of [[0, 0], [20, 90], [53, 95], [27, 60]]) {
+    for (const [dx, dy] of [[0, 0], [PHONE_SHARP - 1, PHONE_SHARP - 1]]) {
+      const o = ((y * PHONE_SHARP + dy) * fine.w + x * PHONE_SHARP + dx) * 3, c = (y * PHONE_GRID.w + x) * 3;
+      assert.deepEqual([...fine.frame.subarray(o, o + 3)], [...coarse.subarray(c, c + 3)]);
+    }
+  }
+  // The face itself is drawn dot by dot: some of its 4 x 4 blocks aren't one colour.
+  const voice = { fps: 10, values: Array(40).fill(80) };
+  const sharp = withVoiceLevels(voice, () => phoneView([face], 3));
+  let mixedBlocks = 0;
+  for (let by = 0; by < PHONE_GRID.h; by++) for (let bx = 0; bx < PHONE_GRID.w; bx++) {
+    const seen = new Set();
+    for (let dy = 0; dy < PHONE_SHARP; dy++) for (let dx = 0; dx < PHONE_SHARP; dx++) {
+      const o = ((by * PHONE_SHARP + dy) * sharp.w + bx * PHONE_SHARP + dx) * 3;
+      seen.add(`${sharp.frame[o]},${sharp.frame[o + 1]},${sharp.frame[o + 2]}`);
+    }
+    if (seen.size > 1) mixedBlocks++;
+  }
+  assert.ok(mixedBlocks > 100);
+  // Quick enough for a phone to draw many times a second.
+  const t0 = performance.now();
+  for (let k = 0; k < 10; k++) withVoiceLevels(voice, () => phoneView([face], 3 + k / 10));
+  assert.ok((performance.now() - t0) / 10 < 60, "a frame in well under 60 ms");
+});

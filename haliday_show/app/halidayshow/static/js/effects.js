@@ -7,8 +7,8 @@ import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } fr
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
-import { CHARACTERS, FACE_ASPECT, SHAPES, blinkAt, faceColour, lookAt, mouthFor } from "./faces.js";
-import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_SAMPLE, hasPhonesLane, singerOf, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
+import { CHARACTERS, FACE_ASPECT, SHAPES, blinkAt, faceDrawer, lookAt, mouthFor, quickDrawer } from "./faces.js";
+import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_SAMPLE, PHONE_SHARP, hasPhonesLane, singerOf, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
 
 export const FPS = 40;
 
@@ -790,6 +790,8 @@ function voiceAt(time) {
 }
 
 let faceMemo = { p: null, song: NaN };
+const faceOut = [0, 0, 0];
+const ONE_LOOK = [[0.5, 0.5]], FOUR_LOOKS = [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]];
 
 // The mouth's shape at `time` (faces.js SHAPES), as measured from the singer (show.voice.shapes); "a"
 // without.
@@ -863,12 +865,12 @@ Object.assign(EFFECTS, {
   }),
   singingface: gridEffect({
     // One of the characters in faces.js, as big as fits (Size %), its mouth opening with the singer.
-    label: "Singing face", music: true,
+    // Sharp: on a phone it's drawn at the finer grid (phoneView), not in PHONE_GRID's blocks.
+    label: "Singing face", music: true, sharp: true,
     params: [{ ...choice("character", "Character", "snowman", CHARACTERS), faces: true }, color("background", "Background", "#000000"),
       num("size", "Size %", 100, 40, 100, 5), num("sensitivity", "Mouth sensitivity %", 50, 0, 100, 5),
       choice("life", "Blinks, glances and bobs", "on", ["on", "off"])],
     renderXY: (p, t, dur, w, h, x, y) => {
-      const bg = hexToRgb(p.background);
       const scale = Math.min(Math.max(Number(p.size) || 100, 40), 100) / 100;
       const bh = Math.min(h, w / FACE_ASPECT) * scale, bw = bh * FACE_ASPECT;
       // t is the time into the clip; the singer goes by the time into the song, as Music level does.
@@ -890,18 +892,24 @@ Object.assign(EFFECTS, {
           const heard = !voiceLevels.values?.length || best >= 0.15;
           mouth = shape === "m" ? 0 : Math.max(mouth, heard ? 0.5 : 0);
         }
-        faceMemo = { p, song, face: { mouth, shape: shape === "m" && mouth > 0 ? "a" : shape,
+        // A phone's sharp face (tens of thousands of dots) keeps its still parts; a matrix (at most 4,096
+        // LEDs) is always drawn in full, so its bakes are unchanged.
+        faceMemo = { p, song, draw: w * h > 20000 ? quickDrawer(p.character, bw, bh) : faceDrawer(p.character), bg: hexToRgb(p.background), face: { mouth: Math.min(Math.max(mouth, 0), 1), shape: shape === "m" && mouth > 0 ? "a" : shape,
           blink: life ? blinkAt(song) : 0, look: life ? lookAt(song) : 0 },
         bob: life ? levelAt(song) * 0.025 : 0 }; // a little bob with the music
       }
       const face = faceMemo.face;
       const x0 = (w - bw) / 2, y0 = (h - bh) / 2 - faceMemo.bob * bh;
-      // Four looks inside each LED, averaged, so the edges are soft rather than jagged.
-      const out = [0, 0, 0];
-      for (const [dx, dy] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {
+      // Four looks inside each LED, averaged, so the edges are soft rather than jagged. A fine grid (a
+      // phone's sharp face) has dots small enough that one look each is smooth.
+      // One array for every dot, as the caller takes its colour straight away (a phone's sharp face is
+      // tens of thousands of dots a frame).
+      const bg = faceMemo.bg, out = faceOut, looks = w * h > 20000 ? ONE_LOOK : FOUR_LOOKS, k = 1 / looks.length;
+      out[0] = out[1] = out[2] = 0;
+      for (const [dx, dy] of looks) {
         const u = (x + dx - x0) / bw, v = (y + dy - y0) / bh;
-        const c = (u >= 0 && u <= 1 && v >= 0 && v <= 1 && faceColour(p.character, u, v, face)) || bg;
-        out[0] += c[0] / 4; out[1] += c[1] / 4; out[2] += c[2] / 4;
+        const c = (u >= 0 && u <= 1 && v >= 0 && v <= 1 && faceMemo.draw(u, v, face)) || bg;
+        out[0] += c[0] * k; out[1] += c[1] * k; out[2] += c[2] * k;
       }
       return out;
     },
@@ -1737,6 +1745,16 @@ export function curvedSettings(p, t, dur) {
 // along each row, down each column or once round it (the clip's `runs`).
 let gridStrip = new Float32Array(0);
 function paintClip(clip, time, n, buf, grid = null) {
+  // On a phone's fine grid (grid.dots > 1), only sharp effects use it; the rest are drawn at the
+  // usual grid and each of their dots fills its block, so they look just as they always have.
+  if (grid?.dots > 1 && !EFFECTS[clip.effect]?.sharp) {
+    const s = grid.dots, lw = grid.w / s, lh = grid.h / s, low = paintClip(clip, time, lw * lh, new Float32Array(lw * lh * 3), { w: lw, h: lh });
+    for (let y = 0; y < grid.h; y++) for (let x = 0; x < grid.w; x++) {
+      const o = (y * grid.w + x) * 3, l = (Math.floor(y / s) * lw + Math.floor(x / s)) * 3;
+      buf[o] = low[l]; buf[o + 1] = low[l + 1]; buf[o + 2] = low[l + 2];
+    }
+    return buf;
+  }
   paintEffect(clip, time, n, buf, grid);
   if (glitterOf(clip)) {
     const level = clipLevel(clip, time), colour = hexToRgb(clip.glitterColor || GLITTER_COLOUR);
@@ -1956,6 +1974,25 @@ export function phoneScreen(clips, time, main = null, level = 1, out = undefined
   try {
     return dim(renderTrack(clips || [], time, grid.w * grid.h, out, false, grid), level);
   } finally { phoneMain = STAND_IN; }
+}
+
+// A phone's screen as phones draw it: {frame, w, h}. With a Singing face on the lane it's PHONE_SHARP
+// times finer each way, so the face is smooth; otherwise PHONE_GRID.
+export const PHONE_FINE = { w: PHONE_GRID.w * PHONE_SHARP, h: PHONE_GRID.h * PHONE_SHARP, dots: PHONE_SHARP };
+export function phoneView(clips, time, main = null, level = 1) {
+  const grid = (clips || []).some((c) => EFFECTS[c.effect]?.sharp) ? PHONE_FINE : PHONE_GRID;
+  return { frame: phoneScreen(clips, time, main, level, undefined, grid), w: grid.w, h: grid.h };
+}
+
+// Puts a phoneView on a canvas, sized to it, at `fade` (0-1) brightness.
+export function drawPhoneView(canvas, { frame, w, h }, fade = 1) {
+  if (canvas.width !== w || canvas.height !== h) Object.assign(canvas, { width: w, height: h });
+  const ctx = canvas.getContext("2d"), img = ctx.createImageData(w, h);
+  for (let i = 0, n = w * h; i < n; i++) {
+    img.data[i * 4] = frame[i * 3] * fade; img.data[i * 4 + 1] = frame[i * 3 + 1] * fade;
+    img.data[i * 4 + 2] = frame[i * 3 + 2] * fade; img.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
 }
 
 // What visitors' phones show at `time`, as one colour (phones.js): the house's main colour, from

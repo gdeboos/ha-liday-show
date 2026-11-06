@@ -2466,7 +2466,9 @@ What phones show:
     what's on the lane, and stay dark in its gaps. **Remove the Phones lane** goes back to the house's
     main colour everywhere. ✨ **Generate** leaves the Phones lane alone.
   - **Singing face** turns the phone into a singing character (14 to pick from, from a snowman
-    to a black cat), whose mouth follows the singer (see the [matrix effects](#matrices-panels-and-mega-trees)).
+    to a black cat, or one of your own [faces](#faces)), whose mouth follows the singer (see the
+    [matrix effects](#matrices-panels-and-mega-trees)). On a phone the face is drawn four times finer
+    each way than the rest of the screen, so it's smooth rather than blocky.
 
 While you edit, a small phone in the top corner of the **House** panel shows the phone's screen at
 that moment, worked out just as the phones' colours are, and the **Preview** panel has a **Phones** row too. It shows while phones join the show (or it has a

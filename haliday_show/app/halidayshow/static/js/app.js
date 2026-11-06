@@ -12,7 +12,7 @@ import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, pa
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
-  renderTrack, showDuration, phoneColourAt, phoneScreen, laneUsesHouse, newClip, setVoiceLevels, withVoiceLevels,
+  renderTrack, showDuration, phoneColourAt, phoneScreen, phoneView, drawPhoneView, laneUsesHouse, newClip, setVoiceLevels, withVoiceLevels,
 } from "./effects.js";
 import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin, singerOf } from "./phones.js";
@@ -2663,7 +2663,7 @@ function drawPreview() {
   tracks.forEach((tr, row) => {
     const dev = app.devices[tr.device];
     // The phone's screen is one bar of its main colour here; the House panel's phone shows the picture.
-    const rgb = dev.phones ? Uint8Array.from(mainColour([phoneScreenNow()])) : previewFrame(tr, dev, pos, composed);
+    const rgb = dev.phones ? Uint8Array.from(mainColour([phoneScreenNow().frame])) : previewFrame(tr, dev, pos, composed);
     const n = dev.phones ? 1 : dev.segments;
     const cap = (dev.brightness ?? 100) / 100;
     if (cap < 1) for (let i = 0; i < rgb.length; i++) rgb[i] = Math.round(rgb[i] * cap);
@@ -2937,12 +2937,7 @@ function drawPhoneTile() {
   tile.classList.toggle("folded", folded);
   tile.setAttribute("aria-expanded", String(!folded));
   if (folded) return;
-  const canvas = tile.querySelector(".phone-screen"), ctx = canvas.getContext("2d");
-  const frame = phoneScreenNow(), img = ctx.createImageData(PHONE_GRID.w, PHONE_GRID.h);
-  for (let i = 0, n = PHONE_GRID.w * PHONE_GRID.h; i < n; i++) {
-    img.data[i * 4] = frame[i * 3]; img.data[i * 4 + 1] = frame[i * 3 + 1]; img.data[i * 4 + 2] = frame[i * 3 + 2]; img.data[i * 4 + 3] = 255;
-  }
-  ctx.putImageData(img, 0, 0);
+  drawPhoneView(tile.querySelector(".phone-screen"), phoneScreenNow());
 }
 
 // The lights' frames at `t`, for the house's main colour.
@@ -2965,11 +2960,11 @@ function phoneScreenAt() {
   if (!lane) {
     const [r, g, b] = phoneNow(), out = new Uint8Array(n * 3);
     for (let i = 0; i < n; i++) out.set([r, g, b], i * 3);
-    return out;
+    return { frame: out, w: PHONE_GRID.w, h: PHONE_GRID.h };
   }
   const t = Math.floor(app.time * PHONE_FPS + 1e-6) / PHONE_FPS;
   const main = laneUsesHouse(lane) ? mainColour(lightFramesAt(t)) : null;
-  return phoneScreen(lane.clips, app.time, main, showLevel(app.show, PHONES));
+  return phoneView(lane.clips, app.time, main, showLevel(app.show, PHONES));
 }
 
 // What phones show at the playhead, taken at the same moments as the bake (ten a second).
@@ -7869,19 +7864,15 @@ async function previewShow(r) {
     phoneAt = at;
     const frames = () => { const c = coloursAt(at); return physical.map((id) => c(app.lights[id])); };
     const n = PHONE_GRID.w * PHONE_GRID.h;
-    const frame = withMusicLevels(show.audio ? show.loudness || MADE_UP : null, () => withVoiceLevels(show.audio ? singerOf(show) : null, () => {
+    const view = withMusicLevels(show.audio ? show.loudness || MADE_UP : null, () => withVoiceLevels(show.audio ? singerOf(show) : null, () => {
       if (!lane) {
         const [r, g, b] = phoneColourAt(show, at, frames()), out = new Uint8Array(n * 3);
         for (let i = 0; i < n; i++) out.set([r, g, b], i * 3);
-        return out;
+        return { frame: out, w: PHONE_GRID.w, h: PHONE_GRID.h };
       }
-      return phoneScreen(lane.clips, t, laneUsesHouse(lane) ? mainColour(frames()) : null, showLevel(show, PHONES));
+      return phoneView(lane.clips, t, laneUsesHouse(lane) ? mainColour(frames()) : null, showLevel(show, PHONES));
     }));
-    const ctx = screen.getContext("2d"), img = ctx.createImageData(PHONE_GRID.w, PHONE_GRID.h);
-    for (let i = 0; i < n; i++) {
-      img.data[i * 4] = frame[i * 3]; img.data[i * 4 + 1] = frame[i * 3 + 1]; img.data[i * 4 + 2] = frame[i * 3 + 2]; img.data[i * 4 + 3] = 255;
-    }
-    ctx.putImageData(img, 0, 0);
+    drawPhoneView(screen, view);
   };
   const paint = () => {
     const t = Math.min(now(), end);
