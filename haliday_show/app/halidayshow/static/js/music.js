@@ -12,7 +12,7 @@ import { evenOut, loudness } from "./loudness.js";
 import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
-import { savePart, splitVocals } from "./splitvocals.js";
+import { PARTS, savePart, splitVocals } from "./splitvocals.js";
 import { drumHits } from "./drumhits.js";
 import { askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
@@ -2064,6 +2064,8 @@ export class MusicEditor {
       }
     }
     if (names.length) this.host.status(`Made ${nameOf(ref)}, with its ${names.join(" and ")} kept with it`, "saved", "music-save");
+    // Then listened to for what can be heard in it (sounds.js), in the background.
+    if (PARTS.every((p) => names.includes(p))) this.host.partsLater?.(ref);
   }
 
   // Detect for a file just made from a draft (with something spliced in), keeping the draft's marks.

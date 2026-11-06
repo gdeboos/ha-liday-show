@@ -8,6 +8,7 @@ import { EFFECTS, HOUSE, clipPiece, isGroupTrack, newClip } from "./effects.js";
 import { runsDownTree } from "./matrix.js";
 import { applyPalette } from "./palettes.js";
 import { parseLyrics } from "./lyrics.js";
+import { SOUNDS, SOUND_LOOKS, soundsIn } from "./sounds.js";
 
 // What a light does with its role (roles.js) in a lively stretch of the song, when the song gives it
 // something to follow: a drum's light flashes on that drum's hits (Drum hits), a vocals light pulses on
@@ -50,7 +51,7 @@ export const STYLES = {
 // Looks by energy. Each takes the beats per second and the light's segment count and returns an
 // effect and its settings; colours come from the palette afterwards. Speeds are set from the tempo
 // so movement lands on the beat: one step a beat, one lap or sweep a bar.
-const LOOKS = {
+export const LOOKS = {
   low: [
     { effect: "gradient", label: "Slow drift", params: () => ({ count: "3", speed: 0.1 }) },
     { effect: "pulse", label: "Breathe each bar", params: (bps) => ({ rate: bps / 4, background: "#000000" }) },
@@ -211,11 +212,15 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
   // The moving looks a section can pick from (slow lights and grids keep their own short lists): the feel's favourites (if it has at least three at that loudness),
   // less any your other shows lean on (if that still leaves three).
   const liked = FEELS[feel]?.likes;
-  const shortlist = (set) => {
+  // Then, of those, the ones that suit what can be heard there (sounds.js: twinkles for bells), if two do.
+  const shortlist = (set, heard = []) => {
     let pool = set;
     if (liked) { const mine = pool.filter((l) => liked.includes(l.effect)); if (mine.length >= 3) pool = mine; }
     const fresh = pool.filter((l) => !avoid.includes(l.effect));
-    return fresh.length >= 3 ? fresh : pool;
+    if (fresh.length >= 3) pool = fresh;
+    const suits = heard.flatMap((k) => SOUND_LOOKS[k] || []);
+    const led = pool.filter((l) => suits.includes(l.effect));
+    return led.length >= 2 ? led : pool;
   };
   const cues = songCues(analysis);
   const bps = beatsPerSecond(analysis);
@@ -267,7 +272,8 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
       const b = (a + 1 + Math.floor(hash(key, seed, 7) * (set.length - 1))) % set.length;
       return [set[a], set[b]];
     };
-    const fast = pick(shortlist(LOOKS[t])), slow = pick(SLOW_LOOKS[t]), grid2d = pick(GRID_LOOKS[t]);
+    const heard = soundsIn(analysis.sounds, sec.start, sec.end).filter((k) => !SOUNDS[k].mood).slice(0, 2);
+    const fast = pick(shortlist(LOOKS[t], heard)), slow = pick(SLOW_LOOKS[t]), grid2d = pick(GRID_LOOKS[t]);
     // A matrix swaps the section's second look for one drawn across its grid.
     const onGrid = [fast[0], grid2d[0]];
     // Loud sections and the chorus move together on every light; the rest alternate across lights.

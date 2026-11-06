@@ -46,6 +46,7 @@ import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor, arrange, mapHits, mapLyrics, mapVoice } from "./music.js";
 import { ROLES, cleanRoles, guessRoles, rolesFor } from "./roles.js";
+import { SOUNDS, feelFor, soundsIn } from "./sounds.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette, usedColourKeys } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, entriesFor, scheduleLine, whenNext } from "./schedule.js";
@@ -8434,7 +8435,7 @@ let songRowsCache = [], songsMore = false, songsAsked = 0;
 // Songs split into parts one after another, in the background (splitvocals.js makeParts): each song as
 // it's added, and every song not yet split from Split all songs into parts. Only while this page is
 // open; anything not done is picked up next time Split all is pressed.
-const partsLine = { queue: [], now: null, stop: null, stopped: false, done: 0, failed: 0 };
+const partsLine = { queue: [], now: null, stop: null, stopped: false, done: 0, failed: 0, listened: 0 };
 
 // The draft a song file was made from, as makeParts takes it, so its parts can be cut from its original's.
 async function editFor(ref) {
@@ -8474,6 +8475,7 @@ async function runPartsLine() {
       const out = await makeParts(ref, api, { edit, say: (text, done) => showPartsLine(text, done),
         started: (stop) => { partsLine.stop = stop; if (partsLine.stopped) stop(); } });
       if (out.made) partsLine.done++;
+      else if (out.listened) partsLine.listened++;
     } catch (e) {
       if (e.cancelled) break;
       partsLine.failed++;
@@ -8482,11 +8484,12 @@ async function runPartsLine() {
     }
     await refresh();
   }
-  const { done, failed, stopped } = partsLine;
-  Object.assign(partsLine, { now: null, stop: null, done: 0, failed: 0, queue: stopped ? [] : partsLine.queue });
+  const { done, failed, stopped, listened } = partsLine;
+  Object.assign(partsLine, { now: null, stop: null, done: 0, failed: 0, listened: 0, queue: stopped ? [] : partsLine.queue });
   if (stopped) await refresh();
   showPartsLine();
-  const said = [done && `Split ${done} song${done === 1 ? "" : "s"} into parts`, failed && `${failed} couldn't be split (${lastError})`,
+  const said = [done && `Split ${done} song${done === 1 ? "" : "s"} into parts`,
+    listened && `listened to ${listened} song${listened === 1 ? "" : "s"} for the sounds in ${listened === 1 ? "it" : "them"}`, failed && `${failed} couldn't be split (${lastError})`,
     stopped && "stopped: any part already made is kept"].filter(Boolean).join("; ");
   if (said) status(said, failed ? true : stopped ? "hint" : "saved", "parts");
 }
@@ -8508,10 +8511,12 @@ function showPartsLine(text = "", done = null) {
 async function prepareAllSongs() {
   await refreshAudio().catch(() => {});
   // Not old splits that couldn't be matched to their song ("… (vocals)"): they're parts already.
-  const todo = (app.songs || []).filter((s) => !prepared(s.parts) && !/ \((vocals|music)\)\.wav$/i.test(s.path));
+  const todo = (app.songs || []).filter((s) => (!prepared(s.parts) || !s.sounds) && !/ \((vocals|music)\)\.wav$/i.test(s.path));
   if (!todo.length) { status("Every song is split into parts already", "saved", "parts"); return; }
-  const n = todo.length;
-  if (!(await askYes(`Split ${n} song${n === 1 ? "" : "s"} into parts (vocals, drums, bass and the rest), one after another? `
+  // Songs split before they were listened to for their sounds only need listening to: seconds each.
+  const split = todo.filter((s) => !prepared(s.parts)).length;
+  if (!split) { prepareParts(todo.map((s) => ({ source: s.source, path: s.path }))); return; }
+  if (!(await askYes(`Split ${split} song${split === 1 ? "" : "s"} into parts (vocals, drums, bass and the rest), one after another? `
     + "It runs in this browser, so keep this page open: it takes a few minutes a song (an edit of a song that's split takes "
     + "seconds). You can carry on using HA-liday Show meanwhile, and Stop whenever you like; what's done is kept.", { yes: "Split them" }))) return;
   prepareParts(todo.map((s) => ({ source: s.source, path: s.path })));
@@ -11158,15 +11163,19 @@ async function saveClicked() {
 // audio -----------------------------------------------------------------------
 async function refreshAudio() {
   madeFrom.clear(); // drafts and their files may have changed
+  soundsShown = null; // and a song may have been listened to since
   const list = await api("api/audio");
   // Each song's parts stay readable (song.parts) but out of anything a song is copied into or saved
   // as (a show's song, a draft's), which only ever hold {source, path}.
   for (const a of list) {
-    const parts = a.parts || {};
+    const parts = a.parts || {}, sounds = !!a.sounds;
     delete a.parts;
+    delete a.sounds;
     Object.defineProperty(a, "parts", { value: parts, enumerable: false });
+    Object.defineProperty(a, "sounds", { value: sounds, enumerable: false }); // listened to (sounds.js)
   }
   app.songs = list;
+  if (app.show) showSongSounds(app.show.audio);
   const sel = $("audio-select");
   sel.replaceChildren(new Option("No song (lights only)", ""));
   const current = app.show?.audio;
@@ -11251,6 +11260,26 @@ function renderSongSummary() {
     : ["Lights only", `${Math.round(app.show?.duration || 60)} s`];
   $("song-meta").textContent = meta.filter(Boolean).join(" · ");
   $("song-title").title = ref ? `${ref.source === "media" ? "Media" : "Uploaded"}: ${ref.path}` : "";
+  showSongSounds(ref);
+}
+
+// What can be heard in the song (sounds.js), under its name once it's been listened to.
+let soundsShown = null;
+async function showSongSounds(ref) {
+  const key = ref ? `${ref.source}:${ref.path}` : null, box = $("song-sounds");
+  if (key === soundsShown?.key && soundsShown.done) return;
+  soundsShown = { key, done: false };
+  box.hidden = true;
+  if (!ref) return;
+  const sounds = await songSounds(ref);
+  if (soundsShown?.key !== key) return;
+  soundsShown.done = true;
+  const found = soundsIn(sounds), things = found.filter((k) => !SOUNDS[k].mood).map((k) => SOUNDS[k].label);
+  const moods = found.filter((k) => SOUNDS[k].mood).map((k) => SOUNDS[k].label.toLowerCase());
+  const and = (list) => list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}` : list[0];
+  box.textContent = [things.length && `Heard: ${things.join(", ")}`, moods.length && `sounds ${and(moods)}`].filter(Boolean).join(" · ");
+  box.title = "What HA-liday Show heard when it listened to the song. Generate and the AI pick looks to suit it.";
+  box.hidden = !box.textContent;
 }
 
 // Choose a song: a row per song (the hidden select stays the source of truth), applied on Use.
@@ -12414,19 +12443,28 @@ async function createShow({ name, audio: ref, length, start, gen, palette = null
 // Generate (or the AI) with these options, kept so Try again can run them again with a new seed and, for
 // Surprise me, a new feel.
 let lastGenerate = null, lastFeel = null;
-function runGenerate(opts, ai) {
+function runGenerate(opts, ai, again = false) {
   lastGenerate = { opts, ai, showId: app.showId };
   $("btn-generate-again").hidden = false;
-  return ai ? generateWithAI(opts) : generate(opts);
+  const go = { ...opts, again };
+  return ai ? generateWithAI(go) : generate(go);
 }
 
 function generateAgain() {
   if (!lastGenerate || lastGenerate.showId !== app.showId) { generateDialog(); return; }
-  runGenerate(lastGenerate.opts, lastGenerate.ai);
+  runGenerate(lastGenerate.opts, lastGenerate.ai, true);
 }
 
-// The feel for this take: the one picked, or for Surprise me any other than last time's.
-function takeFeel(feel) {
+// What can be heard in a show's song (sounds.js), once it's been listened to; null if not.
+async function songSounds(ref) {
+  if (!ref?.path) return null;
+  return api(songExtraUrl("sounds", ref)).catch(() => null);
+}
+
+// The feel for this take: the one picked, or for Surprise me the one the song's mood suggests (the
+// first time), else any other than last time's.
+function takeFeel(feel, { hint = null, again = false } = {}) {
+  if (!Object.hasOwn(FEELS, feel) && hint && !again && Object.hasOwn(FEELS, hint)) feel = hint;
   if (!Object.hasOwn(FEELS, feel)) {
     const others = FEEL_KEYS.filter((k) => k !== lastFeel);
     feel = others[Math.floor(Math.random() * others.length)];
@@ -12452,7 +12490,7 @@ async function recentLooks() {
   return Object.entries(count).filter(([, n]) => n >= enough).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([e]) => e);
 }
 
-async function generate({ colors, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null, feel = "surprise" }) {
+async function generate({ colors, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null, feel = "surprise", again = false }) {
   // A split light gets effects on its parts; its own track (all the parts at once) is left for you.
   // Its parts light up and go dark together when building up.
   // A part of the show: only the selected lights (every light when the selection is only on lanes).
@@ -12471,9 +12509,10 @@ async function generate({ colors, style, house, build, maxBars = prefs.get("genM
   const roles = rolesFor(roleLanes(), await loadHouseRoles(), app.show.roles);
   for (const l of lights) l.role = roles[l.id];
   const show = app.show;
-  feel = takeFeel(feel);
+  const sounds = await songSounds(show.audio);
+  feel = takeFeel(feel, { hint: feelFor(sounds), again });
   const avoid = await recentLooks();
-  const result = generateShow({ ...show, duration: app.duration() }, lights, colors, { style, house, build, maxBars, seed: ++generateSeed, feel, avoid });
+  const result = generateShow({ ...show, duration: app.duration(), sounds }, lights, colors, { style, house, build, maxBars, seed: ++generateSeed, feel, avoid });
   if (part) {
     const tracks = part.tracks || new Set(show.tracks.map((_, i) => i));
     applyGeneratedPart(show, result, { start: part.start, end: part.end, tracks, house });
@@ -12487,7 +12526,7 @@ async function generate({ colors, style, house, build, maxBars = prefs.get("genM
 
 // Generate with the AI: the whole show from the song, its sections and their notes, in one request.
 async function generateWithAI({ colors, paletteName, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null, note = "",
-  feel = "surprise" }) {
+  feel = "surprise", again = false }) {
   // A window over the editor while the AI works, so it's plain it's busy and nothing is changed
   // underneath it; Cancel (or Esc) stops waiting and leaves the show as it was.
   if (!aiLights().some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
@@ -12499,7 +12538,7 @@ async function generateWithAI({ colors, paletteName, style, house, build, maxBar
   }
   const pace = { calm: "calm and gentle, with slow movement", balanced: "balanced, building with the music",
     lively: "lively, with lots of movement on the beat" }[style] || "balanced";
-  const mood = FEELS[takeFeel(feel)];
+  const mood = FEELS[takeFeel(feel, { hint: feelFor(await songSounds(app.show.audio)), again })];
   const avoid = await recentLooks();
   const span = part ? `the part of the song from ${fmtTime(part.start)} to ${fmtTime(part.end)} only` : "the whole song";
   const request = `Make a complete light show for ${span}${build ? "" : " on every light"}. Use the "${paletteName}" colours `
@@ -12771,11 +12810,12 @@ async function describe(request, selectionFor, { replaceAll = false, clearPart: 
   // The song's drum hits and lyrics up to date, and each light's role, for the AI to design with.
   await ensureVoice().catch(() => {});
   aiRoles = rolesFor(roleLanes(), await loadHouseRoles(), app.show.roles);
+  const sounds = await songSounds(app.show.audio);
   const lights = aiLights();
   if (!lights.some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
   const selection = selectionFor ? selectionFor(lights) : null;
   const show = app.show, duration = app.duration();
-  const context = buildContext({ show, lights, duration, selection, palettes: allPalettes() });
+  const context = buildContext({ show, lights, duration, selection, palettes: allPalettes(), sounds });
   const done = aiWorking(undefined, undefined, undefined, what);
   status(`Asking the AI to make ${what}…`);
   busy?.say(`The AI is designing ${what} from the song and its notes (usually under a minute)…`);
