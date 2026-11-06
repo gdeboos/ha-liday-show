@@ -3,7 +3,7 @@
 //
 // A layer: {name, gain (dB), duck (optional: quieten the song while its clips play), duckDb (optional:
 // by how much, 3-24 dB, 8 when missing), eq (optional:
-// its bass, mid and treble, mixer.js), matchTempo (optional: clips play at the song's tempo, each from
+// its bass, mid and treble, mixer.js), muted (optional: not heard, nor in a song file made from it), matchTempo (optional: clips play at the song's tempo, each from
 // its own bpm), clips: [{song, start, end, anchor: {song, t}, gain (dB), fadeIn, fadeOut}]}.
 // song is the clip's audio ({source, path}); start and end are the part of it that plays; anchor is
 // where the clip starts, as a moment in one of the main track's songs (time in that song).

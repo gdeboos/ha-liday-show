@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.413
+
+- **A tidier Mixer.** In the Music editor, every row of the **Mixer** now has its controls lined up in the same columns: name, **M** and **S**, **Volume**, **EQ**, **Quieten the song**, **Match tempo** and **Key**. **+ Add a clip…**, **Rename** and **Remove** have moved into each layer's **⋯** menu, and you double-click a layer's name to rename it.
+- **Mute and solo.** **M** silences a row and **S** lets you hear only what you've soloed: a layer on its own, or the song with just one layer. They're in the Mixer and at the left of each lane on the waveform, and it keeps playing while you press them. A muted layer is also left out of **Make song file**; solo is only for listening.
+- **Clips say which part they are.** A clip of just a song's vocals (or drums, bass…) is labelled **Vocals · Carol** in the part's colour.
+
 ## 0.2.412
 
 - **Layered edits get their parts in seconds, and right.** When you press **Make song file** on a draft with layers or EQ, the new file's parts (vocals, drums, bass and the rest) now include them: a layer of another song's vocals goes into the vocals, a sample into the rest of the music, and so on, at the layer's volume, tempo and key. Before, the layers and EQ were left out of the parts: for a file you made that way, open its draft and press **Make song file** again to put them in.

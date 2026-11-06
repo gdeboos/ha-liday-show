@@ -1752,9 +1752,10 @@ def _clean_layers(layers) -> list[dict] | None:
                 if not isinstance(ckey, str) or not _KEY.match(ckey):
                     return None
                 clean[-1]["key"] = ckey
-        duck, match = layer.get("duck", False), layer.get("matchTempo", False)
+        duck, match, muted = layer.get("duck", False), layer.get("matchTempo", False), layer.get("muted", False)
         eq = _clean_eq(layer["eq"]) if layer.get("eq") is not None else None
-        if not isinstance(duck, bool) or not isinstance(match, bool) or (layer.get("eq") is not None and eq is None):
+        if not isinstance(duck, bool) or not isinstance(match, bool) or not isinstance(muted, bool) \
+                or (layer.get("eq") is not None and eq is None):
             return None
         match_key, semis = layer.get("matchKey", False), layer.get("semitones")
         if not isinstance(match_key, bool) or (semis is not None and (isinstance(semis, bool) or not isinstance(semis, int)
@@ -1775,6 +1776,8 @@ def _clean_layers(layers) -> list[dict] | None:
             out[-1]["semitones"] = semis
         if match:
             out[-1]["matchTempo"] = True
+        if muted:  # silent while you work, and left out of a song file made from the draft
+            out[-1]["muted"] = True
         if eq is not None:
             out[-1]["eq"] = eq
     return out

@@ -239,7 +239,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Light roles**: which part of the music each light reacts to (kick, snare, crash, bass, vocals, melody or background), guessed for your house and changeable per show
 - **Split into parts**: AI in your browser separates a song into its vocals, drums, bass and the rest, kept with the song as its parts (stems), split automatically when a song is added (or all at once), which follow it into edits and can be layered; the drums give when each kick, snare, hi-hat and crash lands
 - **Layers** in the Music editor: samples or songs played over a song, pinned to the music so they follow cuts, mixed into the song file, optionally quietening the song under them by as much as you choose
-- **Mixer** in the Music editor: bass, mid and treble faders and a DJ filter on the song and each layer, changing partway through, layers moved into the song's key, and layers matched to the song's tempo, for mash-ups
+- **Mixer** in the Music editor: bass, mid and treble faders and a DJ filter on the song and each layer, changing partway through, layers moved into the song's key, and layers matched to the song's tempo, with mute and solo on every row, for mash-ups
 - **Samples**: short sounds (sleigh bells, a "ho ho ho") to layer over songs, made from part of a song or added as files
 - **Suggest cuts**: shorten the song or one section to a length you pick, by whole bars where the join isn't heard; with an AI, it picks the best and says why
 - **Marks**: flag and name moments in a song (a big hit, the bells coming in); every show using the song sees them and clips snap to them
