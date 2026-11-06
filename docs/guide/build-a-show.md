@@ -162,7 +162,10 @@ You can swap shows with friends, or post one on a forum, without either of you c
   your house photo, and the [seasons](lights.md#seasons) it's a prop for). The show's season goes with it too. It doesn't hold the song, your house photo, IP addresses or any settings. Lights
   with no effects in the show are left out. Pictures used by its **Picture** effects go with it (up to
   20), and are added to your **Library → Pictures** when it's imported. A show with pictures needs
-  HA-liday Show 0.2.282 or later to import.
+  HA-liday Show 0.2.282 or later to import. Your own [faces](#faces) used by its **Singing face** effects
+  go with it too (up to 20), and are added to your **Library → Faces** when it's imported (one you
+  already have, with the same name and look, is used as it is). In a copy older than 0.2.392 they show
+  as snowmen.
 - **Import show…**, beside **+ New show**, asks for a `.halidayshow` file, then opens a short window.
   It always makes a new show, so nothing you already have changes.
   1. **Name and song.** Songs aren't shared, so pick your own copy. The song with the closest name is
