@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildTracks, lengthNote, lightType, makeShare, matchCount, myLights, partPlan, readShare, shareFileName,
-  shareLevels, suggest, suggestSong, withPictureIds,
+  shareLevels, suggest, suggestSong, withFaceIds, withPictureIds,
 } from "../../haliday_show/app/halidayshow/static/js/sharing.js";
 
 const models = {
@@ -276,4 +276,23 @@ test("a show's Phones lane travels in a shared file", () => {
   assert.deepEqual(share.tracks.map((t) => t.phones), [true]);
   const { tracks } = buildTracks(share, {}, []);
   assert.deepEqual(tracks.find((t) => t.device === "@phones").clips.map((c) => c.effect), ["solid"]);
+});
+
+test("a show with your own Singing faces carries their recipes, keyed; built-ins stay as they are", () => {
+  const panel = { id: "panel", name: "Panel", kind: "wled", segments: 4, matrix: { w: 2, h: 2 } };
+  const recipe = { head: { shape: "tree", colour: "#00ff00" } };
+  const show = { name: "Faces", duration: 10, tracks: [{ device: "panel", clips: [
+    { effect: "singingface", start: 0, end: 5, character: "fmine000001" }, { effect: "singingface", start: 5, end: 8, character: "fmine000001" },
+    { effect: "singingface", start: 8, end: 10, character: "elf" }] }] };
+  const share = makeShare(show, [panel], { faceOf: (id) => (id === "fmine000001" ? { name: "Tree", recipe } : null) });
+  assert.equal(share.version, 1); // older copies ignore faces
+  assert.deepEqual(share.faces, [{ key: "F1", name: "Tree", recipe }]);
+  assert.deepEqual(share.tracks[0].clips.map((c) => c.character), ["F1", "F1", "elf"]);
+  const back = readShare(JSON.stringify({ ...share, faces: [...share.faces, { key: "evil", recipe: {} }, "nope"] }));
+  assert.equal(back.faces.length, 1);
+  assert.equal(back.faces[0].recipe.head.shape, "tree"); // cleaned: every part filled in
+  assert.equal(back.faces[0].recipe.eyes.style, "ovals");
+  assert.deepEqual(withFaceIds(back.tracks, { F1: "fnew0000001" })[0].clips.map((c) => c.character), ["fnew0000001", "fnew0000001", "elf"]);
+  assert.deepEqual(withFaceIds(back.tracks, {})[0].clips.map((c) => c.character), ["snowman", "snowman", "elf"]);
+  assert.equal(makeShare(show, [panel]).faces, undefined);
 });

@@ -1,9 +1,13 @@
 # Changelog
 
-## 0.2.392
+## 0.2.393
 
 - **Place each word on the waveform.** **Lyrics…** now shows the song's waveform, with every word as a block under it and the singer's level drawn over the song. Drag a word to move it, or drag its edges to make it longer or shorter. A line now ends where its last word does, so the mouth stays shut through an instrumental. Click the waveform to play from there; **+** and **−** zoom.
 - Each line in **Lyrics…** shows when it ends as well as when it starts.
+
+## 0.2.392
+
+- **Shared shows carry your own faces.** **Share** now puts the faces you made (Library → Faces) that a show's Singing faces use into the file. Whoever imports it gets them added to their **Library → Faces**, so the characters look just as you made them.
 
 ## 0.2.391
 
