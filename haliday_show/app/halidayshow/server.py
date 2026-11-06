@@ -1614,7 +1614,7 @@ def _clean_song_drums(body) -> dict | None:
     return out
 
 
-MAX_SOUND_STEPS = 2400  # half-second steps: 20 minutes
+MAX_SOUND_STEPS = 7200  # half-second steps: an hour
 SOUND_KEYS = {"sleighbells", "bells", "mallets", "choir", "brass", "strings", "piano", "organ", "guitar", "synth",
               "woodwind", "harp", "whistling", "clapping", "christmas", "happy", "sad", "tender", "exciting", "angry",
               "scary"}  # static/js/sounds.js SOUNDS
