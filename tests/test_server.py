@@ -2211,3 +2211,12 @@ async def test_a_song_keeps_its_lyrics_and_singer(client, tmp_path):
     assert (await client.put("/api/audio/lyrics?source=media&path=gone.wav", json=lyrics)).status == 404
     assert (await client.put(f"/api/audio/lyrics?{q}", data="null", headers={"Content-Type": "application/json"})).status == 200
     assert await (await client.get(f"/api/audio/lyrics?{q}")).json() is None
+
+
+async def test_light_roles_are_kept_for_the_house(client):
+    assert await (await client.get("/api/light-roles")).json() == {}
+    roles = {"roof": "melody", "pillar#left": "snare"}
+    assert (await client.put("/api/light-roles", json=roles)).status == 200
+    assert await (await client.get("/api/light-roles")).json() == roles
+    for bad in ({"roof": "dance"}, ["roof"], {"": "kick"}):
+        assert (await client.put("/api/light-roles", json=bad)).status == 400

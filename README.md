@@ -233,6 +233,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   Home Assistant's 16 MB limit upload fine
 - Cut, trim and splice songs in the **Music editor**, with crossfades, as named **drafts** kept as you go that you can come back to and tweak, then make into a song file
 - **Even out the volume** when making a song file, so songs play at about the same loudness
+- **Light roles**: which part of the music each light reacts to (kick, snare, crash, bass, vocals, melody or background), guessed for your house and changeable per show
 - **Split into parts**: AI in your browser separates a song into its vocals, drums, bass and the rest, kept with the song as its parts (stems), split automatically when a song is added (or all at once), which follow it into edits and can be layered; the drums give when each kick, snare, hi-hat and crash lands
 - **Layers** in the Music editor: samples or songs played over a song, pinned to the music so they follow cuts, mixed into the song file, optionally quietening the song under them by as much as you choose
 - **Mixer** in the Music editor: bass, mid and treble faders and a DJ filter on the song and each layer, changing partway through, layers moved into the song's key, and layers matched to the song's tempo, for mash-ups
@@ -460,6 +461,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/stems.js                         Split into parts: the song's spectrum in and out of each AI model (MDX-Net: vocals, drums, bass), chunk by chunk
     js/stemsworker.js                   Split vocals' worker: fetches the model and its runtime, runs the split
     js/splitvocals.js                   Split into parts… on a song: decode, split in the worker, keep each part with the song, find the drum hits
+    js/roles.js                         Light roles: what each light reacts to, guessed, then your house's and each show's own
     js/drumhits.js                      When each kick, snare, hi-hat and crash lands, from a song's drums part
     js/reactui.js                       React to music settings for a scene (Scene editor and Advanced scenes)
     js/housescenes.js                   A scene's sums: what each light plays, its loop, its row's colours

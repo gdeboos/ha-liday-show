@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.406
+
+- **Light roles.** **Setup → Devices** has a new **Light roles** list saying which part of the music each light (and each part of a split light) reacts to: kick drum, snare, crash cymbals, bass, vocals, melody or background. Each starts with a guess you can change. A show can give a light a different role under **Show settings → Light roles**, so shows don't all look alike. Generate starts using them in a coming release.
+
 ## 0.2.405
 
 - **New songs are split into parts automatically.** After you add a song, its vocals, drums, bass and the rest are split out in the background. A bar in **Library → Songs** shows which song it's on and how far it's got, with **Stop**. Keep the page open until it's done; you can carry on using HA-liday Show meanwhile.

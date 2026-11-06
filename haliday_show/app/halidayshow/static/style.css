@@ -1623,3 +1623,8 @@ h2.with-layout-switch .layout-switch { margin-left: auto; font-size: 13px; font-
   gap: 6px 16px; }
 .pick-parts legend { float: left; width: 100%; padding: 0; margin-bottom: 4px; font-weight: 600; font-size: 13px; }
 .pick-part { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+/* Setup → Devices → Light roles: a split light's parts sit under it. */
+.light-roles .role-part { padding-left: 1.5em; color: var(--muted); }
+.roles-grid { display: grid; grid-template-columns: minmax(80px, max-content) minmax(0, 1fr); gap: 6px 10px; align-items: center; margin-top: 6px; }
+.roles-grid select { max-width: 100%; }

@@ -825,6 +825,36 @@ def _not_archived(request, show_id: str):
         raise web.HTTPConflict(text="that show has been archived; restore it under Library → Shows to edit it")
 
 
+# Light roles (static/js/roles.js): which part of the music each light reacts to when Generate makes a
+# show, as you've picked them for your house. Kept in the settings, {light or part id: role}.
+LIGHT_ROLES = ("kick", "snare", "crash", "bass", "vocals", "melody", "background", "none")
+
+
+def _clean_light_roles(body) -> dict:
+    if not isinstance(body, dict) or len(body) > 2000 or not all(
+            isinstance(k, str) and 0 < len(k) <= 200 and v in LIGHT_ROLES for k, v in body.items()):
+        raise web.HTTPBadRequest(text=f"expected {{light id: role}}, each role one of {', '.join(LIGHT_ROLES)}")
+    return body
+
+
+async def get_light_roles(request):
+    roles = request.app[STORAGE].load_settings().get("light_roles")
+    return web.json_response(roles if isinstance(roles, dict) else {})
+
+
+async def put_light_roles(request):
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    roles = _clean_light_roles(body)
+    st = request.app[STORAGE]
+    settings = st.load_settings()
+    settings["light_roles"] = roles
+    st.save_settings(settings)
+    return web.json_response({"ok": True})
+
+
 async def put_show(request):
     _not_archived(request, _show_id(request))
     show = await request.json()
@@ -3519,6 +3549,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/audio/info", put_song_info)
     r.add_get("/api/audio/palette", get_song_palette)
     r.add_put("/api/audio/palette", put_song_palette)
+    r.add_get("/api/light-roles", get_light_roles)
+    r.add_put("/api/light-roles", put_light_roles)
     r.add_get("/api/audio/parts", get_song_parts)
     r.add_post("/api/audio/parts", put_song_part)
     r.add_get("/api/audio/lyrics", get_song_lyrics)
