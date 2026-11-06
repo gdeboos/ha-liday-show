@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.376
+
+- The vocals and music that **Split vocals** makes now sit under the song they came from in **Library → Songs**, in a **Split vocals** group, so they're in that song's folder instead of loose at the top. They follow it when you pick a song for a new show or to splice in, too.
+- Each split says what uses it, or **Not used by any show or draft**, so you know which you can remove (**⋯ → Remove…**). The new **Splits** button beside **Find** lists them all.
+
 ## 0.2.375
 
 - In the **Music editor**, **Splice** now has **Choose song…** instead of a long drop-down list. It opens your songs in their folders, as in **Library → Songs**, with a box to find a song in any folder. Pressing **Insert at playhead** or **Add to end** before choosing opens it too.

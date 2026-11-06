@@ -49,7 +49,7 @@ Every Library list (**Shows**, **Scenes**, **Playlists**, **Songs**, **Samples**
   never into themselves, and they go at most 8 deep.
 - A folder's **⋯** has **Rename…**, **Move to…** and **Delete…**. Deleting a folder deletes nothing in
   it: what it held moves up a level.
-- **Find** (on **Songs**) and the **Originals**, **Edits** and **Drafts** buttons search every folder;
+- **Find** (on **Songs**) and the **Originals**, **Edits**, **Splits** and **Drafts** buttons search every folder;
   each match says which folder it's in, and pressing that goes there.
 
 Folders only sort the lists: files stay where they are on disk, so shows and speakers still find their
@@ -229,8 +229,8 @@ Each song you added is one card, marked **Original**. Inside it, under **Edits o
   "… copy") under **⋯** too. Renaming one that's still open in
   the Music editor puts it away there first, once your last change is kept.
 
-**All**, **Originals**, **Edits** and **Drafts**, beside **Find**, show just those, and the count says
-how many songs, edits and drafts there are.
+**All**, **Originals**, **Edits**, **Splits** (what [Split vocals](#split-vocals) made) and **Drafts**,
+beside **Find**, show just those, and the count says how many songs, edits, splits and drafts there are.
 
 **Folders** sort your songs, such as **Christmas**, **Halloween** or **Party**, and work as in every
 Library list (see [Folders](#folders)). A song's edits and drafts go with it.
@@ -294,6 +294,12 @@ puts it back and gives it back to the shows that were left without a song.
 separates a song into its singing and the music behind it, and saves both as new songs beside it:
 "Jingle Bells (vocals)" and "Jingle Bells (music)". Use the music as a backing track, or put the vocals
 on a [layer](#layers) over another song for a mash-up. Shows that use the original are left alone.
+
+In **Library → Songs** they sit under the song they came from, in a **Split vocals** group, so they're
+in the same folder as it (and show up there when you pick a song for a new show or to splice in). Each
+says what uses it: a show, or a draft in the Music editor. One that says **Not used by any show or
+draft** can go: its **⋯ → Remove…** archives or deletes it. The **Splits** button beside **Find** lists
+every split, to tidy them up in one go.
 
 An AI model does it, in your browser, on the song as it is (not a draft's edits). The first time, your
 browser downloads it, about 90 MB, through HA-liday Show, and keeps it for next time where it can.
