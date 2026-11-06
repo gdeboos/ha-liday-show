@@ -935,9 +935,10 @@ music**, and they go wherever the song goes (renamed, copied, archived or delete
   lands. In the Music editor they show as small marks along the bottom of the waveform: red for kicks,
   blue for snares and gold for crashes. Generate will use them in a future release, to put flashes on
   the real hits rather than every beat.
-- **Layers** in the Music editor can play any song's parts: under **+ Add a clip at the playhead…**,
-  they're listed as **Song parts**, such as "Jingle Bells (vocals)". Use the music as a backing track,
-  the drums under another song, or the vocals over another song for a mash-up.
+- **Layers** in the Music editor can play any song's parts: press **+ Add a clip…**, pick the song under
+  **Songs**, then choose **Just the vocals**, **Just the drums** and so on under **Use from**. Use the
+  music as a backing track, the drums under another song, or the vocals over another song for a
+  mash-up. Splicing a song in (**Splice → Choose song…**) offers its parts the same way.
 - **Edits** use their original song's parts through your cuts, so there's no need to split an edit.
   When you make a song file from a draft, its parts (and its drum hits) are cut from the original's the
   same way, in seconds, with no AI.
@@ -981,8 +982,8 @@ song list so those stay tidy. Use them on a [layer](#layers) in the Music editor
 (a copy, "… copy") and **Delete…** to remove it for good. Layers that use a renamed sample follow it.
 
 To sort them, use folders (see [Folders](#folders)). The files themselves stay where they are, so
-songs that use them still find them. In the Music editor, a layer's **+ Add a clip** list shows the
-samples under their folders.
+songs that use them still find them. In the Music editor, a layer's **+ Add a clip…** window shows the
+samples in their folders.
 
 ### Pictures
 
@@ -1041,7 +1042,8 @@ next to its times or Esc to clear it), then **Cut selection** to remove it or
 **Keep only selection** to shorten the song to it, or let **✂ Suggest cuts…** find the cuts for you (see
 [Suggest cuts](#suggest-cuts)). To splice in another song, press **Choose song…** under **Splice**: it
 opens your songs in their folders, as in **Library → Songs**, or type in the box to find one in any
-folder. Pick it and press **Choose** (or double-click it), or **Upload** a new one. Then **Insert at
+folder. Pick it and press **Choose** (or double-click it), or **Upload** a new one. A song that's been
+split into parts lets you splice in just one part, under **Use from**. Then **Insert at
 playhead** or **Add to end** adds it, and it's selected so you can trim it. Joins blend over the **Crossfade at joins**
 time (a few hundredths of a second hides the click, a few seconds blends one song into the next), and
 **Fade in** and **Fade out** soften the ends. Zoom with the wheel, or type the selection's times for
@@ -1110,9 +1112,11 @@ last chorus, a voice saying "Merry Christmas", or another song fading in under t
 1. Under the waveform, in the **Mixer**, press **+ Add layer** (up to four). Its row has a name, a
    **Volume**, **EQ** (see [Mixer](#mixer-bass-mid-treble-filter-tempo-and-key)), **Quieten the song**, **Match
    tempo**, **Key** and **Remove**, and a lane appears under the waveform for its clips.
-2. Put the playhead where you want a clip to start, then pick a sample or song from **+ Add a clip at
-   the playhead…** on the layer's row. It starts a little quieter than the song, so it sits in the mix;
-   change that with the clip's **Volume**.
+2. Put the playhead where you want a clip to start, then press **+ Add a clip…** on the layer's row. A
+   window opens with your **Samples** and **Songs** in their folders (type in the box to find one in any
+   folder). Pick one and press **Add**. A song that's been split into parts also offers **Use from**:
+   **The whole song**, or just one part, such as **Just the vocals**. The clip starts a little quieter
+   than the song, so it sits in the mix; change that with the clip's **Volume**.
 3. Drag a clip to move it (it snaps to bars, beats and marks; hold Shift to place it freely). Drag its
    left or right end to trim it. Click a clip to pick it (the playhead goes where you clicked): its panel
    has **Volume**, **Fade in**, **Fade out**, **▶ Hear it**, **✂ Split at playhead** (or press S) and
