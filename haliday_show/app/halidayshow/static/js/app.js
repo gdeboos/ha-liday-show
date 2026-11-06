@@ -9153,14 +9153,16 @@ async function newMashup() {
   const toggle = (text, on = true) => { const c = el("input", { type: "checkbox", checked: on }); return { c, box: el("label", {}, c, ` ${text}`) }; };
   const mt = toggle("Match tempo"), mk = toggle("Match key"), lu = toggle("Line up on the bar");
   const note = el("p", { className: "hint" });
-  const go = el("button", { type: "submit", className: "primary", textContent: "Make mashup" });
+  const go = el("button", { type: "button", className: "primary", textContent: "Make mashup" });
   const cancel = el("button", { type: "button", textContent: "Cancel" });
   const sections = (info, whose) => [{ t: 0, label: `${whose} start (0:00)` },
     ...(info?.sections || []).map((x) => ({ t: x.start, label: `${whose} ${x.label} (${fmtTime(x.start, false)})` }))];
   const fill = (sel, list) => { sel.replaceChildren(...list.map((x) => new Option(x.label, String(x.t)))); const first = list.find((x) => x.t > 0.5); if (first) sel.value = String(first.t); };
+  let asked = 0;
   const refresh = async () => {
-    const a = songs[Number(sing.sel.value)], b = songs[Number(mus.sel.value)];
+    const mine = ++asked, a = songs[Number(sing.sel.value)], b = songs[Number(mus.sel.value)];
     const [ia, ib] = await Promise.all([infoOf(a), infoOf(b)]);
+    if (mine !== asked) return; // picked again meanwhile
     const facts = (i) => [i?.tempo && `${Math.round(i.tempo * 10) / 10} BPM`, i?.key].filter(Boolean).join(" · ") || "not detected yet";
     sing.h.textContent = `${sing.hint} · ${facts(ia)}`;
     mus.h.textContent = `${mus.hint} · ${facts(ib)}`;
@@ -9193,10 +9195,12 @@ async function newMashup() {
   document.body.append(dlg);
   await refresh();
   dlg.showModal();
-  form.addEventListener("submit", async () => {
+  // The window stays open until it's going ahead, so nothing picked is lost.
+  go.addEventListener("click", async () => {
     const a = songs[Number(sing.sel.value)], b = songs[Number(mus.sel.value)], ia = infos.get(`${a.source}:${a.path}`);
     await music.flush();
     if (music.unsaved && !(await askYes("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?", { yes: "Leave anyway" }))) return;
+    dlg.close();
     app.songChosen = true;
     showView("music");
     await music.open({ source: b.source, path: b.path }, { asked: true });

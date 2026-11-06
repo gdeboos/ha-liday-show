@@ -22,7 +22,7 @@ test("says how much a song's tempo and key change to fit another", () => {
   assert.equal(plum.key, "moved up 5 semitones into A minor");
   assert.equal(plum.fit, "change");
   // Half time counts: 60 BPM under 121 plays at double.
-  assert.match(mashFit({ tempo: 60, key: "A minor" }, draft).tempo, /double time/);
+  assert.equal(mashFit({ tempo: 60, key: "A minor" }, draft).tempo, "60 BPM, half time");
   assert.equal(mashFit({ tempo: 80, key: "F# major" }, draft).fit, "big");
   assert.equal(mashFit({}, draft).tempo, "tempo not known yet");
 });

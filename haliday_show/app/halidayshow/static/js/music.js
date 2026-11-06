@@ -1715,21 +1715,24 @@ export class MusicEditor {
   // vocals go on a layer of their own, matched to its tempo and key, starting at `at` (the song's
   // seconds) from `from` in theirs, their first bar on its nearest bar. vocals: the singing song's
   // vocals part; sing: {name, tempo, key}.
+  // Resolves true once it's made, else false (having said why).
   async makeMashup({ vocals, sing, at = 0, from = 0, matchTempo = true, matchKey = true, lineUp = true }) {
-    if (!this.base || !this.pieces.length) return;
-    if (this.layers.length >= MAX_LAYERS) return this.host.status(`A draft can have up to ${MAX_LAYERS} layers`, "hint");
+    const fail = (why) => { this.host.status(`Couldn't make the mashup: ${why}`, true); return false; };
+    if (!this.base || !this.pieces.length) return fail("the music song didn't open");
+    if (this.layers.length >= MAX_LAYERS) return fail(`a draft can have up to ${MAX_LAYERS} layers`);
     let key;
-    try { key = await this.source(vocals); } catch (e) { return this.host.status(songLoadMessage(e), true); }
+    try { key = await this.source(vocals); } catch (e) { return fail(songLoadMessage(e)); }
     const rate = this.audio.sampleRate, whole = this.sources[key][0].length / rate;
     const layer = { name: `${sing.name} vocals`.slice(0, 40), gain: 0, clips: [],
       ...(matchTempo && this.songTempo && sing.tempo ? { matchTempo: true } : {}), ...(matchKey && sing.key ? { matchKey: true } : {}) };
     const speed = clipSpeed(layer, { bpm: sing.tempo }, this.songTempo);
-    const start = Math.max(0, Math.min(from, whole - 1)), end = Math.round(Math.min(whole, start + (this.total - at) * speed) * 1000) / 1000;
+    const start = Math.max(0, Math.min(from, whole - 1));
     let t = Math.max(0, Math.min(at, this.total - 0.5));
     const bars = (await this.loadInfo(songOfClip(vocals)))?.bars;
-    if (lineUp && bars?.length && this.shown?.bars?.length) t = lineUpOnBar(t, { start, end }, speed, bars, this.shown.bars);
+    if (lineUp && bars?.length && this.shown?.bars?.length) t = Math.min(this.total - 0.5, lineUpOnBar(t, { start, end: whole }, speed, bars, this.shown.bars));
+    const end = Math.round(Math.min(whole, start + (this.total - t) * speed) * 1000) / 1000; // to the song's end, no further
     const anchor = anchorAt(this.pieces, this.crossfade, t, this.refs);
-    if (!anchor) return;
+    if (!anchor) return fail("there's no song where the singing would start");
     this.songLufs ??= loudness(this.main, rate);
     const clip = { song: vocals, start, end, anchor, gain: Math.min(6, Math.max(-12, matchGain(this.songLufs, loudness(this.sources[key], rate)) + 6)), // as loud as the song's own singing, about
       fadeIn: 0.05, fadeOut: 1, ...(sing.tempo ? { bpm: Math.round(sing.tempo * 10) / 10 } : {}), ...(sing.key ? { key: sing.key } : {}) };
@@ -1746,6 +1749,7 @@ export class MusicEditor {
     this.changed();
     this.draftChanged();
     this.host.status(`Mashup ready: ${sing.name}'s vocals over ${nameOf(this.base).replace(/\.[^.]+$/, "")}, its own vocals muted. Press Play, then fine-tune it`, "saved");
+    return true;
   }
 
   // A layer's ⋯ menu: add a clip at the playhead, rename, remove.

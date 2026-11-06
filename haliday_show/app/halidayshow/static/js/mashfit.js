@@ -28,7 +28,7 @@ export function mashFit(over, under) {
   const tempo = !over?.tempo || !under?.tempo ? "tempo not known yet"
     : change < 0.005 || (direct && !diff) ? "same tempo"
       : direct ? `${diff} BPM ${over.tempo < under.tempo ? "slower" : "faster"}`
-        : `${Math.round(change * 1000) / 10}% ${speed > 1 ? "slower" : "faster"}, at ${over.tempo < under.tempo ? "double" : "half"} time`;
+        : `${Math.round(over.tempo)} BPM, ${over.tempo < under.tempo ? "half" : "double"} time`;
   const key = !over?.key || !under?.key ? "key not known yet"
     : !semis ? (sameKey(over.key, under.key) ? "same key" : `${under.key}, fits ${over.key}`)
       : `moved ${semis > 0 ? "up" : "down"} ${Math.abs(semis)} semitone${Math.abs(semis) === 1 ? "" : "s"} into ${under.key}`;
@@ -53,7 +53,8 @@ export function lineUpOnBar(at, clip, speed, clipBars, songBars) {
   const first = (clipBars || []).find((b) => b >= clip.start - 1e-6 && b < clip.end);
   if (first == null || !songBars?.length) return at;
   const off = (first - clip.start) / speed, beat = at + off;
-  let near = songBars[0];
-  for (const b of songBars) if (Math.abs(b - beat) < Math.abs(near - beat)) near = b;
-  return Math.max(0, near - off);
+  // The nearest of the song's bars it can reach (its start can't go before the song's).
+  let near = null;
+  for (const b of songBars) if (b - off >= 0 && (near === null || Math.abs(b - beat) < Math.abs(near - beat))) near = b;
+  return near === null ? at : near - off;
 }
