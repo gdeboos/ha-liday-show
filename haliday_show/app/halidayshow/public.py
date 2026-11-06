@@ -811,7 +811,8 @@ _STAMPED = {"index.html": (('href="public.css"', f'href="public.css?v={_STAMP}"'
             "public.js": (('"./colours.js"', f'"./colours.js?v={_STAMP}"'),
                           ('"./listensync.js"', f'"./listensync.js?v={_STAMP}"'),
                           ('"./icons.js"', f'"./icons.js?v={_STAMP}"'),
-                          ('"./fx/effects.js"', f'"./fx/effects.js?v={_STAMP}"'))}
+                          ('"./fx/effects.js"', f'"./fx/effects.js?v={_STAMP}"'),
+                          ('"./fx/pictures.js"', f'"./fx/pictures.js?v={_STAMP}"'))}
 
 
 def page_file(name: str) -> web.Response:
@@ -832,12 +833,17 @@ async def page(request):
 
 
 async def fx_file(request):
-    """One of the editor's effect files, for phones drawing a Phones lane. They import each other without a
-    stamp, so they're asked again after an update (Last-Modified saves sending them again meanwhile)."""
+    """One of the editor's effect files, for phones drawing a Phones lane, with the stamp added to the
+    others it imports: a phone never mixes one from before an update with one from after (which stops
+    them loading at all, so the phone could only show one colour at a time)."""
     name = request.match_info["name"]
     if name not in FX_FILES:
         raise web.HTTPNotFound()
-    return web.FileResponse(FX / name, headers={"Cache-Control": "no-cache", "Content-Type": "text/javascript"})
+    text = (FX / name).read_text(encoding="utf-8")
+    for other in FX_FILES:
+        text = text.replace(f'"./{other}"', f'"./{other}?v={_STAMP}"')
+    return web.Response(text=text, content_type="text/javascript", charset="utf-8",
+                        headers={"Cache-Control": "public, max-age=86400"})
 
 
 def _state(request, ticket, code):

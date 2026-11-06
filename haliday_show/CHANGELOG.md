@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.383
+
+- **Phones show the Phones lane again after an update.** A phone could keep some of the effect code from before an update and mix it with the new, which stopped the lane loading, so it showed only plain colours (no GIFs, faces or matrix effects). Phones now always take a matching set. Reload the visitors' page on a phone that's been open a while.
+
 ## 0.2.382
 
 - **Singing faces sing wherever they are in the show.** A Singing face that didn't start at the very beginning of the show followed the wrong part of the song (usually the quiet intro), so its mouth stayed shut. It now follows the singer at its own place in the song. Phones pick this up straight away; if a face is on one of your matrices, save the show once so the lights get it too.
