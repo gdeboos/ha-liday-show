@@ -523,6 +523,10 @@
   <div class="dock" data-dock="middle">
     <section class="panel music-card" data-panel="wave" data-wide>
       <div class="panel-head"><span class="section-label">Waveform</span>
+        <span id="music-view" class="seg-buttons music-view" role="group" aria-label="Show the song as" hidden>
+          <button type="button" data-view="song" class="active" aria-pressed="true" title="The song's waveform">Song</button>
+          <button type="button" data-view="parts" aria-pressed="false" title="The song's vocals, drums, bass and the rest, each on its own row, with where you've changed them">Parts</button>
+        </span>
         <span class="panel-tools" title="Zoom the waveform">
           <button id="music-zoom-out" class="ghost" title="Zoom out (-)">−</button>
           <button id="music-zoom-in" class="ghost" title="Zoom in (+)">+</button>
@@ -556,6 +560,10 @@
         <button id="music-preview" title="Hear the few seconds either side of the join, as if the selection were cut">Preview cut</button>
         <button id="music-cut" title="Remove the selection and join the parts either side (Delete)">Cut</button>
         <button id="music-keep" title="Keep only the selection, to shorten the song">Keep only this</button>
+      </div>
+      <div id="music-range-parts" hidden>
+        <span class="msel-sub">The song's parts here</span>
+        <div class="group" id="music-range-parts-btns"></div>
       </div>
       <span class="msel-sub">More</span>
       <div class="group">

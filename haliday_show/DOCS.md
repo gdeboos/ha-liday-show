@@ -1229,6 +1229,17 @@ The **Mixer** under the waveform works like a DJ's, for mash-ups and for making 
 the song. The song has a row, and so does each layer, with their controls lined up in columns (on a
 narrow screen, each row wraps and labels its controls).
 
+- **The song's parts.** Once the song's been [split into parts](#split-into-parts), its row has four more
+  under it: **Vocals**, **Drums**, **Bass** and **Rest**, each with **M**, **S** and **Volume**, like stems
+  on a DJ controller. Mute its vocals for an instrumental, or turn the drums down. To change them over
+  just a stretch, select it and use **The song's parts here** in the **Selection** panel: **Mute vocals
+  here** (or drums, bass, rest), or **Vocals only here** for an a cappella bit. A part muted there shows
+  as **Drums muted here ✕**: press it to bring them back. These are kept with the draft, follow your cuts,
+  and go into the song file you make, and into its own parts (a muted part is quiet in that part too).
+  **Parts**, beside the zoom buttons at the top of the waveform, shows the song as its four parts on rows
+  of their own, in their colours, with where each is muted hatched; click a hatched stretch to select it.
+  **Song** goes back to the song's waveform. If the song (or a song spliced into it) hasn't been split,
+  the Mixer says so instead.
 - **M** (mute) silences a row, and **S** (solo) lets you hear only the rows you've soloed, so you can
   hear a layer on its own or check how two fit together. They're also at the left of each lane on the
   waveform, beside its name, and a row you can't hear shows faded. It keeps playing while you press them.

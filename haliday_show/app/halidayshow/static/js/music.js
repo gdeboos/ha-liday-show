@@ -9,9 +9,10 @@ import { analyseInWorker, barVectorsInWorker, keyFrom, keyShift, toMono } from "
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, keepLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
+import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, keepLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
+import { GAIN_MAX, GAIN_MIN, MUTE, SONG_PARTS, addPart, changesIn, emptyParts, partChanged, partLevel, partsActive, setChange } from "./songparts.js";
 import { PARTS, savePart, splitVocals } from "./splitvocals.js";
 import { drumHits } from "./drumhits.js";
 import { askChoice, askText, askYes } from "./ask.js";
@@ -553,6 +554,8 @@ export class MusicEditor {
     this.songMuted = false;
     this.focus = null; // the layer (its number) being edited in the big view, or null for the song
     this.eq = null; // the song's own bass, mid and treble (mixer.js), part of the draft
+    this.parts = emptyParts(); // the song's own parts' levels (songparts.js), part of the draft
+    this.partRenders = {}; // each of the song's parts through its pieces, as needed
     this.eqCh = null; // whose EQ faders show in the Selection panel: "song", a layer's index or null
     this.chgSel = null; // the picked EQ change: { ch (-1 for the song, else a layer), i }
     this.clipSel = null; // the picked clip: { layer, clip }
@@ -657,6 +660,7 @@ export class MusicEditor {
       this.songMuted = false;
       this.focus = null;
       this.eq = null;
+      this.parts = emptyParts();
       this.clipSel = this.chgSel = null;
       this.base = ref;
       this.host.opened?.(ref);
@@ -718,6 +722,7 @@ export class MusicEditor {
     this.songMuted = false;
     this.focus = null;
     this.eq = d.eq || null;
+    this.parts = d.parts ? { ...emptyParts(), ...d.parts } : emptyParts();
     this.clipSel = this.chgSel = null;
     this.keeper.start({ id, made: d.made || null });
     this.setFades(d.fadeIn || 0, d.fadeOut || 0, d.crossfade ?? 0.05);
@@ -757,6 +762,7 @@ export class MusicEditor {
       length: Math.round(this.total * 100) / 100,
       ...(this.layers.length ? { layers: this.layers } : {}),
       ...(this.eq && (!isFlat(this.eq) || this.eq.changes?.length) ? { eq: this.eq } : {}),
+      ...(partsActive(this.parts) ? { parts: this.parts } : {}),
     };
   }
 
@@ -909,6 +915,7 @@ export class MusicEditor {
     if (back.layers.length !== this.layers.length) this.focus = null; // a layer added or removed: back to the song
     this.layers = back.layers;
     this.eq = back.eq;
+    this.parts = back.parts || emptyParts();
     this.clipSel = this.chgSel = null;
     this.keepOpenRows();
     this.markSel = this.shownMark(mark);
@@ -918,7 +925,99 @@ export class MusicEditor {
   }
 
   // What Undo goes back to: the song's pieces, the layers and the song's EQ.
-  snapshot() { return { pieces: this.pieces, layers: this.layers, eq: this.eq }; }
+  snapshot() { return { pieces: this.pieces, layers: this.layers, eq: this.eq, parts: this.parts }; }
+
+  // the song's parts ----------------------------------------------------------------
+  // A change to the song's parts' levels (one Undo step).
+  editParts(parts) {
+    const was = this.playing ? this.time : null;
+    this.history.push(this.snapshot());
+    this.future = [];
+    this.parts = parts;
+    this.changed();
+    this.draftChanged();
+    if (was != null) this.play(was);
+  }
+
+  // The parts of the song a piece is from ({vocals: path…}), or {}.
+  partsOfSrc(src) { return this.host.songs().find((s) => keyOf(s) === src)?.parts || {}; }
+
+  // Whether every piece's song has all its parts, so the song's parts can be set.
+  get partsAvailable() { return this.pieces.length > 0 && this.pieces.every((p) => SONG_PARTS.every((n) => this.partsOfSrc(p.src)[n])); }
+
+  // A part of the song through its pieces, the way the song is (kept until the pieces change); null
+  // until its audio's loaded (loadParts).
+  partRender(name) {
+    if (this.partRenders[name]) return this.partRenders[name];
+    const f = this.mainFor, sources = {}, cutUp = [];
+    if (!f) return null;
+    for (const p of this.pieces) {
+      const path = this.partsOfSrc(p.src)[name], key = path && `media:${path}`;
+      if (!key || !this.sources[key]) return null;
+      sources[key] = this.sources[key];
+      cutUp.push({ ...p, src: key });
+    }
+    return (this.partRenders[name] = render(cutUp, sources, f.rate, { crossfade: f.xf, fadeIn: f.fadeIn, fadeOut: f.fadeOut }));
+  }
+
+  // Loads the parts' audio, then plays and draws them.
+  async loadParts(names) {
+    this.partsFailed ||= new Set(); // not asked for again (the song plays as it is)
+    const want = this.pieces.flatMap((p) => names.map((n) => this.partsOfSrc(p.src)[n]).filter(Boolean))
+      .filter((path) => !this.sources[`media:${path}`] && !this.partsFailed.has(path));
+    if (!want.length || this.partsLoading) return;
+    this.partsLoading = true;
+    let loaded = false;
+    for (const path of [...new Set(want)]) {
+      try { await this.source({ source: "media", path }); loaded = true; } catch (e) {
+        this.partsFailed.add(path);
+        this.host.status(`Couldn't load the song's parts: ${e.message}. It plays as it is`, true);
+      }
+    }
+    this.partsLoading = false;
+    if (!loaded) return;
+    this.partsFor = null;
+    this.changed();
+  }
+
+  // The song with its parts at their levels (songparts.js): the song plus each changed part at its new
+  // level. The song as it is until they're loaded.
+  applyParts(raw) {
+    if (!raw || !partsActive(this.parts) || !this.partsAvailable) return raw;
+    const changed = SONG_PARTS.filter((p) => partChanged(this.parts, p));
+    const renders = changed.map((p) => this.partRender(p));
+    if (renders.some((r) => !r)) { this.loadParts(changed); return raw; }
+    const out = raw.map((ch) => Float32Array.from(ch));
+    changed.forEach((p, k) => addPart(out, renders[k], partLevel(this.parts, p, this.pieces, this.crossfade), this.mainFor.rate));
+    return out;
+  }
+
+  // Just the soloed parts of the song at their levels, for listening; null until they're loaded.
+  soloedParts(names) {
+    const renders = names.map((p) => this.partRender(p));
+    if (renders.some((r) => !r)) { this.loadParts(names); return null; }
+    const out = this.main.map((ch) => new Float32Array(ch.length));
+    names.forEach((p, k) => addPart(out, renders[k], partLevel(this.parts, p, this.pieces, this.crossfade), this.mainFor.rate, 0));
+    return isFlat(this.eq) ? out : applyEq(out, this.mainFor.rate, this.eq, placeChanges(this.eq, this.pieces, this.crossfade));
+  }
+
+  // A part's level ("muted" toggled, or a fader in dB), saved with the draft.
+  setPartGain(part, db) { this.editParts({ ...this.parts, gain: { ...this.parts.gain, [part]: db || undefined } }); }
+  togglePartMute(part) {
+    const muted = this.parts.muted.includes(part) ? this.parts.muted.filter((p) => p !== part) : [...this.parts.muted, part];
+    this.editParts({ ...this.parts, muted });
+  }
+
+  // Over the selection: a part muted (gain MUTE), its change taken off (null), or only the vocals.
+  setPartHere(part, gain) {
+    if (!this.sel) return;
+    const refs = this.refs, from = anchorAt(this.pieces, this.crossfade, this.sel.start, refs), to = anchorAt(this.pieces, this.crossfade, this.sel.end, refs);
+    if (!from || !to) return;
+    const toResult = (a) => resultTime(this.pieces, this.crossfade, a);
+    const parts = (part === "only-vocals" ? ["drums", "bass", "rest"] : [part])
+      .reduce((acc, p) => setChange(acc, p, from, to, gain, toResult), this.parts);
+    this.editParts(parts);
+  }
 
   // layers ----------------------------------------------------------------------
   // A change to the layers (one Undo step); the song itself isn't changed.
@@ -967,7 +1066,11 @@ export class MusicEditor {
   // Whether a channel ("song", or a layer's number) is heard while you listen: not muted, and soloed if
   // anything is.
   heard(ch) {
-    if (ch === "song") return !this.songMuted && (!this.solo.size || this.solo.has("song"));
+    if (ch === "song") return !this.songMuted && (!this.solo.size || this.solo.has("song") || SONG_PARTS.some((p) => this.solo.has(`part:${p}`)));
+    if (typeof ch === "string" && ch.startsWith("part:")) {
+      const p = ch.slice(5);
+      return !this.songMuted && !this.parts.muted.includes(p) && (!this.solo.size || this.solo.has("song") || this.solo.has(ch));
+    }
     return !this.layers[ch]?.muted && (!this.solo.size || this.solo.has(ch));
   }
 
@@ -1251,7 +1354,7 @@ export class MusicEditor {
     const samples = this.samplesList || [], songs = this.host.songs();
     learnParts(songs);
     const sig = JSON.stringify([this.songKey, this.layers.map((l) => [l.name, l.gain, !!l.duck, l.duckDb, !!l.matchTempo, !!l.matchKey, l.semitones, isFlat(l.eq), l.clips.length, !!l.muted]), isFlat(this.eq),
-      [...this.solo], this.songMuted, this.renaming, this.focus,
+      [...this.solo], this.songMuted, this.renaming, this.focus, this.parts.gain, this.parts.muted, this.partsAvailable,
       this.eqCh, !!this.songTempo, samples.length, JSON.stringify(this.sampleFolders || []), songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
       box.dataset.sig = sig;
@@ -1326,6 +1429,36 @@ export class MusicEditor {
         el("span", { className: "mixer-name" }, el("span", { className: "layer-dot song-dot" }), el("b", { textContent: "Song" })),
         muteSolo("song", "the song"), cell(), cell(eqButton(-1, "song", "the song")), cell(), cell(), cell(this.songKey ? el("span", { className: "hint", textContent: this.songKey }) : ""), cell());
       const rows = [el("div", { className: "mixer-row mixer-heads", "aria-hidden": "true" }, ...head), songRow];
+      // The song's own parts, like stems on a DJ controller (songparts.js).
+      if (this.pieces.length && !this.partsAvailable) {
+        rows.push(el("div", { className: "mixer-row" }, el("span", { className: "mixer-parts-hint",
+          textContent: "Split the song into parts (Song panel) for faders on its vocals, drums, bass and the rest." })));
+      } else if (this.pieces.length) {
+        for (const p of SONG_PARTS) {
+          const [label, colour] = PART_LOOK[p], db0 = this.parts.gain[p] || 0;
+          const dot = el("span", { className: "layer-dot" });
+          dot.style.background = colour;
+          const m = el("button", { type: "button", className: `ms-btn${this.parts.muted.includes(p) ? " muted" : ""}`, textContent: "M",
+            title: `Mute the song's ${label.toLowerCase()}: it's left out of the song file too` });
+          m.setAttribute("aria-label", `Mute the song's ${label.toLowerCase()}`);
+          m.setAttribute("aria-pressed", String(this.parts.muted.includes(p)));
+          m.addEventListener("click", () => this.togglePartMute(p));
+          const so = el("button", { type: "button", className: `ms-btn${this.solo.has(`part:${p}`) ? " soloed" : ""}`, textContent: "S",
+            title: `Hear only the song's ${label.toLowerCase()} (and anything else soloed), while you listen` });
+          so.setAttribute("aria-label", `Solo the song's ${label.toLowerCase()}`);
+          so.setAttribute("aria-pressed", String(this.solo.has(`part:${p}`)));
+          so.addEventListener("click", () => this.toggleSolo(`part:${p}`));
+          const vol = el("input", { type: "range", min: GAIN_MIN, max: GAIN_MAX, step: 1, value: db0 });
+          vol.setAttribute("aria-label", `The song's ${label.toLowerCase()} volume`);
+          const db = el("span", { className: "hint", textContent: `${db0 > 0 ? "+" : ""}${db0} dB` });
+          vol.addEventListener("input", () => { db.textContent = `${vol.value > 0 ? "+" : ""}${vol.value} dB`; });
+          vol.addEventListener("change", () => this.setPartGain(p, Number(vol.value)));
+          rows.push(el("div", { className: `mixer-row part-row${this.heard(`part:${p}`) ? "" : " silent"}` },
+            el("span", { className: "mixer-name" }, dot, el("span", { textContent: label })), el("span", { className: "ms" }, m, so),
+            cell(el("label", { className: "mixer-vol" }, el("span", { className: "mixer-label", textContent: "Volume " }), vol, " ", db)),
+            cell(), cell(), cell(), cell(), cell()));
+        }
+      }
       this.layers.forEach((l, i) => {
         // Its name: double-click (or ⋯ → Rename) to change it.
         let name;
@@ -1450,6 +1583,22 @@ export class MusicEditor {
     $("music-range-what").textContent = `${sec ? `${sec.label} · ` : ""}${fmtTime(sel.start)} to ${fmtTime(sel.end)}`
       + (this.focus != null ? ` on ${this.layers[this.focus].name}` : "");
     const bars = (this.here?.bars || []).filter((b) => b >= sel.start - 0.05 && b < sel.end - 0.05).length;
+    // The song's parts over the selection: mute one here (or take that off), or only the vocals.
+    const showParts = this.focus == null && this.partsAvailable;
+    $("music-range-parts").hidden = !showParts;
+    if (showParts) {
+      const btn = (text, title, fn, on = false) => {
+        const b = Object.assign(document.createElement("button"), { type: "button", textContent: text, title, className: on ? "on" : "" });
+        b.addEventListener("click", fn);
+        return b;
+      };
+      const muted = (p) => changesIn(this.parts, p, sel.start, sel.end, this.pieces, this.crossfade).some((c) => c.gain <= MUTE);
+      $("music-range-parts-btns").replaceChildren(...SONG_PARTS.map((p) => {
+        const name = PART_LOOK[p][0].toLowerCase();
+        return muted(p) ? btn(`${PART_LOOK[p][0]} muted here ✕`, `Bring the ${name} back over the selection`, () => this.setPartHere(p, null), true)
+          : btn(`Mute ${name} here`, `No ${name} over the selection`, () => this.setPartHere(p, MUTE));
+      }), btn("Vocals only here", "Just the singing over the selection: an a cappella stretch", () => this.setPartHere("only-vocals", MUTE)));
+    }
     $("music-range-len").textContent = `${(sel.end - sel.start).toFixed(1)} s${bars > 1 ? `, about ${bars} bars` : ""}`;
   }
 
@@ -2170,12 +2319,22 @@ export class MusicEditor {
     const same = this.mainFor && this.mainFor.pieces === this.pieces && this.mainFor.xf === this.crossfade
       && this.mainFor.fadeIn === fadeIn && this.mainFor.fadeOut === fadeOut && this.mainFor.rate === rate;
     if (!same) {
-      this.main = this.pieces.length ? render(this.pieces, this.sources, rate, { crossfade: this.crossfade, fadeIn, fadeOut }) : null;
+      this.raw = this.pieces.length ? render(this.pieces, this.sources, rate, { crossfade: this.crossfade, fadeIn, fadeOut }) : null;
       this.mainFor = { pieces: this.pieces, xf: this.crossfade, fadeIn, fadeOut, rate };
       this.songLufs = null; // measured again when a clip is next added
+      this.partRenders = {};
+      this.partPeaks = {};
+    }
+    // The song with its own parts at their levels (kept until the song or its parts change).
+    if (!same || this.partsFor !== this.parts) {
+      const main = this.applyParts(this.raw), fresh = main !== this.main;
+      this.main = main;
+      // Done again once they're loaded (or the songs list says the song has them).
+      this.partsFor = this.main === this.raw && partsActive(this.parts) ? null : this.parts;
+      if (fresh || !same) this.peaks = this.main ? peaks(this.main) : null;
     }
     // The song through its own EQ (kept until the song or its EQ changes).
-    const eqSame = same && this.eqFor && this.eqFor.eq === this.eq && this.eqFor.main === this.main;
+    const eqSame = this.eqFor && this.eqFor.eq === this.eq && this.eqFor.main === this.main;
     if (!eqSame) {
       this.mainEq = this.main && !isFlat(this.eq)
         ? applyEq(this.main.map((ch) => Float32Array.from(ch)), rate, this.eq, placeChanges(this.eq, this.pieces, this.crossfade)) : this.main;
@@ -2196,10 +2355,12 @@ export class MusicEditor {
     // what's made into a song file).
     for (const c of [...this.solo]) if (typeof c === "number" && c >= this.layers.length) this.solo.delete(c);
     const heard = placed.filter((p) => this.heard(p.layer));
-    const song = this.heard("song") || !this.mainEq ? this.mainEq : this.mainEq.map((ch) => new Float32Array(ch.length));
+    // Soloing some of the song's parts plays just those (with anything else soloed).
+    const soloParts = SONG_PARTS.filter((p) => this.solo.has(`part:${p}`));
+    const song = !this.mainEq ? this.mainEq : !this.heard("song") ? this.mainEq.map((ch) => new Float32Array(ch.length))
+      : soloParts.length && !this.solo.has("song") ? this.soloedParts(soloParts) || this.mainEq : this.mainEq;
     this.rendered = heard.length || song !== this.main
       ? limit(mixLayers(song, this.layers, heard, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate) : this.main;
-    if (!same) this.peaks = this.main ? peaks(this.main) : null;
     if (this.focus != null && this.focus >= this.layers.length) this.focus = null;
     this.focusView(placed, rate);
     const steps = this.main ? Math.ceil((this.main[0].length / rate) * OVERLAY_RATE) + 1 : 0;
@@ -2255,6 +2416,13 @@ export class MusicEditor {
     $("music-sel-len").textContent = sel ? `${(sel.end - sel.start).toFixed(2)} s selected` : "";
     this.renderRange();
     this.renderParts();
+    const canParts = this.partsAvailable && this.focus == null;
+    $("music-view").hidden = !canParts;
+    for (const b of $("music-view").querySelectorAll("button")) {
+      const on = (b.dataset.view === "parts") === !!(this.partsView && canParts);
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-pressed", String(on));
+    }
     const n = this.pieces.length;
     $("music-title").textContent = this.base ? nameOf(this.base).replace(/\.[^.]+$/, "") : "No song open";
     $("music-info").textContent = has
@@ -2347,7 +2515,7 @@ export class MusicEditor {
     const cut = { pieces: this.pieces, crossfade: this.crossfade, fadeIn: Number($("music-fadein").value) || 0,
       fadeOut: Number($("music-fadeout").value) || 0, gain: even.gain,
       // The layers and EQ as they were, so its parts have them too, whatever's changed by the time they're made.
-      layers: structuredClone(this.layers), eq: this.eq && structuredClone(this.eq),
+      layers: structuredClone(this.layers), eq: this.eq && structuredClone(this.eq), songParts: structuredClone(this.parts),
       placed: this.placed().filter((p) => !this.layers[p.layer].muted) };
     // The draft as it was when you pressed it, and which draft: you might open another while it's made.
     const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
@@ -2382,9 +2550,11 @@ export class MusicEditor {
   // volume, so it needn't be split itself. A part a spliced-in song hasn't got is quiet there. The song's
   // EQ and its layers go into them too: each clip into the parts it belongs to (layers.js clipPart), at
   // its volume, tempo and key, ducking the song where the whole mix does.
-  async makeParts(ref, { pieces, crossfade, fadeIn, fadeOut, gain, layers = [], eq = null, placed = [] }) {
+  async makeParts(ref, { pieces, crossfade, fadeIn, fadeOut, gain, layers = [], eq = null, placed = [], songParts = null }) {
     const songs = this.host.songs(), partsOf = (src) => songs.find((s) => keyOf(s) === src)?.parts || {};
-    const names = [...new Set(pieces.flatMap((p) => Object.keys(partsOf(p.src))))];
+    const names = [...new Set(pieces.flatMap((p) => Object.keys(partsOf(p.src))))]
+      .sort((a, b) => (a === "music") - (b === "music")); // the music last: with the parts' levels changed, it's made from them
+    const levels = partsActive(songParts), built = {};
     const rate = this.audio.sampleRate, k = 10 ** ((gain || 0) / 20);
     for (const name of names) {
       this.host.status(`Keeping the ${name} with ${nameOf(ref)}…`, "info", "music-save");
@@ -2396,7 +2566,16 @@ export class MusicEditor {
         cutUp.push({ ...p, src: key });
       }
       let channels = render(cutUp, sources, rate, { crossfade, fadeIn, fadeOut });
-      if (!isFlat(eq)) applyEq(channels, rate, eq, placeChanges(eq, pieces, crossfade));
+      if (levels && name === "music" && ["drums", "bass", "rest"].some((n) => partChanged(songParts, n)) && ["drums", "bass", "rest"].every((n) => built[n])) {
+        // The music is the drums, bass and rest as they are now (EQ and levels done already).
+        channels = channels.map((ch, c) => { const out = new Float32Array(ch.length); for (const n of ["drums", "bass", "rest"]) { const s2 = built[n][Math.min(c, built[n].length - 1)]; for (let i = 0; i < out.length && i < s2.length; i++) out[i] += s2[i]; } return out; });
+      } else {
+        if (!isFlat(eq)) applyEq(channels, rate, eq, placeChanges(eq, pieces, crossfade));
+        if (levels && SONG_PARTS.includes(name) && partChanged(songParts, name)) {
+          channels = addPart(channels.map((ch) => new Float32Array(ch.length)), channels, partLevel(songParts, name, pieces, crossfade), rate, 0);
+        }
+        if (levels) built[name] = channels.map((c) => Float32Array.from(c)); // a copy: these are turned up or down below
+      }
       if (placed.length) channels = await this.layersInto(channels, name, { layers, placed, pieces, crossfade, rate });
       if (k !== 1) for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
       await savePart(this.host.api, ref, name, channels, rate);
@@ -2596,6 +2775,10 @@ export class MusicEditor {
     const sx0 = this.sel ? this.x(this.sel.start) : Infinity, sx1 = this.sel ? this.x(this.sel.end) : -Infinity;
     const wave = col("--wave"), region = col("--region");
     const spp = (this.view.span * rate) / w; // samples per pixel
+    // The Parts view: the song's vocals, drums, bass and rest on rows of their own.
+    if (this.partsView && this.focus == null && this.partsAvailable && this.drawPartRows(ctx, col, waveT, waveB, rate)) {
+      this.drawOverlay(ctx, col, waveT, waveB);
+    } else {
     // With a layer focused, the song shows faintly behind it, so you can still see where you are.
     const passes = focused ? [[this.peaks, this.main, true], [this.focusPeaks, this.focusMix, false]] : [[this.peaks, this.main, false]];
     for (const [pk, chans, faint] of passes) {
@@ -2615,6 +2798,7 @@ export class MusicEditor {
     }
     ctx.globalAlpha = 1;
     this.drawOverlay(ctx, col, waveT, waveB);
+    }
 
 
     if (!focused) this.drawLyrics(ctx, col, lyrT); // the song's words, not the layer's
@@ -2930,6 +3114,70 @@ export class MusicEditor {
     ctx.restore();
   }
 
+  // The song's parts on four rows, each in its colour, with where it's quieter or muted hatched; the
+  // selection shaded across them. False until their audio's loaded (the song's waveform shows meanwhile).
+  drawPartRows(ctx, col, top, bottom, rate) {
+    const renders = SONG_PARTS.map((p) => this.partRender(p));
+    if (renders.some((r) => !r)) { this.loadParts(SONG_PARTS); return false; }
+    const w = this.w, rowH = (bottom - top) / SONG_PARTS.length, spp = (this.view.span * rate) / w;
+    ctx.save();
+    SONG_PARTS.forEach((p, k) => {
+      const y0 = top + k * rowH, mid = y0 + rowH / 2, amp = rowH / 2 - 3;
+      const pk = (this.partPeaks[p] ??= peaks(renders[k]));
+      const level = partLevel(this.parts, p, this.pieces, this.crossfade);
+      ctx.fillStyle = PART_LOOK[p][1];
+      for (let px = 0; px < w; px++) {
+        const s0 = Math.floor(this.view.start * rate + px * spp), s1 = Math.max(s0 + 1, Math.floor(s0 + spp));
+        let m = 0;
+        for (let b = Math.floor(s0 / BLOCK), e = Math.ceil(s1 / BLOCK); b < e && b < pk.length; b++) m = Math.max(m, pk[b]);
+        const g = level.base * level.segs.reduce((acc, [a, b2, v]) => (this.t(px) >= a && this.t(px) < b2 ? acc * v : acc), 1);
+        ctx.globalAlpha = g > 0.01 ? 0.85 : 0.25;
+        const hgt = Math.max(0.5, m * amp * Math.min(1, Math.max(0.15, g)));
+        ctx.fillRect(px, mid - hgt, 1, hgt * 2);
+      }
+      ctx.globalAlpha = 1;
+      // Where it's muted: hatched, as a whole row or over its changes.
+      const hatch = (x0, x1, text) => {
+        if (x1 < 0 || x0 > w) return;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x0, y0, x1 - x0, rowH); ctx.clip();
+        ctx.fillStyle = PART_LOOK[p][1]; ctx.globalAlpha = 0.12; ctx.fillRect(x0, y0, x1 - x0, rowH);
+        ctx.globalAlpha = 0.45; ctx.strokeStyle = PART_LOOK[p][1];
+        for (let x = x0 - rowH; x < x1; x += 7) { ctx.beginPath(); ctx.moveTo(x, y0 + rowH); ctx.lineTo(x + rowH, y0); ctx.stroke(); }
+        ctx.restore();
+        if (text) {
+          ctx.font = "600 10px system-ui, sans-serif";
+          const tw = ctx.measureText(text).width, tx = Math.max(x0 <= 0 ? 110 : 2, x0 + 4); // clear of the lane's name
+          ctx.fillStyle = col("--panel"); ctx.fillRect(tx - 2, mid - 7, tw + 4, 13);
+          ctx.fillStyle = PART_LOOK[p][1]; ctx.fillText(text, tx, mid + 3);
+        }
+      };
+      if (!level.base) hatch(0, w, "Muted");
+      else for (const [a, b2, v] of level.segs) if (v < 1) hatch(this.x(a), this.x(b2), v === 0 ? `${PART_LOOK[p][0]} muted here` : `${PART_LOOK[p][0]} quieter here`);
+      ctx.fillStyle = col("--muted");
+      ctx.font = "600 10px system-ui, sans-serif";
+      ctx.fillText(PART_LOOK[p][0], w - ctx.measureText(PART_LOOK[p][0]).width - 6, y0 + 11);
+      ctx.fillStyle = col("--line");
+      ctx.fillRect(0, y0 + rowH - 1, w, 1);
+    });
+    if (this.sel) {
+      const x0 = this.x(this.sel.start), x1 = this.x(this.sel.end);
+      ctx.fillStyle = col("--region"); ctx.globalAlpha = 0.25;
+      ctx.fillRect(x0, top, x1 - x0, bottom - top);
+    }
+    ctx.restore();
+    return true;
+  }
+
+  // The stretch where a part's changed, under (x, y) in the Parts view: {start, end}, or null.
+  partBandAt(x, y) {
+    if (!this.partsView || this.focus != null || !this.partsAvailable) return null;
+    const top = RULER_H + BEAT_H + SEC_H + LYR_H, rowH = (WAVE_B - top) / SONG_PARTS.length, k = Math.floor((y - top) / rowH);
+    if (y < top || k < 0 || k >= SONG_PARTS.length) return null;
+    const t = this.t(x), seg = partLevel(this.parts, SONG_PARTS[k], this.pieces, this.crossfade).segs.find(([a, b]) => t >= a && t < b);
+    return seg ? { start: seg[0], end: seg[1] } : null;
+  }
+
   // A lane's name with its M (mute) and S (solo) at the left, over a backing so it reads over clips.
   // Their places are kept for clicks (headAt).
   drawHead(ctx, col, ch, label, y) {
@@ -3132,6 +3380,14 @@ export class MusicEditor {
       const clip = this.layers[hit.layer].clips[hit.clip];
       this.clipSel = { layer: hit.layer, clip: hit.clip };
       this.drag = { clip: hit, orig: clip, t0: t, x, moved: false, before: this.layers };
+      this.updateControls();
+      this.draw();
+      return;
+    }
+    const band = this.partBandAt(x, e.offsetY);
+    if (band && !e.shiftKey) { // a part's change in the Parts view: select its stretch, to change or take off
+      this.sel = band;
+      this.drag = null;
       this.updateControls();
       this.draw();
       return;
@@ -3438,6 +3694,14 @@ export class MusicEditor {
     $("music-play-sel").addEventListener("click", () => this.sel && this.play(this.sel.start, this.sel.end));
     $("music-range-play").addEventListener("click", () => this.sel && this.play(this.sel.start, this.sel.end));
     $("music-focus-back").addEventListener("click", () => this.focusLayer(null));
+    for (const b of $("music-view").querySelectorAll("button")) {
+      b.addEventListener("click", () => {
+        this.partsView = b.dataset.view === "parts";
+        if (this.partsView) this.loadParts(SONG_PARTS);
+        this.updateControls();
+        this.draw();
+      });
+    }
     $("music-preview").addEventListener("click", () => this.previewCut());
     $("music-cut").addEventListener("click", () => this.cutSelection());
     $("music-keep").addEventListener("click", () => this.keepSelection());
