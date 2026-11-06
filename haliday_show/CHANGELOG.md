@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.418
+
+- **Edits no longer offer to be split on their own.** An edit gets its parts from its original song, so while the original isn't split, the edit's **⋯** says **Split the original into parts…**. That splits the original, then cuts the edit's parts from it in seconds, rather than running the AI on the edit as well.
+
 ## 0.2.417
 
 - **Faders for the song's parts.** In the Music editor, a song split into parts has **Vocals**, **Drums**, **Bass** and **Rest** under it in the **Mixer**, each with mute, solo and volume, like stems on a DJ controller: mute the vocals for an instrumental, or turn the drums down.
