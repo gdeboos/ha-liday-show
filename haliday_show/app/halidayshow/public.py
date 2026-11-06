@@ -1425,6 +1425,17 @@ def phone_lane(storage: Storage, show: dict) -> dict | None:
         voice = {"fps": (voice or {}).get("fps") or lyrics.get("fps") or 20, "values": (voice or {}).get("values", []),
                  "shapes": lyrics["shapes"], "shapesFps": lyrics.get("fps") or 20, "lyrics": True,
                  "from": (voice or {}).get("from") or "song"}
+    # The cues for Drum hits and Words ride along with it (as singerOf does).
+    path = (show.get("audio") or {}).get("path")
+    drums = show.get("drums")
+    cues = {}
+    if isinstance(drums, dict) and (not drums.get("song") or drums.get("song") == path):
+        cues["drums"] = drums
+    if isinstance(lyrics, dict) and isinstance(lyrics.get("words"), list) and lyrics["words"] \
+            and (not lyrics.get("song") or lyrics.get("song") == path):
+        cues["words"] = lyrics["words"]
+    if cues:
+        voice = {"fps": (voice or {}).get("fps") or 20, "values": [], **(voice or {}), **cues}
     return {"clips": clips,
             # The singer's level, for the Singing face.
             "voice": voice,

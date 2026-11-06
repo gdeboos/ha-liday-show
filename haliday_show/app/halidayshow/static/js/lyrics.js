@@ -158,7 +158,9 @@ export function savedLyrics(text, lines, voice, duration, song = "") {
   const r = (t) => Math.round(t * 1000) / 1000;
   return { text, song, lines: lines.map((l) => ({ start: r(l.start), end: r(l.end),
     ...(timed(l) ? { words: l.times.map((t) => ({ start: r(t.start), end: r(t.end) })) } : {}) })),
-    fps: LYRIC_FPS, shapes: lyricShapes(lines, voice, duration) };
+    fps: LYRIC_FPS, shapes: lyricShapes(lines, voice, duration),
+    // Each word sung, [start, end, line], for the Words effect (the player and phones read it as it is).
+    words: lines.flatMap((l, i) => lineWords(l, voice).map((w) => [r(w.start), r(w.end), i])) };
 }
 
 // The saved lyrics' lines with their text again (null when the text and the saved lines don't match).

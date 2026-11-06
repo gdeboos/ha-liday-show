@@ -7,6 +7,38 @@
 import { EFFECTS, HOUSE, clipPiece, isGroupTrack, newClip } from "./effects.js";
 import { runsDownTree } from "./matrix.js";
 import { applyPalette } from "./palettes.js";
+import { parseLyrics } from "./lyrics.js";
+
+// What a light does with its role (roles.js) in a lively stretch of the song, when the song gives it
+// something to follow: a drum's light flashes on that drum's hits (Drum hits), a vocals light pulses on
+// the words (Words), a bass light follows the music's level. Quiet stretches keep their calm looks.
+const DRUM_OF = { kick: ["kick", "kick"], snare: ["snare", "snare"], crash: ["crash", "crash"] };
+const HIT_STYLES = ["flash", "burst", "sparkle"];
+
+// The song's cues from the show (analysis): its drum hits and sung words, and where its lyric lines
+// start, with which lines come back (a chorus).
+function songCues(analysis) {
+  const drums = analysis.drums && typeof analysis.drums === "object" ? analysis.drums : null;
+  const lyr = analysis.lyrics, forSong = !lyr?.song || !analysis.audio || lyr.song === analysis.audio.path;
+  const words = forSong && Array.isArray(lyr?.words) ? lyr.words : [];
+  const text = forSong ? parseLyrics(lyr?.text).map((l) => l.text.toLowerCase().replace(/[^a-z' ]/g, "").trim()) : [];
+  const starts = forSong && Array.isArray(lyr?.lines) && lyr.lines.length === text.length ? lyr.lines.map((l) => Number(l.start) || 0) : [];
+  const seen = new Map();
+  for (const t of text) seen.set(t, (seen.get(t) || 0) + 1);
+  const lines = starts.map((start, i) => ({ start, again: !!text[i] && seen.get(text[i]) > 1 }));
+  const count = (list, a, b) => (list || []).filter((t) => t >= a && t < b).length;
+  return {
+    hits: (kind, a, b) => (drums ? count(drums[kind], a, b) : 0),
+    words: (a, b) => words.filter((w) => w[0] >= a && w[0] < b).length,
+    lines,
+    // A section most of whose lines come back elsewhere in the song: a chorus, whatever it's called.
+    sungChorus: (sec) => {
+      const mine = lines.filter((l) => l.start >= sec.start && l.start < sec.end);
+      return mine.length >= 2 && mine.filter((l) => l.again).length / mine.length >= 0.6;
+    },
+    lastCrash: drums?.crash?.length ? drums.crash[drums.crash.length - 1] : null,
+  };
+}
 
 // How a style shifts a section's energy before picking looks, and how often looks change.
 export const STYLES = {
@@ -143,10 +175,15 @@ function clipFor(look, start, end, bps, n, colors, offset) {
 // that can only change a few times a second (they get SLOW_LOOKS), fits(clip) false for a clip the light
 // can't show (another of the section's looks is used instead);
 // group: the light a part belongs to (parts of one light go dark or light up together; default its id);
+// role: what the light reacts to (roles.js), for lively stretches: see roleLook;
 // colors: the palette's colours. Returns {clips: {deviceId: [clip]}, house: [clip]}.
 // maxBars caps how long one look runs (0: as long as the style likes, up to 16 bars in quiet parts).
+// analysis may carry the song's cues: drums (its drum hits) and lyrics (show.lyrics: its lines and
+// sung words), which put looks on the lines, find the chorus, and give lights with roles their moments.
+// The House lane is saved for the biggest moments: the first and last chorus, and the final crash.
 export function generateShow(analysis, lights, colors, { style = "balanced", seed = 1, house = false, build = false, maxBars = 0 } = {}) {
   const duration = analysis.duration;
+  const cues = songCues(analysis);
   const bps = beatsPerSecond(analysis);
   const grid = barGrid(analysis);
   const sections = analysis.sections?.length ? analysis.sections : [{ start: 0, end: duration, label: "Song", energy: 0.6 }];
@@ -154,13 +191,38 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
   const clips = Object.fromEntries(lights.map((l) => [l.id, []]));
   const houseClips = [];
   let prevTier = null;
+  const marks = []; // each section's start, for the House lane's few big moments
   const groups = [...new Set(lights.map((l) => l.group ?? l.id))];
   // Building up needs the song's sections; without them every light plays, as before.
   if (!analysis.sections?.length) build = false;
   // Every light gets its moment: if no section is loud or a chorus, the loudest one uses them all.
-  const together = (sec, t) => t === "high" || sec.label === "Chorus";
+  const together = (sec, t) => t === "high" || sec.label === "Chorus" || cues.sungChorus(sec);
   const peak = sections.some((sec) => together(sec, tier(sec.energy ?? 0.5, style))) ? null
     : Math.max(...sections.map((sec) => sec.energy ?? 0.5));
+
+  // A light's look from its role, for a lively stretch the song gives it something in; else null.
+  const roleLook = (light, start, end, t, phrase, li) => {
+    if (!light.role || light.slow) return null; // a slow light keeps its slow looks
+    const beats = (end - start) * bps, offset = phrase + li;
+    const make = (effect, params) => {
+      const c = { ...newClip(effect, round(start), round(end)), ...params };
+      applyPalette(c, colors, offset);
+      return c;
+    };
+    if (light.role === "background") return t === "low" ? null : clipFor(LOOKS.low[(phrase + li) % LOOKS.low.length], start, end, bps, light.segments, colors, offset);
+    if (t === "low") return null;
+    const drum = DRUM_OF[light.role];
+    if (drum) {
+      const n = cues.hits(drum[0], start, end);
+      // Kicks and snares need to be keeping time (one every other beat or so); a crash just has to be there.
+      if (light.role === "crash" ? n < 1 : n < beats / 4) return null;
+      return make("drumhits", { drum: drum[1], decay: light.role === "crash" ? 0.9 : 0.25,
+        style: light.grid ? "burst" : HIT_STYLES[Math.floor(hash(seed, li, phrase) * HIT_STYLES.length)] });
+    }
+    if (light.role === "vocals" && !light.grid && cues.words(start, end) >= 3) return make("words", { decay: 0.35 });
+    if (light.role === "bass" && t === "high") return make("vumeter", { from: "the middle", boost: 140, peak: "off" });
+    return null;
+  };
 
   sections.forEach((sec, si) => {
     const t = tier(sec.energy ?? 0.5, style);
@@ -190,8 +252,19 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
     if (bars[0] > sec.start + 0.05) bars.unshift(sec.start);
     if (bars[bars.length - 1] < sec.end - 0.05) bars.push(sec.end);
     const step = Math.min(t === "low" ? phraseBars * 2 : phraseBars, maxBars > 0 ? maxBars : Infinity);
+    // Looks change where a lyric line starts, when one starts within a bar of where they'd change.
+    const barLen = bars.length > 1 ? (bars[bars.length - 1] - bars[0]) / (bars.length - 1) : 2;
+    const onLine = (at) => {
+      if (at <= sec.start + 0.05 || at >= sec.end - 0.05) return at;
+      const near = cues.lines.map((l) => l.start).filter((x) => Math.abs(x - at) <= barLen && x > sec.start + 0.05 && x < sec.end - 0.05)
+        .sort((a, b) => Math.abs(a - at) - Math.abs(b - at))[0];
+      return near ?? at;
+    };
+    let carry = null; // where a phrase snapped too short to keep started: the next one starts there instead
     for (let k = 0, phrase = 0; k < bars.length - 1; k += step, phrase++) {
-      const start = bars[k], end = bars[Math.min(k + step, bars.length - 1)];
+      const start = carry ?? (k ? onLine(bars[k]) : bars[k]), end = k + step < bars.length - 1 ? onLine(bars[k + step]) : bars[bars.length - 1];
+      if (end - start < 0.2) { carry = start; continue; }
+      carry = null;
       const on = lit(phrase);
       lights.forEach((light, li) => {
         if (!on.has(light.group ?? light.id)) return;
@@ -201,7 +274,7 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
           if (light.tree && runsDownTree(EFFECTS[c.effect])) c.runs = "columns";
           return c;
         };
-        let clip = make(look);
+        let clip = roleLook(light, start, end, t, phrase, li) || make(look);
         if (light.fits && !light.fits(clip)) {
           for (const other of (light.slow ? SLOW_LOOKS : LOOKS)[t]) {
             const c = make(other);
@@ -211,24 +284,30 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
         clips[light.id].push(clip);
       });
     }
-    // A sweep across the house as the music lifts into a louder section.
-    const rank = { low: 0, mid: 1, high: 2 };
-    if (house && si > 0 && rank[t] > rank[prevTier] && bars.length >= 2) {
-      const sweep = newClip("sweep", round(sec.start), round(bars[1]));
-      Object.assign(sweep, {
-        color: colors[si % colors.length], outside: "lights' own effects", width: 0.3,
-        direction: si % 2 ? "left to right" : "out from centre",
-      });
-      houseClips.push(sweep);
-    } else if (house && si > 0 && unison && bars.length >= 2) {
-      // When every light comes in together, a ring of colour bursts across the house over the first bar.
-      const ring = newClip("shockwave", round(sec.start), round(bars[1]));
-      Object.assign(ring, { color: colors[(si + 1) % colors.length], outside: "lights' own effects", rings: 1, width: 0.15,
-        y: 100, mix: "add" });
-      houseClips.push(ring);
-    }
+    marks.push({ si, start: sec.start, next: bars[1] ?? sec.end, unison, lift: si > 0 && { low: 0, mid: 1, high: 2 }[t] > { low: 0, mid: 1, high: 2 }[prevTier ?? "low"] });
     prevTier = t;
   });
+
+  // The House lane lights every light, so it's kept for the biggest moments, at most three: a sweep as
+  // the first all-lights section (the first chorus) comes in, a ring as the last one does, and a ring
+  // on the song's final crash. A song with none of those gets a sweep into its biggest lift.
+  if (house) {
+    const big = marks.filter((m) => m.si > 0 && m.unison);
+    const first = big[0] || marks.find((m) => m.lift), last = big.length > 1 ? big[big.length - 1] : null;
+    if (first) {
+      const sweep = newClip("sweep", round(first.start), round(first.next));
+      Object.assign(sweep, { color: colors[first.si % colors.length], outside: "lights' own effects", width: 0.3,
+        direction: first.si % 2 ? "left to right" : "out from centre" });
+      houseClips.push(sweep);
+    }
+    const ring = (at, until, k) => Object.assign(newClip("shockwave", round(at), round(until)),
+      { color: colors[k % colors.length], outside: "lights' own effects", rings: 1, width: 0.15, y: 100, mix: "add" });
+    if (last) houseClips.push(ring(last.start, last.next, last.si + 1));
+    const crash = cues.lastCrash;
+    if (crash != null && crash > duration * 0.6 && !houseClips.some((c) => crash > c.start - 1 && crash < c.end + 1)) {
+      houseClips.push(ring(crash, Math.min(duration, crash + 1.5), 2));
+    }
+  }
 
   // Fade in over the first bar and out over the last two when the song starts or ends quietly.
   const first = sections[0], last = sections[sections.length - 1];

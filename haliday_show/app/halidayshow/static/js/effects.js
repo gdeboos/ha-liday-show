@@ -829,6 +829,76 @@ Object.assign(EFFECTS, {
   },
 });
 
+// Cues from the song for Drum hits and Words (voiceLevels.drums, voiceLevels.words: phones.js singerOf):
+// when each drum lands, from its drums part, and when each word is sung, from its lyrics.
+const DRUM_KINDS = { "kick": ["kick"], "snare": ["snare"], "crash": ["crash"], "hi-hat": ["hat"], "kick and snare": ["kick", "snare"],
+  "any drum": ["kick", "snare", "crash", "hat"] };
+// The latest of `times` (sorted) at or before t, and its index, or null.
+function lastAt(times, t) {
+  let lo = 0, hi = times.length - 1, at = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (times[m] <= t) { at = m; lo = m + 1; } else hi = m - 1; }
+  return at < 0 ? null : { t: times[at], k: at };
+}
+let hitsMemo = { src: null, kinds: "", times: [] };
+function hitsFor(kinds) {
+  const d = voiceLevels?.drums;
+  if (hitsMemo.src !== d || hitsMemo.kinds !== kinds) {
+    const times = d ? DRUM_KINDS[kinds].flatMap((k) => d[k] || []).sort((a, b) => a - b) : [];
+    hitsMemo = { src: d, kinds, times };
+  }
+  return hitsMemo.times;
+}
+
+// How a hit or word lights the strip: all at once, spreading out from the middle, or as sparkles.
+function struck(style, strength, age, decay, n, i, seed) {
+  if (style === "burst") {
+    const reach = Math.min(1, age / Math.max(decay * 0.6, 0.02)), d = Math.abs(i - (n - 1) / 2) / Math.max((n - 1) / 2, 1);
+    return d <= reach ? strength : 0;
+  }
+  if (style === "sparkle") return hash01(seed, i) < 0.35 + 0.4 * strength ? strength : 0;
+  return strength;
+}
+
+Object.assign(EFFECTS, {
+  drumhits: {
+    // The light flashes on each hit of a drum in the song, found in its drums part (Split into parts),
+    // fading over Decay. Each hit takes the next colour in turn.
+    label: "Drum hits", group: "music", music: true,
+    params: [choice("drum", "Drum", "kick and snare", Object.keys(DRUM_KINDS)), color("color", "Colour", "#ffffff"),
+      color("color2", "Next hit's colour", "#ff0000"), color("background", "Background", "#000000"),
+      num("decay", "Fade (seconds)", 0.3, 0.05, 2, 0.05), choice("style", "Hit", "flash", ["flash", "burst", "sparkle"])],
+    render: (p, t, dur, n, i) => {
+      const song = (Number(p.start) || 0) + t, hit = lastAt(hitsFor(DRUM_KINDS[p.drum] ? p.drum : "kick and snare"), song);
+      const bg = hexToRgb(p.background);
+      if (!hit) return bg;
+      const age = song - hit.t, decay = Math.max(Number(p.decay) || 0.3, 0.05);
+      if (age > decay * 3) return bg;
+      const strength = struck(p.style, Math.exp(-age / decay * 1.6), age, decay, n, i, hit.k);
+      return mix(bg, hexToRgb(hit.k % 2 ? p.color2 : p.color), strength);
+    },
+  },
+  words: {
+    // The light pulses on each word as it's sung, from the song's lyrics (Lyrics…), and takes the next
+    // colour with each line.
+    label: "Words", group: "music", music: true,
+    params: [color("color", "Colour", "#ffffff"), color("color2", "Next line's colour", "#00c8ff"),
+      color("background", "Background", "#000000"), num("decay", "Fade (seconds)", 0.4, 0.05, 2, 0.05),
+      choice("style", "Word", "flash", ["flash", "burst", "sparkle"])],
+    render: (p, t, dur, n, i) => {
+      const song = (Number(p.start) || 0) + t, words = voiceLevels?.words, bg = hexToRgb(p.background);
+      if (!Array.isArray(words) || !words.length) return bg;
+      let lo = 0, hi = words.length - 1, at = -1;
+      while (lo <= hi) { const m = (lo + hi) >> 1; if (words[m][0] <= song) { at = m; lo = m + 1; } else hi = m - 1; }
+      if (at < 0) return bg;
+      const [start, end, line] = words[at], decay = Math.max(Number(p.decay) || 0.4, 0.05);
+      // Lit while it's sung, fading after.
+      if (song > end + decay * 3) return bg;
+      const strength = struck(p.style, song <= end ? 1 : Math.exp(-(song - end) / decay * 1.6), song - start, decay, n, i, at);
+      return mix(bg, hexToRgb(line % 2 ? p.color2 : p.color), strength);
+    },
+  },
+});
+
 // Effects made for matrices: renderXY(p, t, dur, w, h, x, y) colours one LED of a w x h grid, with
 // row 0 at the top. A strip is drawn as a matrix one LED high, so it shows a slice through the effect.
 function gridEffect(fx) {
@@ -1441,6 +1511,15 @@ export const PRESETS = {
   butterfly: [
     { label: "Slow and big", params: { speed: 0.15, size: 2.5 } },
     { label: "Busy", params: { speed: 1.5, size: 0.5 } },
+  ],
+  drumhits: [
+    { label: "Kick only", params: { drum: "kick", decay: 0.2 } },
+    { label: "Crashes, slow fade", params: { drum: "crash", decay: 1 } },
+    { label: "Sparkle on the snare", params: { drum: "snare", style: "sparkle" } },
+  ],
+  words: [
+    { label: "Burst from the middle", params: { style: "burst" } },
+    { label: "Long glow", params: { decay: 1.2 } },
   ],
   vumeter: [
     { label: "From the middle", params: { from: "the middle" } },

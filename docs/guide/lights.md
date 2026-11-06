@@ -363,8 +363,7 @@ A show can give any light another role: in the Show editor, open **Show settings
 roles**. Each light there says what it follows from your house (**House: …**) until you pick another
 for that show, so your shows don't all look the same.
 
-Generate starts using roles in a coming release, along with the drum hits from
-[Split into parts](build-a-show.md#split-into-parts).
+**Generate** uses each light's role to follow the drums and the words (see [Generate](build-a-show.md#generate)).
 
 ### Seasons
 

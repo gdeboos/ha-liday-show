@@ -60,7 +60,16 @@ and default). Leave out settings the default suits. Colours are "#rrggbb"; LEDs 
 - "song": its length, tempo, beat and bar times, and sections (Intro, Verse, Chorus...) with their energy \
 from 0 (quiet) to 1 (loud). Start and end clips on bar or beat times so changes land with the music, and \
 set speeds from the tempo (for example one step or flash per beat). A section's "notes" are the user's own \
-words about that part of the song (what happens in the music, or how they want it lit): follow them.
+words about that part of the song (what happens in the music, or how they want it lit): follow them. A section's \
+"drums" (when the song has been split into parts) count its kick and snare hits and give its crash times; the \
+song's "lyrics" give each sung line's start and words.
+- A light's "role" says which part of the music the user wants it to react to: kick, snare, crash, bass, \
+vocals, melody, background or none. In lively sections, give a kick, snare or crash light the Drum hits \
+effect for its drum (where that section has those hits), a vocals light the Words effect while lines are \
+sung, and a bass light a level that pumps with the music; melody lights carry the section's main look, \
+and background lights stay calm and steady. In quiet sections they can all share calmer looks. Change \
+looks where lyric lines start rather than in the middle of a line, and give a line that comes back (a \
+chorus) the same look each time.
 - "selection": the stretch of time and lights the user has selected, if any. When the request doesn't say \
 where or when, use the selection, else the whole song.
 - "palettes": named colour sets, for requests like "in Christmas colours".
@@ -82,8 +91,9 @@ third), lights come in as the music builds (about two thirds), and every light t
 biggest moments (the loudest sections and the chorus), unless the request says otherwise. A light that \
 should be off simply has no clip there; leave real gaps. Having many effects to choose from is no reason to \
 light more: vary the look, not the number of lights. A House lane effect lights every light, so it counts \
-as all lights on: keep it for the big moments and short accents (a shockwave on a drop, a sweep into a \
-chorus), or give it "mix": "only where lit" so it only recolours the lights that are already on. For anything smaller (a selection, named lights, a change to what's there), do just what's asked \
+as all lights on: use it at most three times in a whole show, for the biggest moments only (a sweep into \
+the first chorus, a ring as the last chorus lands, a flash on the final crash), so it stays impressive, \
+or give it "mix": "only where lit" so it only recolours the lights that are already on. For anything smaller (a selection, named lights, a change to what's there), do just what's asked \
 on the lights it's about.
 
 Use only light names and effect keys from the context. Keep clips within the song. Give a one-sentence \

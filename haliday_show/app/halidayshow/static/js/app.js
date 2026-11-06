@@ -44,7 +44,7 @@ import { HA_KINDS, findEntities, haKind, kindCounts } from "./hapicker.js";
 import { countLabel, countText, isHa, isPixels, showBulbs, sizeText, unitWord } from "./lightwords.js";
 import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
-import { MusicEditor, arrange, mapLyrics, mapVoice } from "./music.js";
+import { MusicEditor, arrange, mapHits, mapLyrics, mapVoice } from "./music.js";
 import { ROLES, cleanRoles, guessRoles, rolesFor } from "./roles.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette, usedColourKeys } from "./palettes.js";
@@ -10794,6 +10794,20 @@ async function syncLyrics(show, ref, duration) {
   app.changed();
 }
 
+// A show's copy of when each drum lands in its song (from the song's drums part; an edit's from its
+// original's, through its cuts), for Drum hits and Generate, brought up to date.
+async function syncDrums(show, ref, duration) {
+  const edit = await editOf(ref, duration);
+  const hits = edit?.drums ? mapHits(edit.drums, edit.pieces, edit.crossfade, edit.src)
+    : await api(songExtraUrl("drums", ref)).catch(() => undefined);
+  if (hits === undefined || app.show !== show || show.audio !== ref) return;
+  const mine = show.drums, next = hits ? { song: ref.path, ...hits } : mine && mine.song !== ref.path ? mine : undefined;
+  if (JSON.stringify(next) === JSON.stringify(mine)) return;
+  if (next) show.drums = next; else delete show.drums;
+  setVoiceLevels(singerOf(show));
+  app.changed();
+}
+
 let measuringVoice = null;
 async function ensureVoice({ fresh = false } = {}) {
   const show = app.show, ref = show?.audio, song = songBuffer;
@@ -10801,6 +10815,7 @@ async function ensureVoice({ fresh = false } = {}) {
   if (measuringVoice) return measuringVoice;
   measuringVoice = (async () => {
     // Every show gets its song's lyrics, for the timeline's lyrics row; only a Singing face needs the singer.
+    await syncDrums(show, ref, song.duration);
     if (!usesFace(show)) { await syncLyrics(show, ref, song.duration); return; }
     const edit = await editOf(ref, song.duration);
     const viaEdit = !vocalsOf(ref) && edit?.voice?.from === "vocals";
@@ -10869,10 +10884,10 @@ async function editOf(ref, duration) {
       if (!d) return null;
       const draft = await api(`api/drafts/${encodeURIComponent(d.id)}`);
       const k = (r) => `${r.source}:${r.path}`;
-      const [words, voice] = await Promise.all(["lyrics", "voice"].map((w) => api(songExtraUrl(w, draft.base)).catch(() => null)));
+      const [words, voice, drums] = await Promise.all(["lyrics", "voice", "drums"].map((w) => api(songExtraUrl(w, draft.base)).catch(() => null)));
       const pieces = draft.pieces.map((p) => ({ src: k(p.song), start: p.start, end: p.end })), crossfade = draft.crossfade || 0;
       return { id: d.id, base: draft.base, name: draft.base.path.replace(/^.*\//, "").replace(/\.[^.]+$/, ""),
-        pieces, crossfade, src: k(draft.base), words, voice, length: arrange(pieces, crossfade).total,
+        pieces, crossfade, src: k(draft.base), words, voice, drums, length: arrange(pieces, crossfade).total,
         cuts: JSON.stringify([pieces, crossfade]) };
     })();
     madeFrom.set(key, asking);
@@ -12400,6 +12415,10 @@ async function generate({ colors, style, house, build, maxBars = prefs.get("genM
   if (!lights.length) { status("Add your lights under Setup → Devices first", "hint"); return; }
   // Listen to the song first if that hasn't been done yet.
   if (songBuffer && !app.show.beats.length && !app.show.sections?.length && !(await analyseSong())) return;
+  // The song's drum hits and lyrics, up to date, and each light's role (roles.js).
+  await ensureVoice().catch(() => {});
+  const roles = rolesFor(roleLanes(), await loadHouseRoles(), app.show.roles);
+  for (const l of lights) l.role = roles[l.id];
   const show = app.show;
   const result = generateShow({ ...show, duration: app.duration() }, lights, colors, { style, house, build, maxBars, seed: ++generateSeed });
   if (part) {
@@ -12659,6 +12678,7 @@ function aiLights() {
       if (traced) lights.push({ name: "House", trackIndex: i, segments: 0, house: true });
       return;
     }
+    const role = aiRoles?.[tr.device];
     const dev = playingDev(tr);
     if (!dev || dev.phones) return; // the AI designs for your lights, not visitors' phones
     let name = dev.name || tr.device;
@@ -12666,10 +12686,11 @@ function aiLights() {
     seen.add(name.toLowerCase());
     const grid = gridOf(dev);
     lights.push({ name, trackIndex: i, segments: dev.segments, ...(isSlow(dev) ? { slow: true } : {}),
-      ...(grid ? { matrix: { ...grid, shape: isTree(tr.device) ? "tree" : "panel" } } : {}) });
+      ...(grid ? { matrix: { ...grid, shape: isTree(tr.device) ? "tree" : "panel" } } : {}), ...(role ? { role } : {}) });
   });
   return lights;
 }
+let aiRoles = null; // each light's role (roles.js) for the request being made
 
 async function describeIt(e) {
   e.preventDefault();
@@ -12686,6 +12707,9 @@ async function describeIt(e) {
 // Sends a request to the AI with the show's context and puts the clips it makes on the show.
 // selectionFor(lights) gives the selection to send; replaceAll clears the lights first, as Generate does.
 async function describe(request, selectionFor, { replaceAll = false, clearPart: part = null, what = "your effects", busy = null, tidy = (p) => p } = {}) {
+  // The song's drum hits and lyrics up to date, and each light's role, for the AI to design with.
+  await ensureVoice().catch(() => {});
+  aiRoles = rolesFor(roleLanes(), await loadHouseRoles(), app.show.roles);
   const lights = aiLights();
   if (!lights.some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
   const selection = selectionFor ? selectionFor(lights) : null;

@@ -728,11 +728,29 @@ as it gets louder, every light moving together in the chorus, the same looks eac
 back, and a change every few bars. Looks include fairy lights, waves and aurora when it's quiet, theatre
 chases, juggling dots and dissolves in the middle, and fireworks and ripples at the loudest. Each new
 section crossfades in, lights that come on or go dark fade, and quiet starts and ends fade in and out.
-With lights traced on the house photo, turn on **Sweep across the house as the music lifts** for a sweep
-from one side to the other as the music lifts, and a ring of colour across the house when every light
-comes in together. It runs **Detect** first if the song hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press it again for a
+With lights traced on the house photo, turn on **Sweep across the house as the music lifts** for a few
+big moments across the whole house: a sweep as the first chorus comes in, a ring of colour as the last
+one does, and a ring on the song's final crash. It's kept to those, at most three, so they stay
+impressive. It runs **Detect** first if the song hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press it again for a
 different take, then edit whatever you like. The colours start on the show's palette, or else the one for the time of year
 (Halloween in October, Christmas in December…) when there is one.
+
+**Following the drums and the words.** Once a song is [split into parts](#split-into-parts) and has
+[lyrics](effects.md#lyrics-for-a-singing-face), Generate follows them as well as the beat, using each light's
+[role](lights.md#light-roles):
+
+- In lively parts, a light whose role is the **Kick drum**, **Snare** or **Crash cymbals** plays
+  **Drum hits**, flashing on that drum's real hits. A crash light flashes only where there are
+  crashes, and plays a normal look elsewhere.
+- A **Vocals** light plays **Words**, pulsing on each word as it's sung.
+- A **Bass** light pumps with the music in the loudest parts.
+- **Melody** lights carry the main look, and **Background** lights stay calm and steady.
+- Quiet parts keep their calm looks on every light.
+- Looks change where a lyric line starts rather than part way through one, and a part of the song
+  whose lines come back is treated as a chorus, even if it isn't called one.
+
+The **AI** gets all of this too: each light's role, the drum hits in each part of the song, and the
+lyrics. A song without parts or lyrics generates as before.
 
 **Anything else?** appears when **Made by** is the AI: tell it anything else about how this take should
 look, such as "keep the pillars steady white, save the big colours for the last chorus, no strobes". It's
