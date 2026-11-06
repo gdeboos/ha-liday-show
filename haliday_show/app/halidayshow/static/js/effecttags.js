@@ -3,7 +3,7 @@
 // without the page, so it can be tested.
 
 const TAGS = {
-  solid: "still calm", duo: "still calm", trio: "still calm", pulse: "calm", gradient: "still calm",
+  housecolour: "colours", solid: "still calm", duo: "still calm", trio: "still calm", pulse: "calm", gradient: "still calm",
   cycle: "colours calm", fade: "calm", strobe: "flashes lively",
   chase: "moves lively", rainbow: "moves colours lively", comet: "moves lively", scanner: "moves",
   wipe: "moves", theatre: "moves lively", juggle: "moves colours lively", ripple: "moves lively",

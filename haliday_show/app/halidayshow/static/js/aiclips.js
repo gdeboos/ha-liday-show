@@ -44,7 +44,7 @@ const needsYou = (fx) => fx.params.some((p) => p.type === "text" || p.type === "
 // Every effect with its settings, as the AI sees them. Effects made for matrices are marked "matrix"
 // and go only on matrix lights (on a strip they'd only show a slice); matrix false leaves them out.
 export function effectsForAI({ matrix = true } = {}) {
-  return Object.entries(EFFECTS).filter(([, fx]) => !fx.experimental && !fx.sceneOnly && !(fx.grid && (needsYou(fx) || !matrix))).map(([key, fx]) => ({
+  return Object.entries(EFFECTS).filter(([, fx]) => !fx.experimental && !fx.sceneOnly && !fx.phones && !(fx.grid && (needsYou(fx) || !matrix))).map(([key, fx]) => ({
     key, label: fx.label, ...(EFFECT_NOTES[key] ? { looks: EFFECT_NOTES[key] } : {}), ...(fx.house ? { house: true } : {}),
     ...(fx.grid ? { matrix: true } : {}),
     settings: fx.params.map((p) => ({

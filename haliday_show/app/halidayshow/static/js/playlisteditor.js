@@ -24,7 +24,7 @@ export const BLOCKS = {
 // play once across their length), on each light rather than across the house photo, and not the ones
 // made for matrices, which would show only a slice on every strip.
 export const BLOCK_EFFECTS = Object.keys(EFFECTS).filter((k) => k !== "solid" && !EFFECTS[k].once && !EFFECTS[k].music
-  && !EFFECTS[k].house && !EFFECTS[k].experimental && !EFFECTS[k].grid && !EFFECTS[k].sceneOnly);
+  && !EFFECTS[k].house && !EFFECTS[k].experimental && !EFFECTS[k].grid && !EFFECTS[k].sceneOnly && !EFFECTS[k].phones);
 
 const rand = () => Math.random().toString(36).slice(2, 8);
 
