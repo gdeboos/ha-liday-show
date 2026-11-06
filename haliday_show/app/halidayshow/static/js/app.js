@@ -12343,7 +12343,12 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
     sectionBox.hidden = false;
     const chip = (text, sec) => {
       const on = sec ? st.section?.start === sec.start : !st.section;
-      const b = button(text, () => { st.section = sec; drawSections(); drawNote(); }, on ? "on" : "");
+      // Marked in place, so the keyboard stays on it.
+      const b = button(text, () => {
+        st.section = sec;
+        for (const c of chips.children) { const now = c === b; c.classList.toggle("on", now); c.setAttribute("aria-pressed", String(now)); }
+        drawNote();
+      }, on ? "on" : "");
       b.setAttribute("aria-pressed", String(on));
       return b;
     };
