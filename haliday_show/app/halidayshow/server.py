@@ -1063,6 +1063,11 @@ _ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/"
 STEM_FILES = {
     "model.onnx": ("https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR-MDX-NET-Voc_FT.onnx",
                    "application/octet-stream", 66762490, "534b2070fcc7df514b13ef660dc8cbb328679c2374d04354a5c42bb14ecce111"),
+    # The drums and bass parts: KUIELab's MDX-Net models (MIT licence), as UVR publishes them.
+    "drums.onnx": ("https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/kuielab_a_drums.onnx",
+                   "application/octet-stream", 29703204, "40f586b7091934dd6f5563f0cba8f14bad57ce88440da1098bf388ea716c2901"),
+    "bass.onnx": ("https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/kuielab_a_bass.onnx",
+                  "application/octet-stream", 29703204, "0c3e77b9963185b1ea6bb46a4b8924137d9370fc1ccdefec7b1b416ef550dcaa"),
     "ort.webgpu.min.mjs": (_ORT + "ort.webgpu.min.mjs", "text/javascript", 333468,
                            "e1a0817ac08d5a6ade7f229754c2aecd444bff0bd22c259ca148a04b9f9e9f65"),
     "ort-wasm-simd-threaded.jsep.mjs": (_ORT + "ort-wasm-simd-threaded.jsep.mjs", "text/javascript", 46839,
@@ -1553,7 +1558,29 @@ def _song_extra(key, clean):
     return get, put
 
 
+MAX_DRUM_HITS = 20000  # of each kind: a 10-minute song at 32 a second
+
+
+def _clean_song_drums(body) -> dict | None:
+    """When each drum lands in the song (static/js/drumhits.js): {kick, snare, hat, crash}, seconds each."""
+    if body is None:
+        return None
+    try:
+        if not isinstance(body, dict) or set(body) - {"kick", "snare", "hat", "crash"}:
+            raise ValueError
+        out = {}
+        for kind in ("kick", "snare", "hat", "crash"):
+            hits = body.get(kind, [])
+            if not isinstance(hits, list) or len(hits) > MAX_DRUM_HITS:
+                raise ValueError
+            out[kind] = sorted(_num(t) for t in hits)
+    except (ValueError, TypeError):
+        raise web.HTTPBadRequest(text="expected {kick, snare, hat, crash}: lists of seconds")
+    return out
+
+
 get_song_lyrics, put_song_lyrics = _song_extra("lyrics", _clean_song_lyrics)
+get_song_drums, put_song_drums = _song_extra("drums", _clean_song_drums)
 get_song_voice, put_song_voice = _song_extra("voice", _clean_song_voice)
 
 
@@ -3496,6 +3523,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/audio/parts", put_song_part)
     r.add_get("/api/audio/lyrics", get_song_lyrics)
     r.add_put("/api/audio/lyrics", put_song_lyrics)
+    r.add_get("/api/audio/drums", get_song_drums)
+    r.add_put("/api/audio/drums", put_song_drums)
     r.add_get("/api/audio/voice", get_song_voice)
     r.add_put("/api/audio/voice", put_song_voice)
     r.add_get("/api/seasons", get_seasons)

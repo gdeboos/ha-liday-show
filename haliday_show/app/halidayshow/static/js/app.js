@@ -8655,13 +8655,13 @@ function songKid(kind, icon, name, badge, lines, actions, song = null) {
   return row;
 }
 
-// Split vocals… for a song's row (splitvocals.js): its vocals and music kept with it as its parts.
+// Split into parts… for a song's row (splitvocals.js): its vocals, drums, bass and the rest kept with it.
 function splitButton(r) {
-  const again = !!r.parts?.vocals;
-  const split = button(again ? "Split vocals again…" : "Split vocals…", () => splitVocals(r.ref, { api, askYes, status: (text, kind) => status(text, kind, "songs"),
+  const again = !!(r.parts?.drums && r.parts?.bass);
+  const split = button(again ? "Split into parts again…" : "Split into parts…", () => splitVocals(r.ref, { api, askYes, status: (text, kind) => status(text, kind, "songs"),
     songsChanged: async () => { await refreshAudio().catch(() => {}); renderSongsPage(); } }), "ghost");
-  split.setAttribute("aria-label", `Split ${r.name} into its vocals and music`);
-  split.title = "Split the song into its vocals and the music behind them, kept with the song as its parts. An AI does it in your browser";
+  split.setAttribute("aria-label", `Split ${r.name} into its parts`);
+  split.title = "Split the song into its vocals, drums, bass and the rest of the music, kept with the song as its parts. An AI does it in your browser";
   return split;
 }
 
@@ -10659,9 +10659,9 @@ function singerNote() {
     : !v ? (songBuffer ? "The singer hasn't been measured yet: press Measure again." : "The singer is measured once the song has loaded.")
     : placedLyrics() ? (v.from === "vocals" ? "It mouths the song's lyrics, opening wider as the vocals get louder."
       : "It mouths the song's lyrics, so the vocals don't need splitting. It opens wider on louder parts of the song.")
-    : v.from === "vocals" && v.through ? `It follows the vocals that Split vocals made from ${v.through}, through your edit's cuts.`
-    : v.from === "vocals" ? "It follows the vocals that Split vocals made from this song."
-    : "It follows the voice range of the song. For a closer match, use Split vocals on this song, then press Measure again.";
+    : v.from === "vocals" && v.through ? `It follows the vocals that Split into parts made from ${v.through}, through your edit's cuts.`
+    : v.from === "vocals" ? "It follows the vocals that Split into parts made from this song."
+    : "It follows the voice range of the song. For a closer match, use Split into parts on this song, then press Measure again.";
   const again = button("Measure again", async () => {
     if (!songBuffer) { status("Wait for the song to load first", "hint"); return; }
     again.disabled = true;

@@ -13,6 +13,7 @@ import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
 import { savePart, splitVocals } from "./splitvocals.js";
+import { drumHits } from "./drumhits.js";
 import { askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
@@ -381,6 +382,28 @@ export function mapWords(words, pieces, crossfade, src) {
   return out.sort((a, b) => a.start - b.start);
 }
 
+// The base song's drum hits ({kick, snare, hat, crash}: seconds, drumhits.js) where they land in the
+// edited result: each hit in a part that's kept, once for every time that part plays.
+export function mapHits(hits, pieces, crossfade, src) {
+  const { places, total } = arrange(pieces, crossfade);
+  const out = {};
+  for (const [kind, list] of Object.entries(hits || {})) {
+    const got = [];
+    pieces.forEach((p, i) => {
+      if (p.src !== src) return;
+      const { at, xf } = places[i];
+      const own0 = i === 0 ? 0 : at + xf / 2;
+      const own1 = i === pieces.length - 1 ? total : places[i + 1].at + places[i + 1].xf / 2;
+      for (const t of list) {
+        const m = at + (t - p.start);
+        if (t >= p.start && t <= p.end && m >= own0 - EPS && m < own1 - EPS) got.push(Math.round(m * 1000) / 1000);
+      }
+    });
+    out[kind] = got.sort((a, b) => a - b);
+  }
+  return out;
+}
+
 // The base song's singer ({fps, values, shapes}, as kept with it) heard through the edit: each step of
 // the result takes the singer at the same moment of the base song, quiet in parts spliced in.
 export function mapVoice(voice, pieces, crossfade, src, duration) {
@@ -489,6 +512,7 @@ const urlOf = (ref) => `api/audio/file?${query(ref)}`;
 const infoUrl = (ref) => `api/audio/info?${query(ref)}`;
 const lyricsUrl = (ref) => `api/audio/lyrics?${query(ref)}`;
 const voiceUrl = (ref) => `api/audio/voice?${query(ref)}`;
+const drumsUrl = (ref) => `api/audio/drums?${query(ref)}`;
 
 export class MusicEditor {
   // host provides: api(path, opts), status(msg, error), songs() -> [ref], songsChanged() -> Promise,
@@ -2047,6 +2071,10 @@ export class MusicEditor {
       const channels = render(cutUp, sources, rate, { crossfade, fadeIn, fadeOut });
       if (k !== 1) for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
       await savePart(this.host.api, ref, name, channels, rate);
+      if (name === "drums") { // when each drum lands in it, found afresh
+        const mono = channels[0].map((v, i) => (v + (channels[1] || channels[0])[i]) / 2);
+        await this.host.api(drumsUrl(ref), { method: "PUT", json: drumHits(mono, rate) }).catch(() => {});
+      }
     }
     if (names.length) this.host.status(`Made ${nameOf(ref)}, with its ${names.join(" and ")} kept with it`, "saved", "music-save");
   }
@@ -2281,6 +2309,19 @@ export class MusicEditor {
         ctx.globalAlpha = 1;
         ctx.beginPath();
         ctx.moveTo(x - 4, RULER_H + 3); ctx.lineTo(x + 4, RULER_H + 3); ctx.lineTo(x, RULER_H + BEAT_H - 3); ctx.fill();
+      }
+    }
+
+    // When each drum lands (from the song's drums part): kicks, snares and crashes along the bottom of
+    // the waveform, through the draft's cuts.
+    if (this.drums?.ref === this.base) {
+      const hits = mapHits(this.drums.hits, this.pieces, this.crossfade, keyOf(this.base));
+      for (const [kind, colour, y] of [["kick", "#d84a3a", waveB - 5], ["snare", "#2f7fd1", waveB - 10], ["crash", "#d9a400", waveB - 15]]) {
+        ctx.fillStyle = colour;
+        for (const t of hits[kind] || []) {
+          const x = this.x(t);
+          if (x >= -2 && x <= w + 2) ctx.fillRect(Math.round(x) - 1, y, 2, 4);
+        }
       }
     }
 
@@ -2519,10 +2560,12 @@ export class MusicEditor {
   async loadLyrics() {
     const ref = this.base;
     this.lyrics = null;
+    this.drums = null;
     this.wordSel = null;
     if (!ref) return;
-    const [words, voice] = await Promise.all([lyricsUrl, voiceUrl].map((u) => this.host.api(u(ref)).catch(() => null)));
+    const [words, voice, drums] = await Promise.all([lyricsUrl, voiceUrl, drumsUrl].map((u) => this.host.api(u(ref)).catch(() => null)));
     if (this.base !== ref) return;
+    this.drums = drums ? { ref, hits: drums } : null;
     const lines = savedLines(words);
     this.lyrics = lines ? { ref, text: words.text, lines, voice } : null;
     this.draw();
@@ -2983,7 +3026,7 @@ export class MusicEditor {
     $("music-sample").addEventListener("click", () => this.saveSample());
     $("music-split").addEventListener("click", () => {
       if (!this.base) return this.host.status("Open a song first", "hint");
-      splitVocals(this.base, { ...this.host, askYes, songs: () => this.host.songs() });
+      splitVocals(this.base, { ...this.host, askYes }).then(() => this.loadLyrics()); // its drum hits, now found
     });
     $("music-insert").addEventListener("click", () => this.addSong(false));
     $("music-append").addEventListener("click", () => this.addSong(true));

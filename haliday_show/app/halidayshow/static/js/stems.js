@@ -13,9 +13,17 @@ export const MDX = {
   dimT: 256, // frames per chunk
   compensate: 1.021, // the model's own level correction, from UVR's settings for it
 };
-const CHUNK = MDX.hop * (MDX.dimT - 1); // samples the model sees at once
-const TRIM = MDX.nFft / 2; // each chunk's edges, thrown away (the model is unsure there)
-const GEN = CHUNK - 2 * TRIM; // new samples each chunk adds
+
+// A song's parts and the model that finds each (server.py STEM_FILES has the files). The drums and
+// bass models are KUIELab's MDX-Net (MIT licence), from the same family as the vocals one, so they run
+// the same way, each with its own window and level correction from UVR's settings for it.
+export const MODELS = {
+  vocals: { ...MDX, file: "model.onnx" },
+  drums: { ...MDX, file: "drums.onnx", nFft: 4096, dimF: 2048, dimT: 512, compensate: 1.035 },
+  bass: { ...MDX, file: "bass.onnx", nFft: 16384, dimF: 2048, dimT: 512, compensate: 1.035 },
+};
+const chunkOf = (m) => m.hop * (m.dimT - 1); // samples the model sees at once
+const trimOf = (m) => m.nFft / 2; // each chunk's edges, thrown away (the model is unsure there)
 
 // An in-place radix-2 FFT (inverse with sign = 1, unscaled).
 function fft2(re, im, sign = -1) {
@@ -42,6 +50,7 @@ function fft2(re, im, sign = -1) {
 // A DFT of any length n (Bluestein: a convolution done with power-of-two FFTs). Returns a function
 // transforming (re, im) of length n in place; inverse = true for the unscaled inverse.
 export function dft(n, inverse = false) {
+  if ((n & (n - 1)) === 0) return (re, im) => fft2(re, im, inverse ? 1 : -1); // a power of two needs none of that
   let m = 1;
   while (m < 2 * n - 1) m <<= 1;
   const sign = inverse ? 1 : -1;
@@ -73,8 +82,8 @@ const reflect = (x, i) => { const n = x.length; while (i < 0 || i >= n) i = i < 
 
 // One chunk (two channels of CHUNK samples) as the model's input: [4, dimF, dimT] — left real,
 // left imaginary, right real, right imaginary — as torch.stft(center=True) would give.
-export function chunkSpectrum(left, right, tools) {
-  const { nFft, hop, dimF, dimT } = MDX, { fwd, win } = tools;
+export function chunkSpectrum(left, right, tools, model = MDX) {
+  const { nFft, hop, dimF, dimT } = model, { fwd, win } = tools;
   const out = new Float32Array(4 * dimF * dimT), re = new Float64Array(nFft), im = new Float64Array(nFft);
   for (let t = 0; t < dimT; t++) {
     const start = t * hop - nFft / 2;
@@ -92,8 +101,8 @@ export function chunkSpectrum(left, right, tools) {
 }
 
 // The model's output spectrum back to two channels of CHUNK samples (torch.istft, center=True).
-export function chunkSound(spec, tools) {
-  const { nFft, hop, dimF, dimT } = MDX, { inv, win } = tools;
+export function chunkSound(spec, tools, model = MDX) {
+  const { nFft, hop, dimF, dimT } = model, { inv, win } = tools;
   const len = hop * (dimT - 1), padded = len + nFft;
   const L = new Float64Array(padded), R = new Float64Array(padded), norm = new Float64Array(padded);
   const re = new Float64Array(nFft), im = new Float64Array(nFft);
@@ -121,26 +130,28 @@ export function chunkSound(spec, tools) {
   return [outL, outR];
 }
 
-export const tools = () => ({ fwd: dft(MDX.nFft), inv: dft(MDX.nFft, true), win: hann(MDX.nFft) });
+export const tools = (model = MDX) => ({ fwd: dft(model.nFft), inv: dft(model.nFft, true), win: hann(model.nFft) });
 
-// The whole song (two channels at MDX.rate) through the model. run(Float32Array [4·dimF·dimT]) →
-// Promise<Float32Array> of the same size. onProgress(0..1) as it goes. Returns {vocals, music}, each
-// two channels as long as the song.
-export async function separate(left, right, run, onProgress = () => {}) {
+// The whole song (two channels at MDX.rate) through a model (MODELS). run(Float32Array [4·dimF·dimT]) →
+// Promise<Float32Array> of the same size. onProgress(0..1) as it goes. Returns {vocals, music}: what
+// the model found (for the drums model, the drums) and the rest of the song, each two channels as long
+// as the song.
+export async function separate(left, right, run, onProgress = () => {}, model = MDX) {
+  const CHUNK = chunkOf(model), TRIM = trimOf(model), GEN = CHUNK - 2 * TRIM; // GEN: new samples each chunk adds
   const n = left.length, pad = GEN - (n % GEN);
   const total = TRIM + n + pad + TRIM;
   const mixL = new Float32Array(total), mixR = new Float32Array(total);
   mixL.set(left, TRIM); mixR.set(right, TRIM);
-  const vocL = new Float32Array(n), vocR = new Float32Array(n), t = tools();
+  const vocL = new Float32Array(n), vocR = new Float32Array(n), t = tools(model);
   const chunks = Math.ceil((n + pad) / GEN);
   for (let c = 0; c < chunks; c++) {
     const i = c * GEN;
-    const spec = chunkSpectrum(mixL.subarray(i, i + CHUNK), mixR.subarray(i, i + CHUNK), t);
-    const [l, r] = chunkSound(await run(spec), t);
+    const spec = chunkSpectrum(mixL.subarray(i, i + CHUNK), mixR.subarray(i, i + CHUNK), t, model);
+    const [l, r] = chunkSound(await run(spec), t, model);
     for (let k = TRIM; k < CHUNK - TRIM; k++) {
       const at = i + k - TRIM;
       if (at >= n) break;
-      vocL[at] = l[k] * MDX.compensate; vocR[at] = r[k] * MDX.compensate;
+      vocL[at] = l[k] * model.compensate; vocR[at] = r[k] * model.compensate;
     }
     onProgress((c + 1) / chunks);
   }

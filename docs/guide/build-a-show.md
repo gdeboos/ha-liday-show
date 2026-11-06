@@ -306,41 +306,50 @@ play the lights only). An archived song moves to an **Archived** folder inside H
 folder, where it's out of HA-liday Show's song lists but still in Home Assistant's Media. Restoring it
 puts it back and gives it back to the shows that were left without a song.
 
-#### Split vocals
+#### Split into parts
 
-**Split vocals…** (under a song's **⋯** in **Library → Songs**, or in the Music editor's **Edit** panel)
-separates a song into its singing and the music behind it, and keeps both with the song as its
-**parts**. They aren't songs of their own: the song's row says **parts: vocals and music**, and they go
-wherever the song goes (renamed, copied, archived or deleted with it).
+**Split into parts…** (under a song's **⋯** in **Library → Songs**, or in the Music editor's **Edit**
+panel) separates a song into its **vocals**, **drums**, **bass** and **the rest** of the music, and
+keeps them with the song as its **parts**, along with the **music** (everything but the vocals). They
+aren't songs of their own: the song's row lists them, such as **parts: vocals, drums, bass, rest and
+music**, and they go wherever the song goes (renamed, copied, archived or deleted with it).
 
-- **Singing faces** follow the vocals part, and Generate will use the parts in future releases.
+- **Singing faces** follow the vocals part.
+- **Drum hits:** from the drums part, HA-liday Show finds when each kick, snare, hi-hat and crash
+  lands. In the Music editor they show as small marks along the bottom of the waveform: red for kicks,
+  blue for snares and gold for crashes. Generate will use them in a future release, to put flashes on
+  the real hits rather than every beat.
 - **Layers** in the Music editor can play any song's parts: under **+ Add a clip at the playhead…**,
   they're listed as **Song parts**, such as "Jingle Bells (vocals)". Use the music as a backing track,
-  or put the vocals over another song for a mash-up.
+  the drums under another song, or the vocals over another song for a mash-up.
 - **Edits** use their original song's parts through your cuts, so there's no need to split an edit.
-  When you make a song file from a draft, its parts are cut from the original's the same way, in
-  seconds, with no AI.
+  When you make a song file from a draft, its parts (and its drum hits) are cut from the original's the
+  same way, in seconds, with no AI.
+
+A song you split before (with Split vocals) has its vocals already: **Split into parts…** keeps them
+and only finds the drums, bass and rest. Each part is kept as soon as it's ready, so if you stop part
+way, the parts it finished are kept.
 
 Parts are kept in a hidden **.parts** folder inside HA-liday Show's songs folder (**haliday_show** in
-your media folder), as WAV files: each is about 10 MB a minute of song.
+your media folder), as WAV files: each is about 10 MB a minute of song, so a three-minute song's parts
+take about 150 MB.
 
 Songs you split before songs kept their parts ("Jingle Bells (vocals)" and "Jingle Bells (music)")
 were moved into their song's parts when you updated, and shows and drafts that used them follow. Any
 that couldn't be matched to a song (its song's gone, say) stay as songs, under **Splits**.
 
-An AI model does it, in your browser, on the song as it is (not a draft's edits). The first time,
-HA-liday Show downloads it (about 90 MB), checks it, and keeps it until HA-liday Show restarts (it's
-never in your backups); your browser then takes it from there, in pieces, and keeps its own copy where
-it can.
+Three AI models do it, in your browser, on the song as it is (not a draft's edits): one for the vocals,
+then one each for the drums and the bass. The first time, HA-liday Show downloads them (about 130 MB),
+checks them, and keeps them until HA-liday Show restarts (they're never in your backups); your browser
+then takes them from there, in pieces, and keeps its own copy where it can.
 It's quickest on a computer whose browser can use the graphics card (recent Chrome or Edge): a few
-minutes for a song. Otherwise it runs on the processor and can take as long as the song lasts, many
-times over, so leave the page open and come back. Songs with clear lead vocals split best; backing
-singers and effects can stay in the music, and a little of the music in the vocals.
+minutes for a song. Otherwise it runs on the processor and can take a long time, several times as long
+as the song for each part, so leave the page open and come back. Songs with clear lead vocals split
+best; backing singers and effects can stay in the music, and a little of the music in the vocals.
 
-While it works, a window covers the page saying what it's doing (downloading the AI, splitting, saving)
-and how far along it is. **Cancel** stops it, and your songs stay as they were. If the AI can't be
-downloaded, the window says why, and HA-liday Show's log (in Home Assistant, the app's **Log** tab) says
-more.
+While it works, a window covers the page saying what it's doing (downloading the AI, finding each part)
+and how far along it is. **Cancel** stops it; the song is never changed. If the AI can't be downloaded,
+the window says why, and HA-liday Show's log (in Home Assistant, the app's **Log** tab) says more.
 
 ### Samples
 

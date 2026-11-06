@@ -96,7 +96,7 @@ export const HELP = {
         "<b>Edit</b> opens a song in the Music editor. The song you open is never changed.",
         "<b>+ Add a song</b> uploads one, and can <b>Detect</b> its beats and sections straight away.",
         "<b>All</b>, <b>Originals</b>, <b>Edits</b> and <b>Drafts</b> narrow the list, and <b>Find</b> searches names, folders and shows.",
-        "<b>Split vocals…</b> under <b>⋯</b> saves a song's singing and its music as two new songs, for mash-ups.",
+        "<b>Split into parts…</b> under <b>⋯</b> splits a song into its vocals, drums, bass and the rest, kept with the song for layers, Singing faces and Generate.",
       ] },
       { id: "folders", title: "Folders", tips: [
         "<b>+ New folder</b> makes a folder inside the one you're in. The files stay where they are.",
