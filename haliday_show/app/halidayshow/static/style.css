@@ -1611,3 +1611,8 @@ h2.with-layout-switch .layout-switch { margin-left: auto; font-size: 13px; font-
 @media (max-width: 720px) {
   .as-cards, .as-cards-groups > .show-list:not(.folder-list) { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 }
+
+/* Songs being split into parts, one after another (Library → Songs). */
+.parts-queue { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; margin: 6px 0; border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.parts-queue progress { flex: 1; min-width: 80px; }

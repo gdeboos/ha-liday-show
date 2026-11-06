@@ -326,6 +326,17 @@ music**, and they go wherever the song goes (renamed, copied, archived or delete
   When you make a song file from a draft, its parts (and its drum hits) are cut from the original's the
   same way, in seconds, with no AI.
 
+**New songs are split automatically.** When you add a song (**+ Add a song**), it's split into its
+parts in the background once it's added. A bar above your songs in **Library → Songs** says which song
+it's on and how far along it is, and the line at the bottom of the page says so on other pages too.
+You can carry on using HA-liday Show meanwhile, but keep the page open until it's done. **Stop** stops
+it; parts already made are kept.
+
+**Split all songs into parts** (under the list in **Library → Songs**) does the same for every song
+that isn't split yet, one after another. An edit made from a draft of a song that's split has its
+parts cut from the original's in seconds, rather than split again. Anything not done when you close
+the page is picked up next time you press it.
+
 A song you split before (with Split vocals) has its vocals already: **Split into parts…** keeps them
 and only finds the drums, bass and rest. Each part is kept as soon as it's ready, so if you stop part
 way, the parts it finished are kept.

@@ -78,67 +78,94 @@ function progressWindow(title, onCancel) {
 }
 
 const PART_WORDS = { vocals: "vocals", music: "music", drums: "drums", bass: "bass", rest: "rest of the music" };
+export const PARTS = ["vocals", "drums", "bass", "rest"]; // a song with all of these is prepared
+export const prepared = (parts) => PARTS.every((p) => parts?.[p]);
+const q = (ref) => new URLSearchParams({ source: ref.source, path: ref.path });
+const songName = (ref) => ref.path.split("/").pop().replace(/\.[^.]+$/, "");
 
-// Split into parts… for a song: its vocals, drums, bass and the rest of the music, each kept with it as
-// one of its parts as soon as it's made (so a split stopped part way keeps what it finished), then when
-// each drum lands (drumhits.js). Parts it has already (vocals from Split vocals before 0.2.403, say)
-// aren't made again. ref: the song ({source, path}). host: {api, status(text, kind), askYes(text,
-// opts), songsChanged()}.
-export async function splitVocals(ref, host) {
-  if (busy) return host.status("Already splitting a song: wait for it to finish", "hint");
-  busy = true; // from the first question on, so a second press can't start another meanwhile
-  let worker = null, win = null, cancelled = false;
-  const song = ref.path.split("/").pop().replace(/\.[^.]+$/, "");
+// Decodes a song (or a part) at the models' rate, as two channels.
+async function decodeAt(ref, path = ref.path) {
+  const bytes = await fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(path)}`);
+  const d = await new OfflineAudioContext(2, 1, MDX.rate).decodeAudioData(bytes);
+  const l = Float32Array.from(d.getChannelData(0));
+  return [l, d.numberOfChannels > 1 ? Float32Array.from(d.getChannelData(1)) : Float32Array.from(l)];
+}
+
+const mono = ([l, r]) => l.map((v, i) => (v + (r || l)[i]) / 2);
+const rms = (x) => { let s = 0; for (let i = 0; i < x.length; i += 7) s += x[i] * x[i]; return Math.sqrt(s / Math.max(1, x.length / 7)); };
+
+// A song file made from a draft whose original has all its parts: each part cut from the original's
+// the way the draft cuts the song, in seconds, rather than split again by the AI. edit: {pieces (each
+// {src: "source:path", start, end}), crossfade, fadeIn, fadeOut, base, baseParts}. The file's volume may
+// have been evened out when it was made: its parts are matched to it.
+async function cutFromOriginal(ref, api, edit, say) {
+  const { render } = await import("./music.js"); // music.js uses this module too
+  const baseKey = `${edit.base.source}:${edit.base.path}`;
+  if (edit.pieces.some((p) => p.src !== baseKey)) return false; // other songs spliced in: split it instead
+  const pieces = edit.pieces.map((p) => ({ ...p, src: "song" }));
+  const opts = { crossfade: edit.crossfade || 0, fadeIn: edit.fadeIn || 0, fadeOut: edit.fadeOut || 0 };
+  say(`Cutting ${songName(ref)}'s parts from ${songName(edit.base)}…`, null);
+  const [file, base] = await Promise.all([decodeAt(ref), decodeAt(edit.base)]);
+  const mix = render(pieces, { song: base }, MDX.rate, opts);
+  if (Math.abs(mix[0].length - file[0].length) > MDX.rate / 2) return false; // the draft's changed since
+  const k = rms(file[0]) / Math.max(1e-9, rms(mix[0]));
+  for (const part of [...PARTS, "music"]) {
+    if (!edit.baseParts[part]) continue;
+    const ch = render(pieces, { song: await decodeAt(edit.base, edit.baseParts[part]) }, MDX.rate, opts);
+    if (Math.abs(k - 1) > 0.01) for (const c of ch) for (let i = 0; i < c.length; i++) c[i] *= k;
+    await savePart(api, ref, part, ch, MDX.rate);
+    if (part === "drums") await api(`api/audio/drums?${q(ref)}`, { method: "PUT", json: drumHits(mono(ch), MDX.rate) }).catch(() => {});
+  }
+  return true;
+}
+
+// Makes a song's parts (its vocals, drums, bass and the rest of the music, and the music without its
+// vocals), keeping each with the song as soon as it's made, so one stopped part way keeps what it
+// finished, then when each drum lands (drumhits.js). Parts it has already (vocals from before 0.2.403,
+// say) aren't made again, unless `again`. An edit of a song with parts (edit: see cutFromOriginal) has
+// its parts cut from the original's instead. say(text, done 0-1 or null) hears how it's going;
+// started(stop) is given a function that stops it. One song at a time: anything else waits its turn.
+let turn = Promise.resolve();
+export function makeParts(ref, api, { again = false, edit = null, say = () => {}, started = () => {} } = {}) {
+  const run = () => makePartsNow(ref, api, { again, edit, say, started });
+  const mine = turn.then(run, run);
+  turn = mine.catch(() => {});
+  return mine;
+}
+
+async function makePartsNow(ref, api, { again, edit, say, started }) {
+  busy = true;
+  let worker = null, cancelled = false, stop = null;
+  const stopped = new Promise((_, reject) => { stop = reject; });
+  stopped.catch(() => {});
+  const unlessCancelled = (p) => Promise.race([p, stopped]);
+  started(() => { cancelled = true; worker?.terminate(); stop(new Error("cancelled")); });
+  const song = songName(ref);
   try {
-    const q = new URLSearchParams({ source: ref.source, path: ref.path });
-    const have = await host.api(`api/audio/parts?${q}`).catch(() => ({}));
-    const want = ["drums", "bass", "rest", ...(have.music ? [] : ["music"])];
-    const again = !!(have.drums && have.bass && have.rest);
-    if (!(await host.askYes(`Split ${song} into its parts: the vocals, drums, bass and the rest of the music? They're kept `
-      + "with the song, for Singing faces, Generate and the Music editor's layers. "
-      + (again ? "It has them already: this makes them again. " : "")
-      + "The first time, your browser downloads the AI that does it (about 130 MB). It takes several minutes; "
-      + "keep this page open meanwhile.", { yes: "Split into parts" }))) return;
-    // Cancel ends whatever is being waited for at once (loading the song, the split).
-    let stop = null;
-    const stopped = new Promise((_, reject) => { stop = reject; });
-    stopped.catch(() => {});
-    const unlessCancelled = (p) => Promise.race([p, stopped]);
-    win = progressWindow(`Splitting ${song}`, () => {
-      cancelled = true;
-      worker?.terminate();
-      stop(new Error("cancelled"));
-    });
-    const say = (text, done = null) => { win.say(text, done); host.status(text); };
-    worker = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
-    say(`Loading ${song}…`);
-    const decode = async (path) => {
-      const bytes = await unlessCancelled(fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(path)}`));
-      return unlessCancelled(new OfflineAudioContext(2, 1, MDX.rate).decodeAudioData(bytes)); // resampled to the model's rate
-    };
-    const channels = (d) => {
-      const l = Float32Array.from(d.getChannelData(0));
-      return [l, d.numberOfChannels > 1 ? Float32Array.from(d.getChannelData(1)) : Float32Array.from(l)];
-    };
-    let decoded, vocals = null;
+    const have = await api(`api/audio/parts?${q(ref)}`).catch(() => ({}));
+    if (!again && prepared(have)) return { made: false };
+    if (!again && edit && prepared(edit.baseParts) && await unlessCancelled(cutFromOriginal(ref, api, edit, say))) return { made: true, cut: true };
+    const want = ["drums", "bass", "rest", ...(have.music && !again ? [] : ["music"])];
+    say(`Loading ${song}…`, null);
+    let left, right, vocals = null;
     try {
-      decoded = await decode(ref.path);
+      [left, right] = await unlessCancelled(decodeAt(ref));
       if (have.vocals && !again) { // its vocals are made already: no need to find them again
-        const v = await decode(have.vocals).catch(() => null);
-        if (v && Math.abs(v.length - decoded.length) < MDX.rate / 10) vocals = channels(v).map((c) => { const x = new Float32Array(decoded.length); x.set(c.subarray(0, x.length)); return x; });
+        const v = await unlessCancelled(decodeAt(ref, have.vocals)).catch(() => null);
+        if (v && Math.abs(v[0].length - left.length) < MDX.rate / 10) {
+          vocals = v.map((c) => { const x = new Float32Array(left.length); x.set(c.subarray(0, x.length)); return x; });
+        }
       }
     } catch (e) { throw cancelled ? e : new Error(songLoadMessage(e)); }
-    if (decoded.duration > MAX_MINUTES * 60) {
+    if (left.length > MAX_MINUTES * 60 * MDX.rate) {
       throw new Error(`it's longer than ${MAX_MINUTES} minutes, more than a browser can split in one go. Cut it shorter in the Music editor first`);
     }
-    const [left, right] = channels(decoded);
-    decoded = null; // let the decoded copy go before the split needs its memory
-    if (cancelled) throw new Error("cancelled");
+    worker = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
     // Each part is kept with the song as it arrives, one after another, while the next is split.
-    let saving = Promise.resolve(), drums = null;
+    let saving = Promise.resolve(), drums = null, saveFailed = null;
     const keep = (part, ch) => {
-      if (part === "drums") drums = ch[0].map((v, i) => (v + ch[1][i]) / 2);
-      saving = saving.then(() => savePart(host.api, ref, part, ch, MDX.rate));
+      if (part === "drums") drums = mono(ch);
+      saving = saving.then(() => savePart(api, ref, part, ch, MDX.rate)).catch((e) => { saveFailed ||= e; });
     };
     const steps = [...(vocals ? [] : ["vocals"]), "drums", "bass"];
     await unlessCancelled(new Promise((resolve, reject) => {
@@ -156,24 +183,51 @@ export async function splitVocals(ref, host) {
       const transfer = [left.buffer, right.buffer, ...(vocals ? vocals.map((c) => c.buffer) : [])];
       worker.postMessage({ left, right, want, vocals }, transfer);
     }));
-    win.lock();
-    say(`Keeping ${song}'s parts with it…`);
+    say(`Keeping ${song}'s parts with it…`, null);
     await saving;
-    // When each drum lands, from the drums part, for Generate.
+    if (saveFailed) throw new Error(`couldn't keep its parts with it: ${saveFailed.message}`);
     if (drums) {
-      say(`Finding when each drum lands in ${song}…`);
+      say(`Finding when each drum lands in ${song}…`, null);
       await new Promise((r) => setTimeout(r, 0));
-      await host.api(`api/audio/drums?${q}`, { method: "PUT", json: drumHits(drums, MDX.rate) }).catch(() => {});
+      await api(`api/audio/drums?${q(ref)}`, { method: "PUT", json: drumHits(drums, MDX.rate) }).catch(() => {});
     }
+    return { made: true };
+  } catch (e) {
+    if (cancelled) { const err = new Error("cancelled"); err.cancelled = true; throw err; }
+    throw e;
+  } finally {
+    worker?.terminate();
+    busy = false;
+  }
+}
+
+export const splitting = () => busy;
+
+// Split into parts… on a song (its row in Library → Songs, or the Music editor), with a window over the
+// page saying how it's going. host: {api, status(text, kind), askYes(text, opts), songsChanged(),
+// edit (as makeParts takes, or null)}.
+export async function splitVocals(ref, host) {
+  if (busy) return host.status("Already splitting a song into parts: wait for it to finish", "hint");
+  const song = songName(ref);
+  let win = null;
+  try {
+    const have = await host.api(`api/audio/parts?${q(ref)}`).catch(() => ({}));
+    const again = prepared(have);
+    if (!(await host.askYes(`Split ${song} into its parts: the vocals, drums, bass and the rest of the music? They're kept `
+      + "with the song, for Singing faces, Generate and the Music editor's layers. "
+      + (again ? "It has them already: this makes them again. " : "")
+      + "The first time, your browser downloads the AI that does it (about 130 MB). It takes several minutes; "
+      + "keep this page open meanwhile.", { yes: "Split into parts" }))) return;
+    let stop = () => {};
+    win = progressWindow(`Splitting ${song}`, () => stop());
+    const say = (text, done = null) => { win.say(text, done); host.status(text); };
+    await makeParts(ref, host.api, { again, edit: host.edit || null, say, started: (s) => { stop = s; } });
     await host.songsChanged?.();
     host.status(`Split ${song} into its parts: vocals, drums, bass and the rest, kept with the song. Pick them as layers in the Music editor`, "saved");
   } catch (e) {
-    if (cancelled) host.status(`Split into parts stopped. Any part ${song} finished is kept with it`, "hint");
+    if (e.cancelled) { host.status(`Split into parts stopped. Any part ${song} finished is kept with it`, "hint"); await host.songsChanged?.(); }
     else host.status(`Couldn't split ${song}: ${e.message}`, true);
-    if (cancelled) await host.songsChanged?.();
   } finally {
     win?.close();
-    worker?.terminate();
-    busy = false;
   }
 }

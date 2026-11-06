@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.404
+
+- **New songs are split into parts automatically.** After you add a song, its vocals, drums, bass and the rest are split out in the background. A bar in **Library → Songs** shows which song it's on and how far it's got, with **Stop**. Keep the page open until it's done; you can carry on using HA-liday Show meanwhile.
+- **Split all songs into parts**, under your songs, splits every song that isn't split yet, one after another. Edits of a split song get their parts cut from the original's in seconds.
+- Pressing **Split into parts…** on a song while others are being split puts it next in line.
+
 ## 0.2.403
 
 - **Split into parts.** **Split vocals…** is now **Split into parts…**, and splits a song into its **vocals**, **drums**, **bass** and **the rest** of the music, all kept with the song. Use any of them as a layer in the Music editor. A song you split before keeps its vocals, and only the drums, bass and rest are found. The first time, it downloads about 40 MB more of AI, and it takes longer than splitting the vocals did.
