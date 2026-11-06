@@ -352,9 +352,9 @@ it; parts already made are kept.
 **Split all songs into parts** (under the list in **Library → Songs**) does the same for every song
 that isn't split yet, one after another, and listens to any song split before HA-liday Show listened
 to songs (seconds each, with no question asked if that's all there is to do). An edit made from a draft of a song that's split has its
-parts cut from the original's in seconds, rather than split again. A file made before HA-liday Show
-did that for drafts with layers or EQ is split by the AI instead: open its draft and press **Make song
-file** again to have it done in seconds. Anything not done when you close
+parts cut from the original's in seconds, rather than split again. A file made from a draft with layers or EQ
+before 0.2.412 has parts without them: open its draft and press **Make song file** again to put them in,
+in seconds. Anything not done when you close
 the page is picked up next time you press it.
 
 A song you split before (with Split vocals) has its vocals already: **Split into parts…** keeps them

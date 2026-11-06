@@ -2,7 +2,7 @@
 
 ## 0.2.412
 
-- **Layered edits get their parts in seconds, and right.** When you press **Make song file** on a draft with layers or EQ, the new file's parts (vocals, drums, bass and the rest) now include them: a layer of another song's vocals goes into the vocals, a sample into the rest of the music, and so on, at the layer's volume, tempo and key. Before, the layers were left out of the parts. A file made earlier from such a draft is split by the AI instead, which is slow: make it again from its draft to have it done in seconds.
+- **Layered edits get their parts in seconds, and right.** When you press **Make song file** on a draft with layers or EQ, the new file's parts (vocals, drums, bass and the rest) now include them: a layer of another song's vocals goes into the vocals, a sample into the rest of the music, and so on, at the layer's volume, tempo and key. Before, the layers and EQ were left out of the parts: for a file you made that way, open its draft and press **Make song file** again to put them in.
 
 ## 0.2.411
 
