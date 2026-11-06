@@ -1408,7 +1408,8 @@ def phone_lane(storage: Storage, show: dict) -> dict | None:
     voice = voice if isinstance(voice, dict) and isinstance(voice.get("values"), list) else None
     # Placed lyrics give the mouth its shapes instead (as static/js/phones.js singerOf does).
     lyrics = show.get("lyrics")
-    if isinstance(lyrics, dict) and isinstance(lyrics.get("shapes"), str) and lyrics["shapes"]:
+    if isinstance(lyrics, dict) and isinstance(lyrics.get("shapes"), str) and lyrics["shapes"] \
+            and (not lyrics.get("song") or lyrics.get("song") == (show.get("audio") or {}).get("path")):
         voice = {"fps": (voice or {}).get("fps") or lyrics.get("fps") or 20, "values": (voice or {}).get("values", []),
                  "shapes": lyrics["shapes"], "shapesFps": lyrics.get("fps") or 20, "lyrics": True}
     return {"clips": clips,

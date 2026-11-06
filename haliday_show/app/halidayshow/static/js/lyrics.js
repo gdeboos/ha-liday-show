@@ -116,8 +116,8 @@ export function lyricShapes(lines, voice, duration) {
 }
 
 // show.lyrics as saved: the text, each line's start and end, and the shapes worked out from them.
-export function savedLyrics(text, lines, voice, duration) {
-  return { text, lines: lines.map((l) => ({ start: Math.round(l.start * 100) / 100, end: Math.round(l.end * 100) / 100 })),
+export function savedLyrics(text, lines, voice, duration, song = "") {
+  return { text, song, lines: lines.map((l) => ({ start: Math.round(l.start * 100) / 100, end: Math.round(l.end * 100) / 100 })),
     fps: LYRIC_FPS, shapes: lyricShapes(lines, voice, duration) };
 }
 

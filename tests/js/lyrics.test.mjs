@@ -47,4 +47,8 @@ test("words become mouth shapes, shut between words", () => {
   const singer = singerOf({ voice: { ...voice, shapes: "a".repeat(200) }, lyrics: saved });
   assert.ok(singer.lyrics && singer.shapes === saved.shapes && singer.values === voice.values);
   assert.equal(singerOf({ voice }), voice);
+  // Lyrics placed for another song are left alone once the show's song changes.
+  const forSong = savedLyrics("see dad", lines, voice, 10, "a.mp3");
+  assert.ok(singerOf({ audio: { path: "a.mp3" }, voice, lyrics: forSong }).lyrics);
+  assert.equal(singerOf({ audio: { path: "b.mp3" }, voice, lyrics: forSong }), voice);
 });

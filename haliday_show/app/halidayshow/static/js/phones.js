@@ -57,7 +57,9 @@ export const phonesJoin = (show, on) => !!on && show?.phones !== false;
 // from its lyrics instead where it has them placed (show.lyrics, lyrics.js); lyrics: true then.
 export function singerOf(show) {
   const voice = show?.voice, lyrics = show?.lyrics;
-  if (!(typeof lyrics?.shapes === "string" && lyrics.shapes.length)) return voice || null;
+  // Only the lyrics of the show's own song: after the song's changed they're left alone.
+  const forSong = !lyrics?.song || lyrics.song === show?.audio?.path;
+  if (!(typeof lyrics?.shapes === "string" && lyrics.shapes.length && forSong)) return voice || null;
   return { fps: voice?.fps || lyrics.fps || 20, values: Array.isArray(voice?.values) ? voice.values : [],
     shapes: lyrics.shapes, shapesFps: lyrics.fps || 20, lyrics: true };
 }

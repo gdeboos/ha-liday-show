@@ -10308,7 +10308,8 @@ function singerNote() {
     renderInspector();
   }, "ghost small");
   again.hidden = !ref;
-  const lyrics = button(app.show.lyrics?.shapes ? "Lyrics… (placed)" : "Lyrics…", openLyrics, "ghost small");
+  const placed = app.show.lyrics?.shapes && (!app.show.lyrics.song || app.show.lyrics.song === ref?.path);
+  const lyrics = button(placed ? "Lyrics… (placed)" : "Lyrics…", openLyrics, "ghost small");
   lyrics.title = "Paste the song's words for the mouth to sing them, placed for you, then tweaked if you like";
   lyrics.hidden = !ref;
   box.append(note, again, lyrics);
@@ -10329,7 +10330,9 @@ async function openLyrics() {
   const text = Object.assign(document.createElement("textarea"), { rows: 7, className: "lyrics-text",
     value: app.show.lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
   text.setAttribute("aria-label", "The song's words");
-  let lines = savedLines(app.show.lyrics) || [];
+  // Lyrics placed for another song (the show's song has changed since) are placed afresh.
+  const sameSong = !app.show.lyrics?.song || app.show.lyrics.song === app.show.audio.path;
+  let lines = (sameSong && savedLines(app.show.lyrics)) || [];
   const list = Object.assign(document.createElement("div"), { className: "lyrics-lines" });
   const hint = Object.assign(document.createElement("p"), { className: "hint" });
   const audio = new Audio(audioUrl(app.show.audio));
@@ -10398,7 +10401,9 @@ async function openLyrics() {
     lines = fromStarts(lines, starts, voice, duration);
     draw();
   }
-  w.dlg.addEventListener("keydown", (e) => { if (tapping >= 0 && e.code === "Space") { e.preventDefault(); tap(); } });
+  // Space taps, once: its keyup is stopped too, as some browsers press a focused button on keyup.
+  w.dlg.addEventListener("keydown", (e) => { if (tapping >= 0 && e.code === "Space") { e.preventDefault(); if (!e.repeat) tap(); } });
+  w.dlg.addEventListener("keyup", (e) => { if (e.code === "Space") e.preventDefault(); });
   const tools = Object.assign(document.createElement("div"), { className: "row" });
   tools.append(auto, tapAlong, next);
   w.body.append(intro, text, tools, hint, list);
@@ -10410,7 +10415,7 @@ async function openLyrics() {
   const save = button("Save", () => {
     if (!lines.length) place();
     if (!lines.length) { w.dlg.close(); return; }
-    app.show.lyrics = savedLyrics(text.value, lines, voice, duration);
+    app.show.lyrics = savedLyrics(text.value, lines, voice, duration, app.show.audio.path);
     finish();
   }, "primary");
   const spacer = Object.assign(document.createElement("span"), { className: "spacer" });
