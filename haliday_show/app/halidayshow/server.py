@@ -39,7 +39,7 @@ from .output import PROBE_MAX, LivePreview, Output, address, blink_frame, chase_
 from .player import Player
 from .protocol import LONG_PROTOCOLS, PROTOCOLS
 from .runner import Runner, RunnerError
-from .storage import Storage, slugify, valid_id
+from .storage import PART_NAMES, Storage, slugify, valid_id
 
 log = logging.getLogger(__name__)
 
@@ -1292,6 +1292,34 @@ async def upload_audio_part(request):
     os.replace(part, dest)
     await _carry_cover(request, dest)
     return web.json_response({"source": "media", "path": str(dest.relative_to(storage.media_dir))})
+
+
+async def get_song_parts(request):
+    """A song's parts (stems): {part: its path}, each playable at /api/audio/file like any song."""
+    q = request.query
+    return web.json_response(request.app[STORAGE].song_parts(q.get("source", ""), q.get("path", "")))
+
+
+async def put_song_part(request):
+    """One of a song's parts (?part=vocals, drums, bass, rest or music), a WAV sent in pieces like a big
+    song (_receive_part). The song's parts of an older file of it go."""
+    storage, q = request.app[STORAGE], request.query
+    name = q.get("part", "")
+    if name not in PART_NAMES or storage.audio_path(q.get("source", ""), q.get("path", "")) is None:
+        raise web.HTTPNotFound()
+    part, size, done = await _receive_part(request, storage.upload_dir)
+    if not done:
+        return web.json_response({"received": size})
+    with part.open("rb") as f:
+        head = f.read(12)
+    if head[:4] != b"RIFF" or head[8:12] != b"WAVE":
+        part.unlink(missing_ok=True)
+        raise web.HTTPBadRequest(text="a part is a WAV file")
+    path = storage.save_part(q["source"], q["path"], name, part)
+    if path is None:
+        part.unlink(missing_ok=True)
+        raise web.HTTPNotFound()
+    return web.json_response({"source": "media", "path": path})
 
 
 async def put_baked_part(request):
@@ -3349,6 +3377,10 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         migrate.retire_govee_extras(app[STORAGE])
     except OSError as e:
         logging.getLogger(__name__).error("couldn't move lights off the old Govee protocols: %s", e)
+    try:
+        migrate.splits_to_parts(app[STORAGE])
+    except OSError as e:
+        logging.getLogger(__name__).error("couldn't move split vocals into their songs: %s", e)
     app[TESTS] = {}
     app[VIDEOS] = video.Exports(songcopy.converter)
     # Split vocals' files, kept in the temporary folder: one per config folder, so two installs on one
@@ -3460,6 +3492,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/audio/info", put_song_info)
     r.add_get("/api/audio/palette", get_song_palette)
     r.add_put("/api/audio/palette", put_song_palette)
+    r.add_get("/api/audio/parts", get_song_parts)
+    r.add_post("/api/audio/parts", put_song_part)
     r.add_get("/api/audio/lyrics", get_song_lyrics)
     r.add_put("/api/audio/lyrics", put_song_lyrics)
     r.add_get("/api/audio/voice", get_song_voice)

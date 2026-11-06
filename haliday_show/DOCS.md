@@ -862,8 +862,9 @@ Each song you added is one card, marked **Original**. Inside it, under **Edits o
   "… copy") under **⋯** too. Renaming one that's still open in
   the Music editor puts it away there first, once your last change is kept.
 
-**All**, **Originals**, **Edits**, **Splits** (what [Split vocals](#split-vocals) made) and **Drafts**,
-beside **Find**, show just those, and the count says how many songs, edits, splits and drafts there are.
+**All**, **Originals**, **Edits**, **Splits** (splits from before songs kept their parts, that
+couldn't be matched to their song) and **Drafts**, beside **Find**, show just those, and the count says
+how many songs, edits, splits and drafts there are.
 
 **Folders** sort your songs, such as **Christmas**, **Halloween** or **Party**, and work as in every
 Library list (see [Folders](#folders)). A song's edits and drafts go with it.
@@ -924,15 +925,24 @@ puts it back and gives it back to the shows that were left without a song.
 #### Split vocals
 
 **Split vocals…** (under a song's **⋯** in **Library → Songs**, or in the Music editor's **Edit** panel)
-separates a song into its singing and the music behind it, and saves both as new songs beside it:
-"Jingle Bells (vocals)" and "Jingle Bells (music)". Use the music as a backing track, or put the vocals
-on a [layer](#layers) over another song for a mash-up. Shows that use the original are left alone.
+separates a song into its singing and the music behind it, and keeps both with the song as its
+**parts**. They aren't songs of their own: the song's row says **parts: vocals and music**, and they go
+wherever the song goes (renamed, copied, archived or deleted with it).
 
-In **Library → Songs** they sit under the song they came from, in a **Split vocals** group, so they're
-in the same folder as it (and show up there when you pick a song for a new show or to splice in). Each
-says what uses it: a show, or a draft in the Music editor. One that says **Not used by any show or
-draft** can go: its **⋯ → Remove…** archives or deletes it. The **Splits** button beside **Find** lists
-every split, to tidy them up in one go.
+- **Singing faces** follow the vocals part, and Generate will use the parts in future releases.
+- **Layers** in the Music editor can play any song's parts: under **+ Add a clip at the playhead…**,
+  they're listed as **Song parts**, such as "Jingle Bells (vocals)". Use the music as a backing track,
+  or put the vocals over another song for a mash-up.
+- **Edits** use their original song's parts through your cuts, so there's no need to split an edit.
+  When you make a song file from a draft, its parts are cut from the original's the same way, in
+  seconds, with no AI.
+
+Parts are kept in a hidden **.parts** folder inside HA-liday Show's songs folder (**haliday_show** in
+your media folder), as WAV files: each is about 10 MB a minute of song.
+
+Songs you split before songs kept their parts ("Jingle Bells (vocals)" and "Jingle Bells (music)")
+were moved into their song's parts when you updated, and shows and drafts that used them follow. Any
+that couldn't be matched to a song (its song's gone, say) stay as songs, under **Splits**.
 
 An AI model does it, in your browser, on the song as it is (not a draft's edits). The first time,
 HA-liday Show downloads it (about 90 MB), checks it, and keeps it until HA-liday Show restarts (it's

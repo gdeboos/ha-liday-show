@@ -1,10 +1,10 @@
 // Split vocals, from a song's row in Library → Songs or the Music editor: the song decoded at the
-// model's rate, split in a worker (stemsworker.js, stems.js), and saved as two new songs beside it,
-// "<song> (vocals)" and "<song> (music)", ready to use as layers.
+// model's rate, split in a worker (stemsworker.js, stems.js), and kept with the song as two of its
+// parts (Storage.song_parts), its vocals and its music, ready to use as layers.
 
 import { MDX } from "./stems.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
-import { uploadSong } from "./upload.js";
+import { sendParts } from "./upload.js";
 
 export const stemNames = (path) => {
   const base = path.split("/").pop().replace(/\.[^.]+$/, "");
@@ -31,6 +31,12 @@ export function wav16(channels, rate) {
   return buf;
 }
 
+// Keeps `channels` (at `rate`) as the song's `part`, a WAV sent in pieces. Returns where it's kept.
+export function savePart(api, ref, part, channels, rate, progress = null) {
+  const q = new URLSearchParams({ source: ref.source, path: ref.path, part });
+  return sendParts(api, `api/audio/parts?${q}`, new Blob([wav16(channels, rate)], { type: "audio/wav" }), {}, progress);
+}
+
 let busy = false;
 const MAX_MINUTES = 8; // longer songs need more memory than a phone or tablet has for this
 
@@ -47,8 +53,8 @@ function progressWindow(title, onCancel) {
   row.append(el("span", "spinner"), text);
   const bar = el("progress", "busy-progress");
   bar.max = 1;
-  const hint = el("p", "hint", "It runs in this browser, so keep this page open until it's done. Your songs aren't changed: "
-    + "the vocals and the music are saved as two new songs.");
+  const hint = el("p", "hint", "It runs in this browser, so keep this page open until it's done. The song isn't changed: "
+    + "its vocals and music are kept with it.");
   const cancel = el("button", "ghost", "Cancel");
   cancel.type = "button";
   let locked = false;
@@ -65,27 +71,21 @@ function progressWindow(title, onCancel) {
       if (done == null) bar.removeAttribute("value"); else bar.value = done;
     },
     // Saving can't be stopped part way, so Cancel goes once it starts.
-    lock() { locked = true; cancel.disabled = true; hint.textContent = "Saving the two new songs. Nearly done."; },
+    lock() { locked = true; cancel.disabled = true; hint.textContent = "Saving the vocals and the music with the song. Nearly done."; },
     close() { if (dlg.open) dlg.close(); dlg.remove(); },
   };
 }
 
-// ref: the song ({source, path}). host: {api, status(text, kind), askYes(text, opts), songs() (the list,
-// for names already taken), songsChanged()}.
+// ref: the song ({source, path}). host: {api, status(text, kind), askYes(text, opts), songsChanged()}.
 export async function splitVocals(ref, host) {
   if (busy) return host.status("Already splitting a song: wait for it to finish", "hint");
   busy = true; // from the first question on, so a second press can't start another meanwhile
   let worker = null, win = null, cancelled = false;
   try {
     const song = ref.path.split("/").pop().replace(/\.[^.]+$/, "");
-    const names = stemNames(ref.path);
-    if (!(await host.askYes(`Split ${song} into its vocals and the music behind them? It's saved as two new songs, `
-      + `"${names.vocals.replace(/\.wav$/, "")}" and "${names.music.replace(/\.wav$/, "")}". The first time, your browser downloads `
+    if (!(await host.askYes(`Split ${song} into its vocals and the music behind them? They're kept with the song as its parts, `
+      + "for Singing faces, Generate and the Music editor's layers. The first time, your browser downloads "
       + "the AI that does it (about 90 MB). It takes a few minutes; keep this page open meanwhile.", { yes: "Split vocals" }))) return;
-    // They're saved in HA-liday Show's own songs folder, like anything made here.
-    const taken = new Set((host.songs() || []).filter((s) => s.source === "media").map((s) => s.path.toLowerCase()));
-    if ((taken.has(`haliday_show/${names.vocals}`.toLowerCase()) || taken.has(`haliday_show/${names.music}`.toLowerCase()))
-        && !(await host.askYes(`${song} has been split before. Replace those songs? Shows that use them will play the new ones.`, { yes: "Replace" }))) return;
     // Cancel ends whatever is being waited for at once (loading the song, the split).
     let stop = null;
     const stopped = new Promise((_, reject) => { stop = reject; });
@@ -123,13 +123,10 @@ export async function splitVocals(ref, host) {
     }));
     win.lock();
     for (const [part, channels] of [["vocals", result.vocals], ["music", result.music]]) {
-      const name = names[part];
-      await uploadSong(host.api, new Blob([wav16(channels, MDX.rate)], { type: "audio/wav" }), name,
-        (done) => { if (done < 1) say(`Saving ${name}… ${Math.round(done * 100)}%`, done); }, { coverFrom: ref });
+      await savePart(host.api, ref, part, channels, MDX.rate, (done) => { if (done < 1) say(`Saving the ${part}… ${Math.round(done * 100)}%`, done); });
     }
     await host.songsChanged?.();
-    host.status(`Split ${song}: saved "${names.vocals.replace(/\.wav$/, "")}" and "${names.music.replace(/\.wav$/, "")}" to your songs. `
-      + "Use them as layers in the Music editor", "saved");
+    host.status(`Split ${song}: its vocals and music are kept with it. Pick them as layers in the Music editor`, "saved");
   } catch (e) {
     if (cancelled) host.status("Split vocals cancelled. Your songs are as they were", "hint");
     else host.status(`Couldn't split ${ref.path.split("/").pop().replace(/\.[^.]+$/, "")}: ${e.message}`, true);

@@ -23,7 +23,7 @@ export function songRows(songs, shows) {
       return {
         key: songKey(s), ref: { source: s.source, path: s.path }, size: s.size, modified: s.modified,
         name: title(s.path), file: base(s.path), folder: folder(s.path),
-        detected: !!s.detected, own: !!s.own, found, usedBy, cover: !!s.cover,
+        detected: !!s.detected, own: !!s.own, found, usedBy, cover: !!s.cover, parts: s.parts || {},
         uses: usedBy.length ? `Used by ${usedBy.join(", ")}` : "Not used by any show",
       };
     });
@@ -37,6 +37,12 @@ export function filterRows(rows, query) {
     const text = `${r.file} ${r.folder} ${r.usedBy.join(" ")}`.toLowerCase();
     return words.every((w) => text.includes(w));
   });
+}
+
+// What a song's parts (its stems, kept with it) are, in words: "vocals and music", or "" for none.
+export function partsText(parts) {
+  const names = ["vocals", "drums", "bass", "rest", "music"].filter((p) => parts?.[p]);
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0] || "";
 }
 
 // Older edits, made before drafts, are named after their song: "carol (edit)", "carol (edit 2)".

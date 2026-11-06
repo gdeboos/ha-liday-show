@@ -10,6 +10,7 @@ import json
 import math
 import os
 import re
+import shutil
 import struct
 import wave
 from pathlib import Path
@@ -22,6 +23,10 @@ SAMPLES = "Samples"  # short sounds for the Music editor's layers, kept out of t
 AUDIO_EXT = {".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav", ".flac", ".webm"}
 _SLUG = re.compile(r"[^a-z0-9]+")
 SONG_EXTRAS = ("palette", "lyrics", "voice")  # kept in a song's info file beside what Detect found
+# A song's parts (stems), each a WAV kept under the hood with the song (Storage.song_parts). "music" is
+# everything but the vocals, from Split vocals before the song had drums and bass parts.
+PART_NAMES = ("vocals", "drums", "bass", "rest", "music")
+PARTS_FOLDER = ".parts"  # in HA-liday Show's own songs folder; a dot-folder, so it's never listed as songs
 _UNSAFE_NAME = re.compile(r"[^\w .()-]+")
 
 
@@ -573,7 +578,11 @@ class Storage:
                 for f in sorted(filenames):
                     if Path(f).suffix.lower() in AUDIO_EXT and f != SPEAKER_TEST:
                         rel = os.path.relpath(os.path.join(dirpath, f), root)
-                        out.append({"source": source, "path": rel})
+                        entry = {"source": source, "path": rel}
+                        parts = self.song_parts(source, rel)
+                        if parts:  # its stems (vocals, drums…), for shows and the Music editor
+                            entry["parts"] = parts
+                        out.append(entry)
                         if len(out) >= limit:
                             return out
         return out
@@ -610,6 +619,70 @@ class Storage:
             return None
         p = safe_join(root, rel)
         return p if p and p.is_file() else None
+
+    # A song's parts (its stems: vocals, drums, bass, the rest), made in the browser and kept with the
+    # song: <uploads>/.parts/<song key>/<part>.wav, with parts.json saying which song they're of and
+    # stamped with its size and time, so a song file saved over (an edit made again) has none until
+    # it's made them again. A part's path is an ordinary song path under the media folder, so it plays,
+    # layers and Detects like any song; it's just never listed as one.
+    @property
+    def parts_root(self) -> Path:
+        return self.upload_dir / PARTS_FOLDER
+
+    def parts_dir(self, source: str, rel: str) -> Path:
+        return self.parts_root / hashlib.sha1(f"{source}:{rel}".encode()).hexdigest()[:20]
+
+    def song_parts(self, source: str, rel: str) -> dict[str, str]:
+        """{part: its path under the media folder} for the song's current file."""
+        p = self.audio_path(source, rel)
+        folder = self.parts_dir(source, rel)
+        try:
+            meta = json.loads((folder / "parts.json").read_text())
+        except (OSError, ValueError):
+            return {}
+        if p is None or not isinstance(meta, dict) or meta.get("stamp") != self._stamp(p):
+            return {}
+        return {name: (folder / f"{name}.wav").relative_to(self.media_dir).as_posix()
+                for name in PART_NAMES if (folder / f"{name}.wav").is_file()}
+
+    def save_part(self, source: str, rel: str, name: str, src: Path) -> str | None:
+        """Moves the WAV at `src` in as the song's `name` part. Parts of an older file of the song go.
+        Returns the part's path, or None (src left alone) for no such song or part."""
+        p = self.audio_path(source, rel)
+        if p is None or name not in PART_NAMES:
+            return None
+        folder = self.parts_dir(source, rel)
+        folder.mkdir(parents=True, exist_ok=True)
+        stamp = self._stamp(p)
+        try:
+            meta = json.loads((folder / "parts.json").read_text())
+        except (OSError, ValueError):
+            meta = {}
+        if not isinstance(meta, dict) or meta.get("stamp") != stamp:
+            for old in PART_NAMES:
+                (folder / f"{old}.wav").unlink(missing_ok=True)
+        os.replace(src, folder / f"{name}.wav")
+        _write_atomic(folder / "parts.json", json.dumps({"source": source, "path": rel, "stamp": stamp}).encode())
+        return (folder / f"{name}.wav").relative_to(self.media_dir).as_posix()
+
+    def move_parts(self, rel: str, new_rel: str, copy: bool = False) -> dict[str, str]:
+        """The song's parts follow it to new_rel (or are copied there). {old part path: new part path}."""
+        old, new = self.parts_dir("media", rel), self.parts_dir("media", new_rel)
+        if not old.is_dir() or old == new:
+            return {}
+        shutil.rmtree(new, ignore_errors=True)
+        (shutil.copytree if copy else os.replace)(old, new)
+        try:
+            meta = json.loads((new / "parts.json").read_text())
+            meta["path"] = new_rel
+            _write_atomic(new / "parts.json", json.dumps(meta).encode())
+        except (OSError, ValueError, TypeError):
+            pass
+        return {(old / f"{n}.wav").relative_to(self.media_dir).as_posix(): (new / f"{n}.wav").relative_to(self.media_dir).as_posix()
+                for n in PART_NAMES if (new / f"{n}.wav").is_file()}
+
+    def delete_parts(self, rel: str):
+        shutil.rmtree(self.parts_dir("media", rel), ignore_errors=True)
 
     # What Detect found in a song (tempo, beats, bars, sections), kept per file so every show
     # using the song can start from it. Stamped with the file's size and time, so replacing
