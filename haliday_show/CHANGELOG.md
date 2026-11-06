@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.369
+
+- **A slimmer bar at the top of the visitors' page.** What stays pinned as visitors scroll is now just what's on, its progress, and **Listen** and **Join** side by side, so it takes up much less of the screen. **Join** is in your page's colour so it stands out. Listening's details, **Music out of time?**, the warning before joining, and your admin **Skip** and **Stop the lights** are in a card just under it, which scrolls away with the page.
+
 ## 0.2.368
 
 - **House colour for the Phones lane.** A new **House colour** effect shows your house's main colour on visitors' phones, as they do without a Phones lane. **Add a Phones lane** now starts the lane with **House colour** across the whole show, so you only design the parts you want to (a big chorus, say) and leave the rest following the house. You'll find it under **Basics** in the effect chooser, on the Phones lane only. The **Preview** panel now has a **Phones** row whenever phones join the show, with or without a Phones lane, showing what phones will show.

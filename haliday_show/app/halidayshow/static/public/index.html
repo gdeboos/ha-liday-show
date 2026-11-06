@@ -48,7 +48,8 @@
     <button id="pp-accept" type="button" class="primary" hidden></button>
   </section>
   <div id="pp-open" hidden>
-    <!-- What's on, Listen and the queue: pinned to the top while the shows scroll under it. -->
+    <!-- What's on, with Listen and Join: pinned to the top while the shows scroll under it. Kept slim;
+         the rest (listening details, your Skip and Stop) is in the card under it, which scrolls away. -->
     <section id="pp-bar" class="pp-card pp-bar" aria-label="On now">
       <div class="pp-bar-row">
         <span id="pp-now-art" class="pp-now-art" hidden></span>
@@ -57,19 +58,19 @@
           <div id="pp-progress" class="pp-progress" hidden><div id="pp-progress-fill"></div></div>
           <p id="pp-now-yours" class="pp-hint pp-now-yours" hidden></p>
         </div>
-        <button id="pp-listen-btn" type="button" class="pp-listen-btn" hidden></button>
-        <button id="pp-join-btn" type="button" class="pp-listen-btn" hidden></button>
       </div>
+      <div class="pp-bar-btns">
+        <button id="pp-listen-btn" type="button" class="pp-listen-btn" hidden></button>
+        <button id="pp-join-btn" type="button" class="pp-listen-btn pp-join-btn" hidden></button>
+      </div>
+    </section>
+    <section id="pp-more" class="pp-card pp-more" hidden>
       <div id="pp-join-ask" class="pp-join-ask" role="group" hidden>
         <p id="pp-join-warn"></p>
         <div class="pp-pin-row">
           <button id="pp-join-ok" type="button" class="primary"></button>
           <button id="pp-join-cancel" type="button"></button>
         </div>
-      </div>
-      <div id="pp-admin-ctl" class="pp-admin-ctl" role="group" aria-label="Admin" hidden>
-        <button id="pp-admin-skip" type="button">Skip</button>
-        <button id="pp-admin-stop" type="button">Stop the lights</button>
       </div>
       <div id="pp-listen" class="pp-listen" hidden>
         <p id="pp-listen-text" class="pp-hint" role="status" aria-live="polite"></p>
@@ -92,6 +93,10 @@
         </div>
         <p id="pp-listen-msg" class="pp-listen-msg" role="alert" hidden></p>
         <p id="pp-listen-tip" class="pp-hint" hidden></p>
+      </div>
+      <div id="pp-admin-ctl" class="pp-admin-ctl" role="group" aria-label="Admin" hidden>
+        <button id="pp-admin-skip" type="button">Skip</button>
+        <button id="pp-admin-stop" type="button">Stop the lights</button>
       </div>
     </section>
     <section id="pp-queue-box" class="pp-card pp-queue-box" aria-labelledby="pp-queue-head" hidden>
