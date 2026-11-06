@@ -1663,6 +1663,7 @@ them; an Advanced scene can.
 | Fire | Flames rising from the bottom of the matrix, each column flickering to its own height. Up to 8 colours from the base to the tips, a **Speed** and a **Flame height** |
 | Snowfall | Flakes falling down each column at their own pace, gliding from LED to LED. **Style: rain** falls straight, with a streak above each drop. Set **How many** and **Speed** |
 | Music bars | A bar per column rising from the bottom with the song's loudness, each a different height, green to red. Like **Music level**, it needs the show's song, and isn't offered in scenes |
+| Singing face | A cartoon **Character** (a snowman, a pumpkin, a gingerbread person, Santa or a ghost) whose mouth opens and closes with the singer, on a **Background** colour, at a **Size** of the matrix. If you've used [Split vocals](#split-vocals) on the song, the mouth follows the vocals; otherwise it follows the voice range of the song itself, which works well when the singing stands out. HA-liday Show measures the singer the first time the show is saved with a Singing face, and again if its song changes. It suits a phone's screen (see [Phones join the show](#phones-join-the-show)) as well as your matrices |
 
 #### Group lanes
 
@@ -2356,6 +2357,8 @@ What phones show:
   - **House colour** is in the effect chooser's **Basics** on the Phones lane only. Phones show only
     what's on the lane, and stay dark in its gaps. **Remove the Phones lane** goes back to the house's
     main colour everywhere. ✨ **Generate** leaves the Phones lane alone.
+  - **Singing face** turns the phone into a singing character, a snowman, pumpkin, gingerbread person,
+    Santa or ghost, whose mouth follows the singer (see the [matrix effects](#matrices-panels-and-mega-trees)).
 
 While you edit, a small phone in the top corner of the **House** panel shows the phone's screen at
 that moment, worked out just as the phones' colours are, and the **Preview** panel has a **Phones** row too. It shows while phones join the show (or it has a

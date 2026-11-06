@@ -1432,6 +1432,8 @@ async def test_phones_get_the_shows_phones_lane_to_draw(client):
         # The effect code phones draw it with, and nothing else of the editor.
         status, body, headers = await _visitor(client, "/fx/effects.js", code=False)
         assert status == 200 and "phoneScreen" in body and headers["Content-Type"].startswith("text/javascript")
+        status, body, _ = await _visitor(client, "/fx/faces.js", code=False)
+        assert status == 200 and "faceColour" in body
         for bad in ("/fx/app.js", "/fx/..%2Fserver.py", "/fx/house.js"):
             status, _, _ = await _visitor(client, bad, code=False)
             assert status == 404
@@ -1447,6 +1449,9 @@ def test_a_phones_lane_sends_pictures_up_to_a_size(tmp_path, monkeypatch):
     monkeypatch.setattr(public, "MAX_PHONE_PICTURE_BYTES", 1000)
     show = {"tracks": [{"device": "@phones", "clips": [{"effect": "picture", "picture": small}, {"effect": "picture", "picture": big}]}]}
     assert list(public.phone_lane(st, show)["pictures"]) == [small]
+    voice = {"fps": 20, "song": "x.mp3", "values": [0, 50]}
+    assert public.phone_lane(st, {**show, "voice": voice})["voice"] == voice
+    assert public.phone_lane(st, {**show, "voice": "loud"})["voice"] is None
     assert public.phone_lane(st, {"tracks": [{"device": "a", "clips": []}]}) is None
 
 

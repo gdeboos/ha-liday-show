@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.372
+
+- **Singing face.** A new effect for the **Phones** lane and your matrices: a snowman, a pumpkin, a gingerbread person, Santa or a ghost, whose mouth opens and closes with the singer. Find it under **On a matrix** in the effect chooser, then pick the **Character**.
+  - If you've used **Split vocals** on the song, the mouth follows the vocals; otherwise it follows the voice range of the song, which works well when the singing stands out.
+  - The singer is measured the first time you save the show with a Singing face, and again if you change its song.
+- On phones, the space above and below a Phones lane's picture now carries on its own top and bottom colours, rather than one glow all round.
+
 ## 0.2.371
 
 - **A phone's screen is now a little matrix.** The **Phones** lane takes matrix effects as well as light effects, so visitors' phones can show **Fire**, **Plasma**, **Scrolling text** ("Merry Christmas!"), your own pictures and GIFs with **Picture**, and the rest, like a prop they hold. Light effects such as **Chase** run down the screen. Each phone draws it itself, smoothly, with the same effects as the editor.

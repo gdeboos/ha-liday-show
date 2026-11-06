@@ -6,8 +6,8 @@ export const LEVEL_FPS = 10;
 // {fps, song, values}: one value a tenth of a second, 0 (the song's quiet parts) to 100 (its loudest),
 // measured against the song's own range so every song uses the whole meter. song is the song's path,
 // to tell when a show's song has changed.
-export function levelCurve(samples, rate, song = "") {
-  const step = Math.max(1, Math.round(rate / LEVEL_FPS)), n = Math.ceil(samples.length / step);
+export function levelCurve(samples, rate, song = "", fps = LEVEL_FPS) {
+  const step = Math.max(1, Math.round(rate / fps)), n = Math.ceil(samples.length / step);
   const db = new Float64Array(n);
   for (let k = 0; k < n; k++) {
     let sum = 0, count = 0;
@@ -18,7 +18,35 @@ export function levelCurve(samples, rate, song = "") {
   const pick = (q) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0;
   const lo = pick(0.1), hi = Math.max(pick(0.98), lo + 1);
   const values = Array.from(db, (v) => Math.round(Math.min(Math.max((v - lo) / (hi - lo), 0), 1) * 100));
-  return { fps: LEVEL_FPS, song, values };
+  return { fps, song, values };
+}
+
+// The singer's level, for the Singing face (show.voice): measured faster than the music level, so the
+// mouth keeps up with the words.
+export const VOICE_FPS = 20;
+
+// The voice range of a song (about 300 Hz to 3.4 kHz, as a telephone carries), for a song without its
+// vocals split out: the singer stands out from the drums and bass there.
+export function voiceBand(samples, rate) {
+  const biquad = (x, kind, f0) => {
+    const w = (2 * Math.PI * f0) / rate, cos = Math.cos(w), alpha = Math.sin(w) / Math.SQRT2;
+    const b = kind === "high" ? [(1 + cos) / 2, -(1 + cos), (1 + cos) / 2] : [(1 - cos) / 2, 1 - cos, (1 - cos) / 2];
+    const a0 = 1 + alpha, a1 = -2 * cos, a2 = 1 - alpha;
+    const y = new Float32Array(x.length);
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    for (let i = 0; i < x.length; i++) {
+      const v = (b[0] * x[i] + b[1] * x1 + b[2] * x2 - a1 * y1 - a2 * y2) / a0;
+      x2 = x1; x1 = x[i]; y2 = y1; y1 = v; y[i] = v;
+    }
+    return y;
+  };
+  return biquad(biquad(samples, "high", 300), "low", Math.min(3400, rate * 0.45));
+}
+
+// Whether a show's saved voice levels belong to its current song.
+export function voiceFits(show, songPath, duration) {
+  const l = show?.voice;
+  return !!l && Array.isArray(l.values) && l.song === songPath && Math.abs(l.values.length / (l.fps || VOICE_FPS) - duration) < 1;
 }
 
 // Whether a show's saved loudness belongs to its current song.

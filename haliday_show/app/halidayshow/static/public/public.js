@@ -661,7 +661,8 @@ export function start() {
     if (lane) {
       const { w: gw, h: gh } = { w: screen.width, h: screen.height };
       const main = join.house ? colourOf(join.house, t) : null;
-      const frame = fx.withMusicLevels(lane.loudness || null, () => fx.phoneScreen(lane.clips, t, main, lane.level ?? 1));
+      const frame = fx.withVoiceLevels(lane.voice || null, () => fx.withMusicLevels(lane.loudness || null,
+        () => fx.phoneScreen(lane.clips, t, main, lane.level ?? 1)));
       const ctx = screen.getContext("2d");
       if (!img) img = ctx.createImageData(gw, gh);
       for (let i = 0, n = gw * gh; i < n; i++) {
@@ -669,6 +670,16 @@ export function start() {
         img.data[i * 4 + 2] = frame[i * 3 + 2] * level; img.data[i * 4 + 3] = 255;
       }
       ctx.putImageData(img, 0, 0);
+      // Above and below it, the colours of its own top and bottom rows, so it carries on to the edges.
+      const row = (y) => {
+        const c = [0, 0, 0];
+        for (let x = 0; x < gw; x++) for (let j = 0; j < 3; j++) c[j] += frame[(y * gw + x) * 3 + j] * level / gw;
+        return `rgb(${c.map(Math.round).join(", ")})`;
+      };
+      box.style.background = `linear-gradient(${row(0)} 50%, ${row(gh - 1)} 50%)`;
+    } else if (box.style.backgroundImage) {
+      box.style.background = "";
+      box.style.backgroundColor = rgb;
     }
     const warning = shown < WARN_MS;
     const text = warning ? say_(w, "join_warn") : t === null ? say_(w, "join_waiting") : "";

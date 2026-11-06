@@ -32,6 +32,7 @@ export const EFFECT_NOTES = {
   housegradient: "colours blended across the house", housestripes: "stripes at any angle, still or moving (candy cane)",
   spiral: "stripes winding round a mega-tree matrix, turning over time; slanted moving stripes elsewhere (also on a matrix light itself)",
   plasma: "soft swirling blobs of colour that merge and move across the house (lava lamp, northern lights); also on a matrix light itself",
+  singingface: "a cartoon character (snowman, pumpkin, gingerbread, Santa or ghost) whose mouth sings along with the vocals; for verses and choruses with singing",
   fire2d: "flames rising from the bottom of the grid", snowfall: "snow or rain falling down the grid",
   musicbars: "a bar per column rising and falling with the song's loudness, green to red",
   housechecks: "a chequerboard of colours", housewave: "the palette rolling across the house",

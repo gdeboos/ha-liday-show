@@ -2,7 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
-import { keepLevels, levelCurve, levelsFit } from "./musiclevel.js";
+import { VOICE_FPS, keepLevels, levelCurve, levelsFit, voiceBand, voiceFits } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
@@ -11,13 +11,13 @@ import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, pa
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
-  renderTrack, showDuration, phoneColourAt, phoneScreen, laneUsesHouse, newClip,
+  renderTrack, showDuration, phoneColourAt, phoneScreen, laneUsesHouse, newClip, setVoiceLevels,
 } from "./effects.js";
 import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin } from "./phones.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
-import { splitVocals } from "./splitvocals.js";
+import { splitVocals, stemNames } from "./splitvocals.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic } from "./housescenes.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
@@ -10080,6 +10080,36 @@ function reportUnfit() {
   }
 }
 
+// The singer's level, for the Singing face (show.voice, like show.loudness): from the song's vocals
+// where Split vocals has made them, else the voice range of the song itself. Measured once a show
+// has a Singing face and its song is loaded, and again when the song changes.
+const usesFace = (show) => (show?.tracks || []).some((t) => t.clips?.some((c) => c.effect === "singingface"));
+let measuringVoice = null;
+async function ensureVoice() {
+  const show = app.show, ref = show?.audio, song = songBuffer;
+  if (!ref?.path || !song || !usesFace(show) || voiceFits(show, ref.path, song.duration)) return;
+  if (measuringVoice) return measuringVoice;
+  measuringVoice = (async () => {
+    const mono = (decoded) => toMono(Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c)), decoded.sampleRate);
+    let samples, rate, from = "vocals";
+    try {
+      const dir = ref.path.includes("/") ? ref.path.slice(0, ref.path.lastIndexOf("/") + 1) : "";
+      const vocals = await audioCtx.decodeAudioData(await fetchSong(audioUrl({ ...ref, path: dir + stemNames(ref.path).vocals })));
+      ({ samples, rate } = mono(vocals));
+    } catch {
+      from = "song";
+      const m = mono(song);
+      samples = voiceBand(m.samples, m.rate);
+      rate = m.rate;
+    }
+    if (app.show !== show || show.audio !== ref) return;
+    show.voice = { ...levelCurve(samples, rate, ref.path, VOICE_FPS), from };
+    setVoiceLevels(show.voice);
+    app.changed();
+  })().finally(() => { measuringVoice = null; });
+  return measuringVoice;
+}
+
 // stage(text), if given, hears what's happening while the lights are got ready (Play shows it).
 async function save({ stage = null } = {}) {
   if (app.sceneId) return saveScene();
@@ -10091,6 +10121,7 @@ async function save({ stage = null } = {}) {
     app.showId = id;
     prefs.set("lastShow", id);
   }
+  await ensureVoice().catch(() => {});
   const pos = housePositions();
   const key = showBakeKey(pos);
   if (refreshShowPalette(app.show, allPalettes())) app.dirty = true;
@@ -10210,7 +10241,7 @@ async function loadAudio(ref) {
       // A show already using Music level (its song changed) needs saving and baking again.
       if (app.show.tracks?.some((t) => t.clips.some((c) => EFFECTS[c.effect]?.music))) app.changed();
     }
-    if (app.show?.audio === ref) setMusicLevels(app.show.loudness);
+    if (app.show?.audio === ref) { setMusicLevels(app.show.loudness); setVoiceLevels(app.show.voice); ensureVoice(); }
     status("", "info", "song");
   } catch (e) {
     status(songLoadMessage(e), true, "song");
