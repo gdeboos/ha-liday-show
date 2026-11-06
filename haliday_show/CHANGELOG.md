@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.427
+
+- **Change a layer's volume over a stretch.** While you're editing a layer on its own in the Music editor, select a stretch and the **Selection** panel offers **Mute here**, **Quieter here**, **Fade in here** and **Fade out here** for that layer. They show on its lane, play and go into the song file, and **As it was** takes them off again.
+
 ## 0.2.426
 
 - **Turn a layer down while the song sings.** In the Music editor's **Mixer**, a layer's **Quieten** (which was **Quieten the song**) now has a choice beside it: **the song** dips under the layer as before, or **this layer** goes down while the song sings and comes back up between lines, so a horn or choir layer doesn't fight the singer. It needs the song split into parts.

@@ -94,7 +94,7 @@ export const duckDbOf = (L) => (Number.isFinite(L?.duckDb) ? Math.min(Math.max(L
 
 // The song's gain at each sample under the layers that quieten it, or null if none do. Only clips
 // that are heard count (a missing sample doesn't dip the song).
-export function duckEnvelope(layers, placed, sources, n, rate) {
+export function duckEnvelope(layers, placed, sources, n, rate, { pieces = [], crossfade = 0 } = {}) {
   // Each layer's own dip (dB down), gliding at its own pace; where layers overlap, the deepest wins.
   const dips = new Map();
   for (const { layer, clip, at, speed = 1 } of placed) {
@@ -104,7 +104,11 @@ export function duckEnvelope(layers, placed, sources, n, rate) {
     const a = Math.max(0, Math.round(at * rate)), b = Math.min(n, Math.round(at * rate) + len);
     if (b <= a) continue;
     if (!dips.has(layer)) dips.set(layer, new Float32Array(n));
-    dips.get(layer).fill(duckDbOf(L), a, b);
+    const lv = layerLevel(L, pieces, crossfade);
+    if (!lv) { dips.get(layer).fill(duckDbOf(L), a, b); continue; }
+    // Not where the layer's muted or faded right down.
+    const step = Math.max(1, Math.round(rate / 100));
+    for (let i = a; i < b; i += step) if (layerGainAt(lv, i / rate) > 0.05) dips.get(layer).fill(duckDbOf(L), i, Math.min(b, i + step));
   }
   if (!dips.size) return null;
   const depth = new Float32Array(n);
@@ -120,8 +124,8 @@ export function duckEnvelope(layers, placed, sources, n, rate) {
 
 // How many dB down the song is at each step (for the shading on the waveform), or null if no layer
 // quietens it. Worked out at a low rate, such as 50 steps a second.
-export function dipCurve(layers, placed, sources, n, rate) {
-  const env = duckEnvelope(layers, placed, sources, n, rate);
+export function dipCurve(layers, placed, sources, n, rate, where = {}) {
+  const env = duckEnvelope(layers, placed, sources, n, rate, where);
   if (!env) return null;
   for (let i = 0; i < n; i++) env[i] = env[i] >= 1 ? 0 : -20 * Math.log10(env[i]);
   return env;
@@ -154,6 +158,56 @@ export function singingCurve(voice, rate) {
   return down;
 }
 
+// A layer's volume changing over stretches of the song (layer.changes: [{gain (dB; LEVEL_MUTE or lower is
+// silent), fade: "in" or "out" (optional), from: {song, t}, to: {song, t}}]), pinned to moments in the
+// song so they follow cuts: "mute the horn in the verse", "fade the choir in over the intro".
+export const LEVEL_MUTE = -60;
+const LEVEL_RAMP = 0.03; // seconds a level takes to change, so there's no click
+
+// The layer's changes where they are now: [[start, end, linear gain, fade]] (one whose start or end is
+// cut out is left out), or null for none.
+export function layerLevel(L, pieces, crossfade) {
+  const segs = [];
+  for (const c of L?.changes || []) {
+    const a = resultTime(pieces, crossfade, c.from), b = resultTime(pieces, crossfade, c.to);
+    if (a === null || b === null || b - a < 0.01) continue;
+    segs.push([a, b, c.gain <= LEVEL_MUTE ? 0 : 10 ** (c.gain / 20), c.fade || null]);
+  }
+  return segs.length ? segs.sort((x, y) => x[0] - y[0]) : null;
+}
+
+// How loud the layer is at result time t (1 as it is): a fade goes from silent to its level (in) or from
+// its level to silent (out) across its stretch; a level ramps in and out over LEVEL_RAMP.
+export function layerGainAt(segs, t) {
+  let g = 1;
+  for (const [a, b, v, fade] of segs || []) {
+    if (fade) {
+      if (t >= a && t <= b) g *= v * (fade === "in" ? (t - a) / (b - a) : (b - t) / (b - a));
+      continue;
+    }
+    if (t <= a - LEVEL_RAMP || t >= b + LEVEL_RAMP) continue;
+    const k = t < a ? (t - (a - LEVEL_RAMP)) / LEVEL_RAMP : t > b ? ((b + LEVEL_RAMP) - t) / LEVEL_RAMP : 1;
+    g *= 1 + (v - 1) * Math.max(0, Math.min(1, k));
+  }
+  return g;
+}
+
+// A change over [from, to] (anchors) on a layer's changes, replacing what it overlaps there (the bits
+// of earlier ones outside it stay). change null just takes them off the stretch. toResult: anchor →
+// result seconds.
+export function setLevelChange(changes, from, to, change, toResult) {
+  const a = toResult(from), b = toResult(to), keep = [];
+  for (const c of changes || []) {
+    const ca = toResult(c.from), cb = toResult(c.to);
+    if (ca === null || cb === null || cb <= a || ca >= b) { keep.push(c); continue; }
+    if (c.fade) continue; // a fade cut short would jump: it goes
+    if (ca < a - 0.01) keep.push({ ...c, to: from });
+    if (cb > b + 0.01) keep.push({ ...c, from: to });
+  }
+  if (change) keep.push({ ...change, from, to });
+  return keep;
+}
+
 const TAIL = 0.25; // seconds of a clip's EQ ringing kept after it ends
 
 // The main track's channels with the layers mixed in (a new copy). sources: {key: [channels]} at rate,
@@ -164,9 +218,10 @@ const TAIL = 0.25; // seconds of a clip's EQ ringing kept after it ends
 export function mixLayers(main, layers, placed, sources, rate, { pieces = [], crossfade = 0, heard = sources, singing = null } = {}) {
   const out = main.map((ch) => Float32Array.from(ch));
   const n = out[0]?.length || 0;
-  const env = duckEnvelope(layers, placed, heard, n, rate);
+  const env = duckEnvelope(layers, placed, heard, n, rate, { pieces, crossfade });
   if (env) for (const ch of out) for (let i = 0; i < n; i++) ch[i] *= env[i];
   const changes = layers.map((L) => (isFlat(L.eq) ? null : placeChanges(L.eq, pieces, crossfade)));
+  const levels = layers.map((L) => layerLevel(L, pieces, crossfade));
   for (const { layer, clip, at, speed = 1, semis = 0 } of placed) {
     const L = layers[layer], c = L.clips[clip], src = sources[sourceKey(c, speed, semis)];
     if (!src || !sources[keyOf(c.song)]) continue;
@@ -185,13 +240,19 @@ export function mixLayers(main, layers, placed, sources, rate, { pieces = [], cr
       const x = i / per, j = Math.min(gq.length - 1, Math.floor(x)), f = Math.min(1, x - j);
       return gq[j] + f * ((gq[j + 1] ?? gq[j]) - gq[j]);
     };
+    // Its layer's volume changes, worked out once a millisecond.
+    const lv = levels[layer], ms = Math.max(1, Math.round(rate / 1000));
+    let lvAt = -Infinity, lvG = 1;
+    const level = (i) => { if (i >= lvAt + ms || i < lvAt) { lvAt = i; lvG = layerGainAt(lv, i / rate); } return lvG; };
     const bits = out.map((_, c2) => {
       const s = src[Math.min(c2, src.length - 1)], bit = new Float32Array(k1 - skip);
+      lvAt = -Infinity;
       for (let k = skip; k < Math.min(k1, len); k++) {
         let g = gain;
         if (fi && k < fi) g *= k / fi;
         if (fo && k > len - fo) g *= (len - k) / fo;
         if (under) g *= quiet(off + k);
+        if (lv) g *= level(off + k);
         bit[k - skip] = g * s[from + k];
       }
       return bit;
