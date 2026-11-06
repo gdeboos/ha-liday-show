@@ -8827,8 +8827,17 @@ function songKid(kind, icon, name, badge, lines, actions, song = null) {
 
 // Split into parts… for a song's row (splitvocals.js): its vocals, drums, bass and the rest kept with it.
 // While songs are being split one after another, it goes to the front of that line instead.
-function splitButton(r) {
+// An edit whose original isn't split yet splits the original instead: the edit's parts are then cut from
+// the original's in seconds, rather than the AI splitting the edit as well.
+function splitButton(r, base = null) {
   const again = prepared(r.parts);
+  const original = !again && base && (app.songs || []).find((s) => s.source === base.source && s.path === base.path);
+  if (original && !prepared(original.parts)) {
+    const first = button("Split the original into parts…", () => prepareParts([{ source: original.source, path: original.path }, r.ref], { first: true }), "ghost");
+    first.setAttribute("aria-label", `Split ${r.name}'s original song into its parts`);
+    first.title = "Splits the song this edit was made from. This edit then gets its parts cut from the original's, in seconds";
+    return first;
+  }
   const split = button(again ? "Split into parts again…" : "Split into parts…", async () => {
     if (splitting() || partsLine.now) { prepareParts([r.ref], { first: true }); return; }
     splitVocals(r.ref, { api, askYes, status: (text, kind) => status(text, kind, "songs"), edit: await editFor(r.ref),
@@ -8867,7 +8876,7 @@ function editKid(e) {
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   rm.disabled = !r.own;
-  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, ren, dup, splitButton(r), rm].filter(Boolean), r);
+  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, ren, dup, splitButton(r, d?.base), rm].filter(Boolean), r);
   row.title = r.file;
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
