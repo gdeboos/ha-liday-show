@@ -3700,7 +3700,7 @@ export class MusicEditor {
     const i = this.joinSel, p = this.pieces[i];
     if (!p || i < 1) return;
     const src = this.pieces[i - 1].src, info = src === keyOf(this.base || { source: "", path: "" }) ? this.info : this.infos[src];
-    const beat = info?.tempo ? Math.round((60 / info.tempo) * 1000) / 1000 : 0.5;
+    const beat = info?.tempo ? Math.min(2, Math.max(0.1, Math.round((60 / info.tempo) * 1000) / 1000)) : 0.5; // as the server allows
     const { transition: _, ...plain } = p;
     this.edit(this.pieces.map((q, k) => (k === i ? (kind ? { ...plain, transition: { kind, beat } } : plain) : q)));
     this.joinSel = i;

@@ -355,4 +355,8 @@ test("joins can have DJ transitions, kept through later edits", () => {
   assert.deepEqual(cut(p, 0, 1, 2)[2].transition, { kind: "drop", beat: 0.5 });
   assert.equal(cut(p, 0, 1, 2)[1].transition, undefined, "the new cut has none");
   assert.equal(cut(p, 0, 3, 5).some((x) => x.transition), false);
+  assert.deepEqual(keep(p, 0, 2, 7).map((x) => x.transition || null), [null, { kind: "drop", beat: 0.5 }]);
+  // Putting a cut back keeps the transition of the join before it.
+  const three = [{ src: "a", start: 0, end: 2 }, { src: "a", start: 3, end: 4, transition: { kind: "echo", beat: 0.5 } }, { src: "a", start: 5, end: 6 }];
+  assert.deepEqual(putBack(three, 0, 2).pieces[1].transition, { kind: "echo", beat: 0.5 });
 });
