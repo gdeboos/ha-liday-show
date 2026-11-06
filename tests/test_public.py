@@ -1439,6 +1439,17 @@ async def test_phones_get_the_shows_phones_lane_to_draw(client):
         await client.app[server.RUNNER].stop()
 
 
+def test_a_phones_lane_sends_pictures_up_to_a_size(tmp_path, monkeypatch):
+    from halidayshow.storage import Storage
+    st = Storage(tmp_path / "config", tmp_path / "media")
+    small = st.save_picture({"name": "Small", "w": 1, "h": 1, "frames": ["AAAA/w=="], "delays": [100]})
+    big = st.save_picture({"name": "Big", "w": 1, "h": 1, "frames": ["A" * 4000], "delays": [100]})
+    monkeypatch.setattr(public, "MAX_PHONE_PICTURE_BYTES", 1000)
+    show = {"tracks": [{"device": "@phones", "clips": [{"effect": "picture", "picture": small}, {"effect": "picture", "picture": big}]}]}
+    assert list(public.phone_lane(st, show)["pictures"]) == [small]
+    assert public.phone_lane(st, {"tracks": [{"device": "a", "clips": []}]}) is None
+
+
 def test_phone_colours_are_checked(tmp_path):
     ok = {"phones": {"fps": 10, "colours": "a0b0c0"}}
     assert baked.phone_colours(ok) == {"fps": 10, "colours": "a0b0c0"}

@@ -2656,8 +2656,9 @@ function drawPreview() {
   const pos = housePositions(), composed = {};
   tracks.forEach((tr, row) => {
     const dev = app.devices[tr.device];
-    const rgb = previewFrame(tr, dev, pos, composed);
-    const n = dev.segments;
+    // The phone's screen is one bar of its main colour here; the House panel's phone shows the picture.
+    const rgb = dev.phones ? Uint8Array.from(mainColour([phoneScreenNow()])) : previewFrame(tr, dev, pos, composed);
+    const n = dev.phones ? 1 : dev.segments;
     const cap = (dev.brightness ?? 100) / 100;
     if (cap < 1) for (let i = 0; i < rgb.length; i++) rgb[i] = Math.round(rgb[i] * cap);
     const y = row * ROW_H;
@@ -2901,7 +2902,6 @@ const shownFrame = (light, pos) => asShown(light, app.time, (t) => physicalFrame
 // What a preview row shows: for a split light and its parts, their share of what the light
 // actually plays (so a part's clip shows over the whole light's). `composed` caches per light.
 function previewFrame(tr, dev, pos, composed) {
-  if (dev.phones) return phoneScreenNow();
   const light = dev.light || app.lights[dev.parent];
   if (!light) return asShown(dev, app.time, (t) => lightFrame(tr, dev, t, pos));
   const full = composed[light.id] ??= shownFrame(light, pos);
@@ -2945,7 +2945,16 @@ const lightFramesAt = (t, pos = housePositions()) => lightsInShow(app.show, app.
 
 // A phone's screen at the playhead, as phones draw it: the Phones lane (with the house's main colour
 // as phones get it, ten times a second), or without one, the house's main colour all over.
+// Worked out once a moment: the Preview row and the House panel's phone both ask.
+let phoneShown = { time: NaN, edits: -1, show: null, frame: null };
 function phoneScreenNow() {
+  const was = phoneShown;
+  if (was.time === app.time && was.edits === app.edits && was.show === app.show && was.on === phonesOn) return was.frame;
+  phoneShown = { time: app.time, edits: app.edits, show: app.show, on: phonesOn, frame: phoneScreenAt() };
+  return phoneShown.frame;
+}
+
+function phoneScreenAt() {
   const lane = app.show.tracks.find((tr) => tr.device === PHONES), n = PHONE_GRID.w * PHONE_GRID.h;
   if (!lane) {
     const [r, g, b] = phoneNow(), out = new Uint8Array(n * 3);

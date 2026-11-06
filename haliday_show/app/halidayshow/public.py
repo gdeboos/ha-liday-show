@@ -1310,8 +1310,8 @@ async def get_listen_now(request):
 _PHONES_SEEN: dict = {}  # (path, mtime) -> its phone colours, so a crowd of phones doesn't read the file each time
 
 
-def joining_now(storage: Storage, runner: Runner) -> tuple[str, dict] | None:
-    """(key, {fps, colours}) for the show playing now, if visitors' phones can join it: a show (not a
+def joining_now(storage: Storage, runner: Runner) -> tuple[str, dict, dict] | None:
+    """(key, {fps, colours}, the show) for the show playing now, if visitors' phones can join it: a show (not a
     building block, a scene or the timing test) that hasn't opted out, baked with phone colours. The key
     changes whenever its bake does."""
     st = runner.status()
@@ -1334,7 +1334,7 @@ def joining_now(storage: Storage, runner: Runner) -> tuple[str, dict] | None:
         found = _PHONES_SEEN[(path, mtime)] = baked.phone_colours(baked.read_header(path)) or {}
     if not found:
         return None
-    return hashlib.sha256(f"{show_id}|{mtime}".encode()).hexdigest()[:16], found
+    return hashlib.sha256(f"{show_id}|{mtime}".encode()).hexdigest()[:16], found, show
 
 
 def _joining(request, code) -> dict:
@@ -1363,6 +1363,8 @@ async def get_phones_now(request):
 
 
 MAX_PHONE_PICTURES = 8
+MAX_PHONE_PICTURE_BYTES = 4_000_000  # all of them together, as sent: a big GIF or two
+_LANES: dict = {}  # show key -> its lane as sent, so a phone joining doesn't read every picture again
 
 
 def _level(v) -> float:
@@ -1382,13 +1384,16 @@ def phone_lane(storage: Storage, show: dict) -> dict | None:
     if lane is None:
         return None
     clips = [c for c in lane.get("clips") or [] if isinstance(c, dict)]
-    pictures = {}
+    pictures, size = {}, 0
     for c in clips:
         pid = c.get("picture") if c.get("effect") == "picture" else None
         if isinstance(pid, str) and valid_id(pid) and pid not in pictures and len(pictures) < MAX_PHONE_PICTURES:
             pic = storage.load_picture(pid)
-            if pic:
+            # One that would go over the limit shows its clip's background instead, as a missing one does.
+            bytes_ = len(json.dumps(pic)) if pic else 0
+            if pic and size + bytes_ <= MAX_PHONE_PICTURE_BYTES:
                 pictures[pid] = pic
+                size += bytes_
     loud = show.get("loudness")
     return {"clips": clips,
             "level": _level(show.get("brightness")) * _level((show.get("lightBrightness") or {}).get("@phones")),
@@ -1405,9 +1410,12 @@ async def get_phones_colours(request):
     now = joining_now(storage, runner)
     if now is None or not secrets.compare_digest(now[0], str(request.query.get("key", ""))):
         raise web.HTTPNotFound(text="that show isn't playing now")
-    show = storage.load_show(runner.status()["show"]) or {}
-    lane = await asyncio.to_thread(phone_lane, storage, show)
-    return _no_store(web.json_response({"key": now[0], **now[1], "lane": lane}))
+    key, colours, show = now
+    if key not in _LANES:
+        if len(_LANES) > 4:
+            _LANES.clear()
+        _LANES[key] = await asyncio.to_thread(phone_lane, storage, show)
+    return _no_store(web.json_response({"key": key, **colours, "lane": _LANES[key]}))
 
 
 async def get_listen_song(request):
