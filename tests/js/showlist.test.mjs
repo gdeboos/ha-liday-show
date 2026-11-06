@@ -77,3 +77,10 @@ test("a show's row carries its palette, named, or nothing without one", () => {
   assert.equal(b.palette.name, "Its own colours");
   assert.equal(c.palette, null);
 });
+
+test("a show's row says if visitors' phones follow it, only when the public page lets them", () => {
+  const shows = [{ id: "a", name: "A", modified: 3 }, { id: "b", name: "B", modified: 2, phones: false },
+    { id: "c", name: "C", modified: 1, phones_lane: true }];
+  assert.deepEqual(showRows(shows, null, new Date(), [], true).map((r) => r.phones), ["follow", null, "lane"]);
+  assert.deepEqual(showRows(shows, null).map((r) => r.phones), [null, null, null]);
+});

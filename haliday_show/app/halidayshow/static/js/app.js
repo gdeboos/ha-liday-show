@@ -6893,7 +6893,12 @@ async function loadPublic({ items = false } = {}) {
   try {
     const view = await api("api/public");
     if (!pubPending) publicView = view;
-    if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; layoutPreview(); drawHouse(); }
+    if (phonesOn !== !!view.phones) {
+      phonesOn = !!view.phones;
+      layoutPreview();
+      drawHouse();
+      if (!$("view-shows").hidden) renderShowLists(); // the On phones badges
+    }
     renderPublicQueue(view);
     $("pub-on").checked = view.on;
     if (!items) return;
@@ -7369,7 +7374,7 @@ async function renderShowLists(shows = null) {
   const seasons = app.seasons || [];
   const picked = seasonFilter();
   const shown = showListCache.filter((s) => inSeasonFilter(s, picked, seasons));
-  const rows = showRows(shown, prefs.get("lastShow", null), new Date(), seasons);
+  const rows = showRows(shown, prefs.get("lastShow", null), new Date(), seasons, phonesOn);
   drawShowSeasons(picked, shown.length);
   for (const box of document.querySelectorAll("[data-show-list]")) {
     if (rows.length) {
@@ -7442,6 +7447,11 @@ function showRow(r) {
     head.append(badge);
   }
   if (r.inProgress) head.append(Object.assign(document.createElement("span"), { className: "show-wip", textContent: "In progress" }));
+  if (r.phones) {
+    head.append(Object.assign(document.createElement("span"), { className: "show-phones-badge", textContent: "On phones",
+      title: r.phones === "lane" ? "Visitors' phones follow this show, with its own Phones lane"
+        : "Visitors' phones follow this show, in the colour of your lights. Turn it off in ⚙ Show settings → Visitors' phones" }));
+  }
   const details = document.createElement("div");
   details.className = "hint";
   details.textContent = r.details;

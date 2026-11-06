@@ -210,6 +210,10 @@ class Storage:
                         "cover": bool(song and songtags.cached_cover(song)),
                         "baked": (self.shows_dir / f"{p.stem}.gshow").exists(),
                         "in_progress": show.get("in_progress") is True,
+                        # Whether visitors' phones join it (unless it opted out), and if it has a Phones lane.
+                        "phones": show.get("phones") is not False,
+                        "phones_lane": any(isinstance(t, dict) and t.get("device") == "@phones"
+                                           for t in show.get("tracks") or []),
                         # Its own picture (a number that changes with it, 0 for none), and its
                         # palette's colours, for a tile when it has no picture or cover art.
                         "picture": self.show_picture_version(p.stem),

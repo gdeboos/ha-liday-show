@@ -49,7 +49,8 @@ export function tileBackground(colours) {
   return colours.length === 1 ? colours[0] : `linear-gradient(135deg, ${colours.join(", ")})`;
 }
 
-export function showRows(shows, last, now = new Date(), seasons = []) {
+// phonesOn: whether the public page lets visitors' phones join shows, so each row can say if phones follow it.
+export function showRows(shows, last, now = new Date(), seasons = [], phonesOn = false) {
   const seasonName = (id) => seasons.find((x) => x.id === id)?.name;
   return [...shows]
     .sort((a, b) => (b.modified || 0) - (a.modified || 0) || a.name.localeCompare(b.name))
@@ -58,6 +59,7 @@ export function showRows(shows, last, now = new Date(), seasons = []) {
       name: s.name,
       last: s.id === last,
       inProgress: s.in_progress === true,
+      phones: phonesOn && s.phones !== false ? (s.phones_lane ? "lane" : "follow") : null,
       thumb: showThumb(s),
       palette: s.palette?.colours?.length ? { name: s.palette.name || "Its own colours", colours: s.palette.colours } : null,
       details: [seasonName(s.season), songName(s.song) || "No song yet", length(s.duration), `changed ${changed(s.modified, now)}`]

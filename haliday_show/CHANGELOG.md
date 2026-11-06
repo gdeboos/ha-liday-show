@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.389
+
+- **Library → Shows** marks the shows visitors' phones follow with an **On phones** badge, while phones are allowed to join under **Public page → Listening**. Shows you've taken off phones (in **⚙ Show settings… → Visitors' phones**) don't have it.
+
 ## 0.2.388
 
 - **Lyrics are kept with the song.** Place them once and every show on that song sings them. You can now add them in the Music editor too: open the song and press **Lyrics…** under **Beats and sections**. Lyrics you've already placed in a show move to its song the next time you open the show.
