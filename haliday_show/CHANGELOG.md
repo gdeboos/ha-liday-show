@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.391
+
+- **Place each word on the waveform.** **Lyrics…** now shows the song's waveform, with every word as a block under it and the singer's level drawn over the song. Drag a word to move it, or drag its edges to make it longer or shorter. A line now ends where its last word does, so the mouth stays shut through an instrumental. Click the waveform to play from there; **+** and **−** zoom.
+- Each line in **Lyrics…** shows when it ends as well as when it starts.
+
 ## 0.2.390
 
 - **Tap along is clearer.** In **Lyrics…**, the button now says which line it's waiting for (**Line 1 starts**, **Line 2 starts**…), so your first press marks the first line, not the second. **Done** now stays shown once you've tapped the last line.

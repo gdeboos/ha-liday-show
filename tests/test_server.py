@@ -2124,7 +2124,11 @@ async def test_a_song_keeps_its_lyrics_and_singer(client, tmp_path):
     assert (await client.put(f"/api/audio/lyrics?{q}", json=lyrics)).status == 200
     assert await (await client.get(f"/api/audio/lyrics?{q}")).json() == {"text": lyrics["text"], "lines": [
         {"start": 1.0, "end": 3.5}, {"start": 4.0, "end": 6.0}]}
-    for bad in ({"text": 1, "lines": []}, {"text": "a", "lines": [{"start": "x", "end": 1}]}, [1],
+    words = {"text": "a b", "lines": [{"start": 1, "end": 3, "words": [{"start": 1, "end": 2}, {"start": 2.5, "end": 3}]}]}
+    assert (await client.put(f"/api/audio/lyrics?{q}", json=words)).status == 200
+    assert (await (await client.get(f"/api/audio/lyrics?{q}")).json())["lines"][0]["words"][1] == {"start": 2.5, "end": 3.0}
+    assert (await client.put(f"/api/audio/lyrics?{q}", json=lyrics)).status == 200
+    for bad in ({"text": 1, "lines": []}, {"text": "a", "lines": [{"start": 0, "end": 1, "words": "x"}]}, {"text": "a", "lines": [{"start": "x", "end": 1}]}, [1],
                 {"text": "one\ntwo", "lines": [{"start": 0, "end": 1}]}):  # a line short
         assert (await client.put(f"/api/audio/lyrics?{q}", json=bad)).status == 400
     voice = {"fps": 20, "values": [0, 50, 100], "shapes": "mao", "from": "vocals"}
