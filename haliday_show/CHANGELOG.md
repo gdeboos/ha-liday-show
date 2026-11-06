@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.428
+
+- **DJ transitions at a join.** In the Music editor, click a join's **✂** and pick a **Transition**: **Echo out**, **Filter sweep** or **Drop the bass**. Each keeps time with the music and plays in the song file you make, and you hear it as soon as you pick it.
+
 ## 0.2.427
 
 - **Change a layer's volume over a stretch.** While you're editing a layer on its own in the Music editor, select a stretch and the **Selection** panel offers **Mute here**, **Quieter here**, **Fade in here** and **Fade out here** for that layer. They show on its lane, play and go into the song file, and **As it was** takes them off again.

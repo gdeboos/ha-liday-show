@@ -1125,6 +1125,17 @@ async def test_draft_song_parts_are_kept_and_checked(client, tmp_path):
         assert (await client.post("/api/drafts", json={**draft, "parts": bad})).status == 400, bad
 
 
+async def test_draft_join_transitions_are_kept_and_checked(client, tmp_path):
+    song = {"source": "media", "path": "haliday_show/song.mp3"}
+    pieces = [{"song": song, "start": 0, "end": 20}, {"song": song, "start": 40, "end": 60, "transition": {"kind": "echo", "beat": 0.4959}}]
+    draft_id = (await (await client.post("/api/drafts", json={"name": "Mix", "base": song, "pieces": pieces})).json())["id"]
+    got = (await (await client.get(f"/api/drafts/{draft_id}")).json())["pieces"]
+    assert "transition" not in got[0] and got[1]["transition"] == {"kind": "echo", "beat": 0.496}
+    for bad in ({"kind": "scratch", "beat": 0.5}, {"kind": "drop"}, {"kind": "drop", "beat": 5}, {"kind": "drop", "beat": True}, "echo"):
+        bad_pieces = [pieces[0], {**pieces[1], "transition": bad}]
+        assert (await client.post("/api/drafts", json={"name": "Mix", "base": song, "pieces": bad_pieces})).status == 400, bad
+
+
 async def test_draft_mixer_settings_are_kept_and_checked(client, tmp_path):
     song = {"source": "media", "path": "haliday_show/song.mp3"}
     loop = {"source": "media", "path": "haliday_show/Samples/Loop.wav"}

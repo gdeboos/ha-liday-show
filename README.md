@@ -231,7 +231,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Archive or delete** shows and songs, with a way back: archived ones can be restored, and shows using a song can take another one
 - Add a song in one window (name it, upload it, detect it); big songs go up in pieces, so files over
   Home Assistant's 16 MB limit upload fine
-- Cut, trim, repeat and splice songs in the **Music editor**, with crossfades, as named **drafts** kept as you go that you can come back to and tweak, then make into a song file
+- Cut, trim, repeat and splice songs in the **Music editor**, with crossfades and DJ transitions (echo out, filter sweep, drop the bass), as named **drafts** kept as you go that you can come back to and tweak, then make into a song file
 - **Even out the volume** when making a song file, so songs play at about the same loudness
 - **✨ New mashup**: one song's singing over another's music in a click, matched in tempo and key and lined up on the bar
 - **HA-liday Show listens to your songs** for sleigh bells, choirs, brass, guitar and more, and how they sound (happy, scary…), and Generate picks looks to suit

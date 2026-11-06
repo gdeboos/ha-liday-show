@@ -8449,7 +8449,7 @@ async function editFor(ref) {
   if (!base) return null;
   const key = (r) => `${r.source}:${r.path}`;
   return { base: draft.base, baseParts: base.parts || {}, crossfade: draft.crossfade || 0, fadeIn: draft.fadeIn || 0, fadeOut: draft.fadeOut || 0,
-    pieces: draft.pieces.map((p) => ({ src: key(p.song), start: p.start, end: p.end })) };
+    pieces: draft.pieces.map((p) => ({ src: key(p.song), start: p.start, end: p.end, ...(p.transition ? { transition: p.transition } : {}) })) };
 }
 
 // Song files made from a draft (edits) and the song each was made from, by "source:path".
@@ -11037,7 +11037,7 @@ async function editOf(ref, duration) {
       const draft = await api(`api/drafts/${encodeURIComponent(d.id)}`);
       const k = (r) => `${r.source}:${r.path}`;
       const [words, voice, drums] = await Promise.all(["lyrics", "voice", "drums"].map((w) => api(songExtraUrl(w, draft.base)).catch(() => null)));
-      const pieces = draft.pieces.map((p) => ({ src: k(p.song), start: p.start, end: p.end })), crossfade = draft.crossfade || 0;
+      const pieces = draft.pieces.map((p) => ({ src: k(p.song), start: p.start, end: p.end, ...(p.transition ? { transition: p.transition } : {}) })), crossfade = draft.crossfade || 0;
       // A mashup (layers heard, or the song's own parts changed): its file's own lyrics and drum hits,
       // made with it, are what's heard, not the original's.
       const layered = (draft.layers || []).some((l) => !l.muted && l.clips?.length) || Boolean(draft.parts);
