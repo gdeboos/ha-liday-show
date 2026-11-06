@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.424
+
+- **Snap to the drums.** In the Music editor, selections now snap to the song's kicks and snares as well as its beats, so you can cut or repeat right on a drum hit (zoom in to feel it; hold Shift to place them freely). While you're editing a layer on its own, they snap to the drums of its clips' songs.
+
 ## 0.2.423
 
 - **Repeat a stretch.** In the Music editor's **Selection** panel, **Repeat ×2** and **Repeat ×4** play what you've selected twice or four times in a row, and what comes after moves on. Select whole bars for a seamless loop. While you're editing a layer on its own, it repeats just that layer.

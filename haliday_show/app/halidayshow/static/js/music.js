@@ -569,6 +569,7 @@ export class MusicEditor {
     this.ctx = this.canvas.getContext("2d");
     this.refs = {}; // src key -> ref
     this.infos = {}; // src key -> its saved beats, sections and marks (for songs spliced in)
+    this.clipDrums = {}; // src key -> its drum hits, or null (for snapping on a focused layer)
     this.sources = {}; // src key -> Float32Array[]
     this.pieces = [];
     this.history = [];
@@ -659,6 +660,16 @@ export class MusicEditor {
       this.updateControls?.(); this.draw?.(); return info;
     })
       .catch(() => this.infos[key] || null);
+  }
+
+  // A clip's song's drum hits (null when it has none), for snapping on a focused layer.
+  loadClipDrums(ref) {
+    const key = keyOf(ref);
+    this.clipDrums[key] = null;
+    return this.host.api(drumsUrl(ref)).then((hits) => {
+      this.clipDrums[key] = hits || null;
+      if (hits && this.focus != null && this.main) this.focusView(this.placed(), this.audio.sampleRate);
+    }).catch(() => {});
   }
 
   async source(ref) {
@@ -1715,6 +1726,15 @@ export class MusicEditor {
         if (b - a > 0.05) info.sections.push({ ...sec, start: to(a), end: to(b) });
       }
     }
+    // Kicks and snares, to snap to, from clips that have drums in them (not a clip of just the vocals or bass).
+    info.hits = [];
+    for (const p of mine) {
+      const c = this.layers[i].clips[p.clip], key = infoKeyOf(c.song), hits = this.clipDrums[key];
+      if (!(key in this.clipDrums)) this.loadClipDrums(songOfClip(c.song));
+      if (!hits || ["vocals", "bass"].includes(partOfPath.get(c.song.path)?.part)) continue;
+      const to = (t) => p.at + (t - c.start) / p.speed;
+      for (const t of [...(hits.kick || []), ...(hits.snare || [])]) if (t >= c.start && t <= c.end) info.hits.push(to(t));
+    }
     for (const k of ["beats", "bars"]) info[k].sort((a, b) => a - b);
     info.sections.sort((a, b) => a.start - b.start);
     this.focusInfo = info;
@@ -2010,7 +2030,16 @@ export class MusicEditor {
     };
     const edges = [0, this.total, ...info.bars, ...info.sections.flatMap((x) => [x.start, x.end])];
     const marks = (info.marks || []).map((m) => m.t);
-    return near(edges, reach) ?? near([...info.beats, ...marks], 6) ?? t;
+    return near(edges, reach) ?? near([...info.beats, ...marks, ...this.hitsHere()], 6) ?? t;
+  }
+
+  // Where the kicks and snares land in the big view (the song's, or with a layer focused, those of its
+  // clips' songs where its clips play their drums), so selections can snap to them too.
+  hitsHere() {
+    if (this.focus != null) return this.focusInfo?.hits || [];
+    if (this.drums?.ref !== this.base) return [];
+    const hits = mapHits({ kick: this.drums.hits.kick || [], snare: this.drums.hits.snare || [] }, this.pieces, this.crossfade, keyOf(this.base));
+    return [...hits.kick, ...hits.snare];
   }
 
   // Plays a few seconds either side of where the selection would be cut, without cutting it.
