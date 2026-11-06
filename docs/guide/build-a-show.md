@@ -569,6 +569,11 @@ says **Editing layer Choir**, its lane is outlined and its Mixer row says **Edit
   layers don't move.
 - **Preview cut** plays a few seconds either side of the join, closed up, with everything else as it is.
 - **Keep only this** trims the layer to the selection, leaving the rest of it silent.
+- **Add another song** goes into the layer: pick the song with **Choose song…** as usual, then **Insert
+  into Choir at playhead** (the rest of the layer moves on by its length; a clip running across the
+  playhead is split there) or **Add to end of Choir** (after its last clip). The song and the other layers
+  don't move, and it's selected so you can trim it. Anything pushed past the song's end is left out (the
+  message says so; Ctrl+Z brings it back).
 - To change the sections of a clip's song, open that song in the Music editor: they're the song's own,
   used everywhere it is.
 

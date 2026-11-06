@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, keyFrom, keyShift, toMono } from "
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, keepLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, sourceKey } from "./layers.js";
+import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, insertIntoLayer, keepLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
 import { lineUpOnBar, mashFit } from "./mashfit.js";
@@ -1745,6 +1745,29 @@ export class MusicEditor {
 
   layerCtx() { return { pieces: this.pieces, crossfade: this.crossfade, refs: this.refs, tempo: this.songTempo }; }
 
+  // Another song into the focused layer: at the playhead (the rest of the layer moves on), or after its
+  // last clip. The song and the other layers don't move.
+  async spliceIntoLayer(ref, atEnd) {
+    const i = this.focus, L = this.layers[i];
+    if (L.clips.length >= MAX_CLIPS) return this.host.status(`A layer can have up to ${MAX_CLIPS} clips`, "hint");
+    let key;
+    try { key = await this.source(ref); } catch (e) { return this.host.status(songLoadMessage(e), true); }
+    const rate = this.audio.sampleRate, whole = this.sources[key][0].length / rate;
+    const bpm = L.matchTempo ? await this.tempoOf(ref) : null;
+    const ends = this.placed().filter((p) => p.layer === i).map((p) => p.at + p.length);
+    const t = atEnd ? (ends.length ? Math.max(...ends) : 0) : this.time;
+    if (t >= this.total - 0.5) return this.host.status(`There's no song left after ${fmtTime(t)} to add it to`, "hint");
+    const speed = clipSpeed(L, { bpm }, this.songTempo), end = Math.round(Math.min(whole, (this.total - t) * speed) * 1000) / 1000;
+    this.songLufs ??= loudness(this.main, rate);
+    let clip = { song: ref, start: 0, end, gain: matchGain(this.songLufs, loudness(this.sources[key], rate)), fadeIn: 0.02, fadeOut: 0.02, ...(bpm ? { bpm } : {}) };
+    if (L.matchKey) { this.findSongKey(); const k = this.keyOfSong(ref, clip); if (k) clip = { ...clip, key: k }; }
+    const { layers, dropped } = insertIntoLayer(this.layers, i, t, clip, this.layerCtx());
+    this.sel = { start: t, end: Math.min(this.total, t + end / speed) }; // selected, to trim
+    this.editLayers(layers, null);
+    this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} to ${L.name} at ${fmtTime(t)}${atEnd ? "" : ", moving the rest of it on"}`
+      + (dropped ? `. ${dropped} clip${dropped === 1 ? " was" : "s were"} pushed past the song's end and left out (Ctrl+Z brings ${dropped === 1 ? "it" : "them"} back)` : ""), dropped ? "hint" : "saved");
+  }
+
   // New mashup (app.js): the open song becomes the music, with its own vocals muted, and another song's
   // vocals go on a layer of their own, matched to its tempo and key, starting at `at` (the song's
   // seconds) from `from` in theirs, their first bar on its nearest bar. vocals: the singing song's
@@ -1908,6 +1931,7 @@ export class MusicEditor {
     // Nothing chosen yet: choose now, then add it.
     const ref = this.insertRef || await this.pickInsertSong();
     if (!ref) return;
+    if (this.focus != null) return this.spliceIntoLayer(ref, atEnd);
     try {
       const key = await this.source(ref);
       const piece = { src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate };
@@ -2521,6 +2545,12 @@ export class MusicEditor {
     $("music-sel-len").textContent = sel ? `${(sel.end - sel.start).toFixed(2)} s selected` : "";
     this.renderRange();
     this.renderParts();
+    // Add another song: into the song, or into the layer being edited.
+    const into = this.focus != null ? this.layers[this.focus]?.name : null;
+    $("music-insert").textContent = into ? `Insert into ${into} at playhead` : "Insert at playhead";
+    $("music-append").textContent = into ? `Add to end of ${into}` : "Add to end";
+    $("music-insert").title = into ? `Put the song into ${into} at the playhead; the rest of ${into} moves on. The song and other layers don't move`
+      : "Insert the whole song at the playhead; it's selected afterwards so you can trim it";
     const canParts = this.partsAvailable && this.focus == null;
     $("music-view").hidden = !canParts;
     for (const b of $("music-view").querySelectorAll("button")) {
