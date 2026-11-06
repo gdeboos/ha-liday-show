@@ -19,6 +19,7 @@ import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, p
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
 import { makeParts, prepared, splitVocals, splitting, stemNames } from "./splitvocals.js";
+import { mashFit } from "./mashfit.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic } from "./housescenes.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
@@ -9126,6 +9127,88 @@ function wireSongPlayer() {
   $("song-player-close").addEventListener("click", closeSongPlayer);
 }
 
+// New mashup: one song's singing over another's music. Picks both (songs split into parts), says how
+// well they fit and what will change, then makes a draft of the music song in the Music editor with its
+// own vocals muted and the other's on a layer, matched and lined up (music.js makeMashup).
+async function newMashup() {
+  await refreshAudio().catch(() => {});
+  const songs = (app.songs || []).filter((s) => prepared(s.parts));
+  if (songs.length < 2) {
+    status(`A mashup needs two songs split into parts${songs.length ? " (one is so far)" : ""}: press Split all songs into parts first`, "hint", "songs");
+    return;
+  }
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
+  const infos = new Map();
+  const infoOf = async (s) => { const k = `${s.source}:${s.path}`; if (!infos.has(k)) infos.set(k, await songInfo(s).catch(() => null)); return infos.get(k); };
+  const pick = (label, hint) => {
+    const sel = el("select");
+    songs.forEach((s, i) => sel.add(new Option(songLabel(s), String(i))));
+    const h = el("span", { className: "hint", textContent: "" });
+    return { sel, h, box: el("label", { className: "field" }, el("b", { textContent: label }), sel, h), hint };
+  };
+  const sing = pick("The singing from", "Its vocals part"), mus = pick("The music from", "Everything but its vocals");
+  mus.sel.value = "1";
+  const fit = el("div", { className: "mash-fit" });
+  const at = el("select"), from = el("select");
+  const toggle = (text, on = true) => { const c = el("input", { type: "checkbox", checked: on }); return { c, box: el("label", {}, c, ` ${text}`) }; };
+  const mt = toggle("Match tempo"), mk = toggle("Match key"), lu = toggle("Line up on the bar");
+  const note = el("p", { className: "hint" });
+  const go = el("button", { type: "button", className: "primary", textContent: "Make mashup" });
+  const cancel = el("button", { type: "button", textContent: "Cancel" });
+  const sections = (info, whose) => [{ t: 0, label: `${whose} start (0:00)` },
+    ...(info?.sections || []).map((x) => ({ t: x.start, label: `${whose} ${x.label} (${fmtTime(x.start, false)})` }))];
+  const fill = (sel, list) => { sel.replaceChildren(...list.map((x) => new Option(x.label, String(x.t)))); const first = list.find((x) => x.t > 0.5); if (first) sel.value = String(first.t); };
+  let asked = 0;
+  const refresh = async () => {
+    const mine = ++asked, a = songs[Number(sing.sel.value)], b = songs[Number(mus.sel.value)];
+    const [ia, ib] = await Promise.all([infoOf(a), infoOf(b)]);
+    if (mine !== asked) return; // picked again meanwhile
+    const facts = (i) => [i?.tempo && `${Math.round(i.tempo * 10) / 10} BPM`, i?.key].filter(Boolean).join(" · ") || "not detected yet";
+    sing.h.textContent = `${sing.hint} · ${facts(ia)}`;
+    mus.h.textContent = `${mus.hint} · ${facts(ib)}`;
+    fill(at, sections(ib, "The music's"));
+    fill(from, sections(ia, "The singing's"));
+    const same = a === b, f = mashFit(ia, ib);
+    go.disabled = same;
+    const words = { great: "✓ A great fit.", good: "✓ A good fit.", change: "A fit, with a change.", big: "⚠ A big change: it may sound odd." };
+    const what = [mt.c.checked && ia?.tempo && ib?.tempo && Math.abs(f.speed - 1) >= 0.005
+      ? `The singing is ${f.speed > 1 ? "sped up" : "slowed down"} ${Math.round(Math.abs(f.speed - 1) * 1000) / 10}% to ${Math.round(ib.tempo * 10) / 10} BPM` : "",
+    mk.c.checked && f.semis ? `moved ${f.semis > 0 ? "up" : "down"} ${Math.abs(f.semis)} semitone${Math.abs(f.semis) === 1 ? "" : "s"} into ${ib.key}, so it sits in the music's key` : ""].filter(Boolean);
+    fit.className = `mash-fit ${f.fit}`;
+    fit.textContent = same ? "Pick two different songs." : `${words[f.fit]} ${what.length ? `${what.join(", and ")}.` : "It plays as it is."}`
+      + (f.fit === "big" ? " Changes bigger than about 10%, or a few semitones, can start to sound odd." : "");
+    note.textContent = same ? "" : `Makes a draft in the Music editor: ${songLabel(b)} with its own vocals muted, and ${songLabel(a)}'s vocals as a layer, `
+      + "matched and lined up. Neither song is changed. Fine-tune it there, then Make song file.";
+  };
+  for (const c of [sing.sel, mus.sel]) c.addEventListener("change", refresh);
+  for (const t of [mt, mk]) t.c.addEventListener("change", refresh);
+  const form = el("form", { method: "dialog" },
+    el("div", { className: "effect-dialog-head" }, el("h3", { textContent: "New mashup" })),
+    el("div", { className: "form-dialog-body mash" }, sing.box, mus.box, fit,
+      el("div", { className: "mash-two" }, el("label", { className: "field" }, el("b", { textContent: "Start the singing at" }), at),
+        el("label", { className: "field" }, el("b", { textContent: "From the singing's" }), from)),
+      el("div", { className: "mash-toggles" }, mt.box, mk.box, lu.box), note),
+    el("div", { className: "form-dialog-foot" }, el("span", { className: "spacer" }), cancel, go));
+  const dlg = el("dialog", { className: "effect-dialog form-dialog mash-dialog" }, form);
+  cancel.addEventListener("click", () => dlg.close());
+  dlg.addEventListener("close", () => dlg.remove());
+  document.body.append(dlg);
+  await refresh();
+  dlg.showModal();
+  // The window stays open until it's going ahead, so nothing picked is lost.
+  go.addEventListener("click", async () => {
+    const a = songs[Number(sing.sel.value)], b = songs[Number(mus.sel.value)], ia = infos.get(`${a.source}:${a.path}`);
+    await music.flush();
+    if (music.unsaved && !(await askYes("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?", { yes: "Leave anyway" }))) return;
+    dlg.close();
+    app.songChosen = true;
+    showView("music");
+    await music.open({ source: b.source, path: b.path }, { asked: true });
+    await music.makeMashup({ vocals: { source: "media", path: a.parts.vocals }, sing: { name: songLabel(a), tempo: ia?.tempo || null, key: ia?.key || null },
+      at: Number(at.value), from: Number(from.value), matchTempo: mt.c.checked, matchKey: mk.c.checked, lineUp: lu.c.checked });
+  });
+}
+
 async function editSong(ref) {
   // Ask before leaving the open draft, rather than after.
   await music.flush();
@@ -13131,6 +13214,7 @@ function wire() {
   }
   $("btn-add-song").addEventListener("click", openAddSong);
   $("btn-prepare-songs").addEventListener("click", () => prepareAllSongs());
+  $("btn-new-mashup").addEventListener("click", () => newMashup());
   $("parts-queue-stop").addEventListener("click", () => { partsLine.stopped = true; partsLine.queue = []; partsLine.stop?.(); showPartsLine("Stopping…"); });
   $("btn-add-sample").addEventListener("click", () => $("sample-upload").click());
   $("btn-new-sample-folder").addEventListener("click", () => newFolder("samples"));

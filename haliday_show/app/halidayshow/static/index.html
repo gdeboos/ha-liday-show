@@ -579,6 +579,8 @@
     </div>
     <div id="music-clip" class="group music-section" hidden>
       <span id="music-clip-what" class="hint"></span>
+      <span id="music-clip-fit" class="music-clip-fit" hidden><span id="music-clip-fit-text" class="hint"></span>
+        <button id="music-clip-match" type="button" title="Play this layer at the song's tempo and in its key">Match tempo and key</button></span>
       <label id="music-clip-part-label" title="Play the whole song, or just one of its parts" hidden>Use <select id="music-clip-part"></select></label>
       <label title="How loud this clip is, on top of its layer's Volume">Volume <input id="music-clip-gain" type="number" min="-24" max="12" step="0.5"> dB</label>
       <label title="This clip's own tempo, for a layer set to Match tempo. It's found when the clip is added; type it if it's wrong">Tempo <input id="music-clip-bpm" type="number" min="20" max="400" step="0.1" placeholder="–"> BPM</label>
@@ -799,6 +801,7 @@
     </div>
     <div id="songs-page-list" class="show-list"></div>
     <p class="group"><button type="button" class="primary" id="btn-add-song">+ Add a song</button>
+      <button type="button" id="btn-new-mashup" title="One song's singing over another's music: a draft in the Music editor, matched and lined up">✨ New mashup…</button>
       <button type="button" id="btn-prepare-songs" title="Split every song that isn't split yet into its parts (vocals, drums, bass and the rest), one after another, in this browser">Split all songs into parts</button>
       <button type="button" id="btn-new-folder" title="A folder to sort your songs into; the files stay where they are">+ New folder</button></p>
     <details id="songs-archived" class="archived" hidden>

@@ -12,6 +12,7 @@ import { evenOut, loudness } from "./loudness.js";
 import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, keepLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
+import { lineUpOnBar, mashFit } from "./mashfit.js";
 import { GAIN_MAX, GAIN_MIN, MUTE, SONG_PARTS, addPart, changesIn, emptyParts, partChanged, partLevel, partsActive, setChange } from "./songparts.js";
 import { PARTS, savePart, splitVocals } from "./splitvocals.js";
 import { drumHits } from "./drumhits.js";
@@ -513,6 +514,8 @@ export const PART_LOOK = { vocals: ["Vocals", "#8e5cd9"], drums: ["Drums", "#d84
   rest: ["Rest", "#2e9e6b"], music: ["Music", "#c17d11"] };
 // The song a clip's audio is from: its song for a part of one, else itself.
 const songOfClip = (ref) => partOfPath.get(ref.path)?.of || ref;
+// The info key of a clip's song (its song's, for a part of one).
+const infoKeyOf = (ref) => keyOf(songOfClip(ref));
 // A clip's label: "Vocals · Carol" for a part of a song, else the song's or sample's name.
 function clipLabel(ref) {
   const p = partOfPath.get(ref.path);
@@ -1134,7 +1137,7 @@ export class MusicEditor {
 
   // A sample's or song's key: from its detected info, else from its audio (the part the clip plays).
   keyOfSong(ref, clip = null) {
-    const k = keyOf(ref), info = this.infos[k];
+    const k = keyOf(ref), info = this.infos[k] || this.infos[infoKeyOf(ref)]; // a part's key is its song's
     if (info?.key) return info.key;
     const audio = this.sources[k], rate = this.audio.sampleRate;
     if (!audio) return null;
@@ -1186,7 +1189,7 @@ export class MusicEditor {
   // A sample's or song's own tempo: from its detected beats, else (if it's long enough to have a few)
   // by listening to it. null if there's no steady beat.
   async tempoOf(ref) {
-    const key = keyOf(ref), info = await this.loadInfo(ref);
+    const key = keyOf(ref), info = (await this.loadInfo(songOfClip(ref))) || (await this.loadInfo(ref)); // a part's is its song's
     if (info?.tempo) return Math.round(info.tempo * 10) / 10;
     const audio = this.sources[key], rate = this.audio.sampleRate;
     if (!audio || audio[0].length < rate * 3) return null;
@@ -1323,12 +1326,19 @@ export class MusicEditor {
     // Anything past the song's end wouldn't be heard, and its end couldn't be reached to trim it.
     const speed = clipSpeed(this.layers[i], { bpm }, this.songTempo), room = (this.total - this.time) * speed;
     const end = Math.round(Math.min(whole, room) * 1000) / 1000;
-    const clip = { song: ref, start: 0, end, anchor: at, gain, fadeIn: 0, fadeOut: 0, ...(bpm ? { bpm } : {}) };
+    let clip = { song: ref, start: 0, end, anchor: at, gain, fadeIn: 0, fadeOut: 0, ...(bpm ? { bpm } : {}) };
+    // Its first bar on the song's nearest bar, where both have been detected.
+    const bars = (await this.loadInfo(songOfClip(ref)))?.bars, songBars = this.shown?.bars;
+    let lined = false;
+    if (bars?.length && songBars?.length) {
+      const t = lineUpOnBar(this.time, clip, speed, bars, songBars), pin = anchorAt(this.pieces, this.crossfade, t, this.refs);
+      if (pin && Math.abs(t - this.time) > 0.005) { clip = { ...clip, anchor: pin }; lined = true; }
+    }
     // On a layer matching the song's key, its own key, so it can be moved to fit.
     if (this.layers[i].matchKey) { this.findSongKey(); const k = this.keyOfSong(ref, clip); if (k) clip.key = k; }
     const layers = this.layers.map((l, k) => (k === i ? { ...l, clips: [...l.clips, clip] } : l));
     this.editLayers(layers, { layer: i, clip: layers[i].clips.length - 1 });
-    this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} at ${fmtTime(this.time)}${end < whole - 0.01 ? ", trimmed to the song's end" : ""}. Drag it to move it, or its ends to trim it`);
+    this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} at ${fmtTime(this.time)}${lined ? ", lined up on the bar" : ""}${end < whole - 0.01 ? ", trimmed to the song's end" : ""}. Drag it to move it (it lines up on the bars; hold Alt to place it freely), or its ends to trim it`);
   }
 
   // The lane (layer index) at canvas y, or -1.
@@ -1558,6 +1568,18 @@ export class MusicEditor {
       + (at ? `, at ${fmtTime(at.at)} for ${at.length.toFixed(2)} s` : " (on a part that's cut out)")
       + (at && at.speed !== 1 ? `, ${at.speed > 1 ? "sped up" : "slowed down"} ${(Math.abs(at.speed - 1) * 100).toFixed(1)}% to match the song` : "")
       + (this.sources[keyOf(c.song)] ? "" : ". It's not in your samples or songs any more, so it's silent: delete it, or add it back to Library → Samples");
+    // Another song's tempo and key beside this one's, and both matched in one go.
+    const theirs = this.infos[infoKeyOf(c.song)], mine = { tempo: this.songTempo, key: this.songKey };
+    const L = this.layers[sel.layer], other = infoKeyOf(c.song) !== (this.base && keyOf(this.base));
+    const fitBox = $("music-clip-fit");
+    fitBox.hidden = !(other && theirs && (theirs.tempo || theirs.key) && (mine.tempo || mine.key));
+    if (!fitBox.hidden) {
+      const f = mashFit(theirs, mine), both = L.matchTempo && L.matchKey;
+      $("music-clip-fit-text").textContent = `Its song: ${[theirs.tempo && `${Math.round(theirs.tempo)} BPM`, theirs.key].filter(Boolean).join(", ")}. `
+        + `This song: ${[mine.tempo && `${Math.round(mine.tempo)} BPM`, mine.key].filter(Boolean).join(", ")}. `
+        + (both ? "This layer matches both." : `To fit: ${f.tempo}, ${f.key}.`);
+      $("music-clip-match").hidden = both;
+    }
     // Which of its song's parts it plays (a song split into parts): change it here, without adding it again.
     const from = songOfClip(c.song), parts = this.host.songs().find((x) => x.source === from.source && x.path === from.path)?.parts || {};
     const partSel = $("music-clip-part");
@@ -1689,6 +1711,47 @@ export class MusicEditor {
 
   layerCtx() { return { pieces: this.pieces, crossfade: this.crossfade, refs: this.refs, tempo: this.songTempo }; }
 
+  // New mashup (app.js): the open song becomes the music, with its own vocals muted, and another song's
+  // vocals go on a layer of their own, matched to its tempo and key, starting at `at` (the song's
+  // seconds) from `from` in theirs, their first bar on its nearest bar. vocals: the singing song's
+  // vocals part; sing: {name, tempo, key}.
+  // Resolves true once it's made, else false (having said why).
+  async makeMashup({ vocals, sing, at = 0, from = 0, matchTempo = true, matchKey = true, lineUp = true }) {
+    const fail = (why) => { this.host.status(`Couldn't make the mashup: ${why}`, true); return false; };
+    if (!this.base || !this.pieces.length) return fail("the music song didn't open");
+    if (this.layers.length >= MAX_LAYERS) return fail(`a draft can have up to ${MAX_LAYERS} layers`);
+    let key;
+    try { key = await this.source(vocals); } catch (e) { return fail(songLoadMessage(e)); }
+    const rate = this.audio.sampleRate, whole = this.sources[key][0].length / rate;
+    const layer = { name: `${sing.name} vocals`.slice(0, 40), gain: 0, clips: [],
+      ...(matchTempo && this.songTempo && sing.tempo ? { matchTempo: true } : {}), ...(matchKey && sing.key ? { matchKey: true } : {}) };
+    const speed = clipSpeed(layer, { bpm: sing.tempo }, this.songTempo);
+    const start = Math.max(0, Math.min(from, whole - 1));
+    let t = Math.max(0, Math.min(at, this.total - 0.5));
+    const bars = (await this.loadInfo(songOfClip(vocals)))?.bars;
+    if (lineUp && bars?.length && this.shown?.bars?.length) t = Math.min(this.total - 0.5, lineUpOnBar(t, { start, end: whole }, speed, bars, this.shown.bars));
+    const end = Math.round(Math.min(whole, start + (this.total - t) * speed) * 1000) / 1000; // to the song's end, no further
+    const anchor = anchorAt(this.pieces, this.crossfade, t, this.refs);
+    if (!anchor) return fail("there's no song where the singing would start");
+    this.songLufs ??= loudness(this.main, rate);
+    const clip = { song: vocals, start, end, anchor, gain: Math.min(6, Math.max(-12, matchGain(this.songLufs, loudness(this.sources[key], rate)) + 6)), // as loud as the song's own singing, about
+      fadeIn: 0.05, fadeOut: 1, ...(sing.tempo ? { bpm: Math.round(sing.tempo * 10) / 10 } : {}), ...(sing.key ? { key: sing.key } : {}) };
+    if (matchKey) this.findSongKey();
+    // One Undo step: its own vocals muted, and the other song's on a new layer.
+    this.history.push(this.snapshot());
+    this.future = [];
+    this.parts = { ...this.parts, muted: [...new Set([...this.parts.muted, "vocals"])] };
+    this.layers = [...this.layers, { ...layer, clips: [clip] }];
+    this.clipSel = { layer: this.layers.length - 1, clip: 0 };
+    this.time = t;
+    $("music-name").value = `${nameOf(this.base).replace(/\.[^.]+$/, "")} + ${sing.name}`.slice(0, 60);
+    this.keepOpenRows();
+    this.changed();
+    this.draftChanged();
+    this.host.status(`Mashup ready: ${sing.name}'s vocals over ${nameOf(this.base).replace(/\.[^.]+$/, "")}, its own vocals muted. Press Play, then fine-tune it`, "saved");
+    return true;
+  }
+
   // A layer's ⋯ menu: add a clip at the playhead, rename, remove.
   layerMenu(i, anchor) {
     document.querySelector(".mixer-menu")?.remove();
@@ -1752,6 +1815,13 @@ export class MusicEditor {
       if (at) { this.time = Math.max(0, at.at - 1); this.play(this.time, Math.min(this.total, at.at + at.length + 1)); }
     });
     $("music-clip-delete").addEventListener("click", () => this.deleteClip());
+    $("music-clip-match").addEventListener("click", async () => {
+      const sel = this.clipSel;
+      if (!sel) return;
+      if (!this.layers[sel.layer].matchTempo) await this.setMatchTempo(sel.layer, true);
+      if (!this.layers[sel.layer].matchKey) this.setKey(sel.layer, "match");
+      this.host.status(`${this.layers[sel.layer].name} now matches the song's tempo and key`, "saved");
+    });
     $("music-clip-part").addEventListener("change", async (e) => {
       const sel = this.clipSel, c = sel && this.layers[sel.layer]?.clips[sel.clip];
       if (!c) return;
@@ -3449,7 +3519,10 @@ export class MusicEditor {
       const { clip, orig } = d, rate = this.audio.sampleRate, len = this.sources[keyOf(orig.song)]?.[0].length / rate || orig.end;
       let next = orig;
       if (clip.part === "body") {
-        const at = this.snap(clip.at + (raw - d.t0), e);
+        // Its first bar lands on the song's nearest bar (Shift or Alt: anywhere, as it's dragged).
+        const free = clip.at + (raw - d.t0), bars = this.infos[infoKeyOf(orig.song)]?.bars, songBars = this.shown?.bars;
+        const at = bars?.length && songBars?.length && !e.shiftKey && !e.altKey
+          ? lineUpOnBar(free, orig, clip.speed || 1, bars, songBars) : this.snap(free, e);
         const anchor = anchorAt(this.pieces, this.crossfade, Math.max(0, at), this.refs);
         if (anchor) next = { ...orig, anchor };
       } else if (clip.part === "start") {
