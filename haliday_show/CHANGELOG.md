@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.380
+
+- **See what a Singing face follows.** Select a **Singing face** clip and its settings now say what the mouth follows: the vocals from **Split vocals**, the voice range of the song, or nothing yet (with why). **Measure again** measures the singer afresh, handy right after you split a song's vocals.
+
 ## 0.2.379
 
 - **▶ Preview** in **Library → Shows** now shows visitors' phones beside your house, as the House panel does in the Show editor: what their screens show as the show plays. It appears when phones join the show or it has a **Phones** lane.
