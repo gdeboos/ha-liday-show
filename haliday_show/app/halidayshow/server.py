@@ -1822,7 +1822,42 @@ def _clean_picture(body) -> dict:
             raise web.HTTPBadRequest(text="each frame must be the picture's size")
     if not all(isinstance(d, int) and not isinstance(d, bool) and 20 <= d <= 10000 for d in delays):
         raise web.HTTPBadRequest(text="each frame shows for 20 to 10000 ms")
-    return {"name": name, "w": w, "h": h, "frames": frames, "delays": delays}
+    out = {"name": name, "w": w, "h": h, "frames": frames, "delays": delays}
+    if body.get("phone") is not None:
+        out["phone"] = _clean_phone_copy(body["phone"])
+    return out
+
+
+PHONE_COPY_SIDE = 256          # as pictures.js PHONE_SIDE
+PHONE_COPY_BYTES = 3_200_000   # its frames together, as base64 (pictures.js PHONE_BYTES, with room)
+
+
+def _clean_phone_copy(phone) -> dict:
+    """A picture's sharper copy for visitors' phones: {w, h, frames: [base64 WebP or PNG], delays: [ms]}."""
+    if not isinstance(phone, dict):
+        raise web.HTTPBadRequest(text="a picture's phone copy is a picture")
+    try:
+        w, h = int(phone.get("w")), int(phone.get("h"))
+    except (TypeError, ValueError):
+        raise web.HTTPBadRequest(text="a phone copy's width and height must be numbers")
+    if not (1 <= w <= PHONE_COPY_SIDE and 1 <= h <= PHONE_COPY_SIDE):
+        raise web.HTTPBadRequest(text=f"a phone copy is at most {PHONE_COPY_SIDE} dots each way")
+    frames, delays = phone.get("frames"), phone.get("delays")
+    if not isinstance(frames, list) or not isinstance(delays, list) or not 1 <= len(frames) <= MAX_PICTURE_FRAMES \
+            or len(delays) != len(frames):
+        raise web.HTTPBadRequest(text=f"a phone copy has 1 to {MAX_PICTURE_FRAMES} frames, each with a delay")
+    if sum(len(f) for f in frames if isinstance(f, str)) > PHONE_COPY_BYTES:
+        raise web.HTTPBadRequest(text="a phone copy is too big")
+    for f in frames:
+        try:
+            data = base64.b64decode(f, validate=True) if isinstance(f, str) else b""
+        except (binascii.Error, ValueError):
+            data = b""
+        if not (data.startswith(b"\x89PNG\r\n\x1a\n") or (data[:4] == b"RIFF" and data[8:12] == b"WEBP")):
+            raise web.HTTPBadRequest(text="each frame of a phone copy is a PNG or WebP image")
+    if not all(isinstance(d, int) and not isinstance(d, bool) and 20 <= d <= 10000 for d in delays):
+        raise web.HTTPBadRequest(text="each frame shows for 20 to 10000 ms")
+    return {"w": w, "h": h, "frames": frames, "delays": delays}
 
 
 async def list_pictures(request):
@@ -1838,10 +1873,19 @@ async def create_picture(request):
 
 
 async def get_picture(request):
+    """The picture as matrices use it (its phone copy, if any, from /phone)."""
     picture = await asyncio.to_thread(request.app[STORAGE].load_picture, _picture_id(request))
     if picture is None:
         raise web.HTTPNotFound()
+    picture = {k: v for k, v in picture.items() if k != "phone"}
     return web.json_response(picture)
+
+
+async def get_picture_phone(request):
+    picture = await asyncio.to_thread(request.app[STORAGE].load_picture, _picture_id(request))
+    if picture is None or not isinstance(picture.get("phone"), dict):
+        raise web.HTTPNotFound()
+    return web.json_response(picture["phone"])
 
 
 async def rename_picture(request):
@@ -3427,6 +3471,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/pictures/{id}", get_picture)
     r.add_post("/api/pictures/{id}/rename", rename_picture)
     r.add_delete("/api/pictures/{id}", delete_picture)
+    r.add_get("/api/pictures/{id}/phone", get_picture_phone)
     r.add_get("/api/faces", list_faces)
     r.add_post("/api/faces", create_face)
     r.add_put("/api/faces/{id}", put_face)

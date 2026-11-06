@@ -485,7 +485,7 @@ class Storage:
                     or not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in d["delays"]):
                 continue
             out.append({"id": p.stem, "name": d.get("name", p.stem), "w": d.get("w"), "h": d.get("h"),
-                        "frames": len(d["delays"]), "ms": sum(d["delays"])})
+                        "frames": len(d["delays"]), "ms": sum(d["delays"]), "phone": isinstance(d.get("phone"), dict)})
         return sorted(out, key=lambda d: str(d["name"]).lower())
 
     def load_picture(self, picture_id: str) -> dict | None:

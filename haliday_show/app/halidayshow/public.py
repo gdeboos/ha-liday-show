@@ -1400,6 +1400,9 @@ def phone_lane(storage: Storage, show: dict) -> dict | None:
         pid = c.get("picture") if c.get("effect") == "picture" else None
         if isinstance(pid, str) and valid_id(pid) and pid not in pictures and len(pictures) < MAX_PHONE_PICTURES:
             pic = storage.load_picture(pid)
+            # Its sharper phone copy, when it has one, instead of the matrix-sized frames.
+            if isinstance(pic, dict) and isinstance(pic.get("phone"), dict):
+                pic = {"name": pic.get("name", ""), "phone": pic["phone"]}
             # One that would go over the limit shows its clip's background instead, as a missing one does.
             bytes_ = len(json.dumps(pic)) if pic else 0
             if pic and size + bytes_ <= MAX_PHONE_PICTURE_BYTES:

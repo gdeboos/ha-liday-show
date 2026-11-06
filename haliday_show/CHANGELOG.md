@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.401
+
+- **Sharper pictures and GIFs on phones.** When you add a picture under **Library → Pictures**, a sharper copy is now kept for visitors' phones. A **Picture** on the **Phones** lane is drawn four times finer than before, so photos, logos and GIFs look smooth rather than blocky. Your matrices still use the usual copy.
+- Pictures you added before don't have the sharper copy: delete and add them again to get it. Their rows say **sharp on phones** once they have it.
+
 ## 0.2.400
 
 - **Lyrics are enough for a Singing face.** With lyrics placed, the mouth now sings every word even if you haven't split the vocals, including quieter parts of the song. The note under **Mouth** says it mouths the lyrics, and no longer suggests splitting the vocals. Press **Save** on a show to update what's on your lights and phones.
