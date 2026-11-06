@@ -325,7 +325,7 @@ label { display: inline-flex; align-items: center; gap: 4px; }
   padding: 6px 12px 10px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; align-self: stretch; }
 .insp-group label > span { display: inline-flex; align-items: center; gap: 6px; }
 .insp-group legend { padding: 0 4px; }
-.insp-group .palette-row { width: auto; flex-basis: 100%; }
+.insp-group .palette-row { width: auto; flex-basis: 100%; min-width: 0; }
 .insp-actions { display: flex; gap: 8px; width: 100%; }
 
 .music-card { display: flex; flex-direction: column; gap: 10px; }
@@ -418,7 +418,7 @@ details.archived > .hint { margin: 6px 0; }
 .lab-log { max-height: 320px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
 
 h2 { font-size: 15px; margin: 6px 0 0; }
-.palette-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; width: 100%; }
+.palette-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; width: 100%; min-width: 0; }
 .swatches { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .swatch { display: inline-block; width: 26px; height: 26px; padding: 0; border-radius: 6px;
   border: 1px solid var(--line); }
@@ -685,7 +685,9 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .palette-none { background: repeating-linear-gradient(45deg, var(--line) 0 4px, transparent 4px 8px); }
 .palette-button { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; }
 .palette-bar-small { display: inline-flex; width: 72px; height: 16px; flex: none; }
-.palette-label { display: inline-flex; align-items: center; gap: 6px; }
+.palette-label { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
+/* In a narrow panel the palette's name shortens ("Woodland sl…") rather than run out of the box. */
+.palette-label > .palette-button { min-width: 0; flex: 0 1 auto; }
 .insp-trans { display: inline-flex; gap: 6px; align-items: center; }
 .insp-trans input { width: 5em; }
 .effect-dialog-kind { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 4px; }
