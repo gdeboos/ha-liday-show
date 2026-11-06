@@ -98,6 +98,10 @@ songs. They're saved with your settings, so they're in **Export…** too.
   you play them, but they aren't offered on the public page and visitors don't see them, even inside a
   playlist, so you can take one back to work on it without losing its place there. Shows you made before
   this existed count as finished.
+- **On phones**: while **Let visitors' phones join the show** is on (under **Public page → Listening**), a
+  show that visitors' phones follow has an **On phones** badge. A show you've taken off phones (untick
+  **Phones join this show** in **⚙ Show settings… → Visitors' phones**) doesn't. Hover over the badge to
+  see whether it has its own **Phones** lane or phones just show your lights' colour.
 - **Duplicate** makes a copy called "… copy", ready to play straight away. The copy starts in progress.
 - **Rename** lets you type a new name in the list; press Enter to keep it, or Escape to put it back.
   Each show needs its own name. An automation that starts the show by its name needs the new name.

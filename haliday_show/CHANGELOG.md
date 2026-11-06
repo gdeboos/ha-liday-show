@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.2.389
+## 0.2.390
 
 - **Tap along is clearer.** In **Lyrics…**, the button now says which line it's waiting for (**Line 1 starts**, **Line 2 starts**…), so your first press marks the first line, not the second. **Done** now stays shown once you've tapped the last line.
+
+## 0.2.389
+
+- **Library → Shows** marks the shows visitors' phones follow with an **On phones** badge, while phones are allowed to join under **Public page → Listening**. Shows you've taken off phones (in **⚙ Show settings… → Visitors' phones**) don't have it.
 
 ## 0.2.388
 
