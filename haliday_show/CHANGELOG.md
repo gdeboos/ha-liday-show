@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.392
+
+- **Cards in the Library.** **Shows**, **Scenes**, **Pictures** and **Palettes** now show as cards: a show's cover art or picture big across the top, a scene's or palette's colours as a wide strip, each picture large. **Cards** and **List** at the top right of each switch back to rows if you prefer, remembered for each one. **Songs**, **Samples**, **Playlists** and **Presets** stay as rows.
+
 ## 0.2.391
 
 - **Make your own Singing faces.** **Library → Faces** lists every Singing face character. Press **+ New face** to open the face maker and build one from parts: a head shape, eyes, nose, mouth, cheeks, a hat (or antlers, ears or a star) and extras such as a beard, whiskers or a scarf, each in your own colours. The preview sings and blinks as you go, big and as a phone shows it.
