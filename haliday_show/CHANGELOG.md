@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.425
+
+- **Snap to the drums.** In the Music editor, selections now snap to the song's kicks and snares as well as its beats, so you can cut or repeat right on a drum hit (zoom in to feel it; hold Shift to place them freely). While you're editing a layer on its own, they snap to the drums of its clips' songs.
+
 ## 0.2.424
 
 - **Edits get their parts from their original by themselves.** Once a song is split, its edits have their parts cut from it in seconds whenever **Library → Songs** is open, so you don't need to split them. An edit's **⋯** says **Get parts from the original** to do it there and then.

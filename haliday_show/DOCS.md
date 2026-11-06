@@ -1113,7 +1113,8 @@ precision. **⏮** goes back to the start, and **⏪** and **⏩** go back or on
 is detected), carrying on playing if it was. The 🔊 slider by the clock sets how loud it plays in your browser. Once the song is detected, selection edges snap to bars
 (hold Shift to place them freely), clicking a section in the lane selects exactly its stretch (Shift-click
 adds the next), and **Preview cut** plays the join before you cut, with the playhead jumping over the selection as the cut would. Beats and sections follow your edits
-and are kept when you make the song file. Edit the song before placing clips, because cutting it
+and are kept when you make the song file. Zoomed in, edges also snap to beats, and to the kicks and snares
+of a song that's been split into parts. Edit the song before placing clips, because cutting it
 afterwards won't move them.
 
 Each join shows as a dashed line with a **✂** at the top. Click the **✂** to hear a few seconds either
@@ -1201,7 +1202,7 @@ and sections where its clips play them (a clip of a song's vocals shows that son
 says **Editing layer Choir**, its lane is outlined and its Mixer row says **Editing**. Now:
 
 - Drag across the waveform, or click a section, to select a stretch of the layer. Selections snap to its
-  own bars and beats.
+  own bars and beats, and to the kicks and snares of its clips' songs.
 - **Cut** asks **Cut and close up** (the rest of the layer moves earlier to fill the gap, crossfaded at
   the join) or **Cut and leave a gap** (the layer is silent there). Either way the song and the other
   layers don't move.
