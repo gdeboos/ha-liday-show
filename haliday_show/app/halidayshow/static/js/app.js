@@ -8436,7 +8436,7 @@ let songRowsCache = [], songsMore = false, songsAsked = 0;
 // Songs split into parts one after another, in the background (splitvocals.js makeParts): each song as
 // it's added, and every song not yet split from Split all songs into parts. Only while this page is
 // open; anything not done is picked up next time Split all is pressed.
-const partsLine = { queue: [], now: null, stop: null, stopped: false, done: 0, failed: 0, listened: 0 };
+const partsLine = { queue: [], now: null, stop: null, stopped: false, done: 0, cut: 0, failed: 0, listened: 0 };
 
 // The draft a song file was made from, as makeParts takes it, so its parts can be cut from its original's.
 async function editFor(ref) {
@@ -8452,10 +8452,32 @@ async function editFor(ref) {
     pieces: draft.pieces.map((p) => ({ src: key(p.song), start: p.start, end: p.end })) };
 }
 
+// Song files made from a draft (edits) and the song each was made from, by "source:path".
+function editBases(drafts) {
+  const m = new Map();
+  for (const d of drafts || []) if (d.made && d.base) m.set(songKey(d.made), d.base);
+  return m;
+}
+const songNamed = (ref) => (app.songs || []).find((s) => s.source === ref.source && s.path === ref.path);
+
+// Edits without parts whose original has them get theirs cut from the original's (seconds each, no AI),
+// without being asked, as they're only the original cut up. Each is tried once a visit.
+const cutTried = new Set();
+function cutEdits(drafts) {
+  const refs = [];
+  for (const [key, base] of editBases(drafts)) {
+    const edit = (app.songs || []).find((s) => songKey(s) === key), original = songNamed(base);
+    if (!edit || prepared(edit.parts) || !original || !prepared(original.parts) || cutTried.has(key)) continue;
+    cutTried.add(key);
+    refs.push({ source: edit.source, path: edit.path, cutOnly: true });
+  }
+  if (refs.length) prepareParts(refs);
+}
+
 // Adds songs to the line (first: to its front), and starts it if it isn't going.
 function prepareParts(refs, { first = false } = {}) {
   // A song only being listened to (its parts left for later) is a different job from splitting it.
-  const key = (r) => `${r.source}:${r.path}${r.listenOnly ? ":listen" : ""}`, now = partsLine.now && key(partsLine.now);
+  const key = (r) => `${r.source}:${r.path}${r.listenOnly ? ":listen" : r.cutOnly ? ":cut" : ""}`, now = partsLine.now && key(partsLine.now);
   const fresh = refs.filter((r) => key(r) !== now && !partsLine.queue.some((x) => key(x) === key(r)));
   partsLine.queue = first ? [...fresh, ...partsLine.queue.filter((x) => !fresh.some((r) => key(r) === key(x)))] : [...partsLine.queue, ...fresh];
   showPartsLine();
@@ -8469,15 +8491,19 @@ async function runPartsLine() {
   let lastError = "";
   while (partsLine.queue.length && !partsLine.stopped) {
     const ref = partsLine.now = partsLine.queue.shift();
+    let justSplit = false;
     partsLine.stop = null;
-    showPartsLine(`Getting ready to ${ref.listenOnly ? "listen to" : "split"} ${songLabel(ref)}…`, null);
+    showPartsLine(`Getting ready to ${ref.listenOnly ? "listen to" : ref.cutOnly ? "cut the parts of" : "split"} ${songLabel(ref)}…`, null);
     try {
       const edit = await editFor(ref).catch(() => null);
       if (partsLine.stopped) break;
-      const out = await makeParts({ source: ref.source, path: ref.path }, api, { edit, listenOnly: !!ref.listenOnly, say: (text, done) => showPartsLine(text, done),
+      if (ref.cutOnly && !edit) { await refresh(); continue; } // layered or spliced: only Split into parts does it
+      const out = await makeParts({ source: ref.source, path: ref.path }, api, { edit, listenOnly: !!ref.listenOnly, cutOnly: !!ref.cutOnly, say: (text, done) => showPartsLine(text, done),
         started: (stop) => { partsLine.stop = stop; if (partsLine.stopped) stop(); } });
-      if (out.made) partsLine.done++;
+      if (out.cut) partsLine.cut++;
+      else if (out.made) partsLine.done++;
       else if (out.listened) partsLine.listened++;
+      justSplit = out.made && !out.cut;
     } catch (e) {
       if (e.cancelled) break;
       partsLine.failed++;
@@ -8485,12 +8511,15 @@ async function runPartsLine() {
       status(lastError, true, "parts");
     }
     await refresh();
+    // An original just split: its edits can now have their parts cut from it.
+    if (justSplit) cutEdits(await api("api/drafts").catch(() => []));
   }
-  const { done, failed, stopped, listened } = partsLine;
-  Object.assign(partsLine, { now: null, stop: null, done: 0, failed: 0, listened: 0, queue: stopped ? [] : partsLine.queue });
+  const { done, cut, failed, stopped, listened } = partsLine;
+  Object.assign(partsLine, { now: null, stop: null, done: 0, cut: 0, failed: 0, listened: 0, queue: stopped ? [] : partsLine.queue });
   if (stopped) await refresh();
   showPartsLine();
   const said = [done && `Split ${done} song${done === 1 ? "" : "s"} into parts`,
+    cut && `cut ${cut} edit${cut === 1 ? "'s" : "s'"} parts from ${cut === 1 ? "its original" : "their originals"}`,
     listened && `listened to ${listened} song${listened === 1 ? "" : "s"} for the sounds in ${listened === 1 ? "it" : "them"}`, failed && `${failed} couldn't be split (${lastError})`,
     stopped && "stopped: any part already made is kept"].filter(Boolean).join("; ");
   if (said) status(said, failed ? true : stopped ? "hint" : "saved", "parts");
@@ -8512,16 +8541,23 @@ function showPartsLine(text = "", done = null) {
 // Split all songs into parts: every song not split yet (edits of split songs have theirs cut in seconds).
 async function prepareAllSongs() {
   await refreshAudio().catch(() => {});
+  const bases = editBases(await api("api/drafts").catch(() => songDrafts));
   // Not old splits that couldn't be matched to their song ("… (vocals)"): they're parts already.
   const todo = (app.songs || []).filter((s) => (!prepared(s.parts) || !s.sounds) && !/ \((vocals|music)\)\.wav$/i.test(s.path));
   if (!todo.length) { status("Every song is split into parts already", "saved", "parts"); return; }
-  // Songs split before they were listened to for their sounds only need listening to: seconds each.
-  const split = todo.filter((s) => !prepared(s.parts)).length;
-  if (!split) { prepareParts(todo.map((s) => ({ source: s.source, path: s.path }))); return; }
-  if (!(await askYes(`Split ${split} song${split === 1 ? "" : "s"} into parts (vocals, drums, bass and the rest), one after another? `
-    + "It runs in this browser, so keep this page open: it takes a few minutes a song (an edit of a song that's split takes "
-    + "seconds). You can carry on using HA-liday Show meanwhile, and Stop whenever you like; what's done is kept.", { yes: "Split them" }))) return;
-  prepareParts(todo.map((s) => ({ source: s.source, path: s.path })));
+  // Edits come after the originals, so theirs are cut from the originals' in seconds rather than split.
+  const isEdit = (s) => bases.has(songKey(s));
+  const originals = todo.filter((s) => !isEdit(s)), edits = todo.filter(isEdit);
+  const split = originals.filter((s) => !prepared(s.parts)).length, cut = edits.filter((s) => !prepared(s.parts)).length;
+  const queue = [...originals, ...edits].map((s) => ({ source: s.source, path: s.path }));
+  // Only listening, or only edits to cut: seconds each, so no need to ask.
+  if (!split) { prepareParts(queue); return; }
+  const s1 = split === 1 ? "" : "s";
+  if (!(await askYes(`Split ${split} song${s1} into parts (vocals, drums, bass and the rest), one after another? `
+    + "It runs in this browser, so keep this page open: it takes a few minutes a song. "
+    + (cut ? `Then ${cut} edit${cut === 1 ? " gets its" : "s get their"} parts cut from ${cut === 1 ? "its original" : "their originals"}, in seconds each. ` : "")
+    + "You can carry on using HA-liday Show meanwhile, and Stop whenever you like; what's done is kept.", { yes: "Split them" }))) return;
+  prepareParts(queue);
 }
 
 async function renderSongsPage() {
@@ -8537,6 +8573,7 @@ async function renderSongsPage() {
     songRowsCache = songRows(list.songs, shows);
     songDrafts = drafts;
     songsMore = list.more;
+    cutEdits(drafts);
   } catch (e) { status(`Couldn't list your songs: ${e.message}`, true, "songs"); return; }
   status("", "info", "songs");
   drawSongRows();
@@ -8831,7 +8868,13 @@ function songKid(kind, icon, name, badge, lines, actions, song = null) {
 // the original's in seconds, rather than the AI splitting the edit as well.
 function splitButton(r, base = null) {
   const again = prepared(r.parts);
-  const original = !again && base && (app.songs || []).find((s) => s.source === base.source && s.path === base.path);
+  const original = !again && base && songNamed(base);
+  if (original && prepared(original.parts)) {
+    const get = button("Get parts from the original", () => prepareParts([r.ref], { first: true }), "ghost");
+    get.setAttribute("aria-label", `Cut ${r.name}'s parts from its original song's`);
+    get.title = "Cuts this edit's parts from its original song's, in seconds. An edit with layers or other songs spliced in is split by the AI instead";
+    return get;
+  }
   if (original && !prepared(original.parts)) {
     const first = button("Split the original into parts…", () => prepareParts([{ source: original.source, path: original.path }, r.ref], { first: true }), "ghost");
     first.setAttribute("aria-label", `Split ${r.name}'s original song into its parts`);

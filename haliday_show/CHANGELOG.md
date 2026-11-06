@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.421
+
+- **Edits get their parts from their original by themselves.** Once a song is split, its edits have their parts cut from it in seconds whenever **Library → Songs** is open, so you don't need to split them. An edit's **⋯** says **Get parts from the original** to do it there and then.
+- **Split all songs into parts counts only the songs that need splitting.** Edits are no longer counted as songs to split: it splits the originals first, then cuts their edits' parts from them in seconds.
+
 ## 0.2.420
 
 - **Find a match.** When you add a clip in the Music editor, **Sort: Best fit first** puts the songs that would fit best over yours at the top, each with **Great fit**, **Good fit**, **Fits with a change** or **Big change** and why ("4 BPM faster · C major, fits A minor").

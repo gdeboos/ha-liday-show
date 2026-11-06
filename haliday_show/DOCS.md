@@ -991,9 +991,12 @@ before 0.2.412 has parts without them: open its draft and press **Make song file
 in seconds. Anything not done when you close
 the page is picked up next time you press it.
 
-An edit doesn't need splitting on its own: it gets its parts from its original song. So while the
-original isn't split yet, an edit's **⋯** offers **Split the original into parts…** instead, which
-splits the original and then cuts the edit's parts from it in seconds.
+An edit doesn't need splitting on its own: it gets its parts from its original song. Once the
+original is split, its edits get their parts cut from it automatically, in seconds, whenever
+**Library → Songs** is open (an edit with layers or other songs spliced in is the exception: use its
+**⋯ → Split into parts…**). An edit's **⋯** says **Get parts from the original** to do it straight away,
+or **Split the original into parts…** while the original isn't split yet. **Split all songs into
+parts** counts only the songs that need the AI, splits them first, then cuts their edits' parts.
 
 A song you split before (with Split vocals) has its vocals already: **Split into parts…** keeps them
 and only finds the drums, bass and rest. Each part is kept as soon as it's ready, so if you stop part
