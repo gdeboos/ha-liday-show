@@ -1,8 +1,17 @@
 # Changelog
 
-## 0.2.374
+## 0.2.376
 
 - **Split vocals works through Home Assistant again.** The AI's download (about 90 MB, the first time) was being cut off part way through Home Assistant, which showed as "network error". HA-liday Show now downloads it once itself, checks it, and hands it to your browser in small pieces, so it gets through. Splitting a song then starts much sooner the second time, until HA-liday Show restarts.
+
+## 0.2.375
+
+- In the **Music editor**, **Splice** now has **Choose song…** instead of a long drop-down list. It opens your songs in their folders, as in **Library → Songs**, with a box to find a song in any folder. Pressing **Insert at playhead** or **Add to end** before choosing opens it too.
+
+## 0.2.374
+
+- **A welcome for first-time visitors.** The first time a phone opens the visitors' page, three short steps explain it: what it's for with the flashing lights warning (now also saying the phone's screen flashes if they join the show), how to pick a song with the actual button they'll press (**Start**, **Queue** or **Vote**) and the rules that apply, and **Listen** and **Join the show** with buttons that start them there and then. Each phone sees it once; **How this works** at the bottom of the page brings it back. Turn it off with **Welcome first-time visitors** under **Public page → Shows**, and change its words under **Welcome** on the **Words** tab.
+- **Joining the show is quicker after the welcome.** A phone that accepted the warning there goes straight to the colours, without the 3-second warning screen.
 
 ## 0.2.373
 

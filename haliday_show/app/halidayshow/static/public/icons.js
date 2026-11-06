@@ -22,6 +22,7 @@ const ICONS = {
   unlock: [["rect", { x: 5, y: 11, width: 14, height: 9.5, rx: 2 }], ["path", { d: "M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2" }]],
   again: [["path", { d: "M20 12a8 8 0 1 1-2.3-5.6M20 4.5v4h-4" }]],
   phone: [["rect", { x: 7, y: 2.5, width: 10, height: 19, rx: 2 }], ["path", { d: "M11 18.5h2" }]],
+  phone: [["rect", { x: 7, y: 2.5, width: 10, height: 19, rx: 2 }], ["path", { d: "M11 18.5h2" }]],
 };
 
 export const ICON_NAMES = Object.keys(ICONS);

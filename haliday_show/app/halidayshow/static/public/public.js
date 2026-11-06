@@ -133,6 +133,21 @@ export function queueView(st, w, open = false) {
 // Installed as an app (or added to the home screen on an iPhone): the Install button isn't needed.
 export const runningAsApp = (win) => !!(win.matchMedia?.("(display-mode: standalone)").matches || win.navigator?.standalone);
 
+// The first-visit welcome: which steps it has, and the words for picking that match how the page is
+// set up (Start, Queue or Vote), worked out from api/state.
+export function tourPlan(st, w) {
+  const vote = !!st.vote;
+  const word = vote ? "vote_btn" : startWord(st);
+  const text = vote ? "tour_pick_vote" : word === "start" ? "tour_pick_start" : "tour_pick_queue";
+  const rules = [];
+  if (st.hours?.until) rules.push(say_(w, "tour_hours", { time: clockText(st.hours.until.slice(11, 16)) }));
+  if (!vote && !st.admin && st.per_phone === 1) rules.push(say_(w, "tour_one"));
+  else if (!vote && !st.admin && st.per_phone > 1) rules.push(say_(w, "tour_many", { count: st.per_phone }));
+  const listen = !!st.listen, join = !!st.phones;
+  const steps = ["welcome", ...((st.choices || []).length ? ["pick"] : []), ...(listen || join ? ["join"] : [])];
+  return { steps, word, text, rules, listen, join, warning: warningShown(st.look) };
+}
+
 // The icon for each show button's word.
 export const BUTTON_ICON = { start: "play", queue_btn: "plus", queued_btn: "check", playing_btn: "music",
   recent_btn: "clock", late_btn: "clock", vote_btn: "plus", voted_btn: "check" };
@@ -597,6 +612,8 @@ export function start() {
     return fx;
   }
   const JOIN_POLL_MS = 1000, WARN_MS = 3000, FADE_IN_MS = 1000;
+  const JOIN_WARNED_KEY = "halidayshow.joinWarned", TOUR_KEY = "halidayshow.tourSeen";
+  const joinWarned = () => { try { return localStorage.getItem(JOIN_WARNED_KEY) === say_(w, "tour_flash_phone"); } catch { return false; } };
 
   async function joinPoll(gen) {
     if (!join.on || gen !== join.gen) return;
@@ -645,7 +662,7 @@ export function start() {
     if (!join.on) return;
     const t = join.colours ? target(join.samples, performance.now()) : null;
     const shown = performance.now() - join.since;
-    const level = Math.max(0, Math.min(1, (shown - WARN_MS) / FADE_IN_MS));
+    const level = Math.max(0, Math.min(1, (shown - join.warnMs) / FADE_IN_MS));
     const colourOf = (list, at) => {
       const k = Math.floor(at * join.fps);
       return k >= 0 && (k + 1) * 6 <= list.length ? [0, 2, 4].map((i) => parseInt(list.slice(k * 6 + i, k * 6 + i + 2), 16)) : null;
@@ -681,7 +698,7 @@ export function start() {
       box.style.background = "";
       box.style.backgroundColor = rgb;
     }
-    const warning = shown < WARN_MS;
+    const warning = shown < join.warnMs;
     const text = warning ? say_(w, "join_warn") : t === null ? say_(w, "join_waiting") : "";
     if ($("pp-join-text").textContent !== text) $("pp-join-text").textContent = text;
     $("pp-join-text").classList.toggle("pp-join-warning", warning);
@@ -695,6 +712,8 @@ export function start() {
   function joinShow() {
     join.on = true;
     join.since = performance.now();
+    // Told already, in the welcome's warning, that the screen flashes: straight to the colours.
+    join.warnMs = joinWarned() ? 0 : WARN_MS;
     join.gen++;
     join.samples = []; join.key = ""; join.colours = "";
     $("pp-join").classList.toggle("pp-soft", matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -1048,6 +1067,135 @@ export function start() {
     if (p !== null) $("pp-progress-fill").style.width = `${(p * 100).toFixed(1)}%`;
   }
 
+  // The welcome, the first time a phone opens the page (or from How this works at the bottom).
+  let tourAt = -1, tourChecked = false;
+  function maybeTour(st) {
+    $("pp-tour-again").hidden = !st.open || st.look?.tour === false;
+    iconLabel($("pp-tour-again"), "", say_(w, "tour_again"));
+    if (tourChecked || !st.open) return;
+    tourChecked = true;
+    let seen = false;
+    try { seen = localStorage.getItem(TOUR_KEY) === "1"; } catch { /* private browsing: show it */ }
+    if (!preview && st.look?.tour !== false && !seen) openTour();
+  }
+  function openTour() {
+    tourAt = 0;
+    document.body.classList.add("pp-tour-open");
+    drawTour();
+    $("pp-tour").querySelector("h1")?.focus();
+  }
+  function closeTour() {
+    tourAt = -1;
+    $("pp-tour").hidden = true;
+    document.body.classList.remove("pp-tour-open");
+    try { localStorage.setItem(TOUR_KEY, "1"); } catch { /* shown again next time */ }
+    if (last) render(last);
+  }
+  const tourButton = (cls, ico, words, go, after = false) => {
+    const b = iconLabel(el("button", cls), ico, words, after);
+    b.type = "button";
+    b.addEventListener("click", go);
+    return b;
+  };
+  function drawTour() {
+    if (tourAt < 0 || !last) return;
+    const st = last, plan = tourPlan(st, w), step = plan.steps[tourAt];
+    const box = el("div", "pp-tour-in");
+    const top = el("div", "pp-tour-top");
+    const dots = el("div", "pp-tour-dots");
+    dots.setAttribute("aria-label", say_(w, "tour_step", { step: tourAt + 1, count: plan.steps.length }));
+    plan.steps.forEach((_, k) => dots.append(el("span", k === tourAt ? "pp-on" : k < tourAt ? "pp-done" : "")));
+    top.append(dots);
+    const last_ = tourAt === plan.steps.length - 1;
+    const next = () => { if (last_) closeTour(); else { tourAt++; drawTour(); } };
+    // No Skip past the warning: it's the one thing everyone should read.
+    if (!(step === "welcome" && plan.warning)) top.append(tourButton("pp-link-btn pp-tour-skip", "", say_(w, "tour_skip"), closeTour));
+    box.append(top);
+    const head = el("h1", "", "");
+    head.id = "pp-tour-head";
+    head.tabIndex = -1;
+    const foot = el("div", "pp-tour-foot");
+    const row = el("div", "pp-tour-buttons");
+    if (tourAt > 0) row.append(tourButton("", "left", say_(w, "tour_back"), () => { tourAt--; drawTour(); }));
+    if (step === "welcome") {
+      if (!$("pp-picture").hidden && $("pp-picture").src) {
+        const pic = el("img", "pp-tour-picture");
+        pic.src = $("pp-picture").src;
+        pic.alt = "";
+        box.append(pic);
+      }
+      head.textContent = $("pp-title").textContent;
+      box.append(head, el("p", "pp-tour-text", [say_(w, "tour_intro"), plan.listen || plan.join ? say_(w, "tour_intro_more") : ""].filter(Boolean).join(" ")));
+      if (plan.warning) {
+        const warn = el("div", "pp-card pp-tour-warning");
+        warn.append(el("p", "", say_(w, "warning")));
+        if (plan.join) warn.append(el("p", "pp-tour-phone", say_(w, "tour_flash_phone")));
+        box.append(warn);
+      }
+      row.append(tourButton("primary", plan.warning ? "check" : "", say_(w, plan.warning ? "tour_accept" : last_ ? "tour_done" : "tour_next"), () => {
+        if (plan.warning) {
+          acceptedText = say_(w, "warning");
+          try { localStorage.setItem(ACCEPTED_KEY, acceptedText); } catch { /* kept for this visit */ }
+          if (plan.join) try { localStorage.setItem(JOIN_WARNED_KEY, say_(w, "tour_flash_phone")); } catch { /* the usual warning on joining */ }
+        }
+        next();
+      }, !plan.warning));
+      foot.append(row, el("p", "pp-tour-once", say_(w, "tour_once")));
+    } else if (step === "pick") {
+      head.textContent = say_(w, "tour_pick_head");
+      const word = say_(w, plan.word);
+      box.append(head, el("p", "pp-tour-text", say_(w, plan.text, { button: bare(word) })));
+      // One of your own shows, with the button visitors will see.
+      const c = st.choices[0];
+      const eg = el("div", "pp-row pp-tour-example");
+      const art = coverOf(c, st);
+      if (art) eg.append(art);
+      const t = el("div", "pp-text");
+      t.append(el("div", "pp-name", c.name));
+      eg.append(t);
+      const fake = iconLabel(el("span", "pp-tour-fake primary"), BUTTON_ICON[plan.word], word);
+      fake.setAttribute("aria-hidden", "true");
+      eg.append(fake);
+      box.append(eg);
+      if (plan.rules.length) {
+        const ul = el("ul", "pp-tour-rules");
+        for (const r of plan.rules) ul.append(el("li", "", r));
+        box.append(ul);
+      }
+      row.append(tourButton("primary", last_ ? "" : "right", say_(w, last_ ? "tour_done" : "tour_next"), next, true));
+      foot.append(row);
+    } else {
+      head.textContent = say_(w, "tour_join_head");
+      box.append(head, el("p", "pp-tour-text", say_(w, "tour_join_hint")));
+      if (plan.listen) {
+        const card = el("section", "pp-card pp-tour-card");
+        card.append(el("h2", "", say_(w, "tour_listen_head")), el("p", "", say_(w, "tour_listen")));
+        const on = listener.state.on;
+        const b = tourButton(on ? "pp-taken" : "", on ? "check" : "headphones", say_(w, on ? "tour_listening" : "listen_short"), () => {
+          pressListen();
+          // A listening PIN is asked for at the top of the page.
+          if (st.listen?.pin) closeTour();
+          else setTimeout(drawTour, 300);
+        });
+        b.disabled = on;
+        card.append(b);
+        box.append(card);
+      }
+      if (plan.join) {
+        const card = el("section", "pp-card pp-tour-card");
+        card.append(el("h2", "", say_(w, "tour_join_card_head")), el("p", "", say_(w, "tour_join_card")));
+        card.append(tourButton("", "phone", say_(w, "tour_join_card_head"), () => { closeTour(); joinShow(); }));
+        box.append(card);
+      }
+      row.append(tourButton("primary", "", say_(w, "tour_done"), closeTour));
+      foot.append(row);
+      if (installOffer && !runningAsApp(window)) foot.append(tourButton("pp-link-btn", "install", say_(w, "install"), install));
+    }
+    box.append(foot);
+    $("pp-tour").replaceChildren(box);
+    $("pp-tour").hidden = false;
+  }
+
   function pressListen() {
     if (preview) {
       say("This is a preview. On visitors' phones, this plays the music.", true);
@@ -1093,6 +1241,7 @@ export function start() {
     }
     last = st;
     drawInstall();
+    maybeTour(st);
     // A pass that no longer works (the admin PIN changed, or was taken off): forget it.
     if (adminPass && !st.admin) keepAdmin("");
     drawAdmin(st);
@@ -1295,6 +1444,7 @@ export function start() {
   $("pp-retry").addEventListener("click", watchWhere);
   $("pp-title").addEventListener("click", tapTitle);
   $("pp-install").addEventListener("click", install);
+  $("pp-tour-again").addEventListener("click", openTour);
   // The buttons whose words are fixed in the page get their icons once.
   for (const [id, ico] of [["pp-admin-ok", "unlock"], ["pp-admin-out", "lock"], ["pp-admin-close", "x"],
     ["pp-admin-skip", "skip"], ["pp-admin-stop", "stop"]]) iconLabel($(id), ico, $(id).textContent);

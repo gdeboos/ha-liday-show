@@ -602,7 +602,8 @@
     <section class="panel" data-panel="splice">
       <div class="panel-head"><span class="section-label">Splice</span></div>
       <div class="group">
-        <select id="music-insert-src" title="A song to add"></select>
+        <button id="music-insert-pick" type="button" title="Choose the song to add, from your songs' folders">Choose song…</button>
+        <span id="music-insert-name" class="hint">No song chosen</span>
         <label class="button ghost" title="Upload a song to add">Upload<input id="music-insert-upload" type="file" accept="audio/*" hidden></label>
         <button id="music-insert" title="Insert the whole song at the playhead; it's selected afterwards so you can trim it">Insert at playhead</button>
         <button id="music-append" title="Add the whole song to the end">Add to end</button>
@@ -1404,6 +1405,10 @@
     <p class="hint">"About 3 minutes" under each show's name, worked out from the show.</p>
     <label class="check"><input id="pub-covers" type="checkbox"> Show cover art</label>
     <p class="hint">Each show's picture beside its name, from its song's cover art (a playlist uses its first show's).</p>
+    <label class="check"><input id="pub-tour" type="checkbox"> Welcome first-time visitors</label>
+    <p class="hint">A few short steps the first time a phone opens the page: what it's for, the flashing lights
+      warning, how to pick a song, and (when they're on) listening and joining the show. Each phone sees it once;
+      <b>How this works</b> at the bottom of the page shows it again.</p>
     <label class="field">Flashing lights warning <select id="pub-warning">
         <option value="off">Off</option>
         <option value="note">A note at the top</option>

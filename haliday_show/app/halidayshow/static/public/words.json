@@ -94,6 +94,36 @@
       ]
     },
     {
+      "group": "Welcome (the first time a phone opens the page)",
+      "words": [
+        {"key": "tour_intro", "label": "Under your title", "text": "Welcome! From here you can choose the songs our lights play."},
+        {"key": "tour_intro_more", "label": "Added after it when visitors can listen or join in", "text": "You can join in from your phone too."},
+        {"key": "tour_flash_phone", "label": "Added to the warning when visitors can join the show", "text": "If you join the show, your phone's screen will flash too."},
+        {"key": "tour_accept", "label": "Button that accepts the warning", "text": "I understand, next"},
+        {"key": "tour_next", "label": "Next button", "text": "Next"},
+        {"key": "tour_back", "label": "Back button", "text": "Back"},
+        {"key": "tour_skip", "label": "Skip button", "text": "Skip"},
+        {"key": "tour_once", "label": "Under the first button", "text": "You'll only see this once on this phone."},
+        {"key": "tour_step", "label": "Which step", "text": "Step {step} of {count}"},
+        {"key": "tour_pick_head", "label": "Heading: picking a song", "text": "Pick a song"},
+        {"key": "tour_pick_start", "label": "When a pick plays straight away ({button} is the button's word)", "text": "Press {button} and the lights play it straight away. If something's already on, yours waits its turn under Up next."},
+        {"key": "tour_pick_queue", "label": "When something's on, so picks wait", "text": "Press {button} and yours waits its turn under Up next. It plays when the ones before it finish."},
+        {"key": "tour_pick_vote", "label": "When visitors vote", "text": "Press {button} on the one you'd like next. The show with the most votes plays when this one ends."},
+        {"key": "tour_hours", "label": "When the lights stop taking requests tonight", "text": "The lights take requests until {time}."},
+        {"key": "tour_one", "label": "One pick per phone", "text": "One pick at a time from each phone, so everyone gets a turn."},
+        {"key": "tour_many", "label": "More than one pick per phone", "text": "Up to {count} picks at a time from each phone."},
+        {"key": "tour_join_head", "label": "Heading: joining in", "text": "Join in from your phone"},
+        {"key": "tour_join_hint", "label": "Under it", "text": "These are optional, and you can turn them on or off later at the top of the page."},
+        {"key": "tour_listen_head", "label": "Listening card's heading", "text": "Hear the music"},
+        {"key": "tour_listen", "label": "Listening card", "text": "The song plays on this phone in time with the lights. Headphones work too."},
+        {"key": "tour_listening", "label": "Listening card's button once pressed", "text": "Listening"},
+        {"key": "tour_join_card_head", "label": "Joining card's heading", "text": "Join the show"},
+        {"key": "tour_join_card", "label": "Joining card", "text": "Your screen glows with the lights' colours. Hold it up and you're part of the display."},
+        {"key": "tour_done", "label": "Last button", "text": "See the songs"},
+        {"key": "tour_again", "label": "Link at the bottom of the page that shows the welcome again", "text": "How this works"}
+      ]
+    },
+    {
       "group": "Flashing lights warning",
       "words": [
         {"key": "warning", "label": "The warning", "text": "⚠ The shows have flashing lights, which may affect people with photosensitive epilepsy."},
