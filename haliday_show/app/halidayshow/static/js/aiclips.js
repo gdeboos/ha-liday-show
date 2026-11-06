@@ -3,6 +3,7 @@
 // timeline until it has been matched to a real light and effect and clamped to valid values.
 
 import { parseLyrics } from "./lyrics.js";
+import { SOUNDS, soundsIn } from "./sounds.js";
 import { CURVE_SHAPES, EFFECTS, MIXES, TRANSITIONS, clipPiece, defaultParams } from "./effects.js";
 import { laneTakes, runsDownTree } from "./matrix.js";
 
@@ -62,7 +63,7 @@ export function effectsForAI({ matrix = true } = {}) {
 
 // The show as the AI sees it. lights: [{name, trackIndex, segments, house, slow, matrix: {w, h, shape}}], with the House lane
 // as a light named "House" (only when lights are traced on the house photo); selection: {start, end, lights: [names]} or null.
-export function buildContext({ show, lights, duration, selection = null, palettes = [] }) {
+export function buildContext({ show, lights, duration, selection = null, palettes = [], sounds = null }) {
   const effects = effectsForAI({ matrix: lights.some((l) => l.matrix) });
   const beats = show.beats || [];
   // The song's cues, where it has them: its drum hits (from its drums part) and its lyrics.
@@ -85,8 +86,12 @@ export function buildContext({ show, lights, duration, selection = null, palette
         // How many of each drum hit in it, and when its crashes land.
         ...(drums ? { drums: { kick: count(drums.kick, s.start, s.end), snare: count(drums.snare, s.start, s.end),
           crashes: (drums.crash || []).filter((t) => t >= s.start && t < s.end).slice(0, 12).map(r2) } } : {}),
+        // What can be heard in it (sleigh bells, a choir…: sounds.js), where the song's been listened to.
+        ...(sounds ? { sounds: soundsIn(sounds, s.start, s.end).filter((k) => !SOUNDS[k].mood).map((k) => SOUNDS[k].label) } : {}),
       })),
       ...(lines.length ? { lyrics: lines } : {}),
+      ...(sounds ? { sounds: soundsIn(sounds).filter((k) => !SOUNDS[k].mood).map((k) => SOUNDS[k].label),
+        mood: soundsIn(sounds).filter((k) => SOUNDS[k].mood).map((k) => SOUNDS[k].label) } : {}),
     },
     lights: lights.map((l) => ({ name: l.name, segments: l.segments, ...(l.house ? { house: true } : {}),
       ...(l.slow ? { slow: true } : {}), ...(l.matrix ? { matrix: l.matrix } : {}), ...(l.role ? { role: l.role } : {}) })),

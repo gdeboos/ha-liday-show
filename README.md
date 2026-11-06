@@ -233,6 +233,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   Home Assistant's 16 MB limit upload fine
 - Cut, trim and splice songs in the **Music editor**, with crossfades, as named **drafts** kept as you go that you can come back to and tweak, then make into a song file
 - **Even out the volume** when making a song file, so songs play at about the same loudness
+- **HA-liday Show listens to your songs** for sleigh bells, choirs, brass, guitar and more, and how they sound (happy, scary…), and Generate picks looks to suit
 - **Generate has a Feel** (Playful, Elegant, Rock'n'roll, Retro, Spooky, Dreamy or Surprise me) and **Try again**; it avoids the looks your other shows lean on, and the AI starts from a one-line idea for the show
 - **Generate follows the drums and the words**: each light's role picks what it does (Drum hits on real drum hits, Words on sung words), looks change on lyric lines, and the whole house is kept for the biggest moments
 - **Light roles**: which part of the music each light reacts to (kick, snare, crash, bass, vocals, melody or background), guessed for your house and changeable per show
@@ -465,6 +466,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/splitvocals.js                   Split into parts… on a song: decode, split in the worker, keep each part with the song, find the drum hits
     js/roles.js                         Light roles: what each light reacts to, guessed, then your house's and each show's own
     js/drumhits.js                      When each kick, snare, hi-hat and crash lands, from a song's drums part
+    js/sounds.js                        What can be heard in a song (bells, choir, guitar…) and its mood, from YAMNet
     js/reactui.js                       React to music settings for a scene (Scene editor and Advanced scenes)
     js/housescenes.js                   A scene's sums: what each light plays, its loop, its row's colours
     js/showbright.js                    Show settings → Brightness: the whole show and each light in it

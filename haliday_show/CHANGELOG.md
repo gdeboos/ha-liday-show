@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.409
+
+- **HA-liday Show listens to your songs.** Once a song is split into parts, a small AI listens to it for sleigh bells, bells and chimes, xylophone, a choir, brass, strings, piano, organ, guitar, synthesiser, woodwind, harp, whistling and clapping, and for how it sounds (happy, sad, tender, exciting, angry, scary or Christmassy). It takes seconds. The **Song** panel in the editor says what it heard.
+- **Generate suits the sounds.** Each part of the song leans towards looks that suit what's playing: twinkles for sleigh bells, slow washes for a choir or strings, chases for guitar. On **Surprise me**, the first take follows the song's mood (a scary song gets a spooky feel). The AI is told what's heard in each part too.
+- **Songs you've already split** are listened to when you press **Split all songs into parts** in **Library → Songs**: seconds each.
+
 ## 0.2.408
 
 - **Generate has a Feel.** In **Generate a show**, pick **Playful**, **Elegant**, **Rock'n'roll**, **Retro**, **Spooky** or **Dreamy**, or leave it on **Surprise me** for a different one each time. The message afterwards says which feel it went for.

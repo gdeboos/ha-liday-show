@@ -3,13 +3,15 @@
 // the song, the drums from what's left, then the bass, and the rest is what remains. Asked
 // {left, right, want: [parts], vocals?: [l, r] (already made)}. Messages back: {stage: "download" |
 // "split", part, done} as it goes, each part as it's made ({part, channels}: vocals, music, drums,
-// bass, rest), then {done: true}, or {error}.
+// bass, rest), then {done: true}, or {error}. Asked {listen: samples (one channel at 16 kHz)}, it runs
+// YAMNet over them instead (sounds.js): {stage: "listen", done} as it goes, then {scores: [[…]]}.
 
 import { MODELS, separate } from "./stems.js";
+import { CLASSES } from "./sounds.js";
 
 const FILES = new URL("../../api/stems/files/", import.meta.url).href;
 // Bumped whenever server.py's STEM_FILES change, so no browser keeps using old copies.
-const VERSION = "mdx-vocft-ort1.20.1"; // the drums and bass models came later, under new names, so no browser has old copies of them
+const VERSION = "mdx-vocft-ort1.20.1"; // the drums, bass and YAMNet models came later, under new names, so no browser has old copies of them
 const file = (name) => `${FILES}${name}?v=${VERSION}`;
 const CACHE = `haliday-show-split-vocals-${VERSION}`;
 
@@ -72,22 +74,56 @@ async function keptModel(name) {
   return kept ? new Uint8Array(await kept.arrayBuffer()) : null;
 }
 
-self.onmessage = async ({ data: { left, right, want = ["vocals"], vocals = null } }) => {
+const RUNTIME = ["ort.webgpu.min.mjs", "ort-wasm-simd-threaded.jsep.mjs", "ort-wasm-simd-threaded.jsep.wasm"];
+async function runtime() {
+  let ort;
+  try { ort = await import(file("ort.webgpu.min.mjs")); } catch (e) {
+    throw new Error(`couldn't load the AI's runtime (${e.message || "network error"}). Try again`);
+  }
+  ort.env.wasm.wasmPaths = { mjs: file("ort-wasm-simd-threaded.jsep.mjs"), wasm: file("ort-wasm-simd-threaded.jsep.wasm") };
+  ort.env.wasm.numThreads = 1; // several need the page set up in a way Home Assistant's isn't
+  return ort;
+}
+
+// YAMNet over the whole song, a minute at a time (each piece running on by one window, so no frame is
+// cut short): its scores for the sounds sounds.js looks for, one row every 0.1 s.
+const YAMNET = "yamnet.onnx", RATE = 16000, HOP = 1600, WINDOW = 15360, PIECE_S = 60;
+async function listen(samples) {
+  const kept = await keptModel(YAMNET);
+  const files = await prepared([...RUNTIME, ...(kept ? [] : [YAMNET])], (done) => self.postMessage({ stage: "download", done }));
+  const ort = await runtime();
+  const bytes = kept || await model(YAMNET, files[YAMNET].size);
+  self.postMessage({ stage: "listen", done: 0 });
+  const session = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"] });
+  const per = RATE * PIECE_S, rows = [];
+  for (let at = 0; at < samples.length; at += per) {
+    const last = at + per >= samples.length;
+    let piece = samples.subarray(at, Math.min(samples.length, at + per + WINDOW - HOP));
+    if (piece.length < WINDOW) { const padded = new Float32Array(WINDOW); padded.set(piece); piece = padded; }
+    const out = await session.run({ input_1: new ort.Tensor("float32", Float32Array.from(piece), [piece.length]) });
+    const t = out.activation, n = t.dims[0], width = t.dims[1], data = t.getData ? await t.getData() : t.data;
+    const take = last ? n : Math.min(n, per / HOP);
+    for (let f = 0; f < take; f++) rows.push(CLASSES.map((c) => Math.round(data[f * width + c] * 1e4) / 1e4));
+    self.postMessage({ stage: "listen", done: Math.min(1, (at + per) / samples.length) });
+  }
+  await session.release?.();
+  return rows;
+}
+
+self.onmessage = async ({ data: { left, right, want = ["vocals"], vocals = null, listen: heard = null } }) => {
+  if (heard) {
+    try { self.postMessage({ scores: await listen(heard) }); } catch (e) { self.postMessage({ error: e?.message || String(e) }); }
+    return;
+  }
   try {
     // The models these parts need (the vocals' too, unless they're made already).
     const steps = ["vocals", "drums", "bass"].filter((p) => p === "vocals" ? !vocals : want.includes(p));
     const kept = {};
     for (const p of steps) kept[p] = await keptModel(MODELS[p].file);
     // HA-liday Show gets the files ready first (each model too, unless this browser kept it).
-    const names = ["ort.webgpu.min.mjs", "ort-wasm-simd-threaded.jsep.mjs", "ort-wasm-simd-threaded.jsep.wasm",
-      ...steps.filter((p) => !kept[p]).map((p) => MODELS[p].file)];
+    const names = [...RUNTIME, ...steps.filter((p) => !kept[p]).map((p) => MODELS[p].file)];
     const files = await prepared(names, (done) => self.postMessage({ stage: "download", done }));
-    let ort;
-    try { ort = await import(file("ort.webgpu.min.mjs")); } catch (e) {
-      throw new Error(`couldn't load the AI's runtime (${e.message || "network error"}). Try again`);
-    }
-    ort.env.wasm.wasmPaths = { mjs: file("ort-wasm-simd-threaded.jsep.mjs"), wasm: file("ort-wasm-simd-threaded.jsep.wasm") };
-    ort.env.wasm.numThreads = 1; // several need the page set up in a way Home Assistant's isn't
+    const ort = await runtime();
 
     // One model over `l, r` (what's left of the song so far): what it finds, and the rest, in place.
     const split = async (part, l, r) => {

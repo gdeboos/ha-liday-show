@@ -4,6 +4,7 @@
 
 import { MDX } from "./stems.js";
 import { drumHits } from "./drumhits.js";
+import { soundsFrom } from "./sounds.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { sendParts } from "./upload.js";
 
@@ -124,9 +125,41 @@ async function cutFromOriginal(ref, api, edit, say, cancelled) {
   return true;
 }
 
+// Listens to the whole song with YAMNet (in the worker) for what can be heard in it (sounds.js), and
+// keeps that with the song. Takes seconds. track(worker) is given the worker, so it can be stopped.
+async function listenTo(ref, api, say, track) {
+  const song = songName(ref);
+  say(`Listening to ${song}…`, null);
+  const bytes = await fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(ref.path)}`);
+  const d = await new OfflineAudioContext(1, 1, 16000).decodeAudioData(bytes);
+  const samples = new Float32Array(d.length);
+  for (let c = 0; c < d.numberOfChannels; c++) {
+    const ch = d.getChannelData(c);
+    for (let i = 0; i < ch.length; i++) samples[i] += ch[i] / d.numberOfChannels;
+  }
+  const worker = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
+  track(worker);
+  try {
+    const scores = await new Promise((resolve, reject) => {
+      worker.onmessage = ({ data }) => {
+        if (data.error) reject(new Error(data.error));
+        else if (data.scores) resolve(data.scores);
+        else if (data.stage === "download") say(`Downloading the AI that listens to songs (the first time only)… ${Math.round(data.done * 100)}%`, data.done);
+        else if (data.stage === "listen") say(`Listening to ${song}… ${Math.round(data.done * 100)}%`, data.done);
+      };
+      worker.onerror = (e) => reject(new Error(e.message || "the AI couldn't start in this browser"));
+      worker.postMessage({ listen: samples }, [samples.buffer]);
+    });
+    await api(`api/audio/sounds?${q(ref)}`, { method: "PUT", json: soundsFrom(scores, d.duration) });
+  } finally {
+    worker.terminate();
+  }
+}
+
 // Makes a song's parts (its vocals, drums, bass and the rest of the music, and the music without its
 // vocals), keeping each with the song as soon as it's made, so one stopped part way keeps what it
-// finished, then when each drum lands (drumhits.js). Parts it has already (vocals from before 0.2.403,
+// finished, then when each drum lands (drumhits.js), then listens to it for what can be heard in it
+// (sounds.js). A song with all its parts that hasn't been listened to is only listened to. Parts it has already (vocals from before 0.2.403,
 // say) aren't made again, unless `again`. An edit of a song with parts (edit: see cutFromOriginal) has
 // its parts cut from the original's instead. say(text, done 0-1 or null) hears how it's going;
 // started(stop) is given a function that stops it. One song at a time: anything else waits its turn.
@@ -145,12 +178,28 @@ async function makePartsNow(ref, api, { again, edit, say, started }) {
   const stopped = new Promise((_, reject) => { stop = reject; });
   stopped.catch(() => {});
   const unlessCancelled = (p) => Promise.race([p, stopped]);
-  started(() => { cancelled = true; worker?.terminate(); stop(new Error("cancelled")); });
+  let listener = null;
+  started(() => { cancelled = true; worker?.terminate(); listener?.terminate(); stop(new Error("cancelled")); });
   const song = songName(ref);
+  // Listening comes last, and a song whose parts were made isn't failed for it: it's tried again next time.
+  const listen = async (must) => {
+    try { await unlessCancelled(listenTo(ref, api, say, (w) => { listener = w; })); return true; } catch (e) {
+      if (must || cancelled) throw e;
+      console.warn(`Couldn't listen to ${song}`, e);
+      return false;
+    }
+  };
   try {
     const have = await api(`api/audio/parts?${q(ref)}`).catch(() => ({}));
-    if (!again && prepared(have)) return { made: false };
-    if (!again && edit && prepared(edit.baseParts) && await unlessCancelled(cutFromOriginal(ref, api, edit, say, () => cancelled))) return { made: true, cut: true };
+    const heard = !again && await api(`api/audio/sounds?${q(ref)}`).catch(() => null);
+    if (!again && prepared(have)) {
+      if (heard) return { made: false };
+      await listen(true);
+      return { made: false, listened: true };
+    }
+    if (!again && edit && prepared(edit.baseParts) && await unlessCancelled(cutFromOriginal(ref, api, edit, say, () => cancelled))) {
+      return { made: true, cut: true, listened: await listen(false) };
+    }
     const want = ["drums", "bass", "rest", ...(have.music && !again ? [] : ["music"])];
     say(`Loading ${song}…`, null);
     let left, right, vocals = null;
@@ -197,12 +246,13 @@ async function makePartsNow(ref, api, { again, edit, say, started }) {
       await new Promise((r) => setTimeout(r, 0));
       await api(`api/audio/drums?${q(ref)}`, { method: "PUT", json: drumHits(drums, MDX.rate) }).catch(() => {});
     }
-    return { made: true };
+    return { made: true, listened: await listen(false) };
   } catch (e) {
     if (cancelled) { const err = new Error("cancelled"); err.cancelled = true; throw err; }
     throw e;
   } finally {
     worker?.terminate();
+    listener?.terminate();
     busy = false;
   }
 }
@@ -230,7 +280,7 @@ export async function splitVocals(ref, host) {
     if (!(await host.askYes(`Split ${song} into its parts: the vocals, drums, bass and the rest of the music? They're kept `
       + "with the song, for Singing faces, Generate and the Music editor's layers. "
       + (again ? "It has them already: this makes them again. " : "")
-      + "The first time, your browser downloads the AI that does it (about 130 MB). It takes several minutes; "
+      + "The first time, your browser downloads the AI that does it (about 145 MB). It takes several minutes; "
       + "keep this page open meanwhile.", { yes: "Split into parts" }))) return;
     if (busyNow()) return; // another started while you were deciding
     let stop = () => {};

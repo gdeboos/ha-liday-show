@@ -1098,6 +1098,11 @@ STEM_FILES = {
                    "application/octet-stream", 29703204, "40f586b7091934dd6f5563f0cba8f14bad57ce88440da1098bf388ea716c2901"),
     "bass.onnx": ("https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/kuielab_a_bass.onnx",
                   "application/octet-stream", 29703204, "0c3e77b9963185b1ea6bb46a4b8924137d9370fc1ccdefec7b1b416ef550dcaa"),
+    # What can be heard in a song (static/js/sounds.js): Google's YAMNet (Apache 2.0), as converted to ONNX
+    # with its sound-wave input by Katsuya Iida (MIT), at a fixed commit.
+    "yamnet.onnx": ("https://media.githubusercontent.com/media/kaiidams/TransferLearningAudio/"
+                    "3f2608d414305099f2be8482911469c0d10af276/assets/yamnet.onnx",
+                    "application/octet-stream", 16093547, "6b5aa2a0398bf99bad26f7fad98be8a6e0c074df4d6c51265500a2d787001457"),
     "ort.webgpu.min.mjs": (_ORT + "ort.webgpu.min.mjs", "text/javascript", 333468,
                            "e1a0817ac08d5a6ade7f229754c2aecd444bff0bd22c259ca148a04b9f9e9f65"),
     "ort-wasm-simd-threaded.jsep.mjs": (_ORT + "ort-wasm-simd-threaded.jsep.mjs", "text/javascript", 46839,
@@ -1609,7 +1614,33 @@ def _clean_song_drums(body) -> dict | None:
     return out
 
 
+MAX_SOUND_STEPS = 7200  # half-second steps: an hour
+SOUND_KEYS = {"sleighbells", "bells", "mallets", "choir", "brass", "strings", "piano", "organ", "guitar", "synth",
+              "woodwind", "harp", "whistling", "clapping", "christmas", "happy", "sad", "tender", "exciting", "angry",
+              "scary"}  # static/js/sounds.js SOUNDS
+
+
+def _clean_song_sounds(body) -> dict | None:
+    """What can be heard in the song (static/js/sounds.js): {step, sounds: {key: [0-100 each step]}}."""
+    if body is None:
+        return None
+    try:
+        step, sounds = body["step"], body["sounds"]
+        if isinstance(step, bool) or not isinstance(step, (int, float)) or not 0.1 <= step <= 5 \
+                or not isinstance(sounds, dict) or set(sounds) - SOUND_KEYS:
+            raise ValueError
+        for values in sounds.values():
+            if not isinstance(values, list) or len(values) > MAX_SOUND_STEPS \
+                    or not all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 100 for v in values):
+                raise ValueError
+    except (ValueError, KeyError, TypeError):
+        raise web.HTTPBadRequest(text="expected {step, sounds: {sound: [0-100…]}}")
+    # Kept even with nothing heard, so the song isn't listened to again.
+    return {"step": step, "sounds": {k: v for k, v in sounds.items()}}
+
+
 get_song_lyrics, put_song_lyrics = _song_extra("lyrics", _clean_song_lyrics)
+get_song_sounds, put_song_sounds = _song_extra("sounds", _clean_song_sounds)
 get_song_drums, put_song_drums = _song_extra("drums", _clean_song_drums)
 get_song_voice, put_song_voice = _song_extra("voice", _clean_song_voice)
 
@@ -3557,6 +3588,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/audio/lyrics", put_song_lyrics)
     r.add_get("/api/audio/drums", get_song_drums)
     r.add_put("/api/audio/drums", put_song_drums)
+    r.add_get("/api/audio/sounds", get_song_sounds)
+    r.add_put("/api/audio/sounds", put_song_sounds)
     r.add_get("/api/audio/voice", get_song_voice)
     r.add_put("/api/audio/voice", put_song_voice)
     r.add_get("/api/seasons", get_seasons)

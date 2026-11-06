@@ -22,8 +22,8 @@ SPEAKER_TEST = "haliday-show-speaker-test.wav"  # the chime that tests a speaker
 SAMPLES = "Samples"  # short sounds for the Music editor's layers, kept out of the song lists
 AUDIO_EXT = {".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav", ".flac", ".webm"}
 _SLUG = re.compile(r"[^a-z0-9]+")
-SONG_EXTRAS = ("palette", "lyrics", "voice", "drums")  # kept in a song's info file beside what Detect found
-STAMPED_EXTRAS = ("voice", "drums")  # measured from the file, so a file saved over is measured again
+SONG_EXTRAS = ("palette", "lyrics", "voice", "drums", "sounds")  # kept in a song's info file beside what Detect found
+STAMPED_EXTRAS = ("voice", "drums", "sounds")  # measured from the file, so a file saved over is measured again
 # A song's parts (stems), each a WAV kept under the hood with the song (Storage.song_parts). "music" is
 # everything but the vocals, from Split vocals before the song had drums and bass parts.
 PART_NAMES = ("vocals", "drums", "bass", "rest", "music")
@@ -583,6 +583,10 @@ class Storage:
                         parts = self.song_parts(source, rel)
                         if parts:  # its stems (vocals, drums…), for shows and the Music editor
                             entry["parts"] = parts
+                            # Whether what can be heard in it has been found (static/js/sounds.js), so
+                            # Split all songs into parts knows which still need it.
+                            if self.load_song_extra(source, rel, "sounds") is not None:
+                                entry["sounds"] = True
                         out.append(entry)
                         if len(out) >= limit:
                             return out

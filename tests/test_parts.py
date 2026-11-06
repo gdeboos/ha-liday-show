@@ -151,3 +151,30 @@ def test_an_archived_songs_parts_stay_its_own(tmp_path):
     assert back != rel
     assert set(st.song_parts("media", back)) == {"vocals"}
     assert set(st.song_parts("media", rel)) == {"drums"}
+
+
+async def test_what_a_song_sounds_like_is_kept_with_it(client):
+    q = "source=media&path=haliday_show/tune.mp3"
+    assert await (await client.get(f"/api/audio/sounds?{q}")).json() is None
+    up = "upload=abcdefabcdefabcdefabcdef"
+    await client.post(f"/api/audio/parts?{q}&part=vocals&{up}&offset=0&done=1", data=WAV)
+    assert "sounds" not in (await (await client.get("/api/audio")).json())[0]
+    body = {"step": 0.5, "sounds": {"sleighbells": [0, 40, 55], "happy": [10, 10, 12]}}
+    assert (await client.put(f"/api/audio/sounds?{q}", json=body)).status == 200
+    assert await (await client.get(f"/api/audio/sounds?{q}")).json() == body
+    assert (await (await client.get("/api/audio")).json())[0]["sounds"] is True
+    # Nothing heard is still kept, so it isn't listened to again.
+    assert (await client.put(f"/api/audio/sounds?{q}", json={"step": 0.5, "sounds": {}})).status == 200
+    assert await (await client.get(f"/api/audio/sounds?{q}")).json() == {"step": 0.5, "sounds": {}}
+    for bad in ({"step": 0.5, "sounds": {"kazoo": [1]}}, {"step": 0.5, "sounds": {"choir": [101]}},
+                {"step": True, "sounds": {}}, {"step": 0.5, "sounds": {"choir": [1.5]}}, {"sounds": {}}, []):
+        assert (await client.put(f"/api/audio/sounds?{q}", json=bad)).status == 400, bad
+    assert (await client.put("/api/audio/sounds?source=media&path=gone.mp3", json=body)).status == 404
+
+
+def test_the_server_knows_every_sound_the_editor_does():
+    import re
+    from pathlib import Path
+    js = (Path(server.__file__).parent / "static" / "js" / "sounds.js").read_text()
+    block = js[js.index("export const SOUNDS = {"):js.index("};", js.index("export const SOUNDS = {"))]
+    assert set(re.findall(r"^  (\w+): \{", block, re.M)) == server.SOUND_KEYS

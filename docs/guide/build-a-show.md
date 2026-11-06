@@ -319,6 +319,14 @@ music**, and they go wherever the song goes (renamed, copied, archived or delete
   lands. In the Music editor they show as small marks along the bottom of the waveform: red for kicks,
   blue for snares and gold for crashes. [Generate](#generate) uses them to put flashes on the real
   hits rather than every beat.
+- **What can be heard in it:** once its parts are made, HA-liday Show listens to the whole song with a
+  fourth, small AI (Google's YAMNet, which knows hundreds of kinds of sound) for **sleigh bells**,
+  **bells and chimes**, **xylophone and vibes**, a **choir**, **brass**, **strings and orchestra**,
+  **piano**, **organ**, **guitar**, **synthesiser**, **woodwind**, **harp**, **whistling** and
+  **clapping**, and for how it sounds: **happy**, **sad**, **tender**, **exciting**, **angry**,
+  **scary** or **Christmassy**. It takes seconds. The show's **Song** panel then says what it heard,
+  such as "Heard: Sleigh bells, Choir · sounds happy", and [Generate](#generate) picks looks to suit
+  each part of the song.
 - **Layers** in the Music editor can play any song's parts: press **+ Add a clip…**, pick the song under
   **Songs**, then choose **Just the vocals**, **Just the drums** and so on under **Use from**. Use the
   music as a backing track, the drums under another song, or the vocals over another song for a
@@ -334,7 +342,8 @@ You can carry on using HA-liday Show meanwhile, but keep the page open until it'
 it; parts already made are kept.
 
 **Split all songs into parts** (under the list in **Library → Songs**) does the same for every song
-that isn't split yet, one after another. An edit made from a draft of a song that's split has its
+that isn't split yet, one after another, and listens to any song split before HA-liday Show listened
+to songs (seconds each, with no question asked if that's all there is to do). An edit made from a draft of a song that's split has its
 parts cut from the original's in seconds, rather than split again. Anything not done when you close
 the page is picked up next time you press it.
 
@@ -351,7 +360,7 @@ were moved into their song's parts when you updated, and shows and drafts that u
 that couldn't be matched to a song (its song's gone, say) stay as songs, under **Splits**.
 
 Three AI models do it, in your browser, on the song as it is (not a draft's edits): one for the vocals,
-then one each for the drums and the bass. The first time, HA-liday Show downloads them (about 130 MB),
+then one each for the drums and the bass, and a fourth listens to it. The first time, HA-liday Show downloads them (about 145 MB),
 checks them, and keeps them until HA-liday Show restarts (they're never in your backups); your browser
 then takes them from there, in pieces, and keeps its own copy where it can.
 It's quickest on a computer whose browser can use the graphics card (recent Chrome or Edge): a few
@@ -736,6 +745,12 @@ impressive. It runs **Detect** first if the song hasn't been analysed. It replac
 **↻ Try again** (beside **✨ Generate** once you've generated) for a different take with the same choices, then edit whatever you like. The colours start on the show's palette, or else the one for the time of year
 (Halloween in October, Christmas in December…) when there is one.
 
+**What can be heard.** For a song HA-liday Show has listened to (see [Split into parts](#split-into-parts)),
+each part of the song leans towards looks that suit what's playing there: twinkles and fairy lights for
+sleigh bells and chimes, slow washes of colour for a choir or strings, chases and strobes for guitar,
+rainbows for a synthesiser. On **Surprise me**, the first take also follows how the song sounds (a
+scary song gets a spooky feel, a happy one a playful feel); **Try again** picks any feel.
+
 **Feel** is the kind of looks the show leans towards: **Playful** (bouncing, juggling, stacking
 blocks), **Elegant** (slow gradients, comets, candlelight), **Rock'n'roll** (strobes, lightning, chases),
 **Retro** (theatre chases, rainbows, lighthouse sweeps), **Spooky** (flicker, lightning, drips) or
@@ -759,8 +774,8 @@ party", keeps every part true to it, and tells you the idea when it's done.
 - Looks change where a lyric line starts rather than part way through one, and a part of the song
   whose lines come back is treated as a chorus, even if it isn't called one.
 
-The **AI** gets all of this too: each light's role, the drum hits in each part of the song, and the
-lyrics. A song without parts or lyrics generates as before.
+The **AI** gets all of this too: each light's role, the drum hits in each part of the song, the
+lyrics, and what can be heard in each part and how the song sounds. A song without parts or lyrics generates as before.
 
 **Anything else?** appears when **Made by** is the AI: tell it anything else about how this take should
 look, such as "keep the pillars steady white, save the big colours for the last chorus, no strobes". It's
