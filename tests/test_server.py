@@ -1531,6 +1531,8 @@ async def test_shows_are_marked_in_progress_or_finished(client):
     listed = lambda: client.get("/api/shows")  # noqa: E731
     mine = lambda rows: next(s for s in rows if s["id"] == show_id)  # noqa: E731
     assert mine(await (await listed()).json())["in_progress"] is True
+    # Whether phones join it, and if it has its own Phones lane, for Library → Shows.
+    assert (mine(await (await listed()).json())["phones"], mine(await (await listed()).json())["phones_lane"]) == (True, False)
 
     assert (await client.post(f"/api/shows/{show_id}/mark", json={"in_progress": False})).status == 200
     s = mine(await (await listed()).json())
