@@ -1,0 +1,42 @@
+# Publishes the AI model files HA-liday Show downloads, as GitHub release assets in this repo (run by hand
+# from the Actions tab, or by a Claude session). Each is made from a pinned upstream file and checked
+# against the SHA-256 that server.py's STEM_FILES expects, so a run that makes anything else fails.
+name: Models
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Make the lyrics alignment model
+        run: |
+          set -euo pipefail
+          pip install onnxruntime==1.29.0 onnx==1.23.2 numpy==2.5.3
+          curl -sSL -o english-ls960.onnx \
+            https://github.com/vcorange-chan/linewise-models/releases/download/english-ctc-ls960-v1/english-ls960.onnx
+          curl -sSL -o LICENSE-MIT.txt \
+            https://github.com/vcorange-chan/linewise-models/releases/download/english-ctc-ls960-v1/LICENSE-MIT.txt
+          echo "00425739055e2357b9f76ddbaba10d5cb1232cbb6fb263390b084495cf456952  english-ls960.onnx" | sha256sum -c
+          python -c "from onnxruntime.quantization import quantize_dynamic, QuantType; quantize_dynamic('english-ls960.onnx', 'align-en-int8.onnx', weight_type=QuantType.QUInt8)"
+          echo "e57bd381bb19a790e6a998142d7ab3e1b1362734381c06e1e1fb628089d1240d  align-en-int8.onnx" | sha256sum -c
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          AI model files HA-liday Show downloads (checked by size and SHA-256 in `server.py` `STEM_FILES`). Not an app release.
+
+          **align-en-int8.onnx**: English wav2vec 2.0 CTC (TorchAudio `WAV2VEC2_ASR_BASE_960H`, from fairseq, MIT licence, © Facebook, Inc. and its affiliates; see LICENSE-MIT.txt), for **Line up with the singing** in the Lyrics window. Made smaller (weights QUInt8, onnxruntime 1.29.0 `quantize_dynamic`) from the FP32 export `english-ls960.onnx` in vcorange-chan/linewise-models release `english-ctc-ls960-v1` (SHA-256 `00425739…cf456952`). This file: SHA-256 `e57bd381bb19a790e6a998142d7ab3e1b1362734381c06e1e1fb628089d1240d`.
+          EOF
+          gh release view models-align-1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create models-align-1 --repo "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" \
+                 --title "AI model: lyrics alignment (English)" --notes-file notes.md
+          gh release upload models-align-1 align-en-int8.onnx LICENSE-MIT.txt --repo "$GITHUB_REPOSITORY" --clobber
