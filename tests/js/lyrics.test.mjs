@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { fromSong, fromStarts, lineWords, lyricShapes, parseLyrics, placeLines, savedLines, savedLyrics, singingRuns, songLyrics, syllables, wordShapes }
+import { fromSong, fromStarts, lineWords, lyricShapes, moveWord, parseLyrics, placeLines, savedLines, savedLyrics, singingRuns, songLyrics, syllables, withTimes, wordShapes }
   from "../../haliday_show/app/halidayshow/static/js/lyrics.js";
 import { singerOf } from "../../haliday_show/app/halidayshow/static/js/phones.js";
 
@@ -61,4 +61,34 @@ test("lyrics are kept with the song, and a show takes its copy from there", () =
   const copy = fromSong(song, null, 6, "a.mp3");
   assert.ok(copy.fromSong && copy.song === "a.mp3" && copy.shapes === saved.shapes);
   assert.equal(fromSong({ text: "one\ntwo", lines: [{ start: 0, end: 1 }] }, null, 6, "a.mp3"), null);
+});
+
+test("words moved on the waveform keep their own times, between their neighbours", () => {
+  const lines = [{ ...parseLyrics("one two")[0], start: 1, end: 3 }, { ...parseLyrics("three")[0], start: 5, end: 6 }];
+  // Stretching "two" shortens its line: the gap after it is left for the music.
+  let moved = moveWord(lines, 0, 1, 2, 2.5, null, 10);
+  assert.deepEqual(moved[0].times[1], { start: 2, end: 2.5 });
+  assert.equal(moved[0].end, 2.5);
+  assert.equal(moved[1].times.length, 1); // every line has its own times now
+  // It can't run into the next line's first word, or the word before it.
+  moved = moveWord(moved, 0, 1, 4, 7, null, 10);
+  assert.deepEqual(moved[0].times[1], { start: 4, end: 5 });
+  moved = moveWord(moved, 0, 1, 0, 0.5, null, 10);
+  assert.ok(moved[0].times[1].start >= moved[0].times[0].end);
+  // The mouth follows them: shut in the gap, open on "three".
+  const shapes = lyricShapes(moveWord(lines, 0, 1, 2, 2.5, null, 10), null, 10);
+  assert.equal(shapes.slice(52, 98), "m".repeat(46));
+  assert.notEqual(shapes[105], "m");
+  // Saved and read back, then moved by its start.
+  const saved = savedLyrics("one two\nthree", moveWord(lines, 0, 1, 2, 2.5, null, 10), null, 10);
+  assert.deepEqual(saved.lines[0].words, [{ start: 1, end: 2 }, { start: 2, end: 2.5 }]);
+  const back = savedLines(saved);
+  assert.deepEqual(lineWords(back[0], null).map((w) => w.end), [2, 2.5]);
+  assert.deepEqual(songLyrics(saved).lines[0].words, saved.lines[0].words);
+  const shifted = fromStarts(back, [2, 5], null, 10);
+  assert.deepEqual(shifted[0].times, [{ start: 2, end: 3 }, { start: 3, end: 3.5 }]);
+  assert.equal(shifted[0].end, 3.5);
+  // A line whose words don't match its saved times is spread again.
+  assert.equal(savedLines({ ...saved, text: "one two four\nthree" })[0].times, undefined);
+  assert.equal(withTimes(back, null)[0], back[0]);
 });

@@ -1,5 +1,6 @@
 // Lyrics for the Singing face (show.lyrics): pasted in, placed across the singing automatically, and
-// tweaked line by line (tap along, or type a line's start). Each word becomes mouth shapes (faces.js
+// tweaked line by line (tap along, or type a line's start), or word by word on the song's waveform
+// (each line's words: [{start, end}], once any is moved). Each word becomes mouth shapes (faces.js
 // SHAPES) from its spelling, spread over the time it's sung, and those shapes are what the face uses
 // (phones.js singerOf). Pure, so it can be tested in node.
 
@@ -73,8 +74,40 @@ export function placeLines(lines, voice, duration) {
   });
 }
 
-// A line's words over the singing between its start and end (evenly if there's none there).
-export const lineWords = (line, voice) => spread(line.words, singingIn(singingRuns(voice), line.start, line.end), line.start, line.end);
+// Whether a line's words have their own times (moved on the waveform): one {start, end} per word.
+const timed = (line) => Array.isArray(line.times) && line.times.length === line.words.length && line.words.length > 0;
+
+// A line's words with their times: as moved on the waveform, else over the singing between its start
+// and end (evenly if there's none there).
+export const lineWords = (line, voice) => (timed(line) ? line.words.map((word, k) => ({ word, ...line.times[k] }))
+  : spread(line.words, singingIn(singingRuns(voice), line.start, line.end), line.start, line.end));
+
+// Every line's words given their own times (as they're placed now), so any can be moved.
+export const withTimes = (lines, voice) => lines.map((l) => (timed(l) ? l
+  : { ...l, times: lineWords(l, voice).map(({ start, end }) => ({ start, end })) }));
+
+const SHORTEST = 0.05; // a word's shortest time, in seconds
+
+// Word k of line i moved to [start, end] (seconds), kept between the words either side of it and at
+// least SHORTEST long; its line then starts and ends with its first and last words. Lines are given
+// their own word times first (withTimes).
+export function moveWord(lines, i, k, start, end, voice, duration) {
+  const out = withTimes(lines, voice).map((l) => ({ ...l, times: l.times.map((t) => ({ ...t })) }));
+  const before = k > 0 ? out[i].times[k - 1].end : i > 0 ? out[i - 1].times[out[i - 1].times.length - 1]?.end ?? 0 : 0;
+  const after = k < out[i].times.length - 1 ? out[i].times[k + 1].start : out[i + 1]?.times[0]?.start ?? duration;
+  const len = end - start;
+  let a = Math.max(start, before), b = Math.min(end, after);
+  if (b - a < SHORTEST) {
+    // Moved as a whole into a neighbour: it stops against it, keeping its length.
+    if (start < before) { a = before; b = Math.min(after, before + Math.max(len, SHORTEST)); }
+    else { b = after; a = Math.max(before, after - Math.max(len, SHORTEST)); }
+  }
+  const r = (t) => Math.round(t * 1000) / 1000;
+  out[i].times[k] = { start: r(a), end: r(Math.max(b, a + SHORTEST)) };
+  out[i].start = out[i].times[0].start;
+  out[i].end = out[i].times[out[i].times.length - 1].end;
+  return out;
+}
 
 // Lines given starts by hand (by tapping along, say), each ending where the next starts, or at the end
 // of the singing after it; their words spread again within.
@@ -82,6 +115,11 @@ export function fromStarts(lines, starts, voice, duration) {
   const runs = singingRuns(voice);
   return lines.map((l, i) => {
     const start = starts[i], next = starts[i + 1] ?? duration;
+    // Words with their own times move with their line's start.
+    if (timed(l)) {
+      const by = start - l.start, times = l.times.map((t) => ({ start: Math.max(0, t.start + by), end: Math.max(0, t.end + by) }));
+      return { ...l, times, start, end: times[times.length - 1].end };
+    }
     // It ends at the next line, or sooner when the singing stops for a while before it.
     const sung = singingIn(runs, start, next);
     const end = sung.length ? sung[sung.length - 1][1] : next;
@@ -117,7 +155,9 @@ export function lyricShapes(lines, voice, duration) {
 
 // show.lyrics as saved: the text, each line's start and end, and the shapes worked out from them.
 export function savedLyrics(text, lines, voice, duration, song = "") {
-  return { text, song, lines: lines.map((l) => ({ start: Math.round(l.start * 100) / 100, end: Math.round(l.end * 100) / 100 })),
+  const r = (t) => Math.round(t * 1000) / 1000;
+  return { text, song, lines: lines.map((l) => ({ start: r(l.start), end: r(l.end),
+    ...(timed(l) ? { words: l.times.map((t) => ({ start: r(t.start), end: r(t.end) })) } : {}) })),
     fps: LYRIC_FPS, shapes: lyricShapes(lines, voice, duration) };
 }
 
@@ -125,13 +165,18 @@ export function savedLyrics(text, lines, voice, duration, song = "") {
 export function savedLines(lyrics) {
   const lines = parseLyrics(lyrics?.text);
   if (!lines.length || !Array.isArray(lyrics?.lines) || lyrics.lines.length !== lines.length) return null;
-  return lines.map((l, i) => ({ ...l, start: Number(lyrics.lines[i].start) || 0, end: Number(lyrics.lines[i].end) || 0 }));
+  return lines.map((l, i) => {
+    const saved = lyrics.lines[i], words = Array.isArray(saved.words) && saved.words.length === l.words.length ? saved.words : null;
+    return { ...l, start: Number(saved.start) || 0, end: Number(saved.end) || 0,
+      ...(words ? { times: words.map((t) => ({ start: Number(t.start) || 0, end: Number(t.end) || 0 })) } : {}) };
+  });
 }
 
 // Lyrics are kept with the song (its info on the server: {text, lines}), so every show on it uses them.
 // What the song keeps from a show's lyrics, or null when they aren't placed.
 export function songLyrics(lyrics) {
-  return savedLines(lyrics) ? { text: lyrics.text, lines: lyrics.lines.map((l) => ({ start: Number(l.start) || 0, end: Number(l.end) || 0 })) } : null;
+  return savedLines(lyrics) ? { text: lyrics.text, lines: lyrics.lines.map((l) => ({ start: Number(l.start) || 0, end: Number(l.end) || 0,
+    ...(Array.isArray(l.words) ? { words: l.words.map((t) => ({ start: Number(t.start) || 0, end: Number(t.end) || 0 })) } : {}) })) } : null;
 }
 
 // A show's copy of its song's lyrics (fromSong: true), shapes worked out for its singer; null when the

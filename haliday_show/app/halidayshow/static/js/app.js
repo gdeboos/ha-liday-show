@@ -3,6 +3,7 @@
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
 import { fromSong, fromStarts, parseLyrics, placeLines, savedLines, savedLyrics, songLyrics } from "./lyrics.js";
+import { lyricStrip } from "./lyricstrip.js";
 import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, voiceFits, voiceShapes } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
@@ -10632,7 +10633,7 @@ async function openShowLyrics() {
   const kept = await api(songExtraUrl("lyrics", ref)).catch(() => null);
   const mine = show.lyrics && (!show.lyrics.song || show.lyrics.song === ref.path) ? show.lyrics : null;
   const fromEdit = kept ? null : await lyricsFromEdit(ref, songBuffer.duration);
-  openLyrics({ ref, duration: songBuffer.duration, voice: show.voice || null, lyrics: kept || mine, fromEdit,
+  openLyrics({ ref, duration: songBuffer.duration, peaks: app.peaks || computePeaks(songBuffer), voice: show.voice || null, lyrics: kept || mine, fromEdit,
     async save(words) {
       await api(songExtraUrl("lyrics", ref), { method: "PUT", json: words });
       if (app.show !== show) return;
@@ -10653,7 +10654,7 @@ async function openSongLyrics(ref) {
     const [voice, kept] = await Promise.all([songVoice(ref, song), api(songExtraUrl("lyrics", ref)).catch(() => null)]);
     const fromEdit = kept ? null : await lyricsFromEdit(ref, song.duration);
     status("");
-    openLyrics({ ref, duration: song.duration, voice, lyrics: kept, fromEdit, save: (words) => api(songExtraUrl("lyrics", ref), { method: "PUT", json: words }) });
+    openLyrics({ ref, duration: song.duration, peaks: computePeaks(song), voice, lyrics: kept, fromEdit, save: (words) => api(songExtraUrl("lyrics", ref), { method: "PUT", json: words }) });
   } catch (e) { status(`Couldn't open the lyrics: ${e.message}`, true); }
 }
 
@@ -10661,12 +10662,13 @@ async function openSongLyrics(ref) {
 // tweaked line by line: each line's start typed in, or tapped in time with the song. save({text,
 // lines}) keeps them with the song, or save(null) removes them. fromEdit (lyricsFromEdit): the
 // original's lyrics to offer, for a file made from a draft.
-function openLyrics({ ref, duration, voice, lyrics, fromEdit = null, save: keep }) {
+function openLyrics({ ref, duration, peaks, voice, lyrics, fromEdit = null, save: keep }) {
   const w = editWindow(`Lyrics for ${ref.path.replace(/^.*\//, "").replace(/\.[^.]+$/, "")}`);
   w.dlg.classList.add("lyrics-dialog");
   const intro = Object.assign(document.createElement("p"), { className: "hint",
     textContent: "Paste the words, one line of the song per line. They're placed across the singing for you; "
-      + "if a line comes in early or late, type its start or tap along with the song." });
+      + "if a line comes in early or late, type its start or tap along with the song. To get a word just right, "
+      + "drag it on the waveform, or drag its edges to make it longer or shorter." });
   const text = Object.assign(document.createElement("textarea"), { rows: 7, className: "lyrics-text",
     value: lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
   text.setAttribute("aria-label", "The song's words");
@@ -10679,7 +10681,10 @@ function openLyrics({ ref, duration, voice, lyrics, fromEdit = null, save: keep 
   audio.addEventListener("timeupdate", () => { if (stopAt != null && audio.currentTime >= stopAt) { audio.pause(); stopAt = null; } });
   const time = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
   const place = () => { lines = placeLines(parseLyrics(text.value), voice, duration); draw(); };
+  const strip = lyricStrip({ peaks, voice, duration, audio, lines: () => lines,
+    setLines: (next, done) => { lines = next; if (done) draw(); } });
   const draw = () => {
+    strip.draw();
     list.replaceChildren(...lines.map((l, i) => {
       const row = document.createElement("div");
       row.className = "lyrics-line" + (i === tapping ? " tapping" : "");
@@ -10692,10 +10697,10 @@ function openLyrics({ ref, duration, voice, lyrics, fromEdit = null, save: keep 
         lines = fromStarts(lines, starts, voice, duration);
         draw();
       });
-      const play = button("▶", () => { audio.currentTime = Math.max(0, l.start - 0.3); stopAt = l.end + 0.3; audio.play(); }, "ghost small");
+      const play = button("▶", () => { strip.show(i); audio.currentTime = Math.max(0, l.start - 0.3); stopAt = l.end + 0.3; audio.play(); }, "ghost small");
       play.setAttribute("aria-label", `Play "${l.text}"`);
       const words = Object.assign(document.createElement("span"), { className: "lyrics-words", textContent: l.text });
-      const when = Object.assign(document.createElement("span"), { className: "hint", textContent: time(l.start) });
+      const when = Object.assign(document.createElement("span"), { className: "hint", textContent: `${time(l.start)} – ${time(l.end)}` });
       row.append(start, play, words, when);
       return row;
     }));
@@ -10705,7 +10710,12 @@ function openLyrics({ ref, duration, voice, lyrics, fromEdit = null, save: keep 
   text.addEventListener("change", () => {
     const now = parseLyrics(text.value);
     // The same number of lines: keep their starts; otherwise place them all again.
-    if (now.length && now.length === lines.length) { lines = fromStarts(now, lines.map((l) => l.start), voice, duration); draw(); } else place();
+    if (now.length && now.length === lines.length) {
+      // A line with the same number of words keeps its words' times.
+      const kept = now.map((l, i) => (lines[i].times && lines[i].words.length === l.words.length ? { ...l, start: lines[i].start, times: lines[i].times } : l));
+      lines = fromStarts(kept, lines.map((l) => l.start), voice, duration);
+      draw();
+    } else place();
   });
   const auto = button("Place automatically", place, "ghost");
   // Tap along: the song plays from the start, and each press of the button (or the space bar) starts the
@@ -10760,7 +10770,7 @@ function openLyrics({ ref, duration, voice, lyrics, fromEdit = null, save: keep 
     bring.title = "This song was made from a draft of that one in the Music editor: its lyrics follow the cuts";
     tools.prepend(bring);
   }
-  w.body.append(intro, text, tools, hint, list);
+  w.body.append(intro, text, tools, strip.el, hint, list);
   const remove = button("Remove lyrics", () => finish(null), "ghost danger");
   remove.hidden = !lyrics;
   const save = button("Save", () => {

@@ -1454,6 +1454,7 @@ async def put_song_palette(request):
 # show on it uses them.
 MAX_LYRIC_TEXT = 20000
 MAX_LYRIC_LINES = 500
+MAX_LYRIC_WORDS = 100  # in one line
 MAX_VOICE_STEPS = 20 * 60 * 30  # 30 minutes at 20 a second
 
 
@@ -1464,7 +1465,8 @@ def _num(v, lo=0.0, hi=36000.0) -> float:
 
 
 def _clean_song_lyrics(body) -> dict | None:
-    """{text, lines: [{start, end}]} (one per non-blank line of the text), or null to clear."""
+    """{text, lines: [{start, end, words?: [{start, end}]}]} (one per non-blank line of the text), or null
+    to clear."""
     if body is None:
         return None
     try:
@@ -1474,7 +1476,16 @@ def _clean_song_lyrics(body) -> dict | None:
             raise ValueError
         if len(lines) != sum(1 for line in text.splitlines() if line.strip()):
             raise ValueError  # one per line of the words
-        clean = [{"start": (a := _num(l["start"])), "end": max(a, _num(l["end"]))} for l in lines]
+        clean = []
+        for line in lines:
+            a = _num(line["start"])
+            out = {"start": a, "end": max(a, _num(line["end"]))}
+            if line.get("words") is not None:  # each word's own times, once moved on the waveform
+                words = line["words"]
+                if not isinstance(words, list) or not 0 < len(words) <= MAX_LYRIC_WORDS:
+                    raise ValueError
+                out["words"] = [{"start": (w0 := _num(w["start"])), "end": max(w0, _num(w["end"]))} for w in words]
+            clean.append(out)
     except (ValueError, KeyError, TypeError):
         raise web.HTTPBadRequest(text="expected {text, lines: [{start, end}]} or null")
     return {"text": text, "lines": clean}

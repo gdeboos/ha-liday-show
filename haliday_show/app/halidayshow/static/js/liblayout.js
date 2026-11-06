@@ -1,10 +1,11 @@
-// Cards or a list: how Library → Shows, Scenes, Pictures and Palettes lay out their items, picked with
+// Cards or a list: how Library → Shows, Scenes, Pictures, Faces and Palettes lay out their items, picked with
 // the Cards / List switch above each and remembered for each one in this browser. Cards are the
 // default. The rows are the same either way; the "as-cards" class lays them out as cards (style.css).
 export const CARD_LIBRARIES = {
   shows: { view: "view-shows", list: "#view-shows [data-show-list]", noun: "shows" },
   scenes: { view: "view-scenes", list: "#view-scenes [data-scene-list]", noun: "scenes" },
   pictures: { view: "view-pictures", list: "#pictures-list", noun: "pictures" },
+  faces: { view: "view-faces", list: "#faces-list, #faces-builtin", noun: "faces" },
   palettes: { view: "view-palettes", list: "#my-palettes", noun: "palettes" },
 };
 
@@ -22,7 +23,7 @@ export function applyLayout(prefs, kind) {
 // The Cards / List switch, put just above each library's list.
 export function addLayoutSwitches(prefs) {
   for (const [kind, lib] of Object.entries(CARD_LIBRARIES)) {
-    const list = document.querySelector(lib.list);
+    const list = document.querySelector(lib.list.split(",")[0]);
     if (!list || document.querySelector(`[data-cards-for="${kind}"]`)) continue;
     const box = document.createElement("span");
     box.className = "seg-buttons layout-switch";

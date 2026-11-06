@@ -1,8 +1,13 @@
 # Changelog
 
+## 0.2.394
+
+- **Cards in the Library.** **Shows**, **Scenes**, **Pictures**, **Faces** and **Palettes** now show as cards: a show's cover art or picture big across the top, a scene's or palette's colours as a wide strip, each picture and face large. **Cards** and **List** at the top right of each switch back to rows if you prefer, remembered for each one. **Songs**, **Samples**, **Playlists** and **Presets** stay as rows.
+
 ## 0.2.393
 
-- **Cards in the Library.** **Shows**, **Scenes**, **Pictures** and **Palettes** now show as cards: a show's cover art or picture big across the top, a scene's or palette's colours as a wide strip, each picture large. **Cards** and **List** at the top right of each switch back to rows if you prefer, remembered for each one. **Songs**, **Samples**, **Playlists** and **Presets** stay as rows.
+- **Place each word on the waveform.** **Lyrics…** now shows the song's waveform, with every word as a block under it and the singer's level drawn over the song. Drag a word to move it, or drag its edges to make it longer or shorter. A line now ends where its last word does, so the mouth stays shut through an instrumental. Click the waveform to play from there; **+** and **−** zoom.
+- Each line in **Lyrics…** shows when it ends as well as when it starts.
 
 ## 0.2.392
 

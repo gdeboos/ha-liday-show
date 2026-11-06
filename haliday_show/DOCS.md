@@ -643,9 +643,9 @@ Your shows are under **Library → Shows**, and nothing changes in a show until 
 one you were last editing has a **Last edited** badge. Under that is the show's palette: a strip of its colours
 and the palette's name.
 
-**Library → Shows**, **Scenes**, **Pictures** and **Palettes** show their items as cards: each show's
-picture or cover art (or its palette tile), each scene's or palette's colours, or each picture, across the
-top, with its name and buttons under it. **Cards** and **List**, at the top right of each, switch between
+**Library → Shows**, **Scenes**, **Pictures**, **Faces** and **Palettes** show their items as cards: each
+show's picture or cover art (or its palette tile), each scene's or palette's colours, or each picture or
+face, across the top, with its name and buttons under it. **Cards** and **List**, at the top right of each, switch between
 cards and the shorter rows, and each remembers your choice in this browser. Folders stay full width
 above the cards.
 
@@ -1731,12 +1731,19 @@ or open the song in the Music editor and press **Lyrics…** under **Beats and s
 
 1. Paste the song's words, one line of the song per line.
 2. They're placed across the singing for you, each word taking longer the more syllables it has. Each
-   line shows its start time; press **▶** beside one to hear it.
+   line shows when it starts and ends; press **▶** beside one to hear it.
 3. If a line comes in early or late, type its start, or press **Tap along…**: the song plays from the
    beginning and you press **Line 1 starts** (or the space bar) as the first line starts, then again for
    each line after (the button says which line it's waiting for). The words of each line
    are spread across the singing after its start.
-4. Press **Save**. **Lyrics… (placed)** shows it has them; **Remove lyrics** goes back to the shapes
+4. To get a word just right, use the waveform above the lines. Each word is a block under the song,
+   with the singer's level drawn over the song as a line. Drag a word to move it, or drag its left or
+   right edge to make it start sooner or later, or last longer or shorter. A line ends where its last
+   word ends, so the mouth stays shut through an instrumental: if a line runs into one, drag its last
+   word's right edge back to where the singing stops. Click anywhere else on the waveform to play the
+   song from there, and click again to stop. **+** and **−** zoom in and out, and the bar under it (or
+   your mouse wheel) scrolls along the song. **Place automatically** starts again from scratch.
+5. Press **Save**. **Lyrics… (placed)** shows it has them; **Remove lyrics** goes back to the shapes
    guessed from the sound.
 
 Each word's mouth shapes come from its spelling (an "oo" for "moon", a wide "ee" for "see", lips

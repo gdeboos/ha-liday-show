@@ -344,11 +344,13 @@ export function mapLyrics(lyrics, pieces, crossfade, src) {
     for (const l of lines) {
       if (l.start < p.start || l.start > p.end || map(l.start) < own0 - EPS || map(l.start) >= own1 - EPS) continue;
       const start = r3(map(l.start));
-      out.push({ text: l.text, start, end: Math.max(start + 0.05, r3(Math.min(map(Math.min(l.end, p.end)), own1))) });
+      const at = (t) => r3(Math.min(map(Math.min(Math.max(t, p.start), p.end)), own1));
+      const words = l.times && l.times.map((t) => ({ start: at(t.start), end: Math.max(at(t.start) + 0.05, at(t.end)) }));
+      out.push({ text: l.text, start, end: words ? words[words.length - 1].end : Math.max(start + 0.05, at(l.end)), ...(words ? { words } : {}) });
     }
   });
   out.sort((a, b) => a.start - b.start);
-  return out.length ? { text: out.map((l) => l.text).join("\n"), lines: out.map(({ start, end }) => ({ start, end })) } : null;
+  return out.length ? { text: out.map((l) => l.text).join("\n"), lines: out.map(({ text: _, ...l }) => l) } : null;
 }
 
 // rendering ---------------------------------------------------------------------
