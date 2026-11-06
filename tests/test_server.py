@@ -1094,6 +1094,22 @@ async def test_draft_layers_are_kept_and_checked(client, tmp_path):
         assert (await client.post("/api/drafts", json={**draft, "layers": bad})).status == 400
 
 
+async def test_draft_song_parts_are_kept_and_checked(client, tmp_path):
+    song = {"source": "media", "path": "haliday_show/song.mp3"}
+    draft = {"name": "Mash", "base": song, "pieces": [{"song": song, "start": 0, "end": 60}]}
+    change = {"part": "drums", "gain": -60, "from": {"song": song, "t": 10}, "to": {"song": song, "t": 20}}
+    parts = {"gain": {"bass": 3, "drums": 0}, "muted": ["vocals"], "changes": [change]}
+    draft_id = (await (await client.post("/api/drafts", json={**draft, "parts": parts})).json())["id"]
+    got = (await (await client.get(f"/api/drafts/{draft_id}")).json())["parts"]
+    assert got == {"gain": {"bass": 3.0}, "muted": ["vocals"], "changes": [{**change, "gain": -60.0}]}
+    # Nothing changed, nothing saved (old drafts look the same).
+    flat = (await (await client.post("/api/drafts", json={**draft, "parts": {"gain": {"bass": 0}, "muted": [], "changes": []}})).json())["id"]
+    assert "parts" not in await (await client.get(f"/api/drafts/{flat}")).json()
+    for bad in ({"gain": {"kazoo": 1}}, {"gain": {"bass": 9}}, {"muted": ["kazoo"]}, {"gain": {"bass": True}},
+                {"changes": [{**change, "part": "x"}]}, {"changes": [{**change, "gain": -61}]}, {"changes": [{**change, "to": 5}]}, "x"):
+        assert (await client.post("/api/drafts", json={**draft, "parts": bad})).status == 400, bad
+
+
 async def test_draft_mixer_settings_are_kept_and_checked(client, tmp_path):
     song = {"source": "media", "path": "haliday_show/song.mp3"}
     loop = {"source": "media", "path": "haliday_show/Samples/Loop.wav"}

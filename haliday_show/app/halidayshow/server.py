@@ -1716,6 +1716,39 @@ def _clean_eq(eq) -> dict | None:
     return out
 
 
+SONG_PARTS = ("vocals", "drums", "bass", "rest")
+MAX_PART_CHANGES = 200
+
+
+def _clean_song_parts(parts) -> dict | None:
+    """The song's own parts' levels in a draft (static/js/songparts.js): {gain: {part: dB -24 to 6},
+    muted: [part], changes: [{part, gain (dB -60 to 6), from: {song, t}, to: {song, t}}]}."""
+    if not isinstance(parts, dict):
+        return None
+    gain, muted, changes = parts.get("gain", {}), parts.get("muted", []), parts.get("changes", [])
+    if not isinstance(gain, dict) or set(gain) - set(SONG_PARTS) or not isinstance(muted, list) or set(muted) - set(SONG_PARTS) \
+            or not isinstance(changes, list) or len(changes) > MAX_PART_CHANGES:
+        return None
+    out = {"gain": {}, "muted": sorted(set(muted)), "changes": []}
+    for part, g in gain.items():
+        if isinstance(g, bool) or not isinstance(g, (int, float)) or not math.isfinite(g) or not -24 <= g <= 6:
+            return None
+        if g:
+            out["gain"][part] = round(float(g), 1)
+    for c in changes:
+        if not isinstance(c, dict) or c.get("part") not in SONG_PARTS or not isinstance(c.get("from"), dict) or not isinstance(c.get("to"), dict):
+            return None
+        g = c.get("gain")
+        if isinstance(g, bool) or not isinstance(g, (int, float)) or not math.isfinite(g) or not -60 <= g <= 6:
+            return None
+        ends = [(_song_ref(c[k].get("song")), _seconds(c[k].get("t"), 86400)) for k in ("from", "to")]
+        if any(None in e for e in ends):
+            return None
+        out["changes"].append({"part": c["part"], "gain": round(float(g), 1),
+                               "from": {"song": ends[0][0], "t": ends[0][1]}, "to": {"song": ends[1][0], "t": ends[1][1]}})
+    return out
+
+
 def _clean_layers(layers) -> list[dict] | None:
     """A draft's layers: [{name, gain, duck, duckDb, matchTempo, eq (all optional), clips: [{song, start, end,
     anchor: {song, t}, gain, fadeIn, fadeOut, bpm (optional)}]}], samples or songs played over the song,
@@ -1821,6 +1854,12 @@ def _clean_draft(body) -> dict | None:
         if eq is None:
             return None
         out["eq"] = eq
+    if body.get("parts") is not None:  # the song's own parts' levels (kept only when something's changed)
+        parts = _clean_song_parts(body["parts"])
+        if parts is None:
+            return None
+        if parts["gain"] or parts["muted"] or parts["changes"]:
+            out["parts"] = parts
     return out
 
 
