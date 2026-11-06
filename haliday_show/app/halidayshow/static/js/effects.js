@@ -8,7 +8,7 @@ import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
 import { CHARACTERS, FACE_ASPECT, faceColour, mouthFor } from "./faces.js";
-import { PHONES, PHONE_FPS, PHONE_GRID, hasPhonesLane, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
+import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_SAMPLE, hasPhonesLane, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
 
 export const FPS = 40;
 
@@ -1916,10 +1916,10 @@ export const laneUsesHouse = (lane) => !!lane?.clips?.some((c) => EFFECTS[c.effe
 // A phone's screen at `time` (phones.js): the Phones lane's clips drawn on PHONE_GRID, rows from the top
 // left, dark in its gaps. `main` is the house's main colour then, for its House colour clips; `level`
 // the show's own dimming of the lane. The editor's phone and visitors' phones both draw it with this.
-export function phoneScreen(clips, time, main = null, level = 1, out = undefined) {
+export function phoneScreen(clips, time, main = null, level = 1, out = undefined, grid = PHONE_GRID) {
   phoneMain = main || STAND_IN;
   try {
-    return dim(renderTrack(clips || [], time, PHONE_GRID.w * PHONE_GRID.h, out, false, PHONE_GRID), level);
+    return dim(renderTrack(clips || [], time, grid.w * grid.h, out, false, grid), level);
   } finally { phoneMain = STAND_IN; }
 }
 
@@ -1930,7 +1930,7 @@ export function phoneColourAt(show, time, lightFrames) {
   const lane = (show.tracks || []).find((t) => t.device === PHONES);
   if (!lane) return mainColour(lightFrames);
   const main = laneUsesHouse(lane) ? mainColour(lightFrames) : null;
-  return mainColour([phoneScreen(lane.clips, time, main, showLevel(show, PHONES))]);
+  return mainColour([phoneScreen(lane.clips, time, main, showLevel(show, PHONES), undefined, PHONE_SAMPLE)]);
 }
 
 // Bake every frame into the layout the Python player reads (see baked.py): one track per physical

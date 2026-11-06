@@ -18,6 +18,8 @@ import os
 import urllib.parse
 import re
 import secrets
+import shutil
+import tempfile
 import time
 import zlib
 from pathlib import Path
@@ -1051,12 +1053,12 @@ async def upload_audio(request):
     return web.json_response({"source": "media", "path": str(dest.relative_to(storage.media_dir))})
 
 
-# Split vocals (static/js/stems.js): the AI model and the runtime that runs it in the browser, passed
-# through from where they're published, so the browser fetches them from HA-liday Show itself (no
-# other site to allow, nothing kept here or in backups; the browser keeps its own copy). Only these
-# files, each checked against its size and SHA-256 before its last bytes go out: one that doesn't
-# match (changed upstream, cut off) is broken off, so the browser never runs or keeps it.
-# HALIDAY_SHOW_STEMS_FROM points at a mirror of them instead, for an install with no internet.
+# Split vocals (static/js/stems.js): the AI model and the runtime that runs it in the browser. HA-liday
+# Show downloads each once from where it's published, checks its size and SHA-256, and keeps it in the
+# temporary folder (never in backups; gone after a restart), then hands it to the browser from there,
+# so the browser needs no other site. The browser takes the big model in pieces (Range requests): one
+# long download through Home Assistant's ingress can be cut off part way. HALIDAY_SHOW_STEMS_FROM points
+# at a mirror of them instead, for an install with no internet.
 _ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/"
 STEM_FILES = {
     "model.onnx": ("https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR-MDX-NET-Voc_FT.onnx",
@@ -1087,52 +1089,111 @@ async def _stream_from(url: str):
         raise StemsUnavailable(str(e) or type(e).__name__) from e
 
 
+class StemFiles:
+    """Split vocals' files, each downloaded once (on first ask) into `folder` and checked."""
+
+    def __init__(self, folder: Path):
+        # Started afresh each time HA-liday Show starts: only files this run downloaded and checked are
+        # handed out, whatever was left in the temporary folder before.
+        shutil.rmtree(folder, ignore_errors=True)
+        self.folder = folder
+        self.tasks: dict[str, asyncio.Task] = {}
+        self.got: dict[str, int] = {}
+        self.errors: dict[str, str] = {}
+
+    def path(self, name: str) -> Path | None:
+        p = self.folder / name
+        return p if p.is_file() else None
+
+    def start(self, name: str, again: bool = True):
+        """Downloads it if it isn't here or on its way; one that failed only if `again`."""
+        if self.path(name) or (name in self.tasks and not self.tasks[name].done()) or (name in self.errors and not again):
+            return
+        self.errors.pop(name, None)
+        self.tasks[name] = asyncio.get_running_loop().create_task(self._fetch(name))
+
+    async def ready(self, name: str) -> Path:
+        """The file, downloading it first if need be; StemsUnavailable if it can't be had."""
+        self.start(name)
+        if name in self.tasks:
+            await asyncio.shield(self.tasks[name])
+        p = self.path(name)
+        if p is None:
+            raise StemsUnavailable(self.errors.get(name, "it couldn't be downloaded"))
+        return p
+
+    def status(self, names=None, retry: bool = False) -> dict:
+        """How far along each file (of `names`, else all) is, starting any that aren't there yet (and with
+        `retry`, any that failed before)."""
+        out = {}
+        for name, (_, _, size, _) in STEM_FILES.items():
+            if names is not None and name not in names:
+                continue
+            self.start(name, retry)
+            done = self.path(name) is not None
+            out[name] = {"size": size, "got": size if done else self.got.get(name, 0), "ready": done,
+                         **({"error": self.errors[name]} if name in self.errors and not done else {})}
+        return out
+
+    async def _fetch(self, name: str):
+        url, _, size, sha = STEM_FILES[name]
+        mirror = os.environ.get("HALIDAY_SHOW_STEMS_FROM", "").strip()
+        if mirror:
+            url = mirror.rstrip("/") + "/" + name
+        part = self.folder / f".{name}.part"
+        digest, got, problem = hashlib.sha256(), 0, None
+        self.got[name] = 0
+        try:
+            self.folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with part.open("wb") as f:
+                async for chunk in _stream_from(url):
+                    got += len(chunk)
+                    if got > size:
+                        problem = "bigger than it should be"
+                        break
+                    digest.update(chunk)
+                    f.write(chunk)
+                    self.got[name] = got
+        except StemsUnavailable as e:
+            problem = f"couldn't download it ({e})"
+        except OSError as e:
+            problem = f"couldn't keep it ({e.strerror or e})"
+        except Exception as e:  # never left looking as if it's still on its way
+            problem = f"something went wrong ({e})"
+        if not problem and (got != size or digest.hexdigest() != sha):
+            problem = "it wasn't the file it should be" if got == size else "its download was cut off"
+        if problem:
+            log.warning("Split vocals: %s from %s: %s", name, url, problem)
+            self.errors[name] = problem
+            part.unlink(missing_ok=True)
+            return
+        os.replace(part, self.folder / name)
+        log.info("Split vocals: %s downloaded and checked", name)
+
+
+STEMS = web.AppKey("stems", StemFiles)
+
+
+async def post_stems_prepare(request):
+    """Gets Split vocals' files ready (?names=a,b, else all): how far along each is (the browser asks
+    again until all are)."""
+    names = request.query.get("names")
+    return web.json_response(request.app[STEMS].status(set(names.split(",")) if names else None,
+                                                       retry=request.query.get("retry") == "1"))
+
+
 async def get_stem_file(request):
     name = request.match_info["name"]
     if name not in STEM_FILES:
         raise web.HTTPNotFound(text="not one of Split vocals' files")
-    url, kind, size, sha = STEM_FILES[name]
-    mirror = os.environ.get("HALIDAY_SHOW_STEMS_FROM", "").strip()
-    if mirror:
-        url = mirror.rstrip("/") + "/" + name
-    chunks = _stream_from(url)
+    _, kind, _, _ = STEM_FILES[name]
     try:
-        try:
-            held = await chunks.__anext__()
-        except StopAsyncIteration:
-            held = b""
-        except StemsUnavailable as e:
-            log.warning("Split vocals: couldn't download %s: %s", name, e)
-            raise web.HTTPBadGateway(text=f"Couldn't download the AI files for Split vocals ({e}). Is HA-liday Show "
-                                          "online? Without internet, see HALIDAY_SHOW_STEMS_FROM in the guide")
-        resp = web.StreamResponse(headers={"Content-Type": kind, "Content-Length": str(size),
-                                           "Cache-Control": "public, max-age=31536000, immutable"})
-        await resp.prepare(request)
-        digest, got, problem = hashlib.sha256(held), len(held), None
-        try:
-            # Everything goes out as it comes but the latest piece, held back until the whole file checks out.
-            async for chunk in chunks:
-                digest.update(chunk)
-                got += len(chunk)
-                if got > size:
-                    problem = "bigger than it should be"
-                    break
-                await resp.write(held)
-                held = chunk
-        except StemsUnavailable as e:
-            problem = f"cut off ({e})"
-        if not problem and (got != size or digest.hexdigest() != sha):
-            problem = "not the file it should be" if got == size else "cut off"
-        if problem:
-            log.warning("Split vocals: %s from %s was %s; not passed on", name, url, problem)
-            if request.transport:
-                request.transport.close()  # short of its Content-Length: the browser drops it
-            return resp
-        await resp.write(held)
-        await resp.write_eof()
-        return resp
-    finally:
-        await chunks.aclose()  # a browser that went away stops the download too
+        path = await request.app[STEMS].ready(name)
+    except StemsUnavailable as e:
+        raise web.HTTPBadGateway(text=f"Couldn't download the AI files for Split vocals: {e}. Is HA-liday Show "
+                                      "online? Without internet, see HALIDAY_SHOW_STEMS_FROM in the guide")
+    # A Range (part of the file) is answered with just that part: the browser takes the model in pieces.
+    return web.FileResponse(path, headers={"Content-Type": kind, "Cache-Control": "public, max-age=31536000, immutable"})
 
 
 async def _carry_cover(request, dest: Path):
@@ -3072,6 +3133,9 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         logging.getLogger(__name__).error("couldn't move lights off the old Govee protocols: %s", e)
     app[TESTS] = {}
     app[VIDEOS] = video.Exports(songcopy.converter)
+    # Split vocals' files, kept in the temporary folder: one per config folder, so two installs on one
+    # machine (or the tests) don't share half-made ones.
+    app[STEMS] = StemFiles(Path(tempfile.gettempdir()) / f"haliday-split-vocals-{hashlib.sha1(str(config_dir).encode()).hexdigest()[:8]}")
     app[UPLOADING] = set()
     app[PREVIEWS] = {}
     app[LISTENING] = {"listener": None, "options": {}}
@@ -3106,6 +3170,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[LIVE].close()
         await stop_tests(app)
         app[VIDEOS].close()
+        for task in app[STEMS].tasks.values():
+            task.cancel()
         await app[RUNNER].close()
         await app[OUTPUT].close()
         await app[HA].close()
@@ -3158,6 +3224,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/audio", list_audio)
     r.add_post("/api/audio", upload_audio)
     r.add_get("/api/stems/files/{name}", get_stem_file)
+    r.add_post("/api/stems/prepare", post_stems_prepare)
     r.add_post("/api/audio/part", upload_audio_part)
     r.add_get("/api/samples", list_samples)
     r.add_delete("/api/samples", delete_sample)

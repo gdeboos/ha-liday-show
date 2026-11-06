@@ -1,9 +1,18 @@
 # Changelog
 
-## 0.2.376
+## 0.2.378
 
 - The vocals and music that **Split vocals** makes now sit under the song they came from in **Library → Songs**, in a **Split vocals** group, so they're in that song's folder instead of loose at the top. They follow it when you pick a song for a new show or to splice in, too.
 - Each split says what uses it, or **Not used by any show or draft**, so you know which you can remove (**⋯ → Remove…**). The new **Splits** button beside **Find** lists them all.
+
+## 0.2.377
+
+- **Sharper pictures on phones.** A phone's screen is now twice as detailed (54 × 96), and drawn crisp rather than blurred, so GIFs, faces and text on the **Phones** lane look like clean pixel art. Pictures are still kept at up to 64 × 64 when you add them, as for your matrices.
+- **Turning off the welcome now works.** Unticking **Welcome first-time visitors** under **Public page → Shows** didn't stop the welcome showing on visitors' phones. It does now.
+
+## 0.2.376
+
+- **Split vocals works through Home Assistant again.** The AI's download (about 90 MB, the first time) was being cut off part way through Home Assistant, which showed as "network error". HA-liday Show now downloads it once itself, checks it, and hands it to your browser in small pieces, so it gets through. Splitting a song then starts much sooner the second time, until HA-liday Show restarts.
 
 ## 0.2.375
 

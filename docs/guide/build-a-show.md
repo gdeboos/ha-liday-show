@@ -301,17 +301,19 @@ says what uses it: a show, or a draft in the Music editor. One that says **Not u
 draft** can go: its **⋯ → Remove…** archives or deletes it. The **Splits** button beside **Find** lists
 every split, to tidy them up in one go.
 
-An AI model does it, in your browser, on the song as it is (not a draft's edits). The first time, your
-browser downloads it, about 90 MB, through HA-liday Show, and keeps it for next time where it can.
+An AI model does it, in your browser, on the song as it is (not a draft's edits). The first time,
+HA-liday Show downloads it (about 90 MB), checks it, and keeps it until HA-liday Show restarts (it's
+never in your backups); your browser then takes it from there, in pieces, and keeps its own copy where
+it can.
 It's quickest on a computer whose browser can use the graphics card (recent Chrome or Edge): a few
 minutes for a song. Otherwise it runs on the processor and can take as long as the song lasts, many
 times over, so leave the page open and come back. Songs with clear lead vocals split best; backing
 singers and effects can stay in the music, and a little of the music in the vocals.
 
 While it works, a window covers the page saying what it's doing (downloading the AI, splitting, saving)
-and how far along it is. **Cancel** stops it, and your songs stay as they were. If the download is cut
-off part way, it's tried again twice; if it still fails, HA-liday Show's log (in Home Assistant, the app's **Log** tab)
-says why.
+and how far along it is. **Cancel** stops it, and your songs stay as they were. If the AI can't be
+downloaded, the window says why, and HA-liday Show's log (in Home Assistant, the app's **Log** tab) says
+more.
 
 ### Samples
 

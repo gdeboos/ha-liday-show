@@ -6,7 +6,9 @@
 export const PHONES = "@phones"; // the Phones lane's device id
 export const PHONE_FPS = 10;
 // A Phones lane plays on the phone's screen as a small upright matrix, drawn by the phone itself.
-export const PHONE_GRID = { w: 27, h: 48 };
+export const PHONE_GRID = { w: 54, h: 96 };
+// The same shape, smaller: enough for the screen's main colour in the bake, at a quarter of the work.
+export const PHONE_SAMPLE = { w: 27, h: 48 };
 const LIT = 8; // a channel this bright or more counts as lit
 
 // The house's main colour from its lights' frames (each r g b r g b …): the lit bulbs' colours
