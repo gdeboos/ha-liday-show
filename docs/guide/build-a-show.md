@@ -212,7 +212,8 @@ You can swap shows with friends, or post one on a forum, without either of you c
 
 ### Songs
 
-The Song panel shows the show's song with its length, tempo and sections. Press
+The Song panel shows the show's song with its length, tempo and sections, and, once HA-liday Show has
+listened to it, what can be heard in it (see [Split into parts](#split-into-parts)). Press
 **Change…** to pick another from your Home Assistant **media** folder, or **+ Add a song…** (MP3,
 M4A, AAC, OGG, Opus, WAV, FLAC or WebM; see below). Songs you add go to `/media/haliday_show/` so media
 players can play them. For a lights-only show, choose **No song, lights only** and set its **Length with no song**.
@@ -359,7 +360,7 @@ Parts are kept in a hidden **.parts** folder inside HA-liday Show's songs folder
 your media folder), as WAV files: each is about 10 MB a minute of song, so a three-minute song's parts
 take about 150 MB.
 
-Songs you split before songs kept their parts ("Jingle Bells (vocals)" and "Jingle Bells (music)")
+Songs you split before songs had parts ("Jingle Bells (vocals)" and "Jingle Bells (music)")
 were moved into their song's parts when you updated, and shows and drafts that used them follow. Any
 that couldn't be matched to a song (its song's gone, say) stay as songs, under **Splits**.
 
