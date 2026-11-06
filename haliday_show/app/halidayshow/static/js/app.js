@@ -347,6 +347,7 @@ function roleSelect(label, fallback, value, onChange) {
 // Setup → Devices → Light roles.
 async function renderLightRoles() {
   const lanes = roleLanes(), house = await loadHouseRoles(), guess = guessRoles(lanes);
+  const unknown = !houseRoles; // couldn't be asked: no changes, which would wipe the rest
   $("roles-none").hidden = lanes.length > 0;
   $("roles-table").hidden = !lanes.length;
   $("roles-rows").replaceChildren(...lanes.map((l) => {
@@ -365,6 +366,7 @@ async function renderLightRoles() {
       } catch (e) { status(`Couldn't save the role: ${e.message}`, true); }
       renderLightRoles();
     }));
+    pick.querySelector("select").disabled = unknown;
     tr.append(name, pick);
     return tr;
   }));
