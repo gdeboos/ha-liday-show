@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.2.392
+## 0.2.393
 
 - **Cards in the Library.** **Shows**, **Scenes**, **Pictures** and **Palettes** now show as cards: a show's cover art or picture big across the top, a scene's or palette's colours as a wide strip, each picture large. **Cards** and **List** at the top right of each switch back to rows if you prefer, remembered for each one. **Songs**, **Samples**, **Playlists** and **Presets** stay as rows.
+
+## 0.2.392
+
+- **Shared shows carry your own faces.** **Share** now puts the faces you made (Library → Faces) that a show's Singing faces use into the file. Whoever imports it gets them added to their **Library → Faces**, so the characters look just as you made them.
 
 ## 0.2.391
 

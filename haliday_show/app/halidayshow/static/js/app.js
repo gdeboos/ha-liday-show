@@ -57,7 +57,7 @@ import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, inSeasonFilter, length as fmtLength, showRows, showThumb, songName, tileBackground } from "./showlist.js";
 import {
-  buildTracks, lengthNote, makeShare, matchCount, matrixNote, myLights, partPlan, readShare, shareFileName, shareLevels, shareSeason, suggest, suggestSong, withPictureIds,
+  buildTracks, lengthNote, makeShare, matchCount, matrixNote, myLights, partPlan, readShare, shareFileName, shareLevels, shareSeason, suggest, suggestSong, withFaceIds, withPictureIds,
 } from "./sharing.js";
 import {
   BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
@@ -7945,7 +7945,8 @@ const sharedPictureOf = (id) => {
   const pic = getPicture(id);
   return pic ? { name: pic.name, w: pic.w, h: pic.h, frames: pic.frames.map(toBase64), delays: pic.delays } : null;
 };
-const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll(), pictureOf: sharedPictureOf, seasons: app.seasons || [],
+const shareContext = () => ({ models: app.models || {}, positions: housePositionsAll(), pictureOf: sharedPictureOf,
+  faceOf: (id) => getFace(id) || null, seasons: app.seasons || [],
   shapeOf: (id) => house.styles[id]?.style });
 
 function downloadText(name, text) {
@@ -8308,6 +8309,18 @@ async function imSubmit(e) {
     } catch (err) { status(`Couldn't add the picture ${pic.name}, so its effects show their background: ${err.message}`, true, "pictures"); }
   }
   share.tracks = withPictureIds(share.tracks, ids);
+  // Its own Singing faces join yours (or match one of yours that's the same), so its clips find them.
+  const faceIds = Object.create(null);
+  for (const f of share.faces || []) {
+    const same = faceList().find((x) => x.name === f.name && JSON.stringify(getFace(x.id).recipe) === JSON.stringify(f.recipe));
+    if (same) { faceIds[f.key] = same.id; continue; }
+    try {
+      const { id } = await api("api/faces", { method: "POST", json: { name: f.name, recipe: f.recipe } });
+      keepFace(id, f);
+      faceIds[f.key] = id;
+    } catch (err) { status(`Couldn't add the face ${f.name}, so it shows as a snowman: ${err.message}`, true, "faces"); }
+  }
+  share.tracks = withFaceIds(share.tracks, faceIds);
   await openShow(null);
   const { tracks, dropped } = buildTracks(share, imp.plan, imp.mine, imFits);
   const season = shareSeason(share, app.seasons || []);
