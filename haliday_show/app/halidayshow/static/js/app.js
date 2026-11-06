@@ -329,8 +329,9 @@ function roleLanes() {
 // Your house's roles, as picked (the rest are guesses), from the server once.
 let houseRoles = null;
 async function loadHouseRoles() {
-  houseRoles ??= await api("api/light-roles").catch(() => ({}));
-  return houseRoles;
+  // Not kept if it couldn't be asked: saving a role then would wipe the others.
+  if (!houseRoles) houseRoles = await api("api/light-roles").catch(() => null);
+  return houseRoles || {};
 }
 
 // A select of the roles, the first option standing for what it falls back to ("Guess: Melody").
