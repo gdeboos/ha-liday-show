@@ -4,9 +4,10 @@
 // browser can't start the worker, it bakes on the page as before.
 import { bake, bakeLive } from "./effects.js";
 import { allPictures, picturesVersion } from "./pictures.js";
+import { allFaces, facesVersion } from "./faces.js";
 import { alreadyGzipped } from "./upload.js";
 
-let worker = null, broken = false, sentPictures = -1, next = 0;
+let worker = null, broken = false, sentPictures = -1, sentFaces = -1, next = 0;
 const waiting = new Map();
 
 function start() {
@@ -45,11 +46,13 @@ function run(kind, args) {
     const id = ++next;
     waiting.set(id, { resolve, reject, here: () => { try { resolve(here()); } catch (err) { reject(err); } } });
     // Pictures go across only when they've changed since last time (the Picture effect reads them).
-    const v = picturesVersion();
+    const v = picturesVersion(), fv = facesVersion();
     const pictures = v !== sentPictures ? allPictures() : undefined;
+    const faces = fv !== sentFaces ? allFaces() : undefined; // your Singing faces, likewise
     try {
-      w.postMessage({ id, kind, args, pictures });
+      w.postMessage({ id, kind, args, pictures, faces });
       sentPictures = v;
+      sentFaces = fv;
     } catch {
       // Something in the show that can't be copied across: bake this one here.
       waiting.get(id)?.here();

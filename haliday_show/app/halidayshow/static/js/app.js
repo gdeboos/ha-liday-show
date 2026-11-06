@@ -33,6 +33,8 @@ import { MAX_MATRIX, ON_A_MATRIX, RUNS, clipForLane, gridOf, laneTakes, matrixTe
 import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
 import { forgetPicture, getPicture, keepPicture, pictureList, shrinkPicture, toBase64 } from "./pictures.js";
+import { CHARACTERS, FACE_ASPECT, RECIPE_PARTS, blinkAt, builtInName, cleanRecipe, faceColour, faceList, facesUsed, forgetFace,
+  getFace, isBuiltIn, keepFace, recipeColour, recipeOf } from "./faces.js";
 import { placeOnSample } from "./samplehouse.js";
 import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
 import { Layout } from "./layout.js";
@@ -3947,6 +3949,7 @@ function renderInspector() {
       continue;
     }
     if (p.type === "picture") el = picturePicker(clip[p.key] ?? p.default);
+    else if (p.faces) el = facePicker(clip[p.key] ?? p.default);
     else if (p.type === "select") {
       el = document.createElement("select");
       for (const o of p.options) el.add(new Option(o, o, false, o === (clip[p.key] ?? p.default)));
@@ -4632,6 +4635,7 @@ function renderPresetEditor(box, dev, preset, { changed, redraw }) {
     const target = q.type === "color" ? groups.colours : q.type === "range" ? groups.brightness : groups.settings;
     let input;
     if (q.type === "picture") input = picturePicker(preset.params[q.key] ?? q.default);
+    else if (q.faces) input = facePicker(preset.params[q.key] ?? q.default);
     else if (q.type === "select") {
       input = document.createElement("select");
       for (const o of q.options) input.add(new Option(o, o, false, o === (preset.params[q.key] ?? q.default)));
@@ -9289,6 +9293,230 @@ async function addPictures(files) {
   renderPicturesPage();
 }
 
+// Library → Faces: the Singing face's characters, the built-in ones and yours, made in the face maker
+// from a recipe (faces.js draws both). Yours load at start-up with the pictures, as effects can't wait.
+let facesLoaded = false;
+async function loadFaces() {
+  try {
+    const list = await api("api/faces");
+    for (const { id } of faceList()) if (!list.some((f) => f.id === id)) forgetFace(id);
+    for (const f of list) keepFace(f.id, f);
+  } catch (e) { status(`Couldn't load your faces: ${e.message}`, true, "faces"); }
+  facesLoaded = true;
+  if (!$("view-faces").hidden) renderFacesPage();
+  if (!$("view-editor").hidden) renderInspector();
+}
+
+const faceName = (c) => (isBuiltIn(c) ? builtInName(c) : getFace(c)?.name || (facesLoaded ? "A face that's been deleted" : "Loading faces…"));
+
+// The Singing face's Character: the built-in faces, then yours.
+function facePicker(value) {
+  const el = document.createElement("select");
+  const group = (label) => Object.assign(document.createElement("optgroup"), { label });
+  const built = group("Built in"), yours = group("Your faces");
+  for (const c of CHARACTERS) built.append(new Option(builtInName(c), c, false, c === value));
+  const mine = faceList();
+  for (const f of mine) yours.append(new Option(f.name, f.id, false, f.id === value));
+  if (value && !isBuiltIn(value) && !getFace(value)) yours.append(new Option(faceName(value), value, false, true));
+  if (!yours.children.length) yours.append(Object.assign(new Option("None yet: make one under Library → Faces", ""), { disabled: true }));
+  el.append(built, yours);
+  return el;
+}
+
+// A face drawn into a canvas, dot for dot, on black: a character, or a recipe (the face maker's).
+function paintFace(canvas, who, face = {}) {
+  const { width: w, height: h } = canvas;
+  const img = new ImageData(w, h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const u = (x + 0.5) / w, v = (y + 0.5) / h;
+    const c = (typeof who === "string" ? faceColour(who, u, v, face) : recipeColour(who, u, v, face)) || [0, 0, 0];
+    const o = (y * w + x) * 4;
+    img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
+  }
+  canvas.getContext("2d").putImageData(img, 0, 0);
+}
+function faceThumb(who) {
+  const c = Object.assign(document.createElement("canvas"), { className: "picture-thumb", width: 42, height: Math.round(42 / FACE_ASPECT) });
+  paintFace(c, who, { mouth: 0.5 });
+  return c;
+}
+const partName = (s) => builtInName(String(s));
+const faceDetail = (r) => [`${partName(r.head.shape)} head`, `${r.eyes.style} eyes`,
+  ...(r.top.style !== "none" ? [r.top.style] : []), ...Object.keys(r.extras)].join(" · ");
+
+function renderFacesPage() {
+  const box = $("faces-list");
+  const mine = faceList();
+  if (!mine.length) {
+    box.removeAttribute("role");
+    box.innerHTML = `<p class="hint">None of your own yet. Press <b>+ New face</b>, or <b>Duplicate</b> one of the built-in faces below to start from it.</p>`;
+  } else {
+    box.setAttribute("role", "list");
+    box.setAttribute("aria-label", "Your faces");
+    box.replaceChildren(...mine.map(({ id, name }) => itemRow({
+      picture: faceThumb(id), name, label: "face", key: id, detail: faceDetail(getFace(id).recipe),
+      edit: () => openFaceMaker(id),
+      extra: [button("Duplicate", () => openFaceMaker(null, id)), button("Delete…", () => deleteFace(id), "ghost danger")],
+    })));
+    foldLibraryList("faces", box);
+  }
+  libraryFolderButtons();
+  const built = $("faces-builtin");
+  built.setAttribute("role", "list");
+  built.setAttribute("aria-label", "Built-in faces");
+  built.replaceChildren(...CHARACTERS.map((c) => {
+    const row = itemRow({ picture: faceThumb(c), name: builtInName(c), label: "face", detail: "Built in", edit: () => openFaceMaker(null, c) });
+    const b = row.querySelector(".show-actions .primary");
+    b.textContent = "Duplicate";
+    b.setAttribute("aria-label", `Duplicate the ${builtInName(c)} face to make your own`);
+    return row;
+  }));
+}
+
+async function deleteFace(id) {
+  const face = getFace(id);
+  if (!(await askYes(`Delete the face ${face.name}? Singing faces using it show a snowman instead.`, { yes: "Delete", danger: true }))) return;
+  try {
+    await api(`api/faces/${encodeURIComponent(id)}`, { method: "DELETE" });
+    forgetFace(id);
+    if (folderOf(foldersOf("faces"), id)) saveFolders("faces", moveItems(foldersOf("faces"), [id], ""), "Folders kept");
+    renderFacesPage();
+    rebakeShowsFor(null, (show) => usesOwnFace(show, id));
+  } catch (e) { status(`Couldn't delete the face: ${e.message}`, true, "faces"); }
+}
+
+// Whether a show's Singing faces use face `id`.
+const usesOwnFace = (show, id) => !!show?.tracks?.some((t) => t.clips?.some((c) => c.effect === "singingface" && c.character === id));
+
+// The face maker: a face from parts, with a preview that sings. `id` is one of yours to change; otherwise
+// a new face, starting from `from` (a built-in, or one of yours) or a plain one.
+const TRIMMED = ["top hat", "santa hat", "witch hat", "elf hat", "bobble hat", "cat ears", "bear ears"];
+const EXTRA_COLOURS = { beard: "#f4f8ff", moustache: "#f4f8ff", whiskers: "#dddddd", "pointy ears": "#f5c8a8", baubles: "#d0202a",
+  scarf: "#d0202a", "bow tie": "#d0202a" };
+function openFaceMaker(id, from = null) {
+  const own = id ? getFace(id) : null;
+  const recipe = cleanRecipe(own ? own.recipe : recipeOf(from || ""));
+  let name = own ? own.name : from ? `My ${faceName(from).toLowerCase()}` : "My face";
+  const w = editWindow(own ? `Edit face: ${own.name}` : "New face");
+  w.dlg.classList.add("face-dialog");
+
+  // The preview: big and smooth, and as a phone shows it (dot for dot), singing "ah", "oo", "ee" and "mm".
+  const big = Object.assign(document.createElement("canvas"), { className: "face-preview", width: 150, height: 200 });
+  const small = Object.assign(document.createElement("canvas"), { className: "face-preview dots", width: 27, height: 36 });
+  big.setAttribute("aria-label", "Preview");
+  const looks = document.createElement("div");
+  looks.className = "face-looks";
+  const sideLabel = Object.assign(document.createElement("span"), { className: "hint", textContent: "As on a phone" });
+  const smallBox = document.createElement("div");
+  smallBox.append(small, sideLabel);
+  looks.append(big, smallBox);
+  let raf = 0, last = -1;
+  const sing = (now) => {
+    const t = now / 1000, k = Math.floor(t * 3), shape = "aoem"[k % 4];
+    const key = `${k}-${blinkAt(t) > 0.5}`;
+    if (key !== last) {
+      last = key;
+      const face = { mouth: shape === "m" ? 0 : 0.5 + 0.5 * Math.abs(Math.sin(t * 3)), shape, blink: blinkAt(t), look: [0, -1, 0, 1][Math.floor(t / 2) % 4] };
+      paintFace(big, recipe, face);
+      paintFace(small, recipe, face);
+    }
+    raf = requestAnimationFrame(sing);
+  };
+  const redraw = () => { last = -1; };
+  raf = requestAnimationFrame(sing);
+  w.dlg.addEventListener("close", () => cancelAnimationFrame(raf));
+
+  const form = document.createElement("div");
+  form.className = "face-form";
+  const nameIn = Object.assign(document.createElement("input"), { value: name, maxLength: 60, className: "face-name" });
+  nameIn.setAttribute("aria-label", "Name");
+  nameIn.addEventListener("input", () => { name = nameIn.value; });
+  const colourIn = (get, set, label) => {
+    const c = Object.assign(document.createElement("input"), { type: "color", value: get(), title: label });
+    c.setAttribute("aria-label", label);
+    c.addEventListener("input", () => { set(c.value); redraw(); });
+    return c;
+  };
+  const row = (label, ...kids) => {
+    const l = document.createElement("label");
+    l.className = "face-row";
+    const b = document.createElement("span");
+    b.textContent = label;
+    l.append(b, ...kids);
+    return l;
+  };
+  // A part chosen from its list, with its colour (hidden when the part has none).
+  const partRow = (label, obj, key, list, colours = []) => {
+    const sel = document.createElement("select");
+    for (const o of list) sel.add(new Option(partName(o), o, false, o === obj[key]));
+    const ins = colours.map(([k, l]) => colourIn(() => obj[k], (v) => { obj[k] = v; }, `${label}: ${l}`));
+    const show = () => ins.forEach((c, i) => { c.hidden = obj[key] === "none" || (i === 1 && !TRIMMED.includes(obj[key])); });
+    sel.addEventListener("change", () => { obj[key] = sel.value; show(); redraw(); });
+    sel.setAttribute("aria-label", label);
+    show();
+    return row(label, sel, ...ins);
+  };
+  const cheeks = Object.assign(document.createElement("input"), { type: "checkbox", checked: !!recipe.cheeks });
+  const cheekColour = colourIn(() => recipe.cheeks || "#f07090", (v) => { recipe.cheeks = v; cheeks.checked = true; }, "Cheeks colour");
+  cheeks.addEventListener("change", () => { recipe.cheeks = cheeks.checked ? cheekColour.value : ""; redraw(); });
+  const extras = document.createElement("div");
+  extras.className = "face-extras";
+  for (const e of RECIPE_PARTS.extras) {
+    const tick = Object.assign(document.createElement("input"), { type: "checkbox", checked: e in recipe.extras });
+    const col = colourIn(() => recipe.extras[e] || EXTRA_COLOURS[e], (v) => { recipe.extras[e] = v; tick.checked = true; }, `${partName(e)} colour`);
+    tick.addEventListener("change", () => { if (tick.checked) recipe.extras[e] = col.value; else delete recipe.extras[e]; redraw(); });
+    const l = document.createElement("label");
+    l.className = "face-extra";
+    l.append(tick, ` ${partName(e)} `, col);
+    extras.append(l);
+  }
+  form.append(row("Name", nameIn),
+    partRow("Head", recipe.head, "shape", RECIPE_PARTS.head, [["colour", "colour"]]),
+    partRow("Face patch", recipe.head, "patch", RECIPE_PARTS.patch, [["patchColour", "colour"]]),
+    partRow("Eyes", recipe.eyes, "style", RECIPE_PARTS.eyes, [["colour", "colour"]]),
+    partRow("Nose", recipe.nose, "style", RECIPE_PARTS.nose, [["colour", "colour"]]),
+    partRow("Mouth", recipe.mouth, "style", RECIPE_PARTS.mouth, [["colour", "colour"]]),
+    row("Cheeks", cheeks, cheekColour),
+    partRow("On top", recipe.top, "style", RECIPE_PARTS.top, [["colour", "colour"], ["colour2", "second colour"]]),
+    row("Extras", extras));
+  const layout = document.createElement("div");
+  layout.className = "face-maker";
+  layout.append(looks, form);
+  w.body.append(layout);
+
+  const save = button(own ? "Save" : "Add face", async () => {
+    const n = name.trim();
+    if (!n) { status("Give the face a name", "hint"); nameIn.focus(); return; }
+    const body = { name: n, recipe: cleanRecipe(recipe) };
+    save.disabled = true;
+    try {
+      if (own) {
+        await api(`api/faces/${encodeURIComponent(id)}`, { method: "PUT", json: body });
+        keepFace(id, body);
+        // Shows singing with it play the new look from automations and playlists straight away.
+        rebakeShowsFor(null, (show) => usesOwnFace(show, id));
+      } else {
+        const { id: made } = await api("api/faces", { method: "POST", json: body });
+        keepFace(made, body);
+        if (from && !isBuiltIn(from)) placeBeside("faces", from, made); else placeNew("faces", made);
+      }
+      w.dlg.close();
+      renderFacesPage();
+      if (!$("view-editor").hidden) renderInspector();
+      status(own ? `Saved ${n}` : `Added ${n}`, "saved", "faces");
+    } catch (e) {
+      save.disabled = false;
+      status(`Couldn't save the face: ${e.message}`, true, "faces");
+    }
+  }, "primary");
+  const spacer = Object.assign(document.createElement("span"), { className: "spacer" });
+  if (own) w.foot.append(button("Delete…", async () => { w.dlg.close(); await deleteFace(id); }, "ghost danger"));
+  w.foot.append(spacer, button("Cancel", () => w.dlg.close()), save);
+  w.dlg.showModal();
+  nameIn.focus();
+  nameIn.select();
+}
+
 // Library → Samples: short sounds for the Music editor's layers, in their own folder ---------------
 let samplePlayer = null, samplePlaying = null;
 function stopSample() {
@@ -9312,6 +9540,7 @@ const FOLDER_LISTS = {
   palettes: { noun: "palette", many: "palettes", top: "Palettes", newButton: "#btn-new-palette", redraw: () => renderPalettes() },
   presets: { noun: "preset", many: "presets", top: "Presets", newButton: "#btn-new-preset", redraw: () => renderPresetsTab() },
   pictures: { noun: "picture", many: "pictures", top: "Pictures", newButton: "#btn-add-picture", redraw: () => renderPicturesPage() },
+  faces: { noun: "face", many: "faces", top: "Faces", newButton: "#btn-new-face", redraw: () => renderFacesPage() },
 };
 const folderData = Object.fromEntries(Object.keys(FOLDER_LISTS).map((k) => [k, []]));
 const folderLoaded = {}, folderSaving = {}, folderChains = {};
@@ -9542,7 +9771,8 @@ function folderPath(kind, at) {
 
 // The Library's own lists mark their rows their own way (data-show-id and so on).
 const LIB_KEY = { shows: (r) => r.dataset.showId, scenes: (r) => r.dataset.sceneId, playlists: (r) => r.dataset.playlistId,
-  palettes: (r) => r.dataset.key, presets: (r) => r.dataset.key, pictures: (r) => r.dataset.key };
+  palettes: (r) => r.dataset.key, presets: (r) => r.dataset.key, pictures: (r) => r.dataset.key,
+  faces: (r) => r.dataset.key };
 function foldLibraryList(kind, box, { finding = false } = {}) {
   for (const r of box.querySelectorAll(".show-row")) {
     const k = LIB_KEY[kind](r);
@@ -10593,7 +10823,13 @@ const showBakeKey = (pos) => JSON.stringify([lightsBakeKey(app.deviceList), app.
 // every setting of every light go in (not just the ones above), so a change made since, here or in
 // another browser, bakes again.
 // "phones": bakes from before 0.2.367 have no colours for visitors' phones (phones.js), so they're made again.
-const bakeNoteFor = (pos, show = app.show) => bakeNote([show, app.deviceList, app.groups, pos, FPS, pictureList().map((p) => p.id), "phones"]);
+// Your faces' recipes join the note only for a show that uses them, so other shows' notes are unchanged
+// and editing a face marks just its shows as needing a bake.
+const bakeNoteFor = (pos, show = app.show) => {
+  const faces = facesUsed(show);
+  return bakeNote([show, app.deviceList, app.groups, pos, FPS, pictureList().map((p) => p.id), "phones",
+    ...(Object.keys(faces).length ? [faces] : [])]);
+};
 
 // note: what it was baked for (bakeNoteFor), kept with it on the server.
 async function uploadBake(showId, blob, progress = undefined, note = null) {
@@ -12214,7 +12450,7 @@ function frame() {
 // editors had of their own.
 const EDITOR_LIST = { editor: "shows", music: "songs", playlist: "playlists", scene: "scenes" };
 const LIBRARY_LIST = { showlist: "shows", songlist: "songs", playlistlist: "playlists", scenelist: "scenes" };
-const SECTIONS = { library: ["shows", "scenes", "songs", "samples", "pictures", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "editors", "livemusic", "ai", "data", "settings", "labs"] };
+const SECTIONS = { library: ["shows", "scenes", "songs", "samples", "pictures", "faces", "palettes", "presets", "playlists"], setup: ["devices", "speakers", "house", "editors", "livemusic", "ai", "data", "settings", "labs"] };
 const sectionPage = { library: "shows", setup: "devices" };
 
 // Opens a tab (editor, music, library, setup) or a page in Library or Setup (devices, palettes…).
@@ -12252,6 +12488,7 @@ function showView(view, { push = true } = {}) {
   if (page === "scene") sceneEd.draw(); else { sceneEd.stopPreview(); sceneEd.flush(); }
   if (page === "samples") renderSamplesPage(); else stopSample();
   if (page === "pictures") renderPicturesPage();
+  if (page === "faces") renderFacesPage();
   if (page === "music") refreshAudio().catch(() => {}).then(() => music.show()); else music.hide();
   if (page === "speakers") { loadSpeakers(); loadLateSpeaker(); }
   // A season switched from Home Assistant since: show it as it is now.
@@ -12722,6 +12959,7 @@ function wire() {
     if (name) saveSeasons([...seasons, newSeason(seasons, name)], `${name} added`);
   });
   $("btn-add-picture").addEventListener("click", () => $("picture-upload").click());
+  $("btn-new-face").addEventListener("click", () => openFaceMaker(null));
   $("picture-upload").addEventListener("change", (e) => {
     const files = [...e.target.files];
     e.target.value = "";
@@ -12925,7 +13163,8 @@ async function init() {
   try {
     loading("Loading your lights…");
     await loadDevices();
-    picturesReady = loadPictures(); // in the background: bakes wait for it, the page doesn't
+    // In the background: bakes wait for these (Picture and Singing face effects read them), the page doesn't.
+    picturesReady = Promise.all([loadPictures(), loadFaces()]);
     loadSpeakers();
     loadModels();
     loadPalettes();

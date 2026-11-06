@@ -812,7 +812,8 @@ _STAMPED = {"index.html": (('href="public.css"', f'href="public.css?v={_STAMP}"'
                           ('"./listensync.js"', f'"./listensync.js?v={_STAMP}"'),
                           ('"./icons.js"', f'"./icons.js?v={_STAMP}"'),
                           ('"./fx/effects.js"', f'"./fx/effects.js?v={_STAMP}"'),
-                          ('"./fx/pictures.js"', f'"./fx/pictures.js?v={_STAMP}"'))}
+                          ('"./fx/pictures.js"', f'"./fx/pictures.js?v={_STAMP}"'),
+                          ('"./fx/faces.js"', f'"./fx/faces.js?v={_STAMP}"'))}
 
 
 def page_file(name: str) -> web.Response:
@@ -1404,6 +1405,14 @@ def phone_lane(storage: Storage, show: dict) -> dict | None:
             if pic and size + bytes_ <= MAX_PHONE_PICTURE_BYTES:
                 pictures[pid] = pic
                 size += bytes_
+    # Your own Singing faces it shows (built-in ones are in faces.js already).
+    faces = {}
+    for c in clips:
+        fid = c.get("character") if c.get("effect") == "singingface" else None
+        if isinstance(fid, str) and fid.startswith("f") and valid_id(fid) and fid not in faces and len(faces) < MAX_PHONE_PICTURES:
+            face = storage.load_face(fid)
+            if isinstance(face, dict) and isinstance(face.get("recipe"), dict):
+                faces[fid] = {"name": str(face.get("name") or ""), "recipe": face["recipe"]}
     loud, voice = show.get("loudness"), show.get("voice")
     voice = voice if isinstance(voice, dict) and isinstance(voice.get("values"), list) else None
     # Placed lyrics give the mouth its shapes instead (as static/js/phones.js singerOf does).
@@ -1417,7 +1426,8 @@ def phone_lane(storage: Storage, show: dict) -> dict | None:
             "voice": voice,
             "level": _level(show.get("brightness")) * _level((show.get("lightBrightness") or {}).get("@phones")),
             "loudness": loud if isinstance(loud, dict) and isinstance(loud.get("values"), list) else None,
-            "pictures": pictures}
+            "pictures": pictures,
+            "faces": faces}
 
 
 async def get_phones_colours(request):
