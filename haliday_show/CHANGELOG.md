@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.370
+
+- **Join is one press.** On the visitors' page, **Join** now goes straight in: the screen opens dark with the flashing warning for a few seconds, then the colours fade in. No second **Join** to press, and **Leave** is there from the start. You can change the warning's words on the **Words** tab, under **Joining the show**.
+
 ## 0.2.369
 
 - **A slimmer bar at the top of the visitors' page.** What stays pinned as visitors scroll is now just what's on, its progress, and **Listen** and **Join** side by side, so it takes up much less of the screen. **Join** is in your page's colour so it stands out. Listening's details, **Music out of time?**, the warning before joining, and your admin **Skip** and **Stop the lights** are in a card just under it, which scrolls away with the page.

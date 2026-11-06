@@ -2334,8 +2334,9 @@ until you turn it on.
 1. On the **Listening** page, turn on **Let visitors' phones join the show**. Every show joins.
 2. To leave a show out (a slow one, say), open it, then **⚙ Show settings…** and turn off **Phones join this
    show** under **Visitors' phones**.
-3. On your phone, open the visitors' link while a show's on and press **Join** in the card at the top. After a
-   warning that the screen will flash, press **Join** again. **Leave** at the bottom of the screen goes back to the page.
+3. On your phone, open the visitors' link while a show's on and press **Join** in the bar at the top. The
+   screen goes dark with a warning that it will flash, and the colours fade in a few seconds later. **Leave**
+   at the bottom of the screen goes back to the page at any time.
 
 What phones show:
 

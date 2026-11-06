@@ -585,8 +585,9 @@ export function start() {
 
   // Join the show: the screen glows with the colours the show carries for phones, ten a second, kept in
   // time as listening is (listensync.js). Phones set to reduce motion fade between colours instead of flashing.
-  const join = { on: false, asking: false, samples: [], key: "", colours: "", fps: 10, timer: 0, raf: 0, wake: null, gen: 0 };
-  const JOIN_POLL_MS = 1000;
+  // One press joins: the screen opens dark with the flashing warning, then the colours fade in.
+  const join = { on: false, samples: [], key: "", colours: "", fps: 10, timer: 0, raf: 0, wake: null, gen: 0, since: 0 };
+  const JOIN_POLL_MS = 1000, WARN_MS = 3000, FADE_IN_MS = 1000;
 
   async function joinPoll(gen) {
     if (!join.on || gen !== join.gen) return;
@@ -621,15 +622,22 @@ export function start() {
   function joinFrame() {
     if (!join.on) return;
     const t = join.colours ? target(join.samples, performance.now()) : null;
-    let rgb = "#000";
-    if (t !== null) {
+    const shown = performance.now() - join.since;
+    const level = Math.max(0, Math.min(1, (shown - WARN_MS) / FADE_IN_MS));
+    let rgb = "rgb(0, 0, 0)";
+    if (t !== null && level > 0) {
       const k = Math.floor(t * join.fps);
-      if (k >= 0 && (k + 1) * 6 <= join.colours.length) rgb = `#${join.colours.slice(k * 6, k * 6 + 6)}`;
+      if (k >= 0 && (k + 1) * 6 <= join.colours.length) {
+        const c = [0, 2, 4].map((i) => Math.round(parseInt(join.colours.slice(k * 6 + i, k * 6 + i + 2), 16) * level));
+        rgb = `rgb(${c.join(", ")})`;
+      }
     }
     const box = $("pp-join");
     if (box.style.backgroundColor !== rgb) box.style.backgroundColor = rgb;
-    const text = t === null ? say_(w, "join_waiting") : "";
+    const warning = shown < WARN_MS;
+    const text = warning ? say_(w, "join_warn") : t === null ? say_(w, "join_waiting") : "";
     if ($("pp-join-text").textContent !== text) $("pp-join-text").textContent = text;
+    $("pp-join-text").classList.toggle("pp-join-warning", warning);
     join.raf = requestAnimationFrame(joinFrame);
   }
 
@@ -638,8 +646,8 @@ export function start() {
   }
 
   function joinShow() {
-    join.asking = false;
     join.on = true;
+    join.since = performance.now();
     join.gen++;
     join.samples = []; join.key = ""; join.colours = "";
     $("pp-join").classList.toggle("pp-soft", matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -666,12 +674,12 @@ export function start() {
   function pressJoin() {
     if (preview) { say("This is a preview. On visitors' phones, this lights up the screen with the show.", true); return; }
     if (join.on) leaveShow();
-    else { join.asking = !join.asking; drawJoin(); }
+    else joinShow();
   }
 
   // The card under the bar shows only while something in it does.
   function drawMore() {
-    $("pp-more").hidden = ["pp-join-ask", "pp-listen", "pp-admin-ctl"].every((id) => $(id).hidden);
+    $("pp-more").hidden = ["pp-listen", "pp-admin-ctl"].every((id) => $(id).hidden);
   }
 
   function drawJoin() {
@@ -682,11 +690,6 @@ export function start() {
     iconLabel(btn, "phone", say_(w, "join_short"));
     btn.setAttribute("aria-label", say_(w, "join").replace(/^[^\p{L}\p{N}]+/u, ""));
     btn.title = btn.getAttribute("aria-label");
-    btn.setAttribute("aria-expanded", String(join.asking));
-    $("pp-join-ask").hidden = !join.asking || btn.hidden;
-    $("pp-join-warn").textContent = say_(w, "join_warn");
-    iconLabel($("pp-join-ok"), "phone", say_(w, "join_ok"));
-    $("pp-join-cancel").textContent = say_(w, "join_cancel");
     drawMore();
   }
 
@@ -1258,8 +1261,6 @@ export function start() {
   $("pp-admin-out").addEventListener("click", () => { keepAdmin(""); adminOpen = null; drawAdmin(); refresh(); });
   $("pp-listen-btn").addEventListener("click", pressListen);
   $("pp-join-btn").addEventListener("click", pressJoin);
-  $("pp-join-ok").addEventListener("click", joinShow);
-  $("pp-join-cancel").addEventListener("click", () => { join.asking = false; drawJoin(); });
   $("pp-join-leave").addEventListener("click", () => leaveShow());
   document.addEventListener("visibilitychange", keepAwake);
   $("pp-pin-ok").addEventListener("click", sendPin);
