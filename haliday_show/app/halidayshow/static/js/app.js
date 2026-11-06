@@ -2,7 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
-import { VOICE_FPS, keepLevels, levelCurve, levelsFit, voiceBand, voiceFits } from "./musiclevel.js";
+import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, voiceFits } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
@@ -11,7 +11,7 @@ import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, pa
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
-  renderTrack, showDuration, phoneColourAt, phoneScreen, laneUsesHouse, newClip, setVoiceLevels,
+  renderTrack, showDuration, phoneColourAt, phoneScreen, laneUsesHouse, newClip, setVoiceLevels, withVoiceLevels,
 } from "./effects.js";
 import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin } from "./phones.js";
@@ -357,6 +357,7 @@ function restore(step) {
   app.historyIndex = i;
   app.show = keepLevels(app.show, JSON.parse(app.history[i]));
   setMusicLevels(app.show.audio ? app.show.loudness : null);
+  setVoiceLevels(app.show.audio ? app.show.voice : null);
   app.dirty = true;
   app.edits++;
   app.selected = null;
@@ -7526,7 +7527,8 @@ function showColours(show) {
       if (!frames.has(light.id)) {
         // Music level follows this show's song (or a made-up level if it hasn't been measured yet).
         frames.set(light.id, withMusicLevels(show.audio ? show.loudness || MADE_UP : null,
-          () => asShown(light, t, (at) => dim(composeLight(light, trackOf, at, pos, houseFx, undefined, plans), showLevel(show, light.id)))));
+          () => withVoiceLevels(show.audio ? show.voice : null,
+            () => asShown(light, t, (at) => dim(composeLight(light, trackOf, at, pos, houseFx, undefined, plans), showLevel(show, light.id))))));
       }
       return frames.get(light.id);
     };
@@ -10087,14 +10089,19 @@ const usesFace = (show) => (show?.tracks || []).some((t) => t.clips?.some((c) =>
 let measuringVoice = null;
 async function ensureVoice() {
   const show = app.show, ref = show?.audio, song = songBuffer;
-  if (!ref?.path || !song || !usesFace(show) || voiceFits(show, ref.path, song.duration)) return;
+  if (!ref?.path || !song || !usesFace(show)) return;
+  // The song's vocals, if Split vocals has made them (your songs list says).
+  const songs = app.songs || [];
+  const vocalsRef = vocalsPlaces(ref, stemNames(ref.path).vocals)
+    .find((v) => songs.some((s) => s.source === v.source && s.path.toLowerCase() === v.path.toLowerCase()));
+  if (voiceFits(show, ref.path, song.duration, !!vocalsRef)) return;
   if (measuringVoice) return measuringVoice;
   measuringVoice = (async () => {
     const mono = (decoded) => toMono(Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c)), decoded.sampleRate);
     let samples, rate, from = "vocals";
     try {
-      const dir = ref.path.includes("/") ? ref.path.slice(0, ref.path.lastIndexOf("/") + 1) : "";
-      const vocals = await audioCtx.decodeAudioData(await fetchSong(audioUrl({ ...ref, path: dir + stemNames(ref.path).vocals })));
+      if (!vocalsRef) throw new Error("no vocals");
+      const vocals = await audioCtx.decodeAudioData(await fetchSong(audioUrl(vocalsRef)));
       ({ samples, rate } = mono(vocals));
     } catch {
       from = "song";
@@ -10103,7 +10110,8 @@ async function ensureVoice() {
       rate = m.rate;
     }
     if (app.show !== show || show.audio !== ref) return;
-    show.voice = { ...levelCurve(samples, rate, ref.path, VOICE_FPS), from };
+    // seconds: the song's length then, so a different file under the same name is measured again.
+    show.voice = { ...levelCurve(samples, rate, ref.path, VOICE_FPS), from, seconds: Math.round(song.duration * 100) / 100 };
     setVoiceLevels(show.voice);
     app.changed();
   })().finally(() => { measuringVoice = null; });
@@ -10211,6 +10219,7 @@ async function loadAudio(ref) {
   songBuffer = null;
   // An Advanced scene has no song: on the lights it follows live music, so its preview makes some up.
   useMusicLevels(ref ? app.show?.loudness : app.sceneId ? MADE_UP : null);
+  setVoiceLevels(ref ? app.show?.voice : null);
   app.songMarks = [];
   loadSongMarks();
   app.audioDuration = 0;

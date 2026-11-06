@@ -43,10 +43,22 @@ export function voiceBand(samples, rate) {
   return biquad(biquad(samples, "high", 300), "low", Math.min(3400, rate * 0.45));
 }
 
-// Whether a show's saved voice levels belong to its current song.
-export function voiceFits(show, songPath, duration) {
+// Whether a show's saved voice levels belong to its current song (the same file, as long as it was
+// then). `vocals`: whether the song's vocals are there now, so levels taken from the song itself are
+// measured again from them.
+export function voiceFits(show, songPath, duration, vocals = false) {
   const l = show?.voice;
-  return !!l && Array.isArray(l.values) && l.song === songPath && Math.abs(l.values.length / (l.fps || VOICE_FPS) - duration) < 1;
+  return !!l && Array.isArray(l.values) && l.song === songPath && Math.abs((l.seconds ?? duration) - duration) < 0.5
+    && !(vocals && l.from === "song");
+}
+
+// Where Split vocals keeps a song's vocals: in HA-liday Show's own folder of your songs (as the server
+// names uploads), or beside the song.
+export function vocalsPlaces(ref, vocalsName) {
+  const safe = vocalsName.replace(/[^\p{L}\p{N}_ .()-]+/gu, "_").replace(/^[ .]+|[ .]+$/g, "");
+  const dir = ref.path.includes("/") ? ref.path.slice(0, ref.path.lastIndexOf("/") + 1) : "";
+  const out = [{ source: "media", path: `haliday_show/${safe}` }, { ...ref, path: dir + vocalsName }];
+  return out.filter((r, i) => out.findIndex((o) => o.source === r.source && o.path === r.path) === i);
 }
 
 // Whether a show's saved loudness belongs to its current song.
@@ -59,8 +71,11 @@ export function levelsFit(show, songPath, duration) {
 // before it was measured (or from another song's) takes the measurement it had, when it's for the
 // same song.
 export function keepLevels(before, after) {
-  const l = before?.loudness;
-  if (!l || !after?.audio || l.song !== after.audio.path) return after;
-  if (after.loudness?.song !== l.song) after.loudness = l;
+  // The singer's level (show.voice) is measured too, so it's kept the same way.
+  for (const key of ["loudness", "voice"]) {
+    const l = before?.[key];
+    if (!l || !after?.audio || l.song !== after.audio.path) continue;
+    if (after[key]?.song !== l.song) after[key] = l;
+  }
   return after;
 }

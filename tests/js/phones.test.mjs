@@ -111,3 +111,16 @@ test("singing faces: each character draws, and the mouth follows the singer", as
   const rms = (a) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length);
   assert.ok(rms(voiceBand(voice, r)) > 10 * rms(voiceBand(bass, r)));
 });
+
+test("the singer's level: where the vocals are, when to measure again, and kept on undo", async () => {
+  const { keepLevels, vocalsPlaces, voiceFits } = await import("../../haliday_show/app/halidayshow/static/js/musiclevel.js");
+  assert.deepEqual(vocalsPlaces({ source: "media", path: "Xmas/Jingle: Bells.mp3" }, "Jingle: Bells (vocals).wav"), [
+    { source: "media", path: "haliday_show/Jingle_ Bells (vocals).wav" },
+    { source: "media", path: "Xmas/Jingle: Bells (vocals).wav" }]);
+  const show = { audio: { path: "a.mp3" }, voice: { fps: 20, song: "a.mp3", values: [1], from: "song", seconds: 100 } };
+  assert.ok(voiceFits(show, "a.mp3", 100.2));
+  assert.ok(!voiceFits(show, "a.mp3", 100.2, true)); // vocals split since: measure them
+  assert.ok(!voiceFits(show, "a.mp3", 130)); // another file under the same name
+  assert.ok(!voiceFits(show, "b.mp3", 100));
+  assert.deepEqual(keepLevels(show, { audio: { path: "a.mp3" } }).voice, show.voice);
+});
