@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.382
+
+- **Singing faces sing wherever they are in the show.** A Singing face that didn't start at the very beginning of the show followed the wrong part of the song (usually the quiet intro), so its mouth stayed shut. It now follows the singer at its own place in the song. Phones pick this up straight away; if a face is on one of your matrices, save the show once so the lights get it too.
+
 ## 0.2.381
 
 - The **Palette** button in a narrow panel (such as **Selection → Colours**) no longer runs out of its box: a long palette name is shortened to fit instead.

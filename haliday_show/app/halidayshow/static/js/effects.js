@@ -860,7 +860,8 @@ Object.assign(EFFECTS, {
       const scale = Math.min(Math.max(Number(p.size) || 100, 40), 100) / 100;
       const bh = Math.min(h, w / FACE_ASPECT) * scale, bw = bh * FACE_ASPECT;
       const x0 = (w - bw) / 2, y0 = (h - bh) / 2;
-      const mouth = mouthFor(voiceAt(t));
+      // t is the time into the clip; the singer goes by the time into the song, as Music level does.
+      const mouth = mouthFor(voiceAt((Number(p.start) || 0) + t));
       // Four looks inside each LED, averaged, so the edges are soft rather than jagged.
       const out = [0, 0, 0];
       for (const [dx, dy] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {

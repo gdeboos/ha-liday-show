@@ -124,3 +124,23 @@ test("the singer's level: where the vocals are, when to measure again, and kept 
   assert.ok(!voiceFits(show, "b.mp3", 100));
   assert.deepEqual(keepLevels(show, { audio: { path: "a.mp3" } }).voice, show.voice);
 });
+
+test("a Singing face later in the show follows the singer at that point in the song", async () => {
+  const { phoneScreen, withVoiceLevels } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  // Quiet for the first 10 s, singing after.
+  const voice = { fps: 10, values: [...Array(100).fill(0), ...Array(100).fill(100)] };
+  const clip = { ...newClip("singingface", 12, 18), character: "ghost" };
+  const dark = (time) => withVoiceLevels(voice, () => {
+    const f = phoneScreen([clip], time);
+    let n = 0;
+    for (let i = 0; i < f.length; i += 3) if (f[i] < 60 && f[i + 1] < 60 && f[i + 2] < 60) n++;
+    return n;
+  });
+  const shut = withVoiceLevels({ fps: 10, values: Array(200).fill(0) }, () => {
+    const f = phoneScreen([clip], 13);
+    let n = 0;
+    for (let i = 0; i < f.length; i += 3) if (f[i] < 60 && f[i + 1] < 60 && f[i + 2] < 60) n++;
+    return n;
+  });
+  assert.ok(dark(13) > shut + 20); // 13 s into the song: singing, so the mouth is open
+});
