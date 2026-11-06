@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.373
+
+- **Split vocals shows what it's doing.** While a song is split, a window covers the page with a spinner, what's happening (downloading the AI the first time, splitting, saving) and how far along it is, with **Cancel** to stop. Before, it only said so in the small status line, which was easy to miss.
+- **Split vocals copes better with a slow connection.** If the AI's download is cut off part way, it's tried again twice before giving up, and if it can't be got at all you're told why rather than just "network error".
+
 ## 0.2.372
 
 - **Singing face.** A new effect for the **Phones** lane and your matrices: a snowman, a pumpkin, a gingerbread person, Santa or a ghost, whose mouth opens and closes with the singer. Find it under **On a matrix** in the effect chooser, then pick the **Character**.

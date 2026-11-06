@@ -17,8 +17,28 @@ async function model(progress) {
   const store = self.caches ? await caches.open(CACHE).catch(() => null) : null;
   const kept = store && (await store.match(url));
   if (kept) return new Uint8Array(await kept.arrayBuffer());
-  const res = await fetch(url);
-  if (!res.ok) throw new Error((await res.text().catch(() => "")) || `couldn't download the AI model (HTTP ${res.status})`);
+  // A long download can be cut off part way (HA-liday Show breaks it off itself if the file isn't the
+  // one it should be): it's tried again a couple of times before giving up.
+  for (let tries = 1; ; tries++) {
+    try {
+      return await download(url, store, progress);
+    } catch (e) {
+      if (e.final) throw e;
+      if (tries >= 3) throw new Error(`the AI model's download kept being cut off (${e.message}). `
+        + "Check your internet connection, then try again; HA-liday Show's log says more");
+      progress(0);
+    }
+  }
+}
+
+async function download(url, store, progress) {
+  let res;
+  try { res = await fetch(url); } catch (e) { throw new Error(e.message || "no answer"); }
+  if (!res.ok) {
+    const e = new Error((await res.text().catch(() => "")) || `couldn't download the AI model (HTTP ${res.status})`);
+    e.final = true; // HA-liday Show couldn't reach the files at all: trying again won't help
+    throw e;
+  }
   const reader = res.body.getReader(), parts = [], size = Number(res.headers.get("Content-Length")) || 0;
   let got = 0;
   for (;;) {
@@ -38,7 +58,17 @@ async function model(progress) {
 
 self.onmessage = async ({ data: { left, right } }) => {
   try {
-    const ort = await import(file("ort.webgpu.min.mjs"));
+    // Asked for first on its own, so HA-liday Show's reason reaches you if it can't get it (an import
+    // that fails says only that it failed); the browser then keeps it for the import.
+    self.postMessage({ stage: "download", done: 0 });
+    const runtime = await fetch(file("ort.webgpu.min.mjs")).catch(() => null);
+    if (!runtime?.ok) {
+      throw new Error((runtime && (await runtime.text().catch(() => ""))) || "couldn't load the AI's runtime. Check your internet connection, then try again");
+    }
+    let ort;
+    try { ort = await import(file("ort.webgpu.min.mjs")); } catch (e) {
+      throw new Error(`couldn't load the AI's runtime (${e.message || "network error"}). Check your internet connection, then try again`);
+    }
     ort.env.wasm.wasmPaths = { mjs: file("ort-wasm-simd-threaded.jsep.mjs"), wasm: file("ort-wasm-simd-threaded.jsep.wasm") };
     ort.env.wasm.numThreads = 1; // several need the page set up in a way Home Assistant's isn't
     const bytes = await model((done) => self.postMessage({ stage: "download", done }));
