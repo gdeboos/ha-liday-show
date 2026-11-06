@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.398
+
+- Removing a song or show now shows that it's working: the button you pressed says **Deleting…** or **Archiving…** with a spinner, the window's other buttons wait, and the song leaves the list as soon as it's gone. Before, the window just sat there for a few seconds.
+
 ## 0.2.397
 
 - Show cards in **Library → Shows** are tidier: the show's palette is now a full-width strip of its colours with its name under it, instead of a squashed strip running into the name.
