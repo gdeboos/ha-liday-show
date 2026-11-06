@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  arrange, cut, editName, mapInfo, mapLyrics, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
+  arrange, cut, editName, mapInfo, mapLyrics, mapWords, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
   render, sectionAt, splitSection, beatsToDraw, previewTime, addMark, moveMark, toBase, marksToBase, freshFileName, untouched, joinInfo, putBack,
 } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
@@ -301,4 +301,11 @@ test("words with their own times follow the cuts too", () => {
   const lyrics = { text: "a b", lines: [{ start: 31, end: 34, words: [{ start: 31, end: 32 }, { start: 33, end: 34 }] }] };
   const out = mapLyrics(lyrics, [{ src: "a", start: 0, end: 10 }, { src: "a", start: 30, end: 50 }], 0, "a");
   assert.deepEqual(out.lines, [{ start: 11, end: 14, words: [{ start: 11, end: 12 }, { start: 13, end: 14 }] }]);
+});
+
+test("the lyrics lane shows each word where it's heard after cuts", () => {
+  const words = [{ word: "a", start: 1, end: 2 }, { word: "b", start: 12, end: 13 }, { word: "c", start: 31, end: 33 }];
+  const shown = mapWords(words, [{ src: "a", start: 0, end: 10 }, { src: "a", start: 30, end: 32 }], 0, "a");
+  assert.deepEqual(shown.map((w) => [w.word, w.start, w.end]), [["a", 1, 2], ["c", 11, 12]]); // b cut; c cut short
+  assert.deepEqual(shown[1].base, { start: 31, end: 33 });
 });

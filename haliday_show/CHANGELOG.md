@@ -1,9 +1,14 @@
 # Changelog
 
-## 0.2.396
+## 0.2.397
 
 - Show cards in **Library → Shows** are tidier: the show's palette is now a full-width strip of its colours with its name under it, instead of a squashed strip running into the name.
 - **Library → Presets** shows cards too, each with its moving preview across the top, in their effect groups. **Cards** and **List** switch between cards and rows, as on the other libraries.
+
+## 0.2.396
+
+- **Place lyrics on the Music editor's waveform.** Open a song in the Music editor and you'll find a **Lyrics** lane under the sections, with each word as a block. Drag a word to move it, drag its edges to make it longer or shorter, and click it to hear it. It zooms and scrolls with the waveform, and changes are kept with the song as you go. With a draft open, the words follow your cuts.
+- The **Lyrics…** window is back to the words, **Place automatically** and **Tap along…**; the small waveform in it has gone in favour of the lane.
 
 ## 0.2.395
 
