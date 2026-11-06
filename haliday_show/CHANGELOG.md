@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.429
+
+- **Save one sound as a sample.** **Save as sample…** in the Music editor now asks which sound to keep: **As you hear it**, one of the song's parts (**Just the drums** for a drum fill, **Just the vocals** for a sung line), or, while you're editing a layer on its own, just that layer.
+
 ## 0.2.428
 
 - **DJ transitions at a join.** In the Music editor, click a join's **✂** and pick a **Transition**: **Echo out**, **Filter sweep** or **Drop the bass**. Each keeps time with the music and plays in the song file you make, and you hear it as soon as you pick it.
