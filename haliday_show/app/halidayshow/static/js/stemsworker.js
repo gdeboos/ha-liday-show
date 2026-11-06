@@ -9,7 +9,7 @@ import { MODELS, separate } from "./stems.js";
 
 const FILES = new URL("../../api/stems/files/", import.meta.url).href;
 // Bumped whenever server.py's STEM_FILES change, so no browser keeps using old copies.
-const VERSION = "mdx-vocft-kuielab-a-ort1.20.1";
+const VERSION = "mdx-vocft-ort1.20.1"; // the drums and bass models came later, under new names, so no browser has old copies of them
 const file = (name) => `${FILES}${name}?v=${VERSION}`;
 const CACHE = `haliday-show-split-vocals-${VERSION}`;
 
