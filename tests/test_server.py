@@ -1254,7 +1254,7 @@ async def test_song_folders_round_trip_and_validation(client):
 
 async def test_library_folders_per_list_round_trip_and_validation(client):
     empty = await (await client.get("/api/library-folders")).json()
-    assert empty == {"shows": [], "scenes": [], "playlists": [], "palettes": [], "presets": [], "pictures": []}
+    assert empty == {"shows": [], "scenes": [], "playlists": [], "palettes": [], "presets": [], "pictures": [], "faces": []}
     resp = await client.put("/api/library-folders", json={"kind": "shows", "folders": [
         {"id": "xmas", "name": " Christmas  shows ", "items": ["a", "a", "b"]},
         {"id": "old", "name": "Old", "items": ["b", "c"]}]})
@@ -1652,6 +1652,38 @@ async def test_pictures_are_added_listed_renamed_and_deleted(client):
     assert await (await client.get("/api/pictures")).json() == []
     assert (await client.get(f"/api/pictures/{pid}")).status == 404
     assert (await client.get("/api/pictures/..%2Fsettings")).status in (400, 404)
+
+
+FACE = {"name": " Ice  queen ", "recipe": {
+    "head": {"shape": "oval", "colour": "#A0D0FF", "patch": "none", "patchColour": "#ffffff"},
+    "eyes": {"style": "big", "colour": "#2040a0"}, "nose": {"style": "button", "colour": "#e86060"},
+    "mouth": {"style": "open", "colour": "#2a0a0a"}, "cheeks": "", "top": {"style": "star", "colour": "#ffffff", "colour2": "#ffffff"},
+    "extras": {"scarf": "#4080ff"}}}
+
+
+async def test_faces_are_added_listed_changed_and_deleted(client):
+    resp = await client.post("/api/faces", json=FACE)
+    assert resp.status == 200
+    fid = (await resp.json())["id"]
+    [got] = await (await client.get("/api/faces")).json()
+    assert (got["id"], got["name"], got["recipe"]["head"]["colour"]) == (fid, "Ice queen", "#a0d0ff")
+    changed = {**FACE, "name": "Snow queen", "recipe": {**FACE["recipe"], "extras": {}}}
+    assert (await client.put(f"/api/faces/{fid}", json=changed)).status == 200
+    [got] = await (await client.get("/api/faces")).json()
+    assert (got["name"], got["recipe"]["extras"]) == ("Snow queen", {})
+    assert (await client.put("/api/faces/fnothere000", json=FACE)).status == 404
+    r = FACE["recipe"]
+    bad = [{**FACE, "name": ""}, {**FACE, "recipe": None}, {**FACE, "recipe": {**r, "head": {**r["head"], "shape": "cube"}}},
+           {**FACE, "recipe": {**r, "eyes": {**r["eyes"], "colour": "red"}}}, {**FACE, "recipe": {**r, "extras": {"wings": "#ffffff"}}},
+           {**FACE, "recipe": {k: v for k, v in r.items() if k != "nose"}}]
+    for b in bad:
+        assert (await client.post("/api/faces", json=b)).status == 400, b
+    resp = await client.put("/api/library-folders", json={"kind": "faces", "folders": [{"id": "x", "name": "Halloween", "items": [fid]}]})
+    assert resp.status == 200
+    assert (await client.delete(f"/api/faces/{fid}")).status == 200
+    assert await (await client.get("/api/faces")).json() == []
+    assert (await client.delete(f"/api/faces/{fid}")).status == 404
+    assert (await client.delete("/api/faces/..%2Fsettings")).status in (400, 404)
 
 
 async def test_pictures_list_skips_a_damaged_file_and_stops_at_the_limit(client, monkeypatch):

@@ -58,6 +58,9 @@ def _allowed(name: str) -> bool:
     if len(parts) == 2 and parts[0] == "pictures":  # pictures for matrices
         p = Path(parts[1])
         return p.suffix == ".json" and valid_id(p.stem)
+    if len(parts) == 2 and parts[0] == "faces":  # your Singing faces
+        p = Path(parts[1])
+        return p.suffix == ".json" and valid_id(p.stem)
     if len(parts) == 2 and parts[0] == "drafts":  # Music editor drafts
         p = Path(parts[1])
         return p.suffix == ".json" and valid_id(p.stem)

@@ -383,6 +383,81 @@ export const BUILT_IN = {
     mouth: { style: "small" }, top: { style: "cat ears", colour: "#2c2c34", colour2: "#f07090" }, extras: { whiskers: "#dddddd" } },
 };
 
+// Recipes as close as the parts allow to the five hand-drawn faces, so Duplicate works on those too.
+export const LOOKALIKE = {
+  snowman: { head: { shape: "round", colour: "#f4f8ff" }, eyes: { style: "dots", colour: "#1a1a1a" }, nose: { style: "carrot", colour: "#ff8a1e" },
+    mouth: { style: "open" }, top: { style: "top hat", colour: "#1a1a1a", colour2: "#c0202a" } },
+  pumpkin: { head: { shape: "wide", colour: "#f07818" }, eyes: { style: "triangles", colour: "#ffd24a" }, nose: { style: "triangle", colour: "#ffd24a" },
+    mouth: { style: "grin", colour: "#ffd24a" } },
+  gingerbread: { head: { shape: "round", colour: "#b8702e" }, eyes: { style: "dots", colour: "#1a1a1a" }, nose: { style: "none" },
+    mouth: { style: "open" }, cheeks: "#f07090" },
+  santa: { head: { shape: "round", colour: "#f5c8a8" }, eyes: { style: "dots", colour: "#1a1a1a" }, nose: { style: "button", colour: "#e86060" },
+    mouth: { style: "open" }, top: { style: "santa hat", colour: "#d0202a", colour2: "#f4f8ff" }, extras: { beard: "#f4f8ff", moustache: "#f4f8ff" } },
+  ghost: { head: { shape: "ghost", colour: "#f4f8ff" }, eyes: { style: "dots", colour: "#1a1a1a" }, nose: { style: "none" },
+    mouth: { style: "small", colour: "#1a1a1a" } },
+};
+
+// A recipe made safe and complete: every part from its list, every colour a #rrggbb (anything else
+// takes the default). Old or hand-edited recipes still draw. The server checks the same (server.py
+// _clean_face).
+export const NEW_FACE = { head: { shape: "round", colour: "#ffd24a", patch: "none", patchColour: "#ffffff" },
+  eyes: { style: "ovals", colour: "#1a1a1a" }, nose: { style: "button", colour: "#e86060" }, mouth: { style: "open", colour: "#2a0a0a" },
+  cheeks: "", top: { style: "none", colour: "#d0202a", colour2: "#ffffff" }, extras: {} };
+const isHex = (h) => typeof h === "string" && /^#[0-9a-f]{6}$/i.test(h);
+export function cleanRecipe(r) {
+  r = r && typeof r === "object" ? r : {};
+  const pick = (v, list, d) => (list.includes(v) ? v : d);
+  const col = (v, d) => (isHex(v) ? v.toLowerCase() : d);
+  const part = (k) => (r[k] && typeof r[k] === "object" ? r[k] : {});
+  const N = NEW_FACE, head = part("head"), eyes = part("eyes"), nose = part("nose"), mouth = part("mouth"), top = part("top");
+  const extras = {};
+  for (const e of RECIPE_PARTS.extras) if (r.extras && typeof r.extras === "object" && isHex(r.extras[e])) extras[e] = r.extras[e].toLowerCase();
+  return {
+    head: { shape: pick(head.shape, RECIPE_PARTS.head, "round"), colour: col(head.colour, N.head.colour),
+      patch: pick(head.patch, RECIPE_PARTS.patch, "none"), patchColour: col(head.patchColour, N.head.patchColour) },
+    eyes: { style: pick(eyes.style, RECIPE_PARTS.eyes, "ovals"), colour: col(eyes.colour, N.eyes.colour) },
+    nose: { style: pick(nose.style, RECIPE_PARTS.nose, "none"), colour: col(nose.colour, N.nose.colour) },
+    mouth: { style: pick(mouth.style, RECIPE_PARTS.mouth, "open"), colour: col(mouth.colour, N.mouth.colour) },
+    cheeks: isHex(r.cheeks) ? r.cheeks.toLowerCase() : "",
+    top: { style: pick(top.style, RECIPE_PARTS.top, "none"), colour: col(top.colour, N.top.colour), colour2: col(top.colour2, N.top.colour2) },
+    extras,
+  };
+}
+
+// The recipe to start from when duplicating a face: a built-in's own (or its lookalike), or one of yours.
+export const recipeOf = (character) => cleanRecipe(BUILT_IN[character] || LOOKALIKE[character] || getFace(character)?.recipe || NEW_FACE);
+
+// Your faces (Library → Faces): id -> {name, recipe}. The editor keeps them all here, as the Singing
+// face effect can't wait for them; the bake worker and phones are sent copies.
+const yours = new Map();
+let facesChanged = 0;
+export const facesVersion = () => facesChanged;
+export const allFaces = () => [...yours];
+export function setFaces(list) {
+  yours.clear();
+  for (const [id, f] of list) yours.set(id, f);
+  facesChanged++;
+}
+export function keepFace(id, saved) {
+  facesChanged++;
+  yours.set(id, { name: String(saved?.name || "Face"), recipe: cleanRecipe(saved?.recipe) });
+}
+export const forgetFace = (id) => { facesChanged++; return yours.delete(id); };
+export const getFace = (id) => yours.get(id);
+export const faceList = () => [...yours].map(([id, f]) => ({ id, name: f.name })).sort((a, b) => a.name.localeCompare(b.name));
+export const isBuiltIn = (character) => CHARACTERS.includes(character);
+// The built-in's name as people read it ("christmas tree" -> "Christmas tree").
+export const builtInName = (c) => c.charAt(0).toUpperCase() + c.slice(1);
+
+// Your faces a show's Singing faces use, with their recipes, for knowing when it needs baking again.
+export function facesUsed(show) {
+  const out = {};
+  for (const t of show?.tracks || []) for (const c of t?.clips || []) {
+    if (c?.effect === "singingface" && !isBuiltIn(c.character) && yours.has(c.character)) out[c.character] = yours.get(c.character).recipe;
+  }
+  return out;
+}
+
 const still = { mouth: 0, shape: "a", blink: 0, look: 0 };
 
 // The character's colour at (u, v) in its box doing `face` (or, for older callers, with the mouth this
@@ -391,8 +466,15 @@ export function faceColour(character, u, v, face = 0) {
   const f = typeof face === "number" ? { ...still, mouth: face } : { ...still, ...face };
   f.mouth = Math.min(Math.max(f.mouth, 0), 1);
   if (BUILT_IN[character]) return drawRecipe(BUILT_IN[character], u, v, f);
-  return (DRAW[character] || DRAW.snowman)(u, v, f);
+  if (DRAW[character]) return DRAW[character](u, v, f);
+  // One of yours; one that's been deleted (or not loaded) is a snowman, as an unknown character always was.
+  const own = yours.get(character);
+  return own ? drawRecipe(own.recipe, u, v, f) : DRAW.snowman(u, v, f);
 }
+
+// A recipe's colour at (u, v) doing `face`, for the face maker's preview before it's saved.
+export const recipeColour = (recipe, u, v, face = {}) =>
+  drawRecipe(recipe, u, v, { ...still, ...face, mouth: Math.min(Math.max(face.mouth ?? 0, 0), 1) });
 
 // How far open the mouth is for a voice level (0 to 1), shut when it's quiet. sensitivity (0-100, 50
 // as it starts) moves where it starts opening: higher opens on quieter singing.

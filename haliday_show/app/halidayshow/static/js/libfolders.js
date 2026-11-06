@@ -2,7 +2,7 @@
 // each holding items by key (a show's id, a palette's name…). Nothing moves on disk; deleting a folder
 // leaves its items in no folder. Saved per list as {kind: [{id, name, items: [key]}]}.
 
-export const LIBRARY_KINDS = ["shows", "scenes", "playlists", "palettes", "presets", "pictures"];
+export const LIBRARY_KINDS = ["shows", "scenes", "playlists", "palettes", "presets", "pictures", "faces"];
 
 const slug = (name) => name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "folder";
 const tidy = (name) => name.split(/\s+/).filter(Boolean).join(" ");
