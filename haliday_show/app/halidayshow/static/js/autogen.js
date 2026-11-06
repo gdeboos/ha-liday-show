@@ -260,9 +260,11 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
         .sort((a, b) => Math.abs(a - at) - Math.abs(b - at))[0];
       return near ?? at;
     };
+    let carry = null; // where a phrase snapped too short to keep started: the next one starts there instead
     for (let k = 0, phrase = 0; k < bars.length - 1; k += step, phrase++) {
-      const start = k ? onLine(bars[k]) : bars[k], end = k + step < bars.length - 1 ? onLine(bars[k + step]) : bars[bars.length - 1];
-      if (end - start < 0.2) continue;
+      const start = carry ?? (k ? onLine(bars[k]) : bars[k]), end = k + step < bars.length - 1 ? onLine(bars[k + step]) : bars[bars.length - 1];
+      if (end - start < 0.2) { carry = start; continue; }
+      carry = null;
       const on = lit(phrase);
       lights.forEach((light, li) => {
         if (!on.has(light.group ?? light.id)) return;
