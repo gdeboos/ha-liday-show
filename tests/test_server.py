@@ -2111,3 +2111,35 @@ async def test_a_video_download_has_a_safe_file_name(client, tmp_path):
     r = await client.get(f"/api/video/{job['id']}/file")
     cd = r.headers["Content-Disposition"]
     assert r.status == 200 and 'filename="No_l Snow day.mp4"' in cd and "filename*=UTF-8''No%C3%ABl%20Snow%20day.mp4" in cd, cd
+
+
+async def test_a_song_keeps_its_lyrics_and_singer(client, tmp_path):
+    song = tmp_path / "media" / "carol.wav"
+    song.write_bytes(b"RIFF....WAVEfmt " + b"\0" * 100)
+    q = "source=media&path=carol.wav"
+    assert await (await client.get(f"/api/audio/lyrics?{q}")).json() is None
+    lyrics = {"text": "Silent night\nholy night", "lines": [{"start": 1, "end": 3.5}, {"start": 4, "end": 6}]}
+    assert (await client.put(f"/api/audio/lyrics?{q}", json=lyrics)).status == 200
+    assert await (await client.get(f"/api/audio/lyrics?{q}")).json() == {"text": lyrics["text"], "lines": [
+        {"start": 1.0, "end": 3.5}, {"start": 4.0, "end": 6.0}]}
+    for bad in ({"text": 1, "lines": []}, {"text": "a", "lines": [{"start": "x", "end": 1}]}, [1],
+                {"text": "one\ntwo", "lines": [{"start": 0, "end": 1}]}):  # a line short
+        assert (await client.put(f"/api/audio/lyrics?{q}", json=bad)).status == 400
+    voice = {"fps": 20, "values": [0, 50, 100], "shapes": "mao", "from": "vocals"}
+    assert (await client.put(f"/api/audio/voice?{q}", json=voice)).status == 200
+    assert await (await client.get(f"/api/audio/voice?{q}")).json() == voice
+    assert (await client.put(f"/api/audio/voice?{q}", json={**voice, "values": [101]})).status == 400
+    assert (await client.put(f"/api/audio/voice?{q}", json={**voice, "shapes": "x"})).status == 400
+    assert (await client.put(f"/api/audio/voice?{q}", json={**voice, "shapes": "ma"})).status == 400
+    assert (await client.put(f"/api/audio/voice?{q}", json={**voice, "fps": True})).status == 400
+    # Detect saving its results keeps them.
+    assert (await client.put(f"/api/audio/info?{q}", json={"tempo": 120, "beats": [1], "bars": [], "sections": []})).status == 200
+    assert (await (await client.get(f"/api/audio/lyrics?{q}")).json())["text"] == lyrics["text"]
+    assert (await (await client.get(f"/api/audio/voice?{q}")).json())["values"] == [0, 50, 100]
+    # The song saved over: the singer is measured again; the lyrics stay.
+    song.write_bytes(b"RIFF....WAVEfmt " + b"\0" * 200)
+    assert await (await client.get(f"/api/audio/voice?{q}")).json() is None
+    assert (await (await client.get(f"/api/audio/lyrics?{q}")).json())["text"] == lyrics["text"]
+    assert (await client.put("/api/audio/lyrics?source=media&path=gone.wav", json=lyrics)).status == 404
+    assert (await client.put(f"/api/audio/lyrics?{q}", data="null", headers={"Content-Type": "application/json"})).status == 200
+    assert await (await client.get(f"/api/audio/lyrics?{q}")).json() is None

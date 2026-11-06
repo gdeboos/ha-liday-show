@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  arrange, cut, editName, mapInfo, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
+  arrange, cut, editName, mapInfo, mapLyrics, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
   render, sectionAt, splitSection, beatsToDraw, previewTime, addMark, moveMark, toBase, marksToBase, freshFileName, untouched, joinInfo, putBack,
 } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
@@ -283,4 +283,16 @@ test("⏪ and ⏩ step a bar at a time once detected, else 5 seconds, and stay i
   assert.equal(skipTarget(3, [], 1, 6), 6);
   assert.equal(skipTarget(3, null, -1, 60), 0);
   assert.equal(skipTarget(30, undefined, 1, 60), 35);
+});
+
+test("a song's lyrics follow cuts and repeats into the file made from it", () => {
+  const lyrics = { text: "first\nsecond\nthird", lines: [{ start: 5, end: 8 }, { start: 20, end: 24 }, { start: 40, end: 45 }] };
+  // The second line cut out, the third played twice.
+  const pieces = [{ src: "a", start: 0, end: 10 }, { src: "a", start: 30, end: 50 }, { src: "a", start: 30, end: 50 }];
+  const out = mapLyrics(lyrics, pieces, 0, "a");
+  assert.equal(out.text, "first\nthird\nthird");
+  assert.deepEqual(out.lines, [{ start: 5, end: 8 }, { start: 20, end: 25 }, { start: 40, end: 45 }]);
+  // A spliced-in song's part brings none; nothing left gives null.
+  assert.equal(mapLyrics(lyrics, [{ src: "b", start: 0, end: 60 }], 0, "a"), null);
+  assert.equal(mapLyrics({ text: "x", lines: [] }, song, 0, "a"), null);
 });

@@ -1450,6 +1450,74 @@ async def put_song_palette(request):
     return web.json_response({"ok": True})
 
 
+# A song's lyrics and singer (storage.load_song_extra), for Singing faces: kept with the song so every
+# show on it uses them.
+MAX_LYRIC_TEXT = 20000
+MAX_LYRIC_LINES = 500
+MAX_VOICE_STEPS = 20 * 60 * 30  # 30 minutes at 20 a second
+
+
+def _num(v, lo=0.0, hi=36000.0) -> float:
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+        raise ValueError
+    return round(min(max(float(v), lo), hi), 3)
+
+
+def _clean_song_lyrics(body) -> dict | None:
+    """{text, lines: [{start, end}]} (one per non-blank line of the text), or null to clear."""
+    if body is None:
+        return None
+    try:
+        text, lines = body["text"], body["lines"]
+        if not isinstance(text, str) or len(text) > MAX_LYRIC_TEXT or not isinstance(lines, list) \
+                or len(lines) > MAX_LYRIC_LINES:
+            raise ValueError
+        if len(lines) != sum(1 for line in text.splitlines() if line.strip()):
+            raise ValueError  # one per line of the words
+        clean = [{"start": (a := _num(l["start"])), "end": max(a, _num(l["end"]))} for l in lines]
+    except (ValueError, KeyError, TypeError):
+        raise web.HTTPBadRequest(text="expected {text, lines: [{start, end}]} or null")
+    return {"text": text, "lines": clean}
+
+
+def _clean_song_voice(body) -> dict | None:
+    """The singer's level as the editor measured it: {fps, values (0-100), shapes ("aoem"), from}."""
+    if body is None:
+        return None
+    try:
+        fps, values, shapes, src = body["fps"], body["values"], body.get("shapes", ""), body.get("from", "song")
+        if isinstance(fps, bool) or not (isinstance(fps, int) and 1 <= fps <= 60) or not isinstance(values, list) or len(values) > MAX_VOICE_STEPS \
+                or not all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 100 for v in values) \
+                or not isinstance(shapes, str) or len(shapes) not in (0, len(values)) or set(shapes) - set("aoem") \
+                or src not in ("vocals", "song"):
+            raise ValueError
+    except (ValueError, KeyError, TypeError):
+        raise web.HTTPBadRequest(text="expected {fps, values, shapes, from}")
+    return {"fps": fps, "values": values, "shapes": shapes, "from": src}
+
+
+def _song_extra(key, clean):
+    async def get(request):
+        q = request.query
+        return web.json_response(request.app[STORAGE].load_song_extra(q.get("source", ""), q.get("path", ""), key))
+
+    async def put(request):
+        try:
+            body = await request.json()
+        except ValueError:
+            raise web.HTTPBadRequest(text="expected JSON")
+        value = clean(body)
+        q = request.query
+        if not request.app[STORAGE].save_song_extra(q.get("source", ""), q.get("path", ""), key, value):
+            raise web.HTTPNotFound()
+        return web.json_response({"ok": True})
+    return get, put
+
+
+get_song_lyrics, put_song_lyrics = _song_extra("lyrics", _clean_song_lyrics)
+get_song_voice, put_song_voice = _song_extra("voice", _clean_song_voice)
+
+
 # song drafts --------------------------------------------------------------------
 MAX_PIECES = 500
 
@@ -3242,6 +3310,10 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/audio/info", put_song_info)
     r.add_get("/api/audio/palette", get_song_palette)
     r.add_put("/api/audio/palette", put_song_palette)
+    r.add_get("/api/audio/lyrics", get_song_lyrics)
+    r.add_put("/api/audio/lyrics", put_song_lyrics)
+    r.add_get("/api/audio/voice", get_song_voice)
+    r.add_put("/api/audio/voice", put_song_voice)
     r.add_get("/api/seasons", get_seasons)
     r.add_put("/api/seasons", put_seasons)
     r.add_get("/api/pictures", list_pictures)
