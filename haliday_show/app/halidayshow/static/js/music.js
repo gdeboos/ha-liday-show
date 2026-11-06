@@ -2523,7 +2523,7 @@ export class MusicEditor {
     this.lyricsTimer = setTimeout(() => {
       const length = this.sources[keyOf(l.ref)]?.[0].length / this.audio.sampleRate || this.total;
       this.host.api(lyricsUrl(l.ref), { method: "PUT", json: songLyrics(savedLyrics(l.text, l.lines, l.voice, length)) })
-        .then(() => this.host.status("Lyrics saved with the song", "saved", "music-lyrics"))
+        .then(() => { this.host.lyricsChanged?.(); this.host.status("Lyrics saved with the song", "saved", "music-lyrics"); })
         .catch((e) => this.host.status(`Couldn't save the lyrics: ${e.message}`, true));
     }, 400);
   }
