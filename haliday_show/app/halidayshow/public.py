@@ -721,7 +721,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "hours": {"open": True} if admin else hours_now(p, where, now),
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
                                          "corners", "size", "borders", "colours", "show_length", "warning",
-                                         "covers")},
+                                         "covers", "tour")},
                  "picture": picture_version(storage, look)},
         "words": said,
     }
