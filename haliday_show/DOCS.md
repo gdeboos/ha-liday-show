@@ -846,7 +846,8 @@ You can swap shows with friends, or post one on a forum, without either of you c
 
 ### Songs
 
-The Song panel shows the show's song with its length, tempo and sections. Press
+The Song panel shows the show's song with its length, tempo and sections, and, once HA-liday Show has
+listened to it, what can be heard in it (see [Split into parts](#split-into-parts)). Press
 **Change…** to pick another from your Home Assistant **media** folder, or **+ Add a song…** (MP3,
 M4A, AAC, OGG, Opus, WAV, FLAC or WebM; see below). Songs you add go to `/media/haliday_show/` so media
 players can play them. For a lights-only show, choose **No song, lights only** and set its **Length with no song**.
@@ -993,7 +994,7 @@ Parts are kept in a hidden **.parts** folder inside HA-liday Show's songs folder
 your media folder), as WAV files: each is about 10 MB a minute of song, so a three-minute song's parts
 take about 150 MB.
 
-Songs you split before songs kept their parts ("Jingle Bells (vocals)" and "Jingle Bells (music)")
+Songs you split before songs had parts ("Jingle Bells (vocals)" and "Jingle Bells (music)")
 were moved into their song's parts when you updated, and shows and drafts that used them follow. Any
 that couldn't be matched to a song (its song's gone, say) stay as songs, under **Splits**.
 
@@ -1829,7 +1830,7 @@ them; an Advanced scene can.
 | Fire | Flames rising from the bottom of the matrix, each column flickering to its own height. Up to 8 colours from the base to the tips, a **Speed** and a **Flame height** |
 | Snowfall | Flakes falling down each column at their own pace, gliding from LED to LED. **Style: rain** falls straight, with a streak above each drop. Set **How many** and **Speed** |
 | Music bars | A bar per column rising from the bottom with the song's loudness, each a different height, green to red. Like **Music level**, it needs the show's song, and isn't offered in scenes |
-| Singing face | A cartoon **Character** (a snowman, pumpkin, gingerbread person, Santa, ghost, reindeer, elf, Christmas tree, penguin, robin, teddy bear, skull, witch or black cat) whose mouth opens and closes with the singer, on a **Background** colour, at a **Size** of the matrix. The mouth takes the shape the singing sounds like (a tall "ah", a round "oo", a wide "ee" with teeth, or shut), snaps open on each word and closes between them. **Mouth sensitivity** opens it on quieter singing (higher) or only on loud notes (lower). **Blinks, glances and bobs** makes the character blink now and then, glance about and bob with the music; turn it **off** for a still face. If you've used [Split into parts](#split-into-parts) on the song, the mouth follows the vocals; otherwise it follows the voice range of the song itself, which works well when the singing stands out. HA-liday Show measures the singer the first time the show is saved with a Singing face, and again if its song changes. With the clip selected, **Mouth** says what it follows (the lyrics, the vocals or the song), and **Measure again** measures it afresh, after you've split the vocals, say. To make your own character, see [Faces](#faces). For the mouth to sing the actual words, press **Lyrics…** (see [Lyrics for a Singing face](#lyrics-for-a-singing-face)). It suits a phone's screen (see [Phones join the show](#phones-join-the-show)) as well as your matrices |
+| Singing face | A cartoon **Character** (a snowman, pumpkin, gingerbread person, Santa, ghost, reindeer, elf, Christmas tree, penguin, robin, teddy bear, skull, witch or black cat) whose mouth opens and closes with the singer, on a **Background** colour, at a **Size** of the matrix. The mouth takes the shape the singing sounds like (a tall "ah", a round "oo", a wide "ee" with teeth, or shut), snaps open on each word and closes between them. **Mouth sensitivity** opens it on quieter singing (higher) or only on loud notes (lower). **Blinks, glances and bobs** makes the character blink now and then, glance about and bob with the music; turn it **off** for a still face. If you've used [Split into parts](#split-into-parts) on the song, the mouth follows the vocals; otherwise it follows the voice range of the song itself, which works well when the singing stands out. HA-liday Show measures the singer the first time the show is saved with a Singing face, and again if its song changes. With the clip selected, **Mouth** says what it follows (the lyrics, the vocals or the song), and **Measure again** measures it afresh, after you've split the song into parts, say. To make your own character, see [Faces](#faces). For the mouth to sing the actual words, press **Lyrics…** (see [Lyrics for a Singing face](#lyrics-for-a-singing-face)). It suits a phone's screen (see [Phones join the show](#phones-join-the-show)) as well as your matrices |
 
 #### Lyrics for a Singing face
 
@@ -1854,7 +1855,7 @@ or open the song in the Music editor and press **Lyrics…** under **Beats and s
    automatically** in **Lyrics…** starts again from scratch.
 
 Each word's mouth shapes come from its spelling (an "oo" for "moon", a wide "ee" for "see", lips
-closed for m, b, p, f and v), and the mouth shuts between words. With lyrics placed, you don't need to split the vocals: the
+closed for m, b, p, f and v), and the mouth shuts between words. With lyrics placed, you don't need to split the song into parts: the
 words open and shut the mouth, and the song only decides how wide it opens. Splitting the song into parts still helps a
 little, by keeping the mouth shut where a word is placed but nobody's singing.
 

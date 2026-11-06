@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.411
+
+- **The guide is up to date with song parts.** The **Songs** chapter mentions what HA-liday Show heard in a song, and the Singing face notes talk about splitting a song into parts rather than the old Split vocals.
+
 ## 0.2.410
 
 - **Add a song without splitting it.** The second step of **Add a song** has a new switch, **Split it into parts afterwards**. Turn it off on a slower computer, and the song is only listened to for its sounds (seconds). Split it later with **Split all songs into parts** in **Library → Songs**, overnight say. Your choice is remembered.
