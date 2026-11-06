@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.403
+
+- **Split into parts.** **Split vocals…** is now **Split into parts…**, and splits a song into its **vocals**, **drums**, **bass** and **the rest** of the music, all kept with the song. Use any of them as a layer in the Music editor. A song you split before keeps its vocals, and only the drums, bass and rest are found. The first time, it downloads about 40 MB more of AI, and it takes longer than splitting the vocals did.
+- **Drum hits.** From the drums, HA-liday Show finds when each kick, snare, hi-hat and crash lands. In the Music editor you'll see them as small marks along the bottom of the waveform (red kicks, blue snares, gold crashes), and they follow your cuts. Generate will use them soon, so flashes land on the real hits.
+- Song files made from a draft get their drums, bass and rest cut from the original's too, with their drum hits.
+
 ## 0.2.402
 
 - **A song's vocals and music now belong to the song.** **Split vocals** keeps them with the song as its **parts** instead of saving two new songs. In **Library → Songs** the song's row says **parts: vocals and music**, and they're renamed, copied, archived and deleted with it.

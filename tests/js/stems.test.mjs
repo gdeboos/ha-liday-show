@@ -56,3 +56,20 @@ test("the halves are named after the song, and saved as 16-bit WAV", async () =>
   assert.equal(v.getInt16(44 + 10, true), 32767); // clipped, not wrapped
   assert.equal(v.getInt16(44 + 8, true), -32768);
 });
+
+test("every part's model has a window the transforms can take, and a power of two is done directly", async () => {
+  const { MODELS } = await import("../../haliday_show/app/halidayshow/static/js/stems.js");
+  for (const m of Object.values(MODELS)) {
+    const len = m.hop * (m.dimT - 1), L = Float32Array.from({ length: len }, (_, i) => Math.sin(i / 7)), R = Float32Array.from(L, (v) => v / 2);
+    const t = tools(m), spec = chunkSpectrum(L, R, t, m);
+    assert.equal(spec.length, 4 * m.dimF * m.dimT);
+    const [l] = chunkSound(spec, t, m);
+    // Only the bins the model sees come back, so the low sine survives.
+    let worst = 0;
+    for (let i = m.nFft / 2; i < len - m.nFft / 2; i += 97) worst = Math.max(worst, Math.abs(l[i] - L[i]));
+    assert.ok(worst < 1e-3, `${m.file}: ${worst}`);
+  }
+  const re = Float64Array.from({ length: 8 }, (_, i) => i), im = new Float64Array(8);
+  dft(8)(re, im);
+  assert.ok(Math.abs(re[0] - 28) < 1e-9);
+});

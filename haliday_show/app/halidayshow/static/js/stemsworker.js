@@ -1,12 +1,15 @@
-// Split vocals' worker: gets the AI model and its runtime from HA-liday Show (server.py downloads and
-// checks them once), then splits the song with stems.js. Messages back: {stage: "download" | "split", done}
-// as it goes, then {vocals, music} (two channels each) or {error}.
+// Split into parts' worker: gets the AI models and their runtime from HA-liday Show (server.py downloads
+// and checks them once), then splits the song with stems.js, one model after another: the vocals from
+// the song, the drums from what's left, then the bass, and the rest is what remains. Asked
+// {left, right, want: [parts], vocals?: [l, r] (already made)}. Messages back: {stage: "download" |
+// "split", part, done} as it goes, each part as it's made ({part, channels}: vocals, music, drums,
+// bass, rest), then {done: true}, or {error}.
 
-import { MDX, separate } from "./stems.js";
+import { MODELS, separate } from "./stems.js";
 
 const FILES = new URL("../../api/stems/files/", import.meta.url).href;
 // Bumped whenever server.py's STEM_FILES change, so no browser keeps using old copies.
-const VERSION = "mdx-vocft-ort1.20.1";
+const VERSION = "mdx-vocft-ort1.20.1"; // the drums and bass models came later, under new names, so no browser has old copies of them
 const file = (name) => `${FILES}${name}?v=${VERSION}`;
 const CACHE = `haliday-show-split-vocals-${VERSION}`;
 
@@ -34,11 +37,11 @@ async function prepared(names, progress) {
   }
 }
 
-// The model, from the browser's own store after the first time (where the page may keep one: on
+// A model, from the browser's own store after the first time (where the page may keep one: on
 // https or this machine), else from HA-liday Show in pieces, each tried again if it's cut off.
 const PIECE = 8 * 1024 * 1024;
-async function model(size) {
-  const url = file("model.onnx");
+async function model(name, size) {
+  const url = file(name);
   const store = self.caches ? await caches.open(CACHE).catch(() => null) : null;
   const bytes = new Uint8Array(size);
   for (let at = 0; at < size; at += PIECE) {
@@ -63,18 +66,21 @@ async function model(size) {
   return bytes;
 }
 
-async function keptModel() {
+async function keptModel(name) {
   const store = self.caches ? await caches.open(CACHE).catch(() => null) : null;
-  const kept = store && (await store.match(file("model.onnx")));
+  const kept = store && (await store.match(file(name)));
   return kept ? new Uint8Array(await kept.arrayBuffer()) : null;
 }
 
-self.onmessage = async ({ data: { left, right } }) => {
+self.onmessage = async ({ data: { left, right, want = ["vocals"], vocals = null } }) => {
   try {
-    // HA-liday Show gets the files ready first (the model too, unless this browser kept it).
-    const kept = await keptModel();
+    // The models these parts need (the vocals' too, unless they're made already).
+    const steps = ["vocals", "drums", "bass"].filter((p) => p === "vocals" ? !vocals : want.includes(p));
+    const kept = {};
+    for (const p of steps) kept[p] = await keptModel(MODELS[p].file);
+    // HA-liday Show gets the files ready first (each model too, unless this browser kept it).
     const names = ["ort.webgpu.min.mjs", "ort-wasm-simd-threaded.jsep.mjs", "ort-wasm-simd-threaded.jsep.wasm",
-      ...(kept ? [] : ["model.onnx"])];
+      ...steps.filter((p) => !kept[p]).map((p) => MODELS[p].file)];
     const files = await prepared(names, (done) => self.postMessage({ stage: "download", done }));
     let ort;
     try { ort = await import(file("ort.webgpu.min.mjs")); } catch (e) {
@@ -82,26 +88,43 @@ self.onmessage = async ({ data: { left, right } }) => {
     }
     ort.env.wasm.wasmPaths = { mjs: file("ort-wasm-simd-threaded.jsep.mjs"), wasm: file("ort-wasm-simd-threaded.jsep.wasm") };
     ort.env.wasm.numThreads = 1; // several need the page set up in a way Home Assistant's isn't
-    const bytes = kept || await model(files["model.onnx"].size);
-    self.postMessage({ stage: "split", done: 0 });
-    // The graphics card where the browser offers it (much quicker), else the processor. If the
-    // graphics card gives up part way, the rest is done on the processor.
-    let session = null, gpu = true;
-    try {
-      session = await ort.InferenceSession.create(bytes, { executionProviders: ["webgpu"] });
-    } catch { gpu = false; }
-    const cpu = async () => { gpu = false; session = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"] }); };
-    if (!session) await cpu();
-    const once = async (spec) => {
-      const out = await session.run({ input: new ort.Tensor("float32", spec, [1, 4, MDX.dimF, MDX.dimT]) });
-      return out.output.getData ? await out.output.getData() : out.output.data;
+
+    // One model over `l, r` (what's left of the song so far): what it finds, and the rest, in place.
+    const split = async (part, l, r) => {
+      const m = MODELS[part];
+      const bytes = kept[part] || await model(m.file, files[m.file].size);
+      self.postMessage({ stage: "split", part, done: 0 });
+      // The graphics card where the browser offers it (much quicker), else the processor. If the
+      // graphics card gives up part way, the rest is done on the processor.
+      let session = null, gpu = true;
+      try {
+        session = await ort.InferenceSession.create(bytes, { executionProviders: ["webgpu"] });
+      } catch { gpu = false; }
+      const cpu = async () => { gpu = false; await session?.release?.(); session = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"] }); };
+      if (!session) await cpu();
+      const once = async (spec) => {
+        const out = await session.run({ input: new ort.Tensor("float32", spec, [1, 4, m.dimF, m.dimT]) });
+        return out.output.getData ? await out.output.getData() : out.output.data;
+      };
+      const run = async (spec) => {
+        if (!gpu) return once(spec);
+        try { return await once(spec); } catch { await cpu(); return once(spec); }
+      };
+      const found = await separate(l, r, run, (done) => self.postMessage({ stage: "split", part, done }), m);
+      await session.release?.();
+      return found.vocals;
     };
-    const run = async (spec) => {
-      if (!gpu) return once(spec);
-      try { return await once(spec); } catch { await cpu(); return once(spec); }
-    };
-    const { vocals, music } = await separate(left, right, run, (done) => self.postMessage({ stage: "split", done }));
-    self.postMessage({ vocals, music }, [...vocals, ...music].map((c) => c.buffer));
+    // Each part goes back as soon as it's made, so the page can keep it while the next is split.
+    const send = (part, channels) => self.postMessage({ part, channels }, channels.map((c) => c.buffer));
+    const minus = (l, r, [pl, pr]) => { for (let i = 0; i < l.length; i++) { l[i] -= pl[i]; r[i] -= pr[i]; } };
+    const voc = vocals || await split("vocals", left, right);
+    minus(left, right, voc); // the song without its singer
+    if (!vocals) send("vocals", voc);
+    if (!vocals || want.includes("music")) send("music", [left.slice(), right.slice()]);
+    if (want.includes("drums")) { const d = await split("drums", left, right); minus(left, right, d); send("drums", d); }
+    if (want.includes("bass")) { const b = await split("bass", left, right); minus(left, right, b); send("bass", b); }
+    if (want.includes("rest")) send("rest", [left, right]);
+    self.postMessage({ done: true });
   } catch (e) {
     self.postMessage({ error: e?.message || String(e) });
   }

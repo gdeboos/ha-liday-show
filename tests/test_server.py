@@ -2188,6 +2188,11 @@ async def test_a_song_keeps_its_lyrics_and_singer(client, tmp_path):
     for bad in ({"text": 1, "lines": []}, {"text": "a", "lines": [{"start": 0, "end": 1, "words": "x"}]}, {"text": "a", "lines": [{"start": "x", "end": 1}]}, [1],
                 {"text": "one\ntwo", "lines": [{"start": 0, "end": 1}]}):  # a line short
         assert (await client.put(f"/api/audio/lyrics?{q}", json=bad)).status == 400
+    drums = {"kick": [1.5, 0.5], "snare": [1], "hat": [], "crash": [2]}
+    assert (await client.put(f"/api/audio/drums?{q}", json=drums)).status == 200
+    assert await (await client.get(f"/api/audio/drums?{q}")).json() == {"kick": [0.5, 1.5], "snare": [1.0], "hat": [], "crash": [2.0]}
+    for bad in ({"kick": "x"}, {"toms": [1]}, {"kick": [True]}):
+        assert (await client.put(f"/api/audio/drums?{q}", json=bad)).status == 400
     voice = {"fps": 20, "values": [0, 50, 100], "shapes": "mao", "from": "vocals"}
     assert (await client.put(f"/api/audio/voice?{q}", json=voice)).status == 200
     assert await (await client.get(f"/api/audio/voice?{q}")).json() == voice

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  arrange, cut, editName, mapInfo, mapLyrics, mapVoice, mapWords, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
+  arrange, cut, editName, mapHits, mapInfo, mapLyrics, mapVoice, mapWords, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
   render, sectionAt, splitSection, beatsToDraw, previewTime, addMark, moveMark, toBase, marksToBase, freshFileName, untouched, joinInfo, putBack,
 } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
@@ -323,4 +323,10 @@ test("a cut through a line takes out the words in it", () => {
   // Its words either side of the cut are sung in two parts.
   assert.equal(out.text, "one\nthree");
   assert.deepEqual(out.lines, [{ start: 1, end: 2, words: [{ start: 1, end: 2 }] }, { start: 3.5, end: 4.5, words: [{ start: 3.5, end: 4.5 }] }]);
+});
+
+test("drum hits land where their part plays after cuts", () => {
+  const hits = { kick: [1, 5, 31], snare: [2.5], crash: [] };
+  const out = mapHits(hits, [{ src: "a", start: 0, end: 3 }, { src: "a", start: 30, end: 32 }, { src: "a", start: 30, end: 32 }], 0, "a");
+  assert.deepEqual(out, { kick: [1, 4, 6], snare: [2.5], crash: [] });
 });

@@ -922,41 +922,50 @@ play the lights only). An archived song moves to an **Archived** folder inside H
 folder, where it's out of HA-liday Show's song lists but still in Home Assistant's Media. Restoring it
 puts it back and gives it back to the shows that were left without a song.
 
-#### Split vocals
+#### Split into parts
 
-**Split vocals…** (under a song's **⋯** in **Library → Songs**, or in the Music editor's **Edit** panel)
-separates a song into its singing and the music behind it, and keeps both with the song as its
-**parts**. They aren't songs of their own: the song's row says **parts: vocals and music**, and they go
-wherever the song goes (renamed, copied, archived or deleted with it).
+**Split into parts…** (under a song's **⋯** in **Library → Songs**, or in the Music editor's **Edit**
+panel) separates a song into its **vocals**, **drums**, **bass** and **the rest** of the music, and
+keeps them with the song as its **parts**, along with the **music** (everything but the vocals). They
+aren't songs of their own: the song's row lists them, such as **parts: vocals, drums, bass, rest and
+music**, and they go wherever the song goes (renamed, copied, archived or deleted with it).
 
-- **Singing faces** follow the vocals part, and Generate will use the parts in future releases.
+- **Singing faces** follow the vocals part.
+- **Drum hits:** from the drums part, HA-liday Show finds when each kick, snare, hi-hat and crash
+  lands. In the Music editor they show as small marks along the bottom of the waveform: red for kicks,
+  blue for snares and gold for crashes. Generate will use them in a future release, to put flashes on
+  the real hits rather than every beat.
 - **Layers** in the Music editor can play any song's parts: under **+ Add a clip at the playhead…**,
   they're listed as **Song parts**, such as "Jingle Bells (vocals)". Use the music as a backing track,
-  or put the vocals over another song for a mash-up.
+  the drums under another song, or the vocals over another song for a mash-up.
 - **Edits** use their original song's parts through your cuts, so there's no need to split an edit.
-  When you make a song file from a draft, its parts are cut from the original's the same way, in
-  seconds, with no AI.
+  When you make a song file from a draft, its parts (and its drum hits) are cut from the original's the
+  same way, in seconds, with no AI.
+
+A song you split before (with Split vocals) has its vocals already: **Split into parts…** keeps them
+and only finds the drums, bass and rest. Each part is kept as soon as it's ready, so if you stop part
+way, the parts it finished are kept.
 
 Parts are kept in a hidden **.parts** folder inside HA-liday Show's songs folder (**haliday_show** in
-your media folder), as WAV files: each is about 10 MB a minute of song.
+your media folder), as WAV files: each is about 10 MB a minute of song, so a three-minute song's parts
+take about 150 MB.
 
 Songs you split before songs kept their parts ("Jingle Bells (vocals)" and "Jingle Bells (music)")
 were moved into their song's parts when you updated, and shows and drafts that used them follow. Any
 that couldn't be matched to a song (its song's gone, say) stay as songs, under **Splits**.
 
-An AI model does it, in your browser, on the song as it is (not a draft's edits). The first time,
-HA-liday Show downloads it (about 90 MB), checks it, and keeps it until HA-liday Show restarts (it's
-never in your backups); your browser then takes it from there, in pieces, and keeps its own copy where
-it can.
+Three AI models do it, in your browser, on the song as it is (not a draft's edits): one for the vocals,
+then one each for the drums and the bass. The first time, HA-liday Show downloads them (about 130 MB),
+checks them, and keeps them until HA-liday Show restarts (they're never in your backups); your browser
+then takes them from there, in pieces, and keeps its own copy where it can.
 It's quickest on a computer whose browser can use the graphics card (recent Chrome or Edge): a few
-minutes for a song. Otherwise it runs on the processor and can take as long as the song lasts, many
-times over, so leave the page open and come back. Songs with clear lead vocals split best; backing
-singers and effects can stay in the music, and a little of the music in the vocals.
+minutes for a song. Otherwise it runs on the processor and can take a long time, several times as long
+as the song for each part, so leave the page open and come back. Songs with clear lead vocals split
+best; backing singers and effects can stay in the music, and a little of the music in the vocals.
 
-While it works, a window covers the page saying what it's doing (downloading the AI, splitting, saving)
-and how far along it is. **Cancel** stops it, and your songs stay as they were. If the AI can't be
-downloaded, the window says why, and HA-liday Show's log (in Home Assistant, the app's **Log** tab) says
-more.
+While it works, a window covers the page saying what it's doing (downloading the AI, finding each part)
+and how far along it is. **Cancel** stops it; the song is never changed. If the AI can't be downloaded,
+the window says why, and HA-liday Show's log (in Home Assistant, the app's **Log** tab) says more.
 
 ### Samples
 
@@ -1738,7 +1747,7 @@ them; an Advanced scene can.
 | Fire | Flames rising from the bottom of the matrix, each column flickering to its own height. Up to 8 colours from the base to the tips, a **Speed** and a **Flame height** |
 | Snowfall | Flakes falling down each column at their own pace, gliding from LED to LED. **Style: rain** falls straight, with a streak above each drop. Set **How many** and **Speed** |
 | Music bars | A bar per column rising from the bottom with the song's loudness, each a different height, green to red. Like **Music level**, it needs the show's song, and isn't offered in scenes |
-| Singing face | A cartoon **Character** (a snowman, pumpkin, gingerbread person, Santa, ghost, reindeer, elf, Christmas tree, penguin, robin, teddy bear, skull, witch or black cat) whose mouth opens and closes with the singer, on a **Background** colour, at a **Size** of the matrix. The mouth takes the shape the singing sounds like (a tall "ah", a round "oo", a wide "ee" with teeth, or shut), snaps open on each word and closes between them. **Mouth sensitivity** opens it on quieter singing (higher) or only on loud notes (lower). **Blinks, glances and bobs** makes the character blink now and then, glance about and bob with the music; turn it **off** for a still face. If you've used [Split vocals](#split-vocals) on the song, the mouth follows the vocals; otherwise it follows the voice range of the song itself, which works well when the singing stands out. HA-liday Show measures the singer the first time the show is saved with a Singing face, and again if its song changes. With the clip selected, **Mouth** says what it follows (the lyrics, the vocals or the song), and **Measure again** measures it afresh, after you've split the vocals, say. To make your own character, see [Faces](#faces). For the mouth to sing the actual words, press **Lyrics…** (see [Lyrics for a Singing face](#lyrics-for-a-singing-face)). It suits a phone's screen (see [Phones join the show](#phones-join-the-show)) as well as your matrices |
+| Singing face | A cartoon **Character** (a snowman, pumpkin, gingerbread person, Santa, ghost, reindeer, elf, Christmas tree, penguin, robin, teddy bear, skull, witch or black cat) whose mouth opens and closes with the singer, on a **Background** colour, at a **Size** of the matrix. The mouth takes the shape the singing sounds like (a tall "ah", a round "oo", a wide "ee" with teeth, or shut), snaps open on each word and closes between them. **Mouth sensitivity** opens it on quieter singing (higher) or only on loud notes (lower). **Blinks, glances and bobs** makes the character blink now and then, glance about and bob with the music; turn it **off** for a still face. If you've used [Split into parts](#split-into-parts) on the song, the mouth follows the vocals; otherwise it follows the voice range of the song itself, which works well when the singing stands out. HA-liday Show measures the singer the first time the show is saved with a Singing face, and again if its song changes. With the clip selected, **Mouth** says what it follows (the lyrics, the vocals or the song), and **Measure again** measures it afresh, after you've split the vocals, say. To make your own character, see [Faces](#faces). For the mouth to sing the actual words, press **Lyrics…** (see [Lyrics for a Singing face](#lyrics-for-a-singing-face)). It suits a phone's screen (see [Phones join the show](#phones-join-the-show)) as well as your matrices |
 
 #### Lyrics for a Singing face
 
@@ -1764,7 +1773,7 @@ or open the song in the Music editor and press **Lyrics…** under **Beats and s
 
 Each word's mouth shapes come from its spelling (an "oo" for "moon", a wide "ee" for "see", lips
 closed for m, b, p, f and v), and the mouth shuts between words. With lyrics placed, you don't need to split the vocals: the
-words open and shut the mouth, and the song only decides how wide it opens. Split vocals still helps a
+words open and shut the mouth, and the song only decides how wide it opens. Splitting the song into parts still helps a
 little, by keeping the mouth shut where a word is placed but nobody's singing.
 
 The lyrics are kept with the song, so every show that uses it sings them, and you only place them
@@ -3061,7 +3070,7 @@ You set everything with these settings (environment variables). All are optional
 | `ANTHROPIC_API_KEY` | A Claude API key for the AI, instead of Home Assistant's. |
 | `HALIDAY_SHOW_AI_TASK_ENTITY` | Which Home Assistant AI Task to use, if you have several. |
 | `HALIDAY_SHOW_MQTT_HOST` | Your MQTT broker, for the show entities. Also `_PORT`, `_USERNAME` and `_PASSWORD`. |
-| `HALIDAY_SHOW_STEMS_FROM` | Where [Split vocals](#split-vocals) gets its AI files, for an install with no internet: a web address holding `model.onnx`, `ort.webgpu.min.mjs`, `ort-wasm-simd-threaded.jsep.mjs` and `ort-wasm-simd-threaded.jsep.wasm`. Leave it unset otherwise. |
+| `HALIDAY_SHOW_STEMS_FROM` | Where [Split into parts](#split-into-parts) gets its AI files, for an install with no internet: a web address holding `model.onnx`, `drums.onnx`, `bass.onnx`, `ort.webgpu.min.mjs`, `ort-wasm-simd-threaded.jsep.mjs` and `ort-wasm-simd-threaded.jsep.wasm`. Leave it unset otherwise. |
 
 > **Speakers:** Home Assistant plays songs from its own **media** folder, so a speaker can only play
 > a song if `HALIDAY_SHOW_MEDIA` is that same folder (shared over the network, for example).
