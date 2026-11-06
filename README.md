@@ -463,6 +463,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/sceneeditor.js                   Scene editor and Your scenes: rows per light, preview, saving and baking
     js/stems.js                         Split into parts: the song's spectrum in and out of each AI model (MDX-Net: vocals, drums, bass), chunk by chunk
     js/stemsworker.js                   Split vocals' worker: fetches the model and its runtime, runs the split
+    js/stemsmath.js                     Split into parts' helpers: the spectrum maths, on several cores
     js/splitvocals.js                   Split into parts… on a song: decode, split in the worker, keep each part with the song, find the drum hits
     js/roles.js                         Light roles: what each light reacts to, guessed, then your house's and each show's own
     js/drumhits.js                      When each kick, snare, hi-hat and crash lands, from a song's drums part

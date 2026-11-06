@@ -73,3 +73,37 @@ test("every part's model has a window the transforms can take, and a power of tw
   dft(8)(re, im);
   assert.ok(Math.abs(re[0] - 28) < 1e-9);
 });
+
+test("with helpers working ahead, the split comes out the same, in order, and the model runs one chunk at a time", async () => {
+  const { localMaths, MODELS } = await import("../../haliday_show/app/halidayshow/static/js/stems.js");
+  const m = MODELS.drums, n = 44100 * 40;
+  const L = Float32Array.from({ length: n }, (_, i) => Math.sin(i / 30) * 0.3 + Math.sin(i / 7) * 0.1), R = Float32Array.from(L, (v) => v * 0.8);
+  const model = async (spec) => spec.map((v, i) => v * (0.3 + (i % 5) / 10));
+  const plain = await separate(L.slice(), R.slice(), model, () => {}, m);
+  // Helpers answering out of order, at random speeds.
+  const local = localMaths(m), wait = () => new Promise((r) => setTimeout(r, Math.random() * 15));
+  let inside = 0, most = 0, maxAhead = 0, spectraOut = 0;
+  const maths = {
+    ahead: 3,
+    spectrum: async (l, r) => { spectraOut++; maxAhead = Math.max(maxAhead, spectraOut); await wait(); const s = await local.spectrum(l, r); return s; },
+    sound: async (spec) => { await wait(); return local.sound(spec); },
+  };
+  const run = async (spec) => { spectraOut--; inside++; most = Math.max(most, inside); await wait(); const out = await model(spec); inside--; return out; };
+  const progress = [];
+  const piped = await separate(L.slice(), R.slice(), run, (p) => progress.push(p), m, maths);
+  assert.equal(most, 1);
+  assert.ok(maxAhead <= 4 && maxAhead >= 2, `spectra worked out ahead: ${maxAhead}`); // three waiting, plus the one the model is on
+  assert.equal(progress.at(-1), 1);
+  for (let i = 0; i < n; i += 1013) {
+    assert.equal(piped.vocals[0][i], plain.vocals[0][i]);
+    assert.equal(piped.music[1][i], plain.music[1][i]);
+  }
+});
+
+test("the progress line says where the split runs", async () => {
+  const { routeWords } = await import("../../haliday_show/app/halidayshow/static/js/splitvocals.js");
+  assert.match(routeWords("gpu"), /graphics chip/);
+  assert.match(routeWords("cpu", true), /processor.*ran out of memory.*close other apps/);
+  assert.equal(routeWords("cpu"), " · on the processor, which is slower");
+  assert.equal(routeWords(undefined), "");
+});

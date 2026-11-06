@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.416
+
+- **Split into parts is quicker.** The maths around the AI is now shared across your computer's cores, so the graphics chip no longer sits idle between pieces of the song.
+- **The split window says where it's running:** **on the graphics chip**, or **on the processor**, which is much slower. If the graphics chip runs out of memory part way, it says so: close other apps and tabs, then split again.
+
 ## 0.2.415
 
 - **Edit a layer on its own.** In the Music editor, click a layer's name on its lane (or **⋯ → Edit this layer**) and the big waveform shows just that layer, with the song faintly behind and its clips' songs' beats and sections. Select a stretch and **Cut** it (**Cut and close up**, or **Cut and leave a gap**), hear it first with **Preview cut**, or **Keep only this**. The song and the other layers don't move. **← Back to the song** when you're done.

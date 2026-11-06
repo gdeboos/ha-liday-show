@@ -132,29 +132,56 @@ export function chunkSound(spec, tools, model = MDX) {
 
 export const tools = (model = MDX) => ({ fwd: dft(model.nFft), inv: dft(model.nFft, true), win: hann(model.nFft) });
 
+// The spectrum maths done here, one chunk at a time (in Node, and where helpers can't start).
+export function localMaths(model = MDX) {
+  const t = tools(model);
+  return {
+    ahead: 1,
+    spectrum: async (l, r) => chunkSpectrum(l, r, t, model),
+    sound: async (spec) => chunkSound(spec, t, model),
+  };
+}
+
 // The whole song (two channels at MDX.rate) through a model (MODELS). run(Float32Array [4·dimF·dimT]) →
 // Promise<Float32Array> of the same size. onProgress(0..1) as it goes. Returns {vocals, music}: what
 // the model found (for the drums model, the drums) and the rest of the song, each two channels as long
-// as the song.
-export async function separate(left, right, run, onProgress = () => {}, model = MDX) {
+// as the song. maths (localMaths' shape) can do the spectra elsewhere, `ahead` chunks at once: the next
+// chunks' spectra are worked out, and the last ones' sound, while the model runs, so it never waits.
+export async function separate(left, right, run, onProgress = () => {}, model = MDX, maths = null) {
   const CHUNK = chunkOf(model), TRIM = trimOf(model), GEN = CHUNK - 2 * TRIM; // GEN: new samples each chunk adds
   const n = left.length, pad = GEN - (n % GEN);
   const total = TRIM + n + pad + TRIM;
   const mixL = new Float32Array(total), mixR = new Float32Array(total);
   mixL.set(left, TRIM); mixR.set(right, TRIM);
-  const vocL = new Float32Array(n), vocR = new Float32Array(n), t = tools(model);
+  const vocL = new Float32Array(n), vocR = new Float32Array(n), m = maths || localMaths(model);
+  const ahead = Math.max(1, m.ahead || 1);
   const chunks = Math.ceil((n + pad) / GEN);
-  for (let c = 0; c < chunks; c++) {
+  let asked = 0, done = 0;
+  const spectra = [], sounds = [];
+  const ask = () => {
+    while (asked < chunks && spectra.length < ahead) {
+      const i = asked++ * GEN; // copies, so they can be handed to a helper
+      spectra.push(m.spectrum(mixL.slice(i, i + CHUNK), mixR.slice(i, i + CHUNK)));
+    }
+  };
+  const keep = (c, [l, r]) => {
     const i = c * GEN;
-    const spec = chunkSpectrum(mixL.subarray(i, i + CHUNK), mixR.subarray(i, i + CHUNK), t, model);
-    const [l, r] = chunkSound(await run(spec), t, model);
     for (let k = TRIM; k < CHUNK - TRIM; k++) {
       const at = i + k - TRIM;
       if (at >= n) break;
       vocL[at] = l[k] * model.compensate; vocR[at] = r[k] * model.compensate;
     }
-    onProgress((c + 1) / chunks);
+    onProgress(++done / chunks);
+  };
+  for (let c = 0; c < chunks; c++) {
+    ask();
+    const spec = await spectra.shift();
+    ask();
+    const out = await run(spec);
+    sounds.push(m.sound(out).then((ch) => keep(c, ch)));
+    if (sounds.length > ahead) await sounds.shift();
   }
+  await Promise.all(sounds);
   const musL = Float32Array.from(left, (v, i) => v - vocL[i]), musR = Float32Array.from(right, (v, i) => v - vocR[i]);
   return { vocals: [vocL, vocR], music: [musL, musR] };
 }

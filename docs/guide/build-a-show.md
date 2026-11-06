@@ -373,9 +373,12 @@ Three AI models do it, in your browser, on the song as it is (not a draft's edit
 then one each for the drums and the bass, and a fourth listens to it. The first time, HA-liday Show downloads them (about 145 MB),
 checks them, and keeps them until HA-liday Show restarts (they're never in your backups); your browser
 then takes them from there, in pieces, and keeps its own copy where it can.
-It's quickest on a computer whose browser can use the graphics card (recent Chrome or Edge): a few
-minutes for a song. Otherwise it runs on the processor and can take a long time, several times as long
-as the song for each part, so leave the page open and come back. Songs with clear lead vocals split
+It's quickest on a computer whose browser can use the graphics chip (recent Chrome or Edge): a few
+minutes for a song. The rest of the work around the AI is shared across your computer's cores, so
+the graphics chip isn't kept waiting. The window says where it's running: **on the graphics chip**,
+or **on the processor**, which can take a long time, several times as long as the song for each part,
+so leave the page open and come back. If the graphics chip runs out of memory part way, it carries on on
+the processor and says so: close other apps and browser tabs, then split again. Songs with clear lead vocals split
 best; backing singers and effects can stay in the music, and a little of the music in the vocals.
 
 While it works, a window covers the page saying what it's doing (downloading the AI, finding each part)

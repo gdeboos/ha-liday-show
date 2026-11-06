@@ -6,7 +6,7 @@
 // bass, rest), then {done: true}, or {error}. Asked {listen: samples (one channel at 16 kHz)}, it runs
 // YAMNet over them instead (sounds.js): {stage: "listen", done} as it goes, then {scores: [[…]]}.
 
-import { MODELS, separate } from "./stems.js";
+import { MODELS, localMaths, separate } from "./stems.js";
 import { CLASSES } from "./sounds.js";
 
 const FILES = new URL("../../api/stems/files/", import.meta.url).href;
@@ -85,6 +85,66 @@ async function runtime() {
   return ort;
 }
 
+// Helpers (stemsmath.js) sharing the spectrum maths, one per spare core (up to 4), so the graphics chip
+// isn't left waiting on one core between chunks. Plain workers need nothing from the page, unlike the
+// AI runtime's own threads. Where they can't start, the maths is done here as before.
+export async function mathsPool(model) {
+  const size = Math.max(1, Math.min(4, (self.navigator?.hardwareConcurrency || 2) - 2));
+  if (typeof Worker === "undefined") return { ...localMaths(model), close() {} };
+  const helpers = [];
+  try {
+    for (let i = 0; i < size; i++) {
+      const w = new Worker(new URL("./stemsmath.js", import.meta.url), { type: "module" });
+      helpers.push({ w, busy: 0 });
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("slow to start")), 10000);
+        w.onmessage = ({ data }) => { if (data.ready) { clearTimeout(timer); resolve(); } };
+        w.onerror = (e) => { clearTimeout(timer); e.preventDefault?.(); reject(new Error(e.message || "couldn't start")); };
+      });
+    }
+  } catch (e) {
+    console.warn("Split into parts: doing the maths on one core", e);
+    for (const h of helpers) h.w.terminate();
+    return { ...localMaths(model), close() {} };
+  }
+  // A helper that stops part way hands its jobs, and the rest of the split, to this worker's own maths.
+  const local = localMaths(model);
+  let next = 0, failed = false;
+  const waiting = new Map();
+  const redo = (job) => (job.msg.kind === "spectrum" ? local.spectrum(job.msg.l, job.msg.r) : local.sound(job.msg.spec)).then(job.resolve, job.reject);
+  for (const h of helpers) {
+    h.w.onmessage = ({ data: { id, result, error } }) => {
+      const job = waiting.get(id);
+      if (!job) return;
+      waiting.delete(id); h.busy--;
+      if (error) job.reject(new Error(error)); else job.resolve(result);
+    };
+    h.w.onerror = (e) => {
+      e.preventDefault?.();
+      console.warn("Split into parts: a helper stopped; carrying on with one core", e.message);
+      failed = true;
+      for (const job of waiting.values()) redo(job);
+      waiting.clear();
+    };
+  }
+  // Copies go to the helpers (not handed over), so a job can be done here instead if one stops.
+  const send = (msg) => new Promise((resolve, reject) => {
+    const job = { msg, resolve, reject };
+    if (failed) return redo(job);
+    const h = helpers.reduce((a, b) => (b.busy < a.busy ? b : a));
+    const id = next++;
+    waiting.set(id, job);
+    h.busy++;
+    h.w.postMessage({ ...msg, id, model });
+  });
+  return {
+    ahead: size + 1,
+    spectrum: (l, r) => send({ kind: "spectrum", l, r }),
+    sound: (spec) => send({ kind: "sound", spec }),
+    close() { for (const h of helpers) h.w.terminate(); },
+  };
+}
+
 // YAMNet over the whole song, a minute at a time (each piece running on by one window, so no frame is
 // cut short): its scores for the sounds sounds.js looks for, one row every 0.1 s.
 const YAMNET = "yamnet.onnx", RATE = 16000, HOP = 1600, WINDOW = 15360, PIECE_S = 60;
@@ -129,24 +189,37 @@ self.onmessage = async ({ data: { left, right, want = ["vocals"], vocals = null,
     const split = async (part, l, r) => {
       const m = MODELS[part];
       const bytes = kept[part] || await model(m.file, files[m.file].size);
-      self.postMessage({ stage: "split", part, done: 0 });
       // The graphics card where the browser offers it (much quicker), else the processor. If the
-      // graphics card gives up part way, the rest is done on the processor.
-      let session = null, gpu = true;
+      // graphics card gives up part way (out of memory, often), the rest is done on the processor,
+      // and the page is told so it can say why it's slower.
+      let session = null, gpu = true, why = "";
       try {
+        if (!self.navigator?.gpu) throw new Error("this browser doesn't offer the graphics chip");
         session = await ort.InferenceSession.create(bytes, { executionProviders: ["webgpu"] });
-      } catch { gpu = false; }
+      } catch (e) { gpu = false; why = e?.message || ""; }
       const cpu = async () => { gpu = false; await session?.release?.(); session = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"] }); };
       if (!session) await cpu();
+      let done = 0;
+      let gaveUp = false; // the graphics chip started, then stopped (out of memory, usually)
+      const tell = () => self.postMessage({ stage: "split", part, done, via: gpu ? "gpu" : "cpu", gaveUp, why });
+      tell();
       const once = async (spec) => {
         const out = await session.run({ input: new ort.Tensor("float32", spec, [1, 4, m.dimF, m.dimT]) });
-        return out.output.getData ? await out.output.getData() : out.output.data;
+        const data = out.output.getData ? await out.output.getData() : out.output.data;
+        // Handed to a helper, so it must own its memory (not be a view into the runtime's).
+        return data.byteOffset === 0 && data.byteLength === data.buffer.byteLength ? data : data.slice();
       };
       const run = async (spec) => {
         if (!gpu) return once(spec);
-        try { return await once(spec); } catch { await cpu(); return once(spec); }
+        try { return await once(spec); } catch (e) { why = e?.message || ""; gaveUp = true; console.warn("Split into parts: the graphics chip gave up", e); await cpu(); tell(); return once(spec); }
       };
-      const found = await separate(l, r, run, (done) => self.postMessage({ stage: "split", part, done }), m);
+      const maths = await mathsPool(m);
+      let found;
+      try {
+        found = await separate(l, r, run, (d) => { done = d; tell(); }, m, maths);
+      } finally {
+        maths.close();
+      }
       await session.release?.();
       return found.vocals;
     };
