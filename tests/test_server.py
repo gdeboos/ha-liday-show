@@ -1800,7 +1800,17 @@ async def test_a_show_can_have_its_own_picture(client):
     assert (await client.get(f"/api/shows/{sid}/picture")).status == 404
 
 
-async def test_split_vocals_files_are_passed_through_from_their_one_source_and_checked(client, monkeypatch):
+async def _stems_ready(client, names="model.onnx"):
+    import asyncio as aio
+    for k in range(200):
+        st = await (await client.post(f"/api/stems/prepare?names={names}{'&retry=1' if k == 0 else ''}")).json()
+        if all(f["ready"] or f.get("error") for f in st.values()):
+            return st
+        await aio.sleep(0.01)
+    return st
+
+
+async def test_split_vocals_files_are_downloaded_once_checked_and_served_in_pieces(client, monkeypatch):
     import hashlib
     good = b"abcdef" * 30000
     fetched = []
@@ -1816,36 +1826,58 @@ async def test_split_vocals_files_are_passed_through_from_their_one_source_and_c
     for name, (url, kind, _, _) in files.items():
         files[name] = (url, kind, len(good), hashlib.sha256(good).hexdigest())
     monkeypatch.setattr(server, "STEM_FILES", files)
-    monkeypatch.setattr(server, "_stream_from", stream(good))
-    resp = await client.get("/api/stems/files/model.onnx")
-    assert resp.status == 200 and await resp.read() == good
-    assert "UVR-MDX-NET-Voc_FT.onnx" in fetched[0]
-    assert "immutable" in resp.headers["Cache-Control"] and resp.headers["Content-Length"] == str(len(good))
-    resp = await client.get("/api/stems/files/ort.webgpu.min.mjs?v=abc")
-    assert resp.headers["Content-Type"].startswith("text/javascript") and "onnxruntime-web@1.20.1" in fetched[1]
-    await resp.read()
-    assert (await client.get("/api/stems/files/..%2Fsettings.json")).status == 404
-    assert (await client.get("/api/stems/files/anything.js")).status == 404
-    # A file that isn't the one it should be, or is cut off, is broken off before its end.
+    # One that isn't the file it should be, or is cut off, isn't kept or handed out.
     for bad in (good[:-1] + b"X", good[:1000], good + b"more"):
         monkeypatch.setattr(server, "_stream_from", stream(bad))
+        st = await _stems_ready(client)
+        assert list(st) == ["model.onnx"] and not st["model.onnx"]["ready"] and st["model.onnx"]["error"]
         resp = await client.get("/api/stems/files/model.onnx")
-        with pytest.raises(Exception):
-            body = await resp.read()
-            assert len(body) == len(good) and body == good  # never the whole, right file
-    # From a mirror instead (an install with no internet), when one is set.
+        assert resp.status == 502 and "Couldn't download" in await resp.text()
     monkeypatch.setattr(server, "_stream_from", stream(good))
-    monkeypatch.setenv("HALIDAY_SHOW_STEMS_FROM", "http://mirror.local/files/")
+    st = await _stems_ready(client)
+    assert st["model.onnx"] == {"size": len(good), "got": len(good), "ready": True}
+    assert "UVR-MDX-NET-Voc_FT.onnx" in fetched[-1]
+    resp = await client.get("/api/stems/files/model.onnx")
+    assert resp.status == 200 and await resp.read() == good and "immutable" in resp.headers["Cache-Control"]
+    # In pieces, as the browser takes the big model.
+    resp = await client.get("/api/stems/files/model.onnx", headers={"Range": "bytes=100-199"})
+    assert resp.status == 206 and await resp.read() == good[100:200]
+    # Downloaded once: asking again doesn't fetch it again.
+    count = len(fetched)
     await (await client.get("/api/stems/files/model.onnx")).read()
-    assert fetched[-1] == "http://mirror.local/files/model.onnx"
+    assert len(fetched) == count
+    # The runtime, fetched on first ask.
+    resp = await client.get("/api/stems/files/ort.webgpu.min.mjs?v=abc")
+    assert resp.headers["Content-Type"].startswith("text/javascript") and "onnxruntime-web@1.20.1" in fetched[-1]
+    assert await resp.read() == good
+    assert (await client.get("/api/stems/files/..%2Fsettings.json")).status == 404
+    assert (await client.get("/api/stems/files/anything.js")).status == 404
+    # From a mirror instead (an install with no internet), when one is set.
+    monkeypatch.setenv("HALIDAY_SHOW_STEMS_FROM", "http://mirror.local/files/")
+    await _stems_ready(client, "ort-wasm-simd-threaded.jsep.mjs")
+    assert fetched[-1] == "http://mirror.local/files/ort-wasm-simd-threaded.jsep.mjs"
 
     async def broken(url):
         raise server.StemsUnavailable("no internet")
         yield b""
 
     monkeypatch.setattr(server, "_stream_from", broken)
-    resp = await client.get("/api/stems/files/model.onnx")
-    assert resp.status == 502 and "Couldn't download" in await resp.text()
+    st = await _stems_ready(client, "ort-wasm-simd-threaded.jsep.wasm")
+    assert "no internet" in st["ort-wasm-simd-threaded.jsep.wasm"]["error"]
+
+    # Anything else going wrong still ends it, rather than leaving it looking as if it's on its way.
+    async def odd(url):
+        raise RuntimeError("odd")
+        yield b""
+
+    monkeypatch.setattr(server, "_stream_from", odd)
+    st = await _stems_ready(client, "ort-wasm-simd-threaded.jsep.wasm")
+    assert "odd" in st["ort-wasm-simd-threaded.jsep.wasm"]["error"]
+    # A new start begins afresh: nothing left in the folder from before is handed out.
+    folder = client.app[server.STEMS].folder
+    assert (folder / "model.onnx").is_file()
+    server.StemFiles(folder)
+    assert not folder.exists()
 
 
 async def test_whats_on_the_lights_now_can_be_seen(client):
