@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.387
+
+- **Nine more Singing faces.** A **Singing face** clip's **Character** now also offers a reindeer, an elf, a Christmas tree, a penguin, a robin, a teddy bear, a skull, a witch and a black cat, alongside the snowman, pumpkin, gingerbread person, Santa and ghost. They all sing, blink and glance about the same way. A library of faces, where you can make your own, is coming next.
+
 ## 0.2.386
 
 - **Lyrics for Singing faces.** Select a **Singing face** clip and press **Lyrics…** to make it mouth the actual words. Paste the song's words, one line per line, and they're placed across the singing for you. If a line comes in early or late, type its start, or press **Tap along…** and press **Next line** as each line starts while the song plays. Each word's mouth shapes come from its spelling, and the mouth shuts between words.
