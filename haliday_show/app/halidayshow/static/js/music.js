@@ -1996,7 +1996,7 @@ export class MusicEditor {
     if (!same) this.peaks = this.main ? peaks(this.main) : null;
     const steps = this.main ? Math.ceil((this.main[0].length / rate) * OVERLAY_RATE) + 1 : 0;
     this.overlay = {
-      dip: steps ? dipCurve(this.layers, placed.filter((p) => !this.layers[p.layer].muted), this.sources, steps, OVERLAY_RATE) : null,
+      dip: steps ? dipCurve(this.layers, heard, this.sources, steps, OVERLAY_RATE) : null, // the dips you can hear
       eq: steps && !isFlat(this.eq) ? eqCurves(this.eq, placeChanges(this.eq, this.pieces, this.crossfade), steps, OVERLAY_RATE) : null,
       filter: steps && [this.eq, ...(this.eq?.changes || [])].some((s) => s?.filter)
         ? filterCurve(this.eq, placeChanges(this.eq, this.pieces, this.crossfade), steps, OVERLAY_RATE) : null,
