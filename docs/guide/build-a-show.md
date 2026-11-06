@@ -549,6 +549,33 @@ last chorus, a voice saying "Merry Christmas", or another song fading in under t
    heard) to nearly silent (24 dB); it starts at 8 dB. Where two layers that quieten the song play at
    once, the song dips by the bigger amount. It's off for new layers.
 
+**Editing a layer on its own.** Click a layer's name at the left of its lane (or **⋯ → ✎ Edit this
+layer** in the Mixer) and the big waveform shows that layer instead of the song: its own sound, in the
+layer's colour, with the song faintly behind so you can see where you are, and its clips' songs' beats
+and sections where its clips play them (a clip of a song's vocals shows that song's sections). A blue bar
+says **Editing layer Choir**, its lane is outlined and its Mixer row says **Editing**. Now:
+
+- Drag across the waveform, or click a section, to select a stretch of the layer. Selections snap to its
+  own bars and beats.
+- **Cut** asks **Cut and close up** (the rest of the layer moves earlier to fill the gap, crossfaded at
+  the join) or **Cut and leave a gap** (the layer is silent there). Either way the song and the other
+  layers don't move.
+- **Preview cut** plays a few seconds either side of the join, closed up, with everything else as it is.
+- **Keep only this** trims the layer to the selection, leaving the rest of it silent.
+- To change the sections of a clip's song, open that song in the Music editor: they're the song's own,
+  used everywhere it is.
+
+Press **← Back to the song** (or the layer's name again, or **Song** on another lane) to edit the song
+again. Every change is one **Undo** step.
+
+**Change a clip's part.** Click a clip of a song that's been split into parts, and **Use** in its panel
+switches it between **The whole song** and just one part (**Just the vocals**, **Just the drums** and so
+on), where it is, without adding it again.
+
+**Cutting in the middle of a word.** With the song's lyrics placed, **Cut** checks whether either end of
+the cut lands inside a sung word. If one does, it offers **Move it between words** (each end goes to the
+nearer edge of its word) or **Cut here anyway**.
+
 Each clip is pinned to the moment in the song it starts at, so it moves with your cuts: cut a bit
 earlier in the song and it moves earlier with the music; cut the part it sits on and it's left out
 (**Undo** or **Put back** brings it back). A new clip is trimmed to the song's end. One that runs past it (after a cut, say) stops there, and

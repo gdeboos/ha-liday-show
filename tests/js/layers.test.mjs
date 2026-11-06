@@ -195,3 +195,50 @@ test("ducking can follow the clips' own audio while mixing in something else", (
   assert.ok(out[0][400] < 0.3 && Math.abs(out[0][900] - 0.5) < 1e-6);
   assert.ok(Math.abs(mixLayers(main, layers, placed, {}, rate)[0][400] - 0.5) < 1e-6);
 });
+
+test("cutting a stretch out of a layer closes it up or leaves a gap, and nothing else moves", async () => {
+  const { cutLayer, keepLayer, LAYER_XF } = await import("../../haliday_show/app/halidayshow/static/js/layers.js");
+  const refs = { "media:a.mp3": A };
+  const clip = (t, s0, s1) => ({ song: B, start: s0, end: s1, anchor: { song: A, t }, gain: 0, fadeIn: 0, fadeOut: 0 });
+  // Clips at 0-10, 20-30 and 40-50 (each 10 s of b.mp3); the song's an untouched minute.
+  const layers = [{ name: "L", gain: 0, clips: [clip(0, 0, 10), clip(20, 0, 10), clip(40, 0, 10)] }, { name: "M", gain: 0, clips: [clip(5, 0, 1)] }];
+  const ctx = { pieces: song, crossfade: 0, refs };
+  const at = (ls) => placeClips(ls, song, 0).filter((p) => p.layer === 0).map((p) => [p.at, ls[0].clips[p.clip].start, ls[0].clips[p.clip].end]);
+  // A gap: 25-42 cut out of the layer; the middle clip loses its end, the last its start.
+  const gap = cutLayer(layers, 0, 25, 42, { ...ctx, closeUp: false });
+  assert.deepEqual(at(gap), [[0, 0, 10], [20, 0, 5], [42, 2, 10]]);
+  assert.equal(gap[1], layers[1]); // the other layer's untouched
+  // Closed up: what's after the cut moves 17 s earlier, overlapping the join by a short crossfade.
+  const closed = cutLayer(layers, 0, 25, 42, { ...ctx, closeUp: true });
+  assert.deepEqual(at(closed), [[0, 0, 10], [20, 0, 5 + LAYER_XF], [25, 2, 10]]);
+  assert.equal(closed[0].clips[1].fadeOut, LAYER_XF);
+  assert.equal(closed[0].clips[2].fadeIn, LAYER_XF);
+  // A whole clip inside the cut goes; later clips close up.
+  const whole = cutLayer(layers, 0, 15, 35, { ...ctx, closeUp: true });
+  assert.deepEqual(at(whole), [[0, 0, 10], [20, 0, 10]]);
+  // Keep only 5-45: trimmed to it, nothing moves.
+  assert.deepEqual(at(keepLayer(layers, 0, 5, 45, ctx)), [[5, 5, 10], [20, 0, 10], [40, 0, 5]]);
+});
+
+test("cutting a layer follows tempo-matched clips and a song that's been cut", async () => {
+  const { cutLayer } = await import("../../haliday_show/app/halidayshow/static/js/layers.js");
+  const refs = { "media:a.mp3": A };
+  // A 100 BPM clip on a layer matching a 120 BPM song plays 1.2 times as fast.
+  const L = { name: "L", gain: 0, matchTempo: true, clips: [{ song: B, start: 0, end: 12, bpm: 100, anchor: { song: A, t: 10 }, gain: 0, fadeIn: 0, fadeOut: 0 }] };
+  const ctx = { pieces: song, crossfade: 0, refs, tempo: 120 };
+  const [p] = placeClips([L], song, 0, 120);
+  assert.equal(p.speed, 1.2);
+  assert.ok(Math.abs(p.length - 10) < 1e-9); // 12 s of the clip in 10 s
+  // Cut 12-14 (2 s of result = 2.4 s of the clip) and close up.
+  const [out] = cutLayer([L], 0, 12, 14, { ...ctx, closeUp: true });
+  const placed = placeClips([out], song, 0, 120);
+  assert.deepEqual(out.clips.map((c) => [c.start, c.end]), [[0, 2.46], [4.8, 12]]); // 2 s + the crossfade, then from 4.8 s
+  assert.deepEqual(placed.map((q) => Math.round(q.at * 1000) / 1000), [10, 12]);
+  // The song cut from 20 to 40 (two pieces of a.mp3): a clip at the song's 45 s is at 25 s; cutting 22-24
+  // of the layer closes it up to start at 22, pinned back to the song's 42 s.
+  const pieces = [{ src: "media:a.mp3", start: 0, end: 20 }, { src: "media:a.mp3", start: 40, end: 60 }];
+  const M = { name: "M", gain: 0, clips: [{ song: B, start: 0, end: 5, anchor: { song: A, t: 45 }, gain: 0, fadeIn: 0, fadeOut: 0 }] };
+  const [moved] = cutLayer([M], 0, 21, 23, { pieces, crossfade: 0, refs, closeUp: true });
+  assert.deepEqual(moved.clips[0].anchor, { song: A, t: 43 });
+  assert.deepEqual(placeClips([moved], pieces, 0).map((q) => q.at), [23]);
+});

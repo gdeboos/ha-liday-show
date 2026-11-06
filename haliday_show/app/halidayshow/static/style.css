@@ -1201,6 +1201,10 @@ a.button { text-decoration: none; }
 .ms-btn { min-width: 26px; padding: 2px 6px; font-size: 12px; font-weight: 600; }
 .ms-btn.muted { background: #e8a33d; border-color: #e8a33d; color: #fff; }
 .ms-btn.soloed { background: #3d8be8; border-color: #3d8be8; color: #fff; }
+.editing-badge { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 999px; background: var(--accent); color: #fff; }
+.music-focus { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 10px; margin-bottom: 6px; border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--panel)); }
+.music-focus[hidden] { display: none; }
 .mixer-menu { z-index: 50; display: flex; flex-direction: column; min-width: 230px; padding: 4px; border-radius: 8px;
   background: var(--panel); border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0, 0, 0, .18); }
 .mixer-menu button { text-align: left; justify-content: flex-start; }

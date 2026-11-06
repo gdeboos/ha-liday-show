@@ -529,6 +529,10 @@
           <button id="music-zoom-sel" class="ghost" title="Zoom to the selection">Zoom to selection</button>
           <button id="music-fit" class="ghost" title="Show the whole song">Show all</button>
         </span></div>
+      <div id="music-focus" class="music-focus" hidden>
+        <span>Editing layer <b id="music-focus-name"></b>: cuts here change only it, not the song or the other layers.</span>
+        <button id="music-focus-back" type="button" title="Edit the song again">← Back to the song</button>
+      </div>
       <div class="music-stage"><canvas id="music-wave"></canvas></div>
       <div class="group">
         <label title="Selection start in seconds">From <input id="music-sel-start" type="number" min="0" step="0.01" placeholder="–"> s</label>
@@ -567,6 +571,7 @@
     </div>
     <div id="music-clip" class="group music-section" hidden>
       <span id="music-clip-what" class="hint"></span>
+      <label id="music-clip-part-label" title="Play the whole song, or just one of its parts" hidden>Use <select id="music-clip-part"></select></label>
       <label title="How loud this clip is, on top of its layer's Volume">Volume <input id="music-clip-gain" type="number" min="-24" max="12" step="0.5"> dB</label>
       <label title="This clip's own tempo, for a layer set to Match tempo. It's found when the clip is added; type it if it's wrong">Tempo <input id="music-clip-bpm" type="number" min="20" max="400" step="0.1" placeholder="–"> BPM</label>
       <label>Fade in <input id="music-clip-fadein" type="number" min="0" max="30" step="0.1"> s</label>
