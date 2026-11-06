@@ -607,6 +607,7 @@ class Storage:
                         # Marks alone (put on before Detect) don't make it detected.
                         "detected": bool(info and (info.get("beats") or info.get("sections"))),
                         "tempo": (info or {}).get("tempo"),
+                        "key": (info or {}).get("key"),
                         "sections": len((info or {}).get("sections") or [])})
         return {"songs": out, "more": len(refs) > limit}
 

@@ -239,7 +239,7 @@ async def test_song_info_is_kept_per_file_until_the_file_changes(client, tmp_pat
     assert (await client.put("/api/audio/info", params=missing, json=info)).status == 404
     songs = {x["path"]: x for x in (await (await client.get("/api/songs")).json())["songs"]}
     assert songs["songs/tune.mp3"]["detected"] is True
-    assert songs["songs/tune.mp3"]["tempo"] == 120 and songs["songs/tune.mp3"]["sections"] == 1
+    assert songs["songs/tune.mp3"]["tempo"] == 120 and songs["songs/tune.mp3"]["key"] == "E♭ major" and songs["songs/tune.mp3"]["sections"] == 1
     assert songs["songs/tune.mp3"]["size"] > 0
     # Replacing the file drops the old results.
     (tmp_path / "media" / "songs" / "tune.mp3").write_bytes(b"ID3 a different song")

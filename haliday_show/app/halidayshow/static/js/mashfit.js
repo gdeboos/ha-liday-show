@@ -41,8 +41,11 @@ const sameKey = (a, b) => String(a).trim().toLowerCase() === String(b).trim().to
 // best first, then by name.
 export function rankFits(songs, target, infoOf) {
   const order = Object.keys(FITS);
-  return songs.map((song) => ({ song, ...mashFit(infoOf(song), target) }))
-    .sort((a, b) => order.indexOf(a.fit) - order.indexOf(b.fit) || Math.abs(a.speed - 1) + Math.abs(a.semis) / 12 - (Math.abs(b.speed - 1) + Math.abs(b.semis) / 12));
+  // Songs not detected yet (no tempo or key to go by) come last.
+  const known = (i) => Boolean((i?.tempo && target?.tempo) || (i?.key && target?.key));
+  return songs.map((song) => { const i = infoOf(song); return { song, known: known(i), ...mashFit(i, target) }; })
+    .sort((a, b) => b.known - a.known || order.indexOf(a.fit) - order.indexOf(b.fit)
+      || Math.abs(a.speed - 1) + Math.abs(a.semis) / 12 - (Math.abs(b.speed - 1) + Math.abs(b.semis) / 12));
 }
 
 // Where a clip should start (result seconds) so its first bar lands on the song's nearest bar: `at` is

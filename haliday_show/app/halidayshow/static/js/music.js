@@ -1307,7 +1307,8 @@ export class MusicEditor {
 
   // Puts a sample or song on a layer at the playhead, as long as it is (trim it after) but no further
   // than the song's end, at a level a little under the song's.
-  async addClip(i, ref) {
+  // from, to: the stretch of it to play (its seconds; all of it when missing). lineUp: its first bar on the song's.
+  async addClip(i, ref, { from = 0, to = null, lineUp = true } = {}) {
     if (this.layers[i].clips.length >= MAX_CLIPS) return this.host.status(`A layer can have up to ${MAX_CLIPS} clips; use another layer`, "hint");
     const at = this.time < this.total - 0.01 && anchorAt(this.pieces, this.crossfade, this.time, this.refs);
     if (!at) return this.host.status("Move the playhead into the song first (not right at its end)", "hint");
@@ -1325,12 +1326,13 @@ export class MusicEditor {
     if (i < 0) return;
     // Anything past the song's end wouldn't be heard, and its end couldn't be reached to trim it.
     const speed = clipSpeed(this.layers[i], { bpm }, this.songTempo), room = (this.total - this.time) * speed;
-    const end = Math.round(Math.min(whole, room) * 1000) / 1000;
-    let clip = { song: ref, start: 0, end, anchor: at, gain, fadeIn: 0, fadeOut: 0, ...(bpm ? { bpm } : {}) };
+    const start = Math.max(0, Math.min(from || 0, whole - 0.05));
+    const end = Math.round(Math.min(whole, to ?? whole, start + room) * 1000) / 1000;
+    let clip = { song: ref, start, end, anchor: at, gain, fadeIn: start > 0 ? 0.05 : 0, fadeOut: to != null && to < whole - 0.05 ? 0.5 : 0, ...(bpm ? { bpm } : {}) };
     // Its first bar on the song's nearest bar, where both have been detected.
     const bars = (await this.loadInfo(songOfClip(ref)))?.bars, songBars = this.shown?.bars;
     let lined = false;
-    if (bars?.length && songBars?.length) {
+    if (lineUp && bars?.length && songBars?.length) {
       const t = lineUpOnBar(this.time, clip, speed, bars, songBars), pin = anchorAt(this.pieces, this.crossfade, t, this.refs);
       if (pin && Math.abs(t - this.time) > 0.005) { clip = { ...clip, anchor: pin }; lined = true; }
     }
@@ -1338,7 +1340,7 @@ export class MusicEditor {
     if (this.layers[i].matchKey) { this.findSongKey(); const k = this.keyOfSong(ref, clip); if (k) clip.key = k; }
     const layers = this.layers.map((l, k) => (k === i ? { ...l, clips: [...l.clips, clip] } : l));
     this.editLayers(layers, { layer: i, clip: layers[i].clips.length - 1 });
-    this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} at ${fmtTime(this.time)}${lined ? ", lined up on the bar" : ""}${end < whole - 0.01 ? ", trimmed to the song's end" : ""}. Drag it to move it (it lines up on the bars; hold Alt to place it freely), or its ends to trim it`);
+    this.host.status(`Added ${nameOf(ref).replace(/\.[^.]+$/, "")} at ${fmtTime(this.time)}${lined ? ", lined up on the bar" : ""}${end < Math.min(whole, to ?? whole) - 0.01 ? ", trimmed to the song's end" : ""}. Drag it to move it (it lines up on the bars; hold Alt to place it freely), or its ends to trim it`);
   }
 
   // The lane (layer index) at canvas y, or -1.
@@ -1767,8 +1769,9 @@ export class MusicEditor {
     menu.append(
       item(this.focus === i ? "← Back to the song" : "✎ Edit this layer", () => this.focusLayer(this.focus === i ? null : i)),
       item("+ Add a clip at the playhead…", async () => {
-        const ref = await this.host.pickSong?.({ title: `Add to ${l.name} at the playhead`, yes: "Add", kinds: ["samples", "songs"], parts: true });
-        if (ref) this.addClip(i, { source: ref.source, path: ref.path });
+        const ref = await this.host.pickSong?.({ title: `Add to ${l.name} at ${fmtTime(this.time)}`, yes: "Add", kinds: ["samples", "songs"], parts: true,
+          fitTo: { tempo: this.songTempo, key: this.songKey }, sections: true });
+        if (ref) this.addClip(i, { source: ref.source, path: ref.path }, { from: ref.from, to: ref.to, lineUp: ref.lineUp !== false });
       }),
       item("Rename", () => { this.renaming = i; this.renderLayers(); }),
       item("Remove", () => this.removeLayer(i), "danger"));
