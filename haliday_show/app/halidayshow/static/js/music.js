@@ -2699,6 +2699,12 @@ export class MusicEditor {
   // it can be changed and made again: then you choose between replacing that file and a new one.
   async save() {
     if (!this.rendered) return;
+    // A layer that goes quieter while the song sings needs the song's vocals in before it's mixed.
+    if (!this.singing() && this.layers.some((L) => L.duck && L.duckFrom === "vocals") && this.partsAvailable) {
+      for (let k = 0; k < 600 && (this.partsLoading || !this.singing()) && !this.partsFailed?.size; k++) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
     const name = $("music-name").value.trim().replace(/\.wav$/i, "");
     if (!name) return this.host.status("Give the draft a name first; the file is named after it", "hint");
     const taken = this.host.songs().map((r) => r.path);
