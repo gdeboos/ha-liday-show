@@ -669,6 +669,11 @@ export function start() {
     else { join.asking = !join.asking; drawJoin(); }
   }
 
+  // The card under the bar shows only while something in it does.
+  function drawMore() {
+    $("pp-more").hidden = ["pp-join-ask", "pp-listen", "pp-admin-ctl"].every((id) => $(id).hidden);
+  }
+
   function drawJoin() {
     const st = last;
     const offered = !!(st && st.open && st.phones && !st.locked);
@@ -682,6 +687,7 @@ export function start() {
     $("pp-join-warn").textContent = say_(w, "join_warn");
     iconLabel($("pp-join-ok"), "phone", say_(w, "join_ok"));
     $("pp-join-cancel").textContent = say_(w, "join_cancel");
+    drawMore();
   }
 
   function drawAdmin(st = last) {
@@ -863,6 +869,7 @@ export function start() {
     btn.title = say_(w, playing ? "listen_stop" : "listen_hint").replace(/^[^\p{L}\p{N}]+/u, "");
     const panel = $("pp-listen");
     panel.hidden = !(me.on || me.state === "pin" || me.message);
+    drawMore();
     if (panel.hidden) return;
     const text = {
       off: "", pin: "", starting: "listen_loading", loading: "listen_loading", tap: "listen_tap",
@@ -914,6 +921,7 @@ export function start() {
     // Your admin phone: skip a visitor's pick, or stop everything.
     $("pp-admin-ctl").hidden = !(st.admin && st.now);
     $("pp-admin-skip").hidden = !st.now?.visitor;
+    drawMore();
     const q = queueView(st, w, queueOpen);
     $("pp-queue-box").hidden = !q.rows.length;
     $("pp-queue-head").textContent = q.head;

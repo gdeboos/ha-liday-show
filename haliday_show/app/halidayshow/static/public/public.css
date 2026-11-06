@@ -144,7 +144,7 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-warning.pp-slim { border: 0; background: none; padding: 0; margin: 0 0 10px; }
 .pp-warning.pp-slim p { font-weight: 400; font-size: .8125em; color: var(--warn); }
 
-.pp-bar { position: sticky; top: 8px; z-index: 3; padding: 12px; margin: 0 0 12px;
+.pp-bar { position: sticky; top: 8px; z-index: 3; padding: 10px 12px; margin: 0 0 12px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, .28); }
 .pp-bar-row { display: flex; align-items: center; gap: 10px; }
 .pp-bar-now { flex: 1; min-width: 0; }
@@ -152,7 +152,17 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-now-yours { margin: 4px 0 0; }
 .pp-progress { height: 4px; border-radius: 2px; background: var(--line); margin-top: 6px; overflow: hidden; }
 .pp-progress div { height: 100%; width: 0; background: var(--head, var(--accent)); transition: width .9s linear; }
-.pp-listen-btn { padding: 8px 12px; font-weight: 600; }
+.pp-listen-btn { padding: 6px 12px; min-height: 42px; font-weight: 600; }
+/* Listen and Join side by side under what's on, so the pinned bar stays two short rows. */
+.pp-bar-btns { display: flex; gap: 8px; margin-top: 8px; }
+.pp-bar-btns:not(:has(button:not([hidden]))) { display: none; }
+.pp-bar-btns button { flex: 1 1 0; min-width: 0; }
+/* Join stands out: the page's own colour, until this phone has joined. */
+.pp-join-btn { background: var(--head, var(--accent)); border-color: var(--head, var(--accent)); color: var(--bg); }
+/* Under the bar, scrolling away with the page: joining's warning, listening's details, your Skip and Stop. */
+.pp-more { padding: 10px 12px; margin: 0 0 12px; }
+.pp-more > [hidden] + .pp-admin-ctl, .pp-more > .pp-admin-ctl:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+.pp-more .pp-listen { margin: 0; }
 .pp-listen-btn[aria-pressed="true"] { border-color: var(--head, var(--accent)); color: var(--head, var(--text)); }
 .pp-listen { margin: 10px 0 0; }
 .pp-listen > .pp-hint { margin: 0; }
@@ -206,12 +216,10 @@ h1, h2 { color: var(--head, var(--text)); }
 /* What's on: its cover art beside its name. On a narrow phone (a Fold's front screen) the Listen or
    Sound off button goes on its own line under them, full width, so the name keeps room to read. */
 .pp-now-art { flex: none; display: block; }
-.pp-now-art .pp-cover { width: 52px; height: 52px; border-radius: 8px; }
+.pp-now-art .pp-cover { width: 44px; height: 44px; border-radius: 8px; }
 .pp-now-art .pp-tile { font-size: 22px; }
 .pp-bar-row { flex-wrap: wrap; }
-@media (max-width: 420px) {
-  .pp-bar .pp-listen-btn { flex: 1 1 100%; }
-}
+
 #pp-soon .pp-cover { width: 44px; height: 44px; border-radius: 6px; }
 #pp-soon .pp-tile { font-size: 20px; }
 /* Icons on buttons (icons.js), in the button's own colour. */
@@ -236,5 +244,5 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-join-text { color: #fff; text-align: center; max-width: 30em; text-shadow: 0 1px 3px #000; }
 .pp-join-text:empty { display: none; }
 .pp-join-leave { background: rgba(0, 0, 0, 0.55); color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); }
-.pp-join-ask { margin-top: 10px; }
+.pp-join-ask + .pp-listen:not([hidden]), .pp-join-ask:not([hidden]) ~ .pp-admin-ctl { margin-top: 10px; }
 .pp-join-ask p { margin: 0 0 8px; }

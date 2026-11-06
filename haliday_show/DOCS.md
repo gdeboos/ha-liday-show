@@ -2042,7 +2042,8 @@ Schedules you'd set on a playlist or scene before 0.2.233 were moved to the **Sc
 ### The public page
 
 The public page lets people passing by start a show from their phone, usually by scanning a QR code
-on a sign outside. They see the shows and playlists you've picked, and nothing else of HA-liday Show.
+on a sign outside. They see the shows and playlists you've picked, and nothing else of HA-liday Show. What's on stays pinned to the top as they
+scroll, kept slim: its name, how far through it is, and the **Listen** and **Join** buttons. Listening's details (and your **Skip** and **Stop the lights**) are in a card under it, which scrolls away.
 
 1. Open **Setup → More** and turn on **Let visitors start shows** under **Public page**. A **Public
    page** tab appears along the top.
@@ -2175,7 +2176,7 @@ A dashed card then says your phone is in admin mode, and **Close** tucks it away
   stay under **Coming soon** for everyone else.
 - You still can't queue a show that's already waiting or playing now.
 
-While a show is on, your admin phone also gets, under what's on:
+While a show is on, your admin phone also gets, in the card under what's on:
 
 - **Skip**: ends a visitor's pick that's playing now; the next one waiting starts as usual.
 - **Stop the lights**: stops whatever is on and clears the queue (it asks first).
