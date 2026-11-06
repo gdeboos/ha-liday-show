@@ -614,7 +614,12 @@ export class MusicEditor {
   // first loaded), for when it's spliced into another song.
   loadInfo(ref) {
     const key = keyOf(ref);
-    return this.host.api(infoUrl(ref)).then((info) => { this.infos[key] = info; this.updateControls?.(); this.draw?.(); return info; })
+    return this.host.api(infoUrl(ref)).then((info) => {
+      this.infos[key] = info;
+      // A focused layer's clips show their songs' beats and sections as soon as they're in.
+      if (this.focus != null && this.main) this.focusView(this.placed(), this.audio.sampleRate);
+      this.updateControls?.(); this.draw?.(); return info;
+    })
       .catch(() => this.infos[key] || null);
   }
 
@@ -901,6 +906,7 @@ export class MusicEditor {
     const back = from.pop();
     if (back.pieces !== this.pieces) this.dirty = true; // a layers-only step leaves the song as it was
     this.pieces = back.pieces;
+    if (back.layers.length !== this.layers.length) this.focus = null; // a layer added or removed: back to the song
     this.layers = back.layers;
     this.eq = back.eq;
     this.clipSel = this.chgSel = null;
@@ -943,6 +949,8 @@ export class MusicEditor {
     else if (typeof this.eqCh === "number" && this.eqCh > i) this.eqCh--;
     this.chgSel = null;
     this.solo = new Set([...this.solo].filter((c) => c !== i).map((c) => (typeof c === "number" && c > i ? c - 1 : c)));
+    if (this.focus === i) this.focus = null;
+    else if (this.focus != null && this.focus > i) this.focus--;
     this.editLayers(this.layers.filter((_, k) => k !== i), null);
   }
 
@@ -1517,10 +1525,12 @@ export class MusicEditor {
 
   // Cut on the focused layer: close it up, or leave a gap.
   async cutLayerSelection() {
+    if (this.asking) return;
     const { start, end } = this.sel, L = this.layers[this.focus];
+    this.asking = true;
     const how = await askChoice(`Cut ${fmtTime(start)} to ${fmtTime(end)} out of ${L.name}? The song and the other layers don't move.`, [
       { value: "close", label: "Cut and close up", primary: true, title: `The rest of ${L.name} moves earlier to fill the gap, crossfaded at the join` },
-      { value: "gap", label: "Cut and leave a gap", title: `${L.name} is silent there; the rest stays where it is` }]);
+      { value: "gap", label: "Cut and leave a gap", title: `${L.name} is silent there; the rest stays where it is` }]).finally(() => { this.asking = false; });
     if (!how) return;
     this.sel = null;
     this.time = start;
@@ -1616,7 +1626,9 @@ export class MusicEditor {
   async cutSelection() {
     if (!this.sel) return this.host.status("Drag across the waveform to select the part to cut", "hint");
     if (this.focus != null) return this.cutLayerSelection();
-    if (!(await this.clearOfWords())) return;
+    if (this.asking) return; // a question about this cut is open already
+    this.asking = true;
+    try { if (!(await this.clearOfWords())) return; } finally { this.asking = false; }
     const { start, end } = this.sel;
     this.sel = null;
     this.time = start;
@@ -1628,6 +1640,7 @@ export class MusicEditor {
     if (this.focus != null) {
       const { start, end } = this.sel, name = this.layers[this.focus].name;
       this.sel = null;
+      this.time = start;
       this.editLayers(keepLayer(this.layers, this.focus, start, end, this.layerCtx()), null);
       return this.host.status(`Kept only ${fmtTime(start)} to ${fmtTime(end)} of ${name}. Ctrl+Z puts the rest back`, "saved");
     }
@@ -1745,7 +1758,7 @@ export class MusicEditor {
     if (how === "move") {
       const edge = (w, t) => (t - w.start < w.end - t ? w.start : w.end);
       const s = a ? edge(a, start) : start, e = b ? edge(b, end) : end;
-      if (e - s < 0.05) return false;
+      if (e - s < 0.05) { this.host.status("Moved between words, there'd be nothing left to cut: select a little more", "hint"); return false; }
       this.sel = { start: s, end: e };
     }
     return true;
@@ -2234,7 +2247,7 @@ export class MusicEditor {
     if (!this.marks || this.markSel >= this.marks.length) this.markSel = -1;
     this.renderMark();
     $("music-mark-add").disabled = !has || !this.marks;
-    $("music-suggest").disabled = !has;
+    $("music-suggest").disabled = !has || this.focus != null; // it shortens the song
     this.renderCuts();
     $("music-sel-start").disabled = $("music-sel-end").disabled = !sel;
     $("music-sel-start").value = sel ? sel.start.toFixed(2) : "";
