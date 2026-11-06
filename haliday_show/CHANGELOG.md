@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.391
+
+- **Make your own Singing faces.** **Library → Faces** lists every Singing face character. Press **+ New face** to open the face maker and build one from parts: a head shape, eyes, nose, mouth, cheeks, a hat (or antlers, ears or a star) and extras such as a beard, whiskers or a scarf, each in your own colours. The preview sings and blinks as you go, big and as a phone shows it.
+- **Duplicate** any face, built-in or yours, to start from it. Your faces appear under **Your faces** in a Singing face clip's **Character**, can go in folders, and are kept in your backups.
+- Changing one of your faces changes it in every show that uses it.
+
 ## 0.2.390
 
 - **Tap along is clearer.** In **Lyrics…**, the button now says which line it's waiting for (**Line 1 starts**, **Line 2 starts**…), so your first press marks the first line, not the second. **Done** now stays shown once you've tapped the last line.

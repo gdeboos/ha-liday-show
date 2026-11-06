@@ -864,7 +864,7 @@ Object.assign(EFFECTS, {
   singingface: gridEffect({
     // One of the characters in faces.js, as big as fits (Size %), its mouth opening with the singer.
     label: "Singing face", music: true,
-    params: [choice("character", "Character", "snowman", CHARACTERS), color("background", "Background", "#000000"),
+    params: [{ ...choice("character", "Character", "snowman", CHARACTERS), faces: true }, color("background", "Background", "#000000"),
       num("size", "Size %", 100, 40, 100, 5), num("sensitivity", "Mouth sensitivity %", 50, 0, 100, 5),
       choice("life", "Blinks, glances and bobs", "on", ["on", "off"])],
     renderXY: (p, t, dur, w, h, x, y) => {

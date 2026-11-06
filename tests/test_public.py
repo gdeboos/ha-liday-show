@@ -1485,3 +1485,13 @@ async def test_turning_off_the_welcome_reaches_visitors(client):
     await client.put("/api/public", json={"look": {**look, "tour": False}})
     _, st, _ = await _visitor(client, "/api/state")
     assert st["look"]["tour"] is False
+
+
+def test_a_phones_lane_sends_your_own_singing_faces(tmp_path):
+    from halidayshow.storage import Storage
+    st = Storage(tmp_path / "config", tmp_path / "media")
+    fid = st.save_face({"name": "Ice queen", "recipe": {"head": {"shape": "oval"}}})
+    clips = [{"effect": "singingface", "character": fid}, {"effect": "singingface", "character": "elf"},
+             {"effect": "singingface", "character": "fgone000000"}]
+    lane = public.phone_lane(st, {"tracks": [{"device": "@phones", "clips": clips}]})
+    assert lane["faces"] == {fid: {"name": "Ice queen", "recipe": {"head": {"shape": "oval"}}}}

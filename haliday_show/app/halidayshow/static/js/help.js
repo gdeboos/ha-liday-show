@@ -181,6 +181,17 @@ export const HELP = {
       ] },
     ],
   },
+  faces: {
+    title: "Faces", guide: ["build-a-show.md", "faces"],
+    topics: [
+      { id: "list", title: "Faces", tips: [
+        "The characters the <b>Singing face</b> effect can be, on a matrix or visitors' phones.",
+        "<b>+ New face</b> opens the face maker: pick a head, eyes, nose, mouth, something on top and extras, each in your colours. The preview sings as you go.",
+        "<b>Duplicate</b> on a built-in face starts yours from it. Pick yours as a Singing face's <b>Character</b>, under <b>Your faces</b>.",
+        "Changing a face changes it in every show that uses it.",
+      ] },
+    ],
+  },
   palettes: {
     title: "Palettes", guide: ["build-a-show.md", "colour-palettes"],
     topics: [

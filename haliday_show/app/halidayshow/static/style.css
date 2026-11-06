@@ -1046,6 +1046,27 @@ a.button { text-decoration: none; }
 /* A picture's first frame, dot for dot, on black like a matrix. */
 .item-row > .picture-thumb { flex: none; width: 56px; height: 56px; object-fit: contain; image-rendering: pixelated;
   background: #000; border-radius: 4px; }
+/* The face maker: the singing preview beside the parts. */
+.face-maker { display: flex; gap: 18px; align-items: flex-start; }
+.face-looks { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: none; }
+.face-looks > div { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.face-preview { width: 150px; height: 200px; background: #000; border-radius: 8px; }
+.face-preview.dots { width: 54px; height: 72px; image-rendering: pixelated; border-radius: 4px; }
+.face-form { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+.face-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.face-row > span:first-child { width: 84px; flex: none; color: var(--muted); }
+.face-row select { flex: 1; min-width: 120px; }
+.face-row input[type=color] { width: 40px; height: 30px; padding: 2px; }
+.face-row .face-name { flex: 1; min-width: 0; }
+.face-extras { display: grid; grid-template-columns: repeat(2, max-content); gap: 6px 16px; flex: 1; }
+.face-row:has(.face-extras) { align-items: flex-start; }
+.face-extra { display: inline-flex; align-items: center; gap: 4px; }
+.face-extra input[type=color] { width: 30px; height: 24px; }
+@media (max-width: 720px) {
+  .face-maker { flex-direction: column; align-items: stretch; }
+  .face-looks { flex-direction: row; justify-content: center; align-items: flex-end; }
+  .face-preview { width: 120px; height: 160px; }
+}
 .item-group { margin: 14px 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
   color: var(--muted); }
 .preset-list .item-group:first-child { margin-top: 4px; }

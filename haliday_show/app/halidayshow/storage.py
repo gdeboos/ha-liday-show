@@ -95,6 +95,7 @@ class Storage:
         self.songs_dir = config_dir / "songs"
         self.drafts_dir = config_dir / "drafts"
         self.pictures_dir = config_dir / "pictures"
+        self.faces_dir = config_dir / "faces"
         self.blocks_dir = config_dir / "blocks"  # playlists' building blocks, baked (playlists.py)
         # Your scenes and their baked loops (scenelib.py). Not "scenes": that folder was the cache of
         # Govee's own scene library until 0.2.207 (migrate.drop_govee_scenes clears it).
@@ -516,6 +517,41 @@ class Storage:
 
     def delete_picture(self, picture_id: str) -> bool:
         p = self.pictures_dir / f"{picture_id}.json"
+        if not p.exists():
+            return False
+        p.unlink()
+        return True
+
+    # your Singing faces (Library → Faces): small recipes {name, recipe} -------------------------
+    def list_faces(self) -> list[dict]:
+        out = []
+        for p in sorted(self.faces_dir.glob("*.json")):
+            d = self.load_face(p.stem)
+            if isinstance(d, dict) and isinstance(d.get("recipe"), dict):  # a damaged file is left out
+                out.append({"id": p.stem, "name": str(d.get("name") or p.stem), "recipe": d["recipe"]})
+        return sorted(out, key=lambda d: d["name"].lower())
+
+    def load_face(self, face_id: str) -> dict | None:
+        try:
+            return json.loads((self.faces_dir / f"{face_id}.json").read_text())
+        except (FileNotFoundError, ValueError):
+            return None
+
+    def count_faces(self) -> int:
+        return len(list(self.faces_dir.glob("*.json"))) if self.faces_dir.is_dir() else 0
+
+    def save_face(self, face: dict, face_id: str | None = None) -> str:
+        """A face under its id, or a new random one ("f" and hex, so never a built-in's name)."""
+        self.faces_dir.mkdir(parents=True, exist_ok=True)
+        while face_id is None:
+            face_id = "f" + os.urandom(5).hex()
+            if (self.faces_dir / f"{face_id}.json").exists():
+                face_id = None
+        _write_atomic(self.faces_dir / f"{face_id}.json", json.dumps(face).encode())
+        return face_id
+
+    def delete_face(self, face_id: str) -> bool:
+        p = self.faces_dir / f"{face_id}.json"
         if not p.exists():
             return False
         p.unlink()
