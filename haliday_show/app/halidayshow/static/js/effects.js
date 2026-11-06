@@ -7,6 +7,7 @@ import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } fr
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
+import { PHONES, PHONE_FPS, hasPhonesLane, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
 
 export const FPS = 40;
 
@@ -1857,6 +1858,14 @@ export function dim(rgb, level) {
   return rgb;
 }
 
+// What visitors' phones show at `time` (phones.js): the show's Phones lane where it has one (dark in
+// its gaps), else the house's main colour from `lightFrames`, the lights' frames at that moment.
+export function phoneColourAt(show, time, lightFrames) {
+  const lane = (show.tracks || []).find((t) => t.device === PHONES);
+  if (!lane) return mainColour(lightFrames);
+  return Array.from(dim(renderTrack(lane.clips || [], time, 1), showLevel(show, PHONES)));
+}
+
 // Bake every frame into the layout the Python player reads (see baked.py): one track per physical
 // light, in the order lights first appear in the show. devices maps a track's device id to its
 // light {segments, parts?}, or to a part of one ("lightId#partId", with parent, from and to,
@@ -1929,16 +1938,23 @@ function bakeFrames(show, devices, fps, positions, groups) {
   for (const tr of tracks) {
     const dev = devices[tr.device];
     const id = dev?.parent || tr.device, entry = devices[id];
-    if (!entry || seen.has(id)) continue;
+    if (!entry || seen.has(id) || id === PHONES) continue;
     seen.add(id);
     lights.push({ ...(entry.light || entry), id });
   }
+  const frames = Math.ceil(showDuration(show) * fps);
+  // The phones' colours go first in the header, filled in as the frames are made (each "rrggbb").
+  const phones = phoneCount(frames, fps);
   const header = {
+    phones: { fps: PHONE_FPS, colours: "0".repeat(phones * 6) },
     fps,
-    frames: Math.ceil(showDuration(show) * fps),
+    frames,
     tracks: lights.map((l) => ({ device: l.id, segments: l.segments })),
   };
   const headerBytes = new TextEncoder().encode(JSON.stringify(header));
+  const phonesAt = 9 + JSON.stringify({ phones: { fps: PHONE_FPS, colours: "" } }).length - 3;
+  const lane = hasPhonesLane(show);
+  let phone = 0;
   const stride = header.tracks.reduce((s, t) => s + t.segments * 3, 0);
   const out = new Uint8Array(9 + headerBytes.length + header.frames * stride);
   out.set([0x47, 0x56, 0x53, 0x46, 1], 0); // "GVSF", version 1
@@ -1949,12 +1965,18 @@ function bakeFrames(show, devices, fps, positions, groups) {
   const plans = planGroups(groups, lights, trackOf, positions);
   for (let f = 0; f < header.frames; f++) {
     const time = f / fps;
+    const taken = [];
     for (const [k, l] of lights.entries()) {
       const frame = out.subarray(off, off + l.segments * 3);
       dim(composeLight(l, trackOf, time, positions, houseClips, frame, plans), levels[k]);
+      if (!lane) taken.push(frame.slice());
       // A matrix is worked out in rows from the top left; its light wants them in its wiring order.
       if (gridOf(l)) { const wired = toWire(frame, l.matrix); if (wired !== frame) frame.set(wired); }
       off += l.segments * 3;
+    }
+    for (; phone < phones && phoneFrame(phone, fps) === f; phone++) {
+      const code = hex(phoneColourAt(show, time, taken));
+      for (let i = 0; i < 6; i++) out[phonesAt + phone * 6 + i] = code.charCodeAt(i);
     }
   }
   return out;

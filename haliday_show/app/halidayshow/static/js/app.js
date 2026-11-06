@@ -11,9 +11,10 @@ import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, pa
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
-  renderTrack, showDuration,
+  renderTrack, showDuration, phoneColourAt,
 } from "./effects.js";
 import { bakeOff } from "./bakeoff.js";
+import { PHONES, PHONE_FPS, hasPhonesLane, phonesJoin } from "./phones.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
 import { splitVocals } from "./splitvocals.js";
@@ -298,6 +299,14 @@ const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [
   draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
+// Show settings → Visitors' phones (phones.js): whether they join this show, and its Phones lane.
+function renderShowPhones() {
+  $("show-phones").checked = app.show.phones !== false;
+  $("show-phones-hint").textContent = phonesOn ? ""
+    : "Phones only join once Let visitors' phones join the show is on, under Public page → Listening.";
+  $("show-phones-lane").textContent = hasPhonesLane(app.show) ? "Remove the Phones lane" : "Add a Phones lane";
+}
+
 // Show settings → Brightness ------------------------------------------------
 // Dragging a slider redraws the preview straight away; letting go saves it as one change (Undo).
 function wireLevel(input, out, set) {
@@ -486,11 +495,16 @@ function indexDevices() {
     app.devices[d.id] = d.parts?.length ? allPartsDevice(d) : d;
     for (const p of d.parts || []) app.devices[partId(d, p)] = partDevice(d, p);
   }
+  app.devices[PHONES] = PHONE_LANE;
   ensureTracks();
   renderDevices();
   layoutPreview();
   timeline.layout();
 }
+
+// The Phones lane (phones.js) plays on visitors' phones: one "bulb", their screen. It's in app.devices
+// so the timeline and the effect chooser treat it as a one-bulb light; it's never a real light.
+const PHONE_LANE = { id: PHONES, name: "Phones", segments: 1, phones: true };
 
 // Every show has the House lane at the top, then a track per light.
 function ensureTracks() {
@@ -542,6 +556,7 @@ function ensureTracks() {
   const order = new Map(app.deviceList.map((d, i) => [d.id, i]));
   const rank = (t) => {
     if (t.device === HOUSE) return -1;
+    if (t.device === PHONES) return 1e12; // last, under the lights
     if (isGroupTrack(t.device)) {
       const g = app.groups.indexOf(groupById(t.device));
       return g < 0 ? Infinity : -1 + (g + 1) / (app.groups.length + 1);
@@ -2811,6 +2826,7 @@ const fitText = (fit) => `⚠ ${fit.level === "no" ? "Won't work here. " : ""}${
 
 // The physical light a track plays on, and a note if its realtime mode doesn't reach all of it.
 function trackNote(dev) {
+  if (dev?.phones) return null;
   const light = dev && (dev.light || app.lights[dev.parent] || dev);
   return light ? reachNote(light, app.models[skuOf(light.sku)]) : null;
 }
@@ -2891,8 +2907,31 @@ function previewFrame(tr, dev, pos, composed) {
 function drawHouse() {
   house.devices = houseLights();
   const panel = $("house");
-  if (panel.closest(".panel").offsetParent) house.drawPanel(panel, $("house-hint"));
+  if (panel.closest(".panel").offsetParent) {
+    house.drawPanel(panel, $("house-hint"));
+    drawPhoneTile();
+  }
   if (!$("view-house").hidden) house.drawSetup($("house-setup"));
+}
+
+// The phone in the corner of the House panel: what visitors' phones show now (phones.js), worked out
+// as the bake does, from the same moment ten times a second. Shown while phones join this show or it
+// has a Phones lane; clicking it folds it away.
+let phonesOn = false; // the public page's Let visitors' phones join the show
+function drawPhoneTile() {
+  const tile = $("phone-tile");
+  const want = !app.sceneId && (phonesJoin(app.show, phonesOn) || hasPhonesLane(app.show));
+  tile.hidden = !want;
+  if (!want) return;
+  const folded = prefs.get("phoneTile.folded", false);
+  tile.classList.toggle("folded", folded);
+  tile.setAttribute("aria-expanded", String(!folded));
+  if (folded) return;
+  const t = Math.floor(app.time * PHONE_FPS + 1e-6) / PHONE_FPS, pos = housePositions();
+  const frames = hasPhonesLane(app.show) ? []
+    : lightsInShow(app.show, app.devices).filter((id) => app.lights[id]).map((id) => physicalFrame(app.lights[id], t, pos));
+  const [r, g, b] = phoneColourAt(app.show, t, frames);
+  tile.querySelector(".phone-screen").style.background = `rgb(${r},${g},${b})`;
 }
 
 // The stretch picked on the photo, if it's on light `d`: in view, or out of view with how many
@@ -6672,6 +6711,7 @@ function drawPublicPick(pick = "queue") {
 function drawPublicListen(view) {
   $("pub-listen").checked = !!view.listen;
   $("pub-listen-more").hidden = !view.listen;
+  $("pub-phones").checked = !!view.phones;
   const pinOn = $("pub-listen-pin-on");
   // Ticked with no PIN yet stays ticked while you type one.
   if (document.activeElement !== $("pub-listen-pin") && !(pinOn.checked && !view.listen_pin)) pinOn.checked = !!view.listen_pin;
@@ -6803,6 +6843,7 @@ async function loadPublic({ items = false } = {}) {
   try {
     const view = await api("api/public");
     if (!pubPending) publicView = view;
+    if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; drawHouse(); }
     renderPublicQueue(view);
     $("pub-on").checked = view.on;
     if (!items) return;
@@ -6891,6 +6932,7 @@ function savePublic() {
   if (Number($("pub-per-phone").value)) publicView.per_phone = Number($("pub-per-phone").value);
   if (shownPage === "public") {
     publicView.listen = $("pub-listen").checked;
+    publicView.phones = $("pub-phones").checked;
     const pin = $("pub-listen-pin").value.trim();
     if (!$("pub-listen-pin-on").checked) publicView.listen_pin = "";
     else if (/^[0-9]{4,8}$/.test(pin)) publicView.listen_pin = pin;
@@ -6908,12 +6950,13 @@ function savePublic() {
   pubPending++;
   pubSaving = pubSaving.then(async () => {
     const { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
-      repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, pick } = publicView;
+      repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, pick, phones } = publicView;
     try {
       const view = await api("api/public", {
         method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
-          repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, ...(pick ? { pick } : {}) },
+          repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, phones: !!phones, ...(pick ? { pick } : {}) },
       });
+      phonesOn = !!view.phones;
       if (pubPending === 1) {
         publicView = view;
         if (shownPage === "public") renderPublicItems();
@@ -6938,6 +6981,7 @@ function wirePublic() {
   $("late-card").addEventListener("change", saveLateSpeaker);
   $("pub-phone-wait").addEventListener("change", () => savePublic());
   $("pub-listen-card").addEventListener("change", () => savePublic());
+  $("pub-phones-card").addEventListener("change", () => savePublic());
   $("pub-listen-pin-on").addEventListener("change", () => {
     $("pub-listen-pin-wrap").hidden = !$("pub-listen-pin-on").checked;
     if ($("pub-listen-pin-on").checked && !$("pub-listen-pin").value) $("pub-listen-pin").focus();
@@ -10039,7 +10083,8 @@ const showBakeKey = (pos) => JSON.stringify([lightsBakeKey(app.deviceList), app.
 // The same, kept with the bake on the server for when the show is next opened. The show itself and
 // every setting of every light go in (not just the ones above), so a change made since, here or in
 // another browser, bakes again.
-const bakeNoteFor = (pos, show = app.show) => bakeNote([show, app.deviceList, app.groups, pos, FPS, pictureList().map((p) => p.id)]);
+// "phones": bakes from before 0.2.367 have no colours for visitors' phones (phones.js), so they're made again.
+const bakeNoteFor = (pos, show = app.show) => bakeNote([show, app.deviceList, app.groups, pos, FPS, pictureList().map((p) => p.id), "phones"]);
 
 // note: what it was baked for (bakeNoteFor), kept with it on the server.
 async function uploadBake(showId, blob, progress = undefined, note = null) {
@@ -11168,7 +11213,7 @@ async function generate({ colors, style, house, build, maxBars = prefs.get("genM
   // Its parts light up and go dark together when building up.
   // A part of the show: only the selected lights (every light when the selection is only on lanes).
   const picked = part?.tracks && app.show.tracks.some((tr, i) => part.tracks.has(i) && !isLane(i)) ? part.tracks : null;
-  const lights = app.show.tracks.filter((tr, i) => tr.device !== HOUSE && playingDev(tr) && !playingDev(tr).light && (!picked || picked.has(i)))
+  const lights = app.show.tracks.filter((tr, i) => tr.device !== HOUSE && tr.device !== PHONES && playingDev(tr) && !playingDev(tr).light && (!picked || picked.has(i)))
     .map((tr) => {
       const dev = app.devices[tr.device];
       return { id: tr.device, group: dev.parent || dev.id, segments: dev.segments, slow: isSlow(dev),
@@ -11862,7 +11907,32 @@ function wire() {
     fillSeasonPicker($("show-season"), app.show.season);
     renderShowPalette();
     renderShowBrightness();
+    renderShowPhones();
     $("show-dialog").showModal();
+  });
+  $("show-phones").addEventListener("change", (e) => {
+    if (e.target.checked) delete app.show.phones; else app.show.phones = false;
+    app.changed();
+    renderShowPhones();
+    drawHouse();
+  });
+  $("show-phones-lane").addEventListener("click", async () => {
+    const at = app.show.tracks.findIndex((t) => t.device === PHONES);
+    if (at < 0) app.show.tracks.push({ device: PHONES, clips: [] });
+    else {
+      const n = app.show.tracks[at].clips.length;
+      if (n && !(await askYes(`Remove the Phones lane and its ${n === 1 ? "effect" : `${n} effects`}? Phones go back to your house's main colour.`,
+        { yes: "Remove", danger: true }))) return;
+      app.show.tracks.splice(at, 1);
+    }
+    app.selected = null; // track numbers have moved
+    ensureTracks();
+    app.changed();
+    renderInspector();
+    renderShowPhones();
+    timeline.layout();
+    layoutPreview();
+    drawHouse();
   });
   wireLevel($("show-brightness"), $("show-brightness-out"), (v) => setWholeLevel(app.show, v));
   $("show-season").addEventListener("change", (e) => {
@@ -12238,6 +12308,7 @@ async function init() {
   wireWizard();
   wireData();
   wirePublic();
+  $("phone-tile").addEventListener("click", () => { prefs.set("phoneTile.folded", !prefs.get("phoneTile.folded", false)); drawHouse(); });
   $("sched-add").addEventListener("click", () => schedPage.addAny());
   new Layout(() => { layoutPreview(); timeline.layout(); }, "show", $("view-editor"));
   const musicLayout = new Layout(null, "music", $("view-music"));

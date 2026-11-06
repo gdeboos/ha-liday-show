@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.367
+
+- **Phones join the show.** Visitors' phones can now be part of your show: their screen glows with your lights' colours, in time with the music. It's off until you turn on **Let visitors' phones join the show** under **Public page → Listening**. Visitors then press **Join** in the card at the top of the page.
+  - Phones show your house's main colour as it changes. For more control, give a show its own **Phones** lane (**⚙ Show settings… → Add a Phones lane**) and design what phones show, like any light. Phones then stay dark wherever the lane has nothing.
+  - A show can stay out: turn off **Phones join this show** in its **⚙ Show settings…**.
+  - A small phone in the corner of the **House** panel shows what phones will show as you edit and play. Click it to fold it away.
+  - Your shows need saving once to get their colours for phones, so **Check all shows** marks them out of date after this update. Press **Fix** there to save them all.
+
 ## 0.2.366
 
 - **Start a playlist from Home Assistant.** The **HA-liday Show** device now has a **Playlist** select and a **Play playlist** button, next to **Show** and **Play**, so an automation can start a whole playlist. It works in Docker and pipx installs too, without `hassio.app_stdin`. See **Automations** in the guide. (Needs the MQTT integration.)

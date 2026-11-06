@@ -228,3 +228,13 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-dots { display: inline-flex; gap: 3px; margin-right: .45em; vertical-align: -0.08em; }
 .pp-dot { width: .8em; height: .8em; border-radius: 50%; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 22%, transparent); }
 .pp-len { white-space: nowrap; }
+
+/* Joining the show: the whole screen in the show's colour, with a small Leave button. */
+.pp-join { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; flex-direction: column;
+  justify-content: flex-end; align-items: center; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
+.pp-join.pp-soft { transition: background-color 0.4s linear; }
+.pp-join-text { color: #fff; text-align: center; max-width: 30em; text-shadow: 0 1px 3px #000; }
+.pp-join-text:empty { display: none; }
+.pp-join-leave { background: rgba(0, 0, 0, 0.55); color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); }
+.pp-join-ask { margin-top: 10px; }
+.pp-join-ask p { margin: 0 0 8px; }

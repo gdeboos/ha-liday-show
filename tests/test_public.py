@@ -171,7 +171,7 @@ def test_settings_are_cleaned():
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "look": public.clean_look(None), "looks": [], "hours": public.DEFAULT_HOURS, "words": {},
-        "listen": False, "listen_pin": "", "listen_offset": 0.0, "admin_pin": "", "pick": "queue", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
+        "listen": False, "listen_pin": "", "listen_offset": 0.0, "phones": False, "admin_pin": "", "pick": "queue", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -1367,3 +1367,58 @@ async def test_the_pre_show_check_lists_the_shows_visitors_can_pick(client):
     await client.put("/api/public", json={"on": True, "shows": ["party", "quiet"]})
     got = await (await client.post("/api/preshow/run")).json()
     assert got["shows"] == ["party", "quiet"]
+
+
+async def test_phones_join_the_show_playing_now(client):
+    st = client.app[server.STORAGE]
+    colours = "ff0000" * 50 + "0000ff" * 50
+    st.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * 400,
+                                        {"phones": {"fps": 10, "colours": colours}}))
+    await client.put("/api/public", json={"on": True})
+    _, state, _ = await _visitor(client, "/api/state")
+    assert state["phones"] is None  # off until you turn it on
+    status, _, _ = await _visitor(client, "/api/phones/now")
+    assert status == 409
+    await client.put("/api/public", json={"phones": True})
+    _, state, _ = await _visitor(client, "/api/state")
+    assert state["phones"] == {"now": False}
+    _, now, _ = await _visitor(client, "/api/phones/now")
+    assert now == {"playing": False}
+    await client.app[server.RUNNER].play("party")
+    try:
+        _, state, _ = await _visitor(client, "/api/state")
+        assert state["phones"] == {"now": True}
+        _, now, _ = await _visitor(client, "/api/phones/now")
+        assert now["playing"] and len(now["key"]) == 16 and now["position"] >= 0
+        status, got, _ = await _visitor(client, f"/api/phones/colours?key={now['key']}")
+        assert status == 200 and got["fps"] == 10 and got["colours"] == colours
+        status, _, _ = await _visitor(client, "/api/phones/colours?key=0000000000000000")
+        assert status == 404
+        status, _, _ = await _visitor(client, "/api/phones/now", code=False)
+        assert status == 403
+        # A show that stays out, or one baked before phones had colours, isn't joined.
+        st.save_show("party", {**st.load_show("party"), "phones": False})
+        _, now, _ = await _visitor(client, "/api/phones/now")
+        assert now == {"playing": False}
+    finally:
+        await client.app[server.RUNNER].stop()
+    await client.app[server.RUNNER].play("quiet")
+    try:
+        _, state, _ = await _visitor(client, "/api/state")
+        assert state["phones"] == {"now": False}
+    finally:
+        await client.app[server.RUNNER].stop()
+
+
+def test_phone_colours_are_checked(tmp_path):
+    ok = {"phones": {"fps": 10, "colours": "a0b0c0"}}
+    assert baked.phone_colours(ok) == {"fps": 10, "colours": "a0b0c0"}
+    for bad in (None, {}, {"phones": "x"}, {"phones": {"fps": 10, "colours": "a0b0c"}},
+                {"phones": {"fps": 0, "colours": ""}}, {"phones": {"fps": 10, "colours": "zzzzzz"}}):
+        assert baked.phone_colours(bad) is None
+    f = tmp_path / "x.gshow"
+    f.write_bytes(baked.encode(40, [{"device": "a", "segments": 1}], [b"\x01\x02\x03"], ok))
+    assert baked.read_header(f)["phones"] == ok["phones"]
+    f.write_bytes(b"nope")
+    assert baked.read_header(f) is None
+    assert baked.read_header(tmp_path / "missing.gshow") is None

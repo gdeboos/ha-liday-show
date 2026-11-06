@@ -58,6 +58,14 @@
           <p id="pp-now-yours" class="pp-hint pp-now-yours" hidden></p>
         </div>
         <button id="pp-listen-btn" type="button" class="pp-listen-btn" hidden></button>
+        <button id="pp-join-btn" type="button" class="pp-listen-btn" hidden></button>
+      </div>
+      <div id="pp-join-ask" class="pp-join-ask" role="group" hidden>
+        <p id="pp-join-warn"></p>
+        <div class="pp-pin-row">
+          <button id="pp-join-ok" type="button" class="primary"></button>
+          <button id="pp-join-cancel" type="button"></button>
+        </div>
       </div>
       <div id="pp-admin-ctl" class="pp-admin-ctl" role="group" aria-label="Admin" hidden>
         <button id="pp-admin-skip" type="button">Skip</button>
@@ -112,5 +120,9 @@
   <p id="pp-footer" class="pp-footer" hidden><a id="pp-link" rel="noopener noreferrer" target="_blank"></a></p>
 </main>
 <canvas id="pp-snow" class="pp-snow" aria-hidden="true" hidden></canvas>
+<div id="pp-join" class="pp-join" hidden>
+  <p id="pp-join-text" class="pp-join-text" role="status" aria-live="polite"></p>
+  <button id="pp-join-leave" type="button" class="pp-join-leave"></button>
+</div>
 </body>
 </html>

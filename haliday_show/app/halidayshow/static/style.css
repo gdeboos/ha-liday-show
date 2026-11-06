@@ -256,7 +256,16 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .hint { color: var(--muted); font-size: 13px; margin: 0; }
 
 .preview-panel { background: #000; border-radius: 8px; padding: 8px; }
-.house-panel { display: flex; flex-direction: column; align-items: center; }
+.house-panel { display: flex; flex-direction: column; align-items: center; position: relative; }
+/* What visitors' phones show (Phones join the show), in the House panel's corner. */
+.phone-tile { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: 5px 5px 3px; border-radius: 10px; background: rgba(12, 14, 18, 0.82); border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff; cursor: pointer; min-height: 0; }
+.phone-tile .phone-screen { display: block; width: 30px; height: 54px; border-radius: 5px; background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }
+.phone-tile .phone-label { font-size: 10px; line-height: 1; opacity: 0.8; }
+.phone-tile.folded .phone-screen { display: none; }
+.phone-tile.folded .phone-label::before { content: "📱 "; }
 .house-panel canvas, .house-stage canvas { display: block; border-radius: 6px; }
 .house-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 12px; align-items: start; }
 .house-stage { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -715,8 +724,9 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .form-dialog-body .field > :is(input, select) { font-weight: 400; width: 100%; }
 .form-dialog-body .field .hint { font-weight: 400; }
 /* Show settings → Brightness: a slider per row, its name on the left and the % on the right. */
-.show-bright { border: 0; margin: 0; padding: 0; min-width: 0; }
-.show-bright legend { padding: 0; margin-bottom: 4px; }
+.show-bright, .show-phones { border: 0; margin: 0; padding: 0; min-width: 0; }
+.show-phones { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.show-bright legend, .show-phones legend { padding: 0; margin-bottom: 4px; }
 .bright-grid { display: grid; grid-template-columns: minmax(80px, max-content) minmax(0, 1fr) 3.5em; gap: 6px 10px;
   align-items: center; font-weight: 400; }
 .bright-grid:empty { display: none; }

@@ -269,6 +269,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     keeping it to your Wi-Fi
   - Visitors can listen to the music on their own phone, in time with the lights, with an optional PIN
     (a small copy of each song is made for phones with ffmpeg)
+  - Phones join the show: visitors' screens glow with the house's main colour, or a show's own
+    Phones lane, in time with the lights (off until you turn it on; a show can stay out)
   - Installable as an app on visitors' phones (home-screen icon, full screen, your code built in)
   - Fair turns and neighbour guardrails: no repeats, cool-downs, finish by closing time, rest breaks, and a
     quieter (or silent) speaker late at night
@@ -443,6 +445,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/preshow.js                       The pre-show check's sums and words: what you saw, the results, Setup's last-checked line
     js/showhealth.js                    Show health: a saved show's problems (clips that won't show, out of date, removed lights), in words
     js/report.js                        Report a problem: the GitHub issue's title, body and link, and the browser in words
+    js/phones.js                        Phones join the show: the house's main colour, the Phones lane's id, reading a bake's phone colours
     js/video.js                         Export video: where things go on the frame, the sections bar, IVF wrapping for VP9
     js/schedule.js                      Schedule entries in words, and small helpers for them
     js/schedulepage.js                  The Schedule tab: entries in priority order, saved as you go

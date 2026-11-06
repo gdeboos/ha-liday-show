@@ -27,3 +27,8 @@ def test_js_bake_decodes_in_python():
     assert [t.device for t in b.tracks] == ["porch", "tree"]
     assert b.track_frame(b.tracks[1], 0) == bytes(30)  # chase hasn't started yet
     assert any(b.track_frame(b.tracks[0], 0))
+    # And the colours for visitors' phones, ten a second, that the public page reads from the header.
+    import json, struct
+    hlen = struct.unpack(">I", blob[5:9])[0]
+    phones = baked.phone_colours(json.loads(blob[9:9 + hlen]))
+    assert phones["fps"] == 10 and len(phones["colours"]) == 20 * 6
