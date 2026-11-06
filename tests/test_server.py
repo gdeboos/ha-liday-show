@@ -1082,6 +1082,11 @@ async def test_draft_layers_are_kept_and_checked(client, tmp_path):
     deep = (await (await client.post("/api/drafts", json={**draft, "layers": [
         {"name": "Voice", "duck": True, "duckDb": 18, "clips": []}]})).json())["id"]
     assert (await (await client.get(f"/api/drafts/{deep}")).json())["layers"][0]["duckDb"] == 18
+    # Muted: kept when on, left out when off.
+    muted = (await (await client.post("/api/drafts", json={**draft, "layers": [
+        {"name": "Voice", "muted": True, "clips": []}, {"name": "Bells", "muted": False, "clips": []}]})).json())["id"]
+    assert [l.get("muted") for l in (await (await client.get(f"/api/drafts/{muted}")).json())["layers"]] == [True, None]
+    assert (await client.post("/api/drafts", json={**draft, "layers": [{"name": "x", "muted": "yes", "clips": []}]})).status == 400
     for bad_db in (2, 25, "8", True):
         assert (await client.post("/api/drafts", json={**draft, "layers": [{"name": "x", "duck": True, "duckDb": bad_db, "clips": []}]})).status == 400
     for bad in ([{"name": "x", "duck": "yes", "clips": []}], [{"name": "x", "clips": [{**clip, "end": 0}]}], [{"name": "x", "gain": 99, "clips": []}],

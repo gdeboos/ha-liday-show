@@ -523,14 +523,16 @@ it. A draft can't be opened if a song it uses has been archived or deleted; rest
 Layers play samples or other songs on top of the song: sleigh bells over the intro, a "ho ho ho" on the
 last chorus, a voice saying "Merry Christmas", or another song fading in under the end.
 
-1. Under the waveform, in the **Mixer**, press **+ Add layer** (up to four). Its row has a name, a
-   **Volume**, **EQ** (see [Mixer](#mixer-bass-mid-treble-filter-tempo-and-key)), **Quieten the song**, **Match
-   tempo**, **Key** and **Remove**, and a lane appears under the waveform for its clips.
-2. Put the playhead where you want a clip to start, then press **+ Add a clip…** on the layer's row. A
+1. Under the waveform, in the **Mixer**, press **+ Add layer** (up to four). Its row has its name,
+   **M** and **S** (mute and solo), **Volume**, **EQ** (see [Mixer](#mixer-bass-mid-treble-filter-tempo-and-key)),
+   **Quieten the song**, **Match tempo**, **Key** and **⋯**, and a lane appears under the waveform for its
+   clips. Double-click the name (or use **⋯ → Rename**) to rename it; **⋯ → Remove** removes it.
+2. Put the playhead where you want a clip to start, then press **⋯ → + Add a clip at the playhead…** on the layer's row. A
    window opens with your **Samples** and **Songs** in their folders (type in the box to find one in any
    folder). Pick one and press **Add**. A song that's been split into parts also offers **Use from**:
    **The whole song**, or just one part, such as **Just the vocals**. The clip starts a little quieter
-   than the song, so it sits in the mix; change that with the clip's **Volume**.
+   than the song, so it sits in the mix; change that with the clip's **Volume**. A clip of one part is
+   labelled with it in the part's colour, such as **Vocals · Carol** in purple.
 3. Drag a clip to move it (it snaps to bars, beats and marks; hold Shift to place it freely). Drag its
    left or right end to trim it. Click a clip to pick it (the playhead goes where you clicked): its panel
    has **Volume**, **Fade in**, **Fade out**, **▶ Hear it**, **✂ Split at playhead** (or press S) and
@@ -557,7 +559,14 @@ sample saved with **Save as sample…** includes the layers.
 #### Mixer: bass, mid, treble, filter, tempo and key
 
 The **Mixer** under the waveform works like a DJ's, for mash-ups and for making a layer sit well with
-the song. The song has a row, and so does each layer.
+the song. The song has a row, and so does each layer, with their controls lined up in columns (on a
+narrow screen, each row wraps and labels its controls).
+
+- **M** (mute) silences a row, and **S** (solo) lets you hear only the rows you've soloed, so you can
+  hear a layer on its own or check how two fit together. They're also at the left of each lane on the
+  waveform, beside its name, and a row you can't hear shows faded. It keeps playing while you press them.
+  Solo, and muting the song, are only for listening: a song file made from the draft has everything in
+  it. Muting a layer is kept with the draft and leaves it out of the song file, until you unmute it.
 
 - **EQ** opens that row's **Bass**, **Mid** and **Treble** faders in the **Selection** panel (press it again,
   or **✕**, to close them; another row's **EQ** swaps to its faders). Each goes from +6 dB down to **off**

@@ -1174,6 +1174,36 @@ a.button { text-decoration: none; }
 .song-folder-body[hidden] { display: none !important; }
 .music-layers { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .layer-row { align-items: center; }
+/* The Mixer: one row per channel, its controls in aligned columns (each row's cells sit in the grid). */
+.mixer-grid { display: grid; grid-template-columns: minmax(110px, 180px) auto minmax(150px, 210px) auto minmax(150px, 1fr) auto minmax(110px, 170px) auto;
+  gap: 6px 12px; align-items: center; margin-top: 6px; }
+.mixer-row { display: contents; }
+.mixer-head { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+  border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+.mixer-label { display: none; }
+.mixer-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.mixer-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; }
+.mixer-name input { width: 100%; min-width: 0; }
+.mixer-cell { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.mixer-vol { display: inline-flex; align-items: center; gap: 6px; }
+.mixer-vol input[type=range] { width: 110px; }
+.mixer-cell select { max-width: 100%; }
+.mixer-row.silent > :not(.ms) { opacity: .45; }
+.ms { display: inline-flex; gap: 3px; }
+.ms-btn { min-width: 26px; padding: 2px 6px; font-size: 12px; font-weight: 600; }
+.ms-btn.muted { background: #e8a33d; border-color: #e8a33d; color: #fff; }
+.ms-btn.soloed { background: #3d8be8; border-color: #3d8be8; color: #fff; }
+.mixer-menu { z-index: 50; display: flex; flex-direction: column; min-width: 230px; padding: 4px; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0, 0, 0, .18); }
+.mixer-menu button { text-align: left; justify-content: flex-start; }
+/* On a narrow screen each channel is a wrapped row of its own, its controls labelled. */
+@media (max-width: 900px) {
+  .mixer-grid { display: flex; flex-direction: column; align-items: stretch; }
+  .mixer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 0; border-top: 1px solid var(--line); }
+  .mixer-heads { display: none; }
+  .mixer-label { display: inline; }
+  .mixer-name { flex-basis: 100%; }
+}
 .layer-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .layer-row select { max-width: 16em; }
 .song-dot { background: var(--text); }
@@ -1453,6 +1483,8 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .duck-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .duck-by[hidden] { display: none; }
 .duck-by input[type=range] { width: 90px; vertical-align: middle; }
+.mixer-cell .duck-group { flex-wrap: nowrap; white-space: nowrap; }
+.mixer-cell .duck-by input[type=range] { width: 70px; }
 /* A show with no picture or cover art: its palette's colours and its first letter. */
 .show-tile { display: grid; place-items: center; font-weight: 700; font-size: 20px; color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); background: var(--track); }

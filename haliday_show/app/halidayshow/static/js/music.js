@@ -499,12 +499,21 @@ export function untouched(pieces, key, length) {
 const $ = (id) => document.getElementById(id);
 const keyOf = (ref) => `${ref.source}:${ref.path}`;
 // A song's parts (its vocals, drums…; Storage.song_parts) are named after it: "Carol (vocals).wav".
-let partNames = new Map();
+let partNames = new Map(), partOfPath = new Map();
 const nameOf = (ref) => partNames.get(ref.path) || ref.path.split("/").pop();
 // Learns the parts' names from the songs list (each song with its parts).
 function learnParts(songs) {
-  partNames = new Map(songs.flatMap((s) => Object.entries(s.parts || {})
-    .map(([part, path]) => [path, `${s.path.split("/").pop().replace(/\.[^.]+$/, "")} (${part}).wav`])));
+  const parts = songs.flatMap((s) => Object.entries(s.parts || {}).map(([part, path]) => [path, part, s.path.split("/").pop().replace(/\.[^.]+$/, "")]));
+  partNames = new Map(parts.map(([path, part, song]) => [path, `${song} (${part}).wav`]));
+  partOfPath = new Map(parts.map(([path, part, song]) => [path, { part, song }]));
+}
+// Each part's name and colour, the same wherever parts are shown.
+export const PART_LOOK = { vocals: ["Vocals", "#8e5cd9"], drums: ["Drums", "#d84a3a"], bass: ["Bass", "#2f7fd1"],
+  rest: ["Rest", "#2e9e6b"], music: ["Music", "#c17d11"] };
+// A clip's label: "Vocals · Carol" for a part of a song, else the song's or sample's name.
+function clipLabel(ref) {
+  const p = partOfPath.get(ref.path);
+  return p ? { text: `${PART_LOOK[p.part]?.[0] || p.part} · ${p.song}`, colour: PART_LOOK[p.part]?.[1] } : { text: nameOf(ref).replace(/\.[^.]+$/, "") };
 }
 const query = (ref) => `source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(ref.path)}`;
 const urlOf = (ref) => `api/audio/file?${query(ref)}`;
@@ -536,6 +545,10 @@ export class MusicEditor {
     this.markSel = -1; // the mark picked for editing
     this.joinSel = -1; // the join (index of the piece after it) whose ✂ was clicked
     this.layers = []; // samples or songs played over the song (layers.js), part of the draft
+    // Solo (the song, "song", or layers by number) and muting the song are only for listening: not saved,
+    // nor in a song file made from the draft. A layer's own mute is saved with it (layer.muted).
+    this.solo = new Set();
+    this.songMuted = false;
     this.eq = null; // the song's own bass, mid and treble (mixer.js), part of the draft
     this.eqCh = null; // whose EQ faders show in the Selection panel: "song", a layer's index or null
     this.chgSel = null; // the picked EQ change: { ch (-1 for the song, else a layer), i }
@@ -632,6 +645,8 @@ export class MusicEditor {
       this.setFades(0, 0);
       this.pieces = [{ src: key, start: 0, end: this.sources[key][0].length / this.audio.sampleRate }];
       this.layers = [];
+      this.solo = new Set();
+      this.songMuted = false;
       this.eq = null;
       this.clipSel = this.chgSel = null;
       this.base = ref;
@@ -690,6 +705,8 @@ export class MusicEditor {
     this.base = this.refs[baseKey];
     this.pieces = d.pieces.map((p) => ({ src: keyOf(p.song), start: p.start, end: p.end }));
     this.layers = d.layers || [];
+    this.solo = new Set();
+    this.songMuted = false;
     this.eq = d.eq || null;
     this.clipSel = this.chgSel = null;
     this.keeper.start({ id, made: d.made || null });
@@ -920,6 +937,7 @@ export class MusicEditor {
     if (this.eqCh === i) this.eqCh = null;
     else if (typeof this.eqCh === "number" && this.eqCh > i) this.eqCh--;
     this.chgSel = null;
+    this.solo = new Set([...this.solo].filter((c) => c !== i).map((c) => (typeof c === "number" && c > i ? c - 1 : c)));
     this.editLayers(this.layers.filter((_, k) => k !== i), null);
   }
 
@@ -931,6 +949,43 @@ export class MusicEditor {
 
   setLayer(i, change) {
     this.editLayers(this.layers.map((l, k) => (k === i ? { ...l, ...change } : l)));
+  }
+
+  // Whether a channel ("song", or a layer's number) is heard while you listen: not muted, and soloed if
+  // anything is.
+  heard(ch) {
+    if (ch === "song") return !this.songMuted && (!this.solo.size || this.solo.has("song"));
+    return !this.layers[ch]?.muted && (!this.solo.size || this.solo.has(ch));
+  }
+
+  // Muting and soloing keep it playing, so you can hear the difference.
+  toggleMute(ch) {
+    const was = this.playing ? this.time : null;
+    if (ch === "song") this.songMuted = !this.songMuted;
+    else { // a layer's mute is saved, and is an Undo step
+      this.history.push(this.snapshot());
+      this.future = [];
+      this.layers = this.layers.map((l, k) => (k === ch ? { ...l, muted: l.muted ? undefined : true } : l));
+      this.draftChanged();
+    }
+    this.changed();
+    if (was != null) this.play(was);
+  }
+
+  toggleSolo(ch) {
+    if (this.solo.has(ch)) this.solo.delete(ch); else this.solo.add(ch);
+    const was = this.playing ? this.time : null;
+    this.changed();
+    if (was != null) this.play(was);
+  }
+
+  // The song with its layers mixed in, as a song file made from the draft has it: muted layers left
+  // out, whatever's soloed or muted only for listening ignored.
+  fileMix() {
+    if (!this.solo.size && !this.songMuted) return this.rendered;
+    const rate = this.audio.sampleRate, placed = this.placed().filter((p) => !this.layers[p.layer].muted);
+    return placed.length || this.mainEq !== this.main
+      ? limit(mixLayers(this.mainEq, this.layers, placed, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate) : this.main;
   }
 
   setClip(change) {
@@ -1182,7 +1237,8 @@ export class MusicEditor {
     const box = $("music-layers");
     const samples = this.samplesList || [], songs = this.host.songs();
     learnParts(songs);
-    const sig = JSON.stringify([this.songKey, this.layers.map((l) => [l.name, l.gain, !!l.duck, l.duckDb, !!l.matchTempo, !!l.matchKey, l.semitones, isFlat(l.eq), l.clips.length]), isFlat(this.eq),
+    const sig = JSON.stringify([this.songKey, this.layers.map((l) => [l.name, l.gain, !!l.duck, l.duckDb, !!l.matchTempo, !!l.matchKey, l.semitones, isFlat(l.eq), l.clips.length, !!l.muted]), isFlat(this.eq),
+      [...this.solo], this.songMuted, this.renaming,
       this.eqCh, !!this.songTempo, samples.length, JSON.stringify(this.sampleFolders || []), songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
       box.dataset.sig = sig;
@@ -1237,19 +1293,53 @@ export class MusicEditor {
         row.append(add, where, glideLabel, del);
         return row;
       };
-      const songRow = el("div", { className: "group layer-row" }, el("span", { className: "layer-dot song-dot" }), el("span", { className: "layer-name", textContent: "Song" }),
-        eqButton(-1, "song", "the song"));
-      const rows = [songRow];
+      // Mute and solo for a channel ("song" or a layer's number).
+      const muteSolo = (ch, name) => {
+        const m = el("button", { type: "button", className: `ms-btn${(ch === "song" ? this.songMuted : this.layers[ch].muted) ? " muted" : ""}`, textContent: "M" });
+        m.title = ch === "song" ? "Mute the song while you listen (a song file made from the draft still has it)" : `Mute ${name}: it's left out of the song file too`;
+        m.setAttribute("aria-label", `Mute ${name}`);
+        m.setAttribute("aria-pressed", String(m.classList.contains("muted")));
+        m.addEventListener("click", () => this.toggleMute(ch));
+        const so = el("button", { type: "button", className: `ms-btn${this.solo.has(ch) ? " soloed" : ""}`, textContent: "S" });
+        so.title = `Hear only ${name} (and anything else soloed), while you listen`;
+        so.setAttribute("aria-label", `Solo ${name}`);
+        so.setAttribute("aria-pressed", String(this.solo.has(ch)));
+        so.addEventListener("click", () => this.toggleSolo(ch));
+        return el("span", { className: "ms" }, m, so);
+      };
+      const cell = (...kids) => el("span", { className: "mixer-cell" }, ...kids);
+      const head = ["", "", "Volume", "EQ", "Quieten the song", "Match tempo", "Key", ""].map((t) => el("span", { className: "mixer-head", textContent: t }));
+      const songRow = el("div", { className: "mixer-row" },
+        el("span", { className: "mixer-name" }, el("span", { className: "layer-dot song-dot" }), el("b", { textContent: "Song" })),
+        muteSolo("song", "the song"), cell(), cell(eqButton(-1, "song", "the song")), cell(), cell(), cell(this.songKey ? el("span", { className: "hint", textContent: this.songKey }) : ""), cell());
+      const rows = [el("div", { className: "mixer-row mixer-heads", "aria-hidden": "true" }, ...head), songRow];
       this.layers.forEach((l, i) => {
-        const name = el("input", { value: l.name, maxLength: 40, size: 14, title: "The layer's name" });
-        name.setAttribute("aria-label", `Layer ${i + 1} name`);
-        name.addEventListener("change", () => this.setLayer(i, { name: name.value.trim().slice(0, 40) || `Layer ${i + 1}` }));
+        // Its name: double-click (or ⋯ → Rename) to change it.
+        let name;
+        if (this.renaming === i) {
+          name = el("input", { value: l.name, maxLength: 40, size: 14, title: "The layer's name" });
+          name.setAttribute("aria-label", `Layer ${i + 1} name`);
+          const done = (keep) => {
+            if (this.renaming !== i) return;
+            this.renaming = null;
+            if (keep && name.value.trim() !== l.name) this.setLayer(i, { name: name.value.trim().slice(0, 40) || `Layer ${i + 1}` });
+            else this.renderLayers();
+          };
+          name.addEventListener("keydown", (e) => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); });
+          name.addEventListener("blur", () => done(true));
+          queueMicrotask(() => { name.focus(); name.select(); });
+        } else {
+          name = el("b", { textContent: l.name, title: "Double-click to rename" });
+          name.addEventListener("dblclick", () => { this.renaming = i; this.renderLayers(); });
+        }
         const vol = el("input", { type: "range", min: -24, max: 12, step: 1, value: l.gain });
         vol.setAttribute("aria-label", `${l.name} volume`);
         const db = el("span", { className: "hint", textContent: `${l.gain > 0 ? "+" : ""}${l.gain} dB` });
         vol.addEventListener("input", () => { db.textContent = `${vol.value > 0 ? "+" : ""}${vol.value} dB`; });
         vol.addEventListener("change", () => this.setLayer(i, { gain: Number(vol.value) }));
         const duck = el("input", { type: "checkbox", checked: !!l.duck });
+        duck.setAttribute("aria-label", `${l.name}: quieten the song`);
+        duck.title = "Turn the song down a little while this layer's clips play, so they're clearer: good for a voice";
         duck.addEventListener("change", () => this.setLayer(i, { duck: duck.checked }));
         // By how much: 8 dB unless set (saved only when it isn't 8).
         const by = el("input", { type: "range", min: DUCK_MIN, max: DUCK_MAX, step: 1, value: duckDbOf(l), disabled: !l.duck });
@@ -1262,43 +1352,43 @@ export class MusicEditor {
           [...$("music-layers").querySelectorAll(".duck-by input")][i]?.focus();
         });
         const byLabel = el("label", { className: "duck-by", hidden: !l.duck,
-          title: "How far the song goes down: a little, so it's still heard, or nearly silent" }, "By ", by, " ", byDb);
+          title: "How far the song goes down: a little, so it's still heard, or nearly silent" }, "by ", by, " ", byDb);
         duck.addEventListener("change", () => { byLabel.hidden = !duck.checked; });
-        const duckLabel = el("span", { className: "duck-group" },
-          el("label", { title: "Turn the song down a little while this layer's clips play, so they're clearer: good for a voice" }, duck, " Quieten the song"), byLabel);
         const tempo = el("input", { type: "checkbox", checked: !!l.matchTempo, disabled: !this.songTempo && !l.matchTempo });
-        tempo.addEventListener("change", () => this.setMatchTempo(i, tempo.checked));
-        const tempoLabel = el("label", { title: this.songTempo
+        tempo.setAttribute("aria-label", `${l.name}: match the song's tempo`);
+        tempo.title = this.songTempo
           ? `Speed this layer's clips up or slow them down to the song's ${this.songTempo} BPM, keeping their pitch`
-          : "Detect the song first, so it has a tempo to match" }, tempo, " Match tempo");
+          : "Detect the song first, so it has a tempo to match";
+        tempo.addEventListener("change", () => this.setMatchTempo(i, tempo.checked));
         // Key: as it is, matching the song's, or moved by some semitones.
         const keySel = el("select", { title: "Move this layer's clips up or down so they fit the song's key and don't clash" });
         keySel.setAttribute("aria-label", `${l.name} key`);
-        keySel.append(new Option("Own key", ""), new Option(`Match the song${this.songKey ? ` (${this.songKey})` : ""}`, "match"));
+        keySel.append(new Option("Own key", ""), new Option("Match the song", "match"));
         for (const n of [6, 5, 4, 3, 2, 1, -1, -2, -3, -4, -5, -6]) keySel.append(new Option(`${n > 0 ? "+" : "−"}${Math.abs(n)} semitone${Math.abs(n) === 1 ? "" : "s"}`, String(n)));
         keySel.value = l.matchKey ? "match" : l.semitones ? String(l.semitones) : "";
         keySel.addEventListener("change", () => this.setKey(i, keySel.value));
-        const keyLabel = el("label", {}, "Key ", keySel);
-        // A window with your samples and songs in their folders, and a song's parts (its vocals over
-        // another song, say, or a song without its drums).
-        const add = el("button", { type: "button", textContent: "+ Add a clip…", title: "Put a sample, a song or part of a song on this layer at the playhead" });
-        add.setAttribute("aria-label", `Add a clip to ${l.name} at the playhead`);
-        add.addEventListener("click", async () => {
-          const ref = await this.host.pickSong?.({ title: `Add to ${l.name} at the playhead`, yes: "Add", kinds: ["samples", "songs"], parts: true });
-          if (ref) this.addClip(i, { source: ref.source, path: ref.path });
-        });
-        const remove = el("button", { type: "button", className: "ghost", textContent: "Remove" });
-        remove.title = "Remove this layer and its clips";
-        remove.addEventListener("click", () => this.removeLayer(i));
+        // ⋯: adding a clip, renaming and removing, so the row stays on one line.
+        const more = el("button", { type: "button", className: "ghost", textContent: "⋯", title: `Add a clip to ${l.name}, rename it or remove it` });
+        more.setAttribute("aria-label", `More for ${l.name}`);
+        more.setAttribute("aria-haspopup", "menu");
+        more.addEventListener("click", () => this.layerMenu(i, more));
         const dot = el("span", { className: "layer-dot" });
         dot.style.background = `hsl(${LAYER_HUES[i % 4]} 65% 50%)`;
-        rows.push(el("div", { className: "group layer-row" }, dot, name, el("label", {}, "Volume ", vol, " ", db), eqButton(i, i, l.name), duckLabel, tempoLabel, keyLabel, add, remove));
+        const row = el("div", { className: `mixer-row${this.heard(i) ? "" : " silent"}` },
+          el("span", { className: "mixer-name" }, dot, name), muteSolo(i, l.name),
+          cell(el("label", { className: "mixer-vol" }, el("span", { className: "mixer-label", textContent: "Volume " }), vol, " ", db)),
+          cell(eqButton(i, i, l.name)),
+          cell(el("span", { className: "duck-group" }, duck, el("span", { className: "mixer-label", textContent: " Quieten the song" }), byLabel)),
+          cell(el("label", {}, tempo, el("span", { className: "mixer-label", textContent: " Match tempo" }))),
+          cell(keySel), cell(more));
+        rows.push(row);
       });
       const addLayer = el("button", { type: "button", textContent: "+ Add layer", disabled: !this.pieces.length || this.layers.length >= MAX_LAYERS });
       addLayer.title = this.layers.length >= MAX_LAYERS ? `Up to ${MAX_LAYERS} layers` : "Add a row for samples or songs to play over the song";
       addLayer.addEventListener("click", () => this.addLayer());
       box.replaceChildren(el("div", { className: "group" }, el("span", { className: "section-label", textContent: "Mixer" }), addLayer,
-        el("span", { className: "hint", textContent: this.layers.length ? "" : "Layers play sleigh bells, a \"ho ho ho\" or another song over this one." })), ...rows);
+        el("span", { className: "hint", textContent: this.layers.length ? (this.solo.size ? "Soloed: you're only hearing what's soloed" : "")
+          : "Layers play sleigh bells, a \"ho ho ho\" or another song over this one." })), el("div", { className: "mixer-grid" }, ...rows));
       // The EQ that's open, in the Selection panel.
       const eqBox = $("music-eq"), id = this.eqCh, ch = id === "song" ? -1 : id;
       eqBox.hidden = id == null;
@@ -1324,6 +1414,36 @@ export class MusicEditor {
     for (const [id, v] of [["music-clip-fadein", c.fadeIn], ["music-clip-fadeout", c.fadeOut], ["music-clip-gain", c.gain], ["music-clip-bpm", c.bpm ?? ""]]) {
       if (document.activeElement !== $(id)) $(id).value = v;
     }
+  }
+
+  // A layer's ⋯ menu: add a clip at the playhead, rename, remove.
+  layerMenu(i, anchor) {
+    document.querySelector(".mixer-menu")?.remove();
+    const l = this.layers[i];
+    const menu = Object.assign(document.createElement("div"), { className: "mixer-menu" });
+    menu.setAttribute("role", "menu");
+    const item = (text, fn, cls = "") => {
+      const b = Object.assign(document.createElement("button"), { type: "button", textContent: text, className: `ghost ${cls}` });
+      b.setAttribute("role", "menuitem");
+      b.addEventListener("click", () => { close(); fn(); });
+      return b;
+    };
+    menu.append(
+      item("+ Add a clip at the playhead…", async () => {
+        const ref = await this.host.pickSong?.({ title: `Add to ${l.name} at the playhead`, yes: "Add", kinds: ["samples", "songs"], parts: true });
+        if (ref) this.addClip(i, { source: ref.source, path: ref.path });
+      }),
+      item("Rename", () => { this.renaming = i; this.renderLayers(); }),
+      item("Remove", () => this.removeLayer(i), "danger"));
+    const r = anchor.getBoundingClientRect();
+    Object.assign(menu.style, { position: "fixed", top: `${r.bottom + 4}px`, left: `${Math.max(8, r.right - 230)}px` });
+    document.body.append(menu);
+    const close = () => { menu.remove(); document.removeEventListener("pointerdown", outside, true); document.removeEventListener("keydown", esc, true); };
+    const outside = (e) => { if (!menu.contains(e.target) && e.target !== anchor) close(); };
+    const esc = (e) => { if (e.key === "Escape") { close(); anchor.focus(); } };
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("keydown", esc, true);
+    menu.querySelector("button").focus();
   }
 
   // The open EQ's faders, showing the setting in force at the playhead (and the change it's from).
@@ -1866,13 +1986,17 @@ export class MusicEditor {
     // Copies no clip plays at any more (a tempo typed again, say) are let go.
     const used = new Set(placed.map((p) => sourceKey(this.layers[p.layer].clips[p.clip], p.speed, p.semis)));
     for (const key of Object.keys(this.sources)) if (key.includes("@") && !used.has(key)) delete this.sources[key];
-    // What plays and is made into a song file: the song with its layers mixed in, kept from clipping.
-    this.rendered = placed.length || this.mainEq !== this.main
-      ? limit(mixLayers(this.mainEq, this.layers, placed, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate) : this.main;
+    // What plays: the song with the layers you're listening to mixed in, kept from clipping (fileMix is
+    // what's made into a song file).
+    for (const c of [...this.solo]) if (typeof c === "number" && c >= this.layers.length) this.solo.delete(c);
+    const heard = placed.filter((p) => this.heard(p.layer));
+    const song = this.heard("song") || !this.mainEq ? this.mainEq : this.mainEq.map((ch) => new Float32Array(ch.length));
+    this.rendered = heard.length || song !== this.main
+      ? limit(mixLayers(song, this.layers, heard, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate) : this.main;
     if (!same) this.peaks = this.main ? peaks(this.main) : null;
     const steps = this.main ? Math.ceil((this.main[0].length / rate) * OVERLAY_RATE) + 1 : 0;
     this.overlay = {
-      dip: steps ? dipCurve(this.layers, placed, this.sources, steps, OVERLAY_RATE) : null,
+      dip: steps ? dipCurve(this.layers, heard, this.sources, steps, OVERLAY_RATE) : null, // the dips you can hear
       eq: steps && !isFlat(this.eq) ? eqCurves(this.eq, placeChanges(this.eq, this.pieces, this.crossfade), steps, OVERLAY_RATE) : null,
       filter: steps && [this.eq, ...(this.eq?.changes || [])].some((s) => s?.filter)
         ? filterCurve(this.eq, placeChanges(this.eq, this.pieces, this.crossfade), steps, OVERLAY_RATE) : null,
@@ -1996,7 +2120,8 @@ export class MusicEditor {
     this.host.status(`Making ${file}…`);
     await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))); // let that show before the work
     // Even out the volume: the same loudness as other songs made here (only the level changes).
-    const even = $("music-even").checked ? evenOut(this.rendered, this.audio.sampleRate) : { channels: this.rendered, gain: 0 };
+    const mix = this.fileMix();
+    const even = $("music-even").checked ? evenOut(mix, this.audio.sampleRate) : { channels: mix, gain: 0 };
     const blob = new Blob([encodeWav(even.channels, this.audio.sampleRate)], { type: "audio/wav" });
     // Beats and sections that followed the edit carry over, with their names, colours and notes, as
     // long as every song in it has been detected (a spliced-in song brings its own); otherwise the
@@ -2012,7 +2137,8 @@ export class MusicEditor {
     const cut = { pieces: this.pieces, crossfade: this.crossfade, fadeIn: Number($("music-fadein").value) || 0,
       fadeOut: Number($("music-fadeout").value) || 0, gain: even.gain,
       // The layers and EQ as they were, so its parts have them too, whatever's changed by the time they're made.
-      layers: structuredClone(this.layers), eq: this.eq && structuredClone(this.eq), placed: this.placed() };
+      layers: structuredClone(this.layers), eq: this.eq && structuredClone(this.eq),
+      placed: this.placed().filter((p) => !this.layers[p.layer].muted) };
     // The draft as it was when you pressed it, and which draft: you might open another while it's made.
     const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
     // The song's lyrics follow the cuts into the new file, for Singing faces.
@@ -2439,7 +2565,17 @@ export class MusicEditor {
       ctx.restore();
     }
 
+    this.heads = []; // where each lane's M and S are, for clicks
     this.drawLayers(col);
+    // With layers, the song's own M and S at the top left of its waveform.
+    if (this.layers.length && !this.heard("song")) { // faded while it isn't heard
+      ctx.save();
+      ctx.fillStyle = col("--panel");
+      ctx.globalAlpha = 0.55;
+      ctx.fillRect(0, waveT, w, waveB - waveT);
+      ctx.restore();
+    }
+    if (this.layers.length) this.drawHead(ctx, col, "song", "Song", waveT + 1);
     this.drawChanges(col);
     this.refreshEq();
 
@@ -2551,21 +2687,58 @@ export class MusicEditor {
         if (picked) { ctx.strokeStyle = col("--text"); ctx.lineWidth = 2; ctx.strokeRect(x0 + 1, top + 1, Math.max(2, x1 - x0) - 2, bot - top - 2); ctx.lineWidth = 1; }
         ctx.save();
         ctx.beginPath(); ctx.rect(x0, y, Math.max(0, x1 - x0 - 2), LANE_H); ctx.clip();
-        ctx.fillStyle = col("--text");
-        ctx.fillText(nameOf(c.song).replace(/\.[^.]+$/, "") + (gone ? " (missing)" : ""), Math.max(x0, 0) + 5, top + 12);
+        const lab = clipLabel(c.song), text = lab.text + (gone ? " (missing)" : ""), lx = Math.max(x0, 0) + 3;
+        if (lab.colour && !gone) { // a part of a song: a pill in the part's colour
+          ctx.fillStyle = lab.colour;
+          ctx.fillRect(lx, top + 1, ctx.measureText(text).width + 8, 14);
+          ctx.fillStyle = "#fff";
+        } else ctx.fillStyle = col("--text");
+        ctx.fillText(text, lx + 4, top + 12);
         ctx.restore();
       }
-      // The layer's name at the left, over a faint backing so it reads over clips.
-      const label = l.name;
-      const lw = ctx.measureText(label).width + 8;
-      ctx.fillStyle = col("--panel");
-      ctx.globalAlpha = 0.8;
-      ctx.fillRect(0, y + 1, lw, 13);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = col("--muted");
-      ctx.fillText(label, 4, y + 11);
+      // A layer that isn't heard (muted, or something else soloed) shows faded.
+      if (!this.heard(i)) {
+        ctx.fillStyle = col("--panel");
+        ctx.globalAlpha = 0.55;
+        ctx.fillRect(0, y + 1, w, LANE_H - 1);
+        ctx.globalAlpha = 1;
+      }
+      this.drawHead(ctx, col, i, l.name, y + 1);
     });
     ctx.restore();
+  }
+
+  // A lane's name with its M (mute) and S (solo) at the left, over a backing so it reads over clips.
+  // Their places are kept for clicks (headAt).
+  drawHead(ctx, col, ch, label, y) {
+    ctx.save();
+    ctx.font = "600 11px system-ui, sans-serif";
+    const lw = ctx.measureText(label).width, bw = 15, h = 14;
+    ctx.fillStyle = col("--panel");
+    ctx.globalAlpha = 0.9;
+    ctx.fillRect(0, y, lw + 12 + 2 * (bw + 3), h + 2);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = col("--text");
+    ctx.fillText(label, 4, y + 12);
+    const heads = (this.heads ||= []);
+    const muted = ch === "song" ? this.songMuted : this.layers[ch].muted;
+    [["M", "mute", muted, "#e8a33d"], ["S", "solo", this.solo.has(ch), "#3d8be8"]].forEach(([t, what, on, colour], k) => {
+      const x = lw + 10 + k * (bw + 3);
+      ctx.fillStyle = on ? colour : col("--bg") || "#fff";
+      ctx.fillRect(x, y + 1, bw, h - 1);
+      ctx.strokeStyle = on ? colour : col("--line");
+      ctx.strokeRect(x + 0.5, y + 1.5, bw - 1, h - 2);
+      ctx.fillStyle = on ? "#fff" : col("--muted");
+      ctx.font = "600 10px system-ui, sans-serif";
+      ctx.fillText(t, x + 4, y + 11);
+      heads.push({ ch, what, x0: x, x1: x + bw, y0: y, y1: y + h });
+    });
+    ctx.restore();
+  }
+
+  // The M or S under (x, y) on a lane's name: {ch, what: "mute" | "solo"}, or null.
+  headAt(x, y) {
+    return (this.heads || []).find((h) => x >= h.x0 - 1 && x <= h.x1 + 1 && y >= h.y0 - 1 && y <= h.y1 + 1) || null;
   }
 
   // lyrics (lyrics.js): the base song's, with the singer kept with it (for where its words fall when
@@ -2704,6 +2877,8 @@ export class MusicEditor {
   down(e) {
     if (!this.rendered) return;
     const x = e.offsetX, t = Math.min(Math.max(this.t(x), 0), this.total);
+    const head = this.headAt(x, e.offsetY);
+    if (head) { if (head.what === "mute") this.toggleMute(head.ch); else this.toggleSolo(head.ch); return; }
     const join = this.joinAt(x, e.offsetY);
     if (join > 0) { this.drag = null; this.hearJoin(join); return; }
     this.canvas.setPointerCapture(e.pointerId);
