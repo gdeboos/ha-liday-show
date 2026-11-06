@@ -2038,8 +2038,12 @@ export class MusicEditor {
   hitsHere() {
     if (this.focus != null) return this.focusInfo?.hits || [];
     if (this.drums?.ref !== this.base) return [];
-    const hits = mapHits({ kick: this.drums.hits.kick || [], snare: this.drums.hits.snare || [] }, this.pieces, this.crossfade, keyOf(this.base));
-    return [...hits.kick, ...hits.snare];
+    // Worked out again only when the cuts change (this runs as you drag).
+    const d = this.drums, c = this.hitsCache;
+    if (c?.drums === d && c.pieces === this.pieces && c.crossfade === this.crossfade) return c.list;
+    const hits = mapHits({ kick: d.hits.kick || [], snare: d.hits.snare || [] }, this.pieces, this.crossfade, keyOf(this.base));
+    this.hitsCache = { drums: d, pieces: this.pieces, crossfade: this.crossfade, list: [...hits.kick, ...hits.snare] };
+    return this.hitsCache.list;
   }
 
   // Plays a few seconds either side of where the selection would be cut, without cutting it.

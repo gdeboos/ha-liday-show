@@ -171,15 +171,16 @@ async function listenTo(ref, api, say, track) {
 // its parts cut from the original's instead. say(text, done 0-1 or null) hears how it's going;
 // started(stop) is given a function that stops it. One song at a time: anything else waits its turn.
 let turn = Promise.resolve(), waiting = 0;
-export function makeParts(ref, api, { again = false, edit = null, listenOnly = false, say = () => {}, started = () => {} } = {}) {
+export function makeParts(ref, api, { again = false, edit = null, listenOnly = false, cutOnly = false, say = () => {}, started = () => {} } = {}) {
   waiting++;
-  const run = () => makePartsNow(ref, api, { again, edit, listenOnly, say, started });
+  const run = () => makePartsNow(ref, api, { again, edit, listenOnly, cutOnly, say, started });
   const mine = turn.then(run, run).finally(() => { waiting--; });
   turn = mine.catch(() => {});
   return mine;
 }
 
-async function makePartsNow(ref, api, { again, edit, listenOnly, say, started }) {
+// cutOnly: an edit whose parts are only to be cut from its original's (never split by the AI).
+async function makePartsNow(ref, api, { again, edit, listenOnly, cutOnly, say, started }) {
   busy = true;
   let worker = null, cancelled = false, stop = null;
   const stopped = new Promise((_, reject) => { stop = reject; });
@@ -207,6 +208,7 @@ async function makePartsNow(ref, api, { again, edit, listenOnly, say, started })
     if (!again && edit && prepared(edit.baseParts) && await unlessCancelled(cutFromOriginal(ref, api, edit, say, () => cancelled))) {
       return { made: true, cut: true, listened: await listen(false) };
     }
+    if (cutOnly) return { made: false };
     const want = ["drums", "bass", "rest", ...(have.music && !again ? [] : ["music"])];
     say(`Loading ${song}…`, null);
     let left, right, vocals = null;
