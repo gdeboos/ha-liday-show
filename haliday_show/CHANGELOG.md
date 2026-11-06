@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.381
+
+- **Singing faces sing wherever they are in the show.** A Singing face that didn't start at the very beginning of the show followed the wrong part of the song (usually the quiet intro), so its mouth stayed shut. It now follows the singer at its own place in the song. Phones pick this up straight away; if a face is on one of your matrices, save the show once so the lights get it too.
+
 ## 0.2.380
 
 - **See what a Singing face follows.** Select a **Singing face** clip and its settings now say what the mouth follows: the vocals from **Split vocals**, the voice range of the song, or nothing yet (with why). **Measure again** measures the singer afresh, handy right after you split a song's vocals.
