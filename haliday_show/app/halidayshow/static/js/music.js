@@ -1938,7 +1938,7 @@ export class MusicEditor {
       const { layers, dropped, repeated } = loopLayer(this.layers, this.focus, start, end, times, this.layerCtx());
       if (!repeated) return this.host.status(`Nothing of ${name} plays there to repeat`, "hint");
       if (layers[this.focus].clips.length > MAX_CLIPS) return this.host.status(`That would put more than ${MAX_CLIPS} clips on ${name}`, true);
-      this.sel = { start, end: end + (end - start) * (times - 1) };
+      this.sel = { start, end: Math.min(this.total, end + (end - start) * (times - 1)) };
       this.editLayers(layers, null);
       return this.host.status(`${fmtTime(start)} to ${fmtTime(end)} of ${name} now plays ${times === 2 ? "twice" : `${times} times`}`
         + (dropped ? `; ${dropped} bit${dropped === 1 ? "" : "s"} past the end of the song left out` : "") + ". Ctrl+Z undoes it", dropped ? "hint" : "saved");
