@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.400
+
+- **Lyrics are enough for a Singing face.** With lyrics placed, the mouth now sings every word even if you haven't split the vocals, including quieter parts of the song. The note under **Mouth** says it mouths the lyrics, and no longer suggests splitting the vocals. Press **Save** on a show to update what's on your lights and phones.
+
 ## 0.2.399
 
 - **Edits follow their original's lyrics automatically.** A song file you made from a draft in the Music editor now sings the original song's lyrics through your cuts, with no button to press, so you place the words once on the original and every edit keeps up. If you split the original's vocals, the edit's Singing face follows those too. On an edit, the Singing face's button says **Edit lyrics…** and opens its draft in the Music editor. The **Bring in the lyrics** button has gone, as it's no longer needed.

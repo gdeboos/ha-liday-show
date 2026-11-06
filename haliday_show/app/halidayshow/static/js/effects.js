@@ -886,10 +886,10 @@ Object.assign(EFFECTS, {
         }
         let mouth = mouthFor(best, p.sensitivity);
         const shape = shapeAt(voiceLevels?.lyrics ? song : at);
-        // With lyrics, a word being sung (if the singer can be heard then, when measured) opens the
-        // mouth at least half way, and between words it shuts.
+        // With lyrics, a word being sung opens the mouth at least half way, and between words it shuts.
+        // Only split vocals can say the singer's quiet then; the voice range of the whole song can't.
         if (voiceLevels?.lyrics) {
-          const heard = !voiceLevels.values?.length || best >= 0.15;
+          const heard = voiceLevels.from !== "vocals" || !voiceLevels.values?.length || best >= 0.15;
           mouth = shape === "m" ? 0 : Math.max(mouth, heard ? 0.5 : 0);
         }
         // A phone's sharp face (tens of thousands of dots) keeps its still parts; a matrix (at most 4,096

@@ -1420,7 +1420,8 @@ def phone_lane(storage: Storage, show: dict) -> dict | None:
     if isinstance(lyrics, dict) and isinstance(lyrics.get("shapes"), str) and lyrics["shapes"] \
             and (not lyrics.get("song") or lyrics.get("song") == (show.get("audio") or {}).get("path")):
         voice = {"fps": (voice or {}).get("fps") or lyrics.get("fps") or 20, "values": (voice or {}).get("values", []),
-                 "shapes": lyrics["shapes"], "shapesFps": lyrics.get("fps") or 20, "lyrics": True}
+                 "shapes": lyrics["shapes"], "shapesFps": lyrics.get("fps") or 20, "lyrics": True,
+                 "from": (voice or {}).get("from") or "song"}
     return {"clips": clips,
             # The singer's level, for the Singing face.
             "voice": voice,
