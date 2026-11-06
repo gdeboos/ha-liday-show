@@ -86,7 +86,8 @@ export function putBack(pieces, crossfade, i) {
   const info = joinInfo(pieces, i);
   if (info?.kind !== "cut") return null;
   const a = pieces[i - 1], b = pieces[i];
-  const out = merge([...pieces.slice(0, i - 1), { src: a.src, start: a.start, end: b.end }, ...pieces.slice(i + 1)]);
+  const out = merge([...pieces.slice(0, i - 1), { src: a.src, start: a.start, end: b.end, ...(a.transition ? { transition: a.transition } : {}) },
+    ...pieces.slice(i + 1)]);
   const start = arrange(out, crossfade).places[i - 1].at + (a.end - a.start);
   return { pieces: out, start, end: start + (b.start - a.end) };
 }
@@ -120,6 +121,7 @@ export function slice(pieces, crossfade, a, b) {
       src: p.src,
       start: s > own0 + EPS ? p.start + (s - at) : p.start,
       end: e < own1 - EPS ? p.start + (e - at) : p.end,
+      ...(p.transition && s <= own0 + EPS ? { transition: p.transition } : {}), // its join's still there
     });
   });
   return out;
@@ -475,12 +477,63 @@ export function render(pieces, sources, rate, { crossfade = 0, fadeIn = 0, fadeO
       }
     }
   });
+  // DJ transitions at joins (a piece's `transition` is how the join before it plays).
+  pieces.forEach((p, i) => {
+    if (i && p.transition && TRANSITIONS[p.transition.kind]) {
+      transition(out, rate, places[i].at + places[i].xf / 2, p.transition, pieces[i - 1], sources[pieces[i - 1].src]);
+    }
+  });
   const fi = Math.min(Math.round(fadeIn * rate), n), fo = Math.min(Math.round(fadeOut * rate), n);
   for (const o of out) {
     for (let k = 0; k < fi; k++) o[k] *= k / fi;
     for (let k = 0; k < fo; k++) o[n - 1 - k] *= k / fo;
   }
   return out;
+}
+
+// The DJ transitions a join can have, by kind: {kind, beat (seconds, so they keep time with the music)}.
+export const TRANSITIONS = {
+  echo: "Echo out", // the last beat before the join repeats, fading, over what comes next
+  filter: "Filter sweep", // the highs sweep away over the bar before the join
+  drop: "Drop the bass", // no bass for the bar before the join, then it all comes back
+};
+const ECHOES = 4, ECHO_GAIN = 0.5, SWEEP_TO = 250, BASS_CUT = 250, EASE = 0.02;
+
+// One transition at join time j (seconds) on the rendered channels, in place. before: the piece before
+// the join, src its audio (the echo repeats it, not what comes next).
+function transition(out, rate, j, { kind, beat }, before, src) {
+  const n = out[0].length, b = Math.max(0.1, Math.min(2, beat || 0.5)), J = Math.round(j * rate);
+  if (kind === "echo") {
+    if (!src) return;
+    const D = Math.round(b * rate), from = Math.round(before.end * rate) - D;
+    for (let c = 0; c < out.length; c++) {
+      const s = src[Math.min(c, src.length - 1)], o = out[c];
+      for (let e = 1; e <= ECHOES; e++) {
+        const g = ECHO_GAIN ** e, at = J + (e - 1) * D;
+        for (let k = 0; k < D && at + k < n; k++) {
+          const v = s[from + k] || 0;
+          // Each repeat eases in and out, so it doesn't click.
+          const ease = Math.min(1, k / (EASE * rate), (D - k) / (EASE * rate));
+          o[at + k] += v * g * ease;
+        }
+      }
+    }
+    return;
+  }
+  // The bar before the join, low-passed (sweeping down) or with its bass taken out, easing back after.
+  const a = Math.max(0, J - Math.round(4 * b * rate)), ease = Math.round(EASE * rate), z = Math.min(n, J + ease);
+  const cut = 1 - Math.exp(-2 * Math.PI * BASS_CUT / rate);
+  for (const o of out) {
+    let lp1 = o[a] || 0, lp2 = lp1; // two one-pole low-passes in a row, for a steeper slope
+    for (let i = a; i < z; i++) {
+      const x = o[i], t = Math.min(1, (i - a) / Math.max(1, J - a));
+      const k = kind === "filter" ? 1 - Math.exp(-2 * Math.PI * 18000 * (SWEEP_TO / 18000) ** t / rate) : cut;
+      lp1 += k * (x - lp1); lp2 += k * (lp1 - lp2);
+      const wet = kind === "filter" ? lp2 : x - lp2; // the drop keeps what's above the bass
+      const m = i < a + ease ? (i - a) / ease : i >= J ? (z - i) / ease : 1;
+      o[i] = x * (1 - m) + wet * m;
+    }
+  }
 }
 
 // 16-bit PCM WAV, which every Home Assistant speaker and browser plays.
@@ -762,7 +815,7 @@ export class MusicEditor {
     }
     const base = d.base, baseKey = keyOf(base);
     this.base = this.refs[baseKey];
-    this.pieces = d.pieces.map((p) => ({ src: keyOf(p.song), start: p.start, end: p.end }));
+    this.pieces = d.pieces.map((p) => ({ src: keyOf(p.song), start: p.start, end: p.end, ...(p.transition ? { transition: p.transition } : {}) }));
     this.layers = d.layers || [];
     this.solo = new Set();
     this.songMuted = false;
@@ -801,7 +854,7 @@ export class MusicEditor {
     const name = $("music-name").value.trim().replace(/\.wav$/i, "") || nameOf(this.base).replace(/\.[^.]+$/, "");
     return {
       name, base: this.base,
-      pieces: this.pieces.map((p) => ({ song: this.refs[p.src], start: p.start, end: p.end })),
+      pieces: this.pieces.map((p) => ({ song: this.refs[p.src], start: p.start, end: p.end, ...(p.transition ? { transition: p.transition } : {}) })),
       crossfade: this.crossfade,
       fadeIn: Number($("music-fadein").value) || 0,
       fadeOut: Number($("music-fadeout").value) || 0,
@@ -2550,6 +2603,7 @@ export class MusicEditor {
       this.editSections(removeSection(this.sections, i), Math.max(0, i - 1));
     });
     $("music-join-hear").addEventListener("click", () => this.hearJoin(this.joinSel));
+    $("music-join-transition").addEventListener("change", (e) => this.setJoinTransition(e.target.value));
     $("music-join-adjust").addEventListener("click", () => this.putJoinBack(true));
     $("music-join-back").addEventListener("click", () => this.putJoinBack(false));
     $("music-join-close").addEventListener("click", () => { this.joinSel = -1; this.updateControls(); this.draw(); });
@@ -3633,6 +3687,25 @@ export class MusicEditor {
       ? `Cut at ${fmtTime(at)}: ${(info.to - info.from).toFixed(2)} s of ${song} taken out (its ${fmtTime(info.from)} to ${fmtTime(info.to)})`
       : `Join at ${fmtTime(at)}: ${song} starts here`;
     $("music-join-adjust").hidden = $("music-join-back").hidden = info.kind !== "cut";
+    const pick = $("music-join-transition");
+    if (!pick.options.length) {
+      pick.append(new Option("None", ""), ...Object.entries(TRANSITIONS).map(([k, label]) => new Option(label, k)));
+      pick.title = "Echo out repeats the last beat, fading, over what comes next. Filter sweep takes the highs away over the bar before. Drop the bass takes the bass out for the bar before, then it all comes back";
+    }
+    pick.value = this.pieces[this.joinSel]?.transition?.kind || "";
+  }
+
+  // How the picked join plays (a TRANSITIONS kind, or "" for a plain join), in time with the music before it.
+  setJoinTransition(kind) {
+    const i = this.joinSel, p = this.pieces[i];
+    if (!p || i < 1) return;
+    const src = this.pieces[i - 1].src, info = src === keyOf(this.base || { source: "", path: "" }) ? this.info : this.infos[src];
+    const beat = info?.tempo ? Math.min(2, Math.max(0.1, Math.round((60 / info.tempo) * 1000) / 1000)) : 0.5; // as the server allows
+    const { transition: _, ...plain } = p;
+    this.edit(this.pieces.map((q, k) => (k === i ? (kind ? { ...plain, transition: { kind, beat } } : plain) : q)));
+    this.joinSel = i;
+    this.renderJoin();
+    if (kind) this.hearJoin(i);
   }
 
   // Puts the picked cut's part back; with select, it's selected so its edges can be moved and cut again.

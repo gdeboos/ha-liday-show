@@ -1848,7 +1848,7 @@ def _clean_layers(layers) -> list[dict] | None:
 
 
 def _clean_draft(body) -> dict | None:
-    """A Music editor draft: {name, base, pieces: [{song, start, end}], crossfade, fadeIn, fadeOut,
+    """A Music editor draft: {name, base, pieces: [{song, start, end, transition (optional)}], crossfade, fadeIn, fadeOut,
     made, length}. The songs are only referred to, never copied."""
     if not isinstance(body, dict):
         return None
@@ -1866,6 +1866,13 @@ def _clean_draft(body) -> dict | None:
         if song is None or start is None or end is None or end <= start:
             return None
         clean.append({"song": song, "start": start, "end": end})
+        tr = p.get("transition")  # how the join before it plays (music.js TRANSITIONS)
+        if tr is not None:
+            beat = tr.get("beat") if isinstance(tr, dict) else None
+            if not isinstance(tr, dict) or tr.get("kind") not in ("echo", "filter", "drop") or isinstance(beat, bool) \
+                    or not isinstance(beat, (int, float)) or not math.isfinite(beat) or not 0.1 <= beat <= 2:
+                return None
+            clean[-1]["transition"] = {"kind": tr["kind"], "beat": round(float(beat), 3)}
     crossfade, fade_in, fade_out = (_seconds(body.get(k, 0), top) for k, top in
                                     (("crossfade", 10), ("fadeIn", 30), ("fadeOut", 30)))
     length = _seconds(body.get("length", 0), 86400)

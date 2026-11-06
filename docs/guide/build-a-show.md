@@ -488,7 +488,12 @@ side of the join; the **Selection** panel says what was cut there (how much, and
 song). To change that cut, press **Adjust cut**: the part comes back and is selected, so drag its edges
 (or type the times) and press **Cut** again. **Put back** undoes just that cut, leaving the
 others as they are. Both are one step for **Undo**. A join where another song was spliced in only has
-**▶ Hear join**. When you zoom out, the beat lines thin out to every bar, then every 2nd or 4th bar, so
+**▶ Hear join** and **Transition**. **Transition** gives any join a DJ-style change into what comes next:
+**Echo out** (the last beat before the join repeats, fading, over the next part), **Filter sweep** (the
+highs sweep away over the bar before the join, as if the music's going under water) or **Drop the bass**
+(no bass for the bar before the join, then it all comes back at once). They keep time with the music
+before the join, and you hear the join as soon as you pick one. **None** puts it back to a plain join.
+When you zoom out, the beat lines thin out to every bar, then every 2nd or 4th bar, so
 the music stays visible; zoom in to see every beat.
 
 You can also use the keyboard: press Tab until the waveform is outlined, then **←** and **→** move the

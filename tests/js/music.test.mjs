@@ -330,3 +330,33 @@ test("drum hits land where their part plays after cuts", () => {
   const out = mapHits(hits, [{ src: "a", start: 0, end: 3 }, { src: "a", start: 30, end: 32 }, { src: "a", start: 30, end: 32 }], 0, "a");
   assert.deepEqual(out, { kick: [1, 4, 6], snare: [2.5], crash: [] });
 });
+
+test("joins can have DJ transitions, kept through later edits", () => {
+  const rate = 1000;
+  // A song of steady 1s then a song of silence: the transitions show after (or before) the join at 4 s.
+  const one = [new Float32Array(10 * rate).fill(1)], none = [new Float32Array(10 * rate)];
+  const pieces = (kind) => [{ src: "a", start: 0, end: 4 }, { src: "b", start: 0, end: 4, ...(kind ? { transition: { kind, beat: 0.5 } } : {}) }];
+  const plain = render(pieces(null), { a: one, b: none }, rate)[0];
+  assert.equal(plain[4200], 0, "silent after the join as it is");
+  // Echo out: the last beat repeats, each half as loud, over what comes next.
+  const echo = render(pieces("echo"), { a: one, b: none }, rate)[0];
+  near(echo[4250], 0.5, "the first echo");
+  near(echo[4750], 0.25, "the second, quieter");
+  near(echo[3000], 1, "nothing changed before the join");
+  // Filter sweep and Drop the bass: a steady (no highs) sound goes through a low-pass untouched but has
+  // nothing above the bass, so the drop takes it away over the bar before the join.
+  const sweep = render(pieces("filter"), { a: one, b: none }, rate)[0];
+  assert.ok(Math.abs(sweep[3500] - 1) < 0.01, "a low sound gets through the sweep");
+  const drop = render(pieces("drop"), { a: one, b: none }, rate)[0];
+  assert.ok(Math.abs(drop[3500]) < 0.05, "no bass in the bar before the join");
+  near(drop[1500], 1, "as it was before that bar");
+  // An edit that keeps the join keeps its transition; cutting the join out loses it.
+  const p = pieces("drop");
+  assert.deepEqual(cut(p, 0, 1, 2)[2].transition, { kind: "drop", beat: 0.5 });
+  assert.equal(cut(p, 0, 1, 2)[1].transition, undefined, "the new cut has none");
+  assert.equal(cut(p, 0, 3, 5).some((x) => x.transition), false);
+  assert.deepEqual(keep(p, 0, 2, 7).map((x) => x.transition || null), [null, { kind: "drop", beat: 0.5 }]);
+  // Putting a cut back keeps the transition of the join before it.
+  const three = [{ src: "a", start: 0, end: 2 }, { src: "a", start: 3, end: 4, transition: { kind: "echo", beat: 0.5 } }, { src: "a", start: 5, end: 6 }];
+  assert.deepEqual(putBack(three, 0, 2).pieces[1].transition, { kind: "echo", beat: 0.5 });
+});
