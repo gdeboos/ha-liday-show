@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.415
+
+- **Edit a layer on its own.** In the Music editor, click a layer's name on its lane (or **⋯ → Edit this layer**) and the big waveform shows just that layer, with the song faintly behind and its clips' songs' beats and sections. Select a stretch and **Cut** it (**Cut and close up**, or **Cut and leave a gap**), hear it first with **Preview cut**, or **Keep only this**. The song and the other layers don't move. **← Back to the song** when you're done.
+- **Change a clip's part where it is.** Click a clip of a split song and pick **Use**: the whole song, or just its vocals, drums, bass or the rest.
+- **No more clipped words.** With lyrics placed, **Cut** warns when it would start or end in the middle of a sung word, and offers to move it between words.
+
 ## 0.2.414
 
 - **What you can do to a selection is beside it.** In the Music editor, select a stretch and the **Selection** panel says what it is (such as **Verse · 0:15.90 to 0:31.70**, 15.8 s, about 8 bars) with **▶ Play selection**, **Preview cut**, **Cut**, **Keep only this** and **Save as sample…**. The **Edit** panel keeps **✂ Suggest cuts…**, **Undo** and **Redo**, so no more rows of greyed-out buttons.

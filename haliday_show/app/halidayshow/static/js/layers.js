@@ -166,6 +166,57 @@ export function mixLayers(main, layers, placed, sources, rate, { pieces = [], cr
   return out;
 }
 
+// Cutting a stretch out of one layer, leaving the song and the other layers as they are. ctx: {pieces,
+// crossfade, refs (a piece's src key → its song), tempo}. closeUp: the rest of the layer moves earlier by
+// the stretch's length, overlapping what's before it by a short crossfade; else a gap is left. Returns
+// the layers with that layer's clips changed.
+export const LAYER_XF = 0.05;
+export function cutLayer(layers, li, start, end, { closeUp = false, pieces, crossfade = 0, refs, tempo = null }) {
+  const L = layers[li], d = end - start, out = [];
+  const pin = (t) => anchorAt(pieces, crossfade, Math.max(0, t), refs);
+  for (const c of L.clips) {
+    const at = resultTime(pieces, crossfade, c.anchor);
+    if (at === null) { out.push(c); continue; } // on a part of the song that's cut out: left alone
+    const speed = clipSpeed(L, c, tempo), e = at + (c.end - c.start) / speed;
+    const part = (from, to, extra) => clipPart_(c, at, speed, from, to, pin(from), extra);
+    if (e <= start + EPS) out.push(c);
+    else if (at >= end - EPS) out.push(closeUp ? { ...c, anchor: pin(at - d) ?? c.anchor } : c);
+    else {
+      const xf = closeUp ? LAYER_XF : 0;
+      if (at < start - 0.05) out.push(part(at, Math.min(e, start + xf), { fadeOut: xf || 0.02 }));
+      if (e > end + 0.05) {
+        const piece = part(end, e, { fadeIn: xf || 0.02, fadeOut: c.fadeOut });
+        out.push(closeUp ? { ...piece, anchor: pin(start) ?? piece.anchor } : piece);
+      }
+    }
+  }
+  return layers.map((l, k) => (k === li ? { ...l, clips: out.filter(Boolean) } : l));
+}
+
+// Only a stretch of one layer kept (its clips trimmed to it); nothing moves.
+export function keepLayer(layers, li, start, end, { pieces, crossfade = 0, refs, tempo = null }) {
+  const L = layers[li], out = [];
+  const pin = (t) => anchorAt(pieces, crossfade, Math.max(0, t), refs);
+  for (const c of L.clips) {
+    const at = resultTime(pieces, crossfade, c.anchor);
+    if (at === null) continue;
+    const speed = clipSpeed(L, c, tempo), e = at + (c.end - c.start) / speed;
+    const from = Math.max(at, start), to = Math.min(e, end);
+    if (to - from < 0.05) continue;
+    out.push(from === at && to === e ? c : clipPart_(c, at, speed, from, to, pin(from),
+      { fadeIn: from > at ? 0.02 : c.fadeIn, fadeOut: to < e ? 0.02 : c.fadeOut }));
+  }
+  return layers.map((l, k) => (k === li ? { ...l, clips: out.filter(Boolean) } : l));
+}
+
+// The bit of clip c (placed at `at`, playing at `speed`) heard from result time `from` to `to`.
+function clipPart_(c, at, speed, from, to, anchor, extra = {}) {
+  if (!anchor || to - from < 0.05) return null;
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  return { ...c, start: r3(c.start + (from - at) * speed), end: r3(c.start + (to - at) * speed), anchor,
+    fadeIn: from > at + EPS ? 0 : c.fadeIn, fadeOut: c.fadeOut, ...extra };
+}
+
 // What a layer's clip adds to one part (vocals, drums, bass, rest or music: everything but the vocals)
 // of a song file made from the draft: the audio to play in the clip's place, {source, path}, or null for
 // nothing. songs: [{source, path, parts}].

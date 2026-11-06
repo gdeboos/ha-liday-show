@@ -195,3 +195,27 @@ test("ducking can follow the clips' own audio while mixing in something else", (
   assert.ok(out[0][400] < 0.3 && Math.abs(out[0][900] - 0.5) < 1e-6);
   assert.ok(Math.abs(mixLayers(main, layers, placed, {}, rate)[0][400] - 0.5) < 1e-6);
 });
+
+test("cutting a stretch out of a layer closes it up or leaves a gap, and nothing else moves", async () => {
+  const { cutLayer, keepLayer, LAYER_XF } = await import("../../haliday_show/app/halidayshow/static/js/layers.js");
+  const refs = { "media:a.mp3": A };
+  const clip = (t, s0, s1) => ({ song: B, start: s0, end: s1, anchor: { song: A, t }, gain: 0, fadeIn: 0, fadeOut: 0 });
+  // Clips at 0-10, 20-30 and 40-50 (each 10 s of b.mp3); the song's an untouched minute.
+  const layers = [{ name: "L", gain: 0, clips: [clip(0, 0, 10), clip(20, 0, 10), clip(40, 0, 10)] }, { name: "M", gain: 0, clips: [clip(5, 0, 1)] }];
+  const ctx = { pieces: song, crossfade: 0, refs };
+  const at = (ls) => placeClips(ls, song, 0).filter((p) => p.layer === 0).map((p) => [p.at, ls[0].clips[p.clip].start, ls[0].clips[p.clip].end]);
+  // A gap: 25-42 cut out of the layer; the middle clip loses its end, the last its start.
+  const gap = cutLayer(layers, 0, 25, 42, { ...ctx, closeUp: false });
+  assert.deepEqual(at(gap), [[0, 0, 10], [20, 0, 5], [42, 2, 10]]);
+  assert.equal(gap[1], layers[1]); // the other layer's untouched
+  // Closed up: what's after the cut moves 17 s earlier, overlapping the join by a short crossfade.
+  const closed = cutLayer(layers, 0, 25, 42, { ...ctx, closeUp: true });
+  assert.deepEqual(at(closed), [[0, 0, 10], [20, 0, 5 + LAYER_XF], [25, 2, 10]]);
+  assert.equal(closed[0].clips[1].fadeOut, LAYER_XF);
+  assert.equal(closed[0].clips[2].fadeIn, LAYER_XF);
+  // A whole clip inside the cut goes; later clips close up.
+  const whole = cutLayer(layers, 0, 15, 35, { ...ctx, closeUp: true });
+  assert.deepEqual(at(whole), [[0, 0, 10], [20, 0, 10]]);
+  // Keep only 5-45: trimmed to it, nothing moves.
+  assert.deepEqual(at(keepLayer(layers, 0, 5, 45, ctx)), [[5, 5, 10], [20, 0, 10], [40, 0, 5]]);
+});

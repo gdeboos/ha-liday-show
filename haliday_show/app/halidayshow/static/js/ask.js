@@ -35,6 +35,26 @@ export function askYes(text, { title = "Are you sure?", yes = "OK", no = "Cancel
   });
 }
 
+// A question with a few answers: [{value, label, primary, title}]. Resolves the value picked, or null
+// for Cancel, Esc or the backdrop.
+export function askChoice(text, choices, { title = "What would you like?", no = "Cancel" } = {}) {
+  return new Promise((resolve) => {
+    let answer = null;
+    const cancel = el("button", { type: "button", textContent: no });
+    const buttons = choices.map((c) => {
+      const b = el("button", { type: "button", className: c.primary ? "primary" : "", textContent: c.label, title: c.title || "" });
+      b.addEventListener("click", () => { answer = c.value; dlg.close(); });
+      return b;
+    });
+    const { dlg } = windowWith(title, [el("p", { className: "ask-text", textContent: text })], [cancel, ...buttons]);
+    cancel.addEventListener("click", () => dlg.close());
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+    dlg.addEventListener("close", () => resolve(answer));
+    dlg.showModal();
+    (buttons.find((b) => b.classList.contains("primary")) || buttons[0]).focus();
+  });
+}
+
 // A name or other short text. Resolves the tidied text, or null if cancelled. `check(text)` returns
 // what's wrong with it ("" or null when it's fine), shown under the box rather than in a pop-up.
 export function askText(title, { label = "Name", value = "", yes = "OK", check = null, hint = "", max = 80 } = {}) {

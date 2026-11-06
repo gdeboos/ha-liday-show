@@ -142,6 +142,7 @@ export const HELP = {
       ] },
       { id: "edit", title: "Cutting and shortening", guide: ["build-a-show.md", "suggest-cuts"], tips: [
         "Select a stretch and its actions are in the <b>Selection</b> panel: <b>Preview cut</b> plays the join as if it were cut, <b>Cut</b> removes it, and <b>Keep only this</b> shortens the song to it.",
+        "Click a layer's name on its lane (or <b>⋯ → Edit this layer</b>) to edit it on its own: cuts there change only that layer.",
         "<b>✂ Suggest cuts…</b> finds whole bars to take out where the join won't be heard. It needs the song detected first.",
         "<b>Save as sample…</b> keeps the selection in <b>Library → Samples</b>, to layer over songs.",
       ] },
