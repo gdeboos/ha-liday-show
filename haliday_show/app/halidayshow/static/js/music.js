@@ -342,12 +342,20 @@ export function mapLyrics(lyrics, pieces, crossfade, src) {
     const own0 = i === 0 ? 0 : at + xf / 2;
     const own1 = i === pieces.length - 1 ? total : places[i + 1].at + places[i + 1].xf / 2;
     const map = (t) => at + (t - p.start);
+    const kept = (t) => t >= p.start && t <= p.end && map(t) >= own0 - EPS && map(t) < own1 - EPS;
+    const to = (t) => r3(Math.min(map(Math.min(Math.max(t, p.start), p.end)), own1));
     for (const l of lines) {
-      if (l.start < p.start || l.start > p.end || map(l.start) < own0 - EPS || map(l.start) >= own1 - EPS) continue;
+      if (l.times) {
+        // Words with their own times: the ones cut out go, and the line is the words left.
+        const left = l.times.map((t, k) => ({ t, word: l.words[k] })).filter(({ t }) => kept(t.start));
+        if (!left.length) continue;
+        const words = left.map(({ t }) => ({ start: to(t.start), end: Math.max(to(t.start) + 0.05, to(t.end)) }));
+        out.push({ text: left.map((x) => x.word).join(" "), start: words[0].start, end: words[words.length - 1].end, words });
+        continue;
+      }
+      if (!kept(l.start)) continue;
       const start = r3(map(l.start));
-      const at = (t) => r3(Math.min(map(Math.min(Math.max(t, p.start), p.end)), own1));
-      const words = l.times && l.times.map((t) => ({ start: at(t.start), end: Math.max(at(t.start) + 0.05, at(t.end)) }));
-      out.push({ text: l.text, start, end: words ? words[words.length - 1].end : Math.max(start + 0.05, at(l.end)), ...(words ? { words } : {}) });
+      out.push({ text: l.text, start, end: Math.max(start + 0.05, to(l.end)) });
     }
   });
   out.sort((a, b) => a.start - b.start);
@@ -371,6 +379,18 @@ export function mapWords(words, pieces, crossfade, src) {
     }
   });
   return out.sort((a, b) => a.start - b.start);
+}
+
+// The base song's singer ({fps, values, shapes}, as kept with it) heard through the edit: each step of
+// the result takes the singer at the same moment of the base song, quiet in parts spliced in.
+export function mapVoice(voice, pieces, crossfade, src, duration) {
+  const fps = voice.fps, n = Math.ceil(duration * fps), values = [], shapes = [];
+  for (let k = 0; k < n; k++) {
+    const b = toBase(pieces, crossfade, src, k / fps), j = b === null ? -1 : Math.floor(b * fps + 1e-6);
+    values.push(j >= 0 ? voice.values[j] ?? 0 : 0);
+    shapes.push(j >= 0 ? voice.shapes?.[j] ?? "m" : "m");
+  }
+  return { fps, values, shapes: shapes.join("") };
 }
 
 // rendering ---------------------------------------------------------------------
@@ -2503,7 +2523,7 @@ export class MusicEditor {
     this.lyricsTimer = setTimeout(() => {
       const length = this.sources[keyOf(l.ref)]?.[0].length / this.audio.sampleRate || this.total;
       this.host.api(lyricsUrl(l.ref), { method: "PUT", json: songLyrics(savedLyrics(l.text, l.lines, l.voice, length)) })
-        .then(() => this.host.status("Lyrics saved with the song", "saved", "music-lyrics"))
+        .then(() => { this.host.lyricsChanged?.(); this.host.status("Lyrics saved with the song", "saved", "music-lyrics"); })
         .catch((e) => this.host.status(`Couldn't save the lyrics: ${e.message}`, true));
     }, 400);
   }

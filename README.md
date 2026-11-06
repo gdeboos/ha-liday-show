@@ -273,7 +273,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     Phones lane, in time with the lights (off until you turn it on; a show can stay out). The phone's
     screen is a small matrix, so the lane takes matrix effects too: fire, scrolling text, pictures and GIFs,
     and a singing face (14 characters, from a snowman and Santa to a skull and a black cat, or your own from the face maker) whose mouth follows the vocals, or the
-    song's lyrics, placed for you and tweaked by tapping along or dragging words on the Music editor's lyrics lane, kept with the song for every show
+    song's lyrics, placed for you and tweaked by tapping along or dragging words on the Music editor's lyrics lane, kept with the song for every show and edit of it, and shown on the show timeline
   - Installable as an app on visitors' phones (home-screen icon, full screen, your code built in)
   - Fair turns and neighbour guardrails: no repeats, cool-downs, finish by closing time, rest breaks, and a
     quieter (or silent) speaker late at night
