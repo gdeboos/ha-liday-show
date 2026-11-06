@@ -2276,6 +2276,20 @@ Also on the **Shows** tab:
   a playlist, its first show's. Shows without either get a tile in their colours with their first
   letter. The pictures show in the list, under **Coming soon**, and beside what's on in the card at the
   top. Turn it off for no pictures.
+- **Welcome first-time visitors** (on to start with): the first time a phone opens the page, a few short
+  steps explain it, one screen at a time:
+  1. **Welcome**: your picture and title, what the page is for, and the flashing lights warning with
+     **I understand, next** (when you show the warning). When visitors can join the show, it adds that their
+     phone's screen will flash too, so joining afterwards goes straight to the colours.
+  2. **Pick a song**: with one of your shows and the button visitors will press (**Start**, **Queue** or
+     **Vote**, whichever applies right then), plus when the lights stop taking requests and how many picks
+     each phone can have.
+  3. **Join in from your phone**: **Listen** and **Join the show**, each with a line on what it does and a
+     button that starts it there and then. Only what you've switched on appears; with neither, there's no
+     third step.
+
+  **Skip** is on every step but the warning. Each phone sees the welcome once; **How this works** at the
+  bottom of the page shows it again. Its words are under **Welcome** on the **Words** tab.
 - Each show with a palette also gets a row of small **colour dots** before how long it lasts (up to six,
   from its palette, and its first show's for a playlist), so visitors can see what colours it plays on the
   house. A show with no palette has no dots.

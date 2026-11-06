@@ -6526,6 +6526,7 @@ function renderPublicLook() {
   $("pub-snow").checked = look.snow;
   $("pub-show-length").checked = look.show_length !== false;
   $("pub-covers").checked = look.covers !== false;
+  $("pub-tour").checked = look.tour !== false;
   $("pub-warning").value = look.warning || "off";
   const ownPicture = dated && (view.look_pictures || []).includes(pubLookFor);
   const hasPicture = view.has_picture || ownPicture;
@@ -6962,6 +6963,7 @@ function savePublic() {
       borders: $("pub-borders").checked,
       show_length: $("pub-show-length").checked,
       covers: $("pub-covers").checked,
+      tour: $("pub-tour").checked,
       warning: $("pub-warning").value,
       colours: Object.fromEntries([...document.querySelectorAll("#pub-colours input[data-colour]")]
         .map((i) => [i.dataset.colour, i.value])),

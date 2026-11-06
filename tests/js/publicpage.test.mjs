@@ -225,3 +225,23 @@ test("with voting on, visitors vote and see the counts", () => {
   assert.deepEqual(page.voteOf(s.choices[1], s), { key: "playlist:eve", count: 1, mine: true, leading: false, text: "1 vote" });
   assert.equal(page.voteOf(s.choices[0], st()), null);
 });
+
+test("the welcome's picking step names the button visitors will see", () => {
+  const plan = (st) => page.tourPlan({ choices: [{ name: "A" }], look: { warning: "accept" }, ...st }, W);
+  const quiet = plan({ now: null, queue: [], per_phone: 1, hours: { open: true, until: "2026-12-20T22:00" } });
+  assert.equal(quiet.word, "start");
+  assert.equal(quiet.text, "tour_pick_start");
+  assert.deepEqual(quiet.rules, ["The lights take requests until 10pm.", "One pick at a time from each phone, so everyone gets a turn."]);
+  assert.deepEqual(quiet.steps, ["welcome", "pick"]);
+  assert.equal(quiet.warning, true);
+  const busy = plan({ now: { name: "A" }, queue: [], per_phone: 3, listen: {}, phones: {} });
+  assert.equal(busy.word, "queue_btn");
+  assert.equal(busy.text, "tour_pick_queue");
+  assert.deepEqual(busy.rules, ["Up to 3 picks at a time from each phone."]);
+  assert.deepEqual(busy.steps, ["welcome", "pick", "join"]);
+  const vote = plan({ vote: { counts: {} }, per_phone: 1, phones: {} });
+  assert.equal(vote.word, "vote_btn");
+  assert.equal(vote.text, "tour_pick_vote");
+  assert.deepEqual(vote.rules, []);
+  assert.deepEqual(plan({ choices: [] }).steps, ["welcome"]);
+});

@@ -423,7 +423,7 @@ def test_opening_hours():
     p = public.clean({"hours": {"on": True, "start": "17:00", "end": "22:00", "days": [5, 6], "from": "12-01", "to": "12-02"}})
     assert p["hours"]["from"] == ""  # dates belong to each show, not the hours
     sat = datetime(2026, 10, 31, 18, 0)  # a Saturday
-    assert public.hours_now(p, None, sat) == {"open": True}
+    assert public.hours_now(p, None, sat) == {"open": True, "until": "2026-10-31T22:00"}
     morning = public.hours_now(p, None, datetime(2026, 10, 31, 9, 30))
     assert morning == {"open": False, "next": "2026-10-31T17:00", "now": "2026-10-31T09:30"}
     assert public.hours_now(p, None, datetime(2026, 10, 26, 18, 0))["next"] == "2026-10-31T17:00"  # Monday
