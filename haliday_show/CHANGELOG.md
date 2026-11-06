@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.423
+
+- **Repeat a stretch.** In the Music editor's **Selection** panel, **Repeat ×2** and **Repeat ×4** play what you've selected twice or four times in a row, and what comes after moves on. Select whole bars for a seamless loop. While you're editing a layer on its own, it repeats just that layer.
+
 ## 0.2.422
 
 - **Splice a song into a layer.** While you're editing a layer on its own in the Music editor, **Add another song** puts the song into that layer: **Insert into Choir at playhead** moves the rest of the layer on to make room, and **Add to end of Choir** adds it after the layer's last clip. The song and your other layers stay where they are.
