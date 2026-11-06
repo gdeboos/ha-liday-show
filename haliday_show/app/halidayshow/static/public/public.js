@@ -650,7 +650,7 @@ export function start() {
           await loadFx();
           for (const [id, pic] of Object.entries(got.lane.pictures || {})) fxPictures.keepPicture(id, pic);
           if (gen === join.gen && join.key === want) join.lane = got.lane;
-        } catch { /* one colour at a time, then */ }
+        } catch (e) { console.warn("Phones lane: couldn't load the effects, so one colour at a time", e); }
       }
       join.colours = String(got.colours || "");
       join.house = String(got.house || "");

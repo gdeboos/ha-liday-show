@@ -1434,6 +1434,9 @@ async def test_phones_get_the_shows_phones_lane_to_draw(client):
         assert status == 200 and "phoneScreen" in body and headers["Content-Type"].startswith("text/javascript")
         status, body, _ = await _visitor(client, "/fx/faces.js", code=False)
         assert status == 200 and "faceColour" in body
+        # Each asks for the others with the same stamp, so a phone never mixes old and new ones.
+        status, body, _ = await _visitor(client, "/fx/effects.js", code=False)
+        assert f'"./phones.js?v={public._STAMP}"' in body and '"./phones.js"' not in body
         for bad in ("/fx/app.js", "/fx/..%2Fserver.py", "/fx/house.js"):
             status, _, _ = await _visitor(client, bad, code=False)
             assert status == 404
