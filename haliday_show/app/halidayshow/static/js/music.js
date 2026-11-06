@@ -2423,16 +2423,34 @@ export class MusicEditor {
   async saveSample() {
     if (!this.sel || !this.rendered) return;
     const { start, end } = this.sel;
+    // What to keep: as you hear it, the layer being edited on its own, or one of the song's parts.
+    const choices = [];
+    if (this.focus != null) choices.push({ value: "layer", label: `Just ${this.layers[this.focus].name}`, primary: true });
+    choices.push({ value: "heard", label: "As you hear it", primary: this.focus == null });
+    if (this.focus == null && this.partsAvailable) {
+      for (const p of SONG_PARTS) choices.push({ value: p, label: `Just the ${PART_LOOK[p][0].toLowerCase()}` });
+    }
+    const what = choices.length > 1 ? await askChoice(`Save ${fmtTime(start)} to ${fmtTime(end)} as a sample: which sound?`, choices,
+      { title: "Save as sample" }) : "heard";
+    if (!what) return;
     const song = nameOf(this.base || { path: "song" }).replace(/\.[^.]+$/, "");
-    const typed = await askText("Save as sample", { value: `${song} ${fmtTime(start, false).replace(":", ".")}`, max: 120, yes: "Save" });
+    const label = what === "layer" ? this.layers[this.focus].name : SONG_PARTS.includes(what) ? `${song} ${PART_LOOK[what][0].toLowerCase()}` : song;
+    let sound = what === "layer" ? this.focusMix : this.rendered;
+    if (SONG_PARTS.includes(what)) {
+      if (!this.partRender(what)) { this.host.status("Loading the song's parts…"); await this.loadParts([what]); }
+      sound = this.partRender(what) && this.soloedParts([what]);
+      if (!sound) return this.host.status("Couldn't load the song's parts to save one", true);
+    }
+    if (!sound) return;
+    const typed = await askText("Save as sample", { value: `${label} ${fmtTime(start, false).replace(":", ".")}`, max: 120, yes: "Save" });
     if (!typed) return;
     const name = `${typed.replace(/\.wav$/i, "")}.wav`;
     const have = await this.host.api("api/samples").catch(() => []);
     if (have.some((s) => s.path.split("/").pop().toLowerCase() === name.toLowerCase())
         && !(await askYes(`There's already a sample called ${name}. Replace it?`, { yes: "Replace" }))) return;
-    // As it sounds in the edit, layers and all.
+    // As it sounds in the edit (layers and all, or just what was picked).
     const rate = this.audio.sampleRate, a = Math.round(start * rate), b = Math.round(end * rate);
-    const channels = this.rendered.map((ch) => ch.slice(a, b));
+    const channels = sound.map((ch) => ch.slice(a, b));
     this.host.status(`Saving ${name}…`);
     try {
       await uploadSong(this.host.api, new Blob([encodeWav(channels, rate)], { type: "audio/wav" }), name,

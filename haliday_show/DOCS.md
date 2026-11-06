@@ -1032,7 +1032,11 @@ the window says why, and HA-liday Show's log (in Home Assistant, the app's **Log
 Christmas", ready to layer over a song in the Music editor. There are two ways to make one:
 
 - **From a song:** in the Music editor, select the stretch you want and press **Save as sample…** (in
-  the **Selection** panel), then give it a name. It's saved as it sounds in your edit, layers and all.
+  the **Selection** panel), pick which sound, then give it a name. **As you hear it** keeps it as it
+  sounds in your edit, layers and all. A song that's been split into parts also offers **Just the
+  vocals**, **Just the drums**, **Just the bass** and **Just the rest** (a drum fill, or a sung line on its
+  own), and while you're editing a layer on its own, **Just Choir** (or whatever it's called) keeps just
+  that layer.
 - **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
 
 They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Library → Songs** and a show's
@@ -1253,7 +1257,7 @@ If you delete a sample a draft uses, its clips show greyed out and silent until 
 the sample back. Layers are part of the draft and every change is one
 **Undo** step. **Make song file** mixes the layers into the new file, keeping the mix from
 distorting where they pile up. The waveform, **Detect** and **Suggest cuts** go by the song alone, and a
-sample saved with **Save as sample…** includes the layers.
+sample saved with **Save as sample…** includes the layers unless you pick one sound.
 
 #### Mashups
 
