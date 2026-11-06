@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.379
+
+- **▶ Preview** in **Library → Shows** now shows visitors' phones beside your house, as the House panel does in the Show editor: what their screens show as the show plays. It appears when phones join the show or it has a **Phones** lane.
+
 ## 0.2.378
 
 - The vocals and music that **Split vocals** makes now sit under the song they came from in **Library → Songs**, in a **Split vocals** group, so they're in that song's folder instead of loose at the top. They follow it when you pick a song for a new show or to splice in, too.

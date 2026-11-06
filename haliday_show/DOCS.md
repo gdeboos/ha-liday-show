@@ -692,6 +692,8 @@ songs. They're saved with your settings, so they're in **Export…** too.
   Nothing is sent to your lights. Under the house are the player controls: **⏮** back to the start, **⏪** and
   **⏩** back and on 5 seconds, **▶**/**⏸** to play and pause, a bar to jump to any point, and the volume. On a
   keyboard, Space plays and pauses, the arrow keys move 5 seconds and Home goes back to the start. **Edit** opens it.
+  When visitors' phones join the show, or it has a **Phones** lane, a phone beside the house shows what their
+  screens show as it plays (below the house on a narrow screen).
 - <a id="making-a-video-of-a-show"></a>**Making a video of a show**: **Export video…** in a show's **⋯** (or
   **🎬 Video…** in the Show editor's top bar) makes an MP4 of it playing on your house photo, as **▶ Preview**
   shows it, with its song, to post on YouTube, a forum or social media.
