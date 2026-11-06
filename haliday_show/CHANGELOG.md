@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.366
+
+- **Start a playlist from Home Assistant.** The **HA-liday Show** device now has a **Playlist** select and a **Play playlist** button, next to **Show** and **Play**, so an automation can start a whole playlist. It works in Docker and pipx installs too, without `hassio.app_stdin`. See **Automations** in the guide. (Needs the MQTT integration.)
+
 ## 0.2.365
 
 - **Export a show as a video.** **🎬 Video…** in the Show editor's top bar, or **Export video…** in a show's **⋯** under **Library → Shows**, makes an MP4 of the show playing on your house photo, with its song, to share anywhere.

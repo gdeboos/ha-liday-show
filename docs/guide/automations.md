@@ -29,6 +29,24 @@ actions:
 
 You can also publish a show's name or id to the `haliday_show/play` MQTT topic.
 
+To start a [playlist](play-it.md#playlists) instead, use the **Playlist** select and the **Play playlist** button
+in the same way:
+
+```yaml
+actions:
+  - action: select.select_option
+    target:
+      entity_id: select.ha_liday_show_playlist
+    data:
+      option: Halloween night
+  - action: button.press
+    target:
+      entity_id: button.ha_liday_show_play_playlist
+```
+
+Or publish a playlist's name or id to the `haliday_show/playlist/play` MQTT topic. This works the same
+in Docker and pipx installs, where there's no `hassio.app_stdin`. **Stop** stops a playlist too.
+
 Your [scenes](play-it.md#scenes) are on the same device:
 
 - **A scene for each of yours**, such as `scene.ha_liday_show_candy_cane`. They're in Home Assistant's

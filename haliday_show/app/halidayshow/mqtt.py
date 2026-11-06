@@ -4,19 +4,22 @@ Creates a "HA-liday Show" device with:
   select.ha_liday_show_show    pick a show
   button.ha_liday_show_play    play the selected show (on its saved speaker)
   button.ha_liday_show_stop    stop
+  select.ha_liday_show_playlist         pick a playlist
+  button.ha_liday_show_play_playlist    play the selected playlist
   sensor.ha_liday_show_status  idle, or the name of the show playing
   light.ha_liday_show          your scenes as one light: on/off, brightness, and the scenes as effects
   scene.ha_liday_show_<name>   one per scene, so they're in HA's Scenes, automations and voice
   switch.ha_liday_show_<season>_props_out   one per season: on while its props are out (seasons.py)
 
-Publishing a show id or name to haliday_show/play also plays it directly. A scene asked for while a
+Publishing a show id or name to haliday_show/play also plays it directly, and a playlist's to
+haliday_show/playlist/play. A scene asked for while a
 show or playlist is on waits for it to finish (runner.want_scene).
 """
 import asyncio
 import json
 import logging
 
-from . import __version__, migrate, seasons
+from . import __version__, migrate, playlists, seasons
 from .commands import find_show
 from .runner import Runner, RunnerError
 
@@ -35,9 +38,16 @@ def show_options(shows: list[dict]) -> dict[str, str]:
             for s in shows}
 
 
-def discovery_configs(options: list[str]) -> dict[str, dict]:
+def discovery_configs(options: list[str], playlist_options: list[str] = ()) -> dict[str, dict]:
     avail = {"availability_topic": f"{BASE}/availability"}
     return {
+        f"{DISCOVERY}/select/haliday_show/playlist/config": {
+            "name": "Playlist", "unique_id": "haliday_show_playlist", "icon": "mdi:playlist-play",
+            "command_topic": f"{BASE}/playlist/set", "state_topic": f"{BASE}/playlist/state",
+            "options": list(playlist_options) or ["(no playlists yet)"], "device": DEVICE, **avail},
+        f"{DISCOVERY}/button/haliday_show/play_playlist/config": {
+            "name": "Play playlist", "unique_id": "haliday_show_play_playlist", "icon": "mdi:play-box-multiple",
+            "command_topic": f"{BASE}/playlist/play", "payload_press": "PRESS", "device": DEVICE, **avail},
         f"{DISCOVERY}/select/haliday_show/show/config": {
             "name": "Show", "unique_id": "haliday_show_show", "icon": "mdi:playlist-music",
             "command_topic": f"{BASE}/show/set", "state_topic": f"{BASE}/show/state",
@@ -94,13 +104,14 @@ class MqttBridge:
         self.storage = runner.storage
         self.client = None
         self.options: dict[str, str] = {}
+        self.playlist_options: dict[str, str] = {}
         self.scene_options: dict[str, str] = {}
         self._status = None
         self._light = None
         self._refresh = asyncio.Event()
 
     def refresh(self):
-        """Call after shows change so the select's options follow."""
+        """Call after shows or playlists change so the selects' options follow."""
         self._refresh.set()
 
     @property
@@ -110,6 +121,15 @@ class MqttBridge:
     def _select(self, show_id: str):
         settings = self.storage.load_settings()
         settings["selected_show"] = show_id
+        self.storage.save_settings(settings)
+
+    @property
+    def selected_playlist(self) -> str | None:
+        return self.storage.load_settings().get("selected_playlist")
+
+    def _select_playlist(self, playlist_id: str):
+        settings = self.storage.load_settings()
+        settings["selected_playlist"] = playlist_id
         self.storage.save_settings(settings)
 
     async def run(self, config: dict):
@@ -160,7 +180,8 @@ class MqttBridge:
     async def _publish_all(self):
         await self._clear_old_entities()
         self.options = show_options(self.storage.list_shows())
-        for topic, cfg in discovery_configs(list(self.options)).items():
+        self.playlist_options = show_options(playlists.load(self.storage))
+        for topic, cfg in discovery_configs(list(self.options), list(self.playlist_options)).items():
             await self.client.publish(topic, json.dumps(cfg), retain=True)
         scenes = self.storage.list_scenes()
         self.scene_options = scene_options(scenes)
@@ -200,6 +221,9 @@ class MqttBridge:
         label = next((k for k, v in self.options.items() if v == self.selected), None)
         if label:
             await self.client.publish(f"{BASE}/show/state", label, retain=True)
+        label = next((k for k, v in self.playlist_options.items() if v == self.selected_playlist), None)
+        if label:
+            await self.client.publish(f"{BASE}/playlist/state", label, retain=True)
 
     async def _publish_status(self):
         st = self.runner.status()
@@ -258,6 +282,12 @@ class MqttBridge:
         except RunnerError as e:
             log.error("couldn't play %s: %s", show_id, e)
 
+    async def _play_playlist(self, playlist: dict):
+        try:
+            await self.runner.play_playlist(playlist)
+        except RunnerError as e:
+            log.error("couldn't play the playlist %s: %s", playlist["name"], e)
+
     async def _on_message(self, topic: str, payload: bytes):
         text = payload.decode(errors="replace").strip()
         try:
@@ -274,6 +304,17 @@ class MqttBridge:
                     raise ValueError(f"no show called '{text}'" if text != "PRESS" else "no show selected")
                 # Starting a speaker can take seconds; keep handling messages meanwhile.
                 asyncio.create_task(self._play(show_id))
+            elif topic == f"{BASE}/playlist/set":
+                playlist = playlists.find(self.storage, self.playlist_options.get(text) or text)
+                if playlist:
+                    self._select_playlist(playlist["id"])
+                    await self._publish_selected()
+            elif topic == f"{BASE}/playlist/play":
+                ref = self.selected_playlist if text in ("", "PRESS") else text
+                playlist = playlists.find(self.storage, ref) if ref else None
+                if not playlist:
+                    raise ValueError(f"no playlist called '{text}'" if text not in ("", "PRESS") else "no playlist selected")
+                asyncio.create_task(self._play_playlist(playlist))
             elif topic == f"{BASE}/light/set":
                 await self._light_command(text)
             elif topic.startswith(f"{BASE}/scene/") and topic.endswith("/set"):
