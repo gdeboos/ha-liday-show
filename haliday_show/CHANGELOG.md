@@ -2,7 +2,7 @@
 
 ## 0.2.368
 
-- **House colour for the Phones lane.** A new **House colour** effect shows your house's main colour on visitors' phones, as they do without a Phones lane. **Add a Phones lane** now starts the lane with **House colour** across the whole show, so you only design the parts you want to (a big chorus, say) and leave the rest following the house. You'll find it under **Basics** in the effect chooser, on the Phones lane only. The **Preview** panel's **Phones** row now shows what phones will show, too.
+- **House colour for the Phones lane.** A new **House colour** effect shows your house's main colour on visitors' phones, as they do without a Phones lane. **Add a Phones lane** now starts the lane with **House colour** across the whole show, so you only design the parts you want to (a big chorus, say) and leave the rest following the house. You'll find it under **Basics** in the effect chooser, on the Phones lane only. The **Preview** panel now has a **Phones** row whenever phones join the show, with or without a Phones lane, showing what phones will show.
 
 ## 0.2.367
 

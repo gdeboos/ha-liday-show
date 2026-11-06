@@ -2626,8 +2626,12 @@ const preview = $("preview");
 const pctx = preview.getContext("2d");
 const ROW_H = 26, LABEL_W = 140;
 
+let phonesOn = false; // the public page's Let visitors' phones join the show
 function previewTracks() {
-  return app.show.tracks.filter(playingDev);
+  const tracks = app.show.tracks.filter(playingDev);
+  // Phones get a row while they join this show, even without a Phones lane: the house's main colour.
+  if (!app.sceneId && !hasPhonesLane(app.show) && phonesJoin(app.show, phonesOn)) tracks.push({ device: PHONES, clips: [] });
+  return tracks;
 }
 
 function layoutPreview() {
@@ -2919,7 +2923,6 @@ function drawHouse() {
 // The phone in the corner of the House panel: what visitors' phones show now (phones.js), worked out
 // as the bake does, from the same moment ten times a second. Shown while phones join this show or it
 // has a Phones lane; clicking it folds it away.
-let phonesOn = false; // the public page's Let visitors' phones join the show
 function drawPhoneTile() {
   const tile = $("phone-tile");
   const want = !app.sceneId && (phonesJoin(app.show, phonesOn) || hasPhonesLane(app.show));
@@ -6855,7 +6858,7 @@ async function loadPublic({ items = false } = {}) {
   try {
     const view = await api("api/public");
     if (!pubPending) publicView = view;
-    if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; drawHouse(); }
+    if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; layoutPreview(); drawHouse(); }
     renderPublicQueue(view);
     $("pub-on").checked = view.on;
     if (!items) return;
@@ -6968,7 +6971,7 @@ function savePublic() {
         method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
           repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, phones: !!phones, ...(pick ? { pick } : {}) },
       });
-      phonesOn = !!view.phones;
+      if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; layoutPreview(); }
       if (pubPending === 1) {
         publicView = view;
         if (shownPage === "public") renderPublicItems();
@@ -11925,6 +11928,7 @@ function wire() {
   $("show-phones").addEventListener("change", (e) => {
     if (e.target.checked) delete app.show.phones; else app.show.phones = false;
     app.changed();
+    layoutPreview();
     renderShowPhones();
     drawHouse();
   });

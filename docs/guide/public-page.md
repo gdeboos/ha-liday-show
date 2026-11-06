@@ -315,7 +315,7 @@ What phones show:
   goes back to the house's main colour everywhere. ✨ **Generate** leaves the Phones lane alone.
 
 While you edit, a small phone in the top corner of the **House** panel shows what phones will show at
-that moment, worked out just as the phones' colours are. It shows while phones join the show (or it has a
+that moment, worked out just as the phones' colours are, and the **Preview** panel has a **Phones** row too. It shows while phones join the show (or it has a
 Phones lane); click it to fold it away, and again to bring it back.
 
 How it works:
