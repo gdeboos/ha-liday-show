@@ -43,13 +43,43 @@ export function voiceBand(samples, rate) {
   return biquad(biquad(samples, "high", 300), "low", Math.min(3400, rate * 0.45));
 }
 
+// The mouth's shape for each step of the singer's level (values, fps a second), as a string of faces.js
+// SHAPES: "m" when it's quiet, else guessed from where the voice's energy is. An open "ah" puts a lot
+// into 500-1100 Hz (its first formant is high); an "ee" has a high second formant (1.7-3.2 kHz) over a
+// low first; an "oo" keeps it all low. Rough, as no lyrics are known, but it gives the mouth variety.
+export function voiceShapes(samples, rate, fps, values) {
+  const band = (lo, hi) => {
+    const f0 = Math.sqrt(lo * hi), q = f0 / (hi - lo), w = (2 * Math.PI * Math.min(f0, rate * 0.45)) / rate;
+    const alpha = Math.sin(w) / (2 * q), cos = Math.cos(w), a0 = 1 + alpha;
+    const b0 = alpha / a0, b2 = -alpha / a0, a1 = (-2 * cos) / a0, a2 = (1 - alpha) / a0;
+    const step = Math.max(1, Math.round(rate / fps)), out = new Float64Array(values.length);
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    for (let i = 0; i < samples.length; i++) {
+      const y = b0 * samples[i] + b2 * x2 - a1 * y1 - a2 * y2;
+      x2 = x1; x1 = samples[i]; y2 = y1; y1 = y;
+      const k = Math.floor(i / step);
+      if (k < out.length) out[k] += y * y;
+    }
+    return out;
+  };
+  const low = band(200, 500), mid = band(500, 1100), high = band(1700, 3200);
+  const raw = Array.from(values, (v, k) => {
+    if (v < 15) return "m";
+    const l = low[k], m = mid[k], h = high[k];
+    if (h > 0.5 * (l + m)) return "e";
+    return m > 1.2 * l ? "a" : "o";
+  });
+  // A shape lasts at least two steps, so the mouth doesn't flicker between them.
+  return raw.map((c, k) => (k > 0 && k < raw.length - 1 && raw[k - 1] !== c && raw[k + 1] !== c ? raw[k - 1] : c)).join("");
+}
+
 // Whether a show's saved voice levels belong to its current song (the same file, as long as it was
 // then). `vocals`: whether the song's vocals are there now, so levels taken from the song itself are
 // measured again from them.
 export function voiceFits(show, songPath, duration, vocals = false) {
   const l = show?.voice;
   return !!l && Array.isArray(l.values) && l.song === songPath && Math.abs((l.seconds ?? duration) - duration) < 0.5
-    && !(vocals && l.from === "song");
+    && !(vocals && l.from === "song") && typeof l.shapes === "string"; // before 0.2.385 there were no shapes
 }
 
 // Where Split vocals keeps a song's vocals: in HA-liday Show's own folder of your songs (as the server

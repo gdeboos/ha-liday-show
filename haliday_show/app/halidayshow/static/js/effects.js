@@ -7,7 +7,7 @@ import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } fr
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
-import { CHARACTERS, FACE_ASPECT, faceColour, mouthFor } from "./faces.js";
+import { CHARACTERS, FACE_ASPECT, SHAPES, blinkAt, faceColour, lookAt, mouthFor } from "./faces.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_SAMPLE, hasPhonesLane, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
 
 export const FPS = 40;
@@ -789,6 +789,17 @@ function voiceAt(time) {
   return (a + (b - a) * (x - k)) / 100;
 }
 
+let faceMemo = { p: null, song: NaN };
+
+// The mouth's shape at `time` (faces.js SHAPES), as measured from the singer (show.voice.shapes); "a"
+// without.
+function shapeAt(time) {
+  const s = voiceLevels?.shapes;
+  if (typeof s !== "string" || !s.length) return "a";
+  const c = s[Math.min(Math.max(Math.floor(time * (voiceLevels.fps || 10)), 0), s.length - 1)];
+  return SHAPES.includes(c) ? c : "a";
+}
+
 // After xLights' VU meter.
 Object.assign(EFFECTS, {
   vumeter: {
@@ -854,19 +865,36 @@ Object.assign(EFFECTS, {
     // One of the characters in faces.js, as big as fits (Size %), its mouth opening with the singer.
     label: "Singing face", music: true,
     params: [choice("character", "Character", "snowman", CHARACTERS), color("background", "Background", "#000000"),
-      num("size", "Size %", 100, 40, 100, 5)],
+      num("size", "Size %", 100, 40, 100, 5), num("sensitivity", "Mouth sensitivity %", 50, 0, 100, 5),
+      choice("life", "Blinks, glances and bobs", "on", ["on", "off"])],
     renderXY: (p, t, dur, w, h, x, y) => {
       const bg = hexToRgb(p.background);
       const scale = Math.min(Math.max(Number(p.size) || 100, 40), 100) / 100;
       const bh = Math.min(h, w / FACE_ASPECT) * scale, bw = bh * FACE_ASPECT;
-      const x0 = (w - bw) / 2, y0 = (h - bh) / 2;
       // t is the time into the clip; the singer goes by the time into the song, as Music level does.
-      const mouth = mouthFor(voiceAt((Number(p.start) || 0) + t));
+      const song = (Number(p.start) || 0) + t, life = p.life !== "off";
+      // Worked out once a moment, not once an LED.
+      if (faceMemo.p !== p || faceMemo.song !== song) {
+        // The mouth snaps open on a word and closes a moment after, rather than flickering: the
+        // loudest of now and just before, with that moment's shape.
+        let best = -1, at = 0;
+        for (const [back, keep] of [[0, 1], [0.05, 0.85], [0.1, 0.7]]) {
+          const l = voiceAt(song - back) * keep;
+          if (l > best) { best = l; at = song - back; }
+        }
+        const mouth = mouthFor(best, p.sensitivity);
+        const shape = shapeAt(at);
+        faceMemo = { p, song, face: { mouth, shape: shape === "m" && mouth > 0 ? "a" : shape,
+          blink: life ? blinkAt(song) : 0, look: life ? lookAt(song) : 0 },
+        bob: life ? levelAt(song) * 0.025 : 0 }; // a little bob with the music
+      }
+      const face = faceMemo.face;
+      const x0 = (w - bw) / 2, y0 = (h - bh) / 2 - faceMemo.bob * bh;
       // Four looks inside each LED, averaged, so the edges are soft rather than jagged.
       const out = [0, 0, 0];
       for (const [dx, dy] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {
         const u = (x + dx - x0) / bw, v = (y + dy - y0) / bh;
-        const c = (u >= 0 && u <= 1 && v >= 0 && v <= 1 && faceColour(p.character, u, v, mouth)) || bg;
+        const c = (u >= 0 && u <= 1 && v >= 0 && v <= 1 && faceColour(p.character, u, v, face)) || bg;
         out[0] += c[0] / 4; out[1] += c[1] / 4; out[2] += c[2] / 4;
       }
       return out;

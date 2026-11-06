@@ -117,7 +117,7 @@ test("the singer's level: where the vocals are, when to measure again, and kept 
   assert.deepEqual(vocalsPlaces({ source: "media", path: "Xmas/Jingle: Bells.mp3" }, "Jingle: Bells (vocals).wav"), [
     { source: "media", path: "haliday_show/Jingle_ Bells (vocals).wav" },
     { source: "media", path: "Xmas/Jingle: Bells (vocals).wav" }]);
-  const show = { audio: { path: "a.mp3" }, voice: { fps: 20, song: "a.mp3", values: [1], from: "song", seconds: 100 } };
+  const show = { audio: { path: "a.mp3" }, voice: { fps: 20, song: "a.mp3", values: [1], shapes: "m", from: "song", seconds: 100 } };
   assert.ok(voiceFits(show, "a.mp3", 100.2));
   assert.ok(!voiceFits(show, "a.mp3", 100.2, true)); // vocals split since: measure them
   assert.ok(!voiceFits(show, "a.mp3", 130)); // another file under the same name
@@ -143,4 +143,40 @@ test("a Singing face later in the show follows the singer at that point in the s
     return n;
   });
   assert.ok(dark(13) > shut + 20); // 13 s into the song: singing, so the mouth is open
+});
+
+test("mouth shapes from the voice, blinks and glances", async () => {
+  const { voiceShapes } = await import("../../haliday_show/app/halidayshow/static/js/musiclevel.js");
+  const { blinkAt, faceColour, lookAt } = await import("../../haliday_show/app/halidayshow/static/js/faces.js");
+  const r = 16000, tone = (hz) => Float32Array.from({ length: r }, (_, i) => Math.sin(2 * Math.PI * hz * i / r));
+  const shape = (hz) => voiceShapes(tone(hz), r, 20, Array(20).fill(80))[10];
+  assert.equal(shape(300), "o"); // all low
+  assert.equal(shape(800), "a"); // a high first formant
+  assert.equal(shape(2500), "e"); // a high second formant
+  assert.equal(voiceShapes(tone(800), r, 20, Array(20).fill(5))[10], "m"); // quiet: closed
+  // An "oo" is narrower than an "ee", and "mm" is shut whatever the level.
+  const wide = (shape) => { let n = 0; for (let u = 0; u <= 1; u += 0.01) if (faceColour("snowman", u, 0.72, { mouth: 1, shape }) && faceColour("snowman", u, 0.72, { mouth: 1, shape })[0] < 100) n++; return n; };
+  assert.ok(wide("o") < wide("e"));
+  assert.deepEqual(faceColour("snowman", 0.5, 0.78, { mouth: 1, shape: "m" }), faceColour("snowman", 0.5, 0.78, { mouth: 0 }));
+  // A blink in every four seconds, and the eyes mostly ahead.
+  const blinks = Array.from({ length: 400 }, (_, k) => blinkAt(k / 100)).filter((b) => b > 0.5).length;
+  assert.ok(blinks > 0 && blinks < 20);
+  assert.ok([-1, 0, 1].includes(lookAt(7.3)));
+});
+
+test("a quiet moment straight after a word, or quiet singing at high sensitivity, still shows an open mouth", async () => {
+  const { phoneScreen, withVoiceLevels } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const dark = (voice, time, extra = {}) => withVoiceLevels(voice, () => {
+    const f = phoneScreen([{ ...newClip("singingface", 0, 4), character: "ghost", life: "off", ...extra }], time);
+    let n = 0;
+    for (let i = 0; i < f.length; i += 3) if (f[i] < 60 && f[i + 1] < 60 && f[i + 2] < 60) n++;
+    return n;
+  });
+  // Loud until 1 s (an "ah"), then quiet ("m"): 50 ms later the mouth is still open.
+  const word = { fps: 20, values: [...Array(20).fill(100), ...Array(20).fill(0)], shapes: "a".repeat(20) + "m".repeat(20) };
+  const shut = { fps: 20, values: Array(40).fill(0), shapes: "m".repeat(40) };
+  assert.ok(dark(word, 1.05) > dark(shut, 1.05) + 20);
+  // Quiet singing (level 10, marked "m"), at full sensitivity: open.
+  const quiet = { fps: 20, values: Array(40).fill(10), shapes: "m".repeat(40) };
+  assert.ok(dark(quiet, 1, { sensitivity: 100 }) > dark(shut, 1, { sensitivity: 100 }));
 });
