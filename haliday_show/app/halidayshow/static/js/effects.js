@@ -5,7 +5,7 @@
 
 import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } from "./matrix.js";
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
-import { frameAt, getPicture } from "./pictures.js";
+import { frameAt, getPicture, phoneKey } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
 import { CHARACTERS, FACE_ASPECT, SHAPES, blinkAt, faceDrawer, lookAt, mouthFor, quickDrawer } from "./faces.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_SAMPLE, PHONE_SHARP, hasPhonesLane, singerOf, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
@@ -917,14 +917,17 @@ Object.assign(EFFECTS, {
   picture: gridEffect({
     // One of your pictures (Library → Pictures), fitted to the matrix, still or scrolling, a GIF
     // playing as it plays. See-through dots, and a picture that's gone, show the background.
-    label: "Picture",
+    // Sharp: on a phone it's drawn at the finer grid from its phone copy (pictures.js), when it has one.
+    // Its speed is in dots, so on the finer grid it's scaled to match (paintClip's perDot).
+    label: "Picture", sharp: true, perDot: ["speed"],
     params: [{ key: "picture", label: "Picture", type: "picture", default: "" },
       choice("fit", "Fit", "fit", ["fit", "fill", "stretch"]),
       choice("move", "Move", "still", ["still", "scroll left", "scroll right", "scroll up", "scroll down"]),
       num("speed", "Speed (LEDs per second)", 4, 1, 60, 1), num("animate", "Animation speed %", 100, 10, 400, 10),
       color("background", "Background", "#000000")],
     renderXY: (p, t, dur, w, h, x, y) => {
-      const bg = hexToRgb(p.background), pic = getPicture(p.picture);
+      const bg = hexToRgb(p.background);
+      const pic = (w * h > 20000 && getPicture(phoneKey(p.picture))) || getPicture(p.picture);
       if (!pic) return bg;
       const fx = w / pic.w, fy = h / pic.h, one = p.fit === "fill" ? Math.max(fx, fy) : Math.min(fx, fy);
       const [sx, sy] = p.fit === "stretch" ? [fx, fy] : [one, one];
@@ -1755,6 +1758,9 @@ function paintClip(clip, time, n, buf, grid = null) {
     }
     return buf;
   }
+  // A sharp effect's speeds in dots go up with the finer grid, so it moves as it would on the usual one.
+  const perDot = grid?.dots > 1 ? EFFECTS[clip.effect]?.perDot : null;
+  if (perDot) clip = { ...clip, ...Object.fromEntries(perDot.map((k) => [k, (Number(clip[k] ?? EFFECTS[clip.effect].params.find((q) => q.key === k)?.default) || 0) * grid.dots])) };
   paintEffect(clip, time, n, buf, grid);
   if (glitterOf(clip)) {
     const level = clipLevel(clip, time), colour = hexToRgb(clip.glitterColor || GLITTER_COLOUR);

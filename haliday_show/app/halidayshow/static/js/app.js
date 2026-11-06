@@ -32,7 +32,7 @@ import { addRectPart, gatherPart, isRectPart, joinParts, partAt, partGrid, partS
 import { MAX_MATRIX, ON_A_MATRIX, RUNS, clipForLane, gridOf, laneTakes, matrixTestFrame, runsDownTree, fromWire, toWire } from "./matrix.js";
 import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
-import { forgetPicture, getPicture, keepPicture, pictureList, shrinkPicture, toBase64 } from "./pictures.js";
+import { forgetPicture, getPicture, keepPhoneCopy, keepPicture, makePhoneCopy, phoneKey, pictureList, shrinkPicture, toBase64 } from "./pictures.js";
 import { CHARACTERS, FACE_ASPECT, RECIPE_PARTS, blinkAt, builtInName, cleanRecipe, faceColour, faceList, facesUsed, forgetFace,
   getFace, isBuiltIn, keepFace, recipeColour, recipeOf } from "./faces.js";
 import { placeOnSample } from "./samplehouse.js";
@@ -2975,6 +2975,7 @@ function phoneScreenAt() {
   }
   const t = Math.floor(app.time * PHONE_FPS + 1e-6) / PHONE_FPS;
   const main = laneUsesHouse(lane) ? mainColour(lightFramesAt(t)) : null;
+  loadPhoneCopies(lane.clips);
   return phoneView(lane.clips, app.time, main, showLevel(app.show, PHONES));
 }
 
@@ -9183,9 +9184,26 @@ const songSeen = typeof IntersectionObserver === "function"
 let picturesReady = Promise.resolve();
 let picturesLoaded = false;
 
+// Pictures with a sharper copy for phones, and those the phone preview has asked for.
+const phoneCopies = new Set(), phoneAsked = new Set();
+// The phone copies a Phones lane's pictures have, fetched and decoded once each, so the editor's phone
+// preview shows what phones will.
+function loadPhoneCopies(clips) {
+  for (const c of clips || []) {
+    const id = c.effect === "picture" ? c.picture : null;
+    if (!id || !phoneCopies.has(id) || phoneAsked.has(id)) continue;
+    phoneAsked.add(id);
+    api(`api/pictures/${encodeURIComponent(id)}/phone`)
+      .then((phone) => keepPhoneCopy(id, getPicture(id)?.name || "", phone))
+      .then(() => { phoneShown = { time: NaN }; drawPhoneTile(); })
+      .catch(() => {});
+  }
+}
+
 async function loadPictures() {
   try {
     const list = await api("api/pictures");
+    for (const p of list) if (p.phone) phoneCopies.add(p.id);
     await Promise.all(list.map(async (p) => {
       if (getPicture(p.id)) return;
       try { keepPicture(p.id, await api(`api/pictures/${encodeURIComponent(p.id)}`)); } catch { /* shown as missing */ }
@@ -9231,7 +9249,8 @@ function renderPicturesPage() {
   box.replaceChildren(...list.map(({ id }) => {
     const pic = getPicture(id);
     const secs = pic.total / 1000;
-    const detail = `${pic.w} × ${pic.h}${pic.frames.length > 1 ? ` · ${pic.frames.length} frames, ${secs.toFixed(secs < 10 ? 1 : 0)} s` : ""}`;
+    const detail = `${pic.w} × ${pic.h}${pic.frames.length > 1 ? ` · ${pic.frames.length} frames, ${secs.toFixed(secs < 10 ? 1 : 0)} s` : ""}`
+      + (phoneCopies.has(id) ? " · sharp on phones" : "");
     return itemRow({
       picture: pictureThumb(pic), name: pic.name, label: "picture", key: id, detail,
       edit: () => renamePicture(id),
@@ -9290,11 +9309,15 @@ async function addPictures(files) {
   for (const file of files) {
     note.textContent = `Adding ${file.name}…`;
     try {
-      const pic = shrinkPicture(await readPictureFile(file));
+      const decoded = await readPictureFile(file);
+      const pic = shrinkPicture(decoded);
       const name = file.name.replace(/\.[^.]+$/, "").slice(0, 60) || "Picture";
-      const saved = { name, w: pic.w, h: pic.h, frames: pic.frames.map(toBase64), delays: pic.delays };
+      // A sharper copy for visitors' phones goes with it; if it can't be made, the picture still is.
+      const phone = await makePhoneCopy(decoded).catch(() => null);
+      const saved = { name, w: pic.w, h: pic.h, frames: pic.frames.map(toBase64), delays: pic.delays, ...(phone ? { phone } : {}) };
       const { id } = await api("api/pictures", { method: "POST", json: saved });
       keepPicture(id, saved);
+      if (phone) { phoneCopies.add(id); phoneAsked.add(id); keepPhoneCopy(id, name, phone).catch(() => {}); }
       added.push(id);
     } catch (e) {
       status(`Couldn't add ${file.name}: ${e.message}`, true, "pictures");

@@ -1635,7 +1635,7 @@ async def test_pictures_are_added_listed_renamed_and_deleted(client):
     assert resp.status == 200
     pid = (await resp.json())["id"]
     assert await (await client.get("/api/pictures")).json() == \
-        [{"id": pid, "name": "Star", "w": 3, "h": 2, "frames": 2, "ms": 350}]
+        [{"id": pid, "name": "Star", "w": 3, "h": 2, "frames": 2, "ms": 350, "phone": False}]
     got = await (await client.get(f"/api/pictures/{pid}")).json()
     assert (got["name"], got["frames"], got["delays"]) == ("Star", [px, px], [100, 250])
     assert (await client.post(f"/api/pictures/{pid}/rename", json={"name": "Big star"})).status == 200
@@ -1684,6 +1684,31 @@ async def test_faces_are_added_listed_changed_and_deleted(client):
     assert await (await client.get("/api/faces")).json() == []
     assert (await client.delete(f"/api/faces/{fid}")).status == 404
     assert (await client.delete("/api/faces/..%2Fsettings")).status in (400, 404)
+
+
+PNG = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\0" * 20).decode()
+WEBP = base64.b64encode(b"RIFF\0\0\0\0WEBPVP8 " + b"\0" * 20).decode()
+
+
+async def test_a_picture_can_carry_a_sharper_copy_for_phones(client):
+    px = base64.b64encode(bytes([255, 0, 0, 255] * 6)).decode()
+    phone = {"w": 200, "h": 120, "frames": [WEBP, PNG], "delays": [100, 250]}
+    pic = {"name": "Star", "w": 3, "h": 2, "frames": [px, px], "delays": [100, 250], "phone": phone}
+    resp = await client.post("/api/pictures", json=pic)
+    assert resp.status == 200
+    pid = (await resp.json())["id"]
+    [listed] = await (await client.get("/api/pictures")).json()
+    assert listed["phone"] is True
+    assert "phone" not in await (await client.get(f"/api/pictures/{pid}")).json()  # the editor loads it only when needed
+    assert await (await client.get(f"/api/pictures/{pid}/phone")).json() == phone
+    assert (await client.post(f"/api/pictures/{pid}/rename", json={"name": "Bright star"})).status == 200
+    assert await (await client.get(f"/api/pictures/{pid}/phone")).json() == phone  # kept through a rename
+    plain = (await (await client.post("/api/pictures", json={**pic, "phone": None})).json())["id"]
+    assert (await client.get(f"/api/pictures/{plain}/phone")).status == 404
+    bad = [{**phone, "w": 300}, {**phone, "frames": [px, px]}, {**phone, "frames": ["!!", PNG]}, {**phone, "delays": [5, 100]},
+           {**phone, "frames": [PNG]}, {**phone, "frames": ["A" * 3_300_000, PNG]}, "nope"]
+    for b in bad:
+        assert (await client.post("/api/pictures", json={**pic, "phone": b})).status == 400
 
 
 async def test_pictures_list_skips_a_damaged_file_and_stops_at_the_limit(client, monkeypatch):
