@@ -8594,13 +8594,14 @@ function songFamilyCard(f) {
 }
 
 // One edit or draft under its song: a mark, a name and badge, a line or two of detail, and buttons.
-function songKid(kind, icon, name, badge, lines, actions) {
+function songKid(kind, icon, name, badge, lines, actions, song = null) {
   const row = document.createElement("div");
   row.className = `song-kid ${kind}`;
   const mark = document.createElement("span");
   mark.className = "song-kid-mark";
   mark.setAttribute("aria-hidden", "true");
   mark.textContent = icon;
+  if (song) row.append(songPlayButton(song));
   const main = document.createElement("div");
   main.className = "show-main";
   const head = document.createElement("div");
@@ -8616,7 +8617,8 @@ function songKid(kind, icon, name, badge, lines, actions) {
   acts.className = "group show-actions";
   acts.append(...actions);
   withMore(acts);
-  row.append(mark, main, acts);
+  row.prepend(mark);
+  row.append(main, acts);
   return row;
 }
 
@@ -8655,7 +8657,7 @@ function editKid(e) {
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   rm.disabled = !r.own;
-  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, ren, dup, splitButton(r), rm].filter(Boolean));
+  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, ren, dup, splitButton(r), rm].filter(Boolean), r);
   row.title = r.file;
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
@@ -8683,7 +8685,7 @@ function splitKid(x) {
   rm.disabled = !r.own;
   const part = x.part === "vocals" ? "Vocals" : "Music";
   const row = songKid("split", "♫", x.of ? `${x.of} · ${part}` : part,
-    x.part === "vocals" ? "Just the singing" : "Without the singing", [details, uses], [edit, rm]);
+    x.part === "vocals" ? "Just the singing" : "Without the singing", [details, uses], [edit, rm], r);
   row.title = r.file;
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
@@ -8764,6 +8766,7 @@ function songRow(r) {
   const row = document.createElement("div");
   row.className = "show-row";
   if (r.cover) row.append(coverImg(r.ref, r.modified));
+  row.append(songPlayButton(r));
   const main = document.createElement("div");
   main.className = "show-main";
   const head = document.createElement("div");
@@ -8829,6 +8832,88 @@ function songRow(r) {
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
   return row;
+}
+
+// Listening in Library → Songs: ▶ on a song's row plays it in the bar along the bottom (#song-player),
+// one at a time, without opening the Music editor.
+let songPlayer = null, songPlayingKey = "";
+function songPlayButton(r) {
+  const b = button("▶", () => playLibrarySong(r), "ghost song-play");
+  b.dataset.songPlay = r.key;
+  b.setAttribute("aria-label", `Play ${r.name}`);
+  b.title = "Listen to it here";
+  if (r.key === songPlayingKey && songPlayer && !songPlayer.paused) b.textContent = "⏸";
+  return b;
+}
+
+function songPlayerButtons() {
+  const on = songPlayer && !songPlayer.paused;
+  for (const b of document.querySelectorAll("[data-song-play]")) {
+    const mine = b.dataset.songPlay === songPlayingKey && on;
+    if (b.textContent !== (mine ? "⏸" : "▶")) b.textContent = mine ? "⏸" : "▶";
+    const name = b.getAttribute("aria-label").replace(/^(Play|Pause) /, "");
+    b.setAttribute("aria-label", `${mine ? "Pause" : "Play"} ${name}`);
+  }
+  const play = $("song-player-play");
+  play.textContent = on ? "⏸" : "▶";
+  play.setAttribute("aria-label", on ? "Pause" : "Play");
+  play.title = on ? "Pause" : "Play";
+}
+
+function songPlayerTime() {
+  const a = songPlayer, len = Number.isFinite(a?.duration) ? a.duration : 0;
+  const seek = $("song-player-seek");
+  seek.max = String(len || 1);
+  if (document.activeElement !== seek) seek.value = String(a?.currentTime || 0);
+  $("song-player-time").textContent = `${fmtTime(a?.currentTime || 0, false)} / ${fmtTime(len, false)}`;
+}
+
+function playLibrarySong(r) {
+  if (!songPlayer) {
+    songPlayer = new Audio();
+    songPlayer.preload = "auto";
+    for (const ev of ["play", "pause", "ended"]) songPlayer.addEventListener(ev, songPlayerButtons);
+    songPlayer.addEventListener("timeupdate", songPlayerTime);
+    songPlayer.addEventListener("loadedmetadata", songPlayerTime);
+    songPlayer.addEventListener("error", () => {
+      if (songPlayer.src) status(`Couldn't play ${$("song-player-name").textContent}`, true, "songs");
+    });
+  }
+  if (r.key === songPlayingKey && songPlayer.src) {
+    if (songPlayer.paused) songPlayer.play().catch(() => {});
+    else songPlayer.pause();
+    return;
+  }
+  stopSample();
+  songPlayingKey = r.key;
+  songPlayer.src = audioUrl(r.ref);
+  songPlayer.volume = Number($("song-player-vol").value);
+  $("song-player-name").textContent = r.file || r.name;
+  $("song-player").hidden = false;
+  songPlayerTime();
+  songPlayer.play().catch(() => {});
+  songPlayerButtons();
+}
+
+function closeSongPlayer() {
+  if (!songPlayer) return;
+  songPlayer.pause();
+  songPlayer.removeAttribute("src");
+  songPlayer.load();
+  songPlayingKey = "";
+  $("song-player").hidden = true;
+  songPlayerButtons();
+}
+
+function wireSongPlayer() {
+  $("song-player-vol").value = String(volume.gain ?? 1);
+  $("song-player-play").addEventListener("click", () => {
+    if (!songPlayer?.src) return;
+    if (songPlayer.paused) songPlayer.play().catch(() => {}); else songPlayer.pause();
+  });
+  $("song-player-seek").addEventListener("input", (e) => { if (songPlayer) songPlayer.currentTime = Number(e.target.value); songPlayerTime(); });
+  $("song-player-vol").addEventListener("input", (e) => { if (songPlayer) songPlayer.volume = Number(e.target.value); });
+  $("song-player-close").addEventListener("click", closeSongPlayer);
 }
 
 async function editSong(ref) {
@@ -11922,6 +12007,7 @@ function showView(view, { push = true } = {}) {
   for (const t of document.querySelectorAll(".subtab[data-view]")) t.classList.toggle("active", t.dataset.view === page);
   for (const k of Object.keys(SECTIONS)) $(`section-${k}`).hidden = k !== top;
   for (const v of ["editor", "music", "playlist", "scene", "public", "schedule", ...Object.values(SECTIONS).flat()]) $(`view-${v}`).hidden = v !== page;
+  if (page !== "songs") closeSongPlayer();
   if (page === "songs") $("view-songs").append($("songs-block"));
   if (page === "shows") renderShowLists();
   // Going back to the shows (← All shows, or the browser's Back) puts the show away, so it stops too.
@@ -12066,6 +12152,7 @@ function wire() {
   // Add a light and Add a speaker from the editor).
   for (const d of document.querySelectorAll(".view dialog")) document.body.append(d);
   for (const tab of document.querySelectorAll(".tab, .subtab[data-view]")) tab.addEventListener("click", () => showView(tab.dataset.view));
+  wireSongPlayer();
   $("btn-new-group").addEventListener("click", () => openGroupWindow(null));
   $("btn-resume").addEventListener("click", () => lastEditor && showView(lastEditor));
 
