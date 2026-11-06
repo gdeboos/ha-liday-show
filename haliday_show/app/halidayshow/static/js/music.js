@@ -1416,6 +1416,41 @@ export class MusicEditor {
     }
   }
 
+  // The selection in the Selection panel: what it is (a section's name when it's just that section),
+  // where, how long in seconds and bars; its actions sit under it.
+  renderRange() {
+    const sel = this.sel;
+    $("music-range").hidden = !sel;
+    if (!sel) return;
+    const near = (a, b) => Math.abs(a - b) < 0.05;
+    const sec = (this.sections || []).find((x) => near(x.start, sel.start) && near(x.end, sel.end));
+    $("music-range-what").textContent = `${sec ? `${sec.label} · ` : ""}${fmtTime(sel.start)} to ${fmtTime(sel.end)}`;
+    const bars = (this.shown?.bars || []).filter((b) => b >= sel.start - 0.05 && b < sel.end - 0.05).length;
+    $("music-range-len").textContent = `${(sel.end - sel.start).toFixed(1)} s${bars > 1 ? `, about ${bars} bars` : ""}`;
+  }
+
+  // The song's parts in the Song panel: a chip naming them when it has them all, and Split into parts…
+  // (or Split again…, to make them afresh).
+  renderParts() {
+    const song = this.base && this.host.songs().find((s) => s.source === this.base.source && s.path === this.base.path);
+    const have = song?.parts || {}, ready = PARTS.every((p) => have[p]);
+    const chip = $("music-parts");
+    chip.hidden = !ready;
+    if (ready && chip.dataset.for !== keyOf(this.base)) {
+      chip.dataset.for = keyOf(this.base);
+      chip.replaceChildren("Parts:", ...PARTS.flatMap((p) => {
+        const dot = document.createElement("i");
+        dot.style.background = PART_LOOK[p][1];
+        return [" ", dot, ` ${PART_LOOK[p][0].toLowerCase()}`];
+      }));
+      chip.title = "The song's vocals, drums, bass and the rest, kept with it: pick them as layers, and Singing faces and Generate follow them";
+    }
+    const split = $("music-split");
+    split.textContent = ready ? "Split again…" : "Split into parts…";
+    split.classList.toggle("ghost", ready);
+    split.disabled = !this.base;
+  }
+
   // A layer's ⋯ menu: add a clip at the playhead, rename, remove.
   layerMenu(i, anchor) {
     document.querySelector(".mixer-menu")?.remove();
@@ -2045,6 +2080,8 @@ export class MusicEditor {
     $("music-sel-start").value = sel ? sel.start.toFixed(2) : "";
     $("music-sel-end").value = sel ? sel.end.toFixed(2) : "";
     $("music-sel-len").textContent = sel ? `${(sel.end - sel.start).toFixed(2)} s selected` : "";
+    this.renderRange();
+    this.renderParts();
     const n = this.pieces.length;
     $("music-title").textContent = this.base ? nameOf(this.base).replace(/\.[^.]+$/, "") : "No song open";
     $("music-info").textContent = has
@@ -2870,7 +2907,7 @@ export class MusicEditor {
     if (select) this.zoomTo(Math.max(0, got.start - 4), Math.min(this.total, got.end + 4));
     this.updateControls();
     this.draw();
-    this.host.status(select ? "The cut part is back and selected: drag its edges (or type the times), then press Cut selection"
+    this.host.status(select ? "The cut part is back and selected: drag its edges (or type the times), then press Cut"
       : "Put the cut part back. Ctrl+Z takes it out again", select ? "hint" : "saved");
   }
 
@@ -3208,13 +3245,14 @@ export class MusicEditor {
     $("music-back").addEventListener("click", () => this.skip(-1));
     $("music-fwd").addEventListener("click", () => this.skip(1));
     $("music-play-sel").addEventListener("click", () => this.sel && this.play(this.sel.start, this.sel.end));
+    $("music-range-play").addEventListener("click", () => this.sel && this.play(this.sel.start, this.sel.end));
     $("music-preview").addEventListener("click", () => this.previewCut());
     $("music-cut").addEventListener("click", () => this.cutSelection());
     $("music-keep").addEventListener("click", () => this.keepSelection());
     $("music-sample").addEventListener("click", () => this.saveSample());
     $("music-split").addEventListener("click", () => {
       if (!this.base) return this.host.status("Open a song first", "hint");
-      splitVocals(this.base, { ...this.host, askYes, later: this.host.partsLater }).then(() => this.loadLyrics()); // its drum hits, now found
+      splitVocals(this.base, { ...this.host, askYes, later: this.host.partsLater }).then(() => { this.loadLyrics(); this.renderParts(); }); // its drum hits and parts, now found
     });
     $("music-insert").addEventListener("click", () => this.addSong(false));
     $("music-append").addEventListener("click", () => this.addSong(true));
