@@ -3920,6 +3920,8 @@ function renderInspector() {
     });
     field("Lights' own effects", mix);
   }
+  // Singing face: what its mouth follows, so it's clear why it does or doesn't sing, with Measure again.
+  if (clip.effect === "singingface") field("Mouth", singerNote());
   // On a matrix: how a strip effect plays across the grid. House patterns are drawn across it as they are.
   if (gridOf(app.devices[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house && !EFFECTS[clip.effect].grid) {
     const runs = document.createElement("select");
@@ -10158,6 +10160,32 @@ async function ensureVoice() {
     app.changed();
   })().finally(() => { measuringVoice = null; });
   return measuringVoice;
+}
+
+// What the Singing face's mouth follows now, in words, with Measure again.
+function singerNote() {
+  const box = document.createElement("div");
+  const note = Object.assign(document.createElement("p"), { className: "hint" });
+  const v = app.show.voice, ref = app.show.audio;
+  note.textContent = !ref ? "It follows the singer in the show's song. This show has no song yet."
+    : !v ? (songBuffer ? "The singer hasn't been measured yet: press Measure again." : "The singer is measured once the song has loaded.")
+    : v.from === "vocals" ? "It follows the vocals that Split vocals made from this song."
+    : "It follows the voice range of the song. For a closer match, use Split vocals on this song, then press Measure again.";
+  const again = button("Measure again", async () => {
+    if (!songBuffer) { status("Wait for the song to load first", "hint"); return; }
+    delete app.show.voice;
+    again.disabled = true;
+    status("Measuring the singer…");
+    try {
+      await ensureVoice();
+      status(app.show.voice ? `Measured the singer from ${app.show.voice.from === "vocals" ? "the vocals" : "the song"}` : "Couldn't measure the singer",
+        app.show.voice ? "saved" : true);
+    } catch (e) { status(`Couldn't measure the singer: ${e.message}`, true); }
+    renderInspector();
+  }, "ghost small");
+  again.hidden = !ref;
+  box.append(note, again);
+  return box;
 }
 
 // stage(text), if given, hears what's happening while the lights are got ready (Play shows it).

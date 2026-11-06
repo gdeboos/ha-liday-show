@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.379
+
+- **See what a Singing face follows.** Select a **Singing face** clip and its settings now say what the mouth follows: the vocals from **Split vocals**, the voice range of the song, or nothing yet (with why). **Measure again** measures the singer afresh, handy right after you split a song's vocals.
+
 ## 0.2.378
 
 - The vocals and music that **Split vocals** makes now sit under the song they came from in **Library → Songs**, in a **Split vocals** group, so they're in that song's folder instead of loose at the top. They follow it when you pick a song for a new show or to splice in, too.
