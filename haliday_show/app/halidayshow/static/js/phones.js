@@ -59,11 +59,19 @@ export const phonesJoin = (show, on) => !!on && show?.phones !== false;
 
 // The singer a Singing face follows in `show`: its measured voice (show.voice), with the mouth shapes
 // from its lyrics instead where it has them placed (show.lyrics, lyrics.js); lyrics: true then.
+// Its cues for Drum hits and Words ride along: drums (show.drums, when each drum lands, from the
+// song's drums part) and words ([start, end, line] each, from show.lyrics).
 export function singerOf(show) {
-  const voice = show?.voice, lyrics = show?.lyrics;
-  // Only the lyrics of the show's own song: after the song's changed they're left alone.
-  const forSong = !lyrics?.song || lyrics.song === show?.audio?.path;
-  if (!(typeof lyrics?.shapes === "string" && lyrics.shapes.length && forSong)) return voice || null;
+  const voice = show?.voice, lyrics = show?.lyrics, path = show?.audio?.path;
+  // Only the lyrics (and drums) of the show's own song: after the song's changed they're left alone.
+  const forSong = !lyrics?.song || lyrics.song === path;
+  const drums = show?.drums && (!show.drums.song || show.drums.song === path) ? show.drums : null;
+  const words = forSong && Array.isArray(lyrics?.words) && lyrics.words.length ? lyrics.words : null;
+  const cues = { ...(drums ? { drums } : {}), ...(words ? { words } : {}) };
+  if (!(typeof lyrics?.shapes === "string" && lyrics.shapes.length && forSong)) {
+    if (!drums && !words) return voice || null;
+    return { fps: voice?.fps || 20, values: [], ...(voice || {}), ...cues };
+  }
   return { fps: voice?.fps || lyrics.fps || 20, values: Array.isArray(voice?.values) ? voice.values : [],
-    shapes: lyrics.shapes, shapesFps: lyrics.fps || 20, lyrics: true, from: voice?.from || "song" };
+    shapes: lyrics.shapes, shapesFps: lyrics.fps || 20, lyrics: true, from: voice?.from || "song", ...cues };
 }

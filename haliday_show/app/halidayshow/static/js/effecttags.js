@@ -19,7 +19,7 @@ const TAGS = {
   housechecks: "still", housewave: "moves colours calm", housesparkle: "sparkles", spotlight: "moves",
   housedots: "still",
   text: "moves", picture: "still", fire2d: "moves lively", snowfall: "moves calm",
-  vumeter: "music lively", musicbars: "music lively",
+  vumeter: "music lively", musicbars: "music lively", drumhits: "music flashes lively", words: "music flashes",
   levelmeter: "music lively", beatburst: "music flashes lively", spectrum: "music lively",
 };
 

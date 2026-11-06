@@ -57,6 +57,8 @@ whole list from the palette and sets **Colours** to match.
 | Stacking blocks | Blocks drop from the far end and pile up until the light is full, then it fades and starts again |
 | Fill to a level | Lit up to a level that moves from **Level at the start** to **Level at the end** over the clip. The **Count down** preset empties it |
 | Morph | A band of light stretches from the start to the far end, then shrinks away into it, blending from the **Tail** colour to the **Head**. Set how many **Times in the clip** |
+| Drum hits | The light flashes on each hit of a **Drum** (**kick**, **snare**, **crash**, **hi-hat**, **kick and snare**, or **any drum**) in the song, fading over **Fade (seconds)**, each hit taking the next of two colours. **Hit** is a **flash** of the whole light, a **burst** spreading out from the middle, or a **sparkle**. It follows the drums found when the song was [split into parts](build-a-show.md#split-into-parts); without them it stays on the **Background** |
+| Words | The light pulses on each word as it's sung, from the song's [lyrics](#lyrics-for-a-singing-face), staying lit while the word lasts and fading over **Fade (seconds)**, with a new colour each line. **Word** is a **flash**, a **burst** or a **sparkle**. Without lyrics it stays on the **Background** |
 | Music level | A level meter that follows the song: the light fills from green to red as the music gets louder, with a dot marking the last second's peak. **Rises from: the middle** fills outwards from the centre, and **Sensitivity** fills it further on quieter songs |
 
 **Effects on the House lane** run across all your lights at once, by where each one is on the

@@ -182,3 +182,18 @@ test("matrices: the AI is told about them and its matrix effects go only there",
   assert.equal(skipped.length, 4);
   assert.ok(skipped.some((m) => /Fire.*only works on a matrix/.test(m)));
 });
+
+test("the AI hears each light's role, the song's drum hits by section and its lyrics", async () => {
+  const { buildContext } = await import("../../haliday_show/app/halidayshow/static/js/aiclips.js");
+  const show = { audio: { path: "a.mp3" }, beats: [], bars: [], tracks: [{ clips: [] }],
+    sections: [{ start: 0, end: 10, label: "Verse", energy: 0.5 }, { start: 10, end: 20, label: "Chorus", energy: 0.9 }],
+    drums: { song: "a.mp3", kick: [1, 2, 11], snare: [1.5], hat: [], crash: [12] },
+    lyrics: { song: "a.mp3", text: "Run run\nHere we go", lines: [{ start: 2, end: 4 }, { start: 11, end: 13 }] } };
+  const ctx = buildContext({ show, lights: [{ name: "Roof", segments: 50, trackIndex: 0, role: "kick" }], duration: 20 });
+  assert.equal(ctx.lights[0].role, "kick");
+  assert.deepEqual(ctx.song.sections.map((s) => s.drums), [{ kick: 2, snare: 1, crashes: [] }, { kick: 1, snare: 0, crashes: [12] }]);
+  assert.deepEqual(ctx.song.lyrics, [{ start: 2, text: "Run run" }, { start: 11, text: "Here we go" }]);
+  // Another song's are left out.
+  const other = buildContext({ show: { ...show, audio: { path: "b.mp3" } }, lights: [], duration: 20 });
+  assert.ok(!other.song.lyrics && !other.song.sections[0].drums);
+});

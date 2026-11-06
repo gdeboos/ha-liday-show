@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.407
+
+- **Generate follows the drums and the words.** For a song split into parts, with its lyrics, and your lights' roles set, a generated show:
+  - flashes your kick, snare and crash lights on the real drum hits;
+  - pulses your vocals lights on each sung word;
+  - pumps your bass lights in the loudest parts;
+  - keeps melody lights on the main look and background lights calm.
+  It also changes looks where lyric lines start, and treats a part whose lines come back as a chorus. **Generate** with the AI gets all of this too.
+- **The whole house is saved for the big moments.** With **Sweep across the house as the music lifts** on, Generate now uses the whole house at most three times: into the first chorus, as the last chorus lands, and on the final crash.
+- **Two new effects:** **Drum hits** (flashes on a drum's hits) and **Words** (pulses on each sung word), in the effect chooser under music.
+
 ## 0.2.406
 
 - **Light roles.** **Setup → Devices** has a new **Light roles** list saying which part of the music each light (and each part of a split light) reacts to: kick drum, snare, crash cymbals, bass, vocals, melody or background. Each starts with a guess you can change. A show can give a light a different role under **Show settings → Light roles**, so shows don't all look alike. Generate starts using them in a coming release.

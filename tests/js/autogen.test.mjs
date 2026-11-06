@@ -69,11 +69,9 @@ test("styles and seeds change the result", () => {
   assert.ok(new Set([1, 2, 3, 4, 5].map(looks)).size > 1);
 });
 
-test("house sweeps mark lifts into louder sections", () => {
+test("the House lane is kept for the big moments: a sweep into the first chorus, a ring for the last", () => {
   const r = generateShow(analysis, lights, colors, { house: true });
-  assert.ok(r.house.length >= 2);
-  assert.ok(r.house.every((c) => c.effect === "sweep"));
-  assert.ok(r.house.some((c) => c.start === 32));
+  assert.deepEqual(r.house.map((c) => [c.effect, c.start]), [["sweep", 32], ["shockwave", 64]]);
   const show = { tracks: [{ device: HOUSE, clips: [] }, { device: "a", clips: [{ effect: "solid" }] }, { device: "z", clips: [1] }] };
   applyGenerated(show, r);
   assert.equal(show.tracks[0].clips, r.house);
@@ -289,4 +287,42 @@ test("generating a part leaves everything outside it alone", () => {
   assert.equal(show.tracks[2].clips.length, 1);
   applyGeneratedPart(show, result, { start: 5, end: 10, tracks: new Set([2]), house: true });
   assert.deepEqual(show.tracks[2].clips.map((c) => [c.start, c.end]), [[0, 5], [10, 20]]);
+});
+
+test("lights with roles follow the drums and the words in lively parts, and looks change on lyric lines", () => {
+  // Kicks on every beat, snares on the off-beats, a crash late on; a line every 4 s, the chorus lines repeating.
+  const kick = beats.filter((_, i) => i % 2 === 0), snare = beats.filter((_, i) => i % 2 === 1);
+  const text = ["One verse line", "Another verse line", "Chorus line one", "Chorus line two", "A third verse line", "Chorus line one", "Chorus line two"];
+  const starts = [17, 21, 33.2, 38.6, 49, 65.2, 70.6];
+  const lyrics = { text: text.join("\n"), lines: starts.map((t) => ({ start: t, end: t + 3 })),
+    words: starts.flatMap((t, i) => [0, 0.7, 1.4, 2.1].map((d) => [t + d, t + d + 0.5, i])) };
+  const withCues = { ...analysis, drums: { kick, snare, hat: [], crash: [60] }, lyrics };
+  const roled = [{ id: "k", segments: 20, role: "kick" }, { id: "s", segments: 20, role: "snare" },
+    { id: "v", segments: 20, role: "vocals" }, { id: "m", segments: 50, role: "melody" }, { id: "x", segments: 20, role: "crash" }];
+  const r = generateShow(withCues, roled, colors, { house: true });
+  const at = (id, t) => r.clips[id].find((c) => c.start <= t && c.end > t);
+  assert.equal(at("k", 40).effect, "drumhits");
+  assert.equal(at("k", 40).drum, "kick");
+  assert.equal(at("s", 40).drum, "snare");
+  assert.equal(at("v", 40).effect, "words");
+  assert.notEqual(at("m", 40).effect, "drumhits");
+  assert.notEqual(at("k", 2).effect, "drumhits"); // the quiet intro stays calm
+  assert.equal(at("x", 60).effect, "drumhits"); // the crash light flashes where there's a crash...
+  assert.notEqual(at("x", 40).effect, "drumhits"); // ...and plays a look where there's none
+  assert.ok(colors.includes(at("k", 40).color));
+  // The chorus's looks change where its second line starts (38.6), not on the bar (40).
+  assert.ok(r.clips.m.some((c) => Math.abs(c.start - 38.6) < 0.01), r.clips.m.map((c) => c.start).join());
+  // The final crash gets a ring across the house.
+  assert.ok(r.house.some((c) => c.effect === "shockwave" && c.start === 60));
+  assert.ok(r.house.length <= 3);
+});
+
+test("a section whose lines come back is treated as a chorus, whatever it's called", () => {
+  const named = sections.map((s) => ({ ...s, label: s.label === "Chorus" ? "Part B" : s.label, energy: s.label === "Chorus" ? 0.6 : s.energy }));
+  const text = ["Hey ho", "Here we go", "Hey ho", "Here we go"];
+  const lyrics = { text: text.join("\n"), lines: [33, 37, 65, 69].map((t) => ({ start: t, end: t + 2 })), words: [] };
+  const plain = generateShow({ ...analysis, sections: named }, lights, colors, { house: true });
+  const sung = generateShow({ ...analysis, sections: named, lyrics }, lights, colors, { house: true });
+  assert.ok(plain.house.length < sung.house.length);
+  assert.deepEqual(sung.house.map((c) => c.start), [32, 64]);
 });

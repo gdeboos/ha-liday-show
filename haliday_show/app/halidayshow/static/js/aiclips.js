@@ -2,6 +2,7 @@
 // checked and placed. The model can get names, times or settings wrong, so nothing goes on the
 // timeline until it has been matched to a real light and effect and clamped to valid values.
 
+import { parseLyrics } from "./lyrics.js";
 import { CURVE_SHAPES, EFFECTS, MIXES, TRANSITIONS, clipPiece, defaultParams } from "./effects.js";
 import { laneTakes, runsDownTree } from "./matrix.js";
 
@@ -25,6 +26,8 @@ export const EFFECT_NOTES = {
   bounce: "bouncing balls, or popcorn", lighthouse: "a soft beam sweeping past", tetris: "blocks dropping and piling up",
   level: "lit up to a level that rises or falls over the clip", morph: "a band stretching to the far end then shrinking away",
   vumeter: "a level meter following the song's loudness",
+  drumhits: "flashes on each hit of a drum (kick, snare, crash or hi-hat) found in the song's drums part; for the lights whose role is that drum",
+  words: "pulses on each word as it's sung, from the song's lyrics, a new colour each line; for the vocals lights",
   sweep: "a band of colour crossing the house", housewipe: "fills the house with colour over the clip",
   wave: "a rainbow across the house", shockwave: "a ring spreading out from a point (big beats)",
   pinwheel: "spokes spinning round a point", curtain: "curtains opening or closing across the house",
@@ -62,6 +65,14 @@ export function effectsForAI({ matrix = true } = {}) {
 export function buildContext({ show, lights, duration, selection = null, palettes = [] }) {
   const effects = effectsForAI({ matrix: lights.some((l) => l.matrix) });
   const beats = show.beats || [];
+  // The song's cues, where it has them: its drum hits (from its drums part) and its lyrics.
+  const path = show.audio?.path;
+  const drums = show.drums && (!show.drums.song || show.drums.song === path) ? show.drums : null;
+  const lyr = show.lyrics && (!show.lyrics.song || show.lyrics.song === path) ? show.lyrics : null;
+  const lineText = parseLyrics(lyr?.text);
+  const lines = lyr && Array.isArray(lyr.lines) && lyr.lines.length === lineText.length
+    ? lineText.map((l, i) => ({ start: r2(Number(lyr.lines[i].start) || 0), text: l.text })).slice(0, 150) : [];
+  const count = (list, a, b) => (list || []).filter((t) => t >= a && t < b).length;
   return {
     song: {
       duration: r2(duration),
@@ -71,10 +82,14 @@ export function buildContext({ show, lights, duration, selection = null, palette
       bars: (show.bars || []).map(r2),
       sections: (show.sections || []).map((s) => ({
         start: r2(s.start), end: r2(s.end), label: s.label, energy: s.energy, ...(s.notes ? { notes: s.notes } : {}),
+        // How many of each drum hit in it, and when its crashes land.
+        ...(drums ? { drums: { kick: count(drums.kick, s.start, s.end), snare: count(drums.snare, s.start, s.end),
+          crashes: (drums.crash || []).filter((t) => t >= s.start && t < s.end).slice(0, 12).map(r2) } } : {}),
       })),
+      ...(lines.length ? { lyrics: lines } : {}),
     },
     lights: lights.map((l) => ({ name: l.name, segments: l.segments, ...(l.house ? { house: true } : {}),
-      ...(l.slow ? { slow: true } : {}), ...(l.matrix ? { matrix: l.matrix } : {}) })),
+      ...(l.slow ? { slow: true } : {}), ...(l.matrix ? { matrix: l.matrix } : {}), ...(l.role ? { role: l.role } : {}) })),
     effects,
     palettes: palettes.map((p) => ({ name: p.name, colors: p.colors })),
     selection: selection && { start: r2(selection.start), end: r2(selection.end), lights: selection.lights },
