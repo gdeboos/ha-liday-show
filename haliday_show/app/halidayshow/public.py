@@ -795,14 +795,20 @@ async def safe_headers(request, handler):
 
 PAGE_FILES = {"index.html": "text/html", "public.js": "text/javascript", "public.css": "text/css",
               "colours.js": "text/javascript", "listensync.js": "text/javascript", "icons.js": "text/javascript"}
+# The editor's own effect code, which phones that join a show with a Phones lane draw it with (they load
+# it only then). effects.js and what it imports, nothing else of the editor.
+FX = PAGE.parent / "js"
+FX_FILES = ("effects.js", "matrix.js", "font.js", "pictures.js", "parts.js", "phones.js")
 # The page's own files ask for each other with ?v= and a stamp of what's in them, so a phone (or a
 # tunnel's cache, such as Cloudflare's) never mixes an old script with a new page after an update.
-_STAMP = hashlib.sha1(b"".join((PAGE / n).read_bytes() for n in sorted(PAGE_FILES))).hexdigest()[:10]
+_STAMP = hashlib.sha1(b"".join([(PAGE / n).read_bytes() for n in sorted(PAGE_FILES)]
+                               + [(FX / n).read_bytes() for n in FX_FILES])).hexdigest()[:10]
 _STAMPED = {"index.html": (('href="public.css"', f'href="public.css?v={_STAMP}"'),
                            ('src="public.js"', f'src="public.js?v={_STAMP}"')),
             "public.js": (('"./colours.js"', f'"./colours.js?v={_STAMP}"'),
                           ('"./listensync.js"', f'"./listensync.js?v={_STAMP}"'),
-                          ('"./icons.js"', f'"./icons.js?v={_STAMP}"'))}
+                          ('"./icons.js"', f'"./icons.js?v={_STAMP}"'),
+                          ('"./fx/effects.js"', f'"./fx/effects.js?v={_STAMP}"'))}
 
 
 def page_file(name: str) -> web.Response:
@@ -820,6 +826,15 @@ def page_file(name: str) -> web.Response:
 
 async def page(request):
     return page_file(request.match_info.get("name") or "index.html")
+
+
+async def fx_file(request):
+    """One of the editor's effect files, for phones drawing a Phones lane. They import each other without a
+    stamp, so they're asked again after an update (Last-Modified saves sending them again meanwhile)."""
+    name = request.match_info["name"]
+    if name not in FX_FILES:
+        raise web.HTTPNotFound()
+    return web.FileResponse(FX / name, headers={"Cache-Control": "no-cache", "Content-Type": "text/javascript"})
 
 
 def _state(request, ticket, code):
@@ -1347,14 +1362,52 @@ async def get_phones_now(request):
     return _no_store(web.json_response(out))
 
 
+MAX_PHONE_PICTURES = 8
+
+
+def _level(v) -> float:
+    """A show's dimming percentage as 0-1, as effects.js showLevel reads it."""
+    try:
+        n = float(100 if v is None else v)
+    except (TypeError, ValueError):
+        return 1.0
+    return min(max(n, 0), 100) / 100 if math.isfinite(n) else 1.0
+
+
+def phone_lane(storage: Storage, show: dict) -> dict | None:
+    """A show's Phones lane, for phones to draw themselves (static/js/phones.js): its clips, how much the
+    show dims it, the song's loudness (for effects that follow the music) and the pictures it shows.
+    None without one."""
+    lane = next((t for t in show.get("tracks") or [] if isinstance(t, dict) and t.get("device") == "@phones"), None)
+    if lane is None:
+        return None
+    clips = [c for c in lane.get("clips") or [] if isinstance(c, dict)]
+    pictures = {}
+    for c in clips:
+        pid = c.get("picture") if c.get("effect") == "picture" else None
+        if isinstance(pid, str) and valid_id(pid) and pid not in pictures and len(pictures) < MAX_PHONE_PICTURES:
+            pic = storage.load_picture(pid)
+            if pic:
+                pictures[pid] = pic
+    loud = show.get("loudness")
+    return {"clips": clips,
+            "level": _level(show.get("brightness")) * _level((show.get("lightBrightness") or {}).get("@phones")),
+            "loudness": loud if isinstance(loud, dict) and isinstance(loud.get("values"), list) else None,
+            "pictures": pictures}
+
+
 async def get_phones_colours(request):
-    """The colours for phones of the show playing now, if `key` is still it."""
+    """The colours for phones of the show playing now, if `key` is still it, and its Phones lane if it has
+    one (phones draw that themselves)."""
     _limit_client(request, "phones", MAX_LISTEN_PER_CLIENT_MIN)
     _joining(request, request.query.get("code"))
-    now = joining_now(request.app[STORAGE], request.app[RUNNER])
+    storage, runner = request.app[STORAGE], request.app[RUNNER]
+    now = joining_now(storage, runner)
     if now is None or not secrets.compare_digest(now[0], str(request.query.get("key", ""))):
         raise web.HTTPNotFound(text="that show isn't playing now")
-    return _no_store(web.json_response({"key": now[0], **now[1]}))
+    show = storage.load_show(runner.status()["show"]) or {}
+    lane = await asyncio.to_thread(phone_lane, storage, show)
+    return _no_store(web.json_response({"key": now[0], **now[1], "lane": lane}))
 
 
 async def get_listen_song(request):
@@ -1455,6 +1508,7 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
     r = app.router
     r.add_get("/", page)
     r.add_get("/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js|icons\\.js)}", page)
+    r.add_get("/fx/{name}", fx_file)
     r.add_get("/api/state", get_state)
     r.add_get("/manifest.webmanifest", get_manifest)
     r.add_get("/icon.png", get_icon)

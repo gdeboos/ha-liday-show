@@ -11,10 +11,10 @@ import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, pa
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
-  renderTrack, showDuration, phoneColourAt, laneUsesHouse, newClip,
+  renderTrack, showDuration, phoneColourAt, phoneScreen, laneUsesHouse, newClip,
 } from "./effects.js";
 import { bakeOff } from "./bakeoff.js";
-import { PHONES, PHONE_FPS, hasPhonesLane, phonesJoin } from "./phones.js";
+import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin } from "./phones.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
 import { splitVocals } from "./splitvocals.js";
@@ -502,9 +502,8 @@ function indexDevices() {
   timeline.layout();
 }
 
-// The Phones lane (phones.js) plays on visitors' phones: one "bulb", their screen. It's in app.devices
-// so the timeline and the effect chooser treat it as a one-bulb light; it's never a real light.
-const PHONE_LANE = { id: PHONES, name: "Phones", segments: 1, phones: true };
+// The Phones lane (phones.js) plays on visitors' phones' screens, a small upright matrix. It's in
+// app.devices (PHONE_LANE) so the timeline and the effect chooser treat it as one; it's never a real light.
 
 // Every show has the House lane at the top, then a track per light.
 function ensureTracks() {
@@ -2902,7 +2901,7 @@ const shownFrame = (light, pos) => asShown(light, app.time, (t) => physicalFrame
 // What a preview row shows: for a split light and its parts, their share of what the light
 // actually plays (so a part's clip shows over the whole light's). `composed` caches per light.
 function previewFrame(tr, dev, pos, composed) {
-  if (dev.phones) return Uint8Array.from(phoneNow());
+  if (dev.phones) return phoneScreenNow();
   const light = dev.light || app.lights[dev.parent];
   if (!light) return asShown(dev, app.time, (t) => lightFrame(tr, dev, t, pos));
   const full = composed[light.id] ??= shownFrame(light, pos);
@@ -2932,16 +2931,37 @@ function drawPhoneTile() {
   tile.classList.toggle("folded", folded);
   tile.setAttribute("aria-expanded", String(!folded));
   if (folded) return;
-  const [r, g, b] = phoneNow();
-  tile.querySelector(".phone-screen").style.background = `rgb(${r},${g},${b})`;
+  const canvas = tile.querySelector(".phone-screen"), ctx = canvas.getContext("2d");
+  const frame = phoneScreenNow(), img = ctx.createImageData(PHONE_GRID.w, PHONE_GRID.h);
+  for (let i = 0, n = PHONE_GRID.w * PHONE_GRID.h; i < n; i++) {
+    img.data[i * 4] = frame[i * 3]; img.data[i * 4 + 1] = frame[i * 3 + 1]; img.data[i * 4 + 2] = frame[i * 3 + 2]; img.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// The lights' frames at `t`, for the house's main colour.
+const lightFramesAt = (t, pos = housePositions()) => lightsInShow(app.show, app.devices).filter((id) => app.lights[id])
+  .map((id) => physicalFrame(app.lights[id], t, pos));
+
+// A phone's screen at the playhead, as phones draw it: the Phones lane (with the house's main colour
+// as phones get it, ten times a second), or without one, the house's main colour all over.
+function phoneScreenNow() {
+  const lane = app.show.tracks.find((tr) => tr.device === PHONES), n = PHONE_GRID.w * PHONE_GRID.h;
+  if (!lane) {
+    const [r, g, b] = phoneNow(), out = new Uint8Array(n * 3);
+    for (let i = 0; i < n; i++) out.set([r, g, b], i * 3);
+    return out;
+  }
+  const t = Math.floor(app.time * PHONE_FPS + 1e-6) / PHONE_FPS;
+  const main = laneUsesHouse(lane) ? mainColour(lightFramesAt(t)) : null;
+  return phoneScreen(lane.clips, app.time, main, showLevel(app.show, PHONES));
 }
 
 // What phones show at the playhead, taken at the same moments as the bake (ten a second).
 function phoneNow() {
   const t = Math.floor(app.time * PHONE_FPS + 1e-6) / PHONE_FPS, pos = housePositions();
   const lane = app.show.tracks.find((tr) => tr.device === PHONES);
-  const frames = lane && !laneUsesHouse(lane) ? []
-    : lightsInShow(app.show, app.devices).filter((id) => app.lights[id]).map((id) => physicalFrame(app.lights[id], t, pos));
+  const frames = lane && !laneUsesHouse(lane) ? [] : lightFramesAt(t, pos);
   return phoneColourAt(app.show, t, frames);
 }
 
@@ -3690,7 +3710,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       const all = visibleEffects(current ?? undefined, house, matrix)
         .filter(([key, fx]) => (!only || only.includes(key)) && (!fx.sceneOnly || (only ? only.includes(key) : sceneHere(fx))))
         // House colour only on the Phones lane; that lane takes light effects only.
-        .filter(([, fx]) => (dev?.phones ? !fx.house && !fx.grid && !fx.wholeLoop : !fx.phones))
+        .filter(([, fx]) => (dev?.phones ? !fx.wholeLoop : !fx.phones))
         .filter(([key, fx]) => shows(key, fx) || key === current)
         // Effects drawn on a grid only on a matrix (or with Allow effects that won't work): on a
         // strip they show one row of the picture, so Scrolling text and Picture show next to nothing.

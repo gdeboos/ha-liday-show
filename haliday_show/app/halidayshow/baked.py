@@ -122,4 +122,9 @@ def phone_colours(header: dict | None) -> dict | None:
     if not (isinstance(fps, int) and 1 <= fps <= MAX_FPS and isinstance(colours, str) and len(colours) % 6 == 0
             and set(colours) <= _HEX):
         return None
-    return {"fps": fps, "colours": colours}
+    out = {"fps": fps, "colours": colours}
+    # With a Phones lane using House colour: the house's own main colour, for phones to draw the lane with.
+    house = phones.get("house")
+    if isinstance(house, str) and len(house) == len(colours) and set(house) <= _HEX:
+        out["house"] = house
+    return out

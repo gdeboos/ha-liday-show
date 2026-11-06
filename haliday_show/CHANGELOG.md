@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.371
+
+- **A phone's screen is now a little matrix.** The **Phones** lane takes matrix effects as well as light effects, so visitors' phones can show **Fire**, **Plasma**, **Scrolling text** ("Merry Christmas!"), your own pictures and GIFs with **Picture**, and the rest, like a prop they hold. Light effects such as **Chase** run down the screen. Each phone draws it itself, smoothly, with the same effects as the editor.
+  - The phone in the corner of the **House** panel now shows the screen as phones will, picture and all.
+  - On a phone, **Scrolling text** reads best with **Size** set to **small**.
+
 ## 0.2.370
 
 - **Join is one press.** On the visitors' page, **Join** now goes straight in: the screen opens dark with the flashing warning for a few seconds, then the colours fade in. No second **Join** to press, and **Leave** is there from the start. You can change the warning's words on the **Words** tab, under **Joining the show**.

@@ -5,6 +5,8 @@
 
 export const PHONES = "@phones"; // the Phones lane's device id
 export const PHONE_FPS = 10;
+// A Phones lane plays on the phone's screen as a small upright matrix, drawn by the phone itself.
+export const PHONE_GRID = { w: 27, h: 48 };
 const LIT = 8; // a channel this bright or more counts as lit
 
 // The house's main colour from its lights' frames (each r g b r g b …): the lit bulbs' colours
@@ -30,6 +32,10 @@ export const hex = ([r, g, b]) => [r, g, b].map((c) => c.toString(16).padStart(2
 // How many phone colours a bake of `frames` frames at `fps` carries, and which light frame each is taken at.
 export const phoneCount = (frames, fps) => Math.ceil((frames * PHONE_FPS) / fps);
 export const phoneFrame = (k, fps) => Math.floor((k * fps) / PHONE_FPS);
+
+// The Phones lane's light: a matrix the size of PHONE_GRID, which isn't a real light.
+export const PHONE_LANE = { id: PHONES, name: "Phones", segments: PHONE_GRID.w * PHONE_GRID.h, phones: true,
+  matrix: { w: PHONE_GRID.w, h: PHONE_GRID.h } };
 
 // The colour at `t` seconds from a bake's string of colours ("rrggbb" each), or black outside it.
 export function colourAt(colours, t) {

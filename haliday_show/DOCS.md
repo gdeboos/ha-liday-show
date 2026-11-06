@@ -2346,12 +2346,18 @@ What phones show:
 - **A show's own Phones lane**, if you'd rather design some or all of it: in **⚙ Show settings…**, press
   **Add a Phones lane**. It appears under your lights in the timeline, with a **House colour** effect
   across the whole show, so phones carry on showing the house's main colour. Replace or cut into it
-  wherever you want something of your own (a big chorus, say), and add effects as you would to a light
-  with one bulb (the phone's screen). **House colour** is in the effect chooser's **Basics** on the Phones
-  lane only. Phones show only what's on the lane, and stay dark in its gaps. **Remove the Phones lane**
-  goes back to the house's main colour everywhere. ✨ **Generate** leaves the Phones lane alone.
+  wherever you want something of your own (a big chorus, say).
+  - The phone's screen is treated as a small upright [matrix](#matrices-panels-and-mega-trees) (27 × 48), so the Phones lane
+    takes matrix effects as well as light effects: **Fire**, **Plasma**, **Spiral**, **Scrolling text**
+    ("Merry Christmas!"; **Size: small** suits a phone), **Picture** for your pictures and GIFs from
+    **Library → Pictures**, and the rest. Light effects such as **Chase** run down the screen, as on a matrix.
+  - Each phone draws the lane itself, smoothly, with the same effects the editor uses. Around the
+    picture, the rest of the screen glows in its main colour.
+  - **House colour** is in the effect chooser's **Basics** on the Phones lane only. Phones show only
+    what's on the lane, and stay dark in its gaps. **Remove the Phones lane** goes back to the house's
+    main colour everywhere. ✨ **Generate** leaves the Phones lane alone.
 
-While you edit, a small phone in the top corner of the **House** panel shows what phones will show at
+While you edit, a small phone in the top corner of the **House** panel shows the phone's screen at
 that moment, worked out just as the phones' colours are, and the **Preview** panel has a **Phones** row too. It shows while phones join the show (or it has a
 Phones lane); click it to fold it away, and again to bring it back.
 
