@@ -1,11 +1,15 @@
 # Changelog
 
-## 0.2.387
+## 0.2.388
 
 - **Lyrics are kept with the song.** Place them once and every show on that song sings them. You can now add them in the Music editor too: open the song and press **Lyrics…** under **Beats and sections**. Lyrics you've already placed in a show move to its song the next time you open the show.
 - **Song files made from a draft keep the lyrics**, moved to follow your cuts and repeats.
 - **Older edits:** for a song file you made from a draft before now, open **Lyrics…** and press **Bring in the lyrics from…** to bring over the original song's lyrics through that draft's cuts.
 - The singer is measured once per song, so a second show on the same song doesn't measure it again.
+
+## 0.2.387
+
+- **Nine more Singing faces.** A **Singing face** clip's **Character** now also offers a reindeer, an elf, a Christmas tree, a penguin, a robin, a teddy bear, a skull, a witch and a black cat, alongside the snowman, pumpkin, gingerbread person, Santa and ghost. They all sing, blink and glance about the same way. A library of faces, where you can make your own, is coming next.
 
 ## 0.2.386
 

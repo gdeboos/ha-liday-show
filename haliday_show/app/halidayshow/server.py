@@ -1472,7 +1472,9 @@ def _clean_song_lyrics(body) -> dict | None:
         if not isinstance(text, str) or len(text) > MAX_LYRIC_TEXT or not isinstance(lines, list) \
                 or len(lines) > MAX_LYRIC_LINES:
             raise ValueError
-        clean = [{"start": _num(l["start"]), "end": _num(l["end"])} for l in lines]
+        if len(lines) != sum(1 for line in text.splitlines() if line.strip()):
+            raise ValueError  # one per line of the words
+        clean = [{"start": (a := _num(l["start"])), "end": max(a, _num(l["end"]))} for l in lines]
     except (ValueError, KeyError, TypeError):
         raise web.HTTPBadRequest(text="expected {text, lines: [{start, end}]} or null")
     return {"text": text, "lines": clean}
@@ -1484,9 +1486,9 @@ def _clean_song_voice(body) -> dict | None:
         return None
     try:
         fps, values, shapes, src = body["fps"], body["values"], body.get("shapes", ""), body.get("from", "song")
-        if not (isinstance(fps, int) and 1 <= fps <= 60) or not isinstance(values, list) or len(values) > MAX_VOICE_STEPS \
+        if isinstance(fps, bool) or not (isinstance(fps, int) and 1 <= fps <= 60) or not isinstance(values, list) or len(values) > MAX_VOICE_STEPS \
                 or not all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 100 for v in values) \
-                or not isinstance(shapes, str) or len(shapes) > MAX_VOICE_STEPS or set(shapes) - set("aoem") \
+                or not isinstance(shapes, str) or len(shapes) not in (0, len(values)) or set(shapes) - set("aoem") \
                 or src not in ("vocals", "song"):
             raise ValueError
     except (ValueError, KeyError, TypeError):

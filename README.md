@@ -272,7 +272,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   - Phones join the show: visitors' screens glow with the house's main colour, or a show's own
     Phones lane, in time with the lights (off until you turn it on; a show can stay out). The phone's
     screen is a small matrix, so the lane takes matrix effects too: fire, scrolling text, pictures and GIFs,
-    and a singing face (snowman, pumpkin, gingerbread, Santa or ghost) whose mouth follows the vocals, or the
+    and a singing face (14 characters, from a snowman and Santa to a skull and a black cat) whose mouth follows the vocals, or the
     song's lyrics, placed for you and tweaked by tapping along, kept with the song for every show
   - Installable as an app on visitors' phones (home-screen icon, full screen, your code built in)
   - Fair turns and neighbour guardrails: no repeats, cool-downs, finish by closing time, rest breaks, and a
