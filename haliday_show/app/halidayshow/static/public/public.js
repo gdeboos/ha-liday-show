@@ -649,7 +649,11 @@ export function start() {
       if (got.lane && Array.isArray(got.lane.clips)) {
         try {
           await loadFx();
-          for (const [id, pic] of Object.entries(got.lane.pictures || {})) fxPictures.keepPicture(id, pic);
+          for (const [id, pic] of Object.entries(got.lane.pictures || {})) {
+            // A sharper phone copy is decoded here; one that won't decode leaves its clip's background.
+            if (pic.phone) await fxPictures.keepPhoneCopy(id, pic.name, pic.phone).catch((e) => console.warn("Phone picture", e));
+            else fxPictures.keepPicture(id, pic);
+          }
           for (const [id, face] of Object.entries(got.lane.faces || {})) fxFaces.keepFace(id, face);
           if (gen === join.gen && join.key === want) join.lane = got.lane;
         } catch (e) { console.warn("Phones lane: couldn't load the effects, so one colour at a time", e); }

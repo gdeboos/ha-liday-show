@@ -1,12 +1,17 @@
 # Changelog
 
-## 0.2.401
+## 0.2.402
 
 - **A song's vocals and music now belong to the song.** **Split vocals** keeps them with the song as its **parts** instead of saving two new songs. In **Library → Songs** the song's row says **parts: vocals and music**, and they're renamed, copied, archived and deleted with it.
 - **Your earlier splits have been tidied up.** "… (vocals)" and "… (music)" songs are now their song's parts, and shows and drafts that used them still do. Any that couldn't be matched to their song stay where they were, under **Splits**.
 - **Edits don't need splitting.** A song file made from a draft gets its own vocals and music, cut from the original's the same way, in seconds.
 - **Layers can use any song's parts.** In the Music editor, **+ Add a clip at the playhead…** lists them under **Song parts**, such as "Jingle Bells (vocals)".
 - This is the first step towards drums and bass parts, and a smarter **Generate** that uses them.
+
+## 0.2.401
+
+- **Sharper pictures and GIFs on phones.** When you add a picture under **Library → Pictures**, a sharper copy is now kept for visitors' phones. A **Picture** on the **Phones** lane is drawn four times finer than before, so photos, logos and GIFs look smooth rather than blocky. Your matrices still use the usual copy.
+- Pictures you added before don't have the sharper copy: delete and add them again to get it. Their rows say **sharp on phones** once they have it.
 
 ## 0.2.400
 

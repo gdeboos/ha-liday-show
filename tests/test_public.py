@@ -1495,3 +1495,15 @@ def test_a_phones_lane_sends_your_own_singing_faces(tmp_path):
              {"effect": "singingface", "character": "fgone000000"}]
     lane = public.phone_lane(st, {"tracks": [{"device": "@phones", "clips": clips}]})
     assert lane["faces"] == {fid: {"name": "Ice queen", "recipe": {"head": {"shape": "oval"}}}}
+
+
+def test_a_phones_lane_sends_a_pictures_phone_copy_instead_of_its_matrix_frames(tmp_path):
+    from halidayshow.storage import Storage
+    st = Storage(tmp_path / "config", tmp_path / "media")
+    phone = {"w": 200, "h": 100, "frames": ["UklGR"], "delays": [100]}
+    sharp = st.save_picture({"name": "Star", "w": 2, "h": 1, "frames": ["AAAAAAAAAAA="], "delays": [100], "phone": phone})
+    plain = st.save_picture({"name": "Moon", "w": 2, "h": 1, "frames": ["AAAAAAAAAAA="], "delays": [100]})
+    clips = [{"effect": "picture", "picture": sharp}, {"effect": "picture", "picture": plain}]
+    lane = public.phone_lane(st, {"tracks": [{"device": "@phones", "clips": clips}]})
+    assert lane["pictures"][sharp] == {"name": "Star", "phone": phone}
+    assert lane["pictures"][plain]["frames"] == ["AAAAAAAAAAA="]

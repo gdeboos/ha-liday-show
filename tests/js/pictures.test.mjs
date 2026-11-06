@@ -123,3 +123,35 @@ test("damaged, enormous or endless GIFs are refused with a message, never a hang
   const many = gif(1, 1, [RED], Array.from({ length: 600 }, () => ({ pixels: [0] })));
   assert.equal(decodeGif(many).frames.length, 500);
 });
+
+test("a long GIF's phone copy loses every other frame, each kept one showing for both", async () => {
+  const { halveFrames } = await import("../../haliday_show/app/halidayshow/static/js/pictures.js");
+  assert.deepEqual(halveFrames(["a", "b", "c"], [100, 50, 70]), { frames: ["a", "c"], delays: [150, 70] });
+  assert.deepEqual(halveFrames(["a", "b"], [9000, 5000]).delays, [10000]);
+});
+
+test("on a phone's sharp grid the Picture effect uses the phone copy, and scrolls at the same pace", async () => {
+  const { keepPicture, forgetPicture, getPicture, phoneKey, pictureList, allPictures } = await import("../../haliday_show/app/halidayshow/static/js/pictures.js");
+  const { phoneView, phoneScreen } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const one = (c) => btoa(String.fromCharCode(...c));
+  keepPicture("psharp", { name: "Dot", w: 1, h: 1, frames: [one([255, 0, 0, 255])], delays: [100] });
+  keepPicture(phoneKey("psharp"), { name: "Dot", w: 1, h: 1, frames: [one([0, 0, 255, 255])], delays: [100] });
+  assert.deepEqual(pictureList().map((p) => p.id), ["psharp"]); // the phone copy isn't one of your pictures
+  assert.ok(allPictures().every(([id]) => id === "psharp"));
+  const clip = { effect: "picture", start: 0, end: 10, picture: "psharp", fit: "stretch", move: "still", speed: 4, animate: 100, background: "#000000" };
+  const fine = phoneView([clip], 1), coarse = phoneScreen([clip], 1);
+  assert.deepEqual([...fine.frame.subarray(0, 3)], [0, 0, 255]);
+  assert.deepEqual([...coarse.subarray(0, 3)], [255, 0, 0]);
+  // Scrolling: after 1 s at 4 dots a second, the fine grid has moved 4 x 4 of its own dots.
+  keepPicture(phoneKey("psharp"), { name: "Dot", w: 2, h: 1, frames: [one([0, 0, 255, 255, 0, 255, 0, 255])], delays: [100] });
+  const edge = (v, w) => { // first non-background column across the middle
+    const o = 192 * w * 3;
+    for (let x = 0; x < w; x++) if (v[o + x * 3] || v[o + x * 3 + 1] || v[o + x * 3 + 2]) return x;
+    return -1;
+  };
+  const scroll = { ...clip, fit: "fit", move: "scroll left" };
+  const a = phoneView([scroll], 1), b = phoneView([scroll], 2);
+  assert.equal(edge(a.frame, a.w) - edge(b.frame, b.w), 16);
+  forgetPicture("psharp");
+  assert.equal(getPicture(phoneKey("psharp")), undefined);
+});

@@ -308,7 +308,7 @@ _SPLIT = re.compile(r"^(.*) \((vocals|music)\)\.wav$", re.IGNORECASE)
 
 
 def splits_to_parts(storage) -> list[dict]:
-    """Before 0.2.401 Split vocals saved "<song> (vocals).wav" and "<song> (music).wav" as songs of their
+    """Before 0.2.402 Split vocals saved "<song> (vocals).wav" and "<song> (music).wav" as songs of their
     own, in HA-liday Show's songs folder or beside the song. They become that song's parts (Storage.
     song_parts), and every show, draft and song folder using one follows it there. A split whose song
     can't be told (gone, or two songs of that name) stays a song. Returns [{from, to}]."""

@@ -368,8 +368,14 @@ it's added, and a GIF keeps up to 120 of its frames, so small, bold pictures wit
 best. See-through parts show the effect's **Background**. You can keep up to 200 pictures, and a file
 over 2000 × 2000 needs making smaller first.
 
+A sharper copy (up to 256 × 256) is kept as well for visitors' phones, where a **Picture** on the
+**Phones** lane is drawn four times finer than the rest of the screen, so it's smooth rather than blocky.
+It's stored compressed so a phone downloads it quickly; a long GIF may keep only every other frame on
+phones (each showing for twice as long). Pictures added before HA-liday Show 0.2.401 don't have one:
+delete and add them again to get it.
+
 Each picture's row shows its first frame, its size and, for a GIF, how many frames it has and how long
-it takes. **Rename…** changes its name; **Delete…** (under **⋯**) removes it for good, and **Picture**
+it takes, then **sharp on phones** when it has a phone copy. **Rename…** changes its name; **Delete…** (under **⋯**) removes it for good, and **Picture**
 effects that used it show their background. Sort them with folders (see [Folders](#folders)).
 
 ### Faces
