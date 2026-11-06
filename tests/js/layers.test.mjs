@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DUCK_DB, anchorAt, duckEnvelope, limit, sourceKey, matchGain, mixLayers, placeClips, resultTime } from "../../haliday_show/app/halidayshow/static/js/layers.js";
+import { DUCK_DB, STEPS, anchorAt, duckEnvelope, singingCurve, limit, sourceKey, matchGain, mixLayers, placeClips, resultTime } from "../../haliday_show/app/halidayshow/static/js/layers.js";
 import { cut, insert } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
 const A = { source: "media", path: "a.mp3" }, B = { source: "media", path: "b.mp3" };
@@ -280,4 +280,27 @@ test("loopLayer repeats a stretch of one layer and moves the rest on", async () 
   assert.deepEqual(at2, [[0, 0, 10], [20, 0, 5], [27, 0, 5], [34, 0, 5], [41, 0, 5], [46, 5, 10]]);
   assert.equal(r.dropped, 0);
   assert.equal(loopLayer(layers, 0, 18, 25, 8, { pieces: song, crossfade: 0, refs }).dropped > 0, true);
+});
+
+test("a layer can go quieter while the song sings, instead of quietening the song", () => {
+  const rate = 1000, n = 10000;
+  // The song sings from 4 s to 6 s (and breathes faintly elsewhere); the horn plays all the way through.
+  const voice = [new Float32Array(n).map((_, i) => (i >= 4000 && i < 6000 ? 0.5 : 0.001))];
+  const curve = singingCurve(voice, rate);
+  assert.equal(curve.length, (n / rate) * STEPS);
+  assert.equal(curve[500], 1, "down while it sings");
+  assert.equal(curve[100], 0, "the faint breathing doesn't count");
+  assert.ok(curve[390] > 0 && curve[390] < 1, "starting down just before");
+  assert.ok(curve[630] > 0 && curve[630] < 1, "coming back up after");
+  const horn = { name: "Horn", gain: 0, duck: true, duckFrom: "vocals", duckDb: 12,
+    clips: [{ song: B, start: 0, end: 10, anchor: { song: A, t: 0 } }] };
+  const sources = { "media:b.mp3": [new Float32Array(n).fill(0.5)] };
+  const placed = placeClips([horn], song, 0);
+  const main = [new Float32Array(n)];
+  const out = mixLayers(main, [horn], placed, sources, rate, { singing: curve })[0];
+  near(out[5000], 0.5 * 10 ** (-12 / 20), "12 dB down while the song sings");
+  near(out[1000], 0.5, "as it is elsewhere");
+  // It doesn't dip the song, and without the song's vocals it plays as it is.
+  assert.equal(duckEnvelope([horn], placed, sources, n, rate), null);
+  near(mixLayers(main, [horn], placed, sources, rate)[0][5000], 0.5, "no vocals: as it is");
 });

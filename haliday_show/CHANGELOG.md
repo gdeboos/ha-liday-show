@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.426
+
+- **Turn a layer down while the song sings.** In the Music editor's **Mixer**, a layer's **Quieten** (which was **Quieten the song**) now has a choice beside it: **the song** dips under the layer as before, or **this layer** goes down while the song sings and comes back up between lines, so a horn or choir layer doesn't fight the singer. It needs the song split into parts.
+
 ## 0.2.425
 
 - **Snap to the drums.** In the Music editor, selections now snap to the song's kicks and snares as well as its beats, so you can cut or repeat right on a drum hit (zoom in to feel it; hold Shift to place them freely). While you're editing a layer on its own, they snap to the drums of its clips' songs.

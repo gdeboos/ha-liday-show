@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, keyFrom, keyShift, toMono } from "
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, insertIntoLayer, keepLayer, loopLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, sourceKey } from "./layers.js";
+import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, insertIntoLayer, keepLayer, loopLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, singingCurve, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
 import { lineUpOnBar, mashFit } from "./mashfit.js";
@@ -1038,6 +1038,20 @@ export class MusicEditor {
     return out;
   }
 
+  // Where the song sings (singingCurve of its vocals at their level, through the cuts), for layers that go
+  // quieter while it does; null when none do, or until the vocals are loaded.
+  singing() {
+    if (!this.layers.some((L) => L.duck && L.duckFrom === "vocals") || !this.partsAvailable || !this.mainFor) return null;
+    const r = this.partRender("vocals");
+    if (!r) { this.loadParts(["vocals"]); return null; }
+    const level = partLevel(this.parts, "vocals", this.pieces, this.crossfade), sig = JSON.stringify(level);
+    if (this.singingFor?.r !== r || this.singingFor.sig !== sig) {
+      const voice = addPart(r.map((ch) => new Float32Array(ch.length)), r, level, this.mainFor.rate, 0);
+      this.singingFor = { r, sig, curve: singingCurve(voice, this.mainFor.rate) };
+    }
+    return this.singingFor.curve;
+  }
+
   // Just the soloed parts of the song at their levels, for listening; null until they're loaded.
   soloedParts(names) {
     const renders = names.map((p) => this.partRender(p));
@@ -1147,7 +1161,7 @@ export class MusicEditor {
     if (!this.solo.size && !this.songMuted) return this.rendered;
     const rate = this.audio.sampleRate, placed = this.placed().filter((p) => !this.layers[p.layer].muted);
     return placed.length || this.mainEq !== this.main
-      ? limit(mixLayers(this.mainEq, this.layers, placed, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate) : this.main;
+      ? limit(mixLayers(this.mainEq, this.layers, placed, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade, singing: this.singing() }), rate) : this.main;
   }
 
   setClip(change) {
@@ -1408,7 +1422,7 @@ export class MusicEditor {
     const box = $("music-layers");
     const samples = this.samplesList || [], songs = this.host.songs();
     learnParts(songs);
-    const sig = JSON.stringify([this.songKey, this.layers.map((l) => [l.name, l.gain, !!l.duck, l.duckDb, !!l.matchTempo, !!l.matchKey, l.semitones, isFlat(l.eq), l.clips.length, !!l.muted]), isFlat(this.eq),
+    const sig = JSON.stringify([this.songKey, this.layers.map((l) => [l.name, l.gain, !!l.duck, l.duckFrom, l.duckDb, !!l.matchTempo, !!l.matchKey, l.semitones, isFlat(l.eq), l.clips.length, !!l.muted]), isFlat(this.eq),
       [...this.solo], this.songMuted, this.renaming, this.focus, this.parts.gain, this.parts.muted, this.partsAvailable,
       this.eqCh, !!this.songTempo, samples.length, JSON.stringify(this.sampleFolders || []), songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
@@ -1479,7 +1493,7 @@ export class MusicEditor {
         return el("span", { className: "ms" }, m, so);
       };
       const cell = (...kids) => el("span", { className: "mixer-cell" }, ...kids);
-      const head = ["", "", "Volume", "EQ", "Quieten the song", "Match tempo", "Key", ""].map((t) => el("span", { className: "mixer-head", textContent: t }));
+      const head = ["", "", "Volume", "EQ", "Quieten", "Match tempo", "Key", ""].map((t) => el("span", { className: "mixer-head", textContent: t }));
       const songRow = el("div", { className: "mixer-row" },
         el("span", { className: "mixer-name" }, el("span", { className: "layer-dot song-dot" }), el("b", { textContent: "Song" })),
         muteSolo("song", "the song"), cell(), cell(eqButton(-1, "song", "the song")), cell(), cell(), cell(this.songKey ? el("span", { className: "hint", textContent: this.songKey }) : ""), cell());
@@ -1539,12 +1553,22 @@ export class MusicEditor {
         vol.addEventListener("input", () => { db.textContent = `${vol.value > 0 ? "+" : ""}${vol.value} dB`; });
         vol.addEventListener("change", () => this.setLayer(i, { gain: Number(vol.value) }));
         const duck = el("input", { type: "checkbox", checked: !!l.duck });
-        duck.setAttribute("aria-label", `${l.name}: quieten the song`);
-        duck.title = "Turn the song down a little while this layer's clips play, so they're clearer: good for a voice";
+        duck.setAttribute("aria-label", `${l.name}: quieten`);
+        duck.title = "Turn the song down a little while this layer's clips play, so they're clearer (good for a voice), or this layer down while the song sings";
         duck.addEventListener("change", () => this.setLayer(i, { duck: duck.checked }));
+        // Which way: the song under this layer, or this layer under the song's singing (its vocals part).
+        const under = el("select", { className: "duck-from" },
+          el("option", { value: "", textContent: "the song" }),
+          el("option", { value: "vocals", textContent: "this layer", disabled: !this.partsAvailable && l.duckFrom !== "vocals" }));
+        under.value = l.duckFrom === "vocals" ? "vocals" : "";
+        under.hidden = !l.duck;
+        under.setAttribute("aria-label", `${l.name}: what goes quieter`);
+        under.title = this.partsAvailable ? "The song goes down while this layer plays, or this layer goes down while the song sings"
+          : "Split the song into parts to turn this layer down while the song sings";
+        under.addEventListener("change", () => this.setLayer(i, { duck: true, duckFrom: under.value || undefined }));
         // By how much: 8 dB unless set (saved only when it isn't 8).
         const by = el("input", { type: "range", min: DUCK_MIN, max: DUCK_MAX, step: 1, value: duckDbOf(l), disabled: !l.duck });
-        by.setAttribute("aria-label", `How much ${l.name} quietens the song`);
+        by.setAttribute("aria-label", l.duckFrom === "vocals" ? `How much ${l.name} goes down while the song sings` : `How much ${l.name} quietens the song`);
         const byDb = el("span", { className: "hint", textContent: `${duckDbOf(l)} dB` });
         by.addEventListener("input", () => { byDb.textContent = `${by.value} dB`; });
         by.addEventListener("change", () => {
@@ -1553,8 +1577,10 @@ export class MusicEditor {
           [...$("music-layers").querySelectorAll(".duck-by input")][i]?.focus();
         });
         const byLabel = el("label", { className: "duck-by", hidden: !l.duck,
-          title: "How far the song goes down: a little, so it's still heard, or nearly silent" }, "by ", by, " ", byDb);
-        duck.addEventListener("change", () => { byLabel.hidden = !duck.checked; });
+          title: l.duckFrom === "vocals" ? "How far this layer goes down while the song sings: a little, or nearly silent"
+            : "How far the song goes down: a little, so it's still heard, or nearly silent" }, "by ", by, " ", byDb,
+          l.duckFrom === "vocals" ? " as the song sings" : "");
+        duck.addEventListener("change", () => { byLabel.hidden = under.hidden = !duck.checked; });
         const tempo = el("input", { type: "checkbox", checked: !!l.matchTempo, disabled: !this.songTempo && !l.matchTempo });
         tempo.setAttribute("aria-label", `${l.name}: match the song's tempo`);
         tempo.title = this.songTempo
@@ -1580,7 +1606,7 @@ export class MusicEditor {
           el("span", { className: "mixer-name" }, dot, name, editing), muteSolo(i, l.name),
           cell(el("label", { className: "mixer-vol" }, el("span", { className: "mixer-label", textContent: "Volume " }), vol, " ", db)),
           cell(eqButton(i, i, l.name)),
-          cell(el("span", { className: "duck-group" }, duck, el("span", { className: "mixer-label", textContent: " Quieten the song" }), byLabel)),
+          cell(el("span", { className: "duck-group" }, el("span", { className: "duck-what" }, duck, el("span", { className: "mixer-label", textContent: " Quieten " }), under), byLabel)),
           cell(el("label", {}, tempo, el("span", { className: "mixer-label", textContent: " Match tempo" }))),
           cell(keySel), cell(more));
         rows.push(row);
@@ -1712,7 +1738,7 @@ export class MusicEditor {
     if (i == null || !this.main) { this.focusMix = this.focusPeaks = this.focusInfo = null; this.renderFocus(); return; }
     const mine = placed.filter((p) => p.layer === i);
     const silent = this.main.map((ch) => new Float32Array(ch.length));
-    this.focusMix = mixLayers(silent, this.layers, mine, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade });
+    this.focusMix = mixLayers(silent, this.layers, mine, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade, singing: this.singing() });
     this.focusPeaks = peaks(this.focusMix);
     const info = { beats: [], bars: [], sections: [], marks: [] };
     for (const p of mine) {
@@ -2113,7 +2139,7 @@ export class MusicEditor {
     }
     const heard = placed.filter((p) => layers[p.layer] && !layers[p.layer].muted && (!this.solo.size || this.solo.has(p.layer)));
     const song = this.heard("song") ? this.mainEq : this.mainEq.map((ch) => new Float32Array(ch.length));
-    const mix = limit(mixLayers(song, layers, heard, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate);
+    const mix = limit(mixLayers(song, layers, heard, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade, singing: this.singing() }), rate);
     const from = Math.max(0, start - 3), to = Math.min(this.total, start + 3);
     this.stop();
     const a = Math.round(from * rate), b = Math.round(to * rate);
@@ -2548,7 +2574,7 @@ export class MusicEditor {
     const song = !this.mainEq ? this.mainEq : !this.heard("song") ? this.mainEq.map((ch) => new Float32Array(ch.length))
       : soloParts.length && !this.solo.has("song") ? this.soloedParts(soloParts) || this.mainEq : this.mainEq;
     this.rendered = heard.length || song !== this.main
-      ? limit(mixLayers(song, this.layers, heard, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade }), rate) : this.main;
+      ? limit(mixLayers(song, this.layers, heard, this.sources, rate, { pieces: this.pieces, crossfade: this.crossfade, singing: this.singing() }), rate) : this.main;
     if (this.focus != null && this.focus >= this.layers.length) this.focus = null;
     this.focusView(placed, rate);
     const steps = this.main ? Math.ceil((this.main[0].length / rate) * OVERLAY_RATE) + 1 : 0;
@@ -2811,7 +2837,7 @@ export class MusicEditor {
       const moved = sourceKey(c, p.speed, p.semis);
       if (moved !== own && !parts[moved]) parts[moved] = shift(this.sources[key], rate, p.speed, p.semis);
     }
-    return mixLayers(channels, layers, placed, parts, rate, { pieces, crossfade, heard });
+    return mixLayers(channels, layers, placed, parts, rate, { pieces, crossfade, heard, singing: rate === this.mainFor?.rate ? this.singing() : null });
   }
 
   // Detect for a file just made from a draft (with something spliced in), keeping the draft's marks.
