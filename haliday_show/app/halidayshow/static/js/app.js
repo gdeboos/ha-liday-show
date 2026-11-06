@@ -11,7 +11,7 @@ import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, pa
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
-  renderTrack, showDuration, phoneColourAt,
+  renderTrack, showDuration, phoneColourAt, laneUsesHouse, newClip,
 } from "./effects.js";
 import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, hasPhonesLane, phonesJoin } from "./phones.js";
@@ -2626,8 +2626,12 @@ const preview = $("preview");
 const pctx = preview.getContext("2d");
 const ROW_H = 26, LABEL_W = 140;
 
+let phonesOn = false; // the public page's Let visitors' phones join the show
 function previewTracks() {
-  return app.show.tracks.filter(playingDev);
+  const tracks = app.show.tracks.filter(playingDev);
+  // Phones get a row while they join this show, even without a Phones lane: the house's main colour.
+  if (!app.sceneId && !hasPhonesLane(app.show) && phonesJoin(app.show, phonesOn)) tracks.push({ device: PHONES, clips: [] });
+  return tracks;
 }
 
 function layoutPreview() {
@@ -2711,7 +2715,8 @@ const isLane = (i) => isHouse(i) || isGroup(i);
 app.groupFor = groupById; // for the timeline's lane names
 const trackKind = (i) => (isHouse(i) ? "house" : isGroup(i) ? "group" : "light");
 // House effects go on the House lane and group lanes; light effects everywhere but the House lane.
-const laneKind = (i) => (isGroup(i) ? "group" : isHouse(i) ? "house" : gridOf(playingDev(app.show.tracks[i])) ? "matrix" : "light");
+const laneKind = (i) => (isGroup(i) ? "group" : isHouse(i) ? "house" : app.show.tracks[i]?.device === PHONES ? "phones"
+  : gridOf(playingDev(app.show.tracks[i])) ? "matrix" : "light");
 // Scene-only effects (WLED's own, Live music): only in a scene, on a whole light (no parts; a WLED
 // for WLED's own), as the one clip on its lane, all the way round.
 const sceneLight = (d, fx) => !!d && !d.parent && !d.light && !d.parts?.length && (!fx?.wledOwn || d.kind === "wled");
@@ -2897,6 +2902,7 @@ const shownFrame = (light, pos) => asShown(light, app.time, (t) => physicalFrame
 // What a preview row shows: for a split light and its parts, their share of what the light
 // actually plays (so a part's clip shows over the whole light's). `composed` caches per light.
 function previewFrame(tr, dev, pos, composed) {
+  if (dev.phones) return Uint8Array.from(phoneNow());
   const light = dev.light || app.lights[dev.parent];
   if (!light) return asShown(dev, app.time, (t) => lightFrame(tr, dev, t, pos));
   const full = composed[light.id] ??= shownFrame(light, pos);
@@ -2917,7 +2923,6 @@ function drawHouse() {
 // The phone in the corner of the House panel: what visitors' phones show now (phones.js), worked out
 // as the bake does, from the same moment ten times a second. Shown while phones join this show or it
 // has a Phones lane; clicking it folds it away.
-let phonesOn = false; // the public page's Let visitors' phones join the show
 function drawPhoneTile() {
   const tile = $("phone-tile");
   const want = !app.sceneId && (phonesJoin(app.show, phonesOn) || hasPhonesLane(app.show));
@@ -2927,11 +2932,17 @@ function drawPhoneTile() {
   tile.classList.toggle("folded", folded);
   tile.setAttribute("aria-expanded", String(!folded));
   if (folded) return;
-  const t = Math.floor(app.time * PHONE_FPS + 1e-6) / PHONE_FPS, pos = housePositions();
-  const frames = hasPhonesLane(app.show) ? []
-    : lightsInShow(app.show, app.devices).filter((id) => app.lights[id]).map((id) => physicalFrame(app.lights[id], t, pos));
-  const [r, g, b] = phoneColourAt(app.show, t, frames);
+  const [r, g, b] = phoneNow();
   tile.querySelector(".phone-screen").style.background = `rgb(${r},${g},${b})`;
+}
+
+// What phones show at the playhead, taken at the same moments as the bake (ten a second).
+function phoneNow() {
+  const t = Math.floor(app.time * PHONE_FPS + 1e-6) / PHONE_FPS, pos = housePositions();
+  const lane = app.show.tracks.find((tr) => tr.device === PHONES);
+  const frames = lane && !laneUsesHouse(lane) ? []
+    : lightsInShow(app.show, app.devices).filter((id) => app.lights[id]).map((id) => physicalFrame(app.lights[id], t, pos));
+  return phoneColourAt(app.show, t, frames);
 }
 
 // The stretch picked on the photo, if it's on light `d`: in view, or out of view with how many
@@ -3678,6 +3689,8 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
       const sceneHere = (fx) => !!app.sceneId && house === false && sceneLight(dev, fx);
       const all = visibleEffects(current ?? undefined, house, matrix)
         .filter(([key, fx]) => (!only || only.includes(key)) && (!fx.sceneOnly || (only ? only.includes(key) : sceneHere(fx))))
+        // House colour only on the Phones lane; that lane takes light effects only.
+        .filter(([, fx]) => (dev?.phones ? !fx.house && !fx.grid && !fx.wholeLoop : !fx.phones))
         .filter(([key, fx]) => shows(key, fx) || key === current)
         // Effects drawn on a grid only on a matrix (or with Allow effects that won't work): on a
         // strip they show one row of the picture, so Scrolling text and Picture show next to nothing.
@@ -6845,7 +6858,7 @@ async function loadPublic({ items = false } = {}) {
   try {
     const view = await api("api/public");
     if (!pubPending) publicView = view;
-    if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; drawHouse(); }
+    if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; layoutPreview(); drawHouse(); }
     renderPublicQueue(view);
     $("pub-on").checked = view.on;
     if (!items) return;
@@ -6958,7 +6971,7 @@ function savePublic() {
         method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
           repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, phones: !!phones, ...(pick ? { pick } : {}) },
       });
-      phonesOn = !!view.phones;
+      if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; layoutPreview(); }
       if (pubPending === 1) {
         publicView = view;
         if (shownPage === "public") renderPublicItems();
@@ -11915,14 +11928,16 @@ function wire() {
   $("show-phones").addEventListener("change", (e) => {
     if (e.target.checked) delete app.show.phones; else app.show.phones = false;
     app.changed();
+    layoutPreview();
     renderShowPhones();
     drawHouse();
   });
   $("show-phones-lane").addEventListener("click", async () => {
     const at = app.show.tracks.findIndex((t) => t.device === PHONES);
-    if (at < 0) app.show.tracks.push({ device: PHONES, clips: [] });
+    // It starts with House colour across the show, so you only design the parts you want to.
+    if (at < 0) app.show.tracks.push({ device: PHONES, clips: [newClip("housecolour", 0, Math.max(app.duration(), 1))] });
     else {
-      const n = app.show.tracks[at].clips.length;
+      const n = app.show.tracks[at].clips.filter((c) => c.effect !== "housecolour").length;
       if (n && !(await askYes(`Remove the Phones lane and its ${n === 1 ? "effect" : `${n} effects`}? Phones go back to your house's main colour.`,
         { yes: "Remove", danger: true }))) return;
       app.show.tracks.splice(at, 1);

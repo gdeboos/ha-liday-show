@@ -47,3 +47,18 @@ test("phones join a show while the switch is on, unless it stays out", () => {
   assert.equal(phonesJoin({}, true), true);
   assert.equal(phonesJoin({ phones: false }, true), false);
 });
+
+test("House colour on a Phones lane shows the house's main colour, only there", async () => {
+  const { EFFECTS } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const { laneTakes } = await import("../../haliday_show/app/halidayshow/static/js/matrix.js");
+  const show = { duration: 2, tracks: [
+    { device: "a", clips: [{ ...newClip("solid", 0, 2), color: "#00ff00" }] },
+    { device: PHONES, clips: [newClip("housecolour", 0, 1), { ...newClip("solid", 1, 2), color: "#0000ff" }] },
+  ] };
+  const h = headerOf(bake(show, { a: { segments: 3 }, [PHONES]: { segments: 1, phones: true } }, 40));
+  assert.deepEqual(colourAt(h.phones.colours, 0.5), [0, 255, 0]); // the house's colour
+  assert.deepEqual(colourAt(h.phones.colours, 1.5), [0, 0, 255]); // designed by hand
+  assert.ok(laneTakes("housecolour", EFFECTS.housecolour, "phones"));
+  for (const lane of ["light", "group", "house", "matrix"]) assert.ok(!laneTakes("housecolour", EFFECTS.housecolour, lane));
+  assert.ok(laneTakes("solid", EFFECTS.solid, "phones") && !laneTakes("plasma", EFFECTS.plasma, "phones"));
+});

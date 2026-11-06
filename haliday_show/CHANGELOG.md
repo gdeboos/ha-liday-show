@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.368
+
+- **House colour for the Phones lane.** A new **House colour** effect shows your house's main colour on visitors' phones, as they do without a Phones lane. **Add a Phones lane** now starts the lane with **House colour** across the whole show, so you only design the parts you want to (a big chorus, say) and leave the rest following the house. You'll find it under **Basics** in the effect chooser, on the Phones lane only. The **Preview** panel now has a **Phones** row whenever phones join the show, with or without a Phones lane, showing what phones will show.
+
 ## 0.2.367
 
 - **Phones join the show.** Visitors' phones can now be part of your show: their screen glows with your lights' colours, in time with the music. It's off until you turn on **Let visitors' phones join the show** under **Public page → Listening**. Visitors then press **Join** in the card at the top of the page.

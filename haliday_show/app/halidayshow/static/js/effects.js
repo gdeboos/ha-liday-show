@@ -143,6 +143,13 @@ function multiColour(label, colours) {
 
 // render(p, t, dur, n, i) returns the colour of segment i (0..n-1) at t seconds into the clip.
 export const EFFECTS = {
+  // Phones lane only (phones.js): the house's main colour at that moment, as phones show by default.
+  housecolour: {
+    label: "House colour",
+    phones: true,
+    params: [],
+    render: () => phoneMain,
+  },
   solid: {
     label: "Solid",
     params: [color("color", "Colour", "#ff0000")],
@@ -1858,12 +1865,22 @@ export function dim(rgb, level) {
   return rgb;
 }
 
+// The house's main colour while a Phones lane is worked out, for its House colour clips. Elsewhere
+// (the timeline's clip pictures) a soft white stands in for it.
+const STAND_IN = [220, 200, 170];
+let phoneMain = STAND_IN;
+
+// Whether a Phones lane needs the lights' frames: it has a House colour clip.
+export const laneUsesHouse = (lane) => !!lane?.clips?.some((c) => EFFECTS[c.effect]?.phones);
+
 // What visitors' phones show at `time` (phones.js): the show's Phones lane where it has one (dark in
-// its gaps), else the house's main colour from `lightFrames`, the lights' frames at that moment.
+// its gaps, the house's main colour in its House colour clips), else the house's main colour, from
+// `lightFrames`, the lights' frames at that moment.
 export function phoneColourAt(show, time, lightFrames) {
   const lane = (show.tracks || []).find((t) => t.device === PHONES);
   if (!lane) return mainColour(lightFrames);
-  return Array.from(dim(renderTrack(lane.clips || [], time, 1), showLevel(show, PHONES)));
+  phoneMain = laneUsesHouse(lane) ? mainColour(lightFrames) : STAND_IN;
+  try { return Array.from(dim(renderTrack(lane.clips || [], time, 1), showLevel(show, PHONES))); } finally { phoneMain = STAND_IN; }
 }
 
 // Bake every frame into the layout the Python player reads (see baked.py): one track per physical
@@ -1953,7 +1970,7 @@ function bakeFrames(show, devices, fps, positions, groups) {
   };
   const headerBytes = new TextEncoder().encode(JSON.stringify(header));
   const phonesAt = 9 + JSON.stringify({ phones: { fps: PHONE_FPS, colours: "" } }).length - 3;
-  const lane = hasPhonesLane(show);
+  const needFrames = !hasPhonesLane(show) || laneUsesHouse(show.tracks.find((t) => t.device === PHONES));
   let phone = 0;
   const stride = header.tracks.reduce((s, t) => s + t.segments * 3, 0);
   const out = new Uint8Array(9 + headerBytes.length + header.frames * stride);
@@ -1969,7 +1986,7 @@ function bakeFrames(show, devices, fps, positions, groups) {
     for (const [k, l] of lights.entries()) {
       const frame = out.subarray(off, off + l.segments * 3);
       dim(composeLight(l, trackOf, time, positions, houseClips, frame, plans), levels[k]);
-      if (!lane) taken.push(frame.slice());
+      if (needFrames) taken.push(frame.slice());
       // A matrix is worked out in rows from the top left; its light wants them in its wiring order.
       if (gridOf(l)) { const wired = toWire(frame, l.matrix); if (wired !== frame) frame.set(wired); }
       off += l.segments * 3;

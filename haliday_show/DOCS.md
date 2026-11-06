@@ -2341,14 +2341,16 @@ What phones show:
 - **Your house's main colour**, unless you say otherwise: the colours of every light that's on, mixed,
   with brighter lights counting for more, and as bright as the brightest light. A dark house with one
   bright prop shows that prop's colour, and when your lights fade, so do the phones.
-- **A show's own Phones lane**, if you'd rather design it: in **⚙ Show settings…**, press **Add a Phones
-  lane**. It appears under your lights in the timeline, and you add effects to it as you would to a
-  light with one bulb (the phone's screen). With a Phones lane, phones show only what's on it, and stay
-  dark in its gaps. **Remove the Phones lane** goes back to the house's main colour. ✨ **Generate**
-  leaves the Phones lane alone.
+- **A show's own Phones lane**, if you'd rather design some or all of it: in **⚙ Show settings…**, press
+  **Add a Phones lane**. It appears under your lights in the timeline, with a **House colour** effect
+  across the whole show, so phones carry on showing the house's main colour. Replace or cut into it
+  wherever you want something of your own (a big chorus, say), and add effects as you would to a light
+  with one bulb (the phone's screen). **House colour** is in the effect chooser's **Basics** on the Phones
+  lane only. Phones show only what's on the lane, and stay dark in its gaps. **Remove the Phones lane**
+  goes back to the house's main colour everywhere. ✨ **Generate** leaves the Phones lane alone.
 
 While you edit, a small phone in the top corner of the **House** panel shows what phones will show at
-that moment, worked out just as the phones' colours are. It shows while phones join the show (or it has a
+that moment, worked out just as the phones' colours are, and the **Preview** panel has a **Phones** row too. It shows while phones join the show (or it has a
 Phones lane); click it to fold it away, and again to bring it back.
 
 How it works:

@@ -105,9 +105,12 @@ export const ON_A_MATRIX = ["plasma", "spiral"];
 
 // Whether an effect can go on a lane: house effects on the House lane, the rest on lights, with
 // ON_A_MATRIX on a matrix too, and effects made for matrices (fx.grid) on matrices. Group lanes
-// take anything. lane: "house", "group", "matrix" or "light".
+// take anything but the Phones lane's own. lane: "house", "group", "matrix", "light" or "phones".
 export function laneTakes(key, fx, lane) {
   if (!fx) return false;
+  // The Phones lane takes light effects and its own (House colour); nothing else takes those.
+  if (fx.phones) return lane === "phones";
+  if (lane === "phones") return !fx.house && !fx.grid && !fx.wholeLoop;
   if (lane === "group") return true;
   if (lane === "house") return !!fx.house;
   if (fx.house) return lane === "matrix" && ON_A_MATRIX.includes(key);
