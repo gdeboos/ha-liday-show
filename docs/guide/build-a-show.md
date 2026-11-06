@@ -346,8 +346,10 @@ first change starts a [draft](#drafts), kept as you go, which you make into a ne
 happy. Drag across the waveform to select (clicking moves the playhead and keeps the selection; press **✕**
 next to its times or Esc to clear it), then **Cut selection** to remove it or
 **Keep only selection** to shorten the song to it, or let **✂ Suggest cuts…** find the cuts for you (see
-[Suggest cuts](#suggest-cuts)). **Insert at playhead** and **Add to end** splice in
-another song, which is then selected so you can trim it. Joins blend over the **Crossfade at joins**
+[Suggest cuts](#suggest-cuts)). To splice in another song, press **Choose song…** under **Splice**: it
+opens your songs in their folders, as in **Library → Songs**, or type in the box to find one in any
+folder. Pick it and press **Choose** (or double-click it), or **Upload** a new one. Then **Insert at
+playhead** or **Add to end** adds it, and it's selected so you can trim it. Joins blend over the **Crossfade at joins**
 time (a few hundredths of a second hides the click, a few seconds blends one song into the next), and
 **Fade in** and **Fade out** soften the ends. Zoom with the wheel, or type the selection's times for
 precision. **⏮** goes back to the start, and **⏪** and **⏩** go back or on a bar (5 seconds before the song

@@ -296,7 +296,8 @@ volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
   opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia,
-  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref) });
+  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref),
+  pickSong: (o) => pickSong(o) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
 // Show settings → Visitors' phones (phones.js): whether they join this show, and its Phones lane.
@@ -11108,17 +11109,88 @@ function nsRadioRows(box, name, rows, picked, onPick) {
 }
 
 // Which folder each song is in: an edit sits with the song it was made from.
-async function nsLoadFolders() {
+async function songFolderInfo() {
   try {
     const [list, shows, drafts, saved] = await Promise.all([api("api/songs"), api("api/shows"), api("api/drafts").catch(() => []),
       api("api/song-folders").catch(() => null)]);
     foldersRead("songs", saved);
-    newShow.folders = foldersOf("songs");
-    newShow.homeOf = new Map();
+    const homeOf = new Map();
     for (const f of songFamilies(songRows(list.songs, shows), drafts)) {
-      for (const k of [f.original.key, ...f.edits.map((e) => e.row.key)]) newShow.homeOf.set(k, f.original.key);
+      for (const k of [f.original.key, ...f.edits.map((e) => e.row.key)]) homeOf.set(k, f.original.key);
     }
-  } catch { newShow.folders = []; }
+    return { folders: foldersOf("songs"), homeOf };
+  } catch { return { folders: [], homeOf: new Map() }; }
+}
+
+async function nsLoadFolders() {
+  Object.assign(newShow, await songFolderInfo());
+}
+
+// A window for picking one song by going into Library → Songs' folders, or finding it by name. Edits
+// of a song sit with it, as in the Library. Resolves to the song's ref, or null if you close it.
+async function pickSong({ title = "Choose a song", yes = "Choose", refs } = {}) {
+  const { folders, homeOf } = await songFolderInfo();
+  refs ||= app.songs || [];
+  const family = new Map(); // the folder key a song sits under (its original's) → its songs
+  for (const r of refs) {
+    const k = homeOf.get(songKey(r)) || songKey(r);
+    if (!family.has(k)) family.set(k, []);
+    family.get(k).push(r);
+  }
+  const nameOf = (k) => family.get(k).map((r) => `${songLabel(r)} ${r.path}`).join(" ");
+  const st = { at: folderAt("songs"), picked: null };
+  const { dlg, body, foot } = editWindow(title);
+  dlg.classList.add("pick-dialog");
+  const find = Object.assign(document.createElement("input"), { type: "search", placeholder: "Find in any folder", autocomplete: "off" });
+  find.setAttribute("aria-label", "Find a song");
+  find.addEventListener("input", () => draw());
+  const findBox = Object.assign(document.createElement("div"), { className: "ns-find" });
+  findBox.append(find);
+  const nav = Object.assign(document.createElement("nav"), { className: "folder-path" });
+  nav.setAttribute("aria-label", "Folder");
+  const subs = Object.assign(document.createElement("div"), { className: "song-list ns-folders" });
+  const list = Object.assign(document.createElement("div"), { className: "song-list" });
+  list.setAttribute("role", "radiogroup");
+  list.setAttribute("aria-label", "Songs");
+  body.append(findBox, nav, subs, list);
+  const note = Object.assign(document.createElement("span"), { className: "hint" });
+  note.setAttribute("aria-live", "polite");
+  let done = null;
+  const choose = button(yes, () => { done = st.picked; dlg.close(); }, "primary");
+  foot.append(note, Object.assign(document.createElement("span"), { className: "spacer" }), button("Cancel", () => dlg.close()), choose);
+  const go = (id) => { st.at = id; find.value = ""; draw(); subs.querySelector("button")?.focus() || list.querySelector("input")?.focus(); };
+  function draw() {
+    const view = browse({ folders, keys: [...family.keys()], at: st.at, find: find.value, nameOf });
+    st.at = view.at;
+    pathNav(nav, view.trail, "Songs", go);
+    subs.replaceChildren(...view.subs.map((sub) => folderButton(sub, "song", go)));
+    subs.hidden = !view.subs.length;
+    const words = find.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const rows = view.items.flatMap(({ key, where }) => family.get(key)
+      .filter((r) => !words.length || words.every((w) => `${songLabel(r)} ${r.path}`.toLowerCase().includes(w)))
+      .map((r) => ({ r, where })))
+      .sort((a, b) => songLabel(a.r).localeCompare(songLabel(b.r), undefined, { numeric: true }))
+      .map(({ r, where }) => {
+        const key = songKey(r), on = st.picked && songKey(st.picked) === key;
+        const row = Object.assign(document.createElement("label"), { className: `song-row${on ? " picked" : ""}` });
+        const radio = Object.assign(document.createElement("input"), { type: "radio", name: "pick-song", checked: on });
+        radio.addEventListener("change", () => { st.picked = r; draw(); list.querySelector("input:checked")?.focus(); });
+        row.addEventListener("dblclick", () => { st.picked = r; done = r; dlg.close(); });
+        const text = document.createElement("span");
+        text.append(Object.assign(document.createElement("b"), { textContent: songLabel(r) }),
+          Object.assign(document.createElement("span"), { className: "hint", textContent: where ? `in ${where}` : r.path.split("/").pop() }));
+        row.append(radio, text);
+        return row;
+      });
+    list.replaceChildren(...(rows.length ? rows : [Object.assign(document.createElement("p"), { className: "hint",
+      textContent: words.length ? "No songs match that." : view.subs.length ? "" : "No songs in this folder." })]));
+    note.textContent = st.picked ? `Picked: ${songLabel(st.picked)}` : "Pick a song";
+    choose.disabled = !st.picked;
+  }
+  draw();
+  dlg.showModal();
+  find.focus();
+  return new Promise((resolve) => dlg.addEventListener("close", () => resolve(done)));
 }
 
 function nsSongs() {

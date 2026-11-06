@@ -146,7 +146,8 @@ export const HELP = {
         "<b>Save as sample…</b> keeps the selection in <b>Library → Samples</b>, to layer over songs.",
       ] },
       { id: "splice", title: "Splicing and smoothing", tips: [
-        "<b>Insert at playhead</b> and <b>Add to end</b> splice in another song, which is then selected so you can trim it.",
+        "<b>Choose song…</b> opens your songs, in their folders, to pick the one to splice in (or <b>Upload</b> a new one).",
+        "<b>Insert at playhead</b> and <b>Add to end</b> splice in that song, which is then selected so you can trim it.",
         "<b>Crossfade at joins</b> blends the parts: a few hundredths of a second hides the click, a few seconds blends one song into the next.",
         "<b>Fade in</b> and <b>Fade out</b> soften the ends.",
       ] },
