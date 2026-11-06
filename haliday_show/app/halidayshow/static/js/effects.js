@@ -789,6 +789,8 @@ function voiceAt(time) {
   return (a + (b - a) * (x - k)) / 100;
 }
 
+let faceMemo = { p: null, song: NaN };
+
 // The mouth's shape at `time` (faces.js SHAPES), as measured from the singer (show.voice.shapes); "a"
 // without.
 function shapeAt(time) {
@@ -871,12 +873,23 @@ Object.assign(EFFECTS, {
       const bh = Math.min(h, w / FACE_ASPECT) * scale, bw = bh * FACE_ASPECT;
       // t is the time into the clip; the singer goes by the time into the song, as Music level does.
       const song = (Number(p.start) || 0) + t, life = p.life !== "off";
-      // The mouth snaps open on a word and closes a moment after, rather than flickering.
-      const level = Math.max(voiceAt(song), voiceAt(song - 0.05) * 0.85, voiceAt(song - 0.1) * 0.7);
-      const face = { mouth: mouthFor(level, p.sensitivity), shape: shapeAt(song),
-        blink: life ? blinkAt(song) : 0, look: life ? lookAt(song) : 0 };
-      // A little bob with the music.
-      const x0 = (w - bw) / 2, y0 = (h - bh) / 2 - (life ? levelAt(song) * bh * 0.025 : 0);
+      // Worked out once a moment, not once an LED.
+      if (faceMemo.p !== p || faceMemo.song !== song) {
+        // The mouth snaps open on a word and closes a moment after, rather than flickering: the
+        // loudest of now and just before, with that moment's shape.
+        let best = -1, at = 0;
+        for (const [back, keep] of [[0, 1], [0.05, 0.85], [0.1, 0.7]]) {
+          const l = voiceAt(song - back) * keep;
+          if (l > best) { best = l; at = song - back; }
+        }
+        const mouth = mouthFor(best, p.sensitivity);
+        const shape = shapeAt(at);
+        faceMemo = { p, song, face: { mouth, shape: shape === "m" && mouth > 0 ? "a" : shape,
+          blink: life ? blinkAt(song) : 0, look: life ? lookAt(song) : 0 },
+        bob: life ? levelAt(song) * 0.025 : 0 }; // a little bob with the music
+      }
+      const face = faceMemo.face;
+      const x0 = (w - bw) / 2, y0 = (h - bh) / 2 - faceMemo.bob * bh;
       // Four looks inside each LED, averaged, so the edges are soft rather than jagged.
       const out = [0, 0, 0];
       for (const [dx, dy] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {

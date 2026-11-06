@@ -163,3 +163,20 @@ test("mouth shapes from the voice, blinks and glances", async () => {
   assert.ok(blinks > 0 && blinks < 20);
   assert.ok([-1, 0, 1].includes(lookAt(7.3)));
 });
+
+test("a quiet moment straight after a word, or quiet singing at high sensitivity, still shows an open mouth", async () => {
+  const { phoneScreen, withVoiceLevels } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const dark = (voice, time, extra = {}) => withVoiceLevels(voice, () => {
+    const f = phoneScreen([{ ...newClip("singingface", 0, 4), character: "ghost", life: "off", ...extra }], time);
+    let n = 0;
+    for (let i = 0; i < f.length; i += 3) if (f[i] < 60 && f[i + 1] < 60 && f[i + 2] < 60) n++;
+    return n;
+  });
+  // Loud until 1 s (an "ah"), then quiet ("m"): 50 ms later the mouth is still open.
+  const word = { fps: 20, values: [...Array(20).fill(100), ...Array(20).fill(0)], shapes: "a".repeat(20) + "m".repeat(20) };
+  const shut = { fps: 20, values: Array(40).fill(0), shapes: "m".repeat(40) };
+  assert.ok(dark(word, 1.05) > dark(shut, 1.05) + 20);
+  // Quiet singing (level 10, marked "m"), at full sensitivity: open.
+  const quiet = { fps: 20, values: Array(40).fill(10), shapes: "m".repeat(40) };
+  assert.ok(dark(quiet, 1, { sensitivity: 100 }) > dark(shut, 1, { sensitivity: 100 }));
+});
