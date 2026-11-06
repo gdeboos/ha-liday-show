@@ -962,17 +962,20 @@ export class MusicEditor {
 
   // Loads the parts' audio, then plays and draws them.
   async loadParts(names) {
+    this.partsFailed ||= new Set(); // not asked for again (the song plays as it is)
     const want = this.pieces.flatMap((p) => names.map((n) => this.partsOfSrc(p.src)[n]).filter(Boolean))
-      .filter((path) => !this.sources[`media:${path}`]);
+      .filter((path) => !this.sources[`media:${path}`] && !this.partsFailed.has(path));
     if (!want.length || this.partsLoading) return;
     this.partsLoading = true;
-    try {
-      for (const path of [...new Set(want)]) await this.source({ source: "media", path });
-    } catch (e) {
-      this.host.status(`Couldn't load the song's parts: ${e.message}`, true);
-    } finally {
-      this.partsLoading = false;
+    let loaded = false;
+    for (const path of [...new Set(want)]) {
+      try { await this.source({ source: "media", path }); loaded = true; } catch (e) {
+        this.partsFailed.add(path);
+        this.host.status(`Couldn't load the song's parts: ${e.message}. It plays as it is`, true);
+      }
     }
+    this.partsLoading = false;
+    if (!loaded) return;
     this.partsFor = null;
     this.changed();
   }
@@ -2324,9 +2327,11 @@ export class MusicEditor {
     }
     // The song with its own parts at their levels (kept until the song or its parts change).
     if (!same || this.partsFor !== this.parts) {
-      this.main = this.applyParts(this.raw);
-      this.partsFor = this.main === this.raw && partsActive(this.parts) && this.partsAvailable ? null : this.parts; // done again once loaded
-      this.peaks = this.main ? peaks(this.main) : null;
+      const main = this.applyParts(this.raw), fresh = main !== this.main;
+      this.main = main;
+      // Done again once they're loaded (or the songs list says the song has them).
+      this.partsFor = this.main === this.raw && partsActive(this.parts) ? null : this.parts;
+      if (fresh || !same) this.peaks = this.main ? peaks(this.main) : null;
     }
     // The song through its own EQ (kept until the song or its EQ changes).
     const eqSame = this.eqFor && this.eqFor.eq === this.eq && this.eqFor.main === this.main;
@@ -2561,7 +2566,7 @@ export class MusicEditor {
         cutUp.push({ ...p, src: key });
       }
       let channels = render(cutUp, sources, rate, { crossfade, fadeIn, fadeOut });
-      if (levels && name === "music" && ["drums", "bass", "rest"].every((n) => built[n])) {
+      if (levels && name === "music" && ["drums", "bass", "rest"].some((n) => partChanged(songParts, n)) && ["drums", "bass", "rest"].every((n) => built[n])) {
         // The music is the drums, bass and rest as they are now (EQ and levels done already).
         channels = channels.map((ch, c) => { const out = new Float32Array(ch.length); for (const n of ["drums", "bass", "rest"]) { const s2 = built[n][Math.min(c, built[n].length - 1)]; for (let i = 0; i < out.length && i < s2.length; i++) out[i] += s2[i]; } return out; });
       } else {
@@ -2569,7 +2574,7 @@ export class MusicEditor {
         if (levels && SONG_PARTS.includes(name) && partChanged(songParts, name)) {
           channels = addPart(channels.map((ch) => new Float32Array(ch.length)), channels, partLevel(songParts, name, pieces, crossfade), rate, 0);
         }
-        if (levels) built[name] = channels;
+        if (levels) built[name] = channels.map((c) => Float32Array.from(c)); // a copy: these are turned up or down below
       }
       if (placed.length) channels = await this.layersInto(channels, name, { layers, placed, pieces, crossfade, rate });
       if (k !== 1) for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
