@@ -251,3 +251,37 @@ h1, h2 { color: var(--head, var(--text)); }
 .pp-join-text:empty { display: none; }
 .pp-join-leave { background: rgba(0, 0, 0, 0.55); color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); }
 
+
+/* The first-visit welcome: a full screen over the page, one step at a time. */
+body.pp-tour-open { overflow: hidden; }
+.pp-tour { position: fixed; inset: 0; z-index: 60; background: var(--bg); color: var(--text); overflow-y: auto; }
+.pp-tour-in { box-sizing: border-box; max-width: 480px; min-height: 100%; margin: 0 auto; padding: 14px 16px 18px;
+  display: flex; flex-direction: column; gap: 12px; }
+.pp-tour-top { display: flex; align-items: center; justify-content: space-between; min-height: 40px; }
+.pp-tour-dots { display: flex; gap: 6px; }
+.pp-tour-dots span { width: 6px; height: 6px; border-radius: 3px; background: var(--line); }
+.pp-tour-dots span.pp-done { background: var(--head, var(--accent)); }
+.pp-tour-dots span.pp-on { width: 22px; background: var(--head, var(--accent)); }
+.pp-tour-skip { color: var(--muted); text-decoration: none; }
+.pp-tour h1 { margin: 4px 0 0; font-size: 1.5em; line-height: 1.2; color: var(--head, var(--accent)); outline: none; }
+.pp-tour-picture { width: 100%; max-height: 220px; object-fit: cover; border-radius: calc(var(--r) * 1.2); }
+.pp-tour-text { margin: 0; }
+.pp-tour-warning { border: 2px solid var(--warn); padding: 14px; margin: 4px 0 0; }
+.pp-tour-warning p { margin: 0; font-weight: 600; }
+.pp-tour-warning .pp-tour-phone { margin-top: 8px; font-weight: 400; }
+.pp-tour-example { flex-wrap: nowrap; gap: 10px; padding: 10px; }
+.pp-tour-example .pp-cover { width: 44px; height: 44px; border-radius: 6px; }
+.pp-tour-example .pp-tile { font-size: 20px; }
+.pp-tour-fake { flex: none; padding: 8px 12px; border-radius: calc(var(--r) * .8); font-weight: 600;
+  background: var(--accent); color: var(--accent-text, #fff); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--warn); }
+.pp-tour-rules { margin: 0; padding-left: 1.2em; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+.pp-tour-card { padding: 14px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.pp-tour-card h2 { margin: 0; font-size: 1.05em; }
+.pp-tour-card p { margin: 0; color: var(--muted); font-size: .9375em; }
+.pp-tour-card button { min-height: 48px; }
+.pp-tour-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
+.pp-tour-buttons { display: flex; gap: 8px; }
+.pp-tour-buttons button { min-height: 52px; }
+.pp-tour-buttons .primary { flex: 1; font-size: 1.05em; font-weight: 700; }
+.pp-tour-once { margin: 0; text-align: center; font-size: .8125em; color: var(--muted); }
+.pp-tour-again { text-align: center; margin: 8px 0 0; }

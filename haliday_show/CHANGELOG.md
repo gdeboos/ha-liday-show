@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.374
+
+- **A welcome for first-time visitors.** The first time a phone opens the visitors' page, three short steps explain it: what it's for with the flashing lights warning (now also saying the phone's screen flashes if they join the show), how to pick a song with the actual button they'll press (**Start**, **Queue** or **Vote**) and the rules that apply, and **Listen** and **Join the show** with buttons that start them there and then. Each phone sees it once; **How this works** at the bottom of the page brings it back. Turn it off with **Welcome first-time visitors** under **Public page → Shows**, and change its words under **Welcome** on the **Words** tab.
+- **Joining the show is quicker after the welcome.** A phone that accepted the warning there goes straight to the colours, without the 3-second warning screen.
+
 ## 0.2.373
 
 - **Split vocals shows what it's doing.** While a song is split, a window covers the page with a spinner, what's happening (downloading the AI the first time, splitting, saving) and how far along it is, with **Cancel** to stop. Before, it only said so in the small status line, which was easy to miss.

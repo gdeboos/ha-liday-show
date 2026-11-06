@@ -284,8 +284,9 @@ def hours_now(p: dict, where, now: datetime | None = None) -> dict:
     if not h["on"]:
         return {"open": True}
     now = now or datetime.now()
-    if schedule.window_at(h, now, where):
-        return {"open": True}
+    if w := schedule.window_at(h, now, where):
+        # When it closes tonight, for the first-visit welcome ("The lights take requests until 10pm").
+        return {"open": True, "until": w[1].isoformat(timespec="minutes")}
     nxt = schedule.next_start(h, now, where)
     return {"open": False, "next": nxt.isoformat(timespec="minutes") if nxt else None,
             "now": now.isoformat(timespec="minutes")}
@@ -319,6 +320,8 @@ def clean_look(x) -> dict:
             "borders": x.get("borders") is not False,
             "show_length": x.get("show_length") is not False,
             "covers": x.get("covers") is not False,
+            # A short welcome the first time a phone opens the page (what it's for, the warning, joining in).
+            "tour": x.get("tour") is not False,
             "warning": pick("warning", WARNINGS),
             "colours": {k: (c[k].lower() if isinstance(c := x.get("colours"), dict) and isinstance(c.get(k), str)
                             and _HEX.match(c[k]) else v) for k, v in DEFAULT_COLOURS.items()}}
