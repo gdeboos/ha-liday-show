@@ -3,7 +3,7 @@
 ## 0.2.416
 
 - **Split into parts is quicker.** The maths around the AI is now shared across your computer's cores, so the graphics chip no longer sits idle between pieces of the song.
-- **The split window says where it's running:** **on the graphics chip**, or **on the processor**, which is much slower. If you see **on the processor** on a computer that normally uses its graphics chip, it ran out of memory: close other apps and tabs, then split again.
+- **The split window says where it's running:** **on the graphics chip**, or **on the processor**, which is much slower. If the graphics chip runs out of memory part way, it says so: close other apps and tabs, then split again.
 
 ## 0.2.415
 

@@ -103,6 +103,7 @@ test("with helpers working ahead, the split comes out the same, in order, and th
 test("the progress line says where the split runs", async () => {
   const { routeWords } = await import("../../haliday_show/app/halidayshow/static/js/splitvocals.js");
   assert.match(routeWords("gpu"), /graphics chip/);
-  assert.match(routeWords("cpu"), /processor.*closing other apps/);
+  assert.match(routeWords("cpu", true), /processor.*ran out of memory.*close other apps/);
+  assert.equal(routeWords("cpu"), " · on the processor, which is slower");
   assert.equal(routeWords(undefined), "");
 });

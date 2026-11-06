@@ -125,10 +125,12 @@ async function cutFromOriginal(ref, api, edit, say, cancelled) {
   return true;
 }
 
-// Where the split is running, for the progress line: the graphics chip, or the processor (much slower,
-// usually because the graphics chip ran out of memory).
-export const routeWords = (via) => via === "gpu" ? " · on the graphics chip"
-  : via === "cpu" ? " · on the processor, which is slower: closing other apps and tabs frees memory for the graphics chip" : "";
+// Where the split is running, for the progress line: the graphics chip, or the processor (much slower).
+// gaveUp: the graphics chip started but stopped part way, usually for want of memory.
+export const routeWords = (via, gaveUp = false) => via === "gpu" ? " · on the graphics chip"
+  : via !== "cpu" ? ""
+  : gaveUp ? " · on the processor, which is slower: the graphics chip ran out of memory, so close other apps and tabs, then split again"
+  : " · on the processor, which is slower";
 
 // Listens to the whole song with YAMNet (in the worker) for what can be heard in it (sounds.js), and
 // keeps that with the song. Takes seconds. track(worker) is given the worker, so it can be stopped.
@@ -236,7 +238,7 @@ async function makePartsNow(ref, api, { again, edit, listenOnly, say, started })
         else if (data.stage === "download") say(`Downloading the AI for Split into parts (the first time only)… ${Math.round(data.done * 100)}%`, data.done);
         else {
           const k = steps.indexOf(data.part), whole = (Math.max(k, 0) + data.done) / steps.length;
-          say(`Finding the ${PART_WORDS[data.part]} in ${song}… ${Math.round(data.done * 100)}% (${k + 1} of ${steps.length})${routeWords(data.via)}`, whole);
+          say(`Finding the ${PART_WORDS[data.part]} in ${song}… ${Math.round(data.done * 100)}% (${k + 1} of ${steps.length})${routeWords(data.via, data.gaveUp)}`, whole);
         }
       };
       worker.onerror = (e) => reject(new Error(e.message || "the AI couldn't start in this browser"));

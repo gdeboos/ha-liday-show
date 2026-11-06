@@ -107,8 +107,11 @@ export async function mathsPool(model) {
     for (const h of helpers) h.w.terminate();
     return { ...localMaths(model), close() {} };
   }
-  let next = 0, failed = null;
+  // A helper that stops part way hands its jobs, and the rest of the split, to this worker's own maths.
+  const local = localMaths(model);
+  let next = 0, failed = false;
   const waiting = new Map();
+  const redo = (job) => (job.msg.kind === "spectrum" ? local.spectrum(job.msg.l, job.msg.r) : local.sound(job.msg.spec)).then(job.resolve, job.reject);
   for (const h of helpers) {
     h.w.onmessage = ({ data: { id, result, error } }) => {
       const job = waiting.get(id);
@@ -118,23 +121,26 @@ export async function mathsPool(model) {
     };
     h.w.onerror = (e) => {
       e.preventDefault?.();
-      failed = new Error(e.message || "a helper stopped");
-      for (const job of waiting.values()) job.reject(failed);
+      console.warn("Split into parts: a helper stopped; carrying on with one core", e.message);
+      failed = true;
+      for (const job of waiting.values()) redo(job);
       waiting.clear();
     };
   }
-  const send = (msg, transfer) => new Promise((resolve, reject) => {
-    if (failed) return reject(failed);
+  // Copies go to the helpers (not handed over), so a job can be done here instead if one stops.
+  const send = (msg) => new Promise((resolve, reject) => {
+    const job = { msg, resolve, reject };
+    if (failed) return redo(job);
     const h = helpers.reduce((a, b) => (b.busy < a.busy ? b : a));
     const id = next++;
-    waiting.set(id, { resolve, reject });
+    waiting.set(id, job);
     h.busy++;
-    h.w.postMessage({ ...msg, id, model }, transfer);
+    h.w.postMessage({ ...msg, id, model });
   });
   return {
     ahead: size + 1,
-    spectrum: (l, r) => send({ kind: "spectrum", l, r }, [l.buffer, r.buffer]),
-    sound: (spec) => send({ kind: "sound", spec }, [spec.buffer]),
+    spectrum: (l, r) => send({ kind: "spectrum", l, r }),
+    sound: (spec) => send({ kind: "sound", spec }),
     close() { for (const h of helpers) h.w.terminate(); },
   };
 }
@@ -194,7 +200,8 @@ self.onmessage = async ({ data: { left, right, want = ["vocals"], vocals = null,
       const cpu = async () => { gpu = false; await session?.release?.(); session = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"] }); };
       if (!session) await cpu();
       let done = 0;
-      const tell = () => self.postMessage({ stage: "split", part, done, via: gpu ? "gpu" : "cpu", why });
+      let gaveUp = false; // the graphics chip started, then stopped (out of memory, usually)
+      const tell = () => self.postMessage({ stage: "split", part, done, via: gpu ? "gpu" : "cpu", gaveUp, why });
       tell();
       const once = async (spec) => {
         const out = await session.run({ input: new ort.Tensor("float32", spec, [1, 4, m.dimF, m.dimT]) });
@@ -204,7 +211,7 @@ self.onmessage = async ({ data: { left, right, want = ["vocals"], vocals = null,
       };
       const run = async (spec) => {
         if (!gpu) return once(spec);
-        try { return await once(spec); } catch (e) { why = e?.message || ""; console.warn("Split into parts: the graphics chip gave up", e); await cpu(); tell(); return once(spec); }
+        try { return await once(spec); } catch (e) { why = e?.message || ""; gaveUp = true; console.warn("Split into parts: the graphics chip gave up", e); await cpu(); tell(); return once(spec); }
       };
       const maths = await mathsPool(m);
       let found;
