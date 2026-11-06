@@ -1,3 +1,4 @@
+import json
 import asyncio
 from datetime import datetime, timedelta, timezone
 
@@ -112,7 +113,9 @@ def test_mqtt_options_and_discovery():
     select = cfgs["homeassistant/select/haliday_show/show/config"]
     assert select["options"] == ["Xmas (a)", "Xmas (b)", "Boo"]
     assert {c["unique_id"] for c in cfgs.values()} == {
-        "haliday_show_show", "haliday_show_play", "haliday_show_stop", "haliday_show_status"}
+        "haliday_show_show", "haliday_show_play", "haliday_show_stop", "haliday_show_status",
+        "haliday_show_playlist", "haliday_show_play_playlist"}
+    assert cfgs["homeassistant/select/haliday_show/playlist/config"]["options"] == ["(no playlists yet)"]
 
 
 class FakeClient:
@@ -647,3 +650,27 @@ async def test_late_at_night_the_speaker_can_stay_silent(runner, monkeypatch):
     st = runner.status()
     assert st["playing"] and st["media_player"] is None  # lights only
     assert st["song"] == {"source": "media", "path": "music/Party Mix.mp3"}  # so phones can listen
+
+
+async def test_mqtt_picks_and_plays_a_playlist(runner):
+    for s in ("one", "two"):
+        _short_show(runner.storage, s)
+    _save_playlists(runner.storage, [{"id": "night", "name": "Night", "shows": ["one", "two"], "gap": 0},
+                                     {"id": "eve", "name": "Eve", "shows": ["two"], "gap": 0}])
+    bridge = mqtt.MqttBridge(runner)
+    bridge.client = FakeClient()
+    await bridge._publish_all()
+    cfg = json.loads(bridge.client.published["homeassistant/select/haliday_show/playlist/config"])
+    assert cfg["options"] == ["Night", "Eve"]
+    await bridge._on_message("haliday_show/playlist/play", b"PRESS")  # none picked yet: nothing happens
+    await asyncio.sleep(0.05)
+    assert runner.status()["playlist"] is None
+    await bridge._on_message("haliday_show/playlist/set", b"Night")
+    assert bridge.client.published["haliday_show/playlist/state"] == "Night"
+    await bridge._on_message("haliday_show/playlist/play", b"PRESS")
+    await asyncio.sleep(0.05)
+    assert runner.status()["playlist"]["id"] == "night"
+    await bridge._on_message("haliday_show/playlist/play", b"eve")  # or by name, straight away
+    await asyncio.sleep(0.05)
+    assert runner.status()["playlist"]["id"] == "eve"
+    await runner.stop()

@@ -2099,6 +2099,7 @@ async def put_playlists(request):
     settings["playlists"] = clean
     storage.save_settings(settings)
     storage.prune_blocks(set(blocks))
+    request.app[MQTT].refresh()
     return web.json_response(clean)
 
 
