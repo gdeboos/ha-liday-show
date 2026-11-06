@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.396
+
+- Show cards in **Library → Shows** are tidier: the show's palette is now a full-width strip of its colours with its name under it, instead of a squashed strip running into the name.
+- **Library → Presets** shows cards too, each with its moving preview across the top, in their effect groups. **Cards** and **List** switch between cards and rows, as on the other libraries.
+
 ## 0.2.395
 
 - **Sharper Singing faces on phones.** On visitors' phones (and the phone preview in the editor), a Singing face is now drawn four times finer each way, so it looks smooth instead of blocky. Everything else on the Phones lane keeps its LED-dot look, matching your matrices. The phone draws it itself, so nothing extra is sent and the timing is unchanged.

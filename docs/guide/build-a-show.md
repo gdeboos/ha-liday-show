@@ -27,9 +27,9 @@ Your shows are under **Library → Shows**, and nothing changes in a show until 
 one you were last editing has a **Last edited** badge. Under that is the show's palette: a strip of its colours
 and the palette's name.
 
-**Library → Shows**, **Scenes**, **Pictures**, **Faces** and **Palettes** show their items as cards: each
-show's picture or cover art (or its palette tile), each scene's or palette's colours, or each picture or
-face, across the top, with its name and buttons under it. **Cards** and **List**, at the top right of each, switch between
+**Library → Shows**, **Scenes**, **Pictures**, **Faces**, **Palettes** and **Presets** show their items as
+cards: each show's picture or cover art (or its palette tile), each scene's or palette's colours, each
+picture or face, or each preset's moving preview, across the top, with its name and buttons under it. **Cards** and **List**, at the top right of each, switch between
 cards and the shorter rows, and each remembers your choice in this browser. Folders stay full width
 above the cards.
 
