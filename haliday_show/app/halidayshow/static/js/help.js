@@ -141,11 +141,11 @@ export const HELP = {
         "<b>✨ Describe sections</b> writes notes for each section from what it sounds like.",
       ] },
       { id: "edit", title: "Cutting and shortening", guide: ["build-a-show.md", "suggest-cuts"], tips: [
-        "<b>Preview cut</b> plays the join as if the selection were cut. <b>Cut selection</b> removes it, and <b>Keep only selection</b> shortens the song to it.",
+        "Select a stretch and its actions are in the <b>Selection</b> panel: <b>Preview cut</b> plays the join as if it were cut, <b>Cut</b> removes it, and <b>Keep only this</b> shortens the song to it.",
         "<b>✂ Suggest cuts…</b> finds whole bars to take out where the join won't be heard. It needs the song detected first.",
         "<b>Save as sample…</b> keeps the selection in <b>Library → Samples</b>, to layer over songs.",
       ] },
-      { id: "splice", title: "Splicing and smoothing", tips: [
+      { id: "splice", title: "Adding another song, and smoothing", tips: [
         "<b>Choose song…</b> opens your songs, in their folders, to pick the one to splice in (or <b>Upload</b> a new one).",
         "<b>Insert at playhead</b> and <b>Add to end</b> splice in that song, which is then selected so you can trim it.",
         "<b>Crossfade at joins</b> blends the parts: a few hundredths of a second hides the click, a few seconds blends one song into the next.",

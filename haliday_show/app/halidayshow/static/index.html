@@ -501,6 +501,10 @@
         <label title="Turn the song file up or down so it plays at about the same loudness as other songs made here, without distorting"><input id="music-even" type="checkbox" checked> Even out the volume</label>
         <span id="music-save-state" class="save-state"></span>
       </div>
+      <div class="group music-parts">
+        <span id="music-parts" class="parts-chip" hidden></span>
+        <button id="music-split" title="Split the song into its vocals, drums, bass and the rest of the music, kept with the song as its parts, for layers, Singing faces and Generate. An AI does it in your browser">Split into parts…</button>
+      </div>
     </section>
     <section class="panel" data-panel="playback">
       <div class="panel-head"><span class="section-label">Playback</span></div>
@@ -538,8 +542,22 @@
   <div class="dock" data-dock="right">
     <section class="panel music-selection" data-panel="selection" data-wide>
       <div class="panel-head"><span class="section-label">Selection</span></div>
-      <p class="hint msel-empty">Click a section or a ⚑ mark in the lanes above the waveform, a clip on a layer or a ✂ join, or
-        press <b>EQ</b> in the Mixer, to change it here.</p>
+      <p class="hint msel-empty">Drag across the waveform to select a stretch, or click a section or a ⚑ mark in the lanes above it,
+        a clip on a layer or a ✂ join, or press <b>EQ</b> in the Mixer, to change it here.</p>
+    <div id="music-range" class="music-section msel-range" hidden>
+      <div><b id="music-range-what"></b> <span id="music-range-len" class="hint"></span></div>
+      <div class="group"><button id="music-range-play" type="button" class="primary" title="Play just the selection">▶ Play selection</button></div>
+      <span class="msel-sub">Cut</span>
+      <div class="group">
+        <button id="music-preview" title="Hear the few seconds either side of the join, as if the selection were cut">Preview cut</button>
+        <button id="music-cut" title="Remove the selection and join the parts either side (Delete)">Cut</button>
+        <button id="music-keep" title="Keep only the selection, to shorten the song">Keep only this</button>
+      </div>
+      <span class="msel-sub">More</span>
+      <div class="group">
+        <button id="music-sample" title="Save the selection as a sample (Library → Samples), to layer over songs">Save as sample…</button>
+      </div>
+    </div>
     <div id="music-join" class="group music-section" hidden>
       <span id="music-join-what" class="hint"></span>
       <button id="music-join-hear" title="Play a few seconds either side of this join">▶ Hear join</button>
@@ -598,18 +616,13 @@
     <section class="panel" data-panel="edit">
       <div class="panel-head"><span class="section-label">Edit</span></div>
       <div class="group">
-        <button id="music-preview" title="Hear the few seconds either side of the join, as if the selection were cut">Preview cut</button>
-        <button id="music-cut" title="Remove the selection and join the parts either side (Delete)">Cut selection</button>
-        <button id="music-keep" title="Keep only the selection, to shorten the song">Keep only selection</button>
-        <button id="music-sample" title="Save the selection as a sample (Library → Samples), to layer over songs">Save as sample…</button>
-        <button id="music-split" title="Split the song into its vocals, drums, bass and the rest of the music, kept with the song as its parts, for layers, Singing faces and Generate. An AI does it in your browser">Split into parts…</button>
         <button id="music-suggest" title="Find whole bars to cut from the song or a section, where the join won't be heard">✂ Suggest cuts…</button>
         <button id="music-undo" class="ghost" title="Undo (Ctrl+Z)">Undo</button>
         <button id="music-redo" class="ghost" title="Redo (Ctrl+Shift+Z)">Redo</button>
       </div>
     </section>
     <section class="panel" data-panel="splice">
-      <div class="panel-head"><span class="section-label">Splice</span></div>
+      <div class="panel-head"><span class="section-label">Add another song</span></div>
       <div class="group">
         <button id="music-insert-pick" type="button" title="Choose the song to add, from your songs' folders">Choose song…</button>
         <span id="music-insert-name" class="hint">No song chosen</span>

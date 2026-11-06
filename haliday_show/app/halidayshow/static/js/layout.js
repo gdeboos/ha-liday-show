@@ -47,7 +47,7 @@ export const EDITORS = {
   music: {
     label: "Music editor", key: "halidayshow.layout.music",
     panels: { song: "Song", playback: "Playback", wave: "Waveform", selection: "Selection", beats: "Beats and sections",
-      edit: "Edit", splice: "Splice", smoothing: "Smoothing" },
+      edit: "Edit", splice: "Add another song", smoothing: "Smoothing" },
     place: { song: "top", playback: "top", wave: "middle", selection: "right", beats: "bottom", edit: "bottom",
       splice: "bottom", smoothing: "bottom" },
     order: ["song", "playback", "wave", "selection", "beats", "edit", "splice", "smoothing"],

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.414
+
+- **What you can do to a selection is beside it.** In the Music editor, select a stretch and the **Selection** panel says what it is (such as **Verse · 0:15.90 to 0:31.70**, 15.8 s, about 8 bars) with **▶ Play selection**, **Preview cut**, **Cut**, **Keep only this** and **Save as sample…**. The **Edit** panel keeps **✂ Suggest cuts…**, **Undo** and **Redo**, so no more rows of greyed-out buttons.
+- **The song's parts are in the Song panel.** It shows **Parts:** with each part's colour when the song is split, and **Split into parts…** (or **Split again…**) beside it.
+- **Splice is now called Add another song**, which says what it does.
+
 ## 0.2.413
 
 - **A tidier Mixer.** In the Music editor, every row of the **Mixer** now has its controls lined up in the same columns: name, **M** and **S**, **Volume**, **EQ**, **Quieten the song**, **Match tempo** and **Key**. **+ Add a clip…**, **Rename** and **Remove** have moved into each layer's **⋯** menu, and you double-click a layer's name to rename it.

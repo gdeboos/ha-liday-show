@@ -12,7 +12,7 @@ own arrangement:
 | Editor | Panels | Can't be hidden |
 | --- | --- | --- |
 | Show | Show, Song, Playback, Beats, Describe it, Preview, House, Timeline and Selection | Timeline |
-| Music | Song (with **Make song file**), Playback, Waveform (with the **Mixer**), Selection, Beats and sections, Edit, Splice and Smoothing | Waveform |
+| Music | Song (with **Make song file**), Playback, Waveform (with the **Mixer**), Selection, Beats and sections, Edit, Add another song and Smoothing | Waveform |
 | Playlist | Playlist (its name, **▶ Play** and **Delete playlist**), Building blocks, Your shows, Running order and When it plays (what the schedule does with it) | Running order |
 
 The Music editor's **Selection** panel is where you change whatever you clicked: a section, a ⚑ mark, a
@@ -26,7 +26,7 @@ small picture of the page, so click the area you want the panel in. **Earlier** 
 change its order, which also works on a touch screen. Any panel except the Timeline can be
 **Hidden**. To keep a panel to hand but out of the way, press the **▾** before its name to
 collapse it to its title, and **▸** to open it again. On a phone, some panels start collapsed so the
-main one is near the top: **Preview** and **House** in the Show editor, **Splice** and **Smoothing** in
+main one is near the top: **Preview** and **House** in the Show editor, **Add another song** and **Smoothing** in
 the Music editor, and **Building blocks** in the Playlist editor. Open them with **▸** whenever you want
 them.
 

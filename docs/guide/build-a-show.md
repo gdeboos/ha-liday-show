@@ -309,8 +309,8 @@ puts it back and gives it back to the shows that were left without a song.
 
 #### Split into parts
 
-**Split into parts…** (under a song's **⋯** in **Library → Songs**, or in the Music editor's **Edit**
-panel) separates a song into its **vocals**, **drums**, **bass** and **the rest** of the music, and
+**Split into parts…** (under a song's **⋯** in **Library → Songs**, or in the Music editor's **Song**
+panel, which shows **Parts:** with each part's colour once it has them, and **Split again…** to make them afresh) separates a song into its **vocals**, **drums**, **bass** and **the rest** of the music, and
 keeps them with the song as its **parts**, along with the **music** (everything but the vocals). They
 aren't songs of their own: the song's row lists them, such as **parts: vocals, drums, bass, rest and
 music**, and they go wherever the song goes (renamed, copied, archived or deleted with it).
@@ -331,7 +331,7 @@ music**, and they go wherever the song goes (renamed, copied, archived or delete
 - **Layers** in the Music editor can play any song's parts: press **+ Add a clip…**, pick the song under
   **Songs**, then choose **Just the vocals**, **Just the drums** and so on under **Use from**. Use the
   music as a backing track, the drums under another song, or the vocals over another song for a
-  mash-up. Splicing a song in (**Splice → Choose song…**) offers its parts the same way.
+  mash-up. Splicing a song in (**Add another song → Choose song…**) offers its parts the same way.
 - **Edits** use their original song's parts through your cuts, so there's no need to split an edit.
   When you make a song file from a draft, its parts (and its drum hits) are cut from the original's the
   same way, in seconds, with no AI. Your EQ and layers go into them too: a layer of just another song's
@@ -388,7 +388,7 @@ the window says why, and HA-liday Show's log (in Home Assistant, the app's **Log
 Christmas", ready to layer over a song in the Music editor. There are two ways to make one:
 
 - **From a song:** in the Music editor, select the stretch you want and press **Save as sample…** (in
-  the **Edit** panel), then give it a name. It's saved as it sounds in your edit, layers and all.
+  the **Selection** panel), then give it a name. It's saved as it sounds in your edit, layers and all.
 - **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
 
 They go in a **Samples** folder inside `/media/haliday_show/`, kept out of **Library → Songs** and a show's
@@ -452,9 +452,12 @@ song under **Library → Songs** (with **+ Add a song**) to open it; nothing is 
 song's name sits beside **← All songs**, which goes back to the list to open another. The song you open is never changed: your
 first change starts a [draft](#drafts), kept as you go, which you make into a new song file when you're
 happy. Drag across the waveform to select (clicking moves the playhead and keeps the selection; press **✕**
-next to its times or Esc to clear it), then **Cut selection** to remove it or
-**Keep only selection** to shorten the song to it, or let **✂ Suggest cuts…** find the cuts for you (see
-[Suggest cuts](#suggest-cuts)). To splice in another song, press **Choose song…** under **Splice**: it
+next to its times or Esc to clear it). The **Selection** panel then says what you've selected (the
+section's name when it's exactly one section, its times, and how long in seconds and bars) with what you
+can do to it: **▶ Play selection**, **Preview cut**, **Cut** to remove it, **Keep only this** to shorten
+the song to it, and **Save as sample…**. Or let **✂ Suggest cuts…** (in the **Edit** panel, with
+**Undo** and **Redo**) find the cuts for you (see
+[Suggest cuts](#suggest-cuts)). To splice in another song, press **Choose song…** under **Add another song**: it
 opens your songs in their folders, as in **Library → Songs**, or type in the box to find one in any
 folder. Pick it and press **Choose** (or double-click it), or **Upload** a new one. A song that's been
 split into parts lets you splice in just one part, under **Use from**. Then **Insert at
@@ -471,7 +474,7 @@ afterwards won't move them.
 Each join shows as a dashed line with a **✂** at the top. Click the **✂** to hear a few seconds either
 side of the join; the **Selection** panel says what was cut there (how much, and from where in the
 song). To change that cut, press **Adjust cut**: the part comes back and is selected, so drag its edges
-(or type the times) and press **Cut selection** again. **Put back** undoes just that cut, leaving the
+(or type the times) and press **Cut** again. **Put back** undoes just that cut, leaving the
 others as they are. Both are one step for **Undo**. A join where another song was spliced in only has
 **▶ Hear join**. When you zoom out, the beat lines thin out to every bar, then every 2nd or 4th bar, so
 the music stays visible; zoom in to see every beat.
