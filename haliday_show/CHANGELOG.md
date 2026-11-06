@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.405
+
+- **New songs are split into parts automatically.** After you add a song, its vocals, drums, bass and the rest are split out in the background. A bar in **Library → Songs** shows which song it's on and how far it's got, with **Stop**. Keep the page open until it's done; you can carry on using HA-liday Show meanwhile.
+- **Split all songs into parts**, under your songs, splits every song that isn't split yet, one after another. Edits of a split song get their parts cut from the original's in seconds.
+- Pressing **Split into parts…** on a song while others are being split puts it next in line.
+
 ## 0.2.404
 
 - **Adding a clip to a layer is now a window** instead of a long drop-down. In the Music editor, **+ Add a clip…** on a layer opens your **Samples** and **Songs** in their folders, with a box to find one in any folder. Pick one and press **Add**.

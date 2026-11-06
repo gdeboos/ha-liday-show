@@ -18,7 +18,7 @@ import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin, singerOf } from "./phones.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
-import { splitVocals, stemNames } from "./splitvocals.js";
+import { makeParts, prepared, splitVocals, splitting, stemNames } from "./splitvocals.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic } from "./housescenes.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
@@ -300,7 +300,7 @@ volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
   opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia,
-  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref), songLyrics: (ref) => openSongLyrics(ref), lyricsChanged: () => madeFrom.clear(),
+  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref), songLyrics: (ref) => openSongLyrics(ref), lyricsChanged: () => madeFrom.clear(), partsLater: (ref) => prepareParts([ref], { first: true }),
   pickSong: (o) => pickSong(o) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
@@ -8355,7 +8355,94 @@ async function imSubmit(e) {
 
 // Library → Songs --------------------------------------------------------------
 let songRowsCache = [], songsMore = false, songsAsked = 0;
+// Songs split into parts one after another, in the background (splitvocals.js makeParts): each song as
+// it's added, and every song not yet split from Split all songs into parts. Only while this page is
+// open; anything not done is picked up next time Split all is pressed.
+const partsLine = { queue: [], now: null, stop: null, stopped: false, done: 0, failed: 0 };
+
+// The draft a song file was made from, as makeParts takes it, so its parts can be cut from its original's.
+async function editFor(ref) {
+  const drafts = await api("api/drafts").catch(() => []);
+  const d = drafts.find((x) => x.made?.source === ref.source && x.made?.path === ref.path && x.base);
+  const draft = d && await api(`api/drafts/${encodeURIComponent(d.id)}`).catch(() => null);
+  // A file with layers mixed in, or the song's EQ, isn't just the song cut up: it's split instead.
+  if (!Array.isArray(draft?.pieces) || draft.layers?.length || draft.eq) return null;
+  const base = (app.songs || []).find((s) => s.source === draft.base.source && s.path === draft.base.path);
+  if (!base) return null;
+  const key = (r) => `${r.source}:${r.path}`;
+  return { base: draft.base, baseParts: base.parts || {}, crossfade: draft.crossfade || 0, fadeIn: draft.fadeIn || 0, fadeOut: draft.fadeOut || 0,
+    pieces: draft.pieces.map((p) => ({ src: key(p.song), start: p.start, end: p.end })) };
+}
+
+// Adds songs to the line (first: to its front), and starts it if it isn't going.
+function prepareParts(refs, { first = false } = {}) {
+  const key = (r) => `${r.source}:${r.path}`, now = partsLine.now && key(partsLine.now);
+  const fresh = refs.filter((r) => key(r) !== now && !partsLine.queue.some((x) => key(x) === key(r)));
+  partsLine.queue = first ? [...fresh, ...partsLine.queue.filter((x) => !fresh.some((r) => key(r) === key(x)))] : [...partsLine.queue, ...fresh];
+  showPartsLine();
+  runPartsLine();
+}
+
+async function runPartsLine() {
+  if (partsLine.now) return;
+  partsLine.stopped = false;
+  const refresh = async () => { await refreshAudio().catch(() => {}); if (!$("view-songs")?.hidden) renderSongsPage(); };
+  let lastError = "";
+  while (partsLine.queue.length && !partsLine.stopped) {
+    const ref = partsLine.now = partsLine.queue.shift();
+    partsLine.stop = null;
+    showPartsLine(`Getting ready to split ${songLabel(ref)}…`, null);
+    try {
+      const edit = await editFor(ref).catch(() => null);
+      if (partsLine.stopped) break;
+      const out = await makeParts(ref, api, { edit, say: (text, done) => showPartsLine(text, done),
+        started: (stop) => { partsLine.stop = stop; if (partsLine.stopped) stop(); } });
+      if (out.made) partsLine.done++;
+    } catch (e) {
+      if (e.cancelled) break;
+      partsLine.failed++;
+      lastError = `Couldn't split ${songLabel(ref)} into parts: ${e.message}`;
+      status(lastError, true, "parts");
+    }
+    await refresh();
+  }
+  const { done, failed, stopped } = partsLine;
+  Object.assign(partsLine, { now: null, stop: null, done: 0, failed: 0, queue: stopped ? [] : partsLine.queue });
+  if (stopped) await refresh();
+  showPartsLine();
+  const said = [done && `Split ${done} song${done === 1 ? "" : "s"} into parts`, failed && `${failed} couldn't be split (${lastError})`,
+    stopped && "stopped: any part already made is kept"].filter(Boolean).join("; ");
+  if (said) status(said, failed ? true : stopped ? "hint" : "saved", "parts");
+}
+
+// The line's banner in Library → Songs: what it's doing, how far along, and Stop.
+function showPartsLine(text = "", done = null) {
+  const box = $("parts-queue");
+  if (!box) return;
+  if (text) status(text, "info", "parts"); // seen on every page, not just Library → Songs
+  box.hidden = !partsLine.now && !partsLine.queue.length;
+  if (box.hidden) return;
+  const more = partsLine.queue.length;
+  $("parts-queue-text").textContent = `${text || "Splitting songs into parts…"}${more ? ` · ${more} more song${more === 1 ? "" : "s"} to go` : ""}`;
+  const bar = $("parts-queue-bar");
+  if (done == null) bar.removeAttribute("value"); else bar.value = done;
+}
+
+// Split all songs into parts: every song not split yet (edits of split songs have theirs cut in seconds).
+async function prepareAllSongs() {
+  await refreshAudio().catch(() => {});
+  // Not old splits that couldn't be matched to their song ("… (vocals)"): they're parts already.
+  const todo = (app.songs || []).filter((s) => !prepared(s.parts) && !/ \((vocals|music)\)\.wav$/i.test(s.path));
+  if (!todo.length) { status("Every song is split into parts already", "saved", "parts"); return; }
+  const n = todo.length;
+  if (!(await askYes(`Split ${n} song${n === 1 ? "" : "s"} into parts (vocals, drums, bass and the rest), one after another? `
+    + "It runs in this browser, so keep this page open: it takes a few minutes a song (an edit of a song that's split takes "
+    + "seconds). You can carry on using HA-liday Show meanwhile, and Stop whenever you like; what's done is kept.", { yes: "Split them" }))) return;
+  prepareParts(todo.map((s) => ({ source: s.source, path: s.path })));
+}
+
 async function renderSongsPage() {
+  showPartsLine();
   const mine = ++songsAsked; // only the latest answer is drawn
   try {
     const [list, shows, drafts, folders] = await Promise.all([api("api/songs"), api("api/shows"), api("api/drafts").catch(() => []),
@@ -8656,10 +8743,15 @@ function songKid(kind, icon, name, badge, lines, actions, song = null) {
 }
 
 // Split into parts… for a song's row (splitvocals.js): its vocals, drums, bass and the rest kept with it.
+// While songs are being split one after another, it goes to the front of that line instead.
 function splitButton(r) {
-  const again = !!(r.parts?.drums && r.parts?.bass);
-  const split = button(again ? "Split into parts again…" : "Split into parts…", () => splitVocals(r.ref, { api, askYes, status: (text, kind) => status(text, kind, "songs"),
-    songsChanged: async () => { await refreshAudio().catch(() => {}); renderSongsPage(); } }), "ghost");
+  const again = prepared(r.parts);
+  const split = button(again ? "Split into parts again…" : "Split into parts…", async () => {
+    if (splitting() || partsLine.now) { prepareParts([r.ref], { first: true }); return; }
+    splitVocals(r.ref, { api, askYes, status: (text, kind) => status(text, kind, "songs"), edit: await editFor(r.ref),
+      later: (ref) => prepareParts([ref], { first: true }),
+      songsChanged: async () => { await refreshAudio().catch(() => {}); renderSongsPage(); } });
+  }, "ghost");
   split.setAttribute("aria-label", `Split ${r.name} into its parts`);
   split.title = "Split the song into its vocals, drums, bass and the rest of the music, kept with the song as its parts. An AI does it in your browser";
   return split;
@@ -9072,6 +9164,8 @@ async function asSubmit(e) {
   renderSongsPage();
   if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
   else status(addedMessage(name, info, { ai: withAI && info?.sections.length > 0 }), "saved", "songs");
+  // Its parts are split out in the background (see the banner in Library → Songs).
+  prepareParts([ref]);
   // Then colours from its cover, to pick or skip (only when there's something to offer).
   await offerSongColours(ref, { justAdded: true }).catch(() => {});
   addSong.onAdded?.([...$("audio-select").options].find((o) => o.value && JSON.parse(o.value).path === ref.path)?.value || "");
@@ -12831,6 +12925,8 @@ function wire() {
     b.addEventListener("click", () => { prefs.set("songShow", b.dataset.show); drawSongRows(); });
   }
   $("btn-add-song").addEventListener("click", openAddSong);
+  $("btn-prepare-songs").addEventListener("click", () => prepareAllSongs());
+  $("parts-queue-stop").addEventListener("click", () => { partsLine.stopped = true; partsLine.queue = []; partsLine.stop?.(); showPartsLine("Stopping…"); });
   $("btn-add-sample").addEventListener("click", () => $("sample-upload").click());
   $("btn-new-sample-folder").addEventListener("click", () => newFolder("samples"));
   $("sample-upload").addEventListener("change", (e) => { const files = [...e.target.files]; e.target.value = ""; if (files.length) addSamples(files); });

@@ -233,7 +233,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   Home Assistant's 16 MB limit upload fine
 - Cut, trim and splice songs in the **Music editor**, with crossfades, as named **drafts** kept as you go that you can come back to and tweak, then make into a song file
 - **Even out the volume** when making a song file, so songs play at about the same loudness
-- **Split into parts**: AI in your browser separates a song into its vocals, drums, bass and the rest, kept with the song as its parts (stems), which follow it into edits and can be layered; the drums give when each kick, snare, hi-hat and crash lands
+- **Split into parts**: AI in your browser separates a song into its vocals, drums, bass and the rest, kept with the song as its parts (stems), split automatically when a song is added (or all at once), which follow it into edits and can be layered; the drums give when each kick, snare, hi-hat and crash lands
 - **Layers** in the Music editor: samples or songs played over a song, pinned to the music so they follow cuts, mixed into the song file, optionally quietening the song under them by as much as you choose
 - **Mixer** in the Music editor: bass, mid and treble faders and a DJ filter on the song and each layer, changing partway through, layers moved into the song's key, and layers matched to the song's tempo, for mash-ups
 - **Samples**: short sounds (sleigh bells, a "ho ho ho") to layer over songs, made from part of a song or added as files

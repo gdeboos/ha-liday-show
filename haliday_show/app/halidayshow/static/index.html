@@ -749,7 +749,7 @@
     <button type="button" id="song-player-close" class="ghost" aria-label="Stop and close" title="Stop and close">✕</button>
   </div>
   <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg>Songs</h2>
-  <p class="hint">Every song in your songs folder, with its edits (✂) and drafts (✎). A song's parts (its vocals and music, from Split vocals) are kept with it.</p>
+  <p class="hint">Every song in your songs folder, with its edits (✂) and drafts (✎). A song's parts (its vocals, drums, bass and the rest) are kept with it: new songs are split into them as they're added.</p>
   <!-- The list of songs; Edit opens one in the Music editor. -->
   <div id="songs-block">
     <div class="group song-tools">
@@ -758,8 +758,15 @@
         <button type="button" data-show="all">All</button><button type="button" data-show="originals">Originals</button><button type="button" data-show="edits">Edits</button><button type="button" data-show="splits" title="The vocals and music Split vocals made, with whether anything uses them">Splits</button><button type="button" data-show="drafts">Drafts</button></span>
       <span id="song-count" class="hint" aria-live="polite"></span>
     </div>
+    <div id="parts-queue" class="parts-queue" role="status" hidden>
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="parts-queue-text"></span>
+      <progress id="parts-queue-bar" max="1"></progress>
+      <button type="button" class="ghost small" id="parts-queue-stop" title="Stop splitting songs into parts. Any part already made is kept">Stop</button>
+    </div>
     <div id="songs-page-list" class="show-list"></div>
     <p class="group"><button type="button" class="primary" id="btn-add-song">+ Add a song</button>
+      <button type="button" id="btn-prepare-songs" title="Split every song that isn't split yet into its parts (vocals, drums, bass and the rest), one after another, in this browser">Split all songs into parts</button>
       <button type="button" id="btn-new-folder" title="A folder to sort your songs into; the files stay where they are">+ New folder</button></p>
     <details id="songs-archived" class="archived" hidden>
       <summary>Archived songs</summary>
