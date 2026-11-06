@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { fromStarts, lineWords, lyricShapes, parseLyrics, placeLines, savedLines, savedLyrics, singingRuns, syllables, wordShapes }
+import { fromSong, fromStarts, lineWords, lyricShapes, parseLyrics, placeLines, savedLines, savedLyrics, singingRuns, songLyrics, syllables, wordShapes }
   from "../../haliday_show/app/halidayshow/static/js/lyrics.js";
 import { singerOf } from "../../haliday_show/app/halidayshow/static/js/phones.js";
 
@@ -51,4 +51,14 @@ test("words become mouth shapes, shut between words", () => {
   const forSong = savedLyrics("see dad", lines, voice, 10, "a.mp3");
   assert.ok(singerOf({ audio: { path: "a.mp3" }, voice, lyrics: forSong }).lyrics);
   assert.equal(singerOf({ audio: { path: "b.mp3" }, voice, lyrics: forSong }), voice);
+});
+
+test("lyrics are kept with the song, and a show takes its copy from there", () => {
+  const saved = savedLyrics("one two\nthree", [{ ...parseLyrics("one two")[0], start: 1, end: 2 }, { ...parseLyrics("three")[0], start: 3, end: 4 }], null, 6, "a.mp3");
+  const song = songLyrics(saved);
+  assert.deepEqual(song, { text: "one two\nthree", lines: [{ start: 1, end: 2 }, { start: 3, end: 4 }] });
+  assert.equal(songLyrics({ text: "one", lines: [] }), null); // not placed
+  const copy = fromSong(song, null, 6, "a.mp3");
+  assert.ok(copy.fromSong && copy.song === "a.mp3" && copy.shapes === saved.shapes);
+  assert.equal(fromSong({ text: "one\ntwo", lines: [{ start: 0, end: 1 }] }, null, 6, "a.mp3"), null);
 });

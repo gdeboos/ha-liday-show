@@ -19,6 +19,7 @@ import { uploadSong } from "./upload.js";
 import { flatTree, fromSongFolders, itemsIn, keyOfRef, pathTo } from "./folders.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
+import { savedLines } from "./lyrics.js";
 
 const EPS = 1e-6;
 const RULER_H = 22;
@@ -326,6 +327,30 @@ export function mapInfo(info, pieces, crossfade, src, others = {}) {
   return { ...info, beats, bars, sections, ...(info.marks ? { marks } : {}), ...(otherMarks.length ? { otherMarks } : {}) };
 }
 
+// The base song's lyrics ({text, lines}, lyrics.js) where its lines land in the edited result: a line
+// whose start is cut out goes, and one in a part played twice is sung twice. Null when none are left.
+export function mapLyrics(lyrics, pieces, crossfade, src) {
+  const lines = savedLines(lyrics);
+  if (!lines) return null;
+  const { places, total } = arrange(pieces, crossfade);
+  const r3 = (t) => Math.round(t * 1000) / 1000;
+  const out = [];
+  pieces.forEach((p, i) => {
+    if (p.src !== src) return;
+    const { at, xf } = places[i];
+    const own0 = i === 0 ? 0 : at + xf / 2;
+    const own1 = i === pieces.length - 1 ? total : places[i + 1].at + places[i + 1].xf / 2;
+    const map = (t) => at + (t - p.start);
+    for (const l of lines) {
+      if (l.start < p.start || l.start > p.end || map(l.start) < own0 - EPS || map(l.start) >= own1 - EPS) continue;
+      const start = r3(map(l.start));
+      out.push({ text: l.text, start, end: Math.max(start + 0.05, r3(Math.min(map(Math.min(l.end, p.end)), own1))) });
+    }
+  });
+  out.sort((a, b) => a.start - b.start);
+  return out.length ? { text: out.map((l) => l.text).join("\n"), lines: out.map(({ start, end }) => ({ start, end })) } : null;
+}
+
 // rendering ---------------------------------------------------------------------
 // sources: { [src]: Float32Array[] } (one array per channel), all at `rate`.
 export function render(pieces, sources, rate, { crossfade = 0, fadeIn = 0, fadeOut = 0 } = {}) {
@@ -413,6 +438,7 @@ const nameOf = (ref) => ref.path.split("/").pop();
 const query = (ref) => `source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(ref.path)}`;
 const urlOf = (ref) => `api/audio/file?${query(ref)}`;
 const infoUrl = (ref) => `api/audio/info?${query(ref)}`;
+const lyricsUrl = (ref) => `api/audio/lyrics?${query(ref)}`;
 
 export class MusicEditor {
   // host provides: api(path, opts), status(msg, error), songs() -> [ref], songsChanged() -> Promise,
@@ -1802,6 +1828,7 @@ export class MusicEditor {
     $("music-detect").disabled = !this.base || this.dirty;
     $("music-describe").disabled = !this.base || this.dirty || !this.info?.sections?.length;
     $("music-colours").disabled = !this.base;
+    $("music-lyrics").disabled = !this.base;
     $("music-detect").title = this.dirty
       ? "Make the song file first: it's detected when it's made, and the beats here follow your edits until then"
       : "Find the tempo, beats, bars and sections (verse, chorus…) and keep them with this song. A show that picks the song uses them.";
@@ -1917,6 +1944,9 @@ export class MusicEditor {
     const rendered = this.main, rate = this.audio.sampleRate; // Detect goes by the song, not the layers
     // The draft as it was when you pressed it, and which draft: you might open another while it's made.
     const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
+    // The song's lyrics follow the cuts into the new file, for Singing faces.
+    const words = this.base ? await this.host.api(lyricsUrl(this.base)).catch(() => null) : null;
+    const lyrics = words && (this.pieces.length ? mapLyrics(words, this.pieces, this.crossfade, baseKey) : words);
     try {
       const ref = await uploadSong(this.host.api, blob, file, (done) => {
         if (done < 1) this.host.status(`Making ${file}… ${Math.round(done * 100)}%`);
@@ -1933,6 +1963,7 @@ export class MusicEditor {
       this.host.status(`Made ${ref.path}${level}. Pick it under Song in a show; the draft stays open to change`, "saved", "music-save");
       if (carry) await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
       else await this.detectMade(ref, rendered, rate, marks);
+      if (lyrics) await this.host.api(lyricsUrl(ref), { method: "PUT", json: lyrics }).catch(() => {});
       this.host.songsChanged();
     } catch (e) {
       this.host.status(`Couldn't make the song file: ${e.message}`, true, "music-save");
@@ -2788,6 +2819,7 @@ export class MusicEditor {
     $("music-detect").addEventListener("click", () => this.detect());
     $("music-describe").addEventListener("click", () => this.describe());
     $("music-colours").addEventListener("click", () => { if (this.base) this.host.songColours?.(this.base); });
+    $("music-lyrics").addEventListener("click", () => { if (this.base) this.host.songLyrics?.(this.base); });
     $("music-suggest").addEventListener("click", () => this.openCuts(this.secSel >= 0 ? this.secSel : null));
     $("music-cuts-scope").addEventListener("change", () => { this.cutNote(""); this.defaultCutTarget(); });
     $("cuts-form").addEventListener("submit", (e) => { e.preventDefault(); this.findCuts(); });

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.387
+
+- **Lyrics are kept with the song.** Place them once and every show on that song sings them. You can now add them in the Music editor too: open the song and press **Lyrics…** under **Beats and sections**. Lyrics you've already placed in a show move to its song the next time you open the show.
+- **Song files made from a draft keep the lyrics**, moved to follow your cuts and repeats.
+- **Older edits:** for a song file you made from a draft before now, open **Lyrics…** and press **Bring in the lyrics from…** to bring over the original song's lyrics through that draft's cuts.
+- The singer is measured once per song, so a second show on the same song doesn't measure it again.
+
 ## 0.2.386
 
 - **Lyrics for Singing faces.** Select a **Singing face** clip and press **Lyrics…** to make it mouth the actual words. Paste the song's words, one line per line, and they're placed across the singing for you. If a line comes in early or late, type its start, or press **Tap along…** and press **Next line** as each line starts while the song plays. Each word's mouth shapes come from its spelling, and the mouth shuts between words.

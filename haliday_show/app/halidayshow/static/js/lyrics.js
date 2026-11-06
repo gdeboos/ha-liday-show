@@ -127,3 +127,16 @@ export function savedLines(lyrics) {
   if (!lines.length || !Array.isArray(lyrics?.lines) || lyrics.lines.length !== lines.length) return null;
   return lines.map((l, i) => ({ ...l, start: Number(lyrics.lines[i].start) || 0, end: Number(lyrics.lines[i].end) || 0 }));
 }
+
+// Lyrics are kept with the song (its info on the server: {text, lines}), so every show on it uses them.
+// What the song keeps from a show's lyrics, or null when they aren't placed.
+export function songLyrics(lyrics) {
+  return savedLines(lyrics) ? { text: lyrics.text, lines: lyrics.lines.map((l) => ({ start: Number(l.start) || 0, end: Number(l.end) || 0 })) } : null;
+}
+
+// A show's copy of its song's lyrics (fromSong: true), shapes worked out for its singer; null when the
+// song's lyrics don't hold together.
+export function fromSong(song, voice, duration, path) {
+  const lines = savedLines(song);
+  return lines ? { ...savedLyrics(song.text, lines, voice, duration, path), fromSong: true } : null;
+}

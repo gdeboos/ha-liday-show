@@ -21,6 +21,7 @@ SPEAKER_TEST = "haliday-show-speaker-test.wav"  # the chime that tests a speaker
 SAMPLES = "Samples"  # short sounds for the Music editor's layers, kept out of the song lists
 AUDIO_EXT = {".mp3", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".wav", ".flac", ".webm"}
 _SLUG = re.compile(r"[^a-z0-9]+")
+SONG_EXTRAS = ("palette", "lyrics", "voice")  # kept in a song's info file beside what Detect found
 _UNSAFE_NAME = re.compile(r"[^\w .()-]+")
 
 
@@ -600,9 +601,14 @@ class Storage:
             return False
         self.songs_dir.mkdir(parents=True, exist_ok=True)
         body = {"source": source, "path": rel, "stamp": self._stamp(p), "analysis": analysis}
-        palette = self.load_song_palette(source, rel)
-        if palette:
-            body["palette"] = palette
+        # What's kept beside what Detect found (its colours, lyrics, the singer) stays.
+        try:
+            old = json.loads(self._song_info_file(source, rel).read_text())
+        except (OSError, ValueError):
+            old = {}
+        for key in SONG_EXTRAS:
+            if isinstance(old, dict) and old.get(key):
+                body[key] = old[key]
         _write_atomic(self._song_info_file(source, rel), json.dumps(body).encode())
         return True
 
@@ -633,6 +639,42 @@ class Storage:
             body["palette"] = palette
         else:
             body.pop("palette", None)
+        self.songs_dir.mkdir(parents=True, exist_ok=True)
+        _write_atomic(f, json.dumps(body).encode())
+        return True
+
+    # Beside what Detect found, a song keeps its lyrics (for Singing faces; lyrics.js) and the singer's
+    # level measured from it (show.voice). The singer is stamped with the file's size and time, as
+    # Detect's results are; the lyrics outlive the file being saved over, as the colours do.
+    def load_song_extra(self, source: str, rel: str, key: str):
+        p = self.audio_path(source, rel)
+        if p is None or key not in SONG_EXTRAS:
+            return None
+        try:
+            value = json.loads(self._song_info_file(source, rel).read_text()).get(key)
+        except (OSError, ValueError, AttributeError):
+            return None
+        if key == "voice":
+            if not isinstance(value, dict) or value.get("stamp") != self._stamp(p):
+                return None
+            value = value.get("value")
+        return value if isinstance(value, dict) else None
+
+    def save_song_extra(self, source: str, rel: str, key: str, value: dict | None) -> bool:
+        p = self.audio_path(source, rel)
+        if p is None or key not in SONG_EXTRAS:
+            return False
+        f = self._song_info_file(source, rel)
+        try:
+            body = json.loads(f.read_text())
+            if not isinstance(body, dict):
+                raise ValueError
+        except (OSError, ValueError):
+            body = {"source": source, "path": rel}
+        if value:
+            body[key] = {"stamp": self._stamp(p), "value": value} if key == "voice" else value
+        else:
+            body.pop(key, None)
         self.songs_dir.mkdir(parents=True, exist_ok=True)
         _write_atomic(f, json.dumps(body).encode())
         return True

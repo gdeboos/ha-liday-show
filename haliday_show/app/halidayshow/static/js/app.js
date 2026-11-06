@@ -2,7 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
-import { fromStarts, parseLyrics, placeLines, savedLines, savedLyrics } from "./lyrics.js";
+import { fromSong, fromStarts, parseLyrics, placeLines, savedLines, savedLyrics, songLyrics } from "./lyrics.js";
 import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, voiceFits, voiceShapes } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
@@ -42,7 +42,7 @@ import { HA_KINDS, findEntities, haKind, kindCounts } from "./hapicker.js";
 import { countLabel, countText, isHa, isPixels, showBulbs, sizeText, unitWord } from "./lightwords.js";
 import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
-import { MusicEditor } from "./music.js";
+import { MusicEditor, arrange, mapLyrics } from "./music.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette, usedColourKeys } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, entriesFor, scheduleLine, whenNext } from "./schedule.js";
@@ -297,7 +297,7 @@ volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
   opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia,
-  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref),
+  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref), songLyrics: (ref) => openSongLyrics(ref),
   pickSong: (o) => pickSong(o) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
@@ -10249,39 +10249,75 @@ function reportUnfit() {
 }
 
 // The singer's level, for the Singing face (show.voice, like show.loudness): from the song's vocals
-// where Split vocals has made them, else the voice range of the song itself. Measured once a show
-// has a Singing face and its song is loaded, and again when the song changes.
+// where Split vocals has made them, else the voice range of the song itself. Measured once per song
+// and kept with it (api/audio/voice), so every show on the song uses the same; a show keeps a copy.
 const usesFace = (show) => (show?.tracks || []).some((t) => t.clips?.some((c) => c.effect === "singingface"));
+const songExtraUrl = (what, ref) => `api/audio/${what}?${new URLSearchParams({ source: ref.source, path: ref.path })}`;
+// The song's vocals, if Split vocals has made them (your songs list says).
+const vocalsOf = (ref) => vocalsPlaces(ref, stemNames(ref.path).vocals)
+  .find((v) => (app.songs || []).some((s) => s.source === v.source && s.path.toLowerCase() === v.path.toLowerCase()));
+
+// The singer of the song `ref` (decoded as `song`): as kept with the song, or measured now (fresh:
+// always) and kept with it.
+async function songVoice(ref, song, { fresh = false } = {}) {
+  const vocalsRef = vocalsOf(ref), seconds = Math.round(song.duration * 100) / 100;
+  if (!fresh) {
+    const kept = await api(songExtraUrl("voice", ref)).catch(() => null);
+    if (kept && Array.isArray(kept.values) && kept.fps && !(vocalsRef && kept.from === "song")
+      && Math.abs(kept.values.length / kept.fps - song.duration) < 1) return { ...kept, song: ref.path, seconds };
+  }
+  const mono = (decoded) => toMono(Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c)), decoded.sampleRate);
+  let samples, rate, from = "vocals";
+  try {
+    if (!vocalsRef) throw new Error("no vocals");
+    const vocals = await audioCtx.decodeAudioData(await fetchSong(audioUrl(vocalsRef)));
+    ({ samples, rate } = mono(vocals));
+  } catch {
+    from = "song";
+    const m = mono(song);
+    samples = voiceBand(m.samples, m.rate);
+    rate = m.rate;
+  }
+  // seconds: the song's length then, so a different file under the same name is measured again.
+  const curve = levelCurve(samples, rate, ref.path, VOICE_FPS);
+  const voice = { ...curve, shapes: voiceShapes(samples, rate, VOICE_FPS, curve.values), from, seconds };
+  api(songExtraUrl("voice", ref), { method: "PUT", json: { fps: voice.fps, values: voice.values, shapes: voice.shapes, from } }).catch(() => {});
+  return voice;
+}
+
+// A show's copy of its song's lyrics (lyrics.js fromSong), brought up to date. Lyrics a show placed
+// itself before they were kept with songs move to the song, unless the song has its own.
+async function syncLyrics(show, ref, duration) {
+  const song = await api(songExtraUrl("lyrics", ref)).catch(() => undefined);
+  if (song === undefined || app.show !== show || show.audio !== ref) return;
+  const mine = show.lyrics, ours = !!mine && (!mine.song || mine.song === ref.path);
+  let next = mine;
+  if (song) next = fromSong(song, show.voice || null, duration, ref.path) || mine;
+  else if (ours && mine.fromSong) next = undefined; // removed from the song
+  else if (ours && songLyrics(mine)) {
+    await api(songExtraUrl("lyrics", ref), { method: "PUT", json: songLyrics(mine) }).catch(() => {});
+    next = { ...mine, song: ref.path, fromSong: true };
+  }
+  if (app.show !== show || JSON.stringify(next) === JSON.stringify(mine)) return;
+  if (next) show.lyrics = next; else delete show.lyrics;
+  setVoiceLevels(singerOf(show));
+  app.changed();
+}
+
 let measuringVoice = null;
-async function ensureVoice() {
+async function ensureVoice({ fresh = false } = {}) {
   const show = app.show, ref = show?.audio, song = songBuffer;
   if (!ref?.path || !song || !usesFace(show)) return;
-  // The song's vocals, if Split vocals has made them (your songs list says).
-  const songs = app.songs || [];
-  const vocalsRef = vocalsPlaces(ref, stemNames(ref.path).vocals)
-    .find((v) => songs.some((s) => s.source === v.source && s.path.toLowerCase() === v.path.toLowerCase()));
-  if (voiceFits(show, ref.path, song.duration, !!vocalsRef)) return;
   if (measuringVoice) return measuringVoice;
   measuringVoice = (async () => {
-    const mono = (decoded) => toMono(Array.from({ length: decoded.numberOfChannels }, (_, c) => decoded.getChannelData(c)), decoded.sampleRate);
-    let samples, rate, from = "vocals";
-    try {
-      if (!vocalsRef) throw new Error("no vocals");
-      const vocals = await audioCtx.decodeAudioData(await fetchSong(audioUrl(vocalsRef)));
-      ({ samples, rate } = mono(vocals));
-    } catch {
-      from = "song";
-      const m = mono(song);
-      samples = voiceBand(m.samples, m.rate);
-      rate = m.rate;
+    if (fresh || !voiceFits(show, ref.path, song.duration, !!vocalsOf(ref))) {
+      const voice = await songVoice(ref, song, { fresh });
+      if (app.show !== show || show.audio !== ref) return;
+      show.voice = voice;
+      setVoiceLevels(singerOf(show));
+      app.changed();
     }
-    if (app.show !== show || show.audio !== ref) return;
-    // seconds: the song's length then, so a different file under the same name is measured again.
-    const curve = levelCurve(samples, rate, ref.path, VOICE_FPS);
-    show.voice = { ...curve, shapes: voiceShapes(samples, rate, VOICE_FPS, curve.values), from,
-      seconds: Math.round(song.duration * 100) / 100 };
-    setVoiceLevels(singerOf(show));
-    app.changed();
+    await syncLyrics(show, ref, song.duration);
   })().finally(() => { measuringVoice = null; });
   return measuringVoice;
 }
@@ -10297,11 +10333,10 @@ function singerNote() {
     : "It follows the voice range of the song. For a closer match, use Split vocals on this song, then press Measure again.";
   const again = button("Measure again", async () => {
     if (!songBuffer) { status("Wait for the song to load first", "hint"); return; }
-    delete app.show.voice;
     again.disabled = true;
     status("Measuring the singer…");
     try {
-      await ensureVoice();
+      await ensureVoice({ fresh: true });
       status(app.show.voice ? `Measured the singer from ${app.show.voice.from === "vocals" ? "the vocals" : "the song"}` : "Couldn't measure the singer",
         app.show.voice ? "saved" : true);
     } catch (e) { status(`Couldn't measure the singer: ${e.message}`, true); }
@@ -10309,33 +10344,82 @@ function singerNote() {
   }, "ghost small");
   again.hidden = !ref;
   const placed = app.show.lyrics?.shapes && (!app.show.lyrics.song || app.show.lyrics.song === ref?.path);
-  const lyrics = button(placed ? "Lyrics… (placed)" : "Lyrics…", openLyrics, "ghost small");
+  const lyrics = button(placed ? "Lyrics… (placed)" : "Lyrics…", openShowLyrics, "ghost small");
   lyrics.title = "Paste the song's words for the mouth to sing them, placed for you, then tweaked if you like";
   lyrics.hidden = !ref;
   box.append(note, again, lyrics);
   return box;
 }
 
-// Lyrics… (lyrics.js): the song's words, placed across the singing for the Singing face to mouth, then
-// tweaked line by line: each line's start typed in, or tapped in time with the song.
-async function openLyrics() {
+// For a song file made from a draft in the Music editor: its original song's lyrics, placed through
+// the draft's cuts, as making the file now does ({name, lyrics, changed}), or null. changed: the draft's
+// been changed since, so the timing may be out.
+async function lyricsFromEdit(ref, duration) {
+  const drafts = await api("api/drafts").catch(() => []);
+  const d = drafts.find((x) => x.made?.source === ref.source && x.made?.path === ref.path && x.base);
+  if (!d) return null;
+  const draft = await api(`api/drafts/${encodeURIComponent(d.id)}`).catch(() => null);
+  const words = draft && await api(songExtraUrl("lyrics", draft.base)).catch(() => null);
+  if (!words) return null;
+  const key = (r) => `${r.source}:${r.path}`;
+  const pieces = draft.pieces.map((p) => ({ src: key(p.song), start: p.start, end: p.end }));
+  const lyrics = mapLyrics(words, pieces, draft.crossfade || 0, key(draft.base));
+  if (!lyrics) return null;
+  return { name: draft.base.path.replace(/^.*\//, "").replace(/\.[^.]+$/, ""), lyrics,
+    changed: Math.abs(arrange(pieces, draft.crossfade || 0).total - duration) > 0.5 };
+}
+
+// Lyrics… in a show (Singing face): the show's song's lyrics. Saved with the song, so every show on it
+// uses them; the show takes its copy straight away.
+async function openShowLyrics() {
   if (!songBuffer) { status("Wait for the song to load first", "hint"); return; }
   await ensureVoice().catch(() => {});
-  const voice = app.show.voice || null, duration = songBuffer.duration;
-  const w = editWindow("Lyrics");
+  const show = app.show, ref = show.audio;
+  const kept = await api(songExtraUrl("lyrics", ref)).catch(() => null);
+  const mine = show.lyrics && (!show.lyrics.song || show.lyrics.song === ref.path) ? show.lyrics : null;
+  const fromEdit = kept ? null : await lyricsFromEdit(ref, songBuffer.duration);
+  openLyrics({ ref, duration: songBuffer.duration, voice: show.voice || null, lyrics: kept || mine, fromEdit,
+    async save(words) {
+      await api(songExtraUrl("lyrics", ref), { method: "PUT", json: words });
+      if (app.show !== show) return;
+      const copy = words && fromSong(words, show.voice || null, songBuffer?.duration || 0, ref.path);
+      if (copy) show.lyrics = copy; else delete show.lyrics;
+      setVoiceLevels(singerOf(show));
+      app.changed();
+      renderInspector();
+    } });
+}
+
+// Lyrics… in the Music editor: the song's lyrics, for every show on it.
+async function openSongLyrics(ref) {
+  status("Loading the song…");
+  try {
+    audioCtx ||= new AudioContext();
+    const song = await audioCtx.decodeAudioData(await fetchSong(audioUrl(ref)));
+    const [voice, kept] = await Promise.all([songVoice(ref, song), api(songExtraUrl("lyrics", ref)).catch(() => null)]);
+    const fromEdit = kept ? null : await lyricsFromEdit(ref, song.duration);
+    status("");
+    openLyrics({ ref, duration: song.duration, voice, lyrics: kept, fromEdit, save: (words) => api(songExtraUrl("lyrics", ref), { method: "PUT", json: words }) });
+  } catch (e) { status(`Couldn't open the lyrics: ${e.message}`, true); }
+}
+
+// Lyrics… (lyrics.js): a song's words, placed across the singing for the Singing face to mouth, then
+// tweaked line by line: each line's start typed in, or tapped in time with the song. save({text,
+// lines}) keeps them with the song, or save(null) removes them. fromEdit (lyricsFromEdit): the
+// original's lyrics to offer, for a file made from a draft.
+function openLyrics({ ref, duration, voice, lyrics, fromEdit = null, save: keep }) {
+  const w = editWindow(`Lyrics for ${ref.path.replace(/^.*\//, "").replace(/\.[^.]+$/, "")}`);
   w.dlg.classList.add("lyrics-dialog");
   const intro = Object.assign(document.createElement("p"), { className: "hint",
     textContent: "Paste the words, one line of the song per line. They're placed across the singing for you; "
       + "if a line comes in early or late, type its start or tap along with the song." });
   const text = Object.assign(document.createElement("textarea"), { rows: 7, className: "lyrics-text",
-    value: app.show.lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
+    value: lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
   text.setAttribute("aria-label", "The song's words");
-  // Lyrics placed for another song (the show's song has changed since) are placed afresh.
-  const sameSong = !app.show.lyrics?.song || app.show.lyrics.song === app.show.audio.path;
-  let lines = (sameSong && savedLines(app.show.lyrics)) || [];
+  let lines = savedLines(lyrics) || [];
   const list = Object.assign(document.createElement("div"), { className: "lyrics-lines" });
   const hint = Object.assign(document.createElement("p"), { className: "hint" });
-  const audio = new Audio(audioUrl(app.show.audio));
+  const audio = new Audio(audioUrl(ref));
   audio.volume = volume.gain ?? 1;
   let stopAt = null, tapping = -1;
   audio.addEventListener("timeupdate", () => { if (stopAt != null && audio.currentTime >= stopAt) { audio.pause(); stopAt = null; } });
@@ -10406,27 +10490,40 @@ async function openLyrics() {
   w.dlg.addEventListener("keyup", (e) => { if (e.code === "Space") e.preventDefault(); });
   const tools = Object.assign(document.createElement("div"), { className: "row" });
   tools.append(auto, tapAlong, next);
+  if (fromEdit) {
+    const bring = button(`Bring in the lyrics from ${fromEdit.name}`, () => {
+      text.value = fromEdit.lyrics.text;
+      lines = savedLines(fromEdit.lyrics) || [];
+      lines = fromStarts(lines, lines.map((l) => l.start), voice, duration);
+      bring.remove();
+      draw();
+      if (fromEdit.changed) hint.textContent += " Its draft has changed since this file was made, so check the timing.";
+    }, "primary");
+    bring.title = "This song was made from a draft of that one in the Music editor: its lyrics follow the cuts";
+    tools.prepend(bring);
+  }
   w.body.append(intro, text, tools, hint, list);
-  const remove = button("Remove lyrics", () => {
-    delete app.show.lyrics;
-    finish();
-  }, "ghost danger");
-  remove.hidden = !app.show.lyrics;
+  const remove = button("Remove lyrics", () => finish(null), "ghost danger");
+  remove.hidden = !lyrics;
   const save = button("Save", () => {
     if (!lines.length) place();
     if (!lines.length) { w.dlg.close(); return; }
-    app.show.lyrics = savedLyrics(text.value, lines, voice, duration, app.show.audio.path);
-    finish();
+    finish(songLyrics(savedLyrics(text.value, lines, voice, duration)));
   }, "primary");
   const spacer = Object.assign(document.createElement("span"), { className: "spacer" });
   w.foot.append(remove, spacer, button("Cancel", () => w.dlg.close(), "ghost"), save);
   w.dlg.addEventListener("close", () => audio.pause());
-  function finish() {
-    setVoiceLevels(singerOf(app.show));
-    app.changed();
-    renderInspector();
+  async function finish(words) {
+    save.disabled = remove.disabled = true;
+    try {
+      await keep(words);
+    } catch (e) {
+      status(`Couldn't save the lyrics: ${e.message}`, true);
+      save.disabled = remove.disabled = false;
+      return;
+    }
     w.dlg.close();
-    status(app.show.lyrics ? "Lyrics saved: the Singing face mouths them" : "Lyrics removed", "saved", "show");
+    status(words ? `Lyrics saved with ${ref.path}: Singing faces mouth them` : "Lyrics removed", "saved", "show");
   }
   if (!lines.length && text.value) place(); else draw();
   w.dlg.showModal();

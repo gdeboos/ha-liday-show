@@ -113,7 +113,8 @@ them; an Advanced scene can.
 
 #### Lyrics for a Singing face
 
-To make a Singing face mouth the actual words, select its clip and press **Lyrics…** under **Mouth**.
+To make a Singing face mouth the actual words, select its clip and press **Lyrics…** under **Mouth**,
+or open the song in the Music editor and press **Lyrics…** under **Beats and sections**.
 
 1. Paste the song's words, one line of the song per line.
 2. They're placed across the singing for you, each word taking longer the more syllables it has. Each
@@ -125,7 +126,17 @@ To make a Singing face mouth the actual words, select its clip and press **Lyric
    guessed from the sound.
 
 Each word's mouth shapes come from its spelling (an "oo" for "moon", a wide "ee" for "see", lips
-closed for m, b, p, f and v), and the mouth shuts between words. The lyrics are kept with the show.
+closed for m, b, p, f and v), and the mouth shuts between words.
+
+The lyrics are kept with the song, so every show that uses it sings them, and you only place them
+once. The singer is measured once per song too. When you make a song file from a draft in the Music
+editor, the lyrics come with it, moved to follow your cuts (a line you cut out goes, and a chorus you
+repeat is sung again).
+
+For a song file you made from a draft before lyrics came along, or before you added lyrics to the
+original, open **Lyrics…** for it and press **Bring in the lyrics from…**: the original song's lyrics
+are placed through that draft's cuts, ready to check and **Save**. If you've changed the draft since
+making the file, it says so, so check the timing.
 
 #### Group lanes
 
