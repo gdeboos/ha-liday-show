@@ -304,7 +304,7 @@ singers and effects can stay in the music, and a little of the music in the voca
 
 While it works, a window covers the page saying what it's doing (downloading the AI, splitting, saving)
 and how far along it is. **Cancel** stops it, and your songs stay as they were. If the download is cut
-off part way, it's tried again twice; if it still fails, HA-liday Show's log (the app's **Log** tab)
+off part way, it's tried again twice; if it still fails, HA-liday Show's log (in Home Assistant, the app's **Log** tab)
 says why.
 
 ### Samples
