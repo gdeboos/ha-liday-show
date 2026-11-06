@@ -261,7 +261,7 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .phone-tile { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; align-items: center;
   gap: 3px; padding: 5px 5px 3px; border-radius: 10px; background: rgba(12, 14, 18, 0.82); border: 1px solid rgba(255, 255, 255, 0.25);
   color: #fff; cursor: pointer; min-height: 0; }
-.phone-tile .phone-screen { display: block; width: 45px; height: 80px; border-radius: 5px; background: #000;
+.phone-tile .phone-screen { display: block; width: 54px; height: 96px; border-radius: 5px; background: #000; image-rendering: pixelated;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }
 .phone-tile .phone-label { font-size: 10px; line-height: 1; opacity: 0.8; }
 .phone-tile.folded .phone-screen { display: none; }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.377
+
+- **Sharper pictures on phones.** A phone's screen is now twice as detailed (54 × 96), and drawn crisp rather than blurred, so GIFs, faces and text on the **Phones** lane look like clean pixel art. Pictures are still kept at up to 64 × 64 when you add them, as for your matrices.
+- **Turning off the welcome now works.** Unticking **Welcome first-time visitors** under **Public page → Shows** didn't stop the welcome showing on visitors' phones. It does now.
+
 ## 0.2.376
 
 - **Split vocals works through Home Assistant again.** The AI's download (about 90 MB, the first time) was being cut off part way through Home Assistant, which showed as "network error". HA-liday Show now downloads it once itself, checks it, and hands it to your browser in small pieces, so it gets through. Splitting a song then starts much sooner the second time, until HA-liday Show restarts.

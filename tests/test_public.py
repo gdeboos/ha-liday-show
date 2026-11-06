@@ -1467,3 +1467,13 @@ def test_phone_colours_are_checked(tmp_path):
     f.write_bytes(b"nope")
     assert baked.read_header(f) is None
     assert baked.read_header(tmp_path / "missing.gshow") is None
+
+
+async def test_turning_off_the_welcome_reaches_visitors(client):
+    await client.put("/api/public", json={"on": True})
+    _, st, _ = await _visitor(client, "/api/state")
+    assert st["look"]["tour"] is True
+    look = (await (await client.get("/api/public")).json())["look"]
+    await client.put("/api/public", json={"look": {**look, "tour": False}})
+    _, st, _ = await _visitor(client, "/api/state")
+    assert st["look"]["tour"] is False

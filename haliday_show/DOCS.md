@@ -2371,7 +2371,7 @@ What phones show:
   **Add a Phones lane**. It appears under your lights in the timeline, with a **House colour** effect
   across the whole show, so phones carry on showing the house's main colour. Replace or cut into it
   wherever you want something of your own (a big chorus, say).
-  - The phone's screen is treated as a small upright [matrix](#matrices-panels-and-mega-trees) (27 × 48), so the Phones lane
+  - The phone's screen is treated as a small upright [matrix](#matrices-panels-and-mega-trees) (54 × 96), so the Phones lane
     takes matrix effects as well as light effects: **Fire**, **Plasma**, **Spiral**, **Scrolling text**
     ("Merry Christmas!"; **Size: small** suits a phone), **Picture** for your pictures and GIFs from
     **Library → Pictures**, and the rest. Light effects such as **Chase** run down the screen, as on a matrix.
