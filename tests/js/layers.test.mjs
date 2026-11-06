@@ -158,3 +158,40 @@ test("a layer's EQ shapes its clips and not the song", () => {
   assert.ok(peak < 0.03, `the layer's bass is off: ${peak}`);
   near(out[0][100], main[0][100], "the song is untouched before it");
 });
+
+test("a made file's parts get each layer clip's matching part", async () => {
+  const { clipPart } = await import("../../haliday_show/app/halidayshow/static/js/layers.js");
+  const P = (song) => Object.fromEntries(["vocals", "drums", "bass", "rest", "music"].map((p) => [p, `.parts/${song}/${p}.wav`]));
+  const songs = [{ source: "media", path: "carol.mp3", parts: P("carol") }, { source: "media", path: "bells.wav" }];
+  const ref = (path) => ({ source: "media", path });
+  // A whole song with parts: that part of it.
+  assert.deepEqual(clipPart(ref("carol.mp3"), "drums", songs), ref(".parts/carol/drums.wav"));
+  // Just its vocals: only the vocals part, not the music.
+  assert.deepEqual(clipPart(ref(".parts/carol/vocals.wav"), "vocals", songs), ref(".parts/carol/vocals.wav"));
+  assert.equal(clipPart(ref(".parts/carol/vocals.wav"), "music", songs), null);
+  assert.equal(clipPart(ref(".parts/carol/vocals.wav"), "drums", songs), null);
+  // Just its drums: the drums and the music.
+  assert.deepEqual(clipPart(ref(".parts/carol/drums.wav"), "music", songs), ref(".parts/carol/drums.wav"));
+  assert.equal(clipPart(ref(".parts/carol/drums.wav"), "rest", songs), null);
+  // Its music: the music, and its drums, bass and rest to theirs, but no vocals.
+  assert.deepEqual(clipPart(ref(".parts/carol/music.wav"), "music", songs), ref(".parts/carol/music.wav"));
+  assert.deepEqual(clipPart(ref(".parts/carol/music.wav"), "bass", songs), ref(".parts/carol/bass.wav"));
+  assert.equal(clipPart(ref(".parts/carol/music.wav"), "vocals", songs), null);
+  // A sample, or a song not split: the rest of the music.
+  assert.deepEqual(clipPart(ref("bells.wav"), "rest", songs), ref("bells.wav"));
+  assert.deepEqual(clipPart(ref("bells.wav"), "music", songs), ref("bells.wav"));
+  assert.equal(clipPart(ref("bells.wav"), "vocals", songs), null);
+  assert.deepEqual(clipPart({ source: "samples", path: "ho.wav" }, "rest", songs), { source: "samples", path: "ho.wav" });
+});
+
+test("ducking can follow the clips' own audio while mixing in something else", () => {
+  const rate = 100, n = 1000;
+  const main = [new Float32Array(n).fill(0.5)];
+  const layers = [{ name: "L", gain: 0, duck: true, clips: [{ song: B, start: 0, end: 2, anchor: { song: A, t: 3 }, gain: 0 }] }];
+  const placed = placeClips(layers, song, 0);
+  const own = { "media:b.mp3": [new Float32Array(400).fill(0.2)] };
+  // This part has nothing of the clip, but the song still dips where the whole mix does.
+  const out = mixLayers(main, layers, placed, {}, rate, { heard: own });
+  assert.ok(out[0][400] < 0.3 && Math.abs(out[0][900] - 0.5) < 1e-6);
+  assert.ok(Math.abs(mixLayers(main, layers, placed, {}, rate)[0][400] - 0.5) < 1e-6);
+});

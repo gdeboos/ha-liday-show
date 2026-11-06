@@ -334,7 +334,10 @@ music**, and they go wherever the song goes (renamed, copied, archived or delete
   mash-up. Splicing a song in (**Splice → Choose song…**) offers its parts the same way.
 - **Edits** use their original song's parts through your cuts, so there's no need to split an edit.
   When you make a song file from a draft, its parts (and its drum hits) are cut from the original's the
-  same way, in seconds, with no AI.
+  same way, in seconds, with no AI. Your EQ and layers go into them too: a layer of just another song's
+  vocals goes into the new file's vocals, a whole song layered on adds each of its parts to the matching
+  part, and a sample (or a song not split yet) goes into the rest of the music. Where a layer quietens
+  the song, every part dips with it.
 
 **New songs are split by default.** When you add a song (**+ Add a song**), it's split into its
 parts in the background once it's added. On a slower computer, turn off **Split it into parts
@@ -349,7 +352,9 @@ it; parts already made are kept.
 **Split all songs into parts** (under the list in **Library → Songs**) does the same for every song
 that isn't split yet, one after another, and listens to any song split before HA-liday Show listened
 to songs (seconds each, with no question asked if that's all there is to do). An edit made from a draft of a song that's split has its
-parts cut from the original's in seconds, rather than split again. Anything not done when you close
+parts cut from the original's in seconds, rather than split again. A file made before HA-liday Show
+did that for drafts with layers or EQ is split by the AI instead: open its draft and press **Make song
+file** again to have it done in seconds. Anything not done when you close
 the page is picked up next time you press it.
 
 A song you split before (with Split vocals) has its vocals already: **Split into parts…** keeps them

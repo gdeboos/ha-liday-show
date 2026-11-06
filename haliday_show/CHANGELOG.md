@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.412
+
+- **Layered edits get their parts in seconds, and right.** When you press **Make song file** on a draft with layers or EQ, the new file's parts (vocals, drums, bass and the rest) now include them: a layer of another song's vocals goes into the vocals, a sample into the rest of the music, and so on, at the layer's volume, tempo and key. Before, the layers were left out of the parts. A file made earlier from such a draft is split by the AI instead, which is slow: make it again from its draft to have it done in seconds.
+
 ## 0.2.411
 
 - **The guide is up to date with song parts.** The **Songs** chapter mentions what HA-liday Show heard in a song, and the Singing face notes talk about splitting a song into parts rather than the old Split vocals.

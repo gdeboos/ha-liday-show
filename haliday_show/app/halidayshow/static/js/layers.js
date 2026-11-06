@@ -131,10 +131,12 @@ const TAIL = 0.25; // seconds of a clip's EQ ringing kept after it ends
 
 // The main track's channels with the layers mixed in (a new copy). sources: {key: [channels]} at rate,
 // with each stretched clip's audio under sourceKey. pieces and crossfade place layers' EQ changes.
-export function mixLayers(main, layers, placed, sources, rate, { pieces = [], crossfade = 0 } = {}) {
+// heard: the sources that decide where the song dips (the clips' own audio), when `sources` are
+// something else, such as one part of each clip for a made file's parts.
+export function mixLayers(main, layers, placed, sources, rate, { pieces = [], crossfade = 0, heard = sources } = {}) {
   const out = main.map((ch) => Float32Array.from(ch));
   const n = out[0]?.length || 0;
-  const env = duckEnvelope(layers, placed, sources, n, rate);
+  const env = duckEnvelope(layers, placed, heard, n, rate);
   if (env) for (const ch of out) for (let i = 0; i < n; i++) ch[i] *= env[i];
   const changes = layers.map((L) => (isFlat(L.eq) ? null : placeChanges(L.eq, pieces, crossfade)));
   for (const { layer, clip, at, speed = 1, semis = 0 } of placed) {
@@ -162,6 +164,28 @@ export function mixLayers(main, layers, placed, sources, rate, { pieces = [], cr
     out.forEach((ch, c2) => { const bit = bits[c2]; for (let k = 0; k < bit.length; k++) ch[off + skip + k] += bit[k]; });
   }
   return out;
+}
+
+// What a layer's clip adds to one part (vocals, drums, bass, rest or music: everything but the vocals)
+// of a song file made from the draft: the audio to play in the clip's place, {source, path}, or null for
+// nothing. songs: [{source, path, parts}].
+// - A whole song with parts gives that part of it.
+// - A part of a song (a clip of just its vocals, say) gives itself to that part. It also feeds the music,
+//   unless it's the vocals. A clip of a song's music gives that song's drums, bass and rest to theirs.
+// - Anything else (a sample, a song not split yet) counts as the rest of the music.
+export function clipPart(song, part, songs) {
+  const same = (a, b) => a.source === b.source && a.path === b.path;
+  const whole = songs.find((s) => same(s, song));
+  if (whole && Object.keys(whole.parts || {}).length) return whole.parts[part] ? { source: "media", path: whole.parts[part] } : null;
+  for (const s of songs) {
+    const of = Object.entries(s.parts || {}).find(([, p]) => song.source === "media" && p === song.path)?.[0];
+    if (!of) continue;
+    if (of === part) return song;
+    if (part === "music" && of !== "vocals") return song;
+    if (of === "music" && ["drums", "bass", "rest"].includes(part)) return s.parts[part] ? { source: "media", path: s.parts[part] } : null;
+    return null;
+  }
+  return part === "rest" || part === "music" ? song : null;
 }
 
 // Keeps a mix from clipping: turns down just around anything louder than ceiling, smoothly (it acts
