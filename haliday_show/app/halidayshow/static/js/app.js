@@ -10901,8 +10901,11 @@ async function syncLyrics(show, ref, duration) {
 // original's, through its cuts), for Drum hits and Generate, brought up to date.
 async function syncDrums(show, ref, duration) {
   const edit = await editOf(ref, duration);
-  const hits = edit?.drums && !edit.layered ? mapHits(edit.drums, edit.pieces, edit.crossfade, edit.src)
-    : await api(songExtraUrl("drums", ref)).catch(() => undefined);
+  // A mashup's file has its own (from its drums part, layers and all); one made without parts falls
+  // back to its original's through the cuts.
+  const fileHits = () => api(songExtraUrl("drums", ref)).catch(() => undefined);
+  let hits = edit?.layered ? await fileHits() : null;
+  if (!hits) hits = edit?.drums ? mapHits(edit.drums, edit.pieces, edit.crossfade, edit.src) : edit?.layered ? hits : await fileHits();
   if (hits === undefined || app.show !== show || show.audio !== ref) return;
   const mine = show.drums, next = hits ? { song: ref.path, ...hits } : mine && mine.song !== ref.path ? mine : undefined;
   if (JSON.stringify(next) === JSON.stringify(mine)) return;
