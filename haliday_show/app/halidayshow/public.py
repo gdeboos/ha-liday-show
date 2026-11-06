@@ -1323,7 +1323,9 @@ def joining_now(storage: Storage, runner: Runner) -> tuple[str, dict] | None:
 
 
 def _joining(request, code) -> dict:
-    """The settings, for a phone allowed to join the show (code right, phones on; the page on too, unless it's yours)."""
+    """The settings, for a phone allowed to join the show (code right, phones on; the page on too, unless it's yours).
+    Unlike listening, no pass, Nearby check or PIN: all a phone gets is the show's colours and where it is,
+    which anyone in the street can already see. (Opening hours don't apply, as for listening.)"""
     p = load(request.app[STORAGE]) or clean(None)
     if not _code_ok(p, code):
         raise web.HTTPForbidden(text=words(p)["locked"])

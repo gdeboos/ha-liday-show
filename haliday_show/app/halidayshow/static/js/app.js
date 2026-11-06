@@ -4084,7 +4084,9 @@ const trackName = (i) => (isHouse(i) ? "the House lane"
   : isGroup(i) ? `the ${groupById(app.show.tracks[i].device)?.name || "missing"} group`
   : app.devices[app.show.tracks[i]?.device]?.name || "missing light");
 // The other lights' tracks (never the House lane or a group lane).
-const otherTracks = (i) => app.show.tracks.map((_, k) => k).filter((k) => k !== i && !isLane(k) && playingDev(app.show.tracks[k]));
+// (Not the Phones lane: "every light" means the real ones.)
+const otherTracks = (i) => app.show.tracks.map((_, k) => k).filter((k) => k !== i && !isLane(k) && app.show.tracks[k].device !== PHONES
+  && playingDev(app.show.tracks[k]));
 const clone = (clip) => JSON.parse(JSON.stringify(clip));
 
 function copySelection() {
@@ -11482,7 +11484,7 @@ function aiLights() {
       return;
     }
     const dev = playingDev(tr);
-    if (!dev) return;
+    if (!dev || dev.phones) return; // the AI designs for your lights, not visitors' phones
     let name = dev.name || tr.device;
     for (let k = 2; seen.has(name.toLowerCase()); k++) name = `${dev.name || tr.device} (${k})`;
     seen.add(name.toLowerCase());
