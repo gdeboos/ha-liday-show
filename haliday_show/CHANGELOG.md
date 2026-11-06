@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.392
+
+- **Shared shows carry your own faces.** **Share** now puts the faces you made (Library → Faces) that a show's Singing faces use into the file. Whoever imports it gets them added to their **Library → Faces**, so the characters look just as you made them.
+
 ## 0.2.391
 
 - **Make your own Singing faces.** **Library → Faces** lists every Singing face character. Press **+ New face** to open the face maker and build one from parts: a head shape, eyes, nose, mouth, cheeks, a hat (or antlers, ears or a star) and extras such as a beard, whiskers or a scarf, each in your own colours. The preview sings and blinks as you go, big and as a phone shows it.

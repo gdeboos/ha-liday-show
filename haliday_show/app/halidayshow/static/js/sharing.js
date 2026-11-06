@@ -5,12 +5,13 @@
 
 import { MAX_MATRIX, gridOf } from "./matrix.js";
 import { isRectPart } from "./parts.js";
+import { cleanRecipe } from "./faces.js";
 
 export const SHARE_FORMAT = "halidayshow";
 // Version 2 adds the pictures a show's Picture effects use; a show without any is still written as 1,
 // so older copies can import it. Later versions must keep importing version 1 and 2 files.
 export const SHARE_VERSION = 2;
-const MAX_SHARED_PICTURES = 20;
+const MAX_SHARED_PICTURES = 20, MAX_SHARED_FACES = 20;
 export const SHARE_EXT = ".halidayshow";
 const HOUSE = "@house";
 const PHONES = "@phones"; // phones.js: the Phones lane, which plays on visitors' phones
@@ -56,7 +57,7 @@ export function whereOf(points) {
 // The share file for `show`. `lights` is the Devices tab's list, `models` Govee models by SKU,
 // `positions` each device or part id's segment positions on the house (as the House lane uses).
 // Lights with no effects in the show are left out; so are tracks whose light has gone.
-export function makeShare(show, lights, { models = {}, positions = {}, app = "", pictureOf = () => null, seasons = [], shapeOf = () => "panel" } = {}) {
+export function makeShare(show, lights, { models = {}, positions = {}, app = "", pictureOf = () => null, faceOf = () => null, seasons = [], shapeOf = () => "panel" } = {}) {
   const byId = new Map(lights.map((d) => [d.id, d]));
   // Seasons go by name (ids are only this copy's): a light's, and the show's.
   const seasonName = new Map(seasons.map((x) => [x.id, x.name]));
@@ -106,6 +107,18 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
     return picKeys.get(id);
   };
   out.tracks = out.tracks.map((t) => ({ ...t, clips: t.clips.map((c) => (c.effect === "picture" && c.picture ? { ...c, picture: keyOf(c.picture) } : c)) }));
+  // Your own Singing faces travel the same way, as their recipes, keyed F1, F2… faceOf(id) gives
+  // {name, recipe} for one of yours, or null (a built-in, which every copy has, or one that's gone).
+  const faces = [], faceKeys = new Map();
+  const faceKey = (id) => {
+    if (!faceKeys.has(id)) {
+      const face = faceKeys.size < MAX_SHARED_FACES ? faceOf(id) : null;
+      faceKeys.set(id, face ? `F${faces.length + 1}` : id);
+      if (face) faces.push({ key: faceKeys.get(id), name: face.name, recipe: face.recipe });
+    }
+    return faceKeys.get(id);
+  };
+  out.tracks = out.tracks.map((t) => ({ ...t, clips: t.clips.map((c) => (c.effect === "singingface" && typeof c.character === "string" ? { ...c, character: faceKey(c.character) } : c)) }));
   const song = show.audio?.path ? { name: songTitle(show.audio.path), length: round2(show.duration || 0) } : null;
   return {
     format: SHARE_FORMAT, version: pictures.length ? 2 : 1, app, name: show.name || "Shared show", song,
@@ -116,8 +129,16 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
     ...(show.brightness != null && show.brightness !== 100 ? { brightness: show.brightness } : {}),
     ...(seasonName.get(show.season) ? { season: seasonName.get(show.season) } : {}),
     ...(pictures.length ? { pictures } : {}),
+    // Older copies ignore it (the faces show as snowmen), so it doesn't change the version.
+    ...(faces.length ? { faces } : {}),
   };
 }
+
+// An imported show's tracks with each face key swapped for the id it was saved under here (ids: {key:
+// id}); a face key with nothing saved is a snowman.
+export const withFaceIds = (tracks, ids) => tracks.map((t) => ({ ...t,
+  clips: t.clips.map((c) => (c.effect !== "singingface" || typeof c.character !== "string" || !/^F[0-9]+$/.test(c.character) ? c
+    : { ...c, character: Object.hasOwn(ids, c.character) && typeof ids[c.character] === "string" ? ids[c.character] : "snowman" })) }));
 
 // An imported show's tracks with each picture key swapped for the id it was saved under here
 // (ids: {key: id}). A key with no picture becomes none.
@@ -206,6 +227,9 @@ export function readShare(text) {
     ...(level(s.brightness) ? { brightness: level(s.brightness) } : {}),
     ...(typeof s.season === "string" && s.season.trim() ? { season: s.season.trim().slice(0, 40) } : {}),
     pictures: (Array.isArray(s.pictures) ? s.pictures : []).slice(0, MAX_SHARED_PICTURES).map(sharedPicture).filter(Boolean),
+    faces: (Array.isArray(s.faces) ? s.faces : []).slice(0, MAX_SHARED_FACES)
+      .filter((f) => f && typeof f === "object" && typeof f.key === "string" && /^F[0-9]+$/.test(f.key))
+      .map((f) => ({ key: f.key, name: text64(f.name, "Face").slice(0, 60) || "Face", recipe: cleanRecipe(f.recipe) })),
   };
 }
 
