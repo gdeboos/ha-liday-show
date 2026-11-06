@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.381
+
+- The **Palette** button in a narrow panel (such as **Selection → Colours**) no longer runs out of its box: a long palette name is shortened to fit instead.
+
 ## 0.2.380
 
 - **See what a Singing face follows.** Select a **Singing face** clip and its settings now say what the mouth follows: the vocals from **Split vocals**, the voice range of the song, or nothing yet (with why). **Measure again** measures the singer afresh, handy right after you split a song's vocals.
