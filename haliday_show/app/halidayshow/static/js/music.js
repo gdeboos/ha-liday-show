@@ -2437,8 +2437,11 @@ export class MusicEditor {
     const label = what === "layer" ? this.layers[this.focus].name : SONG_PARTS.includes(what) ? `${song} ${PART_LOOK[what][0].toLowerCase()}` : song;
     let sound = what === "layer" ? this.focusMix : this.rendered;
     if (SONG_PARTS.includes(what)) {
-      if (!this.partRender(what)) { this.host.status("Loading the song's parts…"); await this.loadParts([what]); }
-      sound = this.partRender(what) && this.soloedParts([what]);
+      if (!this.partRender(what)) this.host.status("Loading the song's parts…");
+      for (let k = 0; k < 600 && !this.partRender(what) && !this.partsFailed?.size; k++) {
+        if (!this.partsLoading) await this.loadParts([what]); else await new Promise((r) => setTimeout(r, 100));
+      }
+      sound = this.partRender(what); // the part itself, through your cuts (not the Mixer's levels for it)
       if (!sound) return this.host.status("Couldn't load the song's parts to save one", true);
     }
     if (!sound) return;

@@ -1035,7 +1035,7 @@ Christmas", ready to layer over a song in the Music editor. There are two ways t
   the **Selection** panel), pick which sound, then give it a name. **As you hear it** keeps it as it
   sounds in your edit, layers and all. A song that's been split into parts also offers **Just the
   vocals**, **Just the drums**, **Just the bass** and **Just the rest** (a drum fill, or a sung line on its
-  own), and while you're editing a layer on its own, **Just Choir** (or whatever it's called) keeps just
+  own; the part as it is, even if you've muted or turned it down in the **Mixer**), and while you're editing a layer on its own, **Just Choir** (or whatever it's called) keeps just
   that layer.
 - **From a file:** press **+ Add a sample** and pick one or more files (the same kinds as songs).
 
