@@ -604,10 +604,10 @@ export function start() {
   const join = { on: false, samples: [], key: "", colours: "", house: "", lane: null, fps: 10, timer: 0, raf: 0, wake: null,
     gen: 0, since: 0 };
   // The editor's effect code (effects.js), loaded the first time a show with a Phones lane plays here.
-  let fx = null, fxPictures = null, img = null;
+  let fx = null, fxPictures = null, fxFaces = null, img = null;
   async function loadFx() {
     if (!fx) {
-      [fx, fxPictures] = await Promise.all([import("./fx/effects.js"), import("./fx/pictures.js")]);
+      [fx, fxPictures, fxFaces] = await Promise.all([import("./fx/effects.js"), import("./fx/pictures.js"), import("./fx/faces.js")]);
     }
     return fx;
   }
@@ -649,6 +649,7 @@ export function start() {
         try {
           await loadFx();
           for (const [id, pic] of Object.entries(got.lane.pictures || {})) fxPictures.keepPicture(id, pic);
+          for (const [id, face] of Object.entries(got.lane.faces || {})) fxFaces.keepFace(id, face);
           if (gen === join.gen && join.key === want) join.lane = got.lane;
         } catch (e) { console.warn("Phones lane: couldn't load the effects, so one colour at a time", e); }
       }

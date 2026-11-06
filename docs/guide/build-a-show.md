@@ -353,6 +353,33 @@ Each picture's row shows its first frame, its size and, for a GIF, how many fram
 it takes. **Rename…** changes its name; **Delete…** (under **⋯**) removes it for good, and **Picture**
 effects that used it show their background. Sort them with folders (see [Folders](#folders)).
 
+### Faces
+
+**Library → Faces** keeps the characters for the **Singing face** effect (on a matrix, or on visitors'
+phones). The built-in ones are listed under **Built in**; yours are above them.
+
+Press **+ New face** to open the face maker, or **Duplicate** on any face (built-in or yours) to start from
+it. Pick each part from its list and give it a colour:
+
+- **Head**: round, oval, wide, a Christmas tree, a ghost or a skull, and its colour.
+- **Face patch**: a lighter patch on the face, a muzzle or a chest (like a penguin's face or a robin's
+  breast).
+- **Eyes**: dots, ovals, big eyes, glowing triangles, skull sockets or cat's eyes.
+- **Nose**, **Mouth** (open, a jagged pumpkin grin, a row of teeth, or a small round one) and **Cheeks**.
+- **On top**: a top hat, Santa, witch, elf or bobble hat, antlers, cat or bear ears, or a star. Hats with
+  a band or trim have a second colour.
+- **Extras**: a beard, moustache, whiskers, pointy ears, baubles, a scarf or a bow tie, each in its own
+  colour.
+
+The preview sings "ah", "oo", "ee" and "mm" and blinks while you work, big and as a phone shows it. Press
+**Add face** (or **Save**) to keep it. Then pick it as a Singing face clip's **Character**, under **Your
+faces**.
+
+**Edit…** on one of yours opens it again. Changing a face changes it in every show that uses it, and those
+shows are made ready again in the background. **Delete…** (under **⋯**) removes it; Singing faces that used
+it show a snowman instead. You can keep up to 200 faces, and sort them with folders (see
+[Folders](#folders)).
+
 ### Editing a song
 
 The **Music editor** cuts, shortens and splices songs before you build a show. Press **Edit** on a

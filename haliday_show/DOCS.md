@@ -969,6 +969,33 @@ Each picture's row shows its first frame, its size and, for a GIF, how many fram
 it takes. **Rename…** changes its name; **Delete…** (under **⋯**) removes it for good, and **Picture**
 effects that used it show their background. Sort them with folders (see [Folders](#folders)).
 
+### Faces
+
+**Library → Faces** keeps the characters for the **Singing face** effect (on a matrix, or on visitors'
+phones). The built-in ones are listed under **Built in**; yours are above them.
+
+Press **+ New face** to open the face maker, or **Duplicate** on any face (built-in or yours) to start from
+it. Pick each part from its list and give it a colour:
+
+- **Head**: round, oval, wide, a Christmas tree, a ghost or a skull, and its colour.
+- **Face patch**: a lighter patch on the face, a muzzle or a chest (like a penguin's face or a robin's
+  breast).
+- **Eyes**: dots, ovals, big eyes, glowing triangles, skull sockets or cat's eyes.
+- **Nose**, **Mouth** (open, a jagged pumpkin grin, a row of teeth, or a small round one) and **Cheeks**.
+- **On top**: a top hat, Santa, witch, elf or bobble hat, antlers, cat or bear ears, or a star. Hats with
+  a band or trim have a second colour.
+- **Extras**: a beard, moustache, whiskers, pointy ears, baubles, a scarf or a bow tie, each in its own
+  colour.
+
+The preview sings "ah", "oo", "ee" and "mm" and blinks while you work, big and as a phone shows it. Press
+**Add face** (or **Save**) to keep it. Then pick it as a Singing face clip's **Character**, under **Your
+faces**.
+
+**Edit…** on one of yours opens it again. Changing a face changes it in every show that uses it, and those
+shows are made ready again in the background. **Delete…** (under **⋯**) removes it; Singing faces that used
+it show a snowman instead. You can keep up to 200 faces, and sort them with folders (see
+[Folders](#folders)).
+
 ### Editing a song
 
 The **Music editor** cuts, shortens and splices songs before you build a show. Press **Edit** on a
@@ -1686,7 +1713,7 @@ them; an Advanced scene can.
 | Fire | Flames rising from the bottom of the matrix, each column flickering to its own height. Up to 8 colours from the base to the tips, a **Speed** and a **Flame height** |
 | Snowfall | Flakes falling down each column at their own pace, gliding from LED to LED. **Style: rain** falls straight, with a streak above each drop. Set **How many** and **Speed** |
 | Music bars | A bar per column rising from the bottom with the song's loudness, each a different height, green to red. Like **Music level**, it needs the show's song, and isn't offered in scenes |
-| Singing face | A cartoon **Character** (a snowman, pumpkin, gingerbread person, Santa, ghost, reindeer, elf, Christmas tree, penguin, robin, teddy bear, skull, witch or black cat) whose mouth opens and closes with the singer, on a **Background** colour, at a **Size** of the matrix. The mouth takes the shape the singing sounds like (a tall "ah", a round "oo", a wide "ee" with teeth, or shut), snaps open on each word and closes between them. **Mouth sensitivity** opens it on quieter singing (higher) or only on loud notes (lower). **Blinks, glances and bobs** makes the character blink now and then, glance about and bob with the music; turn it **off** for a still face. If you've used [Split vocals](#split-vocals) on the song, the mouth follows the vocals; otherwise it follows the voice range of the song itself, which works well when the singing stands out. HA-liday Show measures the singer the first time the show is saved with a Singing face, and again if its song changes. With the clip selected, **Mouth** says what it follows (the vocals or the song), and **Measure again** measures it afresh, after you've split the vocals, say. For the mouth to sing the actual words, press **Lyrics…** (see [Lyrics for a Singing face](#lyrics-for-a-singing-face)). It suits a phone's screen (see [Phones join the show](#phones-join-the-show)) as well as your matrices |
+| Singing face | A cartoon **Character** (a snowman, pumpkin, gingerbread person, Santa, ghost, reindeer, elf, Christmas tree, penguin, robin, teddy bear, skull, witch or black cat) whose mouth opens and closes with the singer, on a **Background** colour, at a **Size** of the matrix. The mouth takes the shape the singing sounds like (a tall "ah", a round "oo", a wide "ee" with teeth, or shut), snaps open on each word and closes between them. **Mouth sensitivity** opens it on quieter singing (higher) or only on loud notes (lower). **Blinks, glances and bobs** makes the character blink now and then, glance about and bob with the music; turn it **off** for a still face. If you've used [Split vocals](#split-vocals) on the song, the mouth follows the vocals; otherwise it follows the voice range of the song itself, which works well when the singing stands out. HA-liday Show measures the singer the first time the show is saved with a Singing face, and again if its song changes. With the clip selected, **Mouth** says what it follows (the vocals or the song), and **Measure again** measures it afresh, after you've split the vocals, say. To make your own character, see [Faces](#faces). For the mouth to sing the actual words, press **Lyrics…** (see [Lyrics for a Singing face](#lyrics-for-a-singing-face)). It suits a phone's screen (see [Phones join the show](#phones-join-the-show)) as well as your matrices |
 
 #### Lyrics for a Singing face
 

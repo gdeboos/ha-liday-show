@@ -1,9 +1,15 @@
 # Changelog
 
-## 0.2.391
+## 0.2.392
 
 - **Place each word on the waveform.** **Lyrics…** now shows the song's waveform, with every word as a block under it and the singer's level drawn over the song. Drag a word to move it, or drag its edges to make it longer or shorter. A line now ends where its last word does, so the mouth stays shut through an instrumental. Click the waveform to play from there; **+** and **−** zoom.
 - Each line in **Lyrics…** shows when it ends as well as when it starts.
+
+## 0.2.391
+
+- **Make your own Singing faces.** **Library → Faces** lists every Singing face character. Press **+ New face** to open the face maker and build one from parts: a head shape, eyes, nose, mouth, cheeks, a hat (or antlers, ears or a star) and extras such as a beard, whiskers or a scarf, each in your own colours. The preview sings and blinks as you go, big and as a phone shows it.
+- **Duplicate** any face, built-in or yours, to start from it. Your faces appear under **Your faces** in a Singing face clip's **Character**, can go in folders, and are kept in your backups.
+- Changing one of your faces changes it in every show that uses it.
 
 ## 0.2.390
 

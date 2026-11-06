@@ -39,3 +39,36 @@ test("every part of a recipe draws, and bad colours fall back", () => {
   }
   assert.equal(drawRecipe({}, 0.01, 0.99, f), null); // an empty recipe is a plain round head
 });
+
+test("recipes are cleaned, built-ins duplicate as they look, and your faces draw and are found in shows", async () => {
+  const { BUILT_IN: B, LOOKALIKE, cleanRecipe, recipeOf, keepFace, forgetFace, getFace, faceList, facesUsed, facesVersion } =
+    await import("../../haliday_show/app/halidayshow/static/js/faces.js");
+  const f = { mouth: 0.7, shape: "a", blink: 0, look: 0 };
+  // A recipe-made built-in, duplicated, draws exactly as the original.
+  for (const c of Object.keys(B)) {
+    const r = recipeOf(c);
+    let diff = 0;
+    for (let y = 0; y < 40; y++) for (let x = 0; x < 30; x++) if (String(drawRecipe(B[c], x / 30, y / 40, f)) !== String(drawRecipe(r, x / 30, y / 40, f))) diff++;
+    assert.equal(diff, 0, c);
+  }
+  for (const c of Object.keys(LOOKALIKE)) assert.ok(recipeOf(c).head.shape);
+  // Rubbish in, a plain face out; colours lower-cased; unknown extras dropped.
+  const clean = cleanRecipe({ head: { shape: "cube", colour: "#ABCDEF" }, eyes: "x", extras: { wings: "#ffffff", scarf: "#FF0000", beard: "red" } });
+  assert.equal(clean.head.shape, "round");
+  assert.equal(clean.head.colour, "#abcdef");
+  assert.deepEqual(clean.extras, { scarf: "#ff0000" });
+  assert.deepEqual(cleanRecipe(clean), clean);
+  // Yours: kept, drawn, listed, found in a show, forgotten (then a snowman).
+  const v = facesVersion();
+  keepFace("ftest000001", { name: "Bob", recipe: { head: { shape: "tree", colour: "#00ff00" } } });
+  assert.ok(facesVersion() > v);
+  assert.deepEqual(faceColour("ftest000001", 0.5, 0.92, f), faceColour("ftest000001", 0.5, 0.92, f));
+  assert.notDeepEqual(faceColour("ftest000001", 0.5, 0.45, f), faceColour("snowman", 0.5, 0.45, f));
+  assert.deepEqual(faceList().map((x) => x.name), ["Bob"]);
+  const show = { tracks: [{ clips: [{ effect: "singingface", character: "ftest000001" }, { effect: "singingface", character: "elf" }] }] };
+  assert.deepEqual(Object.keys(facesUsed(show)), ["ftest000001"]);
+  assert.deepEqual(facesUsed({ tracks: [{ clips: [{ effect: "singingface", character: "elf" }] }] }), {});
+  forgetFace("ftest000001");
+  assert.equal(getFace("ftest000001"), undefined);
+  assert.deepEqual(faceColour("ftest000001", 0.5, 0.5, f), faceColour("snowman", 0.5, 0.5, f));
+});

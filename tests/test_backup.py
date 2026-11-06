@@ -96,3 +96,9 @@ def test_pictures_are_kept_in_backups():
     assert backup._allowed("pictures/p0123456789.json")
     assert not backup._allowed("pictures/../settings.json")
     assert not backup._allowed("pictures/p0123456789.png")
+
+
+def test_faces_are_kept_in_backups():
+    assert backup._allowed("faces/f0123456789.json")
+    assert not backup._allowed("faces/../settings.json")
+    assert not backup._allowed("faces/f0123456789.png")

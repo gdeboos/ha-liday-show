@@ -1861,6 +1861,101 @@ async def delete_picture(request):
     return web.json_response({"ok": True})
 
 
+# your Singing faces ----------------------------------------------------------------
+# The parts a face is made from, as in static/js/faces.js (RECIPE_PARTS).
+FACE_PARTS = {
+    "head": ("round", "oval", "wide", "tree", "ghost", "skull"),
+    "patch": ("none", "face", "muzzle", "chest"),
+    "eyes": ("dots", "ovals", "big", "triangles", "sockets", "cat"),
+    "nose": ("none", "button", "carrot", "triangle", "beak", "long"),
+    "mouth": ("open", "grin", "teeth", "small"),
+    "top": ("none", "top hat", "santa hat", "witch hat", "elf hat", "bobble hat", "antlers", "cat ears", "bear ears", "star"),
+    "extras": ("beard", "moustache", "whiskers", "pointy ears", "baubles", "scarf", "bow tie"),
+}
+MAX_FACES = 200
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _face_id(request) -> str:
+    face_id = request.match_info["id"]
+    if not valid_id(face_id):
+        raise web.HTTPBadRequest(text="bad face id")
+    return face_id
+
+
+def _clean_face(body) -> dict:
+    """{name, recipe: {head: {shape, colour, patch, patchColour}, eyes: {style, colour}, nose: {style, colour},
+    mouth: {style, colour}, cheeks: colour or "", top: {style, colour, colour2}, extras: {name: colour}}}."""
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text="expected a face")
+    name = " ".join(str(body.get("name") or "").split())[:60]
+    if not name:
+        raise web.HTTPBadRequest(text="give the face a name")
+    r = body.get("recipe")
+    if not isinstance(r, dict):
+        raise web.HTTPBadRequest(text="a face needs its recipe")
+
+    def part(key):
+        v = r.get(key)
+        if not isinstance(v, dict):
+            raise web.HTTPBadRequest(text=f"the face's {key} is missing")
+        return v
+
+    def pick(v, kind):
+        if v not in FACE_PARTS[kind]:
+            raise web.HTTPBadRequest(text=f"a face's {kind} is one of: {', '.join(FACE_PARTS[kind])}")
+        return v
+
+    def colour(v):
+        if not isinstance(v, str) or not _HEX.match(v):
+            raise web.HTTPBadRequest(text="a face's colours are like #ff8800")
+        return v.lower()
+
+    head, eyes, nose, mouth, top = (part(k) for k in ("head", "eyes", "nose", "mouth", "top"))
+    extras = r.get("extras") or {}
+    if not isinstance(extras, dict):
+        raise web.HTTPBadRequest(text="a face's extras are a list of names and colours")
+    cheeks = r.get("cheeks") or ""
+    return {"name": name, "recipe": {
+        "head": {"shape": pick(head.get("shape"), "head"), "colour": colour(head.get("colour")),
+                 "patch": pick(head.get("patch", "none"), "patch"), "patchColour": colour(head.get("patchColour", "#ffffff"))},
+        "eyes": {"style": pick(eyes.get("style"), "eyes"), "colour": colour(eyes.get("colour"))},
+        "nose": {"style": pick(nose.get("style"), "nose"), "colour": colour(nose.get("colour"))},
+        "mouth": {"style": pick(mouth.get("style"), "mouth"), "colour": colour(mouth.get("colour"))},
+        "cheeks": colour(cheeks) if cheeks else "",
+        "top": {"style": pick(top.get("style"), "top"), "colour": colour(top.get("colour")), "colour2": colour(top.get("colour2"))},
+        "extras": {pick(k, "extras"): colour(v) for k, v in extras.items()},
+    }}
+
+
+async def list_faces(request):
+    return web.json_response(await asyncio.to_thread(request.app[STORAGE].list_faces))
+
+
+async def create_face(request):
+    face = _clean_face(await request.json())
+    storage = request.app[STORAGE]
+    if await asyncio.to_thread(storage.count_faces) >= MAX_FACES:
+        raise web.HTTPBadRequest(text=f"you have {MAX_FACES} faces already; delete some first")
+    return web.json_response({"id": await asyncio.to_thread(storage.save_face, face)})
+
+
+async def put_face(request):
+    face_id = _face_id(request)
+    face = _clean_face(await request.json())
+    storage = request.app[STORAGE]
+    if await asyncio.to_thread(storage.load_face, face_id) is None:
+        raise web.HTTPNotFound()
+    await asyncio.to_thread(storage.save_face, face, face_id)
+    return web.json_response({"ok": True})
+
+
+async def delete_face(request):
+    if not await asyncio.to_thread(request.app[STORAGE].delete_face, _face_id(request)):
+        raise web.HTTPNotFound()
+    return web.json_response({"ok": True})
+
+
 # samples ---------------------------------------------------------------------------
 async def list_samples(request):
     return web.json_response(await asyncio.to_thread(request.app[STORAGE].list_samples))
@@ -2099,7 +2194,7 @@ def _clean_song_folders(body) -> list[dict]:
 
 # Folders for the Library's other lists (libfolders.js): per list, [{id, name, items}], where items
 # are the keys of what's in it (a show's id, a palette's name, a preset's "effect:name"). Nothing moves.
-LIBRARY_KINDS = ("shows", "scenes", "playlists", "palettes", "presets", "pictures")
+LIBRARY_KINDS = ("shows", "scenes", "playlists", "palettes", "presets", "pictures", "faces")
 MAX_FOLDER_ITEMS = 2000
 
 
@@ -3332,6 +3427,10 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/pictures/{id}", get_picture)
     r.add_post("/api/pictures/{id}/rename", rename_picture)
     r.add_delete("/api/pictures/{id}", delete_picture)
+    r.add_get("/api/faces", list_faces)
+    r.add_post("/api/faces", create_face)
+    r.add_put("/api/faces/{id}", put_face)
+    r.add_delete("/api/faces/{id}", delete_face)
     r.add_get("/api/drafts", list_drafts)
     r.add_post("/api/drafts", create_draft)
     r.add_get("/api/drafts/{id}", get_draft)
