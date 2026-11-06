@@ -892,7 +892,8 @@ Object.assign(EFFECTS, {
           const heard = !voiceLevels.values?.length || best >= 0.15;
           mouth = shape === "m" ? 0 : Math.max(mouth, heard ? 0.5 : 0);
         }
-        // A phone's sharp face (thousands of dots) keeps its still parts; a matrix's is drawn in full.
+        // A phone's sharp face (tens of thousands of dots) keeps its still parts; a matrix (at most 4,096
+        // LEDs) is always drawn in full, so its bakes are unchanged.
         faceMemo = { p, song, draw: w * h > 20000 ? quickDrawer(p.character, bw, bh) : faceDrawer(p.character), bg: hexToRgb(p.background), face: { mouth: Math.min(Math.max(mouth, 0), 1), shape: shape === "m" && mouth > 0 ? "a" : shape,
           blink: life ? blinkAt(song) : 0, look: life ? lookAt(song) : 0 },
         bob: life ? levelAt(song) * 0.025 : 0 }; // a little bob with the music

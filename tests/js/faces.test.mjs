@@ -72,3 +72,19 @@ test("recipes are cleaned, built-ins duplicate as they look, and your faces draw
   assert.equal(getFace("ftest000001"), undefined);
   assert.deepEqual(faceColour("ftest000001", 0.5, 0.5, f), faceColour("snowman", 0.5, 0.5, f));
 });
+
+test("a phone's quick face drawing matches the full drawing for every face, singing and blinking", async () => {
+  const { faceDrawer, quickDrawer } = await import("../../haliday_show/app/halidayshow/static/js/faces.js");
+  const W = 162, H = 216; // a sharp face's box on a phone
+  for (const c of CHARACTERS) {
+    const full = faceDrawer(c), quick = quickDrawer(c, W, H);
+    for (const face of [{ mouth: 1, shape: "a", blink: 0, look: -1 }, { mouth: 0.6, shape: "e", blink: 1, look: 1 }, { mouth: 0.8, shape: "o", blink: 0.5, look: 0 }]) {
+      let diff = 0;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const u = (x + 0.5) / W, v = (y + 0.5) / H;
+        if (String(full(u, v, face)) !== String(quick(u, v, face))) diff++;
+      }
+      assert.equal(diff, 0, `${c} ${JSON.stringify(face)}`);
+    }
+  }
+});
