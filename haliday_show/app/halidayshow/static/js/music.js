@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, keyFrom, keyShift, toMono } from "
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, insertIntoLayer, keepLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, sourceKey } from "./layers.js";
+import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, insertIntoLayer, keepLayer, loopLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
 import { lineUpOnBar, mashFit } from "./mashfit.js";
@@ -1927,6 +1927,32 @@ export class MusicEditor {
     this.edit(keep(this.pieces, this.crossfade, start, end), true);
   }
 
+  // The selection played `times` times in a row: on the song (it gets longer, and what's after moves on),
+  // or with a layer being edited, on that layer only.
+  loopSelection(times) {
+    if (!this.sel) return this.host.status("Drag across the waveform to select the part to repeat", "hint");
+    const { start, end } = this.sel;
+    if (end - start < 0.25) return this.host.status("Select a longer stretch to repeat", "hint");
+    if (this.focus != null) {
+      const name = this.layers[this.focus].name;
+      const { layers, dropped, repeated } = loopLayer(this.layers, this.focus, start, end, times, this.layerCtx());
+      if (!repeated) return this.host.status(`Nothing of ${name} plays there to repeat`, "hint");
+      if (layers[this.focus].clips.length > MAX_CLIPS) return this.host.status(`That would put more than ${MAX_CLIPS} clips on ${name}`, true);
+      this.sel = { start, end: Math.min(this.total, end + (end - start) * (times - 1)) };
+      this.editLayers(layers, null);
+      return this.host.status(`${fmtTime(start)} to ${fmtTime(end)} of ${name} now plays ${times === 2 ? "twice" : `${times} times`}`
+        + (dropped ? `; ${dropped} bit${dropped === 1 ? "" : "s"} past the end of the song left out` : "") + ". Ctrl+Z undoes it", dropped ? "hint" : "saved");
+    }
+    const xf = this.crossfade, part = slice(this.pieces, xf, start, end);
+    if (!part.length) return;
+    const pieces = insert(this.pieces, xf, end, Array.from({ length: times - 1 }, () => part).flat());
+    this.time = start;
+    this.edit(pieces);
+    this.sel = { start, end: Math.min(this.total, start + (end - start) * times - xf * (times - 1)) };
+    this.changed();
+    this.host.status(`${fmtTime(start)} to ${fmtTime(end)} now plays ${times === 2 ? "twice" : `${times} times`}. Ctrl+Z undoes it`, "saved");
+  }
+
   async addSong(atEnd) {
     // Nothing chosen yet: choose now, then add it.
     const ref = this.insertRef || await this.pickInsertSong();
@@ -2512,7 +2538,7 @@ export class MusicEditor {
     const has = this.pieces.length > 0, sel = this.sel;
     for (const id of ["music-play", "music-home", "music-back", "music-fwd", "music-insert", "music-append", "music-save", "music-zoom-in", "music-zoom-out", "music-fit",
       "music-xf", "music-fadein", "music-fadeout", "music-name"]) $(id).disabled = !has;
-    for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview", "music-sample", "music-sel-clear"]) $(id).disabled = !sel;
+    for (const id of ["music-cut", "music-keep", "music-play-sel", "music-zoom-sel", "music-preview", "music-sample", "music-loop2", "music-loop4", "music-sel-clear"]) $(id).disabled = !sel;
     $("music-undo").disabled = !this.history.length;
     $("music-detect").disabled = !this.base || this.dirty;
     $("music-describe").disabled = !this.base || this.dirty || !this.info?.sections?.length;
@@ -3857,6 +3883,8 @@ export class MusicEditor {
     $("music-cut").addEventListener("click", () => this.cutSelection());
     $("music-keep").addEventListener("click", () => this.keepSelection());
     $("music-sample").addEventListener("click", () => this.saveSample());
+    $("music-loop2").addEventListener("click", () => this.loopSelection(2));
+    $("music-loop4").addEventListener("click", () => this.loopSelection(4));
     $("music-split").addEventListener("click", () => {
       if (!this.base) return this.host.status("Open a song first", "hint");
       splitVocals(this.base, { ...this.host, askYes, later: this.host.partsLater }).then(() => { this.loadLyrics(); this.renderParts(); }); // its drum hits and parts, now found

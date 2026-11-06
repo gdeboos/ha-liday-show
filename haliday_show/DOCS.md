@@ -1096,7 +1096,8 @@ happy. Drag across the waveform to select (clicking moves the playhead and keeps
 next to its times or Esc to clear it). The **Selection** panel then says what you've selected (the
 section's name when it's exactly one section, its times, and how long in seconds and bars) with what you
 can do to it: **▶ Play selection**, **Preview cut**, **Cut** to remove it, **Keep only this** to shorten
-the song to it, and **Save as sample…**. Or let **✂ Suggest cuts…** (in the **Edit** panel, with
+the song to it, **Repeat ×2** or **Repeat ×4** to play it twice or four times in a row (what comes after
+moves on; select whole bars for a seamless loop), and **Save as sample…**. Or let **✂ Suggest cuts…** (in the **Edit** panel, with
 **Undo** and **Redo**) find the cuts for you (see
 [Suggest cuts](#suggest-cuts)). To splice in another song, press **Choose song…** under **Add another song**: it
 opens your songs in their folders, as in **Library → Songs**, or type in the box to find one in any
@@ -1203,6 +1204,8 @@ says **Editing layer Choir**, its lane is outlined and its Mixer row says **Edit
   layers don't move.
 - **Preview cut** plays a few seconds either side of the join, closed up, with everything else as it is.
 - **Keep only this** trims the layer to the selection, leaving the rest of it silent.
+- **Repeat ×2** and **Repeat ×4** play that stretch of the layer twice or four times in a row; the rest of
+  the layer moves on after it, and anything pushed past the song's end is left out.
 - **Add another song** goes into the layer: pick the song with **Choose song…** as usual, then **Insert
   into Choir at playhead** (the rest of the layer moves on by its length; a clip running across the
   playhead is split there) or **Add to end of Choir** (after its last clip). The song and the other layers
