@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.385
+
+- **Singing faces sing better.**
+  - The mouth now takes the shape of what's being sung: a tall "ah", a round "oo", a wide "ee" with teeth showing, or shut. It's guessed from the sound of the singer, so no lyrics are needed.
+  - It snaps open on each word and closes a moment after, instead of flickering.
+  - **Mouth sensitivity** (in the clip's settings) opens it on quieter singing, or only on the loud notes.
+  - The characters now blink, glance about and bob with the music. Turn **Blinks, glances and bobs** off for a still face.
+  - Shows with a Singing face measure their singer again the next time they're opened and saved, to work out the mouth shapes.
+
 ## 0.2.384
 
 - **Listen to songs in Library → Songs.** Each song, edit and split has a **▶** button that plays it in a bar along the bottom of the page, with pause, a slider to jump about, the volume and **✕** to stop. No need to open the Music editor just to hear one.

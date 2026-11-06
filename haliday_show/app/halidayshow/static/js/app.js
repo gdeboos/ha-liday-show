@@ -2,7 +2,7 @@
 
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
-import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, voiceFits } from "./musiclevel.js";
+import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, voiceFits, voiceShapes } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
@@ -10276,7 +10276,9 @@ async function ensureVoice() {
     }
     if (app.show !== show || show.audio !== ref) return;
     // seconds: the song's length then, so a different file under the same name is measured again.
-    show.voice = { ...levelCurve(samples, rate, ref.path, VOICE_FPS), from, seconds: Math.round(song.duration * 100) / 100 };
+    const curve = levelCurve(samples, rate, ref.path, VOICE_FPS);
+    show.voice = { ...curve, shapes: voiceShapes(samples, rate, VOICE_FPS, curve.values), from,
+      seconds: Math.round(song.duration * 100) / 100 };
     setVoiceLevels(show.voice);
     app.changed();
   })().finally(() => { measuringVoice = null; });
