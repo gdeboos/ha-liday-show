@@ -1,8 +1,14 @@
 # Changelog
 
-## 0.2.418
+## 0.2.419
 
 - **Edits no longer offer to be split on their own.** An edit gets its parts from its original song, so while the original isn't split, the edit's **⋯** says **Split the original into parts…**. That splits the original, then cuts the edit's parts from it in seconds, rather than running the AI on the edit as well.
+
+## 0.2.418
+
+- **✨ New mashup.** In **Library → Songs**, pick a song for the singing and one for the music: it says how well they fit and what it'll change, then opens a ready-made draft in the Music editor, the music's own vocals muted and the other song's singing on a layer, matched in tempo and key and lined up on the bar.
+- **Clips line up on the bar.** A clip you add or drag on a layer lands with its first bar on the song's nearest bar (hold **Alt** to place it freely).
+- **Tempo and key side by side.** A clip of another song shows its tempo and key beside this song's, with **Match tempo and key** in one click.
 
 ## 0.2.417
 
