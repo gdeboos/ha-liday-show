@@ -44,3 +44,20 @@ test("short names", () => {
   assert.equal(shortName("carol (edit)", "carol"), "carol (edit)");
   assert.equal(shortName("Something else", "Carol"), "Something else");
 });
+
+test("Split vocals' files sit with the song they were split from, and say whether anything uses them", async () => {
+  const { splitUsers } = await import("../../haliday_show/app/halidayshow/static/js/songlist.js");
+  const all = songRows([song(AM), song(SHORT), song("haliday_show/Arctic Monkeys - Dancefloor _ SHORT (vocals).wav"),
+    song("haliday_show/Arctic Monkeys - Dancefloor _ SHORT (music).wav"), song("haliday_show/Jingle (music).wav"),
+    song("haliday_show/Lonely (vocals).wav")], [{ name: "Karaoke", song: "haliday_show/Jingle (music).wav" }]);
+  const fams = songFamilies(all, drafts);
+  assert.deepEqual(fams.map((f) => f.original.name), ["Arctic Monkeys - Dancefloor", "Jingle (music)", "Lonely (vocals)"]);
+  assert.deepEqual(fams[0].splits.map((x) => [x.of, x.part]), [["SHORT", "vocals"], ["SHORT", "music"]]);
+  assert.equal(familyCount(fams), "3 songs · 1 edit · 2 splits · 1 draft");
+  assert.deepEqual(filterFamilies(fams, "splits", "").map((f) => [f.original.name, f.edits.length, f.splits.length]),
+    [["Arctic Monkeys - Dancefloor", 0, 2]]);
+  assert.equal(filterFamilies(fams, "edits", "")[0].splits.length, 0);
+  const [vocals] = fams[0].splits;
+  assert.deepEqual(splitUsers(vocals.row, []), []);
+  assert.deepEqual(splitUsers(vocals.row, [{ name: "Mash", uses: [vocals.row.ref.path] }]), ['the draft "Mash"']);
+});

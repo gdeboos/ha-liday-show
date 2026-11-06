@@ -41,6 +41,9 @@ export function filterRows(rows, query) {
 
 // Older edits, made before drafts, are named after their song: "carol (edit)", "carol (edit 2)".
 const OLD_EDIT = /^(.*) \(edit(?: \d+)?\)$/;
+// Split vocals saves "<song> (vocals)" and "<song> (music)" beside the song (splitvocals.js).
+const SPLIT = /^(.*) \((vocals|music)\)$/;
+export const splitPart = (name) => SPLIT.exec(name)?.[2] || null;
 
 // The rows grouped into families: each original song with the edits made from it (song files a draft
 // made, or older "… (edit)" files) and its drafts with no file yet. An edit of an edit belongs to the
@@ -56,7 +59,7 @@ export function songFamilies(rows, drafts) {
   const parentOf = (r) => {
     const d = draftOf.get(r.key);
     if (d && byKey.has(songKey(d.base)) && songKey(d.base) !== r.key) return byKey.get(songKey(d.base));
-    const m = OLD_EDIT.exec(r.name);
+    const m = OLD_EDIT.exec(r.name) || SPLIT.exec(r.name);
     return m ? rows.find((x) => x !== r && x.folder === r.folder && x.name === m[1]) || null : null;
   };
   const rootOf = (r) => {
@@ -66,13 +69,17 @@ export function songFamilies(rows, drafts) {
   };
   const families = new Map();
   const family = (r) => {
-    if (!families.has(r.key)) families.set(r.key, { original: r, edits: [], drafts: [] });
+    if (!families.has(r.key)) families.set(r.key, { original: r, edits: [], splits: [], drafts: [] });
     return families.get(r.key);
   };
   for (const r of rows) {
     const root = rootOf(r);
     if (root === r) family(r);
-    else family(root).edits.push({ row: r, draft: draftOf.get(r.key) || null, short: shortName(r.name, root.name) });
+    // A split sits with the song it was split from, under that song's first song: "SHORT (vocals)".
+    else if (splitPart(r.name) && !draftOf.has(r.key)) {
+      const from = parentOf(r);
+      family(root).splits.push({ row: r, part: splitPart(r.name), of: from === root ? "" : shortName(from.name, root.name) });
+    } else family(root).edits.push({ row: r, draft: draftOf.get(r.key) || null, short: shortName(r.name, root.name) });
   }
   for (const d of drafts) {
     if (!d.base || !byKey.has(songKey(d.base))) continue;
@@ -83,6 +90,7 @@ export function songFamilies(rows, drafts) {
   const out = [...families.values()].sort((a, b) => byName(a.original.name, b.original.name));
   for (const f of out) {
     f.edits.sort((a, b) => byName(a.row.name, b.row.name));
+    f.splits.sort((a, b) => byName(a.of, b.of) || byName(b.part, a.part)); // vocals before music
     f.drafts.sort((a, b) => byName(a.name, b.name));
   }
   return out;
@@ -96,28 +104,38 @@ export function shortName(name, original) {
   return rest && !rest.startsWith("(") ? rest : name;
 }
 
-// Families for a filter ("all", "originals", "edits", "drafts") and the words typed in Find: a family
-// shows when any of it matches, with only the parts the filter asks for.
+// Families for a filter ("all", "originals", "edits", "splits", "drafts") and the words typed in Find:
+// a family shows when any of it matches, with only the parts the filter asks for.
 export function filterFamilies(families, show, query) {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const hit = (text) => words.every((w) => text.toLowerCase().includes(w));
   const rowText = (r) => `${r.file} ${r.folder} ${r.usedBy.join(" ")}`;
   const out = [];
   for (const f of families) {
-    const edits = show === "originals" || show === "drafts" ? [] : f.edits;
-    const drafts = show === "originals" || show === "edits" ? [] : f.drafts;
+    const edits = show === "all" || show === "edits" ? f.edits : [];
+    const splits = show === "all" || show === "splits" ? f.splits || [] : [];
+    const drafts = show === "all" || show === "drafts" ? f.drafts : [];
     if (show === "edits" && !edits.length) continue;
+    if (show === "splits" && !splits.length) continue;
     if (show === "drafts" && !drafts.length) continue;
     const any = !words.length || hit(rowText(f.original)) || edits.some((e) => hit(rowText(e.row)) || hit(e.draft?.name || ""))
-      || drafts.some((d) => hit(d.name));
-    if (any) out.push({ ...f, edits, drafts });
+      || splits.some((x) => hit(rowText(x.row))) || drafts.some((d) => hit(d.name));
+    if (any) out.push({ ...f, edits, splits, drafts });
   }
   return out;
+}
+
+// Whether anything uses a split: a show as its song, or a draft (as a piece or a Mixer layer).
+export function splitUsers(row, drafts) {
+  const path = row.ref.path;
+  return [...row.usedBy, ...drafts.filter((d) => (d.uses || []).includes(path)).map((d) => `the draft "${d.name}"`)];
 }
 
 // "3 songs · 2 edits · 1 draft"
 export function familyCount(families) {
   const n = (k, word) => `${k} ${word}${k === 1 ? "" : "s"}`;
-  const edits = families.reduce((t, f) => t + f.edits.length, 0), drafts = families.reduce((t, f) => t + f.drafts.length, 0);
-  return [n(families.length, "song"), edits && n(edits, "edit"), drafts && n(drafts, "draft")].filter(Boolean).join(" · ");
+  const sum = (k) => families.reduce((t, f) => t + (f[k] || []).length, 0);
+  const edits = sum("edits"), splits = sum("splits"), drafts = sum("drafts");
+  return [n(families.length, "song"), edits && n(edits, "edit"), splits && n(splits, "split"), drafts && n(drafts, "draft")]
+    .filter(Boolean).join(" · ");
 }

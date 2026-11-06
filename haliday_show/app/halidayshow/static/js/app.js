@@ -61,7 +61,7 @@ import {
   MAX_SHOWS as PLAYLIST_MAX, bakeKey, blockLabel as playlistBlockLabel, blockShow, dropIndex, fits as fitsPlaylist, inserted,
   copyPlaylist, itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
 } from "./playlisteditor.js";
-import { familyCount, filterFamilies, songFamilies, songKey, songRows } from "./songlist.js";
+import { familyCount, filterFamilies, songFamilies, songKey, songRows, splitUsers } from "./songlist.js";
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
 import { askText, askYes } from "./ask.js";
 import { movePart } from "./partorder.js";
@@ -8304,7 +8304,7 @@ async function renderSongsPage() {
 }
 
 // Each original song as one card, with the edits made from it and its drafts inside (songlist.js).
-const SONG_SHOWS = { all: "All", originals: "Originals", edits: "Edits", drafts: "Drafts" };
+const SONG_SHOWS = { all: "All", originals: "Originals", edits: "Edits", splits: "Splits", drafts: "Drafts" };
 function drawSongRows() {
   const showing = prefs.get("songShow", "all") in SONG_SHOWS ? prefs.get("songShow", "all") : "all";
   for (const b of document.querySelectorAll("#song-show button")) b.setAttribute("aria-pressed", String(b.dataset.show === showing));
@@ -8541,6 +8541,17 @@ function songFamilyCard(f) {
     kids.append(h, ...f.edits.map(editKid), ...f.drafts.map(draftKid));
     card.append(kids);
   }
+  if (f.splits?.length) {
+    const kids = document.createElement("div");
+    kids.className = "song-kids";
+    kids.setAttribute("role", "group");
+    kids.setAttribute("aria-label", `Vocals and music split from ${f.original.name}`);
+    const h = document.createElement("div");
+    h.className = "song-kids-head";
+    h.textContent = "Split vocals";
+    kids.append(h, ...f.splits.map(splitKid));
+    card.append(kids);
+  }
   return card;
 }
 
@@ -8607,6 +8618,34 @@ function editKid(e) {
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   rm.disabled = !r.own;
   const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, ren, dup, splitButton(r), rm].filter(Boolean));
+  row.title = r.file;
+  row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
+  songSeen ? songSeen.observe(row) : row._songLength();
+  return row;
+}
+
+// The vocals or the music Split vocals made, under the song it came from, saying whether anything
+// uses it, so unused ones can be removed.
+function splitKid(x) {
+  const r = x.row;
+  const details = document.createElement("div");
+  details.className = "hint";
+  const len = document.createElement("span");
+  len.textContent = "…";
+  details.append(len, ` · ${r.file}`);
+  const users = splitUsers(r, songDrafts);
+  const uses = document.createElement("div");
+  uses.className = "hint";
+  uses.textContent = users.length ? `Used by ${users.join(", ")}`
+    : "Not used by any show or draft, so you can remove it if you don't need it";
+  const edit = button("Edit", () => editSong(r.ref), "ghost");
+  edit.setAttribute("aria-label", `Edit ${r.name} in the Music editor`);
+  const rm = button("Remove…", () => openRemoveSong(r), "ghost");
+  rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
+  rm.disabled = !r.own;
+  const part = x.part === "vocals" ? "Vocals" : "Music";
+  const row = songKid("split", "♫", x.of ? `${x.of} · ${part}` : part,
+    x.part === "vocals" ? "Just the singing" : "Without the singing", [details, uses], [edit, rm]);
   row.title = r.file;
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
@@ -11116,7 +11155,7 @@ async function songFolderInfo() {
     foldersRead("songs", saved);
     const homeOf = new Map();
     for (const f of songFamilies(songRows(list.songs, shows), drafts)) {
-      for (const k of [f.original.key, ...f.edits.map((e) => e.row.key)]) homeOf.set(k, f.original.key);
+      for (const k of [f.original.key, ...f.edits.map((e) => e.row.key), ...f.splits.map((x) => x.row.key)]) homeOf.set(k, f.original.key);
     }
     return { folders: foldersOf("songs"), homeOf };
   } catch { return { folders: [], homeOf: new Map() }; }
