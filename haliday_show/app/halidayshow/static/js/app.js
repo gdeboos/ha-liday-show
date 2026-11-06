@@ -10019,7 +10019,7 @@ async function openRemoveShow(r) {
 async function openRemoveSong(r) {
   let users = [];
   try { users = (await api(`api/songs/users?path=${encodeURIComponent(r.ref.path)}`)).shows; } catch { /* asked below */ }
-  removing = { kind: "song", path: r.ref.path, name: r.name, users };
+  removing = { kind: "song", path: r.ref.path, key: songKey(r.ref), name: r.name, users };
   $("rm-title").textContent = `Remove ${r.name}`;
   notice($("rm-what"), users.length ? "warn" : "ok", users.length ? `Used by ${listOf(users.map((s) => s.name))}.` : "No show uses it.");
   $("rm-shows").hidden = !users.length;
@@ -10039,8 +10039,22 @@ async function openRemoveSong(r) {
 
 async function doRemove(forGood) {
   const r = removing;
-  if (!r) return;
+  if (!r || $("remove-dialog").querySelector("button.busy")) return;
   if (forGood && !(await askYes(`Delete ${r.name} for good?`, { yes: "Delete", danger: true }))) return;
+  // It can take a few seconds (the shows using a song are changed and saved again), so say so, and
+  // hold the window's buttons until it's done.
+  const dlg = $("remove-dialog"), pressed = $(forGood ? "rm-delete" : "rm-archive");
+  const buttons = [...dlg.querySelectorAll("button")].filter((b) => b !== pressed); // the busy one stays bright
+  const done = busyButton(pressed, forGood ? "Deleting…" : "Archiving…");
+  for (const b of buttons) b.disabled = true;
+  const hold = (e) => e.preventDefault();
+  dlg.addEventListener("cancel", hold);
+  status(`${forGood ? "Deleting" : "Archiving"} ${r.name}…`, "info", r.kind === "show" ? "shows" : "songs");
+  const release = () => {
+    done();
+    for (const b of buttons) b.disabled = false;
+    dlg.removeEventListener("cancel", hold);
+  };
   try {
     if (r.kind === "show") {
       if (r.id === app.showId) {
@@ -10052,6 +10066,7 @@ async function doRemove(forGood) {
       }
       if (forGood) await api(`api/shows/${encodeURIComponent(r.id)}`, { method: "DELETE" });
       else await api(`api/shows/${encodeURIComponent(r.id)}/archive`, { method: "POST" });
+      release();
       $("remove-dialog").close();
       status(forGood ? `Deleted ${r.name}` : `Archived ${r.name}`, "saved", "shows");
       if (r.id === app.showId) {
@@ -10068,6 +10083,7 @@ async function doRemove(forGood) {
         if (saving) await saving;
         if (app.dirty && worthSaving()) {
           if (!autoSaveOn()) {
+            release();
             $("remove-dialog").close();
             status(`Save ${app.show.name} first, then remove the song`, "hint");
             return;
@@ -10078,11 +10094,18 @@ async function doRemove(forGood) {
       const keep = !$("rm-shows").hidden && document.querySelector("input[name=rm-instead][value=song]").checked;
       const replacement = keep ? JSON.parse($("rm-replacement").value) : null;
       const res = await api(`api/songs/${forGood ? "delete" : "archive"}`, { method: "POST", json: { path: r.path, replacement } });
+      release();
       $("remove-dialog").close();
+      // Out of the list straight away; the list is then drawn again from what's on disk.
+      for (const row of document.querySelectorAll(`#view-songs [data-song-play="${CSS.escape(r.key)}"]`)) {
+        row.closest(".song-kid, .song-family, .show-row")?.remove();
+      }
+      if (songPlayingKey === r.key) closeSongPlayer();
       status(forGood ? `Deleted ${r.name}` : `Archived ${r.name}`, "saved", "songs");
       await songMovedFor(res.shows);
     }
   } catch (e) {
+    release();
     status(`Couldn't ${forGood ? "delete" : "archive"} ${r.name}: ${e.message}`, true, r.kind === "show" ? "shows" : "songs");
     scheduleAutoSave(); // it was paused for the removal; the open show still saves as you edit
   }
