@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.395
+
+- **Place lyrics on the Music editor's waveform.** Open a song in the Music editor and you'll find a **Lyrics** lane under the sections, with each word as a block. Drag a word to move it, drag its edges to make it longer or shorter, and click it to hear it. It zooms and scrolls with the waveform, and changes are kept with the song as you go. With a draft open, the words follow your cuts.
+- The **Lyrics…** window is back to the words, **Place automatically** and **Tap along…**; the small waveform in it has gone in favour of the lane.
+
 ## 0.2.394
 
 - **Cards in the Library.** **Shows**, **Scenes**, **Pictures**, **Faces** and **Palettes** now show as cards: a show's cover art or picture big across the top, a scene's or palette's colours as a wide strip, each picture and face large. **Cards** and **List** at the top right of each switch back to rows if you prefer, remembered for each one. **Songs**, **Samples**, **Playlists** and **Presets** stay as rows.

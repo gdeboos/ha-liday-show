@@ -1736,15 +1736,15 @@ or open the song in the Music editor and press **Lyrics…** under **Beats and s
    beginning and you press **Line 1 starts** (or the space bar) as the first line starts, then again for
    each line after (the button says which line it's waiting for). The words of each line
    are spread across the singing after its start.
-4. To get a word just right, use the waveform above the lines. Each word is a block under the song,
-   with the singer's level drawn over the song as a line. Drag a word to move it, or drag its left or
-   right edge to make it start sooner or later, or last longer or shorter. A line ends where its last
-   word ends, so the mouth stays shut through an instrumental: if a line runs into one, drag its last
-   word's right edge back to where the singing stops. Click anywhere else on the waveform to play the
-   song from there, and click again to stop. **+** and **−** zoom in and out, and the bar under it (or
-   your mouse wheel) scrolls along the song. **Place automatically** starts again from scratch.
-5. Press **Save**. **Lyrics… (placed)** shows it has them; **Remove lyrics** goes back to the shapes
+4. Press **Save**. **Lyrics… (placed)** shows it has them; **Remove lyrics** goes back to the shapes
    guessed from the sound.
+5. To get each word just right, open the song in the Music editor. Under the sections there's a
+   **Lyrics** lane with each word as a block, lined up with the waveform. Drag a word to move it, or
+   drag its left or right edge to make it start sooner or later, or last longer or shorter; click a
+   word to hear it. It zooms and scrolls with the waveform. A line ends where its last word ends, so
+   the mouth stays shut through an instrumental: if a line runs into one, drag its last word's right
+   edge back to where the singing stops. Your changes are kept with the song as you go. **Place
+   automatically** in **Lyrics…** starts again from scratch.
 
 Each word's mouth shapes come from its spelling (an "oo" for "moon", a wide "ee" for "see", lips
 closed for m, b, p, f and v), and the mouth shuts between words.

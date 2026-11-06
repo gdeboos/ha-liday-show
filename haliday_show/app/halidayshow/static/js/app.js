@@ -3,7 +3,6 @@
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
 import { fromSong, fromStarts, parseLyrics, placeLines, savedLines, savedLyrics, songLyrics } from "./lyrics.js";
-import { lyricStrip } from "./lyricstrip.js";
 import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, voiceFits, voiceShapes } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
@@ -10633,7 +10632,7 @@ async function openShowLyrics() {
   const kept = await api(songExtraUrl("lyrics", ref)).catch(() => null);
   const mine = show.lyrics && (!show.lyrics.song || show.lyrics.song === ref.path) ? show.lyrics : null;
   const fromEdit = kept ? null : await lyricsFromEdit(ref, songBuffer.duration);
-  openLyrics({ ref, duration: songBuffer.duration, peaks: app.peaks || computePeaks(songBuffer), voice: show.voice || null, lyrics: kept || mine, fromEdit,
+  openLyrics({ ref, duration: songBuffer.duration, voice: show.voice || null, lyrics: kept || mine, fromEdit,
     async save(words) {
       await api(songExtraUrl("lyrics", ref), { method: "PUT", json: words });
       if (app.show !== show) return;
@@ -10654,21 +10653,22 @@ async function openSongLyrics(ref) {
     const [voice, kept] = await Promise.all([songVoice(ref, song), api(songExtraUrl("lyrics", ref)).catch(() => null)]);
     const fromEdit = kept ? null : await lyricsFromEdit(ref, song.duration);
     status("");
-    openLyrics({ ref, duration: song.duration, peaks: computePeaks(song), voice, lyrics: kept, fromEdit, save: (words) => api(songExtraUrl("lyrics", ref), { method: "PUT", json: words }) });
+    await openLyrics({ ref, duration: song.duration, inMusic: true, voice, lyrics: kept, fromEdit, save: (words) => api(songExtraUrl("lyrics", ref), { method: "PUT", json: words }) });
   } catch (e) { status(`Couldn't open the lyrics: ${e.message}`, true); }
 }
 
 // Lyrics… (lyrics.js): a song's words, placed across the singing for the Singing face to mouth, then
 // tweaked line by line: each line's start typed in, or tapped in time with the song. save({text,
 // lines}) keeps them with the song, or save(null) removes them. fromEdit (lyricsFromEdit): the
-// original's lyrics to offer, for a file made from a draft.
-function openLyrics({ ref, duration, peaks, voice, lyrics, fromEdit = null, save: keep }) {
+// original's lyrics to offer, for a file made from a draft. inMusic: opened from the Music editor, where
+// the words are then placed one by one on its Lyrics lane. Resolves once it's closed.
+function openLyrics({ ref, duration, voice, lyrics, inMusic = false, fromEdit = null, save: keep }) {
   const w = editWindow(`Lyrics for ${ref.path.replace(/^.*\//, "").replace(/\.[^.]+$/, "")}`);
   w.dlg.classList.add("lyrics-dialog");
   const intro = Object.assign(document.createElement("p"), { className: "hint",
     textContent: "Paste the words, one line of the song per line. They're placed across the singing for you; "
-      + "if a line comes in early or late, type its start or tap along with the song. To get a word just right, "
-      + "drag it on the waveform, or drag its edges to make it longer or shorter." });
+      + "if a line comes in early or late, type its start or tap along with the song. To get each word just right, "
+      + (inMusic ? "save, then drag it on the Lyrics lane under the sections." : "open the song in the Music editor and drag it on its Lyrics lane.") });
   const text = Object.assign(document.createElement("textarea"), { rows: 7, className: "lyrics-text",
     value: lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
   text.setAttribute("aria-label", "The song's words");
@@ -10681,10 +10681,7 @@ function openLyrics({ ref, duration, peaks, voice, lyrics, fromEdit = null, save
   audio.addEventListener("timeupdate", () => { if (stopAt != null && audio.currentTime >= stopAt) { audio.pause(); stopAt = null; } });
   const time = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
   const place = () => { lines = placeLines(parseLyrics(text.value), voice, duration); draw(); };
-  const strip = lyricStrip({ peaks, voice, duration, audio, lines: () => lines,
-    setLines: (next, done) => { lines = next; if (done) draw(); } });
   const draw = () => {
-    strip.draw();
     list.replaceChildren(...lines.map((l, i) => {
       const row = document.createElement("div");
       row.className = "lyrics-line" + (i === tapping ? " tapping" : "");
@@ -10697,7 +10694,7 @@ function openLyrics({ ref, duration, peaks, voice, lyrics, fromEdit = null, save
         lines = fromStarts(lines, starts, voice, duration);
         draw();
       });
-      const play = button("▶", () => { strip.show(i); audio.currentTime = Math.max(0, l.start - 0.3); stopAt = l.end + 0.3; audio.play(); }, "ghost small");
+      const play = button("▶", () => { audio.currentTime = Math.max(0, l.start - 0.3); stopAt = l.end + 0.3; audio.play(); }, "ghost small");
       play.setAttribute("aria-label", `Play "${l.text}"`);
       const words = Object.assign(document.createElement("span"), { className: "lyrics-words", textContent: l.text });
       const when = Object.assign(document.createElement("span"), { className: "hint", textContent: `${time(l.start)} – ${time(l.end)}` });
@@ -10770,7 +10767,7 @@ function openLyrics({ ref, duration, peaks, voice, lyrics, fromEdit = null, save
     bring.title = "This song was made from a draft of that one in the Music editor: its lyrics follow the cuts";
     tools.prepend(bring);
   }
-  w.body.append(intro, text, tools, strip.el, hint, list);
+  w.body.append(intro, text, tools, hint, list);
   const remove = button("Remove lyrics", () => finish(null), "ghost danger");
   remove.hidden = !lyrics;
   const save = button("Save", () => {
@@ -10795,6 +10792,7 @@ function openLyrics({ ref, duration, peaks, voice, lyrics, fromEdit = null, save
   }
   if (!lines.length && text.value) place(); else draw();
   w.dlg.showModal();
+  return new Promise((done) => w.dlg.addEventListener("close", done, { once: true }));
 }
 
 // stage(text), if given, hears what's happening while the lights are got ready (Play shows it).
