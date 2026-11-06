@@ -312,8 +312,6 @@ def splits_to_parts(storage) -> list[dict]:
     own, in HA-liday Show's songs folder or beside the song. They become that song's parts (Storage.
     song_parts), and every show, draft and song folder using one follows it there. A split whose song
     can't be told (gone, or two songs of that name) stays a song. Returns [{from, to}]."""
-    from .archive import _relink  # archive imports nothing of this module; imported here as only this needs it
-
     songs = [r for r in storage.list_audio() if r["source"] == "media"]
     by_name: dict[str, list[str]] = {}
     for r in songs:
@@ -321,6 +319,27 @@ def splits_to_parts(storage) -> list[dict]:
             by_name.setdefault(Path(r["path"]).stem.lower(), []).append(r["path"])
     own = storage.upload_dir.relative_to(storage.media_dir).as_posix()
     moved = []
+    try:
+        _move_splits(storage, songs, by_name, own, moved)
+    finally:
+        # Every move is noted before anything's relinked, and every start relinks all of them, so a
+        # show or draft that couldn't be written this time is put right next time.
+        record = storage.parts_root / "moved.json"
+        try:
+            done = json.loads(record.read_text())
+        except (OSError, ValueError):
+            done = []
+        if moved:
+            done = (done if isinstance(done, list) else []) + moved
+            _write_atomic(record, json.dumps(done).encode())
+        if done:
+            _relink_moved(storage, done)
+    if moved:
+        log.info("moved %d split vocals into their songs' parts", len(moved))
+    return moved
+
+
+def _move_splits(storage, songs, by_name, own, moved):
     for r in songs:
         m = _SPLIT.match(Path(r["path"]).name)
         if not m:
@@ -333,28 +352,44 @@ def splits_to_parts(storage) -> list[dict]:
         if song is None or m.group(2).lower() in storage.song_parts("media", song):
             continue
         src = storage.audio_path("media", r["path"])
-        new = storage.save_part("media", song, m.group(2).lower(), src)
+        try:
+            new = storage.save_part("media", song, m.group(2).lower(), src)
+        except OSError as e:
+            log.error("couldn't move %s into its song's parts: %s", r["path"], e)
+            continue
         if new is None:
             continue
-        storage._song_info_file("media", r["path"]).unlink(missing_ok=True)
         moved.append({"from": r["path"], "to": new})
+        storage._song_info_file("media", r["path"]).unlink(missing_ok=True)
+
+
+def _relink_moved(storage, moved):
+    from .archive import _relink
+
     if not moved:
-        return moved
+        return
     links = [({"source": "media", "path": x["from"]}, {"source": "media", "path": x["to"]}) for x in moved]
     relink = lambda data: any([_relink(data, a, b) for a, b in links])  # noqa: E731 (every one runs)
+    def write(path: Path, data):
+        try:
+            _write_atomic(path, json.dumps(data, indent=1).encode())
+        except OSError as e:
+            log.error("couldn't point %s at its song's parts (tried again next start): %s", path.name, e)
+
     for s in storage.list_shows():
         show = storage.load_show(s["id"])
         if show is not None and relink(show):
-            _write_atomic(storage.shows_dir / f"{s['id']}.json", json.dumps(show, indent=1).encode())
+            write(storage.shows_dir / f"{s['id']}.json", show)
     for p in sorted(storage.drafts_dir.glob("*.json")) if storage.drafts_dir.is_dir() else []:
         try:
             draft = json.loads(p.read_text())
         except (OSError, ValueError):
             continue
         if relink(draft):
-            _write_atomic(p, json.dumps(draft, indent=1).encode())
+            write(p, draft)
     settings = storage.load_settings()
     if relink([settings.get("song_folders"), settings.get("sample_folders")]):
-        storage.save_settings(settings)
-    log.info("moved %d split vocals into their songs' parts", len(moved))
-    return moved
+        try:
+            storage.save_settings(settings)
+        except OSError as e:
+            log.error("couldn't point song folders at their songs' parts: %s", e)

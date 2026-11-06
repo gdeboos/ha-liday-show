@@ -269,6 +269,7 @@ def archive_song(st: Storage, rel: str, replacement=None) -> dict:
     os.replace(src, dest)  # the file moves first, so a failure leaves every show as it was
     changed, songless = _rehome(st, rel, replacement)
     archived = dest.relative_to(st.media_dir).as_posix()
+    st.move_parts(rel, archived)  # its parts go with it, so a new song saved where it was can't take them
     records = _records(st)
     records[archived] = {"path": rel, "songless": songless}
     _save_records(st, records)
@@ -305,7 +306,7 @@ def restore_song(st: Storage, archived: str) -> dict:
     os.replace(src, target)
     _tidy(st, src.parent)
     rel = target.relative_to(st.media_dir).as_posix()
-    st.move_parts(rec["path"], rel)  # its parts stayed under its old name while it was archived
+    st.move_parts(archived, rel)  # its parts come back with it
     ref = {"source": "media", "path": rel}
     back = []
     for show_id in rec["songless"]:
@@ -334,7 +335,7 @@ def delete_song(st: Storage, rel: str, archived: bool = False, replacement=None)
         p.unlink()
         _tidy(st, p.parent)
         st._song_info_file("media", records[rel]["path"]).unlink(missing_ok=True)
-        st.delete_parts(records[rel]["path"])
+        st.delete_parts(rel)
         del records[rel]
         _save_records(st, records)
         return {"shows": []}

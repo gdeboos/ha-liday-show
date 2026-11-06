@@ -109,3 +109,45 @@ async def test_parts_are_sent_and_listed(client):
     assert (await client.post(f"/api/audio/parts?{q}&part=other&{up}&offset=0&done=1", data=WAV)).status == 404
     assert (await client.post(f"/api/audio/parts?{q}&part=drums&{up}&offset=0&done=1", data=b"not a wav")).status == 400
     assert (await client.post(f"/api/audio/parts?source=media&path=x.mp3&part=drums&{up}&offset=0&done=1", data=WAV)).status == 404
+
+
+def test_a_split_that_cant_move_leaves_the_rest_linked(tmp_path, monkeypatch):
+    st = _st(tmp_path)
+    for name in ("A", "B"):
+        (st.upload_dir / f"{name}.mp3").write_bytes(b"ID3" + name.encode())
+        (st.upload_dir / f"{name} (vocals).wav").write_bytes(WAV)
+        st.save_show(name, {"name": name, "audio": {"source": "media", "path": f"haliday_show/{name} (vocals).wav"}, "tracks": []})
+    real = st.save_part
+
+    def flaky(source, rel, name, src):
+        if rel.endswith("B.mp3"):
+            raise OSError("disk full")
+        return real(source, rel, name, src)
+
+    monkeypatch.setattr(st, "save_part", flaky)
+    moved = migrate.splits_to_parts(st)
+    assert [m["from"] for m in moved] == ["haliday_show/A (vocals).wav"]
+    assert st.load_show("A")["audio"]["path"] == st.song_parts("media", "haliday_show/A.mp3")["vocals"]
+    assert st.load_show("B")["audio"]["path"] == "haliday_show/B (vocals).wav"  # still there, still a song
+    # A show put back to the old path (a restore from an older backup, say) is put right next start.
+    show = st.load_show("A")
+    show["audio"]["path"] = "haliday_show/A (vocals).wav"
+    st.save_show("A", show)
+    monkeypatch.setattr(st, "save_part", real)
+    migrate.splits_to_parts(st)
+    assert st.load_show("A")["audio"]["path"] == st.song_parts("media", "haliday_show/A.mp3")["vocals"]
+
+
+def test_an_archived_songs_parts_stay_its_own(tmp_path):
+    st = _st(tmp_path)
+    (st.upload_dir / "carol.mp3").write_bytes(b"ID3song")
+    rel = "haliday_show/carol.mp3"
+    st.save_part("media", rel, "vocals", _part(tmp_path))
+    a = archive.archive_song(st, rel)["archived"]
+    # A new song saved where it was, with parts of its own.
+    (st.upload_dir / "carol.mp3").write_bytes(b"ID3 another carol")
+    st.save_part("media", rel, "drums", _part(tmp_path, "d.wav"))
+    back = archive.restore_song(st, a)["path"]
+    assert back != rel
+    assert set(st.song_parts("media", back)) == {"vocals"}
+    assert set(st.song_parts("media", rel)) == {"drums"}
