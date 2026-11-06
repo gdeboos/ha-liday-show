@@ -29,7 +29,7 @@ async function prepared(names, progress) {
     if (failed) throw new Error(`HA-liday Show couldn't download the AI: ${failed.error}. Check it's online, then try again`);
     const size = all.reduce((n, f) => n + f.size, 0), got = all.reduce((n, f) => n + f.got, 0);
     progress(size ? got / size : 1);
-    if (all.every((f) => f.ready)) return;
+    if (all.every((f) => f.ready)) return files;
     await new Promise((r) => setTimeout(r, 1000));
   }
 }
@@ -37,10 +37,9 @@ async function prepared(names, progress) {
 // The model, from the browser's own store after the first time (where the page may keep one: on
 // https or this machine), else from HA-liday Show in pieces, each tried again if it's cut off.
 const PIECE = 8 * 1024 * 1024;
-async function model() {
+async function model(size) {
   const url = file("model.onnx");
   const store = self.caches ? await caches.open(CACHE).catch(() => null) : null;
-  const size = 66762490;
   const bytes = new Uint8Array(size);
   for (let at = 0; at < size; at += PIECE) {
     const end = Math.min(at + PIECE, size) - 1;
@@ -76,14 +75,14 @@ self.onmessage = async ({ data: { left, right } }) => {
     const kept = await keptModel();
     const names = ["ort.webgpu.min.mjs", "ort-wasm-simd-threaded.jsep.mjs", "ort-wasm-simd-threaded.jsep.wasm",
       ...(kept ? [] : ["model.onnx"])];
-    await prepared(names, (done) => self.postMessage({ stage: "download", done }));
+    const files = await prepared(names, (done) => self.postMessage({ stage: "download", done }));
     let ort;
     try { ort = await import(file("ort.webgpu.min.mjs")); } catch (e) {
       throw new Error(`couldn't load the AI's runtime (${e.message || "network error"}). Try again`);
     }
     ort.env.wasm.wasmPaths = { mjs: file("ort-wasm-simd-threaded.jsep.mjs"), wasm: file("ort-wasm-simd-threaded.jsep.wasm") };
     ort.env.wasm.numThreads = 1; // several need the page set up in a way Home Assistant's isn't
-    const bytes = kept || await model();
+    const bytes = kept || await model(files["model.onnx"].size);
     self.postMessage({ stage: "split", done: 0 });
     // The graphics card where the browser offers it (much quicker), else the processor. If the
     // graphics card gives up part way, the rest is done on the processor.

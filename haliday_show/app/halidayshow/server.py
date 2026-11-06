@@ -18,6 +18,7 @@ import os
 import urllib.parse
 import re
 import secrets
+import shutil
 import tempfile
 import time
 import zlib
@@ -1092,6 +1093,9 @@ class StemFiles:
     """Split vocals' files, each downloaded once (on first ask) into `folder` and checked."""
 
     def __init__(self, folder: Path):
+        # Started afresh each time HA-liday Show starts: only files this run downloaded and checked are
+        # handed out, whatever was left in the temporary folder before.
+        shutil.rmtree(folder, ignore_errors=True)
         self.folder = folder
         self.tasks: dict[str, asyncio.Task] = {}
         self.got: dict[str, int] = {}
@@ -1136,11 +1140,11 @@ class StemFiles:
         mirror = os.environ.get("HALIDAY_SHOW_STEMS_FROM", "").strip()
         if mirror:
             url = mirror.rstrip("/") + "/" + name
-        self.folder.mkdir(parents=True, exist_ok=True)
         part = self.folder / f".{name}.part"
         digest, got, problem = hashlib.sha256(), 0, None
         self.got[name] = 0
         try:
+            self.folder.mkdir(mode=0o700, parents=True, exist_ok=True)
             with part.open("wb") as f:
                 async for chunk in _stream_from(url):
                     got += len(chunk)
@@ -1154,6 +1158,8 @@ class StemFiles:
             problem = f"couldn't download it ({e})"
         except OSError as e:
             problem = f"couldn't keep it ({e.strerror or e})"
+        except Exception as e:  # never left looking as if it's still on its way
+            problem = f"something went wrong ({e})"
         if not problem and (got != size or digest.hexdigest() != sha):
             problem = "it wasn't the file it should be" if got == size else "its download was cut off"
         if problem:

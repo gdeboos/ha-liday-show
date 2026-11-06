@@ -1865,6 +1865,20 @@ async def test_split_vocals_files_are_downloaded_once_checked_and_served_in_piec
     st = await _stems_ready(client, "ort-wasm-simd-threaded.jsep.wasm")
     assert "no internet" in st["ort-wasm-simd-threaded.jsep.wasm"]["error"]
 
+    # Anything else going wrong still ends it, rather than leaving it looking as if it's on its way.
+    async def odd(url):
+        raise RuntimeError("odd")
+        yield b""
+
+    monkeypatch.setattr(server, "_stream_from", odd)
+    st = await _stems_ready(client, "ort-wasm-simd-threaded.jsep.wasm")
+    assert "odd" in st["ort-wasm-simd-threaded.jsep.wasm"]["error"]
+    # A new start begins afresh: nothing left in the folder from before is handed out.
+    folder = client.app[server.STEMS].folder
+    assert (folder / "model.onnx").is_file()
+    server.StemFiles(folder)
+    assert not folder.exists()
+
 
 async def test_whats_on_the_lights_now_can_be_seen(client):
     import base64
