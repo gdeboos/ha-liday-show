@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.378
+
+- The vocals and music that **Split vocals** makes now sit under the song they came from in **Library → Songs**, in a **Split vocals** group, so they're in that song's folder instead of loose at the top. They follow it when you pick a song for a new show or to splice in, too.
+- Each split says what uses it, or **Not used by any show or draft**, so you know which you can remove (**⋯ → Remove…**). The new **Splits** button beside **Find** lists them all.
+
 ## 0.2.377
 
 - **Sharper pictures on phones.** A phone's screen is now twice as detailed (54 × 96), and drawn crisp rather than blurred, so GIFs, faces and text on the **Phones** lane look like clean pixel art. Pictures are still kept at up to 64 × 64 when you add them, as for your matrices.
