@@ -16,6 +16,7 @@ const RULER_H = 22;
 const WAVE_H = 56;
 const BEAT_H = 16;
 const TRACK_H = 46;
+const LYRIC_H = 15; // the song's lyrics, along the bottom of the song lane, when it has them
 const TOP = RULER_H + WAVE_H + BEAT_H;
 const EDGE_PX = 6;
 const SNAP_PX = 8;
@@ -203,6 +204,11 @@ export class Timeline {
     ctx.font = "12px system-ui, sans-serif";
     ctx.fillText("Song", 10, RULER_H + WAVE_H / 2 + 4);
     ctx.fillText("Beats", 10, RULER_H + WAVE_H + 12);
+    if (this.app.lyricWords?.().length) {
+      ctx.font = "10px system-ui, sans-serif";
+      ctx.fillText("Lyrics", 10, RULER_H + WAVE_H - 4);
+      ctx.font = "12px system-ui, sans-serif";
+    }
     // A split light's tracks (its own, then its parts) are drawn as one group: a bar down the
     // left, a tint behind them and a heavier line around them, with the parts indented.
     // A group of one track is drawn like any other track.
@@ -446,6 +452,39 @@ export class Timeline {
       const hh = Math.max(1, m * (WAVE_H / 2 - 3));
       ctx.fillRect(x, mid - hh, 1, hh * 2);
     }
+    this.drawLyrics(col);
+  }
+
+  // The song's lyrics (app.lyricWords: placed in the Music editor), each word where it's sung, to line
+  // effects up with. Only shown here; a click on one moves the playhead to it.
+  drawLyrics(col) {
+    const words = this.app.lyricWords?.() || [];
+    if (!words.length) return;
+    const { ctx, w } = this, y = RULER_H + WAVE_H - LYRIC_H;
+    ctx.fillStyle = col("--panel");
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(HEADER_W, y, w - HEADER_W, LYRIC_H);
+    ctx.globalAlpha = 1;
+    ctx.font = "10px system-ui, sans-serif";
+    for (const wd of words) {
+      const x0 = Math.max(HEADER_W, this.x(wd.start)), x1 = Math.min(w, this.x(wd.end));
+      if (x1 <= x0) continue;
+      ctx.fillStyle = `hsl(${(wd.i * 67) % 360} 65% 74%)`;
+      ctx.fillRect(x0, y + 1, Math.max(x1 - x0 - 1, 1), LYRIC_H - 2);
+      if (x1 - x0 > 12) {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x0 + 1, y, x1 - x0 - 3, LYRIC_H); ctx.clip();
+        ctx.fillStyle = "#111";
+        ctx.fillText(wd.word, x0 + 3, y + LYRIC_H - 4);
+        ctx.restore();
+      }
+    }
+  }
+
+  // The word in the lyrics row under (x, y), or null.
+  wordAt(x, y) {
+    if (y < RULER_H + WAVE_H - LYRIC_H || y >= RULER_H + WAVE_H) return null;
+    return (this.app.lyricWords?.() || []).find((wd) => x >= this.x(wd.start) && x <= this.x(wd.end)) || null;
   }
 
   // The song's sections (from Detect) as tinted bands behind the waveform, one tint per name, and
@@ -592,7 +631,8 @@ export class Timeline {
     }
     if (y < RULER_H + WAVE_H) {
       this.drag = { mode: "seek" };
-      app.seek(Math.max(0, this.t(x)));
+      const word = this.wordAt(x, y);
+      app.seek(Math.max(0, word ? word.start : this.t(x)));
       return;
     }
     if (y < TOP) {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.398
+
+- **Edits follow their original's lyrics automatically.** A song file you made from a draft in the Music editor now sings the original song's lyrics through your cuts, with no button to press, so you place the words once on the original and every edit keeps up. If you split the original's vocals, the edit's Singing face follows those too. On an edit, the Singing face's button says **Edit lyrics…** and opens its draft in the Music editor. The **Bring in the lyrics** button has gone, as it's no longer needed.
+- **Lyrics on the show timeline.** Once a show's song has lyrics, the words appear along the bottom of the **Song** lane in the Show editor, so you can line effects up with them. Click a word to jump there.
+
 ## 0.2.397
 
 - Show cards in **Library → Shows** are tidier: the show's palette is now a full-width strip of its colours with its name under it, instead of a squashed strip running into the name.

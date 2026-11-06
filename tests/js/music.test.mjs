@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  arrange, cut, editName, mapInfo, mapLyrics, mapWords, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
+  arrange, cut, editName, mapInfo, mapLyrics, mapVoice, mapWords, encodeWav, hueHex, insert, joins, keep, merge, mergeSections, moveEdge, removeSection,
   render, sectionAt, splitSection, beatsToDraw, previewTime, addMark, moveMark, toBase, marksToBase, freshFileName, untouched, joinInfo, putBack,
 } from "../../haliday_show/app/halidayshow/static/js/music.js";
 
@@ -308,4 +308,19 @@ test("the lyrics lane shows each word where it's heard after cuts", () => {
   const shown = mapWords(words, [{ src: "a", start: 0, end: 10 }, { src: "a", start: 30, end: 32 }], 0, "a");
   assert.deepEqual(shown.map((w) => [w.word, w.start, w.end]), [["a", 1, 2], ["c", 11, 12]]); // b cut; c cut short
   assert.deepEqual(shown[1].base, { start: 31, end: 33 });
+});
+
+test("an edit hears the original's singer through its cuts", () => {
+  const voice = { fps: 2, values: [0, 10, 20, 30, 40, 50, 60, 70], shapes: "maoeaoem" };
+  const out = mapVoice(voice, [{ src: "a", start: 0, end: 1 }, { src: "a", start: 3, end: 4 }, { src: "b", start: 0, end: 1 }], 0, "a", 3);
+  assert.deepEqual(out.values, [0, 10, 60, 70, 0, 0]); // the spliced-in song is quiet
+  assert.equal(out.shapes, "maemmm");
+});
+
+test("a cut through a line takes out the words in it", () => {
+  const lyrics = { text: "one two three", lines: [{ start: 1, end: 7, words: [{ start: 1, end: 2 }, { start: 4, end: 5 }, { start: 6, end: 7 }] }] };
+  const out = mapLyrics(lyrics, [{ src: "a", start: 0, end: 3 }, { src: "a", start: 5.5, end: 10 }], 0, "a");
+  // Its words either side of the cut are sung in two parts.
+  assert.equal(out.text, "one\nthree");
+  assert.deepEqual(out.lines, [{ start: 1, end: 2, words: [{ start: 1, end: 2 }] }, { start: 3.5, end: 4.5, words: [{ start: 3.5, end: 4.5 }] }]);
 });
