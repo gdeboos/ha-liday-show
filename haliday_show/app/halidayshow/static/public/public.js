@@ -604,13 +604,14 @@ export function start() {
   const join = { on: false, samples: [], key: "", colours: "", house: "", lane: null, fps: 10, timer: 0, raf: 0, wake: null,
     gen: 0, since: 0 };
   // The editor's effect code (effects.js), loaded the first time a show with a Phones lane plays here.
-  let fx = null, fxPictures = null, fxFaces = null, img = null;
+  let fx = null, fxPictures = null, fxFaces = null;
   async function loadFx() {
     if (!fx) {
       [fx, fxPictures, fxFaces] = await Promise.all([import("./fx/effects.js"), import("./fx/pictures.js"), import("./fx/faces.js")]);
     }
     return fx;
   }
+  const DRAW_FPS = 30;
   const JOIN_POLL_MS = 1000, WARN_MS = 3000, FADE_IN_MS = 1000;
   const JOIN_WARNED_KEY = "halidayshow.joinWarned", TOUR_KEY = "halidayshow.tourSeen";
   const joinWarned = () => { try { return localStorage.getItem(JOIN_WARNED_KEY) === say_(w, "tour_flash_phone"); } catch { return false; } };
@@ -677,17 +678,17 @@ export function start() {
     const screen = $("pp-join-screen"), lane = t !== null && level > 0 && fx ? join.lane : null;
     screen.hidden = !lane;
     if (lane) {
-      const { w: gw, h: gh } = { w: screen.width, h: screen.height };
-      const main = join.house ? colourOf(join.house, t) : null;
-      const frame = fx.withVoiceLevels(lane.voice || null, () => fx.withMusicLevels(lane.loudness || null,
-        () => fx.phoneScreen(lane.clips, t, main, lane.level ?? 1)));
-      const ctx = screen.getContext("2d");
-      if (!img) img = ctx.createImageData(gw, gh);
-      for (let i = 0, n = gw * gh; i < n; i++) {
-        img.data[i * 4] = frame[i * 3] * level; img.data[i * 4 + 1] = frame[i * 3 + 1] * level;
-        img.data[i * 4 + 2] = frame[i * 3 + 2] * level; img.data[i * 4 + 3] = 255;
+      // Drawn here on the phone (a Singing face finer than the rest; effects.js phoneView), up to
+      // DRAW_FPS times a second: plenty for the eye, and it leaves the phone time to spare.
+      const step = Math.floor(t * DRAW_FPS);
+      if (!join.view || join.view.step !== step || join.view.lane !== lane || join.view.level !== level) {
+        const main = join.house ? colourOf(join.house, t) : null;
+        const view = fx.withVoiceLevels(lane.voice || null, () => fx.withMusicLevels(lane.loudness || null,
+          () => fx.phoneView(lane.clips, t, main, lane.level ?? 1)));
+        fx.drawPhoneView(screen, view, level);
+        join.view = { ...view, step, lane, level };
       }
-      ctx.putImageData(img, 0, 0);
+      const { frame, w: gw, h: gh } = join.view;
       // Above and below it, the colours of its own top and bottom rows, so it carries on to the edges.
       const row = (y) => {
         const c = [0, 0, 0];
