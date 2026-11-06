@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.374
+
+- **Split vocals works through Home Assistant again.** The AI's download (about 90 MB, the first time) was being cut off part way through Home Assistant, which showed as "network error". HA-liday Show now downloads it once itself, checks it, and hands it to your browser in small pieces, so it gets through. Splitting a song then starts much sooner the second time, until HA-liday Show restarts.
+
 ## 0.2.373
 
 - **Split vocals shows what it's doing.** While a song is split, a window covers the page with a spinner, what's happening (downloading the AI the first time, splitting, saving) and how far along it is, with **Cancel** to stop. Before, it only said so in the small status line, which was easy to miss.
