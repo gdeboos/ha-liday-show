@@ -80,3 +80,47 @@ test("a phone's screen is the lane drawn as an upright matrix", async () => {
   assert.deepEqual([...phoneScreen([{ ...newClip("solid", 0, 1), color: "#ff0000" }], 0.5, null, 0.5).subarray(0, 3)], [128, 0, 0]);
   assert.ok(phoneScreen([], 0.5).every((v) => v === 0)); // dark in the gaps
 });
+
+test("singing faces: each character draws, and the mouth follows the singer", async () => {
+  const { CHARACTERS, faceColour, mouthFor } = await import("../../haliday_show/app/halidayshow/static/js/faces.js");
+  const { EFFECTS, withVoiceLevels } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const { voiceBand } = await import("../../haliday_show/app/halidayshow/static/js/musiclevel.js");
+  assert.equal(mouthFor(0), 0);
+  assert.equal(mouthFor(1), 1);
+  for (const c of CHARACTERS) {
+    assert.ok(faceColour(c, 0.5, 0.5, 0), `${c} has a face in the middle`);
+    assert.equal(faceColour(c, 0.01, 0.99, 0), null, `${c} leaves the corner for the background`);
+  }
+  // The snowman's mouth: shut, the middle of it is snow; open, it's dark.
+  assert.deepEqual(faceColour("snowman", 0.5, 0.77, 0), faceColour("snowman", 0.5, 0.8, 0));
+  assert.notDeepEqual(faceColour("snowman", 0.5, 0.77, 1), faceColour("snowman", 0.5, 0.77, 0));
+  // Drawn on a phone's screen, louder singing opens the mouth wider (more dark dots).
+  const { phoneScreen } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const clip = { ...newClip("singingface", 0, 4), character: "ghost", background: "#000000" };
+  const dark = (level) => withVoiceLevels({ fps: 10, values: Array(40).fill(level) }, () => {
+    const f = phoneScreen([clip], 1);
+    let n = 0;
+    for (let i = 0; i < f.length; i += 3) if (f[i] < 60 && f[i + 1] < 60 && f[i + 2] < 60) n++;
+    return n;
+  });
+  assert.ok(dark(100) > dark(0) + 20);
+  assert.ok(EFFECTS.singingface.grid);
+  // The voice range keeps a singer and drops the bass.
+  const r = 8000, bass = Float32Array.from({ length: r }, (_, i) => Math.sin(2 * Math.PI * 60 * i / r));
+  const voice = Float32Array.from({ length: r }, (_, i) => Math.sin(2 * Math.PI * 1000 * i / r));
+  const rms = (a) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length);
+  assert.ok(rms(voiceBand(voice, r)) > 10 * rms(voiceBand(bass, r)));
+});
+
+test("the singer's level: where the vocals are, when to measure again, and kept on undo", async () => {
+  const { keepLevels, vocalsPlaces, voiceFits } = await import("../../haliday_show/app/halidayshow/static/js/musiclevel.js");
+  assert.deepEqual(vocalsPlaces({ source: "media", path: "Xmas/Jingle: Bells.mp3" }, "Jingle: Bells (vocals).wav"), [
+    { source: "media", path: "haliday_show/Jingle_ Bells (vocals).wav" },
+    { source: "media", path: "Xmas/Jingle: Bells (vocals).wav" }]);
+  const show = { audio: { path: "a.mp3" }, voice: { fps: 20, song: "a.mp3", values: [1], from: "song", seconds: 100 } };
+  assert.ok(voiceFits(show, "a.mp3", 100.2));
+  assert.ok(!voiceFits(show, "a.mp3", 100.2, true)); // vocals split since: measure them
+  assert.ok(!voiceFits(show, "a.mp3", 130)); // another file under the same name
+  assert.ok(!voiceFits(show, "b.mp3", 100));
+  assert.deepEqual(keepLevels(show, { audio: { path: "a.mp3" } }).voice, show.voice);
+});

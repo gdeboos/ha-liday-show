@@ -7,6 +7,7 @@ import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } fr
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
+import { CHARACTERS, FACE_ASPECT, faceColour, mouthFor } from "./faces.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, hasPhonesLane, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
 
 export const FPS = 40;
@@ -770,6 +771,24 @@ function levelAt(time) {
   return (a + (b - a) * (x - k)) / 100;
 }
 
+// How loud the singer is (0-1) at `time`: the show's voice levels (the vocals of its song, or the
+// voice range of the song itself), measured in the editor and kept with the show as show.voice. Without
+// them, the music level stands in.
+let voiceLevels = null;
+export function setVoiceLevels(levels) { voiceLevels = levels && Array.isArray(levels.values) ? levels : null; }
+export function withVoiceLevels(levels, fn) {
+  const before = voiceLevels;
+  setVoiceLevels(levels);
+  try { return fn(); } finally { voiceLevels = before; }
+}
+function voiceAt(time) {
+  const v = voiceLevels?.values;
+  if (!v?.length) return levelAt(time);
+  const x = Math.max(time, 0) * (voiceLevels.fps || 10), k = Math.floor(x);
+  const a = v[Math.min(k, v.length - 1)] ?? 0, b = v[Math.min(k + 1, v.length - 1)] ?? a;
+  return (a + (b - a) * (x - k)) / 100;
+}
+
 // After xLights' VU meter.
 Object.assign(EFFECTS, {
   vumeter: {
@@ -829,6 +848,27 @@ Object.assign(EFFECTS, {
       const c = Math.floor(tx / scale);
       if (!((cols[c] >> row) & 1)) return hexToRgb(p.background);
       return p.colours === "rainbow" ? hsv(mod(Math.floor(c / 6) * 0.13, 1), 1, 1) : hexToRgb(p.color);
+    },
+  }),
+  singingface: gridEffect({
+    // One of the characters in faces.js, as big as fits (Size %), its mouth opening with the singer.
+    label: "Singing face", music: true,
+    params: [choice("character", "Character", "snowman", CHARACTERS), color("background", "Background", "#000000"),
+      num("size", "Size %", 100, 40, 100, 5)],
+    renderXY: (p, t, dur, w, h, x, y) => {
+      const bg = hexToRgb(p.background);
+      const scale = Math.min(Math.max(Number(p.size) || 100, 40), 100) / 100;
+      const bh = Math.min(h, w / FACE_ASPECT) * scale, bw = bh * FACE_ASPECT;
+      const x0 = (w - bw) / 2, y0 = (h - bh) / 2;
+      const mouth = mouthFor(voiceAt(t));
+      // Four looks inside each LED, averaged, so the edges are soft rather than jagged.
+      const out = [0, 0, 0];
+      for (const [dx, dy] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {
+        const u = (x + dx - x0) / bw, v = (y + dy - y0) / bh;
+        const c = (u >= 0 && u <= 1 && v >= 0 && v <= 1 && faceColour(p.character, u, v, mouth)) || bg;
+        out[0] += c[0] / 4; out[1] += c[1] / 4; out[2] += c[2] / 4;
+      }
+      return out;
     },
   }),
   picture: gridEffect({
@@ -1902,10 +1942,11 @@ export function phoneColourAt(show, time, lightFrames) {
 // the light groups ({id, members}) for the group lanes; their strips run in the show's track order,
 // which is the Devices tab's.
 export function bake(show, devices, fps = FPS, positions = {}, groups = []) {
-  const before = musicLevels, live = liveSource;
+  const before = musicLevels, live = liveSource, voice = voiceLevels;
   musicLevels = show.loudness?.values ? show.loudness : null; // a show without a song's loudness has a silent meter
   liveSource = null; // live effects bake their idle look; the level set (bakeLive) has the rest
-  try { return bakeFrames(show, devices, fps, positions, groups); } finally { musicLevels = before; liveSource = live; }
+  setVoiceLevels(show.voice);
+  try { return bakeFrames(show, devices, fps, positions, groups); } finally { musicLevels = before; liveSource = live; voiceLevels = voice; }
 }
 
 // A scene's live effects baked for the player to pick from: one track per light on a live effect (a

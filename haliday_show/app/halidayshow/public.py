@@ -798,7 +798,7 @@ PAGE_FILES = {"index.html": "text/html", "public.js": "text/javascript", "public
 # The editor's own effect code, which phones that join a show with a Phones lane draw it with (they load
 # it only then). effects.js and what it imports, nothing else of the editor.
 FX = PAGE.parent / "js"
-FX_FILES = ("effects.js", "matrix.js", "font.js", "pictures.js", "parts.js", "phones.js")
+FX_FILES = ("effects.js", "matrix.js", "font.js", "pictures.js", "parts.js", "phones.js", "faces.js")
 # The page's own files ask for each other with ?v= and a stamp of what's in them, so a phone (or a
 # tunnel's cache, such as Cloudflare's) never mixes an old script with a new page after an update.
 _STAMP = hashlib.sha1(b"".join([(PAGE / n).read_bytes() for n in sorted(PAGE_FILES)]
@@ -1378,7 +1378,8 @@ def _level(v) -> float:
 
 def phone_lane(storage: Storage, show: dict) -> dict | None:
     """A show's Phones lane, for phones to draw themselves (static/js/phones.js): its clips, how much the
-    show dims it, the song's loudness (for effects that follow the music) and the pictures it shows.
+    show dims it, the song's loudness (for effects that follow the music), the singer's level (for the
+    Singing face) and the pictures it shows.
     None without one."""
     lane = next((t for t in show.get("tracks") or [] if isinstance(t, dict) and t.get("device") == "@phones"), None)
     if lane is None:
@@ -1394,8 +1395,10 @@ def phone_lane(storage: Storage, show: dict) -> dict | None:
             if pic and size + bytes_ <= MAX_PHONE_PICTURE_BYTES:
                 pictures[pid] = pic
                 size += bytes_
-    loud = show.get("loudness")
+    loud, voice = show.get("loudness"), show.get("voice")
     return {"clips": clips,
+            # The singer's level, for the Singing face.
+            "voice": voice if isinstance(voice, dict) and isinstance(voice.get("values"), list) else None,
             "level": _level(show.get("brightness")) * _level((show.get("lightBrightness") or {}).get("@phones")),
             "loudness": loud if isinstance(loud, dict) and isinstance(loud.get("values"), list) else None,
             "pictures": pictures}
