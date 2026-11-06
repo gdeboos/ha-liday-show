@@ -10464,9 +10464,13 @@ function openLyrics({ ref, duration, voice, lyrics, fromEdit = null, save: keep 
     if (now.length && now.length === lines.length) { lines = fromStarts(now, lines.map((l) => l.start), voice, duration); draw(); } else place();
   });
   const auto = button("Place automatically", place, "ghost");
-  // Tap along: the song plays from the start, and each press of Next line (or the space bar) starts the
-  // next line there.
-  const next = button("Next line", () => tap(), "primary");
+  // Tap along: the song plays from the start, and each press of the button (or the space bar) starts the
+  // line it names there, the first line included.
+  const next = button("", () => tap(), "primary");
+  const cue = () => {
+    next.textContent = `Line ${tapping + 1} starts`;
+    hint.textContent = `Press Line ${tapping + 1} starts (or the space bar) when "${lines[tapping].text}" starts.`;
+  };
   next.hidden = true;
   const tapAlong = button("Tap along…", () => {
     if (!lines.length) place();
@@ -10477,8 +10481,8 @@ function openLyrics({ ref, duration, voice, lyrics, fromEdit = null, save: keep 
     stopAt = null;
     audio.play();
     next.hidden = false;
-    hint.textContent = "Press Next line (or the space bar) as each line starts.";
     draw();
+    cue();
     next.focus();
   }, "ghost");
   let starts = [];
@@ -10490,10 +10494,10 @@ function openLyrics({ ref, duration, voice, lyrics, fromEdit = null, save: keep 
       tapping = -1;
       next.hidden = true;
       audio.pause();
-      hint.textContent = "Done. Press ▶ on a line to check it.";
     }
     lines = fromStarts(lines, starts, voice, duration);
     draw();
+    if (tapping >= 0) cue(); else hint.textContent = "Done. Press ▶ on a line to check it.";
   }
   // Space taps, once: its keyup is stopped too, as some browsers press a focused button on keyup.
   w.dlg.addEventListener("keydown", (e) => { if (tapping >= 0 && e.code === "Space") { e.preventDefault(); if (!e.repeat) tap(); } });
