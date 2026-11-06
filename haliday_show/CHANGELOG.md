@@ -1,9 +1,13 @@
 # Changelog
 
-## 0.2.398
+## 0.2.399
 
 - **Edits follow their original's lyrics automatically.** A song file you made from a draft in the Music editor now sings the original song's lyrics through your cuts, with no button to press, so you place the words once on the original and every edit keeps up. If you split the original's vocals, the edit's Singing face follows those too. On an edit, the Singing face's button says **Edit lyrics…** and opens its draft in the Music editor. The **Bring in the lyrics** button has gone, as it's no longer needed.
 - **Lyrics on the show timeline.** Once a show's song has lyrics, the words appear along the bottom of the **Song** lane in the Show editor, so you can line effects up with them. Click a word to jump there.
+
+## 0.2.398
+
+- Removing a song or show now shows that it's working: the button you pressed says **Deleting…** or **Archiving…** with a spinner, the window's other buttons wait, and the song leaves the list as soon as it's gone. Before, the window just sat there for a few seconds.
 
 ## 0.2.397
 
