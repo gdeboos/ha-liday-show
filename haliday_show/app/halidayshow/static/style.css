@@ -1095,6 +1095,13 @@ a.button { text-decoration: none; }
 .im-preview { display: flex; flex-direction: column; gap: 4px; }
 .im-preview-frame { width: 100%; }
 .im-preview-frame canvas { display: block; margin: 0 auto; border-radius: 6px; }
+/* ▶ Preview: the house, with visitors' phones beside it. */
+.preview-stage { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.preview-house { flex: 1; min-width: 0; }
+.preview-dialog.with-phone { width: min(680px, calc(100vw - 32px)); }
+@media (max-width: 560px) { .preview-stage { flex-wrap: wrap; } .preview-house { flex-basis: 100%; } }
+.phone-tile.preview-phone { position: static; cursor: default; }
+.phone-tile.preview-phone .phone-screen { width: 81px; height: 144px; margin: 0; }
 
 /* Library → Songs: each original song as one card, its edits (✂, purple) and drafts (✎, amber, dashed) inside. */
 .song-family { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }

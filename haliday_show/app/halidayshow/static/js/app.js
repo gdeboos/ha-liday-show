@@ -7796,8 +7796,19 @@ async function previewShow(r) {
   const note = Object.assign(document.createElement("p"), { className: "hint",
     innerHTML: Object.keys(house.paths || {}).length ? "Nothing is sent to your lights."
       : "Nothing is sent to your lights. Your lights show here once they're on the photo under <b>Setup → House</b>." });
-  w.body.append(Object.assign(document.createElement("div"), { className: "im-preview-frame" }), note);
-  w.body.firstChild.append(canvas);
+  const stage = Object.assign(document.createElement("div"), { className: "im-preview-frame preview-stage" });
+  const photo = Object.assign(document.createElement("div"), { className: "preview-house" }); // the house takes the width the phone leaves
+  photo.append(canvas);
+  stage.append(photo);
+  // Visitors' phones beside the house, when they join this show or it has a Phones lane.
+  const phones = !!(phonesJoin(show, phonesOn) || hasPhonesLane(show));
+  const phone = Object.assign(document.createElement("div"), { className: "phone-tile preview-phone" });
+  const screen = Object.assign(document.createElement("canvas"), { className: "phone-screen", width: PHONE_GRID.w, height: PHONE_GRID.h });
+  screen.setAttribute("role", "img");
+  screen.setAttribute("aria-label", "What visitors' phones show");
+  phone.append(screen, Object.assign(document.createElement("span"), { className: "phone-label", textContent: "Phones" }));
+  if (phones) { stage.append(phone); w.dlg.classList.add("with-phone"); }
+  w.body.append(stage, note);
   const audio = show.audio ? new Audio(audioUrl(show.audio)) : null;
   if (audio) audio.volume = volume.gain ?? 1;
   const end = show.duration || 60;
@@ -7830,9 +7841,34 @@ async function previewShow(r) {
   const edit = button("Edit", () => { w.dlg.close(); openFromList(r.id); });
   w.foot.append(Object.assign(document.createElement("span"), { className: "spacer" }), edit, button("Close", () => w.dlg.close()));
   const coloursAt = showColours(show);
+  const lane = show.tracks?.find((tr) => tr.device === PHONES);
+  const physical = lightsInShow(show, app.devices).filter((id) => app.lights[id]);
+  let phoneAt = NaN;
+  // A phone's screen as phones draw it (phoneScreenAt does the same for the open show), ten times a second.
+  const paintPhone = (t) => {
+    const at = Math.floor(t * PHONE_FPS + 1e-6) / PHONE_FPS;
+    if (!phones || at === phoneAt) return;
+    phoneAt = at;
+    const frames = () => { const c = coloursAt(at); return physical.map((id) => c(app.lights[id])); };
+    const n = PHONE_GRID.w * PHONE_GRID.h;
+    const frame = withMusicLevels(show.audio ? show.loudness || MADE_UP : null, () => withVoiceLevels(show.audio ? show.voice : null, () => {
+      if (!lane) {
+        const [r, g, b] = phoneColourAt(show, at, frames()), out = new Uint8Array(n * 3);
+        for (let i = 0; i < n; i++) out.set([r, g, b], i * 3);
+        return out;
+      }
+      return phoneScreen(lane.clips, t, laneUsesHouse(lane) ? mainColour(frames()) : null, showLevel(show, PHONES));
+    }));
+    const ctx = screen.getContext("2d"), img = ctx.createImageData(PHONE_GRID.w, PHONE_GRID.h);
+    for (let i = 0; i < n; i++) {
+      img.data[i * 4] = frame[i * 3]; img.data[i * 4 + 1] = frame[i * 3 + 1]; img.data[i * 4 + 2] = frame[i * 3 + 2]; img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  };
   const paint = () => {
     const t = Math.min(now(), end);
     house.paint(canvas, Math.min(window.innerHeight * 0.5, 420), coloursAt(t));
+    paintPhone(t);
     if (document.activeElement !== bar) bar.value = t;
     time.textContent = `${fmtTime(t, false)} / ${fmtTime(end, false)}`;
   };
