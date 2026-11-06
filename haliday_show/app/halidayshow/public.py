@@ -1405,9 +1405,15 @@ def phone_lane(storage: Storage, show: dict) -> dict | None:
                 pictures[pid] = pic
                 size += bytes_
     loud, voice = show.get("loudness"), show.get("voice")
+    voice = voice if isinstance(voice, dict) and isinstance(voice.get("values"), list) else None
+    # Placed lyrics give the mouth its shapes instead (as static/js/phones.js singerOf does).
+    lyrics = show.get("lyrics")
+    if isinstance(lyrics, dict) and isinstance(lyrics.get("shapes"), str) and lyrics["shapes"]:
+        voice = {"fps": (voice or {}).get("fps") or lyrics.get("fps") or 20, "values": (voice or {}).get("values", []),
+                 "shapes": lyrics["shapes"], "shapesFps": lyrics.get("fps") or 20, "lyrics": True}
     return {"clips": clips,
             # The singer's level, for the Singing face.
-            "voice": voice if isinstance(voice, dict) and isinstance(voice.get("values"), list) else None,
+            "voice": voice,
             "level": _level(show.get("brightness")) * _level((show.get("lightBrightness") or {}).get("@phones")),
             "loudness": loud if isinstance(loud, dict) and isinstance(loud.get("values"), list) else None,
             "pictures": pictures}

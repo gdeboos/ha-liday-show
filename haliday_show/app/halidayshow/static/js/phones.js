@@ -52,3 +52,12 @@ export const hasPhonesLane = (show) => (show?.tracks || []).some((t) => t.device
 
 // Whether visitors' phones join this show: the public page's switch is on, and the show hasn't opted out.
 export const phonesJoin = (show, on) => !!on && show?.phones !== false;
+
+// The singer a Singing face follows in `show`: its measured voice (show.voice), with the mouth shapes
+// from its lyrics instead where it has them placed (show.lyrics, lyrics.js); lyrics: true then.
+export function singerOf(show) {
+  const voice = show?.voice, lyrics = show?.lyrics;
+  if (!(typeof lyrics?.shapes === "string" && lyrics.shapes.length)) return voice || null;
+  return { fps: voice?.fps || lyrics.fps || 20, values: Array.isArray(voice?.values) ? voice.values : [],
+    shapes: lyrics.shapes, shapesFps: lyrics.fps || 20, lyrics: true };
+}

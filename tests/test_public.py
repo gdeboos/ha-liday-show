@@ -1455,6 +1455,9 @@ def test_a_phones_lane_sends_pictures_up_to_a_size(tmp_path, monkeypatch):
     voice = {"fps": 20, "song": "x.mp3", "values": [0, 50]}
     assert public.phone_lane(st, {**show, "voice": voice})["voice"] == voice
     assert public.phone_lane(st, {**show, "voice": "loud"})["voice"] is None
+    # Placed lyrics give the mouth its shapes instead.
+    lane = public.phone_lane(st, {**show, "voice": voice, "lyrics": {"fps": 20, "shapes": "mmaa", "text": "a", "lines": []}})
+    assert lane["voice"]["shapes"] == "mmaa" and lane["voice"]["lyrics"] is True and lane["voice"]["values"] == [0, 50]
     assert public.phone_lane(st, {"tracks": [{"device": "a", "clips": []}]}) is None
 
 
