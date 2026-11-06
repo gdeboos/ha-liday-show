@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.404
+
+- **Adding a clip to a layer is now a window** instead of a long drop-down. In the Music editor, **+ Add a clip…** on a layer opens your **Samples** and **Songs** in their folders, with a box to find one in any folder. Pick one and press **Add**.
+- **A song's parts sit with the song.** Pick a song that's been split into parts and choose **The whole song** or just one part (**Just the vocals**, **Just the drums** and so on) under **Use from**. The separate **Song parts** list is gone. **Splice → Choose song…** offers parts the same way.
+
 ## 0.2.403
 
 - **Split into parts.** **Split vocals…** is now **Split into parts…**, and splits a song into its **vocals**, **drums**, **bass** and **the rest** of the music, all kept with the song. Use any of them as a layer in the Music editor. A song you split before keeps its vocals, and only the drums, bass and rest are found. The first time, it downloads about 40 MB more of AI, and it takes longer than splitting the vocals did.
