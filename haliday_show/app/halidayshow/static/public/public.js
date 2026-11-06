@@ -583,6 +583,107 @@ export function start() {
     onChange: () => drawListen(), headers: adminHeaders,
   });
 
+  // Join the show: the screen glows with the colours the show carries for phones, ten a second, kept in
+  // time as listening is (listensync.js). Phones set to reduce motion fade between colours instead of flashing.
+  const join = { on: false, asking: false, samples: [], key: "", colours: "", fps: 10, timer: 0, raf: 0, wake: null, gen: 0 };
+  const JOIN_POLL_MS = 1000;
+
+  async function joinPoll(gen) {
+    if (!join.on || gen !== join.gen) return;
+    const sent = performance.now();
+    try {
+      const res = await fetch(`api/phones/now?${new URLSearchParams({ code: key })}`, { cache: "no-store", headers: adminHeaders() });
+      const recv = performance.now();
+      if (gen !== join.gen) return;
+      if (res.status === 403 || res.status === 409) { leaveShow(await res.text()); return; }
+      if (res.ok) {
+        const now = await res.json();
+        if (!now.playing) { join.key = ""; join.samples = []; join.colours = ""; }
+        else {
+          if (now.key !== join.key) { join.key = now.key; join.samples = []; join.colours = ""; joinColours(now.key, gen); }
+          join.samples = addSample(join.samples, { sent, recv, position: now.position });
+        }
+      }
+    } catch { /* the next try */ }
+    if (join.on && gen === join.gen) join.timer = setTimeout(() => joinPoll(gen), JOIN_POLL_MS);
+  }
+
+  async function joinColours(want, gen) {
+    try {
+      const res = await fetch(`api/phones/colours?${new URLSearchParams({ code: key, key: want })}`, { cache: "no-store", headers: adminHeaders() });
+      if (!res.ok || gen !== join.gen || join.key !== want) return;
+      const got = await res.json();
+      join.colours = String(got.colours || "");
+      join.fps = Number(got.fps) || 10;
+    } catch { /* asked again with the next show */ }
+  }
+
+  function joinFrame() {
+    if (!join.on) return;
+    const t = join.colours ? target(join.samples, performance.now()) : null;
+    let rgb = "#000";
+    if (t !== null) {
+      const k = Math.floor(t * join.fps);
+      if (k >= 0 && (k + 1) * 6 <= join.colours.length) rgb = `#${join.colours.slice(k * 6, k * 6 + 6)}`;
+    }
+    const box = $("pp-join");
+    if (box.style.backgroundColor !== rgb) box.style.backgroundColor = rgb;
+    const text = t === null ? say_(w, "join_waiting") : "";
+    if ($("pp-join-text").textContent !== text) $("pp-join-text").textContent = text;
+    join.raf = requestAnimationFrame(joinFrame);
+  }
+
+  async function keepAwake() {
+    try { if (join.on && !document.hidden && navigator.wakeLock) join.wake = await navigator.wakeLock.request("screen"); } catch { /* fine without */ }
+  }
+
+  function joinShow() {
+    join.asking = false;
+    join.on = true;
+    join.gen++;
+    join.samples = []; join.key = ""; join.colours = "";
+    $("pp-join").classList.toggle("pp-soft", matchMedia("(prefers-reduced-motion: reduce)").matches);
+    iconLabel($("pp-join-leave"), "x", say_(w, "join_leave"));
+    $("pp-join").hidden = false;
+    keepAwake();
+    joinPoll(join.gen);
+    join.raf = requestAnimationFrame(joinFrame);
+    drawJoin();
+  }
+
+  function leaveShow(message = "") {
+    join.on = false;
+    join.gen++;
+    clearTimeout(join.timer);
+    cancelAnimationFrame(join.raf);
+    try { join.wake?.release(); } catch { /* already let go */ }
+    join.wake = null;
+    $("pp-join").hidden = true;
+    if (message) say(message);
+    drawJoin();
+  }
+
+  function pressJoin() {
+    if (preview) { say("This is a preview. On visitors' phones, this lights up the screen with the show.", true); return; }
+    if (join.on) leaveShow();
+    else { join.asking = !join.asking; drawJoin(); }
+  }
+
+  function drawJoin() {
+    const st = last;
+    const offered = !!(st && st.open && st.phones && !st.locked);
+    const btn = $("pp-join-btn");
+    btn.hidden = !(join.on || (offered && !!st.now && st.phones.now));
+    iconLabel(btn, "phone", say_(w, "join_short"));
+    btn.setAttribute("aria-label", say_(w, "join").replace(/^[^\p{L}\p{N}]+/u, ""));
+    btn.title = btn.getAttribute("aria-label");
+    btn.setAttribute("aria-expanded", String(join.asking));
+    $("pp-join-ask").hidden = !join.asking || btn.hidden;
+    $("pp-join-warn").textContent = say_(w, "join_warn");
+    iconLabel($("pp-join-ok"), "phone", say_(w, "join_ok"));
+    $("pp-join-cancel").textContent = say_(w, "join_cancel");
+  }
+
   function drawAdmin(st = last) {
     const on = !!st?.admin;
     $("pp-admin").hidden = !(adminOpen || (on && adminOpen !== null));
@@ -966,13 +1067,17 @@ export function start() {
     // Listening turned off (or the page closed) while a phone listens: it stops.
     if (listener.state.on && !(st.open && st.listen)) listener.stop(say_(w, "listen_off"));
     drawListen();
+    // Joining turned off (or the page closed) while this phone's in the show: it leaves.
+    if (join.on && !(st.open && st.phones)) leaveShow(say_(w, "join_off"));
+    drawJoin();
     if (view.closed) return;
     drawBar(st, view);
     $("pp-block").textContent = view.block;
     $("pp-block").hidden = !view.block;
     $("pp-coming").textContent = view.coming;
     $("pp-coming").hidden = !view.coming;
-    $("pp-bar").hidden = (!!view.coming || !!closed) && !st.now && !view.mine.length && $("pp-listen-btn").hidden;
+    $("pp-bar").hidden = (!!view.coming || !!closed) && !st.now && !view.mine.length && $("pp-listen-btn").hidden
+      && $("pp-join-btn").hidden;
     $("pp-pick").hidden = !view.choices.length;
     $("pp-none").hidden = view.choices.length > 0 || view.soon.length > 0;
     $("pp-soon-head").hidden = !view.soon.length;
@@ -1144,6 +1249,11 @@ export function start() {
   $("pp-admin-close").addEventListener("click", () => { adminOpen = null; drawAdmin(); });
   $("pp-admin-out").addEventListener("click", () => { keepAdmin(""); adminOpen = null; drawAdmin(); refresh(); });
   $("pp-listen-btn").addEventListener("click", pressListen);
+  $("pp-join-btn").addEventListener("click", pressJoin);
+  $("pp-join-ok").addEventListener("click", joinShow);
+  $("pp-join-cancel").addEventListener("click", () => { join.asking = false; drawJoin(); });
+  $("pp-join-leave").addEventListener("click", () => leaveShow());
+  document.addEventListener("visibilitychange", keepAwake);
   $("pp-pin-ok").addEventListener("click", sendPin);
   $("pp-nudge-earlier").addEventListener("click", () => listener.shift(1));
   $("pp-nudge-open").addEventListener("click", () => { nudgeOpen = !nudgeOpen; drawListen(); });

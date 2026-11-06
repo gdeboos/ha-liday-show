@@ -18,6 +18,11 @@ asks for a short-lived pass (POST /api/listen, with the nearby check and, if "li
 PIN), then polls /api/listen/now for where the song is and plays a small copy of it (songcopy.py)
 in step with the lights. Phones only follow; they never move the lights.
 
+With "phones" on, visitors' phones can join the show (Join the show): the screen glows with the colours
+each show's bake carries for phones (static/js/phones.js), kept in time as listening is. The phone polls
+/api/phones/now for where the show is and fetches /api/phones/colours once a show. Shows with
+"phones": false in their own settings stay out.
+
 With "admin_pin" set, you can unlock your own phone (tap the page's title five times, type the PIN; POST
 /api/admin). It keeps a pass and sends it as X-Admin on every call, which skips Nearby, the opening
 hours, the listening PIN, the per-phone limit and a full queue, and works while visitors are off. The
@@ -42,7 +47,7 @@ from urllib.parse import urlencode
 
 from aiohttp import web
 
-from . import ai, appicon, imagemeta, playlists, schedule, songcopy, songtags, timingtest
+from . import ai, appicon, baked, imagemeta, playlists, schedule, songcopy, songtags, timingtest
 from . import runner as _runner
 from .runner import Runner
 from .storage import Storage, valid_id
@@ -217,6 +222,8 @@ def clean(p) -> dict:
             # Seconds every phone plays ahead of the lights (negative: behind), set with the pre-show
             # check's timing test; each phone's own Earlier and Later go on top.
             "listen_offset": clean_offset(p.get("listen_offset")),
+            # Visitors' phones can join the show: their screens glow with it (static/js/phones.js).
+            "phones": p.get("phones") is True,
             # Yours, to get past every check but the code (see the top of this file).
             "admin_pin": apin if _PIN.match(apin := str(p.get("admin_pin") or "").strip()) else ""}
 
@@ -706,6 +713,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "mine": mine,
         "needs_location": needs_location and not admin,
         "listen": {"pin": bool(p["listen_pin"]) and not admin} if p["listen"] else None,
+        # Phones join the show: on, and whether the one playing now has colours for them.
+        "phones": {"now": joining_now(storage, runner) is not None} if p["phones"] else None,
         "hours": {"open": True} if admin else hours_now(p, where, now),
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
                                          "corners", "size", "borders", "colours", "show_length", "warning",
@@ -1283,6 +1292,71 @@ async def get_listen_now(request):
     return _no_store(web.json_response(out))
 
 
+_PHONES_SEEN: dict = {}  # (path, mtime) -> its phone colours, so a crowd of phones doesn't read the file each time
+
+
+def joining_now(storage: Storage, runner: Runner) -> tuple[str, dict] | None:
+    """(key, {fps, colours}) for the show playing now, if visitors' phones can join it: a show (not a
+    building block, a scene or the timing test) that hasn't opted out, baked with phone colours. The key
+    changes whenever its bake does."""
+    st = runner.status()
+    show_id = st.get("show")
+    if not st["playing"] or not show_id or st.get("block") or (st.get("scene") or {}).get("playing") \
+            or show_id == timingtest.TIMING_ID or not valid_id(show_id):
+        return None
+    show = storage.load_show(show_id)
+    if not show or show.get("phones") is False:
+        return None
+    path = storage.shows_dir / f"{show_id}.gshow"
+    try:
+        mtime = path.stat().st_mtime_ns
+    except OSError:
+        return None
+    found = _PHONES_SEEN.get((path, mtime))
+    if found is None:
+        if len(_PHONES_SEEN) > 20:
+            _PHONES_SEEN.clear()
+        found = _PHONES_SEEN[(path, mtime)] = baked.phone_colours(baked.read_header(path)) or {}
+    if not found:
+        return None
+    return hashlib.sha256(f"{show_id}|{mtime}".encode()).hexdigest()[:16], found
+
+
+def _joining(request, code) -> dict:
+    """The settings, for a phone allowed to join the show (code right, phones on; the page on too, unless it's yours).
+    Unlike listening, no pass, Nearby check or PIN: all a phone gets is the show's colours and where it is,
+    which anyone in the street can already see. (Opening hours don't apply, as for listening.)"""
+    p = load(request.app[STORAGE]) or clean(None)
+    if not _code_ok(p, code):
+        raise web.HTTPForbidden(text=words(p)["locked"])
+    if not ((p["on"] or is_admin(request, p)) and p["phones"]):
+        raise web.HTTPConflict(text=words(p)["join_off"])
+    return p
+
+
+async def get_phones_now(request):
+    """Where the show playing now is, for phones that have joined it. Asked about once a second."""
+    _limit_client(request, "phones", MAX_LISTEN_PER_CLIENT_MIN)
+    _joining(request, request.query.get("code"))
+    now = joining_now(request.app[STORAGE], request.app[RUNNER])
+    if now is None:
+        return _no_store(web.json_response({"playing": False}))
+    # No listening offset: that's for the phone's sound, which comes out late; a screen lights at once.
+    out = {"playing": True, "key": now[0]}
+    out["position"] = round(request.app[RUNNER].player.position(), 4)  # last, as for listening
+    return _no_store(web.json_response(out))
+
+
+async def get_phones_colours(request):
+    """The colours for phones of the show playing now, if `key` is still it."""
+    _limit_client(request, "phones", MAX_LISTEN_PER_CLIENT_MIN)
+    _joining(request, request.query.get("code"))
+    now = joining_now(request.app[STORAGE], request.app[RUNNER])
+    if now is None or not secrets.compare_digest(now[0], str(request.query.get("key", ""))):
+        raise web.HTTPNotFound(text="that show isn't playing now")
+    return _no_store(web.json_response({"key": now[0], **now[1]}))
+
+
 async def get_listen_song(request):
     """The song playing now (its small copy), only for a phone with a listening pass."""
     _limit_client(request, "listen", MAX_LISTEN_PER_CLIENT_MIN)
@@ -1395,6 +1469,8 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
     r.add_post("/api/admin/stop", post_admin_stop)
     r.add_post("/api/admin/remove", post_admin_remove)
     r.add_get("/api/listen/now", get_listen_now)
+    r.add_get("/api/phones/now", get_phones_now)
+    r.add_get("/api/phones/colours", get_phones_colours)
     r.add_get("/listen/song", get_listen_song)
     r.add_get("/listen/silence.wav", get_silence)
     return app

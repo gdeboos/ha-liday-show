@@ -269,3 +269,11 @@ test("shared matrices: carried, read back safely, and matched to your matrices",
   assert.match(matrixNote(out.lights[0], mine[2]), /slice/);
   assert.equal(matrixNote(out.lights[2], mine[2]), "");
 });
+
+test("a show's Phones lane travels in a shared file", () => {
+  const show = { name: "Glow", tracks: [{ device: "@phones", clips: [{ effect: "solid", start: 0, end: 2 }] }] };
+  const share = readShare(JSON.stringify(makeShare(show, [])));
+  assert.deepEqual(share.tracks.map((t) => t.phones), [true]);
+  const { tracks } = buildTracks(share, {}, []);
+  assert.deepEqual(tracks.find((t) => t.device === "@phones").clips.map((c) => c.effect), ["solid"]);
+});

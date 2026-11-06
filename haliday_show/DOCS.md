@@ -723,7 +723,7 @@ songs. They're saved with your settings, so they're in **Export…** too.
 
 The Show panel shows the open show's name beside **← All shows**; to switch to another show, go back
 to the list. **⚙ Show settings…** opens the show's settings: its **Name**, **In progress** (see [Shows](#shows)), its **Palette** (below), its **Picture** (see [Songs](#songs)), its **Show speaker**
-(below), **Brightness** (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
+(below), **Brightness** (below), **Visitors' phones** (see [Phones join the show](#phones-join-the-show)), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
 
 #### A song's colours
 
@@ -2065,7 +2065,7 @@ link in a new tab.
 | **Hours** | [Opening hours](#opening-hours), finishing by closing time and rest breaks |
 | **Limits** | **How visitors pick** ([queue or vote](#voting-for-whats-next)), **Requests per phone**, **Queue length**, **Same song again after** and **Same phone again after** ([Keeping it fair](#visitors-queue)) |
 | **Shows** | [What visitors can pick](#what-visitors-can-pick) and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
-| **Listening** | [Listening on phones](#listening-on-phones) |
+| **Listening** | [Listening on phones](#listening-on-phones) and [Phones join the show](#phones-join-the-show) |
 | **Admin** | Your [Admin PIN](#admin-pin) |
 | **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom, and [looks through the year](#looks-through-the-year) |
 | **Words** | [Every message visitors read](#words), to change to your own |
@@ -2323,6 +2323,46 @@ How it works:
 - Keep the page open. On some phones the music stops when the screen locks; press **Listen** again
   to carry on.
 - Every word visitors see while listening is on the **Words** tab, under **Listening on a phone**.
+
+#### Phones join the show
+
+Visitors' phones can become part of the show: their screen glows with your lights' colours, in time
+with the music. Point a crowd of phones at the house and the whole street lights up with it. It's off
+until you turn it on.
+
+1. On the **Listening** page, turn on **Let visitors' phones join the show**. Every show joins.
+2. To leave a show out (a slow one, say), open it, then **⚙ Show settings…** and turn off **Phones join this
+   show** under **Visitors' phones**.
+3. On your phone, open the visitors' link while a show's on and press **Join** in the card at the top. After a
+   warning that the screen will flash, press **Join** again. **Leave** at the bottom of the screen goes back to the page.
+
+What phones show:
+
+- **Your house's main colour**, unless you say otherwise: the colours of every light that's on, mixed,
+  with brighter lights counting for more, and as bright as the brightest light. A dark house with one
+  bright prop shows that prop's colour, and when your lights fade, so do the phones.
+- **A show's own Phones lane**, if you'd rather design it: in **⚙ Show settings…**, press **Add a Phones
+  lane**. It appears under your lights in the timeline, and you add effects to it as you would to a
+  light with one bulb (the phone's screen). With a Phones lane, phones show only what's on it, and stay
+  dark in its gaps. **Remove the Phones lane** goes back to the house's main colour. ✨ **Generate**
+  leaves the Phones lane alone.
+
+While you edit, a small phone in the top corner of the **House** panel shows what phones will show at
+that moment, worked out just as the phones' colours are. It shows while phones join the show (or it has a
+Phones lane); click it to fold it away, and again to bring it back.
+
+How it works:
+
+- Phones join whatever show is on, however it was started, and carry on from show to show. Between shows,
+  during playlist building blocks and scenes, the screen goes dark and says it's waiting for the next show.
+- The colours are worked out when you save a show. Shows saved before HA-liday Show 0.2.367 have none: they
+  show as out of date in **Check all shows** (and the pre-show check) until they're saved again; **Fix**
+  does it for you. Until then, **Join** doesn't show for them.
+- Phones don't need to be listening, or nearby: they only follow the lights. The listening timing
+  doesn't apply to screens, which light up straight away.
+- The screen stays on while joined, on phones that allow it. Phones set to reduce motion fade gently
+  between colours rather than flashing.
+- Every word visitors see while joining is on the **Words** tab, under **Joining the show**.
 
 #### Words
 

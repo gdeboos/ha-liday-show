@@ -92,7 +92,8 @@ test("bake writes the GVSF layout the player reads", () => {
   assert.equal(new TextDecoder().decode(blob.subarray(0, 4)), "GVSF");
   const hlen = new DataView(blob.buffer).getUint32(5);
   const header = JSON.parse(new TextDecoder().decode(blob.subarray(9, 9 + hlen)));
-  assert.deepEqual(header, { fps: 10, frames: 10, tracks: [{ device: "a", segments: 2 }] });
+  // Phones get a colour ten times a second; this one's too dim to count as lit.
+  assert.deepEqual(header, { phones: { fps: 10, colours: "000000".repeat(10) }, fps: 10, frames: 10, tracks: [{ device: "a", segments: 2 }] });
   assert.equal(blob.length, 9 + hlen + 10 * 6);
   assert.deepEqual([...blob.subarray(9 + hlen, 9 + hlen + 6)], [1, 2, 3, 1, 2, 3]);
 });

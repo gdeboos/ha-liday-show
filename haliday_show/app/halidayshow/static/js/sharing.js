@@ -13,6 +13,7 @@ export const SHARE_VERSION = 2;
 const MAX_SHARED_PICTURES = 20;
 export const SHARE_EXT = ".halidayshow";
 const HOUSE = "@house";
+const PHONES = "@phones"; // phones.js: the Phones lane, which plays on visitors' phones
 const MAX_CLIPS = 50000, MAX_LIGHTS = 200;
 
 // What kind of light a saved light is: `label` for people, `group` for matching like with like.
@@ -82,6 +83,8 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
   for (const tr of show.tracks || []) {
     if (!tr.clips?.length) continue;
     if (tr.device === HOUSE) { out.tracks.push({ house: true, clips: tr.clips }); continue; }
+    // Older copies skip it, as a light that isn't in the file.
+    if (tr.device === PHONES) { out.tracks.push({ phones: true, clips: tr.clips }); continue; }
     const [id, pid] = String(tr.device).split("#");
     const d = byId.get(id);
     if (!d) continue;
@@ -185,12 +188,13 @@ export function readShare(text) {
   const tracks = [];
   for (const t of Array.isArray(s.tracks) ? s.tracks : []) {
     if (!t || !Array.isArray(t.clips)) continue;
-    if (!t.house && !keys.has(t.light)) continue;
+    const phones = t.phones === true && !t.house;
+    if (!t.house && !phones && !keys.has(t.light)) continue;
     const clips = t.clips.filter((c) => c && typeof c === "object" && typeof c.effect === "string"
       && Number.isFinite(c.start) && Number.isFinite(c.end) && c.end > c.start)
       .slice(0, Math.max(0, MAX_CLIPS - count));
     count += clips.length;
-    tracks.push(t.house ? { house: true, clips } : { light: t.light, part: typeof t.part === "string" ? t.part : undefined, clips });
+    tracks.push(t.house ? { house: true, clips } : phones ? { phones: true, clips } : { light: t.light, part: typeof t.part === "string" ? t.part : undefined, clips });
   }
   return {
     version: s.version, name: text64(s.name, "Shared show") || "Shared show",
@@ -357,6 +361,7 @@ export function buildTracks(share, plan, mine, fits = () => true) {
   const wholeOf = (m) => (m.whole ? [m.id] : m.parts.map((p) => p.id));
   for (const t of share.tracks) {
     if (t.house) { put(HOUSE, t.clips); continue; }
+    if (t.phones) { put(PHONES, t.clips); continue; }
     const p = plan[t.light];
     const m = p?.light && byId.get(p.light);
     if (!m) continue;

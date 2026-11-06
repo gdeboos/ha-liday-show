@@ -270,6 +270,7 @@ export class Timeline {
         : !dev ? tr.device
         : dev.light ? (dev.light.whole === false ? "Not played: parts only" : `${gridOf(dev.light) ? "Whole matrix" : "All parts"} · ${countText(dev)}`)
         : dev.parent ? (isRectPart(dev.part) ? rectText(dev.part) : rangeText(dev, dev.from, dev.to))
+        : dev.phones ? "On visitors' phones"
         : `${countText(dev)}${dev.ip || dev.entity ? "" : " · planned"}`;
       const note = !house && !lane && dev && this.app.trackNote?.(dev);
       if (note) ctx.fillStyle = WARN;

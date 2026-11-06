@@ -14,6 +14,7 @@ played, and start-up blanks those frames (migrate.drop_govee_scenes).
 import json
 import struct
 from dataclasses import dataclass
+from pathlib import Path
 
 MAGIC = b"GVSF"
 VERSION = 1
@@ -90,3 +91,35 @@ def decode(blob: bytes) -> Baked:
     if len(data) != frames * offset:
         raise BakedError(f"expected {frames * offset} bytes of frames, got {len(data)}")
     return Baked(fps, frames, tracks, data, offset)
+
+
+def read_header(path: Path) -> dict | None:
+    """A baked file's header only, without reading its frames; None if it isn't one."""
+    try:
+        with path.open("rb") as f:
+            head = f.read(9)
+            if len(head) < 9 or head[:4] != MAGIC:
+                return None
+            _, hlen = struct.unpack(">BI", head[4:9])
+            if hlen > 16 * 1024 * 1024:
+                return None
+            header = json.loads(f.read(hlen))
+    except (OSError, ValueError):
+        return None
+    return header if isinstance(header, dict) else None
+
+
+_HEX = set("0123456789abcdef")
+
+
+def phone_colours(header: dict | None) -> dict | None:
+    """What visitors' phones show (static/js/phones.js): {"fps", "colours"} ("rrggbb" each), or None for a
+    bake from before 0.2.367 or one that isn't right."""
+    phones = (header or {}).get("phones")
+    if not isinstance(phones, dict):
+        return None
+    fps, colours = phones.get("fps"), phones.get("colours")
+    if not (isinstance(fps, int) and 1 <= fps <= MAX_FPS and isinstance(colours, str) and len(colours) % 6 == 0
+            and set(colours) <= _HEX):
+        return None
+    return {"fps": fps, "colours": colours}

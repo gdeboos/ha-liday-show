@@ -107,7 +107,7 @@ songs. They're saved with your settings, so they're in **Export…** too.
 
 The Show panel shows the open show's name beside **← All shows**; to switch to another show, go back
 to the list. **⚙ Show settings…** opens the show's settings: its **Name**, **In progress** (see [Shows](#shows)), its **Palette** (below), its **Picture** (see [Songs](#songs)), its **Show speaker**
-(below), **Brightness** (below), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
+(below), **Brightness** (below), **Visitors' phones** (see [Phones join the show](public-page.md#phones-join-the-show)), **Save automatically a couple of seconds after each change**, and **Remove show…** to archive or delete it.
 
 #### A song's colours
 
