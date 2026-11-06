@@ -8546,7 +8546,10 @@ async function prepareAllSongs() {
   const todo = (app.songs || []).filter((s) => (!prepared(s.parts) || !s.sounds) && !/ \((vocals|music)\)\.wav$/i.test(s.path));
   if (!todo.length) { status("Every song is split into parts already", "saved", "parts"); return; }
   // Edits come after the originals, so theirs are cut from the originals' in seconds rather than split.
-  const isEdit = (s) => bases.has(songKey(s));
+  // An edit with layers or other songs spliced in can't be cut from its original: the AI splits it.
+  const cuttable = new Set();
+  for (const s of todo) if (bases.has(songKey(s)) && await editFor(s).catch(() => null)) cuttable.add(songKey(s));
+  const isEdit = (s) => cuttable.has(songKey(s));
   const originals = todo.filter((s) => !isEdit(s)), edits = todo.filter(isEdit);
   const split = originals.filter((s) => !prepared(s.parts)).length, cut = edits.filter((s) => !prepared(s.parts)).length;
   const queue = [...originals, ...edits].map((s) => ({ source: s.source, path: s.path }));
