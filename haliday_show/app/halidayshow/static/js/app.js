@@ -12442,8 +12442,8 @@ async function recentLooks() {
   try { list = await api("api/shows"); } catch { return []; }
   const recent = list.filter((s) => s.id !== app.showId).sort((a, b) => (b.modified || 0) - (a.modified || 0)).slice(0, 5);
   const count = {};
-  for (const s of recent) {
-    const show = await api(`api/shows/${encodeURIComponent(s.id)}`).catch(() => null);
+  const shows = await Promise.all(recent.map((s) => api(`api/shows/${encodeURIComponent(s.id)}`).catch(() => null)));
+  for (const show of shows) {
     const used = new Set();
     for (const tr of show?.tracks || []) for (const c of tr.clips || []) if (c?.effect && c.effect !== "fade") used.add(c.effect);
     for (const e of used) count[e] = (count[e] || 0) + 1;

@@ -208,7 +208,7 @@ function clipFor(look, start, end, bps, n, colors, offset) {
 export function generateShow(analysis, lights, colors, { style = "balanced", seed = 1, house = false, build = false, maxBars = 0,
   feel = null, avoid = [] } = {}) {
   const duration = analysis.duration;
-  // The looks a section can pick from: the feel's favourites (if it has at least three at that loudness),
+  // The moving looks a section can pick from (slow lights and grids keep their own short lists): the feel's favourites (if it has at least three at that loudness),
   // less any your other shows lean on (if that still leaves three).
   const liked = FEELS[feel]?.likes;
   const shortlist = (set) => {
