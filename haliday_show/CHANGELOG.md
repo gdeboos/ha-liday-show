@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.421
+
+- **Shows follow your mashups.** A song file made from a mashup now carries the words you actually hear: the layered song's lyrics where its vocals play (timed through the clip, at its tempo), and none of the song's own where you've muted its vocals. A **Singing face** on it mouths the right words, and **Drum hits** follow the drums that are really there rather than the original song's.
+
 ## 0.2.420
 
 - **Find a match.** When you add a clip in the Music editor, **Sort: Best fit first** puts the songs that would fit best over yours at the top, each with **Great fit**, **Good fit**, **Fits with a change** or **Big change** and why ("4 BPM faster · C major, fits A minor").

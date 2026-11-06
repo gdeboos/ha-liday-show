@@ -611,6 +611,14 @@ sample saved with **Save as sample…** includes the layers.
    (the Mixer's **Vocals** row) and the singing on a layer of its own, ready to play. Neither song is
    changed. Fine-tune it as you would any draft, then **Make song file**.
 
+**Shows on a mashup.** When you make a song file from a mashup (a draft with layers, or with the song's
+own parts changed), its words are the ones you hear: another song's lyrics where its vocals (or the whole
+song) play on a layer, timed through the clip (its trims, and its tempo if it's matched), and none of the
+song's own where its vocals are muted. Its drum hits come from the drums you hear too, layers and all.
+So a **Singing face** in a show on it mouths the layered singer's words, and **Drum hits** flash on the
+drums that are really there. To change a mashup's words, open **Lyrics…** in a show on it (they're its
+own, not its songs'), or change the songs' lyrics and make the file again.
+
 **Find a match.** In **⋯ → + Add a clip at the playhead…**, under **Songs**, **Sort: Best fit first**
 (beside **By name**) puts the songs that would fit best over this one at the top, going by the tempo and
 key **Detect** found. Each says how well: **Great fit**, **Good fit**, **Fits with a change** or **Big
