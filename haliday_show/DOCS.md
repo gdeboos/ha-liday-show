@@ -918,6 +918,11 @@ minutes for a song. Otherwise it runs on the processor and can take as long as t
 times over, so leave the page open and come back. Songs with clear lead vocals split best; backing
 singers and effects can stay in the music, and a little of the music in the vocals.
 
+While it works, a window covers the page saying what it's doing (downloading the AI, splitting, saving)
+and how far along it is. **Cancel** stops it, and your songs stay as they were. If the download is cut
+off part way, it's tried again twice; if it still fails, HA-liday Show's log (in Home Assistant, the app's **Log** tab)
+says why.
+
 ### Samples
 
 **Library → Samples** keeps short sounds, such as sleigh bells, a "ho ho ho" or a voice saying "Merry

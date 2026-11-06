@@ -34,12 +34,48 @@ export function wav16(channels, rate) {
 let busy = false;
 const MAX_MINUTES = 8; // longer songs need more memory than a phone or tablet has for this
 
+// A window over the page while the split runs (it takes minutes): a spinner, what's happening, how far
+// along, and Cancel. Esc cancels too. Returns {say(text, done 0-1 or null), close()}.
+function progressWindow(title, onCancel) {
+  const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text ? { textContent: text } : {});
+  const dlg = el("dialog", "effect-dialog busy-dialog");
+  dlg.setAttribute("aria-labelledby", "split-busy-title");
+  const h = el("h3", "", title);
+  h.id = "split-busy-title";
+  const row = el("p", "busy-row"), text = el("span");
+  text.setAttribute("aria-live", "polite");
+  row.append(el("span", "spinner"), text);
+  const bar = el("progress", "busy-progress");
+  bar.max = 1;
+  const hint = el("p", "hint", "It runs in this browser, so keep this page open until it's done. Your songs aren't changed: "
+    + "the vocals and the music are saved as two new songs.");
+  const cancel = el("button", "ghost", "Cancel");
+  cancel.type = "button";
+  let locked = false;
+  cancel.addEventListener("click", () => { if (!locked) onCancel(); });
+  const actions = el("div", "insp-actions");
+  actions.append(cancel);
+  dlg.append(h, row, bar, hint, actions);
+  dlg.addEventListener("cancel", (e) => { e.preventDefault(); if (!locked) onCancel(); });
+  document.body.append(dlg);
+  dlg.showModal();
+  return {
+    say(t, done = null) {
+      text.textContent = t;
+      if (done == null) bar.removeAttribute("value"); else bar.value = done;
+    },
+    // Saving can't be stopped part way, so Cancel goes once it starts.
+    lock() { locked = true; cancel.disabled = true; hint.textContent = "Saving the two new songs. Nearly done."; },
+    close() { if (dlg.open) dlg.close(); dlg.remove(); },
+  };
+}
+
 // ref: the song ({source, path}). host: {api, status(text, kind), askYes(text, opts), songs() (the list,
 // for names already taken), songsChanged()}.
 export async function splitVocals(ref, host) {
   if (busy) return host.status("Already splitting a song: wait for it to finish", "hint");
   busy = true; // from the first question on, so a second press can't start another meanwhile
-  let worker = null;
+  let worker = null, win = null, cancelled = false;
   try {
     const song = ref.path.split("/").pop().replace(/\.[^.]+$/, "");
     const names = stemNames(ref.path);
@@ -50,40 +86,55 @@ export async function splitVocals(ref, host) {
     const taken = new Set((host.songs() || []).filter((s) => s.source === "media").map((s) => s.path.toLowerCase()));
     if ((taken.has(`haliday_show/${names.vocals}`.toLowerCase()) || taken.has(`haliday_show/${names.music}`.toLowerCase()))
         && !(await host.askYes(`${song} has been split before. Replace those songs? Shows that use them will play the new ones.`, { yes: "Replace" }))) return;
+    // Cancel ends whatever is being waited for at once (loading the song, the split).
+    let stop = null;
+    const stopped = new Promise((_, reject) => { stop = reject; });
+    stopped.catch(() => {});
+    const unlessCancelled = (p) => Promise.race([p, stopped]);
+    win = progressWindow(`Splitting ${song}`, () => {
+      cancelled = true;
+      worker?.terminate();
+      stop(new Error("cancelled"));
+    });
+    const say = (text, done = null) => { win.say(text, done); host.status(text); };
     worker = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
-    host.status(`Loading ${song}…`);
+    say(`Loading ${song}…`);
     let decoded;
     try {
-      const bytes = await fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(ref.path)}`);
-      decoded = await new OfflineAudioContext(2, 1, MDX.rate).decodeAudioData(bytes); // resampled to the model's rate
-    } catch (e) { throw new Error(songLoadMessage(e)); }
+      const bytes = await unlessCancelled(fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(ref.path)}`));
+      decoded = await unlessCancelled(new OfflineAudioContext(2, 1, MDX.rate).decodeAudioData(bytes)); // resampled to the model's rate
+    } catch (e) { throw cancelled ? e : new Error(songLoadMessage(e)); }
     if (decoded.duration > MAX_MINUTES * 60) {
       throw new Error(`it's longer than ${MAX_MINUTES} minutes, more than a browser can split in one go. Cut it shorter in the Music editor first`);
     }
     const left = Float32Array.from(decoded.getChannelData(0));
     const right = decoded.numberOfChannels > 1 ? Float32Array.from(decoded.getChannelData(1)) : Float32Array.from(left);
     decoded = null; // let the decoded copy go before the split needs its memory
-    const result = await new Promise((resolve, reject) => {
+    if (cancelled) throw new Error("cancelled");
+    const result = await unlessCancelled(new Promise((resolve, reject) => {
       worker.onmessage = ({ data }) => {
         if (data.error) reject(new Error(data.error));
         else if (data.vocals) resolve(data);
-        else host.status(data.stage === "download" ? `Downloading the AI for Split vocals… ${Math.round(data.done * 100)}%`
-          : `Splitting ${song}… ${Math.round(data.done * 100)}%`);
+        else say(data.stage === "download" ? `Downloading the AI for Split vocals (the first time only)… ${Math.round(data.done * 100)}%`
+          : `Splitting ${song}… ${Math.round(data.done * 100)}%`, data.done);
       };
       worker.onerror = (e) => reject(new Error(e.message || "the AI couldn't start in this browser"));
       worker.postMessage({ left, right }, [left.buffer, right.buffer]);
-    });
+    }));
+    win.lock();
     for (const [part, channels] of [["vocals", result.vocals], ["music", result.music]]) {
       const name = names[part];
       await uploadSong(host.api, new Blob([wav16(channels, MDX.rate)], { type: "audio/wav" }), name,
-        (done) => { if (done < 1) host.status(`Saving ${name}… ${Math.round(done * 100)}%`); }, { coverFrom: ref });
+        (done) => { if (done < 1) say(`Saving ${name}… ${Math.round(done * 100)}%`, done); }, { coverFrom: ref });
     }
     await host.songsChanged?.();
     host.status(`Split ${song}: saved "${names.vocals.replace(/\.wav$/, "")}" and "${names.music.replace(/\.wav$/, "")}" to your songs. `
       + "Use them as layers in the Music editor", "saved");
   } catch (e) {
-    host.status(`Couldn't split ${ref.path.split("/").pop().replace(/\.[^.]+$/, "")}: ${e.message}`, true);
+    if (cancelled) host.status("Split vocals cancelled. Your songs are as they were", "hint");
+    else host.status(`Couldn't split ${ref.path.split("/").pop().replace(/\.[^.]+$/, "")}: ${e.message}`, true);
   } finally {
+    win?.close();
     worker?.terminate();
     busy = false;
   }
