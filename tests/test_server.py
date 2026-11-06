@@ -1088,6 +1088,15 @@ async def test_draft_layers_are_kept_and_checked(client, tmp_path):
     assert (await (await client.get(f"/api/drafts/{under}")).json())["layers"][0]["duckFrom"] == "vocals"
     for bad_from in ("drums", True, 1):
         assert (await client.post("/api/drafts", json={**draft, "layers": [{"name": "x", "duck": True, "duckFrom": bad_from, "clips": []}]})).status == 400
+    # Volume changes over stretches: a level, or a fade in or out; kept, and anything odd refused.
+    a, b = {"song": {"source": "media", "path": "a.mp3"}, "t": 4}, {"song": {"source": "media", "path": "a.mp3"}, "t": 8}
+    changed = (await (await client.post("/api/drafts", json={**draft, "layers": [{"name": "Horn", "clips": [], "changes": [
+        {"gain": -60, "from": a, "to": b}, {"gain": 0, "fade": "in", "from": a, "to": b}]}]})).json())["id"]
+    assert (await (await client.get(f"/api/drafts/{changed}")).json())["layers"][0]["changes"] == [
+        {"gain": -60.0, "from": a, "to": b}, {"gain": 0.0, "fade": "in", "from": a, "to": b}]
+    for bad_change in ({"gain": -61, "from": a, "to": b}, {"gain": 0, "fade": "up", "from": a, "to": b}, {"gain": 0, "from": a},
+                       {"gain": 0, "from": a, "to": {"t": 3}}, "x"):
+        assert (await client.post("/api/drafts", json={**draft, "layers": [{"name": "x", "clips": [], "changes": [bad_change]}]})).status == 400
     # Muted: kept when on, left out when off.
     muted = (await (await client.post("/api/drafts", json={**draft, "layers": [
         {"name": "Voice", "muted": True, "clips": []}, {"name": "Bells", "muted": False, "clips": []}]})).json())["id"]

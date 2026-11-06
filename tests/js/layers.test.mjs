@@ -304,3 +304,30 @@ test("a layer can go quieter while the song sings, instead of quietening the son
   assert.equal(duckEnvelope([horn], placed, sources, n, rate), null);
   near(mixLayers(main, [horn], placed, sources, rate)[0][5000], 0.5, "no vocals: as it is");
 });
+
+test("a layer's volume can change over stretches of the song, and the song doesn't dip where it's muted", async () => {
+  const { layerLevel, layerGainAt, setLevelChange, LEVEL_MUTE } = await import("../../haliday_show/app/halidayshow/static/js/layers.js");
+  const at = (t) => ({ song: A, t });
+  const L = { name: "Horn", gain: 0, duck: true, clips: [{ song: B, start: 0, end: 10, anchor: at(0) }], changes: [
+    { gain: LEVEL_MUTE, from: at(2), to: at(4) }, { gain: 0, fade: "in", from: at(6), to: at(8) }, { gain: -6, from: at(8), to: at(9) }] };
+  const segs = layerLevel(L, song, 0);
+  near(layerGainAt(segs, 1), 1, "as it is before");
+  near(layerGainAt(segs, 3), 0, "muted");
+  near(layerGainAt(segs, 7), 0.5, "halfway through the fade in");
+  near(layerGainAt(segs, 8.5), 10 ** (-6 / 20), "6 dB down");
+  assert.ok(layerGainAt(segs, 4.01) > 0 && layerGainAt(segs, 4.01) < 1, "ramping back up, no click");
+  // Mixed: the horn is silent over 2-4 s, and the song only dips where the horn's heard.
+  const rate = 100, n = 1000;
+  const sources = { "media:b.mp3": [new Float32Array(1000).fill(0.5)] };
+  const placed = placeClips([L], song, 0);
+  const out = mixLayers([new Float32Array(n)], [L], placed, sources, rate, { pieces: song, crossfade: 0 })[0];
+  near(out[300], 0, "silent where muted");
+  near(out[100], 0.5, "heard before");
+  const env = duckEnvelope([L], placed, sources, n, rate, { pieces: song, crossfade: 0 });
+  assert.ok(env[300] > env[100], "the song comes back up where the horn's muted");
+  // A new change over part of an old one keeps the old one's other bits; null takes them off.
+  const toResult = (x) => x.t;
+  const c2 = setLevelChange(L.changes, at(3), at(5), { gain: -6 }, toResult);
+  assert.deepEqual(c2.map((c) => [c.from.t, c.to.t, c.gain]).sort((x, y) => x[0] - y[0]), [[2, 3, LEVEL_MUTE], [3, 5, -6], [6, 8, 0], [8, 9, -6]]);
+  assert.deepEqual(setLevelChange(L.changes, at(5.5), at(7), null, toResult).map((c) => c.from.t), [2, 8], "a fade cut into goes");
+});

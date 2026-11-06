@@ -1215,6 +1215,12 @@ says **Editing layer Choir**, its lane is outlined and its Mixer row says **Edit
 - **Keep only this** trims the layer to the selection, leaving the rest of it silent.
 - **Repeat ×2** and **Repeat ×4** play that stretch of the layer twice or four times in a row; the rest of
   the layer moves on after it, and anything pushed past the song's end is left out.
+- Under the selection, the layer's own group (**Choir here** for a layer called Choir) changes the layer's volume over just that stretch: **Mute here**,
+  **Quieter here** (6 dB down), **Fade in here** or **Fade out here** (from silent to full, or the other
+  way, across the selection). Each shows on the layer's lane, hatched or as a slope, and stays with that
+  moment of the song if you cut the song afterwards. **As it was** (or **Muted here ✕**) takes them off the
+  selection. A layer that quietens the song doesn't dip it where the layer's muted, and a muted vocals
+  layer's words are left out of a song file made from it.
 - **Add another song** goes into the layer: pick the song with **Choose song…** as usual, then **Insert
   into Choir at playhead** (the rest of the layer moves on by its length; a clip running across the
   playhead is split there) or **Add to end of Choir** (after its last clip). The song and the other layers

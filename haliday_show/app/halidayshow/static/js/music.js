@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, keyFrom, keyShift, toMono } from "
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, insertIntoLayer, keepLayer, loopLayer, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, singingCurve, sourceKey } from "./layers.js";
+import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, cutLayer, insertIntoLayer, keepLayer, loopLayer, layerLevel, setLevelChange, LEVEL_MUTE, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, resultTime, singingCurve, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
 import { lineUpOnBar, mashFit } from "./mashfit.js";
@@ -1692,7 +1692,39 @@ export class MusicEditor {
           : btn(`Mute ${name} here`, `No ${name} over the selection`, () => this.setPartHere(p, MUTE));
       }), btn("Vocals only here", "Just the singing over the selection: an a cappella stretch", () => this.setPartHere("only-vocals", MUTE)));
     }
+    // A layer being edited: its volume over the selection.
+    const showLayer = this.focus != null;
+    $("music-range-layer").hidden = !showLayer;
+    if (showLayer) {
+      const L = this.layers[this.focus], name = L.name;
+      const btn = (text, title, fn, on = false) => {
+        const b = Object.assign(document.createElement("button"), { type: "button", textContent: text, title, className: on ? "on" : "" });
+        b.addEventListener("click", fn);
+        return b;
+      };
+      const here = (layerLevel(L, this.pieces, this.crossfade) || []).filter(([a, b]) => b > sel.start + 0.01 && a < sel.end - 0.01);
+      const muted = here.some(([, , v, fade]) => !fade && v === 0);
+      $("music-range-layer-what").textContent = `${name} here`;
+      $("music-range-layer-btns").replaceChildren(
+        muted ? btn("Muted here ✕", `Bring ${name} back over the selection`, () => this.setLayerHere(null), true)
+          : btn("Mute here", `No ${name} over the selection`, () => this.setLayerHere({ gain: LEVEL_MUTE })),
+        btn("Quieter here", `${name} 6 dB quieter over the selection`, () => this.setLayerHere({ gain: -6 })),
+        btn("Fade in here", `${name} comes in gradually across the selection`, () => this.setLayerHere({ gain: 0, fade: "in" })),
+        btn("Fade out here", `${name} goes out gradually across the selection`, () => this.setLayerHere({ gain: 0, fade: "out" })),
+        ...(here.length && !muted ? [btn("As it was ✕", `Take ${name}'s volume changes off the selection`, () => this.setLayerHere(null))] : []));
+    }
     $("music-range-len").textContent = `${(sel.end - sel.start).toFixed(1)} s${bars > 1 ? `, about ${bars} bars` : ""}`;
+  }
+
+  // The focused layer's volume over the selection: a level or a fade ({gain, fade}), or null for as it was.
+  setLayerHere(change) {
+    if (!this.sel || this.focus == null) return;
+    const { start, end } = this.sel, refs = this.refs;
+    const from = anchorAt(this.pieces, this.crossfade, start, refs), to = anchorAt(this.pieces, this.crossfade, end, refs);
+    if (!from || !to) return;
+    const toResult = (x) => resultTime(this.pieces, this.crossfade, x);
+    const i = this.focus, L = this.layers[i];
+    this.editLayers(this.layers.map((l, k) => (k === i ? { ...l, changes: setLevelChange(L.changes, from, to, change, toResult) } : l)), null);
   }
 
   // The song's parts in the Song panel: a chip naming them when it has them all, and Split into parts…
@@ -2579,7 +2611,7 @@ export class MusicEditor {
     this.focusView(placed, rate);
     const steps = this.main ? Math.ceil((this.main[0].length / rate) * OVERLAY_RATE) + 1 : 0;
     this.overlay = {
-      dip: steps ? dipCurve(this.layers, heard, this.sources, steps, OVERLAY_RATE) : null, // the dips you can hear
+      dip: steps ? dipCurve(this.layers, heard, this.sources, steps, OVERLAY_RATE, { pieces: this.pieces, crossfade: this.crossfade }) : null, // the dips you can hear
       eq: steps && !isFlat(this.eq) ? eqCurves(this.eq, placeChanges(this.eq, this.pieces, this.crossfade), steps, OVERLAY_RATE) : null,
       filter: steps && [this.eq, ...(this.eq?.changes || [])].some((s) => s?.filter)
         ? filterCurve(this.eq, placeChanges(this.eq, this.pieces, this.crossfade), steps, OVERLAY_RATE) : null,
@@ -2757,7 +2789,14 @@ export class MusicEditor {
       const c = cut.layers[p.layer].clips[p.clip], part = partOfPath.get(c.song.path)?.part;
       if (part && part !== "vocals") continue; // no singing in its drums, bass or the rest
       const from = songOfClip(c.song), theirs = from && await this.host.api(lyricsUrl(from)).catch(() => null);
-      if (theirs) sung.push({ lyrics: theirs, at: p.at, start: c.start, end: c.end, speed: p.speed });
+      if (!theirs) continue;
+      // Not where its layer's muted over a stretch: the bits either side.
+      const off = (layerLevel(cut.layers[p.layer], this.pieces, this.crossfade) || []).filter(([, , v, fade]) => !fade && v === 0);
+      let from0 = p.at;
+      const e = p.at + (c.end - c.start) / p.speed;
+      const bit = (a, b) => { if (b - a > 0.05) sung.push({ lyrics: theirs, at: a, start: c.start + (a - p.at) * p.speed, end: c.start + (b - p.at) * p.speed, speed: p.speed }); };
+      for (const [a, b] of off) { if (b <= from0 || a >= e) continue; bit(from0, Math.min(a, e)); from0 = Math.max(from0, b); }
+      bit(from0, e);
     }
     const mashed = this.pieces.length > 0 && (sung.length > 0 || muted === true || muted.length > 0);
     if (mashed) lyrics = mashLyrics(words, this.pieces, this.crossfade, baseKey, { muted, clips: sung });
@@ -3334,6 +3373,32 @@ export class MusicEditor {
         } else ctx.fillStyle = col("--text");
         ctx.fillText(text, lx + 4, top + 12);
         ctx.restore();
+      }
+      // Its volume changes: muted or quieter stretches hatched, fades as slopes, each named.
+      for (const [a, b, v, fade] of layerLevel(l, this.pieces, this.crossfade) || []) {
+        const x0 = this.x(a), x1 = this.x(b), top = y + 3, bot = y + LANE_H - 3;
+        if (x1 < 0 || x0 > w) continue;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x0, y, x1 - x0, LANE_H); ctx.clip();
+        ctx.fillStyle = `hsl(${hue} 65% 20% / 0.45)`;
+        ctx.strokeStyle = `hsl(${hue} 65% 25% / 0.6)`;
+        if (fade) {
+          ctx.beginPath();
+          if (fade === "in") { ctx.moveTo(x0, top); ctx.lineTo(x1, top); ctx.lineTo(x0, bot); }
+          else { ctx.moveTo(x1, top); ctx.lineTo(x0, top); ctx.lineTo(x1, bot); }
+          ctx.fill();
+        } else if (v < 1) {
+          for (let x = x0 - LANE_H; x < x1; x += 7) { ctx.beginPath(); ctx.moveTo(x, y + LANE_H); ctx.lineTo(x + LANE_H, y); ctx.stroke(); }
+        }
+        ctx.restore();
+        const text = fade ? `Fade ${fade}` : v === 0 ? "Muted here" : `${Math.round(20 * Math.log10(v))} dB here`;
+        if (!fade && v >= 1) continue;
+        ctx.font = "600 10px system-ui, sans-serif";
+        const tw = ctx.measureText(text).width, tx = Math.max(x0 <= 0 ? 110 : 2, x0 + 4);
+        if (tx + tw > x1) continue;
+        ctx.fillStyle = col("--panel"); ctx.fillRect(tx - 2, bot - 14, tw + 4, 13);
+        ctx.fillStyle = col("--text"); ctx.fillText(text, tx, bot - 4);
+        ctx.font = "11px system-ui, sans-serif";
       }
       // A layer that isn't heard (muted, or something else soloed) shows faded.
       if (!this.heard(i)) {

@@ -1749,8 +1749,29 @@ def _clean_song_parts(parts) -> dict | None:
     return out
 
 
+def _clean_level_changes(changes) -> list[dict] | None:
+    """A layer's volume over stretches of the song: [{gain (dB -60 to 6), fade ("in" or "out", optional),
+    from: {song, t}, to: {song, t}}]."""
+    if not isinstance(changes, list) or len(changes) > MAX_PART_CHANGES:
+        return None
+    out = []
+    for c in changes:
+        if not isinstance(c, dict) or not isinstance(c.get("from"), dict) or not isinstance(c.get("to"), dict):
+            return None
+        g, fade = c.get("gain", 0), c.get("fade")
+        if isinstance(g, bool) or not isinstance(g, (int, float)) or not math.isfinite(g) or not -60 <= g <= 6 \
+                or fade not in (None, "in", "out"):
+            return None
+        ends = [(_song_ref(c[k].get("song")), _seconds(c[k].get("t"), 86400)) for k in ("from", "to")]
+        if any(None in e for e in ends):
+            return None
+        out.append({"gain": round(float(g), 1), **({"fade": fade} if fade else {}),
+                    "from": {"song": ends[0][0], "t": ends[0][1]}, "to": {"song": ends[1][0], "t": ends[1][1]}})
+    return out
+
+
 def _clean_layers(layers) -> list[dict] | None:
-    """A draft's layers: [{name, gain, duck, duckFrom, duckDb, matchTempo, eq (all optional), clips: [{song, start, end,
+    """A draft's layers: [{name, gain, duck, duckFrom, duckDb, matchTempo, eq, changes (all optional), clips: [{song, start, end,
     anchor: {song, t}, gain, fadeIn, fadeOut, bpm (optional)}]}], samples or songs played over the song,
     each clip pinned to a moment in it."""
     if not isinstance(layers, list) or len(layers) > MAX_LAYERS:
@@ -1794,6 +1815,9 @@ def _clean_layers(layers) -> list[dict] | None:
         if not isinstance(match_key, bool) or (semis is not None and (isinstance(semis, bool) or not isinstance(semis, int)
                                                                         or not -6 <= semis <= 6)):
             return None
+        changes = _clean_level_changes(layer["changes"]) if layer.get("changes") is not None else []
+        if changes is None:
+            return None
         duck_from = layer.get("duckFrom")  # "vocals": it goes quieter while the song sings, not the song under it
         if duck_from is not None and duck_from != "vocals":
             return None
@@ -1806,6 +1830,8 @@ def _clean_layers(layers) -> list[dict] | None:
             out[-1]["duck"] = True
         if duck_from:
             out[-1]["duckFrom"] = duck_from
+        if changes:
+            out[-1]["changes"] = changes
         if duck_db is not None:
             out[-1]["duckDb"] = round(float(duck_db), 1)
         if match_key:
