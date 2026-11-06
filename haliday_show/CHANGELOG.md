@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.395
+
+- **Sharper Singing faces on phones.** On visitors' phones (and the phone preview in the editor), a Singing face is now drawn four times finer each way, so it looks smooth instead of blocky. Everything else on the Phones lane keeps its LED-dot look, matching your matrices. The phone draws it itself, so nothing extra is sent and the timing is unchanged.
+
 ## 0.2.394
 
 - **Cards in the Library.** **Shows**, **Scenes**, **Pictures**, **Faces** and **Palettes** now show as cards: a show's cover art or picture big across the top, a scene's or palette's colours as a wide strip, each picture and face large. **Cards** and **List** at the top right of each switch back to rows if you prefer, remembered for each one. **Songs**, **Samples**, **Playlists** and **Presets** stay as rows.
