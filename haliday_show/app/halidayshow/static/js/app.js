@@ -65,7 +65,7 @@ import {
   copyPlaylist, itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
 } from "./playlisteditor.js";
 import { addLayoutSwitches } from "./liblayout.js";
-import { familyCount, filterFamilies, songFamilies, songKey, songRows, splitUsers } from "./songlist.js";
+import { familyCount, filterFamilies, songFamilies, songKey, partsText, songRows, splitUsers } from "./songlist.js";
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
 import { askText, askYes } from "./ask.js";
 import { movePart } from "./partorder.js";
@@ -8654,12 +8654,13 @@ function songKid(kind, icon, name, badge, lines, actions, song = null) {
   return row;
 }
 
-// Split vocals… for a song's row (splitvocals.js): its vocals and music saved as two new songs.
+// Split vocals… for a song's row (splitvocals.js): its vocals and music kept with it as its parts.
 function splitButton(r) {
-  const split = button("Split vocals…", () => splitVocals(r.ref, { api, askYes, status: (text, kind) => status(text, kind, "songs"),
-    songs: () => songRowsCache.map((x) => x.ref), songsChanged: () => renderSongsPage() }), "ghost");
+  const again = !!r.parts?.vocals;
+  const split = button(again ? "Split vocals again…" : "Split vocals…", () => splitVocals(r.ref, { api, askYes, status: (text, kind) => status(text, kind, "songs"),
+    songsChanged: async () => { await refreshAudio().catch(() => {}); renderSongsPage(); } }), "ghost");
   split.setAttribute("aria-label", `Split ${r.name} into its vocals and music`);
-  split.title = "Split the song into its vocals and the music behind them, saved as two new songs. An AI does it in your browser";
+  split.title = "Split the song into its vocals and the music behind them, kept with the song as its parts. An AI does it in your browser";
   return split;
 }
 
@@ -8670,6 +8671,7 @@ function editKid(e) {
   const len = document.createElement("span");
   len.textContent = "…";
   details.append(len, ` · ${r.found} · `, d ? `made from the draft "${d.name}"` : "made before drafts, so Edit starts a new one");
+  if (partsText(r.parts)) details.append(` · parts: ${partsText(r.parts)}`);
   const uses = document.createElement("div");
   uses.className = "hint";
   uses.textContent = r.uses;
@@ -8830,6 +8832,7 @@ function songRow(r) {
   const len = document.createElement("span");
   len.textContent = "…";
   details.append(label, len, ` · ${r.found}`);
+  if (partsText(r.parts)) details.append(` · parts: ${partsText(r.parts)}`);
   const uses = document.createElement("div");
   uses.className = "hint";
   uses.textContent = r.uses;
@@ -10533,9 +10536,14 @@ function reportUnfit() {
 // and kept with it (api/audio/voice), so every show on the song uses the same; a show keeps a copy.
 const usesFace = (show) => (show?.tracks || []).some((t) => t.clips?.some((c) => c.effect === "singingface"));
 const songExtraUrl = (what, ref) => `api/audio/${what}?${new URLSearchParams({ source: ref.source, path: ref.path })}`;
-// The song's vocals, if Split vocals has made them (your songs list says).
-const vocalsOf = (ref) => vocalsPlaces(ref, stemNames(ref.path).vocals)
-  .find((v) => (app.songs || []).some((s) => s.source === v.source && s.path.toLowerCase() === v.path.toLowerCase()));
+// The song's vocals part, if Split vocals has made it (your songs list says); before 0.2.401 they were a
+// song of their own, which start-up moves into the song's parts, but one it couldn't match stays.
+function vocalsOf(ref) {
+  const song = (app.songs || []).find((s) => s.source === ref.source && s.path === ref.path);
+  if (song?.parts?.vocals) return { source: "media", path: song.parts.vocals };
+  return vocalsPlaces(ref, stemNames(ref.path).vocals)
+    .find((v) => (app.songs || []).some((s) => s.source === v.source && s.path.toLowerCase() === v.path.toLowerCase()));
+}
 
 // The singer of the song `ref` (decoded as `song`): as kept with the song, or measured now (fresh:
 // always) and kept with it.
@@ -10941,14 +10949,25 @@ async function saveClicked() {
 async function refreshAudio() {
   madeFrom.clear(); // drafts and their files may have changed
   const list = await api("api/audio");
+  // Each song's parts stay readable (song.parts) but out of anything a song is copied into or saved
+  // as (a show's song, a draft's), which only ever hold {source, path}.
+  for (const a of list) {
+    const parts = a.parts || {};
+    delete a.parts;
+    Object.defineProperty(a, "parts", { value: parts, enumerable: false });
+  }
   app.songs = list;
   const sel = $("audio-select");
   sel.replaceChildren(new Option("No song (lights only)", ""));
   const current = app.show?.audio;
   for (const a of list) {
     const label = `${a.source === "media" ? "Media" : "Uploaded"}: ${a.path}`;
-    const value = JSON.stringify(a);
+    const value = JSON.stringify({ source: a.source, path: a.path });
     sel.add(new Option(label, value, false, !!current && current.source === a.source && current.path === a.path));
+  }
+  // A show playing one of a song's parts (its vocals, say), which aren't listed as songs.
+  if (current?.path?.includes("/.parts/") && !list.some((a) => a.source === current.source && a.path === current.path)) {
+    sel.add(new Option(`Part: ${songLabel(current)}`, JSON.stringify({ source: current.source, path: current.path }), false, true));
   }
 }
 
@@ -10999,7 +11018,16 @@ async function loadAudio(ref) {
   renderSongSummary();
 }
 
-const songLabel = (ref) => ref.path.split("/").pop().replace(/\.[^.]+$/, "");
+// A song's name from its file; one of a song's parts (its vocals, say) is named after the song: "Carol (vocals)".
+function songLabel(ref) {
+  if (ref.path.includes("/.parts/")) {
+    for (const s of app.songs || []) {
+      const part = Object.entries(s.parts || {}).find(([, path]) => path === ref.path)?.[0];
+      if (part) return `${songLabel(s)} (${part})`;
+    }
+  }
+  return ref.path.split("/").pop().replace(/\.[^.]+$/, "");
+}
 
 // The Song panel's one line: the song's name, then its length, tempo and sections when known.
 function renderSongSummary() {

@@ -302,3 +302,59 @@ def retired(config_dir: Path) -> dict | None:
         return json.loads((config_dir / RETIRED).read_text())
     except (OSError, ValueError):
         return None
+
+
+_SPLIT = re.compile(r"^(.*) \((vocals|music)\)\.wav$", re.IGNORECASE)
+
+
+def splits_to_parts(storage) -> list[dict]:
+    """Before 0.2.401 Split vocals saved "<song> (vocals).wav" and "<song> (music).wav" as songs of their
+    own, in HA-liday Show's songs folder or beside the song. They become that song's parts (Storage.
+    song_parts), and every show, draft and song folder using one follows it there. A split whose song
+    can't be told (gone, or two songs of that name) stays a song. Returns [{from, to}]."""
+    from .archive import _relink  # archive imports nothing of this module; imported here as only this needs it
+
+    songs = [r for r in storage.list_audio() if r["source"] == "media"]
+    by_name: dict[str, list[str]] = {}
+    for r in songs:
+        if not _SPLIT.match(Path(r["path"]).name):
+            by_name.setdefault(Path(r["path"]).stem.lower(), []).append(r["path"])
+    own = storage.upload_dir.relative_to(storage.media_dir).as_posix()
+    moved = []
+    for r in songs:
+        m = _SPLIT.match(Path(r["path"]).name)
+        if not m:
+            continue
+        folder = Path(r["path"]).parent.as_posix()
+        candidates = by_name.get(m.group(1).lower(), [])
+        beside = [c for c in candidates if Path(c).parent.as_posix() == folder]
+        # Beside the song, or (where Split vocals saved them) in HA-liday Show's own folder for a song anywhere.
+        song = beside[0] if len(beside) == 1 else candidates[0] if folder == own and len(candidates) == 1 else None
+        if song is None or m.group(2).lower() in storage.song_parts("media", song):
+            continue
+        src = storage.audio_path("media", r["path"])
+        new = storage.save_part("media", song, m.group(2).lower(), src)
+        if new is None:
+            continue
+        storage._song_info_file("media", r["path"]).unlink(missing_ok=True)
+        moved.append({"from": r["path"], "to": new})
+    if not moved:
+        return moved
+    links = [({"source": "media", "path": x["from"]}, {"source": "media", "path": x["to"]}) for x in moved]
+    relink = lambda data: any([_relink(data, a, b) for a, b in links])  # noqa: E731 (every one runs)
+    for s in storage.list_shows():
+        show = storage.load_show(s["id"])
+        if show is not None and relink(show):
+            _write_atomic(storage.shows_dir / f"{s['id']}.json", json.dumps(show, indent=1).encode())
+    for p in sorted(storage.drafts_dir.glob("*.json")) if storage.drafts_dir.is_dir() else []:
+        try:
+            draft = json.loads(p.read_text())
+        except (OSError, ValueError):
+            continue
+        if relink(draft):
+            _write_atomic(p, json.dumps(draft, indent=1).encode())
+    settings = storage.load_settings()
+    if relink([settings.get("song_folders"), settings.get("sample_folders")]):
+        storage.save_settings(settings)
+    log.info("moved %d split vocals into their songs' parts", len(moved))
+    return moved

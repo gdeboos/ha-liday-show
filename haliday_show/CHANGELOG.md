@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.401
+
+- **A song's vocals and music now belong to the song.** **Split vocals** keeps them with the song as its **parts** instead of saving two new songs. In **Library → Songs** the song's row says **parts: vocals and music**, and they're renamed, copied, archived and deleted with it.
+- **Your earlier splits have been tidied up.** "… (vocals)" and "… (music)" songs are now their song's parts, and shows and drafts that used them still do. Any that couldn't be matched to their song stay where they were, under **Splits**.
+- **Edits don't need splitting.** A song file made from a draft gets its own vocals and music, cut from the original's the same way, in seconds.
+- **Layers can use any song's parts.** In the Music editor, **+ Add a clip at the playhead…** lists them under **Song parts**, such as "Jingle Bells (vocals)".
+- This is the first step towards drums and bass parts, and a smarter **Generate** that uses them.
+
 ## 0.2.400
 
 - **Lyrics are enough for a Singing face.** With lyrics placed, the mouth now sings every word even if you haven't split the vocals, including quieter parts of the song. The note under **Mouth** says it mouths the lyrics, and no longer suggests splitting the vocals. Press **Save** on a show to update what's on your lights and phones.

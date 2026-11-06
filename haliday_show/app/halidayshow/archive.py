@@ -305,6 +305,7 @@ def restore_song(st: Storage, archived: str) -> dict:
     os.replace(src, target)
     _tidy(st, src.parent)
     rel = target.relative_to(st.media_dir).as_posix()
+    st.move_parts(rec["path"], rel)  # its parts stayed under its old name while it was archived
     ref = {"source": "media", "path": rel}
     back = []
     for show_id in rec["songless"]:
@@ -333,6 +334,7 @@ def delete_song(st: Storage, rel: str, archived: bool = False, replacement=None)
         p.unlink()
         _tidy(st, p.parent)
         st._song_info_file("media", records[rel]["path"]).unlink(missing_ok=True)
+        st.delete_parts(records[rel]["path"])
         del records[rel]
         _save_records(st, records)
         return {"shows": []}
@@ -342,6 +344,7 @@ def delete_song(st: Storage, rel: str, archived: bool = False, replacement=None)
     replacement = check_replacement(st, rel, replacement)
     p.unlink()
     st._song_info_file("media", rel).unlink(missing_ok=True)
+    st.delete_parts(rel)
     changed, _ = _rehome(st, rel, replacement)
     return {"shows": changed}
 
@@ -388,6 +391,8 @@ def copy_song(st: Storage, rel: str, sample: bool = False) -> dict:
     info = st._song_info_file("media", rel)
     if info.exists():  # its beats and sections, so it needn't be detected again
         shutil.copy2(info, st._song_info_file("media", new_rel))
+    if not sample:
+        st.move_parts(rel, new_rel, copy=True)
     return {"path": new_rel}
 
 
@@ -411,10 +416,14 @@ def rename_song(st: Storage, rel: str, name: str, sample: bool = False) -> dict:
     old, new = {"source": "media", "path": rel}, {"source": "media", "path": new_rel}
     if info_old.exists():
         os.replace(info_old, st._song_info_file("media", new_rel))
+    # Its parts follow it, and anything using one of them (a layer of its vocals, say) follows too.
+    links = [(old, new)] + [({"source": "media", "path": a}, {"source": "media", "path": b})
+                            for a, b in st.move_parts(rel, new_rel).items()]
+    relink = lambda data: any([_relink(data, a, b) for a, b in links])  # noqa: E731 (every one runs)
     shows = []
     for s in st.list_shows():
         show = st.load_show(s["id"])
-        if show is not None and _relink(show, old, new):
+        if show is not None and relink(show):
             _write_atomic(st.shows_dir / f"{s['id']}.json", json.dumps(show, indent=1).encode())
             shows.append(s["id"])
     for p in sorted(st.drafts_dir.glob("*.json")) if st.drafts_dir.is_dir() else []:
@@ -422,7 +431,7 @@ def rename_song(st: Storage, rel: str, name: str, sample: bool = False) -> dict:
             draft = json.loads(p.read_text())
         except (OSError, ValueError):
             continue
-        if _relink(draft, old, new):
+        if relink(draft):
             _write_atomic(p, json.dumps(draft, indent=1).encode())
     settings = st.load_settings()
     if _relink([settings.get("song_folders"), settings.get("sample_folders")], old, new):

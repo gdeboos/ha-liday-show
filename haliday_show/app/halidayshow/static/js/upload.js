@@ -40,7 +40,7 @@ export async function sendParts(api, url, blob, last = {}, progress = null) {
   for (const p of parts(blob.size)) {
     const q = new URLSearchParams({ upload: id, offset: String(p.start) });
     if (p.done) { q.set("done", "1"); for (const [k, v] of Object.entries(last)) q.set(k, v); }
-    reply = await api(`${url}?${q}`, {
+    reply = await api(`${url}${url.includes("?") ? "&" : "?"}${q}`, {
       method: "POST", body: blob.slice(p.start, p.end), headers: { "Content-Type": "application/octet-stream" },
     });
     progress?.(p.end / blob.size);

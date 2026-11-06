@@ -12,7 +12,7 @@ import { evenOut, loudness } from "./loudness.js";
 import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
-import { splitVocals } from "./splitvocals.js";
+import { savePart, splitVocals } from "./splitvocals.js";
 import { askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
@@ -476,7 +476,14 @@ export function untouched(pieces, key, length) {
 // editor ------------------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 const keyOf = (ref) => `${ref.source}:${ref.path}`;
-const nameOf = (ref) => ref.path.split("/").pop();
+// A song's parts (its vocals, drums…; Storage.song_parts) are named after it: "Carol (vocals).wav".
+let partNames = new Map();
+const nameOf = (ref) => partNames.get(ref.path) || ref.path.split("/").pop();
+// Learns the parts' names from the songs list (each song with its parts).
+function learnParts(songs) {
+  partNames = new Map(songs.flatMap((s) => Object.entries(s.parts || {})
+    .map(([part, path]) => [path, `${s.path.split("/").pop().replace(/\.[^.]+$/, "")} (${part}).wav`])));
+}
 const query = (ref) => `source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(ref.path)}`;
 const urlOf = (ref) => `api/audio/file?${query(ref)}`;
 const infoUrl = (ref) => `api/audio/info?${query(ref)}`;
@@ -536,6 +543,7 @@ export class MusicEditor {
   // The song Splice adds (this.insertRef), dropped if it's gone from your songs.
   fillSongLists() {
     const songs = this.host.songs();
+    learnParts(songs);
     if (this.insertRef && !songs.some((r) => keyOf(r) === keyOf(this.insertRef))) this.insertRef = null;
     this.showInsertSong();
   }
@@ -1150,6 +1158,7 @@ export class MusicEditor {
   renderLayers() {
     const box = $("music-layers");
     const samples = this.samplesList || [], songs = this.host.songs();
+    learnParts(songs);
     const sig = JSON.stringify([this.songKey, this.layers.map((l) => [l.name, l.gain, !!l.duck, l.duckDb, !!l.matchTempo, !!l.matchKey, l.semitones, isFlat(l.eq), l.clips.length]), isFlat(this.eq),
       this.eqCh, !!this.songTempo, samples.length, JSON.stringify(this.sampleFolders || []), songs.length, !!this.pieces.length]);
     if (box.dataset.sig !== sig) {
@@ -1253,7 +1262,7 @@ export class MusicEditor {
         const group = (label, refs) => {
           if (!refs.length) return;
           const g = el("optgroup", { label });
-          for (const r of refs) g.append(new Option(r.path.split("/").pop().replace(/\.[^.]+$/, ""), JSON.stringify({ source: r.source, path: r.path })));
+          for (const r of refs) g.append(new Option(nameOf(r).replace(/\.[^.]+$/, ""), JSON.stringify({ source: r.source, path: r.path })));
           add.append(g);
         };
         // Samples by their folders (Library → Samples), then those in none.
@@ -1264,6 +1273,8 @@ export class MusicEditor {
           group(`Samples › ${pathTo(folders, folder.id).map((f) => f.name).join(" › ")}`, inPlace(folder.id));
         }
         group("Songs", songs);
+        // A song's parts, for its vocals over another song, say, or a song without its drums.
+        group("Song parts", songs.filter((r) => r.source === "media").flatMap((r) => Object.values(r.parts || {}).map((path) => ({ source: "media", path }))));
         add.addEventListener("change", () => { const v = add.value; add.value = ""; if (v) this.addClip(i, JSON.parse(v)); });
         const remove = el("button", { type: "button", className: "ghost", textContent: "Remove" });
         remove.title = "Remove this layer and its clips";
@@ -1987,6 +1998,8 @@ export class MusicEditor {
     const { otherMarks: _o, ...shownInfo } = this.shown || {};
     const carry = everyDetected && this.shown ? { ...shownInfo, marks } : null;
     const rendered = this.main, rate = this.audio.sampleRate; // Detect goes by the song, not the layers
+    const cut = { pieces: this.pieces, crossfade: this.crossfade, fadeIn: Number($("music-fadein").value) || 0,
+      fadeOut: Number($("music-fadeout").value) || 0, gain: even.gain };
     // The draft as it was when you pressed it, and which draft: you might open another while it's made.
     const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
     // The song's lyrics follow the cuts into the new file, for Singing faces.
@@ -2009,10 +2022,33 @@ export class MusicEditor {
       if (carry) await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
       else await this.detectMade(ref, rendered, rate, marks);
       if (lyrics) await this.host.api(lyricsUrl(ref), { method: "PUT", json: lyrics }).catch(() => {});
+      await this.makeParts(ref, cut).catch((e) => this.host.status(`Made ${ref.path}, but couldn't keep its parts with it: ${e.message}`, true, "music-save"));
       this.host.songsChanged();
     } catch (e) {
       this.host.status(`Couldn't make the song file: ${e.message}`, true, "music-save");
     }
+  }
+
+  // A song file just made: its parts (vocals…) cut from its songs' parts the same way, at the same
+  // volume, so it needn't be split itself. A part a spliced-in song hasn't got is quiet there.
+  async makeParts(ref, { pieces, crossfade, fadeIn, fadeOut, gain }) {
+    const songs = this.host.songs(), partsOf = (src) => songs.find((s) => keyOf(s) === src)?.parts || {};
+    const names = [...new Set(pieces.flatMap((p) => Object.keys(partsOf(p.src))))];
+    const rate = this.audio.sampleRate, k = 10 ** ((gain || 0) / 20);
+    for (const name of names) {
+      this.host.status(`Keeping the ${name} with ${nameOf(ref)}…`, "info", "music-save");
+      const sources = {}, cutUp = [];
+      for (const p of pieces) {
+        const path = partsOf(p.src)[name];
+        const key = path ? await this.source({ source: "media", path }) : "-";
+        if (path) sources[key] = this.sources[key];
+        cutUp.push({ ...p, src: key });
+      }
+      const channels = render(cutUp, sources, rate, { crossfade, fadeIn, fadeOut });
+      if (k !== 1) for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
+      await savePart(this.host.api, ref, name, channels, rate);
+    }
+    if (names.length) this.host.status(`Made ${nameOf(ref)}, with its ${names.join(" and ")} kept with it`, "saved", "music-save");
   }
 
   // Detect for a file just made from a draft (with something spliced in), keeping the draft's marks.
