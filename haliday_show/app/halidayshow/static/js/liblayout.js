@@ -1,4 +1,4 @@
-// Cards or a list: how Library → Shows, Scenes, Pictures, Faces and Palettes lay out their items, picked with
+// Cards or a list: how Library → Shows, Scenes, Pictures, Faces, Palettes and Presets lay out their items, picked with
 // the Cards / List switch above each and remembered for each one in this browser. Cards are the
 // default. The rows are the same either way; the "as-cards" class lays them out as cards (style.css).
 export const CARD_LIBRARIES = {
@@ -7,13 +7,16 @@ export const CARD_LIBRARIES = {
   pictures: { view: "view-pictures", list: "#pictures-list", noun: "pictures" },
   faces: { view: "view-faces", list: "#faces-list, #faces-builtin", noun: "faces" },
   palettes: { view: "view-palettes", list: "#my-palettes", noun: "palettes" },
+  // Presets are grouped by effect, each group its own list: the groups lay out as cards.
+  presets: { view: "view-presets", list: "#my-presets", noun: "presets", groups: true },
 };
 
 export const layoutOf = (prefs, kind) => (prefs.get(`layout.${kind}`, "cards") === "list" ? "list" : "cards");
 
 export function applyLayout(prefs, kind) {
   const cards = layoutOf(prefs, kind) === "cards";
-  for (const box of document.querySelectorAll(CARD_LIBRARIES[kind].list)) box.classList.toggle("as-cards", cards);
+  const lib = CARD_LIBRARIES[kind];
+  for (const box of document.querySelectorAll(lib.list)) box.classList.toggle(lib.groups ? "as-cards-groups" : "as-cards", cards);
   for (const b of document.querySelectorAll(`[data-cards-for="${kind}"] button`)) {
     b.setAttribute("aria-pressed", String(b.dataset.cards === (cards ? "cards" : "list")));
     b.classList.toggle("active", b.getAttribute("aria-pressed") === "true");
