@@ -473,6 +473,25 @@ by its ⠿ handle (or use **↑** and **↓**) to change the order of their lane
 
 Each group gets its own lane in the Show editor, under **House** (see [Group lanes](#group-lanes)).
 
+### Light roles
+
+**Setup → Devices → Light roles** says which part of the music each light reacts to when **Generate**
+makes a show: the **Kick drum**, the **Snare**, the **Crash cymbals**, the **Bass**, the **Vocals**, the
+**Melody**, a steady **Background**, or **Nothing in particular**. A split light's parts each have their
+own, under it.
+
+Each light starts with a guess, shown as **Guess: …**: the biggest light carries the melody, a matrix
+sings (it suits a Singing face), a light changed through Home Assistant is background (it can't keep up
+with the drums), and the drums take turns over the rest. Pick a role to change it; pick the **Guess**
+again to go back to it.
+
+A show can give any light another role: in the Show editor, open **Show settings** and use **Light
+roles**. Each light there says what it follows from your house (**House: …**) until you pick another
+for that show, so your shows don't all look the same.
+
+Generate starts using roles in a coming release, along with the drum hits from
+[Split into parts](#split-into-parts).
+
 ### Seasons
 
 Some props only go up for part of the year: a Halloween ghost, a Christmas Santa. Tell HA-liday Show

@@ -300,6 +300,12 @@
             <b>House colour</b> across the show, so you can design just the parts you want. Phones stay dark in its gaps. The phone in the corner of the House panel shows what
             they'll see.</span>
         </fieldset>
+        <fieldset class="field show-roles">
+          <legend>Light roles</legend>
+          <span class="hint">Which part of the music each light reacts to when you <b>Generate</b> this show. Each
+            follows your house's role (set on <b>Setup → Devices</b>) unless you pick another here.</span>
+          <div class="roles-grid" id="show-roles"></div>
+        </fieldset>
         <label><input id="autosave" type="checkbox" checked> Save automatically a couple of seconds after each change</label>
       </div>
       <div class="form-dialog-foot">
@@ -1048,6 +1054,19 @@
     </table>
     </div>
     <p><button type="button" id="btn-new-group">+ New group</button></p>
+  </section>
+  <section class="light-roles">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-devices"/></svg>Light roles</h2>
+    <p class="hint">Which part of the music each light reacts to when <b>Generate</b> makes a show: the kick drum,
+      the snare, the crash cymbals, the bass, the vocals, the melody, or a steady background. Each starts with a
+      guess (the biggest light carries the melody, a matrix sings, a light changed through Home Assistant is
+      background, and the drums take turns over the rest). A show can give any light another role, under
+      <b>Show settings</b>, so your shows don't all look the same.</p>
+    <p id="roles-none" class="hint">No lights yet.</p>
+    <div class="table-scroll"><table class="devices device-list" id="roles-table" hidden>
+      <thead><tr><th>Light</th><th>Reacts to</th></tr></thead>
+      <tbody id="roles-rows"></tbody>
+    </table></div>
   </section>
   <section class="light-seasons">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-schedule"/></svg>Seasons</h2>

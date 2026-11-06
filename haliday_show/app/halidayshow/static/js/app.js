@@ -45,6 +45,7 @@ import { countLabel, countText, isHa, isPixels, showBulbs, sizeText, unitWord } 
 import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
 import { MusicEditor, arrange, mapLyrics, mapVoice } from "./music.js";
+import { ROLES, cleanRoles, guessRoles, rolesFor } from "./roles.js";
 import { createVolume } from "./volume.js";
 import { PRESET_PALETTES, applyPalette, paletteKeys, seasonalPalette, usedColourKeys } from "./palettes.js";
 import { DAYS, DEFAULT_SCHEDULE, MONTHS, entriesFor, scheduleLine, whenNext } from "./schedule.js";
@@ -314,6 +315,77 @@ app.lyricWords = () => {
   wordsMemo = { l, v: show.voice, words };
   return words;
 };
+
+// Light roles (roles.js) ------------------------------------------------------------------------
+// Every light, and each part of a split one, that a role can be given to.
+function roleLanes() {
+  return app.deviceList.flatMap((d) => [
+    { id: d.id, name: d.name, segments: d.segments, ...(d.matrix ? { matrix: d.matrix } : {}), ...(isSlow(d) ? { slow: true } : {}) },
+    ...(d.parts || []).map((p) => ({ id: partId(d, p), name: `${d.name} · ${p.name}`, segments: partSize(p), part: true,
+      ...(isSlow(d) ? { slow: true } : {}) })),
+  ]);
+}
+
+// Your house's roles, as picked (the rest are guesses), from the server once.
+let houseRoles = null;
+async function loadHouseRoles() {
+  houseRoles ??= await api("api/light-roles").catch(() => ({}));
+  return houseRoles;
+}
+
+// A select of the roles, the first option standing for what it falls back to ("Guess: Melody").
+function roleSelect(label, fallback, value, onChange) {
+  const sel = document.createElement("select");
+  sel.setAttribute("aria-label", label);
+  sel.append(new Option(fallback, ""), ...Object.entries(ROLES).map(([k, name]) => new Option(name, k)));
+  sel.value = value || "";
+  sel.addEventListener("change", () => onChange(sel.value || null));
+  return sel;
+}
+
+// Setup → Devices → Light roles.
+async function renderLightRoles() {
+  const lanes = roleLanes(), house = await loadHouseRoles(), guess = guessRoles(lanes);
+  $("roles-none").hidden = lanes.length > 0;
+  $("roles-table").hidden = !lanes.length;
+  $("roles-rows").replaceChildren(...lanes.map((l) => {
+    const tr = document.createElement("tr");
+    const name = document.createElement("td");
+    name.textContent = l.name;
+    if (l.part) name.className = "role-part";
+    const pick = document.createElement("td");
+    pick.append(roleSelect(`What ${l.name} reacts to`, `Guess: ${ROLES[guess[l.id]]}`, house[l.id], async (role) => {
+      const next = { ...house };
+      if (role) next[l.id] = role; else delete next[l.id];
+      try {
+        await api("api/light-roles", { method: "PUT", json: cleanRoles(next, lanes.map((x) => x.id)) });
+        houseRoles = next;
+        status(`${l.name} now reacts to ${role ? ROLES[role].toLowerCase() : `${ROLES[guess[l.id]].toLowerCase()} (the guess)`}`, "saved");
+      } catch (e) { status(`Couldn't save the role: ${e.message}`, true); }
+      renderLightRoles();
+    }));
+    tr.append(name, pick);
+    return tr;
+  }));
+}
+
+// Show settings → Light roles: this show's own role for any light, else the house's.
+async function renderShowRoles() {
+  const lanes = roleLanes(), house = rolesFor(lanes, await loadHouseRoles());
+  const used = new Set(app.show.tracks.map((t) => t.device));
+  const box = $("show-roles");
+  box.replaceChildren(...lanes.filter((l) => used.has(l.id)).flatMap((l) => {
+    const name = Object.assign(document.createElement("span"), { textContent: l.name });
+    const sel = roleSelect(`What ${l.name} reacts to in this show`, `House: ${ROLES[house[l.id]]}`, app.show.roles?.[l.id], (role) => {
+      const next = { ...(app.show.roles || {}) };
+      if (role) next[l.id] = role; else delete next[l.id];
+      if (Object.keys(next).length) app.show.roles = next; else delete app.show.roles;
+      app.changed();
+    });
+    return [name, sel];
+  }));
+  if (!box.children.length) box.append(Object.assign(document.createElement("span"), { className: "hint", textContent: "This show has no lights yet." }));
+}
 
 // Show settings → Visitors' phones (phones.js): whether they join this show, and its Phones lane.
 function renderShowPhones() {
@@ -1007,6 +1079,7 @@ async function preshowFinish(run) {
 function renderDevices() {
   renderLab();
   renderGroups();
+  renderLightRoles();
   const rows = $("device-rows");
   rows.replaceChildren();
   if (!app.deviceList.length) {
@@ -13016,6 +13089,7 @@ function wire() {
     renderShowPalette();
     renderShowBrightness();
     renderShowPhones();
+    renderShowRoles();
     $("show-dialog").showModal();
   });
   $("show-phones").addEventListener("change", (e) => {
