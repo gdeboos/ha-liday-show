@@ -65,5 +65,5 @@ export function singerOf(show) {
   const forSong = !lyrics?.song || lyrics.song === show?.audio?.path;
   if (!(typeof lyrics?.shapes === "string" && lyrics.shapes.length && forSong)) return voice || null;
   return { fps: voice?.fps || lyrics.fps || 20, values: Array.isArray(voice?.values) ? voice.values : [],
-    shapes: lyrics.shapes, shapesFps: lyrics.fps || 20, lyrics: true };
+    shapes: lyrics.shapes, shapesFps: lyrics.fps || 20, lyrics: true, from: voice?.from || "song" };
 }

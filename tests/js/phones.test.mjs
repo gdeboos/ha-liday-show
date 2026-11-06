@@ -215,3 +215,15 @@ test("on a phone a Singing face is drawn finer, and everything else in blocks ex
   for (let k = 0; k < 10; k++) withVoiceLevels(voice, () => phoneView([face], 3 + k / 10));
   assert.ok((performance.now() - t0) / 10 < 60, "a frame in well under 60 ms");
 });
+
+test("with lyrics, a quiet bit of the whole song still mouths the words; split vocals can keep it shut", async () => {
+  const { phoneScreen, withVoiceLevels } = await import("../../haliday_show/app/halidayshow/static/js/effects.js");
+  const clip = { ...newClip("singingface", 0, 4), character: "ghost" };
+  const dark = (from) => withVoiceLevels({ fps: 10, values: Array(40).fill(0), shapes: "a".repeat(80), shapesFps: 20, lyrics: true, from }, () => {
+    const f = phoneScreen([clip], 1);
+    let n = 0;
+    for (let i = 0; i < f.length; i += 3) if (f[i] < 60 && f[i + 1] < 60 && f[i + 2] < 60) n++;
+    return n;
+  });
+  assert.ok(dark("song") > dark("vocals") + 20);
+});

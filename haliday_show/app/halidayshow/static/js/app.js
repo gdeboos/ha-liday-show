@@ -10616,6 +10616,9 @@ async function ensureVoice({ fresh = false } = {}) {
   return measuringVoice;
 }
 
+// Whether the show's song has lyrics placed, which the Singing face mouths.
+const placedLyrics = () => !!app.show.lyrics?.shapes && (!app.show.lyrics.song || app.show.lyrics.song === app.show.audio?.path);
+
 // What the Singing face's mouth follows now, in words, with Measure again.
 function singerNote() {
   const box = document.createElement("div");
@@ -10623,6 +10626,8 @@ function singerNote() {
   const v = app.show.voice, ref = app.show.audio;
   note.textContent = !ref ? "It follows the singer in the show's song. This show has no song yet."
     : !v ? (songBuffer ? "The singer hasn't been measured yet: press Measure again." : "The singer is measured once the song has loaded.")
+    : placedLyrics() ? (v.from === "vocals" ? "It mouths the song's lyrics, opening wider as the vocals get louder."
+      : "It mouths the song's lyrics, so the vocals don't need splitting. It opens wider on louder parts of the song.")
     : v.from === "vocals" && v.through ? `It follows the vocals that Split vocals made from ${v.through}, through your edit's cuts.`
     : v.from === "vocals" ? "It follows the vocals that Split vocals made from this song."
     : "It follows the voice range of the song. For a closer match, use Split vocals on this song, then press Measure again.";
@@ -10638,7 +10643,7 @@ function singerNote() {
     renderInspector();
   }, "ghost small");
   again.hidden = !ref;
-  const placed = app.show.lyrics?.shapes && (!app.show.lyrics.song || app.show.lyrics.song === ref?.path);
+  const placed = placedLyrics();
   const through = placed && app.show.lyrics.fromSong && app.show.lyrics.through;
   const lyrics = button(through ? "Edit lyrics…" : placed ? "Lyrics… (placed)" : "Lyrics…", openShowLyrics, "ghost small");
   lyrics.title = through ? `This song is an edit of ${through}: its lyrics are placed on ${through} in the Music editor, and follow your cuts`
