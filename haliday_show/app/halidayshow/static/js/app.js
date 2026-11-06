@@ -65,6 +65,7 @@ import {
   MAX_SHOWS as PLAYLIST_MAX, bakeKey, blockLabel as playlistBlockLabel, blockShow, dropIndex, fits as fitsPlaylist, inserted,
   copyPlaylist, itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
 } from "./playlisteditor.js";
+import { addLayoutSwitches } from "./liblayout.js";
 import { familyCount, filterFamilies, songFamilies, songKey, songRows, splitUsers } from "./songlist.js";
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
 import { askText, askYes } from "./ask.js";
@@ -12647,6 +12648,7 @@ function wire() {
   for (const d of document.querySelectorAll(".view dialog")) document.body.append(d);
   for (const tab of document.querySelectorAll(".tab, .subtab[data-view]")) tab.addEventListener("click", () => showView(tab.dataset.view));
   wireSongPlayer();
+  addLayoutSwitches(prefs);
   $("btn-new-group").addEventListener("click", () => openGroupWindow(null));
   $("btn-resume").addEventListener("click", () => lastEditor && showView(lastEditor));
 

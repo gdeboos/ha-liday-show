@@ -436,6 +436,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/labtemplates.js                  Packet lab starting points
     js/lightgroups.js                   Light groups: members, names, which lanes a selection's effect goes on
     js/layout.js                        Movable panel layout
+    js/liblayout.js                     Library lists as cards or rows (the Cards / List switch)
     js/palettes.js                      Colour palette presets
     js/bakekey.js                       A short note of which lights a show was baked for, kept with the bake so reopening it needn't bake again
     js/folders.js                       Folders you go into, in every Library list: the tree, moving, deleting, finding
