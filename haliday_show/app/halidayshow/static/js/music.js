@@ -9,7 +9,7 @@ import { analyseInWorker, barVectorsInWorker, keyFrom, keyShift, toMono } from "
 import { cutsRequest, joinLabel, parseTime, rankCuts, sectionCuts, similarity, songPlans } from "./cutfinder.js";
 import { DraftKeeper } from "./drafts.js";
 import { evenOut, loudness } from "./loudness.js";
-import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipSpeed, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
+import { DUCK_DB, DUCK_MAX, DUCK_MIN, MAX_CLIPS, MAX_LAYERS, anchorAt, clipPart, clipSpeed, dipCurve, duckDbOf, limit, matchGain, mixLayers, placeClips, sourceKey } from "./layers.js";
 import { BANDS, EQ_MAX, EQ_MIN, FILTER_MAX, MAX_CHANGES, applyEq, eqAt, eqCurves, faderText, filterCurve, filterText, flatEq, isFlat, placeChanges } from "./mixer.js";
 import { shift } from "./tempo.js";
 import { PARTS, savePart, splitVocals } from "./splitvocals.js";
@@ -2010,7 +2010,9 @@ export class MusicEditor {
     const carry = everyDetected && this.shown ? { ...shownInfo, marks } : null;
     const rendered = this.main, rate = this.audio.sampleRate; // Detect goes by the song, not the layers
     const cut = { pieces: this.pieces, crossfade: this.crossfade, fadeIn: Number($("music-fadein").value) || 0,
-      fadeOut: Number($("music-fadeout").value) || 0, gain: even.gain };
+      fadeOut: Number($("music-fadeout").value) || 0, gain: even.gain,
+      // The layers and EQ as they were, so its parts have them too, whatever's changed by the time they're made.
+      layers: structuredClone(this.layers), eq: this.eq && structuredClone(this.eq), placed: this.placed() };
     // The draft as it was when you pressed it, and which draft: you might open another while it's made.
     const session = this.keeper.session, body = this.base && this.pieces.length ? this.draftBody() : null;
     // The song's lyrics follow the cuts into the new file, for Singing faces.
@@ -2041,8 +2043,10 @@ export class MusicEditor {
   }
 
   // A song file just made: its parts (vocals…) cut from its songs' parts the same way, at the same
-  // volume, so it needn't be split itself. A part a spliced-in song hasn't got is quiet there.
-  async makeParts(ref, { pieces, crossfade, fadeIn, fadeOut, gain }) {
+  // volume, so it needn't be split itself. A part a spliced-in song hasn't got is quiet there. The song's
+  // EQ and its layers go into them too: each clip into the parts it belongs to (layers.js clipPart), at
+  // its volume, tempo and key, ducking the song where the whole mix does.
+  async makeParts(ref, { pieces, crossfade, fadeIn, fadeOut, gain, layers = [], eq = null, placed = [] }) {
     const songs = this.host.songs(), partsOf = (src) => songs.find((s) => keyOf(s) === src)?.parts || {};
     const names = [...new Set(pieces.flatMap((p) => Object.keys(partsOf(p.src))))];
     const rate = this.audio.sampleRate, k = 10 ** ((gain || 0) / 20);
@@ -2055,7 +2059,9 @@ export class MusicEditor {
         if (path) sources[key] = this.sources[key];
         cutUp.push({ ...p, src: key });
       }
-      const channels = render(cutUp, sources, rate, { crossfade, fadeIn, fadeOut });
+      let channels = render(cutUp, sources, rate, { crossfade, fadeIn, fadeOut });
+      if (!isFlat(eq)) applyEq(channels, rate, eq, placeChanges(eq, pieces, crossfade));
+      if (placed.length) channels = await this.layersInto(channels, name, { layers, placed, pieces, crossfade, rate });
       if (k !== 1) for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= k;
       await savePart(this.host.api, ref, name, channels, rate);
       if (name === "drums") { // when each drum lands in it, found afresh
@@ -2066,6 +2072,24 @@ export class MusicEditor {
     if (names.length) this.host.status(`Made ${nameOf(ref)}, with its ${names.join(" and ")} kept with it`, "saved", "music-save");
     // Then listened to for what can be heard in it (sounds.js), in the background.
     if (PARTS.every((p) => names.includes(p))) this.host.partsLater?.(ref);
+  }
+
+  // One part's channels with what each layer clip adds to that part mixed in.
+  async layersInto(channels, name, { layers, placed, pieces, crossfade, rate }) {
+    const songs = this.host.songs(), parts = {}, heard = {};
+    for (const p of placed) {
+      const c = layers[p.layer].clips[p.clip], own = keyOf(c.song);
+      if (!this.sources[own]) await this.source(c.song).catch(() => null);
+      heard[own] = this.sources[own]; // where the whole mix dips the song
+      const feed = clipPart(c.song, name, songs);
+      if (!feed) continue;
+      const key = await this.source(feed).catch(() => null);
+      if (!key) continue;
+      parts[own] = this.sources[key];
+      const moved = sourceKey(c, p.speed, p.semis);
+      if (moved !== own && !parts[moved]) parts[moved] = shift(this.sources[key], rate, p.speed, p.semis);
+    }
+    return mixLayers(channels, layers, placed, parts, rate, { pieces, crossfade, heard });
   }
 
   // Detect for a file just made from a draft (with something spliced in), keeping the draft's marks.
