@@ -61,6 +61,8 @@ const LOOKS = {
     { effect: "ocean", label: "Gentle waves", params: () => ({ speed: 0.4, size: 1 }) },
     { effect: "aurora", label: "Aurora", params: () => ({ speed: 0.4, background: "#000000" }) },
     { effect: "flow", label: "Flowing colours", params: (bps, n) => ({ speed: 0.15, size: Math.max(4, Math.round(n / 3)) }) },
+    { effect: "candles", label: "Candlelight", params: (bps) => ({ rate: Math.max(1, bps * 1.5), size: 2 }) },
+    { effect: "snow", label: "Falling snow", params: () => ({ density: 12, speed: 4, background: "#000000" }) },
   ],
   mid: [
     { effect: "trio", label: "Marquee on the beat", params: (bps) => ({ layout: "alternate", size: 1, speed: bps }) },
@@ -73,6 +75,10 @@ const LOOKS = {
     { effect: "juggle", label: "Juggle", params: (bps) => ({ speed: bps / 2, trail: 0.6, background: "#000000" }) },
     { effect: "dissolve", label: "Dissolve each bar", params: (bps) => ({ seconds: 2 / bps, background: "#000000" }) },
     { effect: "lighthouse", label: "Beam each bar", params: (bps) => ({ rate: bps / 4, glow: 15, background: "#000000" }) },
+    { effect: "drip", label: "Icicle drips", params: (bps) => ({ rate: bps / 2, background: "#000000" }) },
+    { effect: "tetris", label: "Stacking blocks, one a beat", params: (bps, n) => ({ rate: bps, size: Math.max(1, Math.round(n / 10)), background: "#000000" }) },
+    { effect: "rainbow", label: "Rainbow drift", params: (bps) => ({ speed: bps / 4, spread: 1 }) },
+    { effect: "flicker", label: "Firelight", params: (bps) => ({ rate: bps * 3 }) },
   ],
   high: [
     { effect: "cycle", label: "Colour flash each beat", params: (bps) => ({ rate: bps, blend: "step" }) },
@@ -85,6 +91,10 @@ const LOOKS = {
     { effect: "ripple", label: "Ripples on the beat", params: (bps, n) => ({ rate: bps, speed: Math.max(5, n / 2), background: "#000000" }) },
     { effect: "theatre", label: "Fast theatre chase", params: (bps) => ({ every: 3, speed: bps * 2, background: "#000000" }) },
     { effect: "bounce", label: "Bouncing on the beat", params: (bps) => ({ balls: 4, speed: bps / 2, background: "#000000" }) },
+    { effect: "lightning", label: "Lightning on the bar", params: (bps) => ({ rate: bps / 4, background: "#000000" }) },
+    { effect: "strobe", label: "Strobe on the beat", params: (bps) => ({ rate: bps, duty: 25, background: "#000000" }) },
+    { effect: "juggle", label: "Juggling dots, fast", params: (bps) => ({ speed: bps, trail: 0.3, background: "#000000" }) },
+    { effect: "rainbow", label: "Racing rainbow", params: (bps) => ({ speed: bps, spread: 2 }) },
   ],
 };
 
@@ -131,6 +141,18 @@ const GRID_LOOKS = {
     { effect: "snowfall", label: "Driving rain", params: () => ({ style: "rain", density: 30, speed: 20 }) },
   ],
 };
+
+// Feels: what a show's looks lean towards, whatever its colours. Generate picks a section's looks from
+// those its feel likes when it has enough of them at that loudness, else from all of them.
+export const FEELS = {
+  playful: { label: "Playful", likes: ["bounce", "juggle", "tetris", "theatre", "trio", "duo", "twinkle", "fairy", "fireworks", "dissolve", "snow"] },
+  elegant: { label: "Elegant", likes: ["gradient", "flow", "aurora", "ocean", "comet", "fade", "pulse", "fairy", "candles", "scanner", "cycle"] },
+  rock: { label: "Rock'n'roll", likes: ["strobe", "lightning", "chase", "scanner", "ripple", "fireworks", "theatre", "flicker", "pulse", "trio"] },
+  retro: { label: "Retro", likes: ["theatre", "trio", "duo", "chase", "cycle", "rainbow", "lighthouse", "scanner", "pulse", "bounce"] },
+  spooky: { label: "Spooky", likes: ["flicker", "lightning", "drip", "candles", "pulse", "scanner", "dissolve", "twinkle", "aurora", "comet"] },
+  dreamy: { label: "Dreamy", likes: ["aurora", "ocean", "flow", "fairy", "twinkle", "gradient", "snow", "dissolve", "candles", "comet"] },
+};
+export const FEEL_KEYS = Object.keys(FEELS);
 
 // A repeatable pseudo-random number in [0, 1) from any number of integers.
 function hash(...xs) {
@@ -181,8 +203,20 @@ function clipFor(look, start, end, bps, n, colors, offset) {
 // analysis may carry the song's cues: drums (its drum hits) and lyrics (show.lyrics: its lines and
 // sung words), which put looks on the lines, find the chorus, and give lights with roles their moments.
 // The House lane is saved for the biggest moments: the first and last chorus, and the final crash.
-export function generateShow(analysis, lights, colors, { style = "balanced", seed = 1, house = false, build = false, maxBars = 0 } = {}) {
+// feel: a FEELS key, whose looks are preferred. avoid: effects your other shows lean on, left out where
+// there are enough others to choose from, so shows don't all look alike.
+export function generateShow(analysis, lights, colors, { style = "balanced", seed = 1, house = false, build = false, maxBars = 0,
+  feel = null, avoid = [] } = {}) {
   const duration = analysis.duration;
+  // The moving looks a section can pick from (slow lights and grids keep their own short lists): the feel's favourites (if it has at least three at that loudness),
+  // less any your other shows lean on (if that still leaves three).
+  const liked = FEELS[feel]?.likes;
+  const shortlist = (set) => {
+    let pool = set;
+    if (liked) { const mine = pool.filter((l) => liked.includes(l.effect)); if (mine.length >= 3) pool = mine; }
+    const fresh = pool.filter((l) => !avoid.includes(l.effect));
+    return fresh.length >= 3 ? fresh : pool;
+  };
   const cues = songCues(analysis);
   const bps = beatsPerSecond(analysis);
   const grid = barGrid(analysis);
@@ -233,7 +267,7 @@ export function generateShow(analysis, lights, colors, { style = "balanced", see
       const b = (a + 1 + Math.floor(hash(key, seed, 7) * (set.length - 1))) % set.length;
       return [set[a], set[b]];
     };
-    const fast = pick(LOOKS[t]), slow = pick(SLOW_LOOKS[t]), grid2d = pick(GRID_LOOKS[t]);
+    const fast = pick(shortlist(LOOKS[t])), slow = pick(SLOW_LOOKS[t]), grid2d = pick(GRID_LOOKS[t]);
     // A matrix swaps the section's second look for one drawn across its grid.
     const onGrid = [fast[0], grid2d[0]];
     // Loud sections and the chorus move together on every light; the rest alternate across lights.

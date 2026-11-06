@@ -69,7 +69,7 @@ songs. They're saved with your settings, so they're in **Export…** too.
   3. its **colours**: a palette, shown as its colours, or **None** (see [The show's palette](#the-shows-palette)).
   4. with an AI set up, how it starts: **Start empty**, or **Generate with AI**, which needs a song
      and at least one light and shows the same choices as **✨ Generate** (in the show's palette: **Style**,
-     **Build up**, **Longest effect** and, with lights traced on the house photo, the sweep across the
+     **Feel**, **Build up**, **Longest effect** and, with lights traced on the house photo, the sweep across the
      house). Without an AI, there's no step 4 and the show starts empty. For a quick draft
      made by rules, press **✨ Generate** in the editor (see [Generate](#generate)).
 
@@ -317,8 +317,8 @@ music**, and they go wherever the song goes (renamed, copied, archived or delete
 - **Singing faces** follow the vocals part.
 - **Drum hits:** from the drums part, HA-liday Show finds when each kick, snare, hi-hat and crash
   lands. In the Music editor they show as small marks along the bottom of the waveform: red for kicks,
-  blue for snares and gold for crashes. Generate will use them in a future release, to put flashes on
-  the real hits rather than every beat.
+  blue for snares and gold for crashes. [Generate](#generate) uses them to put flashes on the real
+  hits rather than every beat.
 - **Layers** in the Music editor can play any song's parts: press **+ Add a clip…**, pick the song under
   **Songs**, then choose **Just the vocals**, **Just the drums** and so on under **Use from**. Use the
   music as a backing track, the drums under another song, or the vocals over another song for a
@@ -722,18 +722,28 @@ more as the music builds, and every light together only for the biggest moments.
 
 **✨ Generate** in the Show panel opens **Generate a show**, which makes a first draft of the whole show
 from the song.
-Pick the **Colours** (any palette) and a **Style** (Calm, Balanced or Lively), and it fills your lights
+Pick the **Colours** (any palette), a **Style** (Calm, Balanced or Lively) and a **Feel**, and it fills your lights
 with effects that follow the song: soft, slow looks in quiet parts, faster ones that move on the beat
 as it gets louder, every light moving together in the chorus, the same looks each time a section comes
-back, and a change every few bars. Looks include fairy lights, waves and aurora when it's quiet, theatre
-chases, juggling dots and dissolves in the middle, and fireworks and ripples at the loudest. Each new
+back, and a change every few bars. Looks include fairy lights, waves, aurora, candlelight and falling
+snow when it's quiet, theatre chases, juggling dots, dissolves, icicle drips, stacking blocks and rainbows
+in the middle, and fireworks, ripples, lightning and strobes at the loudest. Each new
 section crossfades in, lights that come on or go dark fade, and quiet starts and ends fade in and out.
 With lights traced on the house photo, turn on **Sweep across the house as the music lifts** for a few
 big moments across the whole house: a sweep as the first chorus comes in, a ring of colour as the last
 one does, and a ring on the song's final crash. It's kept to those, at most three, so they stay
-impressive. It runs **Detect** first if the song hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press it again for a
-different take, then edit whatever you like. The colours start on the show's palette, or else the one for the time of year
+impressive. It runs **Detect** first if the song hasn't been analysed. It replaces the lights' effects, so Ctrl+Z brings them back; press
+**↻ Try again** (beside **✨ Generate** once you've generated) for a different take with the same choices, then edit whatever you like. The colours start on the show's palette, or else the one for the time of year
 (Halloween in October, Christmas in December…) when there is one.
+
+**Feel** is the kind of looks the show leans towards: **Playful** (bouncing, juggling, stacking
+blocks), **Elegant** (slow gradients, comets, candlelight), **Rock'n'roll** (strobes, lightning, chases),
+**Retro** (theatre chases, rainbows, lighthouse sweeps), **Spooky** (flicker, lightning, drips) or
+**Dreamy** (aurora, waves, fairy lights, snow). **Surprise me** picks a different feel each time, and the
+message under the toolbar says which it went for, such as "Generated a spooky show for 4 lights". Each take
+also steers clear of the effects your last few other shows lean on, so your shows don't all look alike.
+With the **AI**, it first decides one idea for the whole show, such as "a frosty night that thaws into a
+party", keeps every part true to it, and tells you the idea when it's done.
 
 **Following the drums and the words.** Once a song is [split into parts](#split-into-parts) and has
 [lyrics](effects.md#lyrics-for-a-singing-face), Generate follows them as well as the beat, using each light's

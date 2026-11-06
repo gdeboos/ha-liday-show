@@ -8,7 +8,7 @@ import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.j
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
 import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
-import { STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
+import { FEELS, FEEL_KEYS, STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
@@ -10554,6 +10554,8 @@ async function openShow(id, { chosen = true } = {}) {
   await stop();
   clearTimeout(autoSaveTimer);
   leaveSceneMode();
+  lastGenerate = null; // Try again is for the show it was generated in
+  $("btn-generate-again").hidden = true;
   app.serverBakeNote = null;
   if (id) {
     app.show = await api(`api/shows/${encodeURIComponent(id)}`);
@@ -11903,6 +11905,14 @@ function generateControls({ paletteFrom = null } = {}) {
   for (const [key, st] of Object.entries(STYLES)) style.add(new Option(st.label, key, false, key === prefs.get("genStyle", "balanced")));
   const sl = document.createElement("label");
   sl.append("Style", style);
+  // Feel: which looks the show leans towards. Surprise me picks one afresh each time.
+  const feel = document.createElement("select");
+  feel.add(new Option("Surprise me", "surprise"));
+  for (const [key, f] of Object.entries(FEELS)) feel.add(new Option(f.label, key));
+  feel.value = Object.hasOwn(FEELS, prefs.get("genFeel", "surprise")) ? prefs.get("genFeel") : "surprise";
+  const fl = document.createElement("label");
+  fl.append("Feel", feel);
+  fl.title = "The kind of looks the show leans towards. Surprise me picks a different feel each time you generate.";
   const house = document.createElement("input");
   house.type = "checkbox";
   house.checked = true;
@@ -11925,15 +11935,16 @@ function generateControls({ paletteFrom = null } = {}) {
     + "An effect from the AI that runs longer is cut into pieces in the next colours of the palette.";
   const read = () => {
     prefs.set("genStyle", style.value);
+    prefs.set("genFeel", feel.value);
     prefs.set("genBuild", build.checked);
     prefs.set("genMaxBars", Number(longest.value));
     // In New show the palette comes from step 1 (paletteFrom), so it isn't asked twice.
     const name = paletteFrom ? paletteFrom() : paletteName;
     const chosen = allPalettes().find((p) => p.name === name) || seasonalPalette() || currentPalette();
     return { colors: chosen.colors, paletteName: chosen.name, style: style.value, house: !hl.hidden && house.checked,
-      build: build.checked, maxBars: Number(longest.value) };
+      build: build.checked, maxBars: Number(longest.value), feel: feel.value };
   };
-  return { nodes: paletteFrom ? [sl, ll, bl, hl] : [pl, sl, ll, bl, hl], read };
+  return { nodes: paletteFrom ? [sl, fl, ll, bl, hl] : [pl, sl, fl, ll, bl, hl], read };
 }
 
 // What Generate can fill: the whole song, the selected stretch (on its lights), or one of the song's
@@ -12036,8 +12047,7 @@ function generateDialog({ fill = "all" } = {}) {
       }
       opts.note = said;
     }
-    if (maker.value === "ai") generateWithAI(opts);
-    else generate(opts);
+    runGenerate(opts, maker.value === "ai");
   });
   dlg.addEventListener("close", () => dlg.remove());
   document.body.append(dlg);
@@ -12398,10 +12408,51 @@ async function createShow({ name, audio: ref, length, start, gen, palette = null
     status(`Couldn't save ${name}: ${err.message}`, true, "show");
   }
   renderSaveState();
-  if (start === "ai") await generateWithAI(gen);
+  if (start === "ai") await runGenerate(gen, true);
 }
 
-async function generate({ colors, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null }) {
+// Generate (or the AI) with these options, kept so Try again can run them again with a new seed and, for
+// Surprise me, a new feel.
+let lastGenerate = null, lastFeel = null;
+function runGenerate(opts, ai) {
+  lastGenerate = { opts, ai, showId: app.showId };
+  $("btn-generate-again").hidden = false;
+  return ai ? generateWithAI(opts) : generate(opts);
+}
+
+function generateAgain() {
+  if (!lastGenerate || lastGenerate.showId !== app.showId) { generateDialog(); return; }
+  runGenerate(lastGenerate.opts, lastGenerate.ai);
+}
+
+// The feel for this take: the one picked, or for Surprise me any other than last time's.
+function takeFeel(feel) {
+  if (!Object.hasOwn(FEELS, feel)) {
+    const others = FEEL_KEYS.filter((k) => k !== lastFeel);
+    feel = others[Math.floor(Math.random() * others.length)];
+  }
+  lastFeel = feel;
+  return feel;
+}
+
+// The effects your other recent shows lean on (in at least two of the last five you changed), so a
+// new show steers clear of them and they don't all look alike.
+async function recentLooks() {
+  let list;
+  try { list = await api("api/shows"); } catch { return []; }
+  const recent = list.filter((s) => s.id !== app.showId).sort((a, b) => (b.modified || 0) - (a.modified || 0)).slice(0, 5);
+  const count = {};
+  const shows = await Promise.all(recent.map((s) => api(`api/shows/${encodeURIComponent(s.id)}`).catch(() => null)));
+  for (const show of shows) {
+    const used = new Set();
+    for (const tr of show?.tracks || []) for (const c of tr.clips || []) if (c?.effect && c.effect !== "fade") used.add(c.effect);
+    for (const e of used) count[e] = (count[e] || 0) + 1;
+  }
+  const enough = Math.min(2, recent.length);
+  return Object.entries(count).filter(([, n]) => n >= enough).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([e]) => e);
+}
+
+async function generate({ colors, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null, feel = "surprise" }) {
   // A split light gets effects on its parts; its own track (all the parts at once) is left for you.
   // Its parts light up and go dark together when building up.
   // A part of the show: only the selected lights (every light when the selection is only on lanes).
@@ -12420,19 +12471,23 @@ async function generate({ colors, style, house, build, maxBars = prefs.get("genM
   const roles = rolesFor(roleLanes(), await loadHouseRoles(), app.show.roles);
   for (const l of lights) l.role = roles[l.id];
   const show = app.show;
-  const result = generateShow({ ...show, duration: app.duration() }, lights, colors, { style, house, build, maxBars, seed: ++generateSeed });
+  feel = takeFeel(feel);
+  const avoid = await recentLooks();
+  const result = generateShow({ ...show, duration: app.duration() }, lights, colors, { style, house, build, maxBars, seed: ++generateSeed, feel, avoid });
   if (part) {
     const tracks = part.tracks || new Set(show.tracks.map((_, i) => i));
     applyGeneratedPart(show, result, { start: part.start, end: part.end, tracks, house });
   } else applyGenerated(show, result);
   app.select(null);
   app.changed();
-  status(`Generated effects for ${lights.length} light${lights.length === 1 ? "" : "s"}`
-    + (part ? ` from ${fmtTime(part.start)} to ${fmtTime(part.end)}` : "") + ". Ctrl+Z to undo");
+  const named = FEELS[feel].label.toLowerCase();
+  status(`Generated ${/^[aeiou]/.test(named) ? "an" : "a"} ${named} show for ${lights.length} light${lights.length === 1 ? "" : "s"}`
+    + (part ? ` from ${fmtTime(part.start)} to ${fmtTime(part.end)}` : "") + ". Try again for another, Ctrl+Z to undo");
 }
 
 // Generate with the AI: the whole show from the song, its sections and their notes, in one request.
-async function generateWithAI({ colors, paletteName, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null, note = "" }) {
+async function generateWithAI({ colors, paletteName, style, house, build, maxBars = prefs.get("genMaxBars", 4), part = null, note = "",
+  feel = "surprise" }) {
   // A window over the editor while the AI works, so it's plain it's busy and nothing is changed
   // underneath it; Cancel (or Esc) stops waiting and leaves the show as it was.
   if (!aiLights().some((l) => !l.house)) { status("Add your lights under Setup → Devices first", "hint"); return; }
@@ -12442,16 +12497,22 @@ async function generateWithAI({ colors, paletteName, style, house, build, maxBar
     const heard = await analyseSong({ cancelled: () => busy.cancelled });
     if (!heard || busy.cancelled) { busy.close(); return; }
   }
-  const feel = { calm: "calm and gentle, with slow movement", balanced: "balanced, building with the music",
+  const pace = { calm: "calm and gentle, with slow movement", balanced: "balanced, building with the music",
     lively: "lively, with lots of movement on the beat" }[style] || "balanced";
+  const mood = FEELS[takeFeel(feel)];
+  const avoid = await recentLooks();
   const span = part ? `the part of the song from ${fmtTime(part.start)} to ${fmtTime(part.end)} only` : "the whole song";
   const request = `Make a complete light show for ${span}${build ? "" : " on every light"}. Use the "${paletteName}" colours `
-    + `(${colors.join(", ")}). Keep it ${feel}: quiet sections soft, loud sections bright and on the beat, and the `
+    + `(${colors.join(", ")}). Keep it ${pace}: quiet sections soft, loud sections bright and on the beat, and the `
     + "same looks each time a section comes back. Change looks on bar lines. Follow each section's notes."
     + (build ? " Build it up as a person would: in quiet sections use only one or a few lights and leave the rest "
       + "dark; bring more lights in as the music builds, adding them on bar lines; use every light together only "
       + "in the loudest sections and the chorus. Keep the parts of one light (named Light · Part) on or off together." : "")
     + (house ? " Add sweeps across the house as the music lifts into louder sections." : "")
+    + ` Make it feel ${mood.label.toLowerCase()}: lean towards effects such as ${mood.likes.slice(0, 6).join(", ")}.`
+    + (avoid.length ? ` Their other recent shows lean on ${avoid.join(", ")}, so use those little or not at all.` : "")
+    + " Before placing any clips, decide one idea for the whole show in a line (a picture or a little story, such as"
+    + " \"a frosty night that thaws into a party\") and keep every section true to it. Start your summary with that idea."
     + (note ? ` Also, from the person making the show: ${note}` : "");
   // Clips longer than Longest effect are cut at bar lines here, rather than asking the AI for more,
   // shorter clips, which could run past how much it may write in one reply.
@@ -13215,6 +13276,7 @@ function wire() {
   $("btn-detect").addEventListener("click", detectBeats);
   $("btn-song-beats").addEventListener("click", () => importSongInfo({ quiet: false }));
   $("btn-generate").addEventListener("click", () => generateDialog());
+  $("btn-generate-again").addEventListener("click", generateAgain);
   $("ai-form").addEventListener("submit", describeIt);
   $("ai-preset-form").addEventListener("submit", describePresets);
   $("ai-palette-form").addEventListener("submit", describePalettes);

@@ -326,3 +326,27 @@ test("a section whose lines come back is treated as a chorus, whatever it's call
   assert.ok(plain.house.length < sung.house.length);
   assert.deepEqual(sung.house.map((c) => c.start), [32, 64]);
 });
+
+test("a feel leans the looks its way, and looks used elsewhere are left out", async () => {
+  const { FEELS, FEEL_KEYS } = await import("../../haliday_show/app/halidayshow/static/js/autogen.js");
+  const effects = (opts) => {
+    const out = new Set();
+    for (let seed = 1; seed <= 6; seed++) {
+      const g = generateShow(analysis, lights, ["#ff0000", "#00ff00", "#0000ff"], { seed, ...opts });
+      for (const list of Object.values(g.clips)) for (const c of list) out.add(c.effect);
+    }
+    return out;
+  };
+  assert.ok(FEEL_KEYS.includes("spooky") && FEEL_KEYS.length >= 5);
+  // Every look a feel likes is a real effect.
+  for (const f of Object.values(FEELS)) for (const e of f.likes) assert.ok(EFFECTS[e], e);
+  const any = effects({}), spooky = effects({ feel: "spooky" }), playful = effects({ feel: "playful" });
+  assert.notDeepEqual([...spooky].sort(), [...playful].sort());
+  const extra = new Set(["fade", "cycle", "gradient", "pulse"]); // fades in and out, background, slow looks
+  const spookyFast = [...spooky].filter((e) => !extra.has(e));
+  assert.ok(spookyFast.filter((e) => FEELS.spooky.likes.includes(e)).length >= spookyFast.length / 2);
+  // Avoid what's used a lot, while there's enough else.
+  const avoid = [...any].filter((e) => e !== "fade").slice(0, 3);
+  const fresh = effects({ avoid });
+  for (const e of avoid) if (!["cycle", "gradient", "pulse", "twinkle"].includes(e)) assert.ok(!fresh.has(e), e);
+});

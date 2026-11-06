@@ -233,6 +233,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   Home Assistant's 16 MB limit upload fine
 - Cut, trim and splice songs in the **Music editor**, with crossfades, as named **drafts** kept as you go that you can come back to and tweak, then make into a song file
 - **Even out the volume** when making a song file, so songs play at about the same loudness
+- **Generate has a Feel** (Playful, Elegant, Rock'n'roll, Retro, Spooky, Dreamy or Surprise me) and **Try again**; it avoids the looks your other shows lean on, and the AI starts from a one-line idea for the show
 - **Generate follows the drums and the words**: each light's role picks what it does (Drum hits on real drum hits, Words on sung words), looks change on lyric lines, and the whole house is kept for the biggest moments
 - **Light roles**: which part of the music each light reacts to (kick, snare, crash, bass, vocals, melody or background), guessed for your house and changeable per show
 - **Split into parts**: AI in your browser separates a song into its vocals, drums, bass and the rest, kept with the song as its parts (stems), split automatically when a song is added (or all at once), which follow it into edits and can be layered; the drums give when each kick, snare, hi-hat and crash lands

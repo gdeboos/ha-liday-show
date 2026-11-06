@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.408
+
+- **Generate has a Feel.** In **Generate a show**, pick **Playful**, **Elegant**, **Rock'n'roll**, **Retro**, **Spooky** or **Dreamy**, or leave it on **Surprise me** for a different one each time. The message afterwards says which feel it went for.
+- **↻ Try again.** After you generate, a **Try again** button appears beside **✨ Generate**: press it for another take with the same choices (and, on Surprise me, a new feel). Ctrl+Z still brings back the one before.
+- **More looks, and less of the same.** Generate now also uses candlelight, falling snow, icicle drips, stacking blocks, rainbows, firelight, lightning and strobes, and steers clear of the effects your last few other shows lean on.
+- **The AI starts with an idea.** With the AI making the show, it first decides one idea for the whole show (such as "a frosty night that thaws into a party"), keeps every part true to it, and tells you the idea when it's done.
+
 ## 0.2.407
 
 - **Generate follows the drums and the words.** For a song split into parts, with its lyrics, and your lights' roles set, a generated show:
