@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.2.383
+## 0.2.384
 
 - **Listen to songs in Library → Songs.** Each song, edit and split has a **▶** button that plays it in a bar along the bottom of the page, with pause, a slider to jump about, the volume and **✕** to stop. No need to open the Music editor just to hear one.
+
+## 0.2.383
+
+- **Phones show the Phones lane again after an update.** A phone could keep some of the effect code from before an update and mix it with the new, which stopped the lane loading, so it showed only plain colours (no GIFs, faces or matrix effects). Phones now always take a matching set. Reload the visitors' page on a phone that's been open a while.
 
 ## 0.2.382
 
