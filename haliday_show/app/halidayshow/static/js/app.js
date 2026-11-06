@@ -12480,7 +12480,8 @@ async function generate({ colors, style, house, build, maxBars = prefs.get("genM
   } else applyGenerated(show, result);
   app.select(null);
   app.changed();
-  status(`Generated a ${FEELS[feel].label.toLowerCase()} show for ${lights.length} light${lights.length === 1 ? "" : "s"}`
+  const named = FEELS[feel].label.toLowerCase();
+  status(`Generated ${/^[aeiou]/.test(named) ? "an" : "a"} ${named} show for ${lights.length} light${lights.length === 1 ? "" : "s"}`
     + (part ? ` from ${fmtTime(part.start)} to ${fmtTime(part.end)}` : "") + ". Try again for another, Ctrl+Z to undo");
 }
 
