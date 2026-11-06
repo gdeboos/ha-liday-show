@@ -1,9 +1,13 @@
 # Changelog
 
-## 0.2.419
+## 0.2.420
 
 - **Find a match.** When you add a clip in the Music editor, **Sort: Best fit first** puts the songs that would fit best over yours at the top, each with **Great fit**, **Good fit**, **Fits with a change** or **Big change** and why ("4 BPM faster · C major, fits A minor").
 - **Add just a section.** After picking a song, **Which part of it** lists its sections (**Chorus 0:48 – 1:12**…): pick one to add just that stretch, lined up on the bar.
+
+## 0.2.419
+
+- **Edits no longer offer to be split on their own.** An edit gets its parts from its original song, so while the original isn't split, the edit's **⋯** says **Split the original into parts…**. That splits the original, then cuts the edit's parts from it in seconds, rather than running the AI on the edit as well.
 
 ## 0.2.418
 

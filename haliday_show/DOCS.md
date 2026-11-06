@@ -991,6 +991,10 @@ before 0.2.412 has parts without them: open its draft and press **Make song file
 in seconds. Anything not done when you close
 the page is picked up next time you press it.
 
+An edit doesn't need splitting on its own: it gets its parts from its original song. So while the
+original isn't split yet, an edit's **⋯** offers **Split the original into parts…** instead, which
+splits the original and then cuts the edit's parts from it in seconds.
+
 A song you split before (with Split vocals) has its vocals already: **Split into parts…** keeps them
 and only finds the drums, bass and rest. Each part is kept as soon as it's ready, so if you stop part
 way, the parts it finished are kept.
