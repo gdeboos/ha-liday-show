@@ -471,7 +471,8 @@ export class SceneEditor {
     // A whole WLED light can play one of WLED's own effects instead (runner.py hands it over).
     const dev = this.d.devices()[devId] || null;
     const whole = !!dev && !dev.parent && !dev.light && !dev.parts?.length; // live effects need a whole light
-    const wledOK = whole && dev.kind === "wled";
+    // WLED's own effect also suits a split WLED played as one row: WLED runs it across all its segments.
+    const wledOK = !!dev && !dev.parent && dev.kind === "wled";
     const own = !!EFFECTS[look?.effect]?.wledOwn;
     const eff = el("button", { type: "button", class: "sc-effect picker-button", "aria-haspopup": "dialog",
       "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: `${fxName}. Pick an effect or preset, with a preview of each` },

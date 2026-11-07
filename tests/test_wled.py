@@ -128,6 +128,18 @@ def test_a_wled_segment_light_s_own_effect_goes_to_its_segment():
     assert "id" not in wled.own_effect_state({"fx": 3})["seg"]  # a whole WLED: its selected segments
 
 
+def test_own_effect_on_every_segment_of_a_split_wled():
+    # A light split into parts read from WLED gets the look on each of those segments.
+    split = {"kind": "wled", "parts": [{"id": "w0", "from": 1, "to": 50}, {"id": "w2", "from": 51, "to": 100}]}
+    assert wled.own_segments(split) == [0, 2]
+    segs = wled.own_effect_state({"fx": 3}, wled.own_segments(split))["seg"]
+    assert [s["id"] for s in segs] == [0, 2] and all(s["fx"] == 3 for s in segs)
+    # A segment light keeps its own segment; hand-made parts and unsplit lights leave it to WLED.
+    assert wled.own_segments({"segment": 1, "parts": [{"id": "w0"}]}) == 1
+    assert wled.own_segments({"parts": [{"id": "p1"}, {"id": "p2"}]}) is None
+    assert wled.own_segments({}) is None
+
+
 async def test_reading_a_wled_s_effects_and_sending_it_one(aiohttp_server, monkeypatch):
     from aiohttp import web
 

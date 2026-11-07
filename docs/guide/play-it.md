@@ -76,8 +76,9 @@ and not on the schedule) and **Remove…**.
 - A light not split into parts can play a **Live music** effect that follows what a WLED with a
   microphone hears (see [Live music effects](#live-music-effects)). Its row then has **Follows** (and
   **Fills** or **Burst**) under the effect.
-- A WLED light (one not split into parts) can play one of **WLED's own effects** instead: pick
-  **WLED's own effect** under **On this WLED** in the effect window. Under it, pick which of the WLED's
+- A WLED light can play one of **WLED's own effects** instead: pick **WLED's own effect** under
+  **On this WLED** in the effect window. A light split into parts offers it on its own row (with
+  **Each part on its own** off), and the WLED plays it across all its segments. Under it, pick which of the WLED's
   effects and palettes, read from the light itself (so the light needs its IP address). Its colours,
   **Speed**, **Brightness** and **Intensity** go to the WLED too. When the scene starts, HA-liday Show
   tells the WLED to play that effect and sends it nothing else; your other lights play as usual. The
@@ -109,8 +110,9 @@ works as in a show. Each light's look becomes one effect across the whole timeli
   **Loop** is on. **▶ Play** plays the scene on your lights from the playhead; **⏸ Pause** turns it off.
 - It saves as you go, like a show. **← All scenes** goes back to the list, where **Edit** opens it in
   the Show editor again.
-- On a WLED light's lane (one not split into parts), the effect window offers **WLED's own effect**, as in
-  a Basic scene. It always covers the whole loop and is that lane's only effect: picking it replaces the
+- On a WLED light's own lane, the effect window offers **WLED's own effect**, as in a Basic scene. A
+  light split into parts offers it on its own lane (not its parts' lanes), and its parts' effects
+  then don't play. It always covers the whole loop and is that lane's only effect: picking it replaces the
   lane's other effects, and other effects can't go on that lane until you change or delete it. Its clip
   says **WLED:** and the effect's name, and the **Selection** panel picks the WLED's effect and palette.
   Transitions and Glitter do nothing on it, and it can't be copied to other lights or saved as a preset.

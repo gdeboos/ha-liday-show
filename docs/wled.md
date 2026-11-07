@@ -117,7 +117,9 @@ left column green) is how to confirm the WLED mapping assumption on the first re
 
 ## WLED's own effects in scenes
 
-From 0.2.314 a scene can give a whole WLED light (no parts) the `wled` effect. In a Basic scene it's the
+From 0.2.314 a scene can give a whole WLED light the `wled` effect; from 0.2.434 a WLED light split into
+parts can have it too, on its own row or lane (`sceneeditor.js` `wledOK`, `app.js` `sceneLight`). Its
+parts' clips are then not played (the light gets no frames). In a Basic scene it's the
 light's look, `{effect: "wled", params: {fx, palette, speed, intensity, color, color2, color3,
 brightness, fxName, palName}}`; in an Advanced scene, a clip with those fields covering the lane's whole
 loop. Plan: the project doc `claude/effects-plan.md`, round 2.
@@ -132,7 +134,10 @@ loop. Plan: the project doc `claude/effects-plan.md`, round 2.
   This applies to scenes and to scene blocks in playlists. A WLED that doesn't answer is logged and
   left as it is. Missing colours default to the editor's defaults (`wled.OWN_COLOURS`, tested against
   effects.js).
-- `seg` is sent as one object, which WLED applies to its selected segments. `live: false` is there
+- `seg` is sent as one object, which WLED applies to its selected segments. For a light split into
+  parts read from WLED (part ids `w<segment id>`), `wled.own_segments` lists those ids and `seg` is
+  sent as a list with the look on each, so every segment plays it whichever are selected. Hand-made
+  parts fall back to the single object. `live: false` is there
   to leave realtime mode at once, rather than after the 2.5 s timeout. `bri` on a segment is its own
   brightness (newer WLED). None of this has been checked on a real WLED yet (only against a fake
   answering `/json` and `/json/state`). On the first real one, check that the effect starts straight
