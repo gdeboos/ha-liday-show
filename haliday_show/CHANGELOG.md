@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.432
+
+- **Link a WLED light to one segment.** Typing a WLED's IP into a planned WLED light now asks whether it's the whole WLED or one of its segments, so a light you've already made shows for (say your Pillars) becomes that one string and keeps its shows and parts. A WLED light already linked to the whole WLED has **Just one segment…** in its window for the same. Then add the WLED to bring in its other strings.
+
 ## 0.2.431
 
 - **One WLED, several lights.** Adding a WLED that has segments now asks: **One light with parts** (as before) or **A light per segment**. With a light per segment, each string on the controller (say pillars on one pin, window icicles on the others) is its own light that you can split into parts, trace and group, and each can play **WLED's own effects** in scenes on just its segment.
