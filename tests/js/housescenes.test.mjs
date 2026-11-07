@@ -175,3 +175,15 @@ test("a scene's palette: new scenes take its colours in turn, and lights that we
   // Switching modes keeps it.
   assert.deepEqual(toBasic(toAdvanced(s, lights, 20)).palette, palette);
 });
+
+test("WLED's own effect stays on parts read from a WLED's segments, and becomes colours on other parts", async () => {
+  const { setByParts, wledSegmentPart } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const w = { id: "w", kind: "wled", segments: 4, parts: [{ id: "w0", name: "Left", from: 1, to: 2 }, { id: "p2", name: "Mine", from: 3, to: 4 }] };
+  assert.equal(wledSegmentPart(w, w.parts[0]), true);
+  assert.equal(wledSegmentPart(w, w.parts[1]), false);
+  assert.equal(wledSegmentPart({ ...w, kind: "ddp" }, w.parts[0]), false);
+  const s = { name: "x", mode: "basic", lights: { w: { effect: "wled", params: { fx: 9 } } } };
+  setByParts(s, w, true);
+  assert.equal(s.lights["w#w0"].effect, "wled");
+  assert.equal(s.lights["w#p2"].effect, "trio");
+});

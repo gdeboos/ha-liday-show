@@ -119,7 +119,11 @@ left column green) is how to confirm the WLED mapping assumption on the first re
 
 From 0.2.314 a scene can give a whole WLED light the `wled` effect; from 0.2.434 a WLED light split into
 parts can have it too, on its own row or lane (`sceneeditor.js` `wledOK`, `app.js` `sceneLight`). Its
-parts' clips are then not played (the light gets no frames). In a Basic scene it's the
+parts' clips are then not played (the light gets no frames). From 0.2.435 a part read from WLED's
+segments (id `w<segment id>`) can have it too, keyed `light#w<id>` in a Basic scene's `lights` or as an
+Advanced lane (`housescenes.js` `wledSegmentPart`). `scenelib.wled_device` turns that key into the light
+with `segment` set, so `seg: {id}` reaches only that segment; the whole WLED gets no frames, so its other
+parts show what WLED has set for them. In a Basic scene it's the
 light's look, `{effect: "wled", params: {fx, palette, speed, intensity, color, color2, color3,
 brightness, fxName, palName}}`; in an Advanced scene, a clip with those fields covering the lane's whole
 loop. Plan: the project doc `claude/effects-plan.md`, round 2.
