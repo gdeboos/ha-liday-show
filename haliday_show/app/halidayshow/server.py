@@ -1103,6 +1103,10 @@ STEM_FILES = {
     "yamnet.onnx": ("https://media.githubusercontent.com/media/kaiidams/TransferLearningAudio/"
                     "3f2608d414305099f2be8482911469c0d10af276/assets/yamnet.onnx",
                     "application/octet-stream", 16093547, "6b5aa2a0398bf99bad26f7fad98be8a6e0c074df4d6c51265500a2d787001457"),
+    # Line up with the singing (static/js/align.js): an English wav2vec 2.0 speech model (MIT licence), made
+    # smaller and published in this repo by .github/workflows/models.yml.
+    "align.onnx": ("https://github.com/gdeboos/ha-liday-show/releases/download/models-align-1/align-en-int8.onnx",
+                   "application/octet-stream", 95288193, "e57bd381bb19a790e6a998142d7ab3e1b1362734381c06e1e1fb628089d1240d"),
     "ort.webgpu.min.mjs": (_ORT + "ort.webgpu.min.mjs", "text/javascript", 333468,
                            "e1a0817ac08d5a6ade7f229754c2aecd444bff0bd22c259ca148a04b9f9e9f65"),
     "ort-wasm-simd-threaded.jsep.mjs": (_ORT + "ort-wasm-simd-threaded.jsep.mjs", "text/javascript", 46839,

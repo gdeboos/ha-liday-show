@@ -8,6 +8,7 @@
 
 import { MODELS, localMaths, separate } from "./stems.js";
 import { CLASSES } from "./sounds.js";
+import { LABELS, logSoftmax } from "./align.js";
 
 const FILES = new URL("../../api/stems/files/", import.meta.url).href;
 // Bumped whenever server.py's STEM_FILES change, so no browser keeps using old copies.
@@ -170,9 +171,50 @@ async function listen(samples) {
   return rows;
 }
 
-self.onmessage = async ({ data: { left, right, want = ["vocals"], vocals = null, listen: heard = null } }) => {
+// Line up with the singing (align.js): the English speech model over the vocals (one channel at 16 kHz), 20
+// seconds at a time with a second either side so no word is cut, quiet stretches skipped (nothing's sung
+// there). {stage: "align", done} as it goes, then {logp}: frames × LABELS.length log-probabilities.
+const ALIGN = "align.onnx", HOP_ALIGN = 320, PIECE_ALIGN = 20 * RATE, EDGE_ALIGN = RATE;
+async function lineUp(samples) {
+  const kept = await keptModel(ALIGN);
+  const files = await prepared([...RUNTIME, ...(kept ? [] : [ALIGN])], (done) => self.postMessage({ stage: "download", done }));
+  const ort = await runtime();
+  const bytes = kept || await model(ALIGN, files[ALIGN].size);
+  self.postMessage({ stage: "align", done: 0 });
+  const session = await ort.InferenceSession.create(bytes, { executionProviders: ["wasm"] });
+  const width = LABELS.length, frames = Math.floor(samples.length / HOP_ALIGN);
+  const logp = new Float32Array(frames * width);
+  for (let f = 0; f < frames; f++) { logp[f * width] = 0; for (let j = 1; j < width; j++) logp[f * width + j] = -30; }
+  for (let at = 0; at < samples.length; at += PIECE_ALIGN) {
+    const piece = samples.subarray(at, Math.min(samples.length, at + PIECE_ALIGN));
+    let sum = 0;
+    for (let i = 0; i < piece.length; i++) sum += piece[i] * piece[i];
+    if (Math.sqrt(sum / Math.max(1, piece.length)) > 0.003) {
+      const from = Math.max(0, at - EDGE_ALIGN), to = Math.min(samples.length, at + PIECE_ALIGN + EDGE_ALIGN);
+      if (to - from >= 400) {
+        const out = await session.run({ waveform: new ort.Tensor("float32", Float32Array.from(samples.subarray(from, to)), [1, to - from]) });
+        const t = out.logits, n = t.dims[1], data = logSoftmax(Float32Array.from(t.getData ? await t.getData() : t.data));
+        const first = from / HOP_ALIGN; // `from` is a whole number of steps
+        for (let j = 0; j < n; j++) {
+          const g = first + j;
+          if (g < at / HOP_ALIGN || g >= (at + PIECE_ALIGN) / HOP_ALIGN || g >= frames) continue;
+          logp.set(data.subarray(j * width, (j + 1) * width), g * width);
+        }
+      }
+    }
+    self.postMessage({ stage: "align", done: Math.min(1, (at + PIECE_ALIGN) / samples.length) });
+  }
+  await session.release?.();
+  return logp;
+}
+
+self.onmessage = async ({ data: { left, right, want = ["vocals"], vocals = null, listen: heard = null, align = null } }) => {
   if (heard) {
     try { self.postMessage({ scores: await listen(heard) }); } catch (e) { self.postMessage({ error: e?.message || String(e) }); }
+    return;
+  }
+  if (align) {
+    try { const logp = await lineUp(align); self.postMessage({ logp }, [logp.buffer]); } catch (e) { self.postMessage({ error: e?.message || String(e) }); }
     return;
   }
   try {

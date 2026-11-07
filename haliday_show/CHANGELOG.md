@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.430
+
+- **✨ Line up with the singing.** In the **Lyrics** window, paste the words, then press **Line up with the singing**: an AI listens to the song's vocals and puts every word where it's actually sung, so Singing faces mouth the words in time with no fiddly placing. **Undo** puts back what was there. It downloads once (about 95 MB), takes a minute or two a song in your browser, works best on songs split into parts, and understands English.
+- **The Lyrics window no longer misses your first press** after pasting: the lines are placed as you paste.
+
 ## 0.2.429
 
 - **Save one sound as a sample.** **Save as sample…** in the Music editor now asks which sound to keep: **As you hear it**, one of the song's parts (**Just the drums** for a drum fill, **Just the vocals** for a sung line), or, while you're editing a layer on its own, just that layer.

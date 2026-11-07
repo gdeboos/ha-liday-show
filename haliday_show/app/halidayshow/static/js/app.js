@@ -18,7 +18,7 @@ import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin, singerOf } from "./phones.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
-import { makeParts, prepared, splitVocals, splitting, stemNames } from "./splitvocals.js";
+import { makeParts, prepared, splitVocals, splitting, stemNames, lineUpLyrics } from "./splitvocals.js";
 import { FITS, mashFit, rankFits } from "./mashfit.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic } from "./housescenes.js";
@@ -11105,8 +11105,9 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
   const w = editWindow(`Lyrics for ${ref.path.replace(/^.*\//, "").replace(/\.[^.]+$/, "")}`);
   w.dlg.classList.add("lyrics-dialog");
   const intro = Object.assign(document.createElement("p"), { className: "hint",
-    textContent: "Paste the words, one line of the song per line. They're placed across the singing for you; "
-      + "if a line comes in early or late, type its start or tap along with the song. To get each word just right, "
+    textContent: "Paste the words, one line of the song per line, then press Line up with the singing: an AI listens "
+      + "to the vocals and places each word where it's sung. If a line still comes in early or late, type its start or "
+      + "tap along with the song. To get each word just right, "
       + (inMusic ? "save, then drag it on the Lyrics lane under the sections." : "open the song in the Music editor and drag it on its Lyrics lane.") });
   const text = Object.assign(document.createElement("textarea"), { rows: 7, className: "lyrics-text",
     value: lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
@@ -11143,7 +11144,12 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
     hint.textContent = !lines.length ? "" : voice ? `${lines.length} lines, placed across the singing.`
       : `${lines.length} lines, spread evenly (the singer hasn't been measured).`;
   };
-  text.addEventListener("change", () => {
+  // Placed as you paste or type (after a pause), so leaving the box doesn't grow the window under the
+  // pointer and lose the press of a button below it.
+  let typing = null;
+  text.addEventListener("input", () => { clearTimeout(typing); typing = setTimeout(changed, 400); });
+  text.addEventListener("change", () => { clearTimeout(typing); changed(); });
+  function changed() {
     const now = parseLyrics(text.value);
     // The same number of lines: keep their starts; otherwise place them all again.
     if (now.length && now.length === lines.length) {
@@ -11152,8 +11158,33 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
       lines = fromStarts(kept, lines.map((l) => l.start), voice, duration);
       draw();
     } else place();
-  });
+  }
   const auto = button("Place automatically", place, "ghost");
+  // Line up with the singing (align.js): an AI hears where each word is sung in the vocals and places
+  // every line and word afresh. Undo puts back what was there.
+  let before = null;
+  const undo = button("Undo", () => { if (before) { lines = before; before = null; undo.hidden = true; draw(); } }, "ghost small");
+  undo.hidden = true;
+  const lineUp = button("Line up with the singing", async () => {
+    clearTimeout(typing);
+    const words = parseLyrics(text.value);
+    if (!words.length) { hint.textContent = "Paste the words first, one line of the song per line."; return; }
+    lineUp.disabled = auto.disabled = tapAlong.disabled = save.disabled = true;
+    try {
+      const got = await lineUpLyrics(ref, api, words, (t) => { hint.textContent = t; });
+      if (!got) { hint.textContent = "Couldn't fit these words to the song. Check they're its words, one line of the song per line."; return; }
+      before = lines;
+      lines = got.lines;
+      undo.hidden = false;
+      draw();
+      hint.textContent = `${lines.length} lines lined up with the singing${got.vocals ? "" : " (the song isn't split into parts, so it listened to the whole song: splitting it first lines up better)"}. Press ▶ on a line to check it.`;
+    } catch (e) {
+      hint.textContent = `Couldn't line up the words: ${e.message}`;
+    } finally {
+      lineUp.disabled = auto.disabled = tapAlong.disabled = save.disabled = false;
+    }
+  }, "primary");
+  lineUp.title = "An AI listens to the song's vocals and places each word where it's sung. English songs";
   // Tap along: the song plays from the start, and each press of the button (or the space bar) starts the
   // line it names there, the first line included.
   const next = button("", () => tap(), "primary");
@@ -11193,7 +11224,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
   w.dlg.addEventListener("keydown", (e) => { if (tapping >= 0 && e.code === "Space") { e.preventDefault(); if (!e.repeat) tap(); } });
   w.dlg.addEventListener("keyup", (e) => { if (e.code === "Space") e.preventDefault(); });
   const tools = Object.assign(document.createElement("div"), { className: "row" });
-  tools.append(auto, tapAlong, next);
+  tools.append(lineUp, auto, tapAlong, next, undo);
   w.body.append(intro, text, tools, hint, list);
   const remove = button("Remove lyrics", () => finish(null), "ghost danger");
   remove.hidden = !lyrics;
