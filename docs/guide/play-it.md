@@ -86,7 +86,10 @@ and not on the schedule) and **Remove…**.
   brightness, and House lane or group lane effects don't reach this light. When a show starts, the
   light is taken back as usual. When the scene stops, the WLED carries on with its effect (as a WLED
   goes back to its own effect after a show), so turn it off in WLED or Home Assistant if you want it
-  dark. A WLED that doesn't answer just stays as it was.
+  dark. A WLED that doesn't answer just stays as it was. On a WLED you've added as a light per segment,
+  only that light's segment plays the effect. Your other lights on the same WLED can't get frames while
+  it does (they'd stop the effect), so they show what WLED has set for their segments, unless you give
+  them WLED's own effect too; their rows say so.
 - **Same for every light** puts one row in charge of all your lights. Turn it off again and each
   light starts from that look, ready to change one at a time.
 - The **Preview** shows the scene moving on your house photo. Changes save as you make them.

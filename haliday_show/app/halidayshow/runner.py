@@ -345,17 +345,21 @@ class Runner:
 
     def _scene_devices(self, scene: dict | None) -> tuple[dict, dict]:
         """The lights a scene's frames go to, and those left to WLED's own effects ({id: (device, look)}),
-        which get no frames."""
+        which get no frames. Frames to any light on the same WLED would put it straight back into
+        realtime, ending its own effect, so other lights on that WLED get none either: they show what
+        WLED has set for their segments."""
         devices = self.storage.devices_by_id()
         own = {k: (devices[k], look) for k, look in scenelib.wled_looks(scene or {}, devices).items()}
-        return {k: d for k, d in devices.items() if k not in own}, own
+        taken = {d["ip"] for d, _ in own.values() if d.get("ip")}
+        return {k: d for k, d in devices.items() if k not in own
+                and not (d.get("kind") == "wled" and d.get("ip") in taken)}, own
 
     def _wled_own(self, own: dict):
         """Tells each WLED on its own effect what to play (in the background: a WLED that doesn't
         answer just stays as it was)."""
         async def send(device: dict, look: dict):
             try:
-                await wled.set_state(device["ip"], wled.own_effect_state(look))
+                await wled.set_state(device["ip"], wled.own_effect_state(look, device.get("segment")))
             except wled.WledError as e:
                 log.warning("%s: couldn't start its own effect: %s", device.get("name") or device.get("id"), e)
         for device, look in own.values():
@@ -380,7 +384,8 @@ class Runner:
             return follower.step(self.live.now(heard["source"]), now)
 
         self.player.live = live
-        self.player.live_tracks = {t.device: t for t in live.tracks if t.device not in own}
+        self.player.live_tracks = {t.device: t for t in live.tracks
+                                   if t.device not in own and t.device in self.player.devices}
         self.player.live_step = step
 
     def _react(self, scene: dict | None):

@@ -735,6 +735,28 @@ async def test_pixel_controller_lights(client):
         assert (await client.put("/api/devices", json=[{**strings[0], "first": bad}])).status == 400
 
 
+async def test_wled_segment_lights(client):
+    strings = [{"id": "wled-a-s0", "kind": "wled", "ip": "192.168.1.81", "segments": 150, "segment": 0},
+               {"id": "wled-a-s1", "kind": "wled", "ip": "192.168.1.81", "segments": 60, "first": 151, "segment": 1}]
+    a, b = await (await client.put("/api/devices", json=strings)).json()
+    assert (a["first"], a["segment"]) == (1, 0)
+    assert (b["first"], b["segment"], b["protocol"]) == (151, 1, "ddp")
+    # A whole WLED light is saved as before.
+    whole = (await (await client.put("/api/devices", json=[{"kind": "wled", "ip": "1.2.3.4"}])).json())[0]
+    assert "first" not in whole and "segment" not in whole
+    for bad in ({"segment": -1}, {"segment": 64}, {"segment": "x"}, {"first": 0},
+                {"segment": 1, "matrix": {"w": 10, "h": 15}}):
+        assert (await client.put("/api/devices", json=[{**strings[1], **bad}])).status == 400
+    # Not on other kinds.
+    assert "segment" not in (await (await client.put("/api/devices", json=[{"kind": "ddp", "ip": "1.2.3.5", "segment": 2}])).json())[0]
+
+
+def test_wled_segment_lights_are_sent_from_their_first_led():
+    from halidayshow.output import address
+    assert address({"kind": "wled", "ip": "10.0.0.5", "first": 151}) == "10.0.0.5#151"
+    assert address({"kind": "wled", "ip": "10.0.0.5"}) == "10.0.0.5"
+
+
 async def test_e131_lights(client):
     light = {"id": "e131-a", "kind": "e131", "ip": "192.168.1.90", "segments": 170, "universe": 3, "channel": 1}
     resp = await client.put("/api/devices", json=[light, {**light, "id": "e131-b", "universe": None, "channel": None}])

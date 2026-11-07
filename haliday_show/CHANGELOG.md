@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.431
+
+- **One WLED, several lights.** Adding a WLED that has segments now asks: **One light with parts** (as before) or **A light per segment**. With a light per segment, each string on the controller (say pillars on one pin, window icicles on the others) is its own light that you can split into parts, trace and group, and each can play **WLED's own effects** in scenes on just its segment.
+- **Convert to WLED…** can make a light one segment of a WLED, so lights you've rewired to a shared controller keep their shows.
+- **Update from WLED** in a segment light's window reads its segment again after you change it in WLED, and adding the WLED again adds any segments that aren't lights yet.
+
 ## 0.2.430
 
 - **✨ Line up with the singing.** In the **Lyrics** window, paste the words, then press **Line up with the singing**: an AI listens to the song's vocals and puts every word where it's actually sung, so Singing faces mouth the words in time with no fiddly placing. **Undo** puts back what was there. It downloads once (about 95 MB), takes a minute or two a song in your browser, works best on songs split into parts, and understands English.

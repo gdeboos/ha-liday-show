@@ -51,6 +51,8 @@ MAX_SEGMENTS = 1000  # per light; the Christmas String Lights 2 have 300 bulbs
 MAX_MATRIX = 4096  # LEDs on a matrix (64 x 64), which bakes to about 90 MB for 3 minutes
 MATRIX_KINDS = ("wled", "ddp", "e131")
 MATRIX_STARTS = ("top left", "top right", "bottom left", "bottom right")
+# WLED numbers its segments from 0; builds allow up to 32 (more on some), so leave room.
+MAX_WLED_SEGMENT = 63
 MAX_FIRST_LED = 100000  # where a light starts on a pixel controller; DDP offsets go far beyond this
 KINDS = ("govee", "wled", "ddp", "e131", "ha", "twinkly")
 _HA_ENTITY = re.compile(r"^(light|switch)\.[a-z0-9_]{1,200}$")
@@ -496,15 +498,25 @@ def _clean_device(d: dict) -> dict:
         raise web.HTTPBadRequest(text=str(e))
     if tags:
         extra["seasons"] = tags
-    if kind == "ddp":
-        # A controller can drive several lights from one IP, each from its own first LED.
+    if kind in ("ddp", "wled"):
+        # A controller can drive several lights from one IP, each from its own first LED. A WLED light
+        # can also be one of the WLED's segments, so WLED's own effects in scenes go to that segment.
         try:
             first = int(d["first"]) if d.get("first") is not None else 1
+            segment = int(d["segment"]) if kind == "wled" and d.get("segment") is not None else None
         except (TypeError, ValueError):
-            raise web.HTTPBadRequest(text="first must be a number")
+            raise web.HTTPBadRequest(text="first and segment must be numbers")
         if not 1 <= first <= MAX_FIRST_LED:
             raise web.HTTPBadRequest(text=f"first must be 1-{MAX_FIRST_LED}")
-        extra["first"] = first
+        if segment is not None and not 0 <= segment <= MAX_WLED_SEGMENT:
+            raise web.HTTPBadRequest(text=f"segment must be 0-{MAX_WLED_SEGMENT}")
+        if matrix and (first > 1 or segment is not None):
+            raise web.HTTPBadRequest(text="a matrix must be a whole WLED light")
+        # Old WLED lights stay as they were saved: first only when it isn't the start.
+        if kind == "ddp" or first > 1 or segment is not None:
+            extra["first"] = first
+        if segment is not None:
+            extra["segment"] = segment
     if kind == "e131":
         try:
             universe = int(d["universe"]) if d.get("universe") is not None else 1

@@ -118,7 +118,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 
 - One **Add a light** window for every kind: pick what you're adding and fill in only what it needs
 - **WLED** strips, found on the network or added by IP, with their LED count and WLED segments filled
-  in for you; a Govee light rewired to WLED converts in one step, keeping its shows and parts
+  in for you (as parts of one light, or a light per segment for a controller driving several strings);
+  a Govee light rewired to WLED converts in one step, keeping its shows and parts
 - **Seasons** for props that only go up for part of the year: a show lists only its season's props,
   a switch packs a season's props away so nothing is sent to them, and buttons on the show list show
   one season's shows
@@ -499,6 +500,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/upload.js                        Sends big songs and baked shows in pieces, under ingress's 16 MB limit
     js/models.js                        Reads models.json: each Govee model's tested status and settings
     js/convert.js                       Convert to WLED: a Govee light becomes a WLED light, parts stretched
+    js/wledsegments.js                  A WLED as a light per segment: each from its first LED, with its segment id
     js/addsong.js                       The Add a song window's names and messages
     js/lightspeed.js                    How fast each protocol can change a light, and previews at that pace
     js/compat.js                        Whether a clip's effect can show on its light, for marking and blocking

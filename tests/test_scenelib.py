@@ -476,6 +476,32 @@ async def test_a_wled_on_its_own_effect_gets_its_state_and_no_frames(runner, mon
     assert state["on"] is True and state["seg"]["fx"] == 9 and state["seg"]["sx"] == 200 and state["seg"]["pal"] == 6
 
 
+async def test_a_wled_segment_light_on_its_own_effect_hands_over_its_whole_wled(runner, monkeypatch):
+    sent = []
+
+    async def fake_set_state(ip, state, timeout=4.0):
+        sent.append((ip, state))
+
+    monkeypatch.setattr(runner_mod.wled, "set_state", fake_set_state)
+    # Three strings on one WLED, each one of its segments, plus another WLED.
+    runner.storage.save_devices([
+        {"id": "pillars", "kind": "wled", "ip": "127.0.0.2", "segments": 2, "segment": 0},
+        {"id": "left", "kind": "wled", "ip": "127.0.0.2", "segments": 2, "first": 3, "segment": 1},
+        {"id": "right", "kind": "wled", "ip": "127.0.0.2", "segments": 2, "first": 5, "segment": 2},
+        {"id": "eaves", "kind": "wled", "ip": "127.0.0.3", "segments": 2}])
+    runner.storage.save_scene("mix", {"name": "Mix", "mode": "basic", "lights": {
+        "pillars": {"effect": "wled", "params": {"fx": 9}}, "left": {"effect": "solid", "params": {}},
+        "right": {"effect": "solid", "params": {}}, "eaves": {"effect": "solid", "params": {}}}})
+    tracks = [{"device": k, "segments": 2} for k in ("pillars", "left", "right", "eaves")]
+    runner.storage.save_scene_baked("mix", baked.encode(40, tracks, [b"\xff\x00\x00" * 8] * 4))
+    await runner.play_scene("mix")
+    assert await _until(lambda: sent)
+    # Frames to the other strings would put the WLED back into realtime and end the effect.
+    assert set(runner.player.devices) == {"eaves"}
+    ip, state = sent[0]
+    assert ip == "127.0.0.2" and state["seg"]["id"] == 0 and state["seg"]["fx"] == 9
+
+
 async def test_a_react_scene_s_wled_on_its_own_effect_gets_no_frames_from_it(runner):
     runner.storage.save_devices([{"id": "a", "ip": "127.0.0.1", "segments": 1},
                                  {"id": "w", "kind": "wled", "ip": "127.0.0.2", "segments": 1}])

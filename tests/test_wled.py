@@ -122,6 +122,12 @@ def test_wled_s_own_effect_as_the_state_to_send():
                                                 "col": [[255, 0, 0], [255, 255, 255], [0, 176, 0]]}  # as the editor shows
 
 
+def test_a_wled_segment_light_s_own_effect_goes_to_its_segment():
+    seg = wled.own_effect_state({"fx": 3}, 2)["seg"]
+    assert seg["id"] == 2 and seg["fx"] == 3
+    assert "id" not in wled.own_effect_state({"fx": 3})["seg"]  # a whole WLED: its selected segments
+
+
 async def test_reading_a_wled_s_effects_and_sending_it_one(aiohttp_server, monkeypatch):
     from aiohttp import web
 

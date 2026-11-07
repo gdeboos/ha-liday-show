@@ -63,10 +63,11 @@ class WledError(Exception):
 OWN_COLOURS = {"color": "#ff0000", "color2": "#ffffff", "color3": "#00b000"}
 
 
-def own_effect_state(p: dict) -> dict:
+def own_effect_state(p: dict, segment: int | None = None) -> dict:
     """A scene light's look on WLED's own effect ({fx, speed, intensity, palette, color, color2, color3,
     brightness}, as the editor saves it) as the /json/state WLED takes: its main segment's effect,
-    speed, intensity, palette and three colours, the light on, and out of realtime mode at once."""
+    speed, intensity, palette and three colours, the light on, and out of realtime mode at once. A light
+    that's one of the WLED's segments gives that segment's id, so only that segment changes."""
     def whole(key, default, top=255):
         try:
             return max(0, min(top, round(float(p.get(key, default)))))
@@ -86,6 +87,8 @@ def own_effect_state(p: dict) -> dict:
            "col": [rgb(k) for k in ("color", "color2", "color3")]}
     if isinstance(p.get("brightness"), (int, float)) and not isinstance(p.get("brightness"), bool):
         seg["bri"] = round(max(0, min(100, p["brightness"])) * 255 / 100)
+    if segment is not None:
+        seg = {"id": segment, **seg}
     return {"on": True, "live": False, "seg": seg}
 
 
