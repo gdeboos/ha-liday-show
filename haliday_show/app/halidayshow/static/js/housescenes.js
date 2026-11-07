@@ -71,6 +71,8 @@ export const lookFor = (scene, lightId) => scene.all || scene.lights?.[lightId] 
 // only as parts always goes by part; its older scenes kept one look under the light's own id, which
 // then plays on every part.
 export const partKey = (d, p) => `${d.id}#${p.id}`;
+// A part read from a WLED's segments (id "w<segment id>") can play WLED's own effect on that segment.
+export const wledSegmentPart = (d, p) => d?.kind === "wled" && /^w\d+$/.test(String(p?.id ?? ""));
 const hasPartLooks = (scene, d) => !!d.parts?.some((p) => scene.lights?.[partKey(d, p)]);
 export const byParts = (scene, d) => !scene.all && !!d.parts?.length && (d.whole === false || hasPartLooks(scene, d));
 export function partLook(scene, d, p) {
@@ -94,13 +96,15 @@ export function setPartLook(scene, d, p, look) {
 
 // Each part on its own, starting on the light's look (all off if it was off), or the whole light
 // again, on the first part's look.
-// WLED's own effect and live effects only go on a whole light's row, so a look copied anywhere else becomes plain colours.
-const plainIfOwn = (look) => (EFFECTS[look?.effect]?.sceneOnly ? changeEffect(look, "trio") : look);
+// WLED's own effect and live effects only go on a whole light's row (WLED's own also on a part that's
+// one of its WLED segments), so a look copied anywhere else becomes plain colours.
+const plainIfOwn = (look, keepOwn = false) => (EFFECTS[look?.effect]?.sceneOnly && !(keepOwn && EFFECTS[look.effect].wledOwn)
+  ? changeEffect(look, "trio") : look);
 
 export function setByParts(scene, d, on) {
   if (on) {
-    const whole = plainIfOwn(scene.lights[d.id]);
-    if (whole) for (const p of d.parts) scene.lights[partKey(d, p)] = structuredClone(whole);
+    const whole = scene.lights[d.id];
+    if (whole) for (const p of d.parts) scene.lights[partKey(d, p)] = structuredClone(plainIfOwn(whole, wledSegmentPart(d, p)));
     delete scene.lights[d.id];
   } else {
     const first = d.parts.map((p) => scene.lights[partKey(d, p)]).find(Boolean);

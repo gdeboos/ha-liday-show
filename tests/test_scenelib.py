@@ -453,6 +453,56 @@ def test_which_lights_a_scene_hands_to_wled_s_own_effects():
     assert scenelib.wled_looks(advanced, devices) == {"w": {"effect": "wled", "start": 0, "end": 10, "fx": 3}}
 
 
+def test_parts_of_a_split_wled_hand_their_segments_to_wled_s_own_effects():
+    devices = {"w": {"id": "w", "kind": "wled", "parts": [{"id": "w0"}, {"id": "w2"}, {"id": "p3"}]}}
+    look = {"effect": "wled", "params": {"fx": 9}}
+    basic = {"mode": "basic", "lights": {"w#w2": look, "w#p3": look, "w#w5": look, "w#w0": {"effect": "chase", "params": {}}}}
+    assert scenelib.wled_looks(basic, devices) == {"w#w2": {"fx": 9}}  # only parts read from WLED's segments
+    assert scenelib.wled_device("w#w2", devices)["segment"] == 2
+    advanced = {"mode": "advanced", "loop": 10, "tracks": [{"device": "w#w0", "clips": [{"effect": "wled", "start": 0, "end": 10}]}]}
+    assert list(scenelib.wled_looks(advanced, devices)) == ["w#w0"]
+
+
+async def test_a_part_of_a_split_wled_on_its_own_effect(runner, monkeypatch):
+    sent = []
+
+    async def fake_set_state(ip, state, timeout=4.0):
+        sent.append((ip, state))
+
+    monkeypatch.setattr(runner_mod.wled, "set_state", fake_set_state)
+    runner.storage.save_devices([
+        {"id": "a", "ip": "127.0.0.1", "segments": 1},
+        {"id": "w", "kind": "wled", "ip": "127.0.0.2", "segments": 4,
+         "parts": [{"id": "w0", "name": "Left", "from": 1, "to": 2}, {"id": "w1", "name": "Right", "from": 3, "to": 4}]}])
+    runner.storage.save_scene("mix", {"name": "Mix", "mode": "basic", "lights": {
+        "a": {"effect": "solid", "params": {}}, "w#w1": {"effect": "wled", "params": {"fx": 9}},
+        "w#w0": {"effect": "solid", "params": {}}}})
+    runner.storage.save_scene_baked("mix", baked.encode(40, [{"device": "a", "segments": 1}, {"device": "w", "segments": 4}],
+                                                        [b"\xff" * 15] * 4))
+    await runner.play_scene("mix")
+    assert await _until(lambda: sent)
+    assert set(runner.player.devices) == {"a"}  # nothing to that WLED: frames would end the effect
+    assert len(sent) == 1 and sent[0][0] == "127.0.0.2"
+    assert sent[0][1]["seg"]["id"] == 1 and sent[0][1]["seg"]["fx"] == 9
+
+
+async def test_a_split_wled_on_its_own_effect_plays_it_on_every_segment(runner, monkeypatch):
+    sent = []
+
+    async def fake_set_state(ip, state, timeout=4.0):
+        sent.append((ip, state))
+
+    monkeypatch.setattr(runner_mod.wled, "set_state", fake_set_state)
+    runner.storage.save_devices([{"id": "w", "kind": "wled", "ip": "127.0.0.2", "segments": 4,
+                                  "parts": [{"id": "w0", "name": "Left", "from": 1, "to": 2},
+                                            {"id": "w1", "name": "Right", "from": 3, "to": 4}]}])
+    runner.storage.save_scene("all", {"name": "All", "mode": "basic", "lights": {"w": {"effect": "wled", "params": {"fx": 9}}}})
+    runner.storage.save_scene_baked("all", baked.encode(40, [{"device": "w", "segments": 4}], [b"\xff" * 12] * 4))
+    await runner.play_scene("all")
+    assert await _until(lambda: sent)
+    assert [s["id"] for s in sent[0][1]["seg"]] == [0, 1]
+
+
 async def test_a_wled_on_its_own_effect_gets_its_state_and_no_frames(runner, monkeypatch):
     sent = []
 

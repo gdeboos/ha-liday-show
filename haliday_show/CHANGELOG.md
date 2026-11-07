@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.435
+
+- **A different WLED effect on each part.** In a scene, a WLED light whose parts came from its segments (**Fetch segments**) can give each part one of **WLED's own effects**, for example Fire on Left and Twinkle on Right. In a Basic scene, turn on **Each part on its own** and pick it on each part's row; in an Advanced scene, on each part's lane. Parts you drew yourself still play HA-liday Show's effects. While any part plays WLED's own effect, the light's other parts show what WLED has set for them.
+
 ## 0.2.434
 
 - **WLED's own effect on a light with parts.** A WLED light split into parts can now play one of **WLED's own effects** in a scene. In a Basic scene, pick it on the light's own row (with **Each part on its own** off); in an Advanced scene, on the light's own lane. The WLED plays it across all its segments.

@@ -6,7 +6,7 @@ import { bakeLiveOff, bakeOff } from "./bakeoff.js";
 import { EFFECTS, FPS, MADE_UP, composeLight, withoutLive, matchesPreset, presetParams, unusedColour, withMusicLevels } from "./effects.js";
 import { gatherPart } from "./parts.js";
 import {
-  LIVE_EFFECTS, SCENE_EFFECTS, byParts, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
+  LIVE_EFFECTS, SCENE_EFFECTS, byParts, wledSegmentPart, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
   sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
 import { setShowPalette, showPalette } from "./showpalette.js";
@@ -451,6 +451,8 @@ export class SceneEditor {
   // frames either (runner.py), so they show what WLED has set for their segments.
   sharingWled(dev) {
     if (!dev?.ip) return [];
+    // A part on it: the light's other parts can't get frames either (runner.py).
+    if (dev.parent) return [el("span", { class: "hint" }, "Its other parts then show what WLED has set for their segments, unless also on WLED's own effect")];
     const others = Object.values(this.d.devices()).filter((o) => o.kind === "wled" && o.ip === dev.ip
       && o.id !== dev.id && !o.parent && !o.light);
     return others.length ? [el("span", { class: "hint" },
@@ -471,8 +473,9 @@ export class SceneEditor {
     // A whole WLED light can play one of WLED's own effects instead (runner.py hands it over).
     const dev = this.d.devices()[devId] || null;
     const whole = !!dev && !dev.parent && !dev.light && !dev.parts?.length; // live effects need a whole light
-    // WLED's own effect also suits a split WLED played as one row: WLED runs it across all its segments.
-    const wledOK = !!dev && !dev.parent && dev.kind === "wled";
+    // WLED's own effect also suits a split WLED played as one row (WLED runs it across all its
+    // segments), and a part that's one of its WLED segments.
+    const wledOK = !!dev && dev.kind === "wled" && (!dev.parent || wledSegmentPart(dev, dev.part));
     const own = !!EFFECTS[look?.effect]?.wledOwn;
     const eff = el("button", { type: "button", class: "sc-effect picker-button", "aria-haspopup": "dialog",
       "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: `${fxName}. Pick an effect or preset, with a preview of each` },

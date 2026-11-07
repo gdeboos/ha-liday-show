@@ -21,7 +21,7 @@ import { SceneEditor } from "./sceneeditor.js";
 import { makeParts, prepared, splitVocals, splitting, stemNames, lineUpLyrics } from "./splitvocals.js";
 import { FITS, mashFit, rankFits } from "./mashfit.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
-import { canBasic, toBasic } from "./housescenes.js";
+import { canBasic, toBasic, wledSegmentPart } from "./housescenes.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
 import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
@@ -2933,8 +2933,10 @@ const laneKind = (i) => (isGroup(i) ? "group" : isHouse(i) ? "house" : app.show.
   : gridOf(playingDev(app.show.tracks[i])) ? "matrix" : "light");
 // Scene-only effects (WLED's own, Live music): only in a scene, on a whole light (no parts; a WLED
 // for WLED's own), as the one clip on its lane, all the way round.
-// A whole light (no parts) for scene-only effects; WLED's own effect also takes a split WLED's own lane.
-const sceneLight = (d, fx) => !!d && !d.parent && (fx?.wledOwn ? d.kind === "wled" : !d.light && !d.parts?.length);
+// A whole light (no parts) for scene-only effects; WLED's own effect also takes a split WLED's own lane,
+// and the lane of a part that's one of its WLED segments.
+const sceneLight = (d, fx) => !!d && (fx?.wledOwn ? d.kind === "wled" && (!d.parent || wledSegmentPart(d, d.part))
+  : !d.parent && !d.light && !d.parts?.length);
 const wholeLane = (effect, i) => !!app.sceneId && sceneLight(playingDev(app.show.tracks[i] || {}), EFFECTS[effect]);
 const onWholeLoop = (i) => !!app.show.tracks[i]?.clips.some((c) => EFFECTS[c.effect]?.wholeLoop);
 const fitsTrack = (effect, i) => (EFFECTS[effect]?.wholeLoop ? wholeLane(effect, i)

@@ -78,7 +78,9 @@ and not on the schedule) and **Remove…**.
   **Fills** or **Burst**) under the effect.
 - A WLED light can play one of **WLED's own effects** instead: pick **WLED's own effect** under
   **On this WLED** in the effect window. A light split into parts offers it on its own row (with
-  **Each part on its own** off), and the WLED plays it across all its segments. Under it, pick which of the WLED's
+  **Each part on its own** off), and the WLED plays it across all its segments. With **Each part on
+  its own** on, each part made from the WLED's segments (with **Fetch segments**) can have its own:
+  say Fire on Left and Twinkle on Right. Parts you drew yourself don't offer it. Under it, pick which of the WLED's
   effects and palettes, read from the light itself (so the light needs its IP address). Its colours,
   **Speed**, **Brightness** and **Intensity** go to the WLED too. When the scene starts, HA-liday Show
   tells the WLED to play that effect and sends it nothing else; your other lights play as usual. The
@@ -88,9 +90,9 @@ and not on the schedule) and **Remove…**.
   light is taken back as usual. When the scene stops, the WLED carries on with its effect (as a WLED
   goes back to its own effect after a show), so turn it off in WLED or Home Assistant if you want it
   dark. A WLED that doesn't answer just stays as it was. On a WLED you've added as a light per segment,
-  only that light's segment plays the effect. Your other lights on the same WLED can't get frames while
-  it does (they'd stop the effect), so they show what WLED has set for their segments, unless you give
-  them WLED's own effect too; their rows say so.
+  only that light's segment plays the effect. Your other lights on the same WLED (and the light's
+  other parts) can't get frames while it does (they'd stop the effect), so they show what WLED has set
+  for their segments, unless you give them WLED's own effect too; their rows say so.
 - **Same for every light** puts one row in charge of all your lights. Turn it off again and each
   light starts from that look, ready to change one at a time.
 - The **Preview** shows the scene moving on your house photo. Changes save as you make them.
@@ -111,8 +113,8 @@ works as in a show. Each light's look becomes one effect across the whole timeli
 - It saves as you go, like a show. **← All scenes** goes back to the list, where **Edit** opens it in
   the Show editor again.
 - On a WLED light's own lane, the effect window offers **WLED's own effect**, as in a Basic scene. A
-  light split into parts offers it on its own lane (not its parts' lanes), and its parts' effects
-  then don't play. It always covers the whole loop and is that lane's only effect: picking it replaces the
+  light split into parts offers it on its own lane, and its parts' effects then don't play. Each part
+  made from the WLED's segments offers it on its own lane too. It always covers the whole loop and is that lane's only effect: picking it replaces the
   lane's other effects, and other effects can't go on that lane until you change or delete it. Its clip
   says **WLED:** and the effect's name, and the **Selection** panel picks the WLED's effect and palette.
   Transitions and Glitter do nothing on it, and it can't be copied to other lights or saved as a preset.

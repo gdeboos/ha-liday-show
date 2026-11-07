@@ -349,7 +349,7 @@ class Runner:
         realtime, ending its own effect, so other lights on that WLED get none either: they show what
         WLED has set for their segments."""
         devices = self.storage.devices_by_id()
-        own = {k: (devices[k], look) for k, look in scenelib.wled_looks(scene or {}, devices).items()}
+        own = {k: (scenelib.wled_device(k, devices), look) for k, look in scenelib.wled_looks(scene or {}, devices).items()}
         taken = {d["ip"] for d, _ in own.values() if d.get("ip")}
         return {k: d for k, d in devices.items() if k not in own
                 and not (d.get("kind") == "wled" and d.get("ip") in taken)}, own
@@ -402,7 +402,8 @@ class Runner:
                     variants[look] = decode(blob)
                     # A light that scene hands to WLED's own effect gets none of its frames.
                     own = scenelib.wled_looks(self.storage.load_scene(cfg[look]) or {}, self.storage.devices_by_id())
-                    variants[look].tracks = [t for t in variants[look].tracks if t.device not in own]
+                    taken = {k.partition("#")[0] for k in own}  # a part on it: its whole light
+                    variants[look].tracks = [t for t in variants[look].tracks if t.device not in taken]
             except Exception as e:  # a broken bake just means no strong-bass or strong-treble look
                 log.warning("scene %s: %s", cfg[look], e)
         reactor = react.Reactor(cfg)

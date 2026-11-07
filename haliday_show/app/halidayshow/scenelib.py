@@ -123,9 +123,24 @@ def clean_scene(body) -> dict:
     return _with_schedule(body, out)
 
 
+def wled_device(key: str, devices: dict) -> dict | None:
+    """The WLED that a light id, or a part of one ("light#w<segment id>", a part read from WLED's
+    segments), stands for when it plays WLED's own effect: a part as that one segment of its light."""
+    light_id, _, part = key.partition("#")
+    d = devices.get(light_id) or {}
+    if d.get("kind") != "wled":
+        return None
+    if not part:
+        return d
+    if not re.fullmatch(r"w\d+", part) or not any(p.get("id") == part for p in d.get("parts") or []):
+        return None
+    return {**d, "id": key, "parts": [], "segment": int(part[1:])}
+
+
 def wled_looks(scene: dict, devices: dict) -> dict:
-    """The lights a scene hands over to WLED's own effects: {light id: its settings}. A whole WLED light
-    whose look (Basic) or lane's clip (Advanced) is the "wled" effect; anything else plays frames."""
+    """The lights (and parts) a scene hands over to WLED's own effects: {light or part id: its settings}.
+    A WLED light, or a part of one read from its segments, whose look (Basic) or lane's clip (Advanced)
+    is the "wled" effect; anything else plays frames."""
     found = {}
     if scene.get("mode") == "advanced":
         for tr in scene.get("tracks") or []:
@@ -136,7 +151,7 @@ def wled_looks(scene: dict, devices: dict) -> dict:
         for light_id, look in (scene.get("lights") or {}).items():
             if isinstance(look, dict) and look.get("effect") == "wled":
                 found[light_id] = look.get("params") or {}
-    return {k: v for k, v in found.items() if (devices.get(k) or {}).get("kind") == "wled"}
+    return {k: v for k, v in found.items() if isinstance(k, str) and wled_device(k, devices)}
 
 
 def _with_schedule(body: dict, out: dict) -> dict:
