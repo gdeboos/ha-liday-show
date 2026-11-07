@@ -447,6 +447,16 @@ export class SceneEditor {
       (look) => { setPartLook(s, d, p, look); this.byParts.add(d.id); }, partKey(d, p), `${d.name} · ${p.name}`))];
   }
 
+  // Other lights on the same WLED (one per segment): while one plays WLED's own effect, they get no
+  // frames either (runner.py), so they show what WLED has set for their segments.
+  sharingWled(dev) {
+    if (!dev?.ip) return [];
+    const others = Object.values(this.d.devices()).filter((o) => o.kind === "wled" && o.ip === dev.ip
+      && o.id !== dev.id && !o.parent && !o.light);
+    return others.length ? [el("span", { class: "hint" },
+      `${others.map((o) => o.name).join(", ")} share${others.length === 1 ? "s" : ""} this WLED, so in this scene ${others.length === 1 ? "it shows" : "they show"} what WLED has set for ${others.length === 1 ? "its segment" : "their segments"}, unless also on WLED's own effect`)] : [];
+  }
+
   // One light's row: effect (or Off), colours, speed and brightness, every cell there even when empty
   // so the columns line up. `devId` is what the effect window previews on; `name` the light's full
   // name when `label` is a part's; `extra` goes under the name.
@@ -492,7 +502,8 @@ export class SceneEditor {
       // Which of the WLED's effects and palettes: the preview only shows a still stand-in in its colours.
       fx.append(el("span", { class: "sc-wled" }, this.d.wledPicker("wledfx", dev, look.params, () => changed(false)),
         this.d.wledPicker("wledpal", dev, look.params, () => changed(false)),
-        el("span", { class: "hint" }, "Plays on the WLED itself; the preview shows only its colours")));
+        el("span", { class: "hint" }, "Plays on the WLED itself; the preview shows only its colours"),
+        ...this.sharingWled(dev)));
     }
     if (EFFECTS[look?.effect]?.live) {
       // What it follows and how it fills, under the effect: the rest of the row is as for any light.

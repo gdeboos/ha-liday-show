@@ -116,15 +116,15 @@ def linked(d: dict) -> bool:
 
 
 def address(d: dict) -> str:
-    """Where a saved light's frames go, and the key it's claimed under. A pixel controller can drive
-    several lights from one IP, each from its own first LED, so those get `ip#first`."""
+    """Where a saved light's frames go, and the key it's claimed under. A pixel controller or a WLED can
+    drive several lights from one IP, each from its own first LED, so those get `ip#first`."""
     if d.get("kind") == "ha":
         return f"ha:{d['entity']}"
     if d.get("kind") == "e131":
         universe, channel = int(d.get("universe") or 1), int(d.get("channel") or 1)
         return d["ip"] if (universe, channel) == (1, 1) else f"{d['ip']}#u{universe}c{channel}"
     first = int(d.get("first") or 1)
-    return f"{d['ip']}#{first}" if d.get("kind") == "ddp" and first > 1 else d["ip"]
+    return f"{d['ip']}#{first}" if d.get("kind") in ("ddp", "wled") and first > 1 else d["ip"]
 
 
 class DdpDevice(OutputDevice):

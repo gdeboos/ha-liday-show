@@ -35,6 +35,24 @@ named from its `n` or *Segment N*. One segment covering the whole strip isn't a 
 parts. Overlapping or empty segments are skipped. Part ids follow WLED's segment ids so clips stay on
 a part when **Use WLED segments** is pressed again.
 
+### A light per segment (0.2.431)
+
+Adding a WLED with several segments asks whether to make **one light with parts** or **a light per
+segment**. A segment light is a WLED light with `first` (its segment's first LED, 1-based, as for DDP
+pixel controllers) and `segment` (WLED's segment id); a whole WLED light saves neither, as before
+(`server._clean_device`; a matrix can't be one). Frames go to `ip#first` (`output.address`), so each
+light's DDP packets start at its own offset and the lights stream side by side, each with its own push.
+`wled.own_effect_state(look, segment)` sends `seg: {id, ...}` so WLED's own effect goes to just that
+segment. Frames to any other light on that WLED would put it back into realtime and end the effect, so
+`runner._scene_devices` gives no frames to WLED lights sharing an IP with one on its own effect; they
+show what WLED has for their segments. Editor logic in `static/js/wledsegments.js` (node-tested);
+**Convert to WLED…** can pick a segment, and **Update from WLED** re-reads it.
+
+Checked on the wire with a fake WLED at 127.0.0.1: a light on segment 1 (LEDs 151–210) sent DDP at offset
+LED 150 (0-based) for 60 LEDs. Not yet on a real WLED: on Gavin's Gledopto (three outputs, three segments),
+check that each string lights only its own LEDs in a show, and that WLED's own effect on one segment
+plays while the others hold.
+
 During a show the add-on writes every LED directly, so WLED's segment effects, mirroring and grouping
 don't apply. WLED's **Use main segment only** (Config → Sync Interfaces) limits realtime data to the
 main segment, so it should be off. WLED's master brightness still scales the frames.

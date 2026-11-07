@@ -70,7 +70,7 @@ import {
 import { addLayoutSwitches } from "./liblayout.js";
 import { familyCount, filterFamilies, songFamilies, songKey, partsText, songRows, splitUsers } from "./songlist.js";
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
-import { askText, askYes } from "./ask.js";
+import { askChoice, askText, askYes } from "./ask.js";
 import { movePart } from "./partorder.js";
 import { glyphIcon, watchButtons } from "./glyphs.js";
 import { KIND_WORDS, nowOn } from "./nowbar.js";
@@ -83,7 +83,8 @@ import {
 import { LIBRARY_KINDS, renameItem } from "./libfolders.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
 import { Timeline, fmtTime } from "./timeline.js";
-import { convertProblem, showUses, toWled } from "./convert.js";
+import { convertProblem, showUses, stretchParts, toWled } from "./convert.js";
+import { isSegmentLight, onlySegmentsAt, refreshedSegment, segmentFields, segmentLights, segmentsOf, wledClash } from "./wledsegments.js";
 import { PART, packed, putWithProgress, sendBaked, sendParts, uploadSong } from "./upload.js";
 import { bakeNote, lightsBakeKey } from "./bakekey.js";
 import { piecesIn, placeStretch, rowsBy } from "./stretch.js";
@@ -1109,13 +1110,13 @@ function renderDevices() {
     cell(Object.assign(document.createElement("span"), { className: d.ip || isHa(d) ? "" : "hint",
       textContent: isHa(d) ? (d.entity || "Not picked yet") : d.ip || "Planned" }));
     const model = document.createElement("span");
-    if (isWled(d)) model.append("WLED");
+    if (isWled(d)) model.append((d.first || 1) > 1 ? `WLED · from LED ${d.first}` : "WLED");
     else if (d.kind === "twinkly") model.append("Twinkly");
     else if (isHa(d)) model.append(d.protocol === "ha_switch" ? "HA switch" : "HA light");
     else if (d.kind === "ddp") model.append("DDP");
     else if (d.kind === "e131") model.append("E1.31");
     else model.append(d.sku || "–", modelBadge(d.sku));
-    const clash = ["ddp", "e131"].includes(d.kind) && overlapping(app.deviceList, d);
+    const clash = ["ddp", "e131", "wled"].includes(d.kind) && overlapping(app.deviceList, d);
     if (clash) model.append(Object.assign(document.createElement("div"), { className: "hint warn", textContent: `Shares LEDs with ${clash.name}` }));
     cell(model);
     const preview = cell(segmentPreview(d));
@@ -1303,7 +1304,12 @@ function lightFields(d) {
     } else cell(ip, "IP address", "Leave blank for a planned light.");
     const wled = isPixels(d) || isHa(d);
     const model = document.createElement("span");
-    if (isWled(d)) model.append("WLED");
+    if (isWled(d) && (isSegmentLight(d) || (d.first || 1) > 1)) {
+      const first = input("number", "first", { min: 1, max: 100000, className: "seg-num",
+        title: "The LED on the WLED where this light starts. Lights sharing a WLED each start at their own LED." });
+      first.value = d.first || 1;
+      model.append(isSegmentLight(d) ? "WLED segment · first LED " : "WLED · first LED ", first);
+    } else if (isWled(d)) model.append("WLED");
     else if (d.kind === "twinkly") model.append("Twinkly (experimental)");
     else if (isHa(d)) model.append(d.protocol === "ha_switch" ? "Home Assistant switch" : "Home Assistant light");
     else if (d.kind === "ddp") {
@@ -1320,7 +1326,7 @@ function lightFields(d) {
       channel.value = d.channel || 1;
       model.append("E1.31 · universe ", universe, " channel ", channel);
     } else model.append(d.sku || "–", modelBadge(d.sku));
-    if (["ddp", "e131"].includes(d.kind)) {
+    if (["ddp", "e131", "wled"].includes(d.kind)) {
       const clash = overlapping(app.deviceList, d);
       if (clash) {
         const warn = document.createElement("div");
@@ -1346,7 +1352,7 @@ function lightFields(d) {
     const grid = gridOf(d);
     if (grid) Object.assign(count, { disabled: true, title: "Width times height, set under Matrix" });
     if (!isHa(d)) cell(segs, countLabel(d), grid ? "Width times height." : isPixels(d) ? "How many LEDs it has." : "Press <b>Find</b> to work it out with a few yes or no questions, or use <b>Test</b>.");
-    if (MATRIX_KINDS.includes(d.kind)) cell(matrixControls(d), "Matrix", !grid
+    if (MATRIX_KINDS.includes(d.kind) && !isSegmentLight(d)) cell(matrixControls(d), "Matrix", !grid
       ? "Turn on for a panel or a mega-tree laid out as a grid."
       : isWled(d) ? "Leave it as plain rows from the top left if WLED is set up as 2D: WLED sorts out the wiring. Press <b>Test wiring</b> to check."
       : "Which corner the first LED is in, and which way the wiring runs. Press <b>Test wiring</b> to check.");
@@ -1544,8 +1550,9 @@ function partsPanel(d) {
     d.parts = [...parts, { id: `p${n}`, name: `Part ${n}`, from: run[0], to: run[1] }].sort((a, b) => a.from - b.from);
     saveDevices();
   };
-  const fromWled = isWled(d) && d.ip ? button("Use WLED segments", () => useWledSegments(d), "ghost small") : null;
-  if (fromWled) fromWled.title = "Make a part from each segment you've set up in WLED, with its name and LEDs";
+  const fromWled = isWled(d) && d.ip ? button(isSegmentLight(d) ? "Update from WLED" : "Use WLED segments", () => useWledSegments(d), "ghost small") : null;
+  if (fromWled) fromWled.title = isSegmentLight(d) ? "Read this light's WLED segment again, if you've moved or resized it in WLED"
+    : "Make a part from each segment you've set up in WLED, with its name and LEDs";
   if (!parts.length) {
     const b = button("Split into parts…", add, "ghost small");
     b.title = `Give stretches of this light their own tracks, and leave ${many} you can't see off`;
@@ -1935,7 +1942,9 @@ async function scanForConvert() {
   box.textContent = "Scanning…";
   try {
     const { found } = await api("api/wled/scan", { method: "POST" });
-    const free = found.filter((f) => !app.deviceList.some((d) => d.ip === f.ip && d.id !== converting.id));
+    // A WLED already split into a light per segment may still have a segment free.
+    const free = found.filter((f) => !app.deviceList.some((d) => d.ip === f.ip && d.id !== converting.id)
+      || onlySegmentsAt(app.deviceList, f.ip, converting.id));
     if (!free.length) {
       box.innerHTML = `<p class="hint">No WLED lights answered that aren't on your list already. Type its IP
         address instead (it's on the WLED app's <b>Info</b> page).</p>`;
@@ -1954,7 +1963,9 @@ async function convertLight() {
   const d = app.lights[converting.id];
   if (!d) { $("convert-dialog").close(); return; }
   const ip = $("convert-ip").value.trim();
-  const problem = convertProblem(d, ip, app.deviceList);
+  // On a WLED split into a light per segment, this light can be one of its other segments.
+  const shared = ip && onlySegmentsAt(app.deviceList, ip, d.id);
+  const problem = shared ? "" : convertProblem(d, ip, app.deviceList);
   if (problem) { status(problem, "hint"); return; }
   let w;
   if (!ip) { // planned: no controller to ask yet, so the LEDs come from the form
@@ -1967,7 +1978,27 @@ async function convertLight() {
       return;
     }
   }
-  const name = d.name, next = toWled(d, ip, w.leds), before = app.deviceList;
+  // A WLED with several segments: the whole WLED, or the segment this light is (its strings sharing
+  // the controller).
+  let seg = null;
+  const segs = segmentsOf(w.parts);
+  if (ip && !w.matrix && segs.length > 1) {
+    const free = segs.filter((x) => !wledClash(d, ip, app.deviceList, x.segment));
+    if (shared && !free.length) { status(`Every WLED segment on ${ip} is already a light`, "hint"); return; }
+    const pick = await askChoice(`${w.name} has ${segs.length} segments in WLED. Is ${d.name} the whole WLED, or one of its segments?`,
+      [...(shared ? [] : [{ value: "whole", label: "The whole WLED" }]),
+        ...free.map((x) => ({ value: String(x.segment), label: x.name, title: `LEDs ${x.from}–${x.to}`, primary: x === free[0] }))],
+      { title: `Convert ${d.name}` });
+    if (!pick) return;
+    if (pick !== "whole") seg = segs.find((x) => String(x.segment) === pick);
+  } else if (shared) {
+    status(`${ip} is already used by lights on its WLED segments, and has no segment left for ${d.name}`, "hint");
+    return;
+  }
+  const leds = seg ? seg.to - seg.from + 1 : w.leds;
+  const next = { ...toWled(d, ip, leds), ...(seg ? segmentFields(seg) : {}) };
+  if (!seg) { delete next.first; delete next.segment; }
+  const name = d.name, before = app.deviceList;
   app.deviceList = app.deviceList.map((x) => (x.id === d.id ? next : x));
   await saveDevices();
   if (app.lights[d.id]?.kind !== "wled") { // not saved (saveDevices said why): put the Govee light back
@@ -1977,15 +2008,16 @@ async function convertLight() {
   }
   $("convert-dialog").close();
   $("light-dialog").close();
-  status(`${name} is now a WLED light with ${w.leds} LEDs. Updating your shows…`);
+  status(`${name} is now a WLED light with ${leds} LEDs. Updating your shows…`);
   const { done, failed, open } = await rebakeShowsFor(d.id);
-  const leds = w.all > w.leds ? `${w.leds} of its ${w.all} LEDs (the most a light can have)` : `${w.leds} LEDs`;
+  const ledsText = seg ? `${leds} LEDs, from LED ${seg.from} (its WLED segment ${seg.name})`
+    : w.all > w.leds ? `${w.leds} of its ${w.all} LEDs (the most a light can have)` : `${w.leds} LEDs`;
   const parts = next.parts.length ? ` Its parts now cover ${next.parts.map((p) => `${p.name} ${p.from}–${p.to}`).join(", ")}.` : "";
   const shows = (done ? ` ${done} show${done === 1 ? "" : "s"} updated to match.` : "")
     + (open ? " The show you have open updates when you save it." : "")
     + (failed ? ` ${failed === true ? "Your shows" : `${failed} show${failed === 1 ? "" : "s"}`} couldn't be updated: open and save them.` : "");
   const nextStep = ip ? " Press Test to check it." : " Once the controller is on, type its IP into the light's window and press Test.";
-  status(`${name} is now ${ip ? "a" : "a planned"} WLED light with ${leds}.${parts}${shows}${nextStep}`, failed ? true : "saved", "lights");
+  status(`${name} is now ${ip ? "a" : "a planned"} WLED light with ${ledsText}.${parts}${shows}${nextStep}`, failed ? true : "saved", "lights");
 }
 
 // Light groups on the Devices tab: a row each, with a window to name it and pick its lights and parts.
@@ -2404,9 +2436,31 @@ async function wledInfo(ip) {
 const plainMatrix = ({ w, h }) => ({ w, h, start: "top left", order: "rows", zigzag: false });
 
 async function addWled(ip) {
-  if (app.deviceList.some((d) => d.ip === ip)) throw new Nudge(`${ip} is already on the list`);
+  const more = onlySegmentsAt(app.deviceList, ip); // some of its segments are lights already
+  if (!more && app.deviceList.some((d) => d.ip === ip)) throw new Nudge(`${ip} is already on the list`);
   {
     const w = await wledInfo(ip).catch((e) => { throw new Error(`Couldn't reach a WLED light there: ${e.message}`); });
+    if (more) {
+      const free = segmentsOf(w.parts).filter((x) => !wledClash({}, ip, app.deviceList, x.segment));
+      if (!free.length) throw new Nudge(`Every segment of ${w.name} is already a light`);
+      const lights = segmentLights(app.deviceList, ip, free);
+      app.deviceList.push(...lights);
+      saveDevices();
+      return `Added ${lights.map((d) => d.name).join(", ")} from ${w.name}'s other segments. Press Test on each to check it.`;
+    }
+    if (!w.matrix && w.parts.length > 1) {
+      const how = await askChoice(`${w.name} has ${w.parts.length} segments in WLED: ${w.parts.map((p) => p.name).join(", ")}. `
+        + "Add it as one light with a part for each, or as a separate light for each segment? Separate lights can each play WLED's own effects in scenes.",
+      [{ value: "parts", label: "One light with parts" }, { value: "lights", label: "A light per segment", primary: true }],
+      { title: `Add ${w.name}` });
+      if (!how) return "";
+      if (how === "lights") {
+        const lights = segmentLights(app.deviceList, ip, w.parts);
+        app.deviceList.push(...lights);
+        saveDevices();
+        return `Added ${lights.length} lights from ${w.name}'s segments: ${lights.map((d) => d.name).join(", ")}. Press Test on each to check it.`;
+      }
+    }
     const light = { id: `wled-${ip}`, kind: "wled", name: w.name, ip, sku: "", protocol: "ddp",
       segments: w.leds, bulbs: w.leds, reverse: false, gradient: false, brightness: 100, parts: w.parts };
     if (w.matrix) Object.assign(light, { matrix: plainMatrix(w.matrix), parts: [] });
@@ -2422,6 +2476,17 @@ async function addWled(ip) {
 async function useWledSegments(d) {
   try {
     const w = await wledInfo(d.ip);
+    if (isSegmentLight(d)) {
+      const now = refreshedSegment(d, w.parts);
+      if (!now) { status(`${d.name}'s segment isn't in WLED any more. Set its first LED and LEDs by hand, or delete it.`, true); return; }
+      if (now.first === d.first && now.segments === d.segments) { status(`${d.name} already matches its WLED segment`, "hint"); return; }
+      // Its own parts keep their share of the light, as when converting.
+      Object.assign(d, { first: now.first, segments: now.segments, bulbs: now.segments,
+        parts: stretchParts(d.parts || [], d.segments, now.segments) });
+      saveDevices();
+      status(`${d.name} now runs from LED ${now.first} for ${now.segments} LEDs, as its WLED segment does`);
+      return;
+    }
     if (!w.parts.length) { status(`${d.name} has only one segment in WLED, so there's nothing to split`, "hint"); return; }
     if (d.parts?.length && !(await askYes(`Replace ${d.name}'s parts with its ${w.parts.length} WLED segments? Clips on parts that disappear stay in your shows.`, { yes: "Replace" }))) return;
     d.segments = w.leds;
@@ -2585,6 +2650,7 @@ async function addLightNow() {
       twinkly: () => addTwinkly(ip),
       plan: () => addPlanned(),
     }[addFlow.kind]();
+    if (!said) return; // cancelled part-way (a WLED's segments: parts or lights?)
     $("add-done").textContent = said;
     addStep("done");
   } catch (e) {
@@ -2706,9 +2772,11 @@ async function scanWled() {
       const label = `${f.name} at ${f.ip}, ${f.leds} LEDs`;
       row.append(label);
       const known = app.deviceList.find((d) => d.ip === f.ip);
-      if (known) { row.append(` (${known.name})`); box.append(row); continue; }
-      row.append(button("Add", async () => {
-        try { await addWled(f.ip); row.replaceChildren(`${label} (added)`); } catch (e) { status(e.message, errorKind(e)); }
+      const more = onlySegmentsAt(app.deviceList, f.ip);
+      if (known && !more) { row.append(` (${known.name})`); box.append(row); continue; }
+      if (more) row.append(` (${app.deviceList.filter((d) => d.ip === f.ip).map((d) => d.name).join(", ")})`);
+      row.append(button(more ? "Add other segments" : "Add", async () => {
+        try { if (await addWled(f.ip)) row.replaceChildren(`${label} (added)`); } catch (e) { status(e.message, errorKind(e)); }
       }));
       box.append(row);
     }

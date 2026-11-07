@@ -3,7 +3,7 @@
 
 export const UNIVERSE_SIZE = 510; // channels a universe, as xLights sets them up (170 RGB pixels)
 
-const CONTROLLER_KINDS = ["ddp", "e131"];
+const CONTROLLER_KINDS = ["ddp", "e131", "wled"]; // a WLED split into a light per segment too
 const onController = (devices, light) =>
   devices.filter((d) => d.kind === light.kind && d.ip && d.ip === light.ip);
 
