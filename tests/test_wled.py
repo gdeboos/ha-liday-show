@@ -154,3 +154,32 @@ async def test_reading_a_wled_s_effects_and_sending_it_one(aiohttp_server, monke
     monkeypatch.setattr(wled, "HTTP_PORT", 1)  # nothing listening
     with pytest.raises(wled.WledError):
         await wled.set_state("127.0.0.1", {}, timeout=1)
+
+
+async def test_a_wled_is_asked_one_thing_at_a_time(aiohttp_server, monkeypatch):
+    # Lights sharing a WLED (a light per segment) ask it things together; its small web server drops
+    # requests that overlap, so they queue.
+    import asyncio
+
+    from aiohttp import web
+
+    open_now, most = 0, 0
+
+    async def busy(request):
+        nonlocal open_now, most
+        open_now += 1
+        most = max(most, open_now)
+        await asyncio.sleep(0.05)
+        open_now -= 1
+        if request.method == "POST":
+            return web.json_response({"success": True})
+        return web.json_response({"info": {"name": "Gledopto", "leds": {"count": 270}}, "state": {"seg": []}})
+
+    app = web.Application()
+    app.router.add_get("/json", busy)
+    app.router.add_post("/json/state", busy)
+    fake = await aiohttp_server(app, host="127.0.0.1")
+    monkeypatch.setattr(wled, "HTTP_PORT", fake.port)
+    await asyncio.gather(wled.fetch("127.0.0.1"), wled.fetch("127.0.0.1"),
+                         wled.set_state("127.0.0.1", {"on": True}))
+    assert most == 1

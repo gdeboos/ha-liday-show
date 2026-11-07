@@ -8,6 +8,7 @@ import asyncio
 import logging
 import socket
 import struct
+import weakref
 
 import aiohttp
 
@@ -92,11 +93,21 @@ def own_effect_state(p: dict, segment: int | None = None) -> dict:
     return {"on": True, "live": False, "seg": seg}
 
 
+# A WLED's small web server drops requests that arrive together, which matters now several lights can
+# share one WLED (a light per segment): each WLED is asked one thing at a time.
+_busy: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.Lock]]" = weakref.WeakKeyDictionary()
+
+
+def _one_at_a_time(ip: str) -> asyncio.Lock:
+    locks = _busy.setdefault(asyncio.get_running_loop(), {})
+    return locks.setdefault(ip, asyncio.Lock())
+
+
 async def set_state(ip: str, state: dict, timeout: float = 4.0):
     """Sends WLED a new state (POST /json/state)."""
     url = f"http://{ip}:{HTTP_PORT}/json/state"
     try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
+        async with _one_at_a_time(ip), aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
             async with s.post(url, json=state) as r:
                 if r.status != 200:
                     raise WledError(f"{ip} answered {r.status}")
@@ -115,7 +126,7 @@ async def fetch(ip: str, timeout: float = 4.0) -> dict:
     """The light's name, LED count, segments (as parts) and, set up as 2D, its matrix size."""
     url = f"http://{ip}:{HTTP_PORT}/json"
     try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
+        async with _one_at_a_time(ip), aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
             async with s.get(url) as r:
                 if r.status != 200:
                     raise WledError(f"{ip} answered {r.status}; is it a WLED light?")

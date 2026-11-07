@@ -48,6 +48,8 @@ segment. Frames to any other light on that WLED would put it back into realtime 
 show what WLED has for their segments. Editor logic in `static/js/wledsegments.js` (node-tested);
 **Convert to WLED…** can pick a segment, and **Update from WLED** re-reads it.
 
+A WLED's web server drops requests that arrive together: seen on Gavin's Gledopto (7 Nov 2026), where the pre-show check asked its three segment lights at once and only one answered. Since 0.2.433 `wled.fetch` and `wled.set_state` take a per-IP lock (one request at a time to each WLED), and the pre-show check asks each controller once.
+
 From 0.2.432 a WLED light linked to an IP (typed into a planned one, or **Just one segment…**) picks its segment the same way (`app.js` `linkWled`), stretching its own parts like a conversion.
 
 Checked on the wire with a fake WLED at 127.0.0.1: a light on segment 1 (LEDs 151–210) sent DDP at offset
