@@ -278,7 +278,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     Phones lane, in time with the lights (off until you turn it on; a show can stay out). The phone's
     screen is a small matrix, so the lane takes matrix effects too: fire, scrolling text, pictures and GIFs,
     and a singing face (14 characters, from a snowman and Santa to a skull and a black cat, or your own from the face maker) whose mouth follows the vocals, or the
-    song's lyrics, placed for you and tweaked by tapping along or dragging words on the Music editor's lyrics lane, kept with the song for every show and edit of it, and shown on the show timeline
+    song's lyrics, lined up word by word with the singing by an AI listening to the vocals, and tweaked by tapping along or dragging words on the Music editor's lyrics lane, kept with the song for every show and edit of it, and shown on the show timeline
   - Installable as an app on visitors' phones (home-screen icon, full screen, your code built in)
   - Fair turns and neighbour guardrails: no repeats, cool-downs, finish by closing time, rest breaks, and a
     quieter (or silent) speaker late at night
@@ -455,6 +455,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/showhealth.js                    Show health: a saved show's problems (clips that won't show, out of date, removed lights), in words
     js/report.js                        Report a problem: the GitHub issue's title, body and link, and the browser in words
     js/lyrics.js                        Lyrics for Singing faces: placing lines across the singing, tapping along, moving words, words to mouth shapes
+    js/align.js                         Line up with the singing: lyrics placed word by word where an AI hears them sung (CTC alignment)
     js/faces.js                         Singing faces: the built-in characters, faces drawn from recipes (the face maker), yours kept for effects
     js/phones.js                        Phones join the show: the house's main colour, the Phones lane's id, reading a bake's phone colours
     js/video.js                         Export video: where things go on the frame, the sections bar, IVF wrapping for VP9

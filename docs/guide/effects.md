@@ -121,13 +121,19 @@ or open the song in the Music editor and press **Lyrics…** under **Beats and s
 1. Paste the song's words, one line of the song per line.
 2. They're placed across the singing for you, each word taking longer the more syllables it has. Each
    line shows when it starts and ends; press **▶** beside one to hear it.
-3. If a line comes in early or late, type its start, or press **Tap along…**: the song plays from the
+3. Press **Line up with the singing**: an AI listens to the song's vocals and places every line and
+   word where it's actually sung, replacing what was there (**Undo** puts it back). The first time,
+   your browser downloads it (about 95 MB). It takes about a minute or two for a song, in your browser.
+   It works best once the song is [split into parts](build-a-show.md#split-into-parts), as it then hears the singing on
+   its own; it understands English songs. It needs the song's words, in order: a chorus sung three times
+   needs pasting three times.
+4. If a line comes in early or late, type its start, or press **Tap along…**: the song plays from the
    beginning and you press **Line 1 starts** (or the space bar) as the first line starts, then again for
    each line after (the button says which line it's waiting for). The words of each line
    are spread across the singing after its start.
-4. Press **Save**. **Lyrics… (placed)** shows it has them; **Remove lyrics** goes back to the shapes
+5. Press **Save**. **Lyrics… (placed)** shows it has them; **Remove lyrics** goes back to the shapes
    guessed from the sound.
-5. To get each word just right, open the song in the Music editor. Under the sections there's a
+6. To get each word just right, open the song in the Music editor. Under the sections there's a
    **Lyrics** lane with each word as a block, lined up with the waveform. Drag a word to move it, or
    drag its left or right edge to make it start sooner or later, or last longer or shorter; click a
    word to hear it. It zooms and scrolls with the waveform. A line ends where its last word ends, so

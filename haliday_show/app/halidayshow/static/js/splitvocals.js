@@ -7,6 +7,7 @@ import { drumHits } from "./drumhits.js";
 import { soundsFrom } from "./sounds.js";
 import { fetchSong, songLoadMessage } from "./songload.js";
 import { sendParts } from "./upload.js";
+import { alignLyrics } from "./align.js";
 
 export const stemNames = (path) => {
   const base = path.split("/").pop().replace(/\.[^.]+$/, "");
@@ -131,6 +132,41 @@ export const routeWords = (via, gaveUp = false) => via === "gpu" ? " · on the g
   : via !== "cpu" ? ""
   : gaveUp ? " · on the processor, which is slower: the graphics chip ran out of memory, so close other apps and tabs, then split again"
   : " · on the processor, which is slower";
+
+// Line up with the singing: `lines` (lyrics.js parseLyrics) placed word by word where they're sung, by an
+// English speech model listening to the song's vocals part (or the whole song, less surely, when it has no
+// parts yet). say(text, done 0-1 or null) hears how it's going. Returns {lines (each with start, end and
+// times), vocals: whether the vocals part was used}, or null when the words can't be fitted to the song.
+export async function lineUpLyrics(ref, api, lines, say = () => {}) {
+  const parts = await api(`api/audio/parts?${q(ref)}`).catch(() => ({}));
+  const path = parts?.vocals || ref.path;
+  say("Loading the singing…", null);
+  const bytes = await fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(path)}`);
+  const d = await new OfflineAudioContext(1, 1, 16000).decodeAudioData(bytes);
+  const samples = new Float32Array(d.length);
+  for (let c = 0; c < d.numberOfChannels; c++) {
+    const ch = d.getChannelData(c);
+    for (let i = 0; i < ch.length; i++) samples[i] += ch[i] / d.numberOfChannels;
+  }
+  const worker = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
+  try {
+    const logp = await new Promise((resolve, reject) => {
+      worker.onmessage = ({ data }) => {
+        if (data.error) reject(new Error(data.error));
+        else if (data.logp) resolve(data.logp);
+        else if (data.stage === "download") say(`Downloading the AI that hears the words (the first time only)… ${Math.round(data.done * 100)}%`, data.done);
+        else if (data.stage === "align") say(`Listening for the words… ${Math.round(data.done * 100)}%`, data.done);
+      };
+      worker.onerror = (e) => reject(new Error(e.message || "the AI couldn't start in this browser"));
+      worker.postMessage({ align: samples }, [samples.buffer]);
+    });
+    say("Placing the words…", null);
+    const placed = alignLyrics(logp, lines);
+    return placed && { lines: placed, vocals: !!parts?.vocals };
+  } finally {
+    worker.terminate();
+  }
+}
 
 // Listens to the whole song with YAMNet (in the worker) for what can be heard in it (sounds.js), and
 // keeps that with the song. Takes seconds. track(worker) is given the worker, so it can be stopped.
