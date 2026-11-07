@@ -91,10 +91,21 @@ async def lights(devices: list[dict], away: set[str], ha=None, *, scan=discovery
             found = {r["ip"] for r in await scan()}
         except Exception as e:
             log.warning("pre-show check: scan failed: %s", e)
-    results = await asyncio.gather(*[
-        ask_wled(d["ip"]) if kind(d) == "wled" else ask_twinkly(d["ip"]) if kind(d) == "twinkly"
-        else _ask_ha(ha, d["entity"]) if kind(d) == "ha" else asyncio.sleep(0, result=None)
-        for d in real])
+    # One question per controller: several lights can share a WLED (a light per segment), and its
+    # small web server drops requests that arrive together, so asking per light made all but one
+    # look unreachable.
+    asks: dict[tuple, asyncio.Task] = {}
+
+    def ask(d):
+        k = kind(d)
+        key = (k, d.get("ip") or d.get("entity"))
+        if key not in asks:
+            asks[key] = asyncio.ensure_future(
+                ask_wled(d["ip"]) if k == "wled" else ask_twinkly(d["ip"]) if k == "twinkly"
+                else _ask_ha(ha, d["entity"]) if k == "ha" else asyncio.sleep(0, result=None))
+        return asks[key]
+
+    results = await asyncio.gather(*[ask(d) for d in real])
     quiet = []  # pixel controllers: nothing to ask
     for d, got in zip(real, results):
         k = kind(d)

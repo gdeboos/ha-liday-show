@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.433
+
+- **Pre-show check and lights sharing a WLED.** With a WLED added as a light per segment, the check said all but one of its strings couldn't be reached. It now asks the WLED once for all of them. HA-liday Show also asks each WLED one thing at a time everywhere (for example when several strings start WLED's own effects in a scene), as its small web server drops questions that arrive together.
+
 ## 0.2.432
 
 - **Link a WLED light to one segment.** Typing a WLED's IP into a planned WLED light now asks whether it's the whole WLED or one of its segments, so a light you've already made shows for (say your Pillars) becomes that one string and keeps its shows and parts. A WLED light already linked to the whole WLED has **Just one segment…** in its window for the same. Then add the WLED to bring in its other strings.

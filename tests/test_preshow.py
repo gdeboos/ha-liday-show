@@ -45,6 +45,25 @@ async def test_every_kind_of_light_is_asked_its_own_way():
     assert look == ["l1", "l3", "l4", "l5"]
 
 
+async def test_lights_sharing_a_wled_ask_it_once():
+    # Three strings on one WLED (a light per segment): its web server drops requests that arrive
+    # together, so one question answers for all of them.
+    devices = [light(1, "wled", segment=0), light(2, "wled", first=151, segment=1),
+               light(3, "wled", first=211, segment=2)]
+    for d in devices:
+        d["ip"] = "192.168.2.50"
+    asked = []
+
+    async def wled_once(ip):
+        asked.append(ip)
+        return len(asked) == 1  # a second request at the same time gets nothing back
+
+    lines, look = await preshow.lights(devices, set(), ask_wled=wled_once)
+    assert asked == ["192.168.2.50"]
+    assert look == ["l1", "l2", "l3"]
+    assert lines[0] == {"level": "ok", "text": "All 3 lights answered."}
+
+
 async def test_all_answering_says_so_in_a_line():
     async def scan():
         return [{"ip": "192.168.1.1"}, {"ip": "192.168.1.2"}]
