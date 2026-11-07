@@ -1288,6 +1288,8 @@ function lightFields(d) {
     ip.addEventListener("change", () => {
       const v = ip.value.trim();
       if (v && !/^\d{1,3}(\.\d{1,3}){3}$/.test(v)) { status("That isn't an IP address", "hint"); ip.value = d.ip; return; }
+      // A WLED light may be one segment of a WLED driving several strings: ask which.
+      if (isWled(d) && v && v !== d.ip) { linkWled(d, v).then((ok) => { if (!ok) ip.value = d.ip; }); return; }
       d.ip = v;
       saveDevices();
     });
@@ -1553,11 +1555,14 @@ function partsPanel(d) {
   const fromWled = isWled(d) && d.ip ? button(isSegmentLight(d) ? "Update from WLED" : "Use WLED segments", () => useWledSegments(d), "ghost small") : null;
   if (fromWled) fromWled.title = isSegmentLight(d) ? "Read this light's WLED segment again, if you've moved or resized it in WLED"
     : "Make a part from each segment you've set up in WLED, with its name and LEDs";
+  const oneSeg = isWled(d) && d.ip && !isSegmentLight(d) && !gridOf(d) ? button("Just one segment…", () => linkWled(d, d.ip), "ghost small") : null;
+  if (oneSeg) oneSeg.title = "This light is one string on a WLED driving several: pick its segment. Its shows stay with it.";
   if (!parts.length) {
     const b = button("Split into parts…", add, "ghost small");
     b.title = `Give stretches of this light their own tracks, and leave ${many} you can't see off`;
     td.append(b);
     if (fromWled) td.append(" ", fromWled);
+    if (oneSeg) td.append(" ", oneSeg);
     return tr;
   }
   // One part per line, with a map of the light's segments: each part in its colour, unused ones grey.
@@ -1666,6 +1671,7 @@ function partsPanel(d) {
   stop.disabled = !linked(d);
   foot.append(more, testAll, stop);
   if (fromWled) foot.append(fromWled);
+  if (oneSeg) foot.append(oneSeg);
   foot.append(asOne, note);
   panel.append(foot);
   return tr;
@@ -2469,6 +2475,51 @@ async function addWled(ip) {
     if (w.matrix) return `Added ${w.name}: a ${w.matrix.w} × ${w.matrix.h} matrix.`;
     return `Added ${w.name}: ${w.leds} LEDs${w.parts.length ? `, with ${w.parts.length} parts from its WLED segments` : ""}.`;
   }
+}
+
+// Links WLED light `d` to the WLED at `ip`. A WLED with several segments asks whether the light is the
+// whole WLED or one of its segments (the strings sharing the controller), so a planned WLED light with
+// shows already made keeps them. False when cancelled or not possible.
+async function linkWled(d, ip) {
+  const shared = onlySegmentsAt(app.deviceList, ip, d.id);
+  const clash = !shared && app.deviceList.find((x) => x.id !== d.id && x.ip === ip);
+  if (clash) { status(`${ip} is already ${clash.name}`, "hint"); return false; }
+  let w = null;
+  try { w = await wledInfo(ip); } catch (e) {
+    if (shared) { status(`Couldn't reach the WLED at ${ip} to pick ${d.name}'s segment: ${e.message}`, true); return false; }
+  }
+  const segs = w && !w.matrix ? segmentsOf(w.parts) : [];
+  let seg = null;
+  if (segs.length > 1) {
+    const free = segs.filter((x) => !wledClash(d, ip, app.deviceList, x.segment));
+    if (shared && !free.length) { status(`Every WLED segment on ${ip} is already a light`, "hint"); return false; }
+    const pick = await askChoice(`${w.name} has ${segs.length} segments in WLED. Is ${d.name} the whole WLED, or one of its segments?`,
+      [...(shared ? [] : [{ value: "whole", label: "The whole WLED" }]),
+        ...free.map((x) => ({ value: String(x.segment), label: x.name, title: `LEDs ${x.from}–${x.to}`, primary: x === free[0] }))],
+      { title: `Link ${d.name}` });
+    if (!pick) return false;
+    if (pick !== "whole") seg = segs.find((x) => String(x.segment) === pick);
+  } else if (shared) {
+    status(`${ip} is already used by lights on its WLED segments, and has no segment left for ${d.name}`, "hint");
+    return false;
+  }
+  const was = d.segments;
+  d.ip = ip;
+  if (seg) {
+    // Its parts keep their share of the light, as when converting.
+    const f = segmentFields(seg);
+    Object.assign(d, f, { parts: stretchParts(d.parts || [], was, f.segments) });
+  } else { delete d.first; delete d.segment; }
+  await saveDevices();
+  const where = seg ? `its WLED segment ${seg.name}: ${d.segments} LEDs from LED ${d.first}` : `the WLED at ${ip}`;
+  if (d.segments === was) { status(`${d.name} is now linked to ${where}. Press Test to check it.`, "saved"); return true; }
+  status(`${d.name} is now linked to ${where}. Updating your shows…`);
+  const { done, failed, open } = await rebakeShowsFor(d.id);
+  const shows = (done ? ` ${done} show${done === 1 ? "" : "s"} updated to match.` : "")
+    + (open ? " The show you have open updates when you save it." : "")
+    + (failed ? ` ${failed === true ? "Your shows" : `${failed} show${failed === 1 ? "" : "s"}`} couldn't be updated: open and save them.` : "");
+  status(`${d.name} is now linked to ${where}.${shows} Press Test to check it.`, failed ? true : "saved", "lights");
+  return true;
 }
 
 // Replaces a WLED light's parts with its WLED segments. Part ids follow WLED's segment ids, so clips

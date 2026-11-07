@@ -231,10 +231,11 @@ The light's window shows its **first LED** on the WLED. Moved or resized a segme
 (**+ Add a light → WLED strip**, or **Scan network** and **Add other segments**): only the segments that
 aren't lights yet are added.
 
-Already have shows for a light that's now one of those strings, such as Govee lights you've rewired to
-the WLED? Use **Convert to WLED…** in that light's window (see below), type the WLED's IP, and pick its
-segment: the light keeps its shows, parts and place on the photo. Then add the WLED to bring in the
-other strings.
+Already have shows for a light that's now one of those strings? Link that light first, then add the
+WLED to bring in the other strings. The light keeps its shows, parts and place on the photo:
+- a planned WLED light: type the WLED's IP into its window, and pick its segment when asked
+- a WLED light that's already linked to the whole WLED: press **Just one segment…** in its window
+- a Govee light you've rewired to the WLED: use **Convert to WLED…** (see below) and pick its segment
 
 During a show HA-liday Show sets every LED itself, so the effect you picked in WLED, and its segments'
 own effects, are paused until a couple of seconds after the show stops, then WLED carries on where it

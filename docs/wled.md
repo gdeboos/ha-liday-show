@@ -48,6 +48,8 @@ segment. Frames to any other light on that WLED would put it back into realtime 
 show what WLED has for their segments. Editor logic in `static/js/wledsegments.js` (node-tested);
 **Convert to WLED…** can pick a segment, and **Update from WLED** re-reads it.
 
+From 0.2.432 a WLED light linked to an IP (typed into a planned one, or **Just one segment…**) picks its segment the same way (`app.js` `linkWled`), stretching its own parts like a conversion.
+
 Checked on the wire with a fake WLED at 127.0.0.1: a light on segment 1 (LEDs 151–210) sent DDP at offset
 LED 150 (0-based) for 60 LEDs. Not yet on a real WLED: on Gavin's Gledopto (three outputs, three segments),
 check that each string lights only its own LEDs in a show, and that WLED's own effect on one segment
