@@ -359,7 +359,7 @@ class Runner:
         answer just stays as it was)."""
         async def send(device: dict, look: dict):
             try:
-                await wled.set_state(device["ip"], wled.own_effect_state(look, device.get("segment")))
+                await wled.set_state(device["ip"], wled.own_effect_state(look, wled.own_segments(device)))
             except wled.WledError as e:
                 log.warning("%s: couldn't start its own effect: %s", device.get("name") or device.get("id"), e)
         for device, look in own.values():

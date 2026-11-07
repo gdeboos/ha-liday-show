@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.434
+
+- **WLED's own effect on a light with parts.** A WLED light split into parts can now play one of **WLED's own effects** in a scene. In a Basic scene, pick it on the light's own row (with **Each part on its own** off); in an Advanced scene, on the light's own lane. The WLED plays it across all its segments.
+
 ## 0.2.433
 
 - **Pre-show check and lights sharing a WLED.** With a WLED added as a light per segment, the check said all but one of its strings couldn't be reached. It now asks the WLED once for all of them. HA-liday Show also asks each WLED one thing at a time everywhere (for example when several strings start WLED's own effects in a scene), as its small web server drops questions that arrive together.

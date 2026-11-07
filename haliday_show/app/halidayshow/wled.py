@@ -6,6 +6,7 @@ own effect by itself a few seconds after the frames stop. See docs/wled.md.
 """
 import asyncio
 import logging
+import re
 import socket
 import struct
 import weakref
@@ -64,11 +65,26 @@ class WledError(Exception):
 OWN_COLOURS = {"color": "#ff0000", "color2": "#ffffff", "color3": "#00b000"}
 
 
-def own_effect_state(p: dict, segment: int | None = None) -> dict:
+def own_segments(device: dict) -> int | list[int] | None:
+    """Which of a WLED's segments its own effect goes to: a segment light's own segment; for a light
+    split into parts read from WLED (ids "w<segment id>"), every one of them, since WLED would otherwise
+    only change its selected segments; else None (WLED's selected segments, the whole strip unsplit)."""
+    if isinstance(device.get("segment"), int):
+        return device["segment"]
+    ids = []
+    for part in device.get("parts") or []:
+        m = re.fullmatch(r"w(\d+)", str(part.get("id", "")))
+        if m and int(m[1]) not in ids:
+            ids.append(int(m[1]))
+    return ids or None
+
+
+def own_effect_state(p: dict, segment: int | list[int] | None = None) -> dict:
     """A scene light's look on WLED's own effect ({fx, speed, intensity, palette, color, color2, color3,
     brightness}, as the editor saves it) as the /json/state WLED takes: its main segment's effect,
     speed, intensity, palette and three colours, the light on, and out of realtime mode at once. A light
-    that's one of the WLED's segments gives that segment's id, so only that segment changes."""
+    that's one of the WLED's segments gives that segment's id, so only that segment changes; a list of
+    ids sends the same look to each of those segments."""
     def whole(key, default, top=255):
         try:
             return max(0, min(top, round(float(p.get(key, default)))))
@@ -89,7 +105,7 @@ def own_effect_state(p: dict, segment: int | None = None) -> dict:
     if isinstance(p.get("brightness"), (int, float)) and not isinstance(p.get("brightness"), bool):
         seg["bri"] = round(max(0, min(100, p["brightness"])) * 255 / 100)
     if segment is not None:
-        seg = {"id": segment, **seg}
+        seg = [{"id": i, **seg} for i in segment] if isinstance(segment, list) else {"id": segment, **seg}
     return {"on": True, "live": False, "seg": seg}
 
 
