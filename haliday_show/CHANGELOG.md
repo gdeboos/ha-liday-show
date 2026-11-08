@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.437
+
+- **Playlists of scenes play.** A playlist made only of scene blocks (or colour, off or effect blocks), with no shows, can now be played: its **Play** button works, and its schedule starts it. Before, it said **No shows yet** and wouldn't play, even from the schedule. Its card now shows how many blocks it has and how long it takes to go round.
+
 ## 0.2.436
 
 - **Visitors' picks no longer wait behind a scene.** With a scene on, a show picked on the public page now starts straight away, as the guide says, and the scene comes back a couple of seconds after it ends. Before, the pick sat in the queue until the scene was turned off, and turning it off with **Stop the lights** meant the scene didn't come back afterwards.

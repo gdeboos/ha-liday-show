@@ -65,7 +65,8 @@ import {
 import {
   BLOCKS as PLAYLIST_BLOCKS, BLOCK_EFFECTS as PLAYLIST_BLOCK_EFFECTS, MAX_BLOCK_S as PLAYLIST_MAX_BLOCK_S, MAX_ITEMS as PLAYLIST_MAX_ITEMS,
   MAX_SHOWS as PLAYLIST_MAX, bakeKey, blockLabel as playlistBlockLabel, blockShow, dropIndex, fits as fitsPlaylist, inserted,
-  copyPlaylist, itemsOf, loopLength, moved, newBlock, playlistRows, strip as playlistStrip, summary as playlistSummary,
+  copyPlaylist, itemsOf, loopLength, moved, newBlock, playable as playlistPlayable, playlistRows, strip as playlistStrip,
+  summary as playlistSummary,
 } from "./playlisteditor.js";
 import { addLayoutSwitches } from "./liblayout.js";
 import { familyCount, filterFamilies, songFamilies, songKey, partsText, songRows, splitUsers } from "./songlist.js";
@@ -5277,10 +5278,10 @@ function markPlaylistPlaying() {
       : !!li.dataset.blockId && playlistPlaying.block?.id === li.dataset.blockId));
   }
   const play = $("pl-play");
-  const empty = !pl.shows.some((id) => byId[id]?.baked);
+  const empty = !playlistPlayable(itemsOf(pl), byId);
   play.textContent = playing ? "■ Stop" : "▶ Play";
   play.disabled = !playing && empty;
-  play.title = !playing && empty ? "Add a saved show first" : "";
+  play.title = !playing && empty ? "Add a saved show, a scene or a block first" : "";
 }
 
 // Where sunset is worked out for: shown once a playlist starts at sunset.
@@ -5658,7 +5659,7 @@ function playlistRow(r) {
   open.setAttribute("aria-label", `Edit ${r.name}`);
   const play = button("▶ Play", () => { const pl = playlists.find((x) => x.id === r.id); if (pl) togglePlaylist(pl); }, "ghost playlist-play");
   play.dataset.empty = r.playable ? "0" : "1";
-  if (!r.playable) play.title = "Add a saved show first";
+  if (!r.playable) play.title = "Add a saved show, a scene or a block first";
   const dup = button("Duplicate", () => {
     const pl = playlists.find((x) => x.id === r.id);
     if (!pl || !playlistsLoaded) return;

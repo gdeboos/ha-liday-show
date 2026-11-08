@@ -493,9 +493,8 @@ class Runner:
 
     async def play_playlist(self, playlist: dict):
         """Play a playlist (see playlists.py: its items, in order) until it's stopped."""
-        shows = [s for s in playlist.get("shows", []) if self.storage.load_baked(s) is not None]
-        if not shows:
-            raise RunnerError("this playlist has no saved shows to play")
+        if not self._playable(playlist):
+            raise RunnerError("this playlist has nothing to play yet: add a saved show, a scene or a block")
         self._yours += 1
         async with self._control:
             await self._end_playlist()
@@ -503,6 +502,18 @@ class Runner:
                 await self._stop()
             self.playlist = playlist
             self._playlist = asyncio.create_task(self._run_playlist(playlist))
+
+    def _playable(self, playlist: dict) -> bool:
+        """Whether a playlist has anything with frames: a saved show, or a scene, colour, off or effect
+        block (a playlist of scenes needs no shows). Pauses alone light nothing."""
+        if any(self.storage.load_baked(s) is not None for s in playlist.get("shows", [])):
+            return True
+        for item in playlist.get("items") or []:
+            if item.get("type") == "scene" and self.storage.load_scene_baked(item.get("scene", "")) is not None:
+                return True
+            if item.get("type") in ("colour", "off", "effect") and self.storage.load_block(item.get("id", "")) is not None:
+                return True
+        return False
 
     async def finish_playlist(self):
         """Stop the playlist once the show that's on has finished (now, if it's between shows)."""
