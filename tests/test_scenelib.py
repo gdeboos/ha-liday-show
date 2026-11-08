@@ -134,6 +134,48 @@ async def test_the_scene_comes_back_when_a_show_is_stopped(runner):
     assert await _until(lambda: runner.scene_playing)
 
 
+def _pick(show_id):
+    return {"id": f"r-{show_id}", "ticket": "t", "kind": "show", "ref": show_id, "name": show_id, "shows": [show_id], "gap": 0}
+
+
+async def test_a_visitors_pick_takes_over_the_scene_and_the_scene_comes_back(runner):
+    _scene(runner.storage)
+    _show(runner.storage, "one", frames=8)
+    await runner.play_scene("glow")
+    runner.add_request(_pick("one"))
+    assert await _until(lambda: runner.player.show_id == "one")  # not held back by the scene
+    assert runner.scene["id"] == "glow" and not runner.scene_playing
+    assert await _until(lambda: runner.scene_playing)  # the pick ends, the scene comes back
+    assert runner.player.show_id is None
+
+
+async def test_the_scene_comes_back_when_a_visitors_pick_is_skipped(runner):
+    _scene(runner.storage)
+    _show(runner.storage, "long", frames=4000)
+    await runner.play_scene("glow")
+    runner.add_request(_pick("long"))
+    assert await _until(lambda: runner.player.show_id == "long")
+    assert await runner.skip_request()
+    assert await _until(lambda: runner.scene_playing)
+
+
+async def test_a_scene_doesnt_count_towards_a_visitors_wait(runner):
+    runner.storage.save_scene("glow", {"name": "Glow", "mode": "basic", "lights": {"a": {"effect": "solid", "params": {}}}})
+    runner.storage.save_scene_baked("glow", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 400))
+    _show(runner.storage, "one", frames=400)
+    await runner.play_scene("glow")  # a 10-second loop
+    runner.requests.append(_pick("one"))  # waiting, without starting it
+    assert runner.queue_waits() == [0]
+
+
+async def test_the_scene_waits_while_visitors_votes_are_waiting(runner):
+    _scene(runner.storage)
+    runner.scene = {"id": "glow", "name": "Glow"}
+    runner.votes["t"] = {"kind": "show", "ref": "one", "name": "One", "shows": ["one"], "gap": 0, "at": 0}
+    await asyncio.sleep(1.6)  # the scene would be back by now (two of the watcher's half-second looks)
+    assert not runner.scene_playing and runner.votes
+
+
 async def test_stopping_the_scene_itself_turns_it_off(runner):
     _scene(runner.storage)
     await runner.play_scene("glow")
