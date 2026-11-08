@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.436
+
+- **Visitors' picks no longer wait behind a scene.** With a scene on, a show picked on the public page now starts straight away, as the guide says, and the scene comes back a couple of seconds after it ends. Before, the pick sat in the queue until the scene was turned off, and turning it off with **Stop the lights** meant the scene didn't come back afterwards.
+
 ## 0.2.435
 
 - **A different WLED effect on each part.** In a scene, a WLED light whose parts came from its segments (**Fetch segments**) can give each part one of **WLED's own effects**, for example Fire on Left and Twinkle on Right. In a Basic scene, turn on **Each part on its own** and pick it on each part's row; in an Advanced scene, on each part's lane. Parts you drew yourself still play HA-liday Show's effects. While any part plays WLED's own effect, the light's other parts show what WLED has set for them.

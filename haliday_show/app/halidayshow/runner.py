@@ -761,11 +761,14 @@ class Runner:
         """Play visitors' requests whenever nothing else is on. A playlist plays them itself."""
         try:
             while self.requests or self.votes:
-                if self._playlist_running() or self.player.playing or self._lock.locked():
+                # A scene doesn't hold a pick back: the pick takes the lights over and the scene comes back after.
+                showing = self.player.playing and not self.scene_playing
+                if self._playlist_running() or showing or self._lock.locked():
                     await asyncio.sleep(0.25)
                     continue
                 await self._rest_if_due()
-                if not (self.requests or self.votes) or self._playlist_running() or self.player.playing:
+                if not (self.requests or self.votes) or self._playlist_running() or (
+                        self.player.playing and not self.scene_playing):
                     continue
                 # Your admin phone's picks go first; otherwise the round's most-voted.
                 request = self.requests.pop(0) if self.requests else self._take_winner()

@@ -134,6 +134,31 @@ async def test_the_scene_comes_back_when_a_show_is_stopped(runner):
     assert await _until(lambda: runner.scene_playing)
 
 
+def _pick(show_id):
+    return {"id": f"r-{show_id}", "ticket": "t", "kind": "show", "ref": show_id, "name": show_id, "shows": [show_id], "gap": 0}
+
+
+async def test_a_visitors_pick_takes_over_the_scene_and_the_scene_comes_back(runner):
+    _scene(runner.storage)
+    _show(runner.storage, "one", frames=8)
+    await runner.play_scene("glow")
+    runner.add_request(_pick("one"))
+    assert await _until(lambda: runner.player.show_id == "one")  # not held back by the scene
+    assert runner.scene["id"] == "glow" and not runner.scene_playing
+    assert await _until(lambda: runner.scene_playing)  # the pick ends, the scene comes back
+    assert runner.player.show_id is None
+
+
+async def test_the_scene_comes_back_when_a_visitors_pick_is_skipped(runner):
+    _scene(runner.storage)
+    _show(runner.storage, "long", frames=4000)
+    await runner.play_scene("glow")
+    runner.add_request(_pick("long"))
+    assert await _until(lambda: runner.player.show_id == "long")
+    assert await runner.skip_request()
+    assert await _until(lambda: runner.scene_playing)
+
+
 async def test_stopping_the_scene_itself_turns_it_off(runner):
     _scene(runner.storage)
     await runner.play_scene("glow")
