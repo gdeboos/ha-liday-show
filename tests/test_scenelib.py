@@ -159,6 +159,23 @@ async def test_the_scene_comes_back_when_a_visitors_pick_is_skipped(runner):
     assert await _until(lambda: runner.scene_playing)
 
 
+async def test_a_scene_doesnt_count_towards_a_visitors_wait(runner):
+    runner.storage.save_scene("glow", {"name": "Glow", "mode": "basic", "lights": {"a": {"effect": "solid", "params": {}}}})
+    runner.storage.save_scene_baked("glow", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 400))
+    _show(runner.storage, "one", frames=400)
+    await runner.play_scene("glow")  # a 10-second loop
+    runner.requests.append(_pick("one"))  # waiting, without starting it
+    assert runner.queue_waits() == [0]
+
+
+async def test_the_scene_waits_while_visitors_votes_are_waiting(runner):
+    _scene(runner.storage)
+    runner.scene = {"id": "glow", "name": "Glow"}
+    runner.votes["t"] = {"kind": "show", "ref": "one", "name": "One", "shows": ["one"], "gap": 0, "at": 0}
+    await asyncio.sleep(1.6)  # the scene would be back by now (two of the watcher's half-second looks)
+    assert not runner.scene_playing and runner.votes
+
+
 async def test_stopping_the_scene_itself_turns_it_off(runner):
     _scene(runner.storage)
     await runner.play_scene("glow")

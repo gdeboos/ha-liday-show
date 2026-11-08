@@ -468,7 +468,7 @@ class Runner:
     def _idle(self) -> bool:
         """Nothing is using the lights: no show, block, playlist, visitor, test or preview."""
         return (not self.player.playing and not self._playlist_running() and not self.requests
-                and not self.public_now and not self.player.output.devices)
+                and not self.votes and not self.public_now and not self.player.output.devices)
 
     async def watch_scene(self):
         """Brings the scene back once whatever took the lights over has finished."""
@@ -839,7 +839,9 @@ class Runner:
     def queue_waits(self) -> list[float]:
         """Roughly how many seconds until each waiting request starts."""
         now_left = 0.0
-        if self.player.playing and self.block:
+        if self.scene_playing:
+            pass  # a pick takes over from a scene at once
+        elif self.player.playing and self.block:
             now_left = max(self.block["seconds"] - self.player.position(), 0)
         elif self.player.playing and self.player.baked:
             now_left = max(self.player.baked.duration - self.player.position(), 0)
