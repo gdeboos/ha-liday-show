@@ -295,6 +295,19 @@ async def test_playlist_with_nothing_to_play(runner):
         await runner.play_playlist({"id": "x", "name": "X", "shows": ["gone"], "gap": 0})
 
 
+async def test_a_playlist_of_scenes_plays_without_any_shows(runner):
+    runner.storage.save_scene("glow", {"name": "Glow", "mode": "basic", "lights": {"a": {"effect": "solid", "params": {}}}})
+    runner.storage.save_scene_baked("glow", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 4))
+    items = [{"type": "scene", "id": "scene-1", "seconds": 60, "scene": "glow"}]
+    await runner.play_playlist({"id": "autumn", "name": "Autumn", "shows": [], "gap": 0, "items": items})
+    assert await _until(lambda: runner.block and runner.block["scene"] == "glow")
+    # A scene not baked yet, or only pauses, is still nothing to play.
+    with pytest.raises(RunnerError):
+        await runner.play_playlist({"id": "x", "name": "X", "shows": [], "gap": 0,
+                                    "items": [{"type": "scene", "id": "scene-2", "seconds": 60, "scene": "gone"},
+                                              {"type": "pause", "id": "p", "seconds": 5}]})
+
+
 async def test_automation_plays_a_playlist_by_name(runner):
     _short_show(runner.storage, "one", frames=400)
     _save_playlists(runner.storage, [{"id": "night", "name": "Halloween night", "shows": ["one"], "gap": 5}])

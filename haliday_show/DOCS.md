@@ -2311,7 +2311,8 @@ hour), set on its card in **Running order**:
   the scene is deleted later, the block says so and is skipped until you pick another.
 
 Put a block wherever you like: between every show, only before the first, or several in a row (a
-colour, then off for a moment, say). Colour, Off and Effect blocks are got ready in your browser, like a show
+colour, then off for a moment, say). A playlist doesn't need any shows: one made only of scene blocks
+plays your scenes in turn, on **Play** or on the schedule. Colour, Off and Effect blocks are got ready in your browser, like a show
 when you save it: whenever HA-liday Show is open, and straight after you change a block or your
 lights. A block that isn't ready yet (if you add lights and don't open HA-liday Show before the
 playlist plays, say) is skipped. Playlists made before blocks have a **Pause** after each show,

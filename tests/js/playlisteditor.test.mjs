@@ -85,7 +85,8 @@ test("the summary says how long one time round takes", () => {
   assert.equal(summary([show("a"), { type: "pause", id: "p", seconds: 5 }, show("b")], byId), "2 shows, 1 block · 3:05 each time round");
   assert.equal(summary([show("a"), show("u")], byId), "2 shows · 1:00 each time round · 1 show skipped");
   assert.equal(summary([show("u")], byId), "1 show, no show saved yet, so nothing plays");
-  assert.equal(summary([newBlock("off")], byId), "No shows yet: add one to play");
+  assert.equal(summary([newBlock("off")], byId), "1 block · 0:05 each time round");
+  assert.equal(summary([{ type: "pause", id: "p", seconds: 5 }], byId), "Nothing to light yet: add a show, a scene or a block");
   assert.equal(summary([], byId), "No shows yet");
   const wip = { ...byId, w: { id: "w", duration: 60, baked: true, in_progress: true } };
   assert.equal(summary([show("a"), show("w"), show("w")], wip), "3 shows · 3:00 each time round · 1 still in progress");
@@ -157,4 +158,15 @@ test("a copied playlist gets a free name, new ids for itself and its blocks, and
   assert.notEqual(c.items[1].id, "colour-x");
   assert.equal(c.items[1].colour, "#ff0000");
   assert.equal(p.items[1].id, "colour-x");
+});
+
+test("a playlist of scenes (or other blocks) can be played without any shows", async () => {
+  const { playable } = await import("../../haliday_show/app/halidayshow/static/js/playlisteditor.js");
+  const byId = { a: { id: "a", baked: true }, u: { id: "u" } };
+  const scene = (id) => ({ type: "scene", id: `scene-${id}`, seconds: 60, scene: id });
+  assert.equal(playable([scene("glow"), scene("frost")], byId), true);
+  assert.equal(playable([{ type: "scene", id: "s", seconds: 60, scene: "" }], byId), false);  // no scene picked yet
+  assert.equal(playable([{ type: "pause", id: "p", seconds: 5 }], byId), false);
+  assert.equal(playable([{ type: "show", id: "u" }], byId), false);
+  assert.equal(playable([{ type: "show", id: "a" }], byId), true);
 });

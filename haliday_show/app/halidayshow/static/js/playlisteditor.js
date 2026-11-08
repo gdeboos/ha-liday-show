@@ -114,10 +114,20 @@ export function strip(items, byId, scenes = {}) {
   return { seconds: total, playing: playing.filter((e) => e.x.type === "show").length, blocks };
 }
 
+// Whether Play has anything to play: a saved show, or a scene, colour or effect block (a playlist of
+// scenes needs no shows). Pauses alone light nothing. The server checks the blocks have frames.
+export function playable(items, byId) {
+  return items.some((x) => (x.type === "show" ? !!byId[x.id]?.baked : x.type === "scene" ? !!x.scene : x.type !== "pause"));
+}
+
 // "3 shows, 2 blocks · 12:40 each time round", with why any won't play.
 export function summary(items, byId) {
   const shows = showsOf(items);
-  if (!shows.length) return items.length ? "No shows yet: add one to play" : "No shows yet";
+  const lit = items.filter((x) => x.type !== "show" && x.type !== "pause").length;
+  if (!shows.length && lit) {
+    return `${items.length} block${items.length === 1 ? "" : "s"} · ${length(strip(items, byId).seconds)} each time round`;
+  }
+  if (!shows.length) return items.length ? "Nothing to light yet: add a show, a scene or a block" : "No shows yet";
   const s = strip(items, byId);
   const nBlocks = items.length - shows.length;
   const what = `${shows.length} show${shows.length === 1 ? "" : "s"}${nBlocks ? `, ${nBlocks} block${nBlocks === 1 ? "" : "s"}` : ""}`;
@@ -139,7 +149,7 @@ export function playlistRows(playlists, shows) {
       id: p.id,
       name: p.name,
       details: [summary(items, byId), p.schedule?.on ? `plays ${describeSchedule(p.schedule)}` : "plays when you press Play"].join(" · "),
-      playable: showsOf(items).some((id) => byId[id]?.baked),
+      playable: playable(items, byId),
     };
   });
 }
