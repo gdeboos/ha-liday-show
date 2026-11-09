@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.446
+
+- **Clearer ways to place a song's words.** In **Lyrics…**, the three buttons are now cards with an icon and a line saying what each does: **Line up with the singing** (marked **AI**), **Spread them out** (instant, no AI; it was **Place automatically**) and **Tap along** (you, as the song plays).
+- **Lining up with the singing shows in its own window**, saying how far along it is, with **Cancel**.
+
 ## 0.2.445
 
 - **Adding a song gets it all ready in front of you.** After **Add song**, the window stays open with a line for each step and how far along it is: added (with its beats and sections), split into its parts, and its words. **Stop** keeps whatever's done, and **Done** closes it. It no longer splits in the background afterwards.

@@ -47,7 +47,8 @@ const MAX_MINUTES = 8; // longer songs need more memory than a phone or tablet h
 
 // A window over the page while the split runs (it takes minutes): a spinner, what's happening, how far
 // along, and Cancel. Esc cancels too. Returns {say(text, done 0-1 or null), close()}.
-function progressWindow(title, onCancel) {
+export function progressWindow(title, onCancel, note = "It runs in this browser, so keep this page open until it's done. The song isn't changed: "
+    + "its parts are kept with it.") {
   const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text ? { textContent: text } : {});
   const dlg = el("dialog", "effect-dialog busy-dialog");
   dlg.setAttribute("aria-labelledby", "split-busy-title");
@@ -58,8 +59,7 @@ function progressWindow(title, onCancel) {
   row.append(el("span", "spinner"), text);
   const bar = el("progress", "busy-progress");
   bar.max = 1;
-  const hint = el("p", "hint", "It runs in this browser, so keep this page open until it's done. The song isn't changed: "
-    + "its parts are kept with it.");
+  const hint = el("p", "hint", note);
   const cancel = el("button", "ghost", "Cancel");
   cancel.type = "button";
   let locked = false;
@@ -139,7 +139,9 @@ export const routeWords = (via, gaveUp = false) => via === "gpu" ? " · on the g
 // English speech model listening to the song's vocals part (or the whole song, less surely, when it has no
 // parts yet). say(text, done 0-1 or null) hears how it's going. Returns {lines (each with start, end and
 // times), vocals: whether the vocals part was used}, or null when the words can't be fitted to the song.
-export async function lineUpLyrics(ref, api, lines, say = () => {}) {
+// signal: an AbortSignal that stops it (it then rejects with an error marked `cancelled`).
+export async function lineUpLyrics(ref, api, lines, say = () => {}, signal = null) {
+  const cancelled = () => Object.assign(new Error("cancelled"), { cancelled: true });
   const parts = await api(`api/audio/parts?${q(ref)}`).catch(() => ({}));
   const path = parts?.vocals || ref.path;
   say("Loading the singing…", null);
@@ -152,7 +154,9 @@ export async function lineUpLyrics(ref, api, lines, say = () => {}) {
   }
   const worker = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
   try {
+    if (signal?.aborted) throw cancelled();
     const logp = await new Promise((resolve, reject) => {
+      signal?.addEventListener("abort", () => reject(cancelled()), { once: true });
       worker.onmessage = ({ data }) => {
         if (data.error) reject(new Error(data.error));
         else if (data.logp) resolve(data.logp);

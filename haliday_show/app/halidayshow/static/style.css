@@ -1725,3 +1725,16 @@ h2.with-layout-switch .layout-switch { margin-left: auto; font-size: 13px; font-
 #as-bar { width: 100%; }
 #as-bar[hidden] { display: none; }
 #as-words { width: 100%; resize: vertical; font: inherit; }
+
+/* Lyrics…: the three ways to place the words, each saying what it does and whether an AI does it */
+.lyrics-ways { display: grid; gap: 8px; margin: 8px 0; }
+.lyrics-way { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; padding: 10px 12px;
+  height: auto; white-space: normal; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; }
+.lyrics-way:hover:not(:disabled) { border-color: var(--accent); }
+.lyrics-way.ai { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.lyrics-way-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lyrics-way-head .ico { width: 18px; height: 18px; flex: none; }
+.lyrics-way.ai .lyrics-way-head .ico { color: var(--accent); }
+.lyrics-way-tag { font-size: 11px; font-weight: 600; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.lyrics-way.ai .lyrics-way-tag { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.lyrics-way-what { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
