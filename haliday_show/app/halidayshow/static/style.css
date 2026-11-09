@@ -1710,3 +1710,18 @@ h2.with-layout-switch .layout-switch { margin-left: auto; font-size: 13px; font-
 .light-roles .role-part { padding-left: 1.5em; color: var(--muted); }
 .roles-grid { display: grid; grid-template-columns: minmax(80px, max-content) minmax(0, 1fr); gap: 6px 10px; align-items: center; margin-top: 6px; }
 .roles-grid select { max-width: 100%; }
+
+/* Add a song, step 3: what it's doing, done in front of you */
+.as-tasks { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 6px; }
+.as-tasks li { display: flex; gap: 10px; align-items: baseline; color: var(--muted); }
+.as-tasks li::before { content: "○"; width: 1.2em; text-align: center; flex: none; }
+.as-tasks li.now { color: var(--text); font-weight: 600; }
+.as-tasks li.now::before { content: "●"; color: var(--accent); }
+.as-tasks li.done { color: var(--text); }
+.as-tasks li.done::before { content: "✓"; color: var(--ok); }
+.as-tasks li.skipped::before { content: "–"; }
+.as-tasks li.failed::before { content: "✕"; color: var(--danger); }
+.as-tasks li .hint { font-weight: 400; }
+#as-bar { width: 100%; }
+#as-bar[hidden] { display: none; }
+#as-words { width: 100%; resize: vertical; font: inherit; }

@@ -837,11 +837,21 @@
       <div class="form-dialog-body" id="as-step-2" hidden>
         <p class="hint ns-step">Step 2 of 2: get it ready</p>
         <div id="as-starts" class="song-list" role="radiogroup" aria-label="Detect the song"></div>
-        <label class="field"><span><input id="as-split" type="checkbox" checked> Split it into parts afterwards</span>
-          <span class="hint">Its vocals, drums, bass and the rest, for Singing faces, Generate and layers. It runs in the
-            background but takes several minutes, longer on a slower computer. Turn it off to do it later with
-            <b>Split all songs into parts</b>.</span></label>
+        <label class="field"><span><input id="as-split" type="checkbox" checked> Split it into parts</span>
+          <span class="hint">Its vocals, drums, bass and the rest, for Singing faces, Generate and layers. It's done here
+            before the window closes, and takes several minutes, longer on a slower computer. Turn it off to do it
+            later with <b>Split all songs into parts</b>.</span></label>
+        <label class="field">Words <span class="hint">(optional)</span>
+          <textarea id="as-words" rows="4" placeholder="Paste the song's words, one sung line per line"></textarea>
+          <span class="hint">For Singing faces and the timeline's lyrics row. Once it's split into parts, they're lined up
+            with the singing (English songs). A chorus sung three times needs pasting three times.</span></label>
         <p id="as-progress" class="hint" aria-live="polite"></p>
+      </div>
+      <div class="form-dialog-body" id="as-step-3" hidden>
+        <p class="hint ns-step" id="as-doing-title">Getting it ready</p>
+        <ol id="as-tasks" class="as-tasks"></ol>
+        <p id="as-doing" class="hint" aria-live="polite"></p>
+        <progress id="as-bar" max="1"></progress>
       </div>
       <div class="form-dialog-foot">
         <button type="button" class="ghost" id="as-back" hidden>← Back</button>

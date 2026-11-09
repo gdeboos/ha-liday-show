@@ -997,12 +997,21 @@ and they go wherever the song goes (renamed, copied, archived or deleted with it
   part, and a sample (or a song not split yet) goes into the rest of the music. Where a layer quietens
   the song, every part dips with it.
 
-**New songs are split by default.** When you add a song (**+ Add a song**), it's split into its
-parts in the background once it's added. On a slower computer, turn off **Split it into parts
-afterwards** in the second step of **Add a song** to leave that for later: the song is then only
-listened to (see below), which takes seconds, and **Split all songs into parts** splits it whenever
-suits you, overnight say. **Add a song** remembers your choice for next time.
-A bar above your songs in **Library → Songs** says which song
+**New songs are split by default.** When you add a song (**+ Add a song**), the window stays open
+while it gets the song ready, with a line for each thing it does and how far along it is: added (and
+its beats and sections found), split into its parts, and its words kept with it if you pasted them.
+It takes several minutes. **Stop** stops it, keeping whatever's done, and **Done** closes the window
+when it's finished. On a slower computer, turn off **Split it into parts** in the second step of
+**Add a song** to leave that for later: the song is then only listened to (see below), which takes
+seconds, and **Split all songs into parts** splits it whenever suits you, overnight say. **Add a
+song** remembers your choice for next time.
+
+**Words** in the second step of **Add a song** is optional: paste the song's words, one sung line per
+line, and they're kept with the song (a **♪ Lyrics** badge shows on its row). Once it's split, they're
+lined up with the singing, as **Line up with the singing** does under [Lyrics…](#lyrics-for-a-singing-face).
+Left unsplit, they're placed roughly across the song until you line them up.
+
+When songs are split another way (**Split all songs into parts**, or **Split into parts…** on one), a bar above your songs in **Library → Songs** says which song
 it's on and how far along it is, and the line at the bottom of the page says so on other pages too.
 You can carry on using HA-liday Show meanwhile, but keep the page open until it's done. **Stop** stops
 it; parts already made are kept. If the connection drops part way (the Wi-Fi blips, or the app restarts

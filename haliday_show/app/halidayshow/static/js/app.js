@@ -9558,8 +9558,11 @@ function asStep(step) {
   addSong.step = step;
   $("as-step-1").hidden = step !== 1;
   $("as-step-2").hidden = step !== 2;
+  $("as-step-3").hidden = step !== 3;
   $("as-back").hidden = step !== 2;
-  $("as-next").textContent = step === 1 ? "Next →" : "Add song";
+  for (const b of document.querySelectorAll("[data-as=cancel]")) b.hidden = step === 3;
+  $("as-next").textContent = step === 1 ? "Next →" : step === 2 ? "Add song" : "Stop";
+  $("as-next").classList.toggle("primary", step !== 3);
   if (step === 2) { asStarts(); $("as-split").checked = prefs.get("addSplit", true); $("as-starts").querySelector("input:checked")?.focus(); }
 }
 
@@ -9570,9 +9573,10 @@ function asBusy(on, text = "") {
 }
 
 function openAddSong({ onAdded = null } = {}) {
-  Object.assign(addSong, { file: null, named: false, mode: aiVia ? "ai" : "detect", busy: false, onAdded });
+  Object.assign(addSong, { file: null, named: false, mode: aiVia ? "ai" : "detect", busy: false, onAdded, stop: null, finish: null });
   $("as-file-name").textContent = "No file chosen yet";
   $("as-name").value = "";
+  $("as-words").value = "";
   asBusy(false);
   $("add-song-dialog").showModal();
   asStep(1);
@@ -9588,6 +9592,14 @@ function asFilePicked(f) {
 
 async function asSubmit(e) {
   e.preventDefault();
+  if (addSong.step === 3) { // Stop, or Done once it's finished
+    if (addSong.finish) { addSong.finish(); return; }
+    // Stop: now, or as soon as the next thing starts (it may be waiting for another song's split).
+    addSong.stopped = true;
+    $("as-next").disabled = true;
+    addSong.stop?.();
+    return;
+  }
   if (addSong.busy) return;
   const f = addSong.file, name = $("as-name").value.trim();
   if (addSong.step === 1) {
@@ -9606,6 +9618,7 @@ async function asSubmit(e) {
     asStep(2);
     return;
   }
+  const words = parseLyrics($("as-words").value);
   asBusy(true, `Uploading ${name}…`);
   let ref;
   try {
@@ -9644,21 +9657,114 @@ async function asSubmit(e) {
       info = null;
     }
   }
-  asBusy(false);
-  $("add-song-dialog").close();
+  // Still busy: asGetReady takes over the window (so Add song can't be pressed twice meanwhile).
   placeNew("songs", songKey(ref));
   await refreshAudio().catch(() => {});
   renderSongsPage();
-  if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
-  else status(addedMessage(name, info, { ai: withAI && info?.sections.length > 0 }), "saved", "songs");
-  // Its parts are split out in the background (see the banner in Library → Songs), unless that was
-  // left for later: then it's only listened to (sounds.js), which takes seconds.
   const split = $("as-split").checked;
   prefs.set("addSplit", split);
-  prepareParts([split ? ref : { ...ref, listenOnly: true }]);
+  // The rest is done here in front of you: its parts (or, left for later, just listening to it, which
+  // takes seconds), then its words lined up with the singing. Stop keeps whatever's done.
+  const said = await asGetReady(ref, name, { split, words, detected: failed ? null : info });
+  $("add-song-dialog").close();
+  await refreshAudio().catch(() => {});
+  renderSongsPage();
+  if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
+  else status(said || addedMessage(name, info, { ai: withAI && info?.sections.length > 0 }), said ? "hint" : "saved", "songs");
   // Then colours from its cover, to pick or skip (only when there's something to offer).
   await offerSongColours(ref, { justAdded: true }).catch(() => {});
   addSong.onAdded?.([...$("audio-select").options].find((o) => o.value && JSON.parse(o.value).path === ref.path)?.value || "");
+}
+
+// Add a song, step 3: the song's parts and words, done in front of you, a line for each with how far
+// along. Returns a word for the status line when something was stopped or went wrong, else "".
+async function asGetReady(ref, name, { split, words, detected }) {
+  const tasks = [
+    { id: "add", text: detected ? "Added, and its beats and sections found" : "Added" },
+    split ? { id: "parts", text: "Split into its vocals, drums, bass and the rest" } : { id: "listen", text: "Listened to for the sounds in it" },
+    ...(words.length ? [{ id: "words", text: "Its words kept with it" }] : []),
+  ];
+  const list = $("as-tasks"), rows = new Map();
+  list.replaceChildren(...tasks.map((t) => {
+    const li = Object.assign(document.createElement("li"), { textContent: t.text });
+    rows.set(t.id, li);
+    return li;
+  }));
+  const mark = (id, how, note = "") => {
+    const li = rows.get(id);
+    li.className = how;
+    li.querySelector(".hint")?.remove();
+    if (note) li.append(" ", Object.assign(document.createElement("span"), { className: "hint", textContent: note }));
+  };
+  const say = (text, done = null) => {
+    $("as-doing").textContent = text;
+    const bar = $("as-bar");
+    bar.hidden = !text;
+    if (done == null) bar.removeAttribute("value"); else bar.value = done;
+  };
+  $("as-doing-title").textContent = `Getting ${name} ready`;
+  asStep(3);
+  asBusy(false);
+  Object.assign(addSong, { stop: null, finish: null, stopped: false, busy: true });
+  mark("add", "done");
+  let problem = "";
+  // Its parts, or just listening to it.
+  const step = split ? "parts" : "listen";
+  mark(step, "now");
+  if (partsLine.now || splitting()) say("Waiting for the song being split already to finish…");
+  try {
+    await makeParts(ref, api, { listenOnly: !split, say, started: (stop) => { addSong.stop = stop; if (addSong.stopped) stop(); } });
+    mark(step, "done");
+  } catch (e) {
+    if (e.cancelled) {
+      mark(step, "skipped", split ? "stopped: press Split into parts… on it, or Split all songs into parts, to finish" : "stopped");
+      problem = `${name} added; you stopped splitting it into parts`;
+    } else {
+      mark(step, "failed", plainError(e));
+      problem = `${name} added, but couldn't be split into parts: ${plainError(e)}`;
+    }
+  }
+  addSong.stop = null;
+  $("as-next").disabled = false;
+  // Its words: lined up with the singing once it has its vocals, else spread across the song.
+  if (words.length) {
+    mark("words", "now");
+    try {
+      say(`Loading ${name}…`);
+      audioCtx ||= new AudioContext();
+      const song = await audioCtx.decodeAudioData(await fetchSong(audioUrl(ref)));
+      const voice = await songVoice(ref, song, { fresh: true }).catch(() => null);
+      const parts = await api(`api/audio/parts?${new URLSearchParams({ source: ref.source, path: ref.path })}`).catch(() => ({}));
+      let lines = null;
+      if (parts?.vocals && !addSong.stopped) {
+        // Stop here leaves the words placed roughly, to line up later.
+        const stopped = new Promise((resolve) => { addSong.stop = () => resolve(null); });
+        lines = (await Promise.race([lineUpLyrics(ref, api, words, (t) => { if (!addSong.stopped) say(t); }), stopped]))?.lines || null;
+        addSong.stop = null;
+        $("as-next").disabled = false;
+      }
+      const lined = Boolean(lines);
+      lines ||= placeLines(words, voice, song.duration);
+      await api(songExtraUrl("lyrics", ref), { method: "PUT", json: songLyrics(savedLyrics(words.map((l) => l.text).join("\n"), lines, voice, song.duration)) });
+      madeFrom.clear();
+      mark("words", "done", lined ? "and lined up with the singing" : "and placed roughly: press Line up with the singing under Lyrics… once it's split");
+    } catch (e) {
+      mark("words", "failed", plainError(e));
+      problem ||= `${name} added, but its words couldn't be kept: ${plainError(e)}`;
+    }
+  }
+  say("");
+  $("as-doing").textContent = problem ? "" : `${name} is ready.`;
+  // Done: the window stays until you close it, so you can see what happened.
+  await new Promise((resolve) => {
+    addSong.finish = resolve;
+    $("as-next").disabled = false;
+    $("as-next").textContent = "Done";
+    $("as-next").classList.add("primary");
+    $("as-next").focus();
+  });
+  Object.assign(addSong, { finish: null, busy: false });
+  return problem;
 }
 
 // Colours from a song ----------------------------------------------------------------------------
@@ -13654,7 +13760,7 @@ function wire() {
   $("as-file").addEventListener("change", (e) => { asFilePicked(e.target.files[0]); e.target.value = ""; });
   for (const b of document.querySelectorAll("[data-as=cancel]")) b.addEventListener("click", () => $("add-song-dialog").close());
   // Not while it's uploading or listening: the song would be half added.
-  $("add-song-dialog").addEventListener("cancel", (e) => { if (addSong.busy) e.preventDefault(); });
+  $("add-song-dialog").addEventListener("cancel", (e) => { if (addSong.busy) { e.preventDefault(); addSong.finish?.(); } });
   $("btn-all-songs").addEventListener("click", async () => {
     await music.flush();
     if (music.unsaved && !(await askYes("Your last change to the draft couldn't be kept (is HA-liday Show still running?). Leave it anyway?", { yes: "Leave anyway" }))) return;
