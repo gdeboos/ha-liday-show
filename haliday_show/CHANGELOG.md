@@ -1,9 +1,13 @@
 # Changelog
 
-## 0.2.457
+## 0.2.458
 
 - **Lyrics stand out.** On **Library → Songs**, a song with words now has a pink **♪ Lyrics** pill, the same size as its **Parts** pill, instead of a faint grey one.
 - **Basic or Advanced on every scene.** **Library → Scenes** shows a green **Basic** or purple **Advanced** pill beside each scene's name, in both **Cards** and **List**. An Advanced scene's line now starts "Goes round every…".
+
+## 0.2.457
+
+- **Fixed: section notes failing while a song splits.** Writing section notes on this device and splitting a song into parts both use your graphics chip, and running together could lose it ("Failed to create a WebGPU compute pipeline…"). The AI in your browser now does one thing at a time, so adding a song writes its notes, then splits it. If the notes ever do fail, the message says so in plain words.
 
 ## 0.2.456
 
