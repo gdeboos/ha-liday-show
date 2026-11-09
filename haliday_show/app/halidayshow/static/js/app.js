@@ -9220,8 +9220,10 @@ function songTags(r, inherited = false) {
 
 function editKid(e, original = null) {
   const r = e.row, d = e.draft;
-  // Cut from its original alone (no other songs layered or spliced in): its shows use the original's words.
-  const inherits = !r.lyrics && !!d && !!original?.lyrics && (d.uses || []).every((p) => p === original.ref.path);
+  // Cut from its original alone (no layers, no other songs spliced in, its parts as they are): its shows
+  // use the original's words through the cuts (editOf). A mashup's words are its file's own.
+  const inherits = !r.lyrics && !!d && !d.layered && !!original?.lyrics && (d.uses || []).length > 0
+    && d.uses.every((p) => p === original.ref.path);
   const details = document.createElement("div");
   details.className = "hint";
   const len = document.createElement("span");

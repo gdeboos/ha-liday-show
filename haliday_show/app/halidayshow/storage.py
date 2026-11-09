@@ -443,8 +443,12 @@ class Storage:
                      *(c for layer in d.get("layers") or [] if isinstance(layer, dict) for c in layer.get("clips") or [])]
             uses = sorted({(x.get("song") or {}).get("path") for x in parts
                            if isinstance(x, dict) and isinstance(x.get("song"), dict)} - {None})
+            # Layered (a layer heard, or the song's parts changed): its file's words are its own, not its
+            # original's through the cuts (app.js editOf).
+            layered = any(isinstance(layer, dict) and not layer.get("muted") and layer.get("clips")
+                          for layer in d.get("layers") or []) or bool(d.get("parts"))
             out.append({"id": p.stem, "name": d.get("name", p.stem), "base": d.get("base"),
-                        "made": d.get("made"), "length": d.get("length", 0), "uses": uses,
+                        "made": d.get("made"), "length": d.get("length", 0), "uses": uses, "layered": layered,
                         "modified": int(p.stat().st_mtime)})
         return out
 
