@@ -6578,37 +6578,52 @@ async function tryDemo() {
     const song = await sampleSong();
     status(`Adding ${song.name}…`);
     const ref = await uploadSong(api, song);
-    await demoExtras(ref).catch((e) => console.warn("demo parts", e));
+    const missed = await demoExtras(ref);
     await makeShow(DEMO_SHOW, ref, christmas.colors, christmas);
-    status("The demo is ready: press ▶ Play");
+    status(missed.length ? `The demo is ready: press ▶ Play. Its song's ${missed.join(", ")} couldn't be added, so some things won't show`
+      : "The demo is ready: press ▶ Play", missed.length ? "hint" : false);
   } catch (e) {
     status(`Couldn't set up the demo: ${e.message}`, true);
   }
 }
 
 // Keeps the sample song's shipped parts, drum hits, sounds and words with it, unless it has them already.
+// Returns what couldn't be added; each piece is tried on its own, so one failing doesn't stop the rest.
 async function demoExtras(ref) {
+  const missed = [];
   const kept = await api(songExtraUrl("parts", ref)).catch(() => null);
-  if (!DEMO_PARTS.every((p) => kept?.[p])) {
+  if (![...DEMO_PARTS, "music"].every((p) => kept?.[p])) {
     status("Adding the sample song's parts…");
-    const sum = [];
-    let rate = 0;
-    for (const part of DEMO_PARTS) {
-      const d = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(await (await fetch(demoPartUrl(part))).arrayBuffer());
-      const ch = [0, 1].map((c) => d.getChannelData(Math.min(c, d.numberOfChannels - 1)));
-      rate = d.sampleRate;
-      await savePart(api, ref, part, ch, rate);
-      // The music without the singing is everything but the vocals.
-      if (part !== "vocals") ch.forEach((x, c) => { sum[c] ||= new Float32Array(x.length); x.forEach((v, i) => { sum[c][i] += v; }); });
+    try {
+      const sum = [];
+      let rate = 0;
+      for (const part of DEMO_PARTS) {
+        const d = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(await (await fetch(demoPartUrl(part))).arrayBuffer());
+        const ch = [0, 1].map((c) => d.getChannelData(Math.min(c, d.numberOfChannels - 1)));
+        rate = d.sampleRate;
+        await savePart(api, ref, part, ch, rate);
+        // The music without the singing is everything but the vocals.
+        if (part !== "vocals") ch.forEach((x, c) => { sum[c] ||= new Float32Array(x.length); x.forEach((v, i) => { sum[c][i] += v; }); });
+      }
+      await savePart(api, ref, "music", sum, rate);
+    } catch (e) {
+      console.warn("demo parts", e);
+      missed.push("parts");
     }
-    await savePart(api, ref, "music", sum, rate);
   }
-  const extras = await (await fetch(DEMO_EXTRAS)).json();
+  const extras = await (await fetch(DEMO_EXTRAS)).json().catch(() => ({}));
   for (const what of ["drums", "sounds", "lyrics"]) {
-    if (extras[what] && !(await api(songExtraUrl(what, ref)).catch(() => null))) {
-      await api(songExtraUrl(what, ref), { method: "PUT", json: extras[what] });
+    try {
+      if (!(await api(songExtraUrl(what, ref)).catch(() => null))) {
+        if (!extras[what]) throw new Error(`no ${what} shipped`);
+        await api(songExtraUrl(what, ref), { method: "PUT", json: extras[what] });
+      }
+    } catch (e) {
+      console.warn("demo", what, e);
+      missed.push(what === "drums" ? "drum hits" : what === "lyrics" ? "words" : what);
     }
   }
+  return missed;
 }
 
 async function sampleSong() {
