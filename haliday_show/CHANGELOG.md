@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.462
+
+- **Delete copies you don't need.** Each copy kept under **Setup → Settings → Your data** now has a **Delete** button, which asks first, so you can clear out old ones.
+
 ## 0.2.461
 
 - **The demo's song comes ready.** **Try the demo** now adds the sample *Jingle Bells* already split into its vocals, drums, bass and the rest, with when each drum lands, its sounds and its words placed. The demo show follows the drums, the Music editor shows its parts, and the words appear on the timeline, with no split to wait for.

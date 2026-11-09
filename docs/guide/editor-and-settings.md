@@ -95,7 +95,8 @@ phone has its own. It holds:
 
 Before an import, a fresh start or deleting a show or song for good, HA-liday Show keeps a copy of what
 you had, listed under **Your data**
-(the newest five). **Put back** restores one, and **Download** saves it as an export. So to try the
+(the newest five). **Put back** restores one, **Download** saves it as an export, and **Delete** removes
+it for good (after asking) when you don't need it. So to try the
 setup guide without losing anything: **Start afresh…**, try it, then **Put back** the copy *Before a
 fresh start* (or **Import…** your export).
 
