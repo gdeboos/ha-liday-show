@@ -9637,6 +9637,7 @@ function openAddSong({ onAdded = null } = {}) {
   $("as-file-name").textContent = "No file chosen yet";
   $("as-name").value = "";
   $("as-words").value = "";
+  $("as-words-row").hidden = true;
   asBusy(false);
   $("add-song-dialog").showModal();
   asStep(1);
@@ -9762,7 +9763,7 @@ async function asGetReady(ref, name, { split, words, detected }) {
     bar.hidden = !text;
     if (done == null) bar.removeAttribute("value"); else bar.value = done;
   };
-  $("as-doing-title").textContent = `Getting ${name} ready`;
+  $("as-doing-title").textContent = `Step 3 of 3: getting ${name} ready`;
   asStep(3);
   asBusy(false);
   Object.assign(addSong, { stop: null, finish: null, stopped: false, busy: true });
@@ -9787,6 +9788,7 @@ async function asGetReady(ref, name, { split, words, detected }) {
   addSong.stop = null;
   $("as-next").disabled = false;
   // Its words: lined up with the singing once it has its vocals, else spread across the song.
+  let wordsKept = false, lined = false;
   if (words.length) {
     mark("words", "now");
     try {
@@ -9803,11 +9805,12 @@ async function asGetReady(ref, name, { split, words, detected }) {
         addSong.stop = null;
         $("as-next").disabled = false;
       }
-      const lined = Boolean(lines);
+      lined = Boolean(lines);
       lines ||= placeLines(words, voice, song.duration);
       await api(songExtraUrl("lyrics", ref), { method: "PUT", json: songLyrics(savedLyrics(words.map((l) => l.text).join("\n"), lines, voice, song.duration)) });
       madeFrom.clear();
-      mark("words", "done", lined ? "and lined up with the singing" : "and placed roughly: press Line up with the singing under Lyrics… once it's split");
+      wordsKept = true;
+      mark("words", "done", lined ? "and lined up with the singing" : "and placed roughly");
     } catch (e) {
       mark("words", "failed", plainError(e));
       problem ||= `${name} added, but its words couldn't be kept: ${plainError(e)}`;
@@ -9815,6 +9818,12 @@ async function asGetReady(ref, name, { split, words, detected }) {
   }
   say("");
   $("as-doing").textContent = problem ? "" : `${name} is ready.`;
+  // Then its words in the Lyrics window: checked (or lined up properly), or added if none were pasted.
+  $("as-check-words").textContent = wordsKept ? "Check the words…" : "Add words…";
+  $("as-words-note").textContent = !wordsKept ? "For Singing faces and the lyrics row; you can add them later under Lyrics… too."
+    : lined ? "" : "They're placed roughly, so pick a better way there.";
+  $("as-check-words").onclick = () => openSongLyrics(ref, { start: wordsKept ? (lined ? "check" : "how") : "words" });
+  $("as-words-row").hidden = false;
   // Done: the window stays until you close it, so you can see what happened.
   await new Promise((resolve) => {
     addSong.finish = resolve;
@@ -11518,14 +11527,15 @@ async function openShowLyrics() {
 }
 
 // Lyrics… in the Music editor: the song's lyrics, for every show on it.
-async function openSongLyrics(ref) {
+// start: the screen to open on ("words", "how" or "check"), else the check if it has words.
+async function openSongLyrics(ref, { start = null } = {}) {
   status("Loading the song…");
   try {
     audioCtx ||= new AudioContext();
     const song = await audioCtx.decodeAudioData(await fetchSong(audioUrl(ref)));
     const [voice, kept] = await Promise.all([songVoice(ref, song), api(songExtraUrl("lyrics", ref)).catch(() => null)]);
     status("");
-    await openLyrics({ ref, duration: song.duration, inMusic: true, voice, lyrics: kept,
+    await openLyrics({ ref, duration: song.duration, inMusic: true, voice, lyrics: kept, start,
       save: (words) => api(songExtraUrl("lyrics", ref), { method: "PUT", json: words }).then(() => madeFrom.clear()) });
   } catch (e) { status(`Couldn't open the lyrics: ${e.message}`, true); }
 }
@@ -11535,7 +11545,7 @@ async function openSongLyrics(ref) {
 // along), then a check of every line before saving. Words already kept with the song open on the check.
 // save({text, lines}) keeps them with the song, or save(null) removes them. inMusic: opened from the Music
 // editor, where the words can then be placed one by one on its Lyrics lane. Resolves once it's closed.
-function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep }) {
+function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep, start = null }) {
   const w = editWindow(`Lyrics for ${ref.path.replace(/^.*\//, "").replace(/\.[^.]+$/, "")}`);
   w.dlg.classList.add("lyrics-dialog");
   const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
@@ -11546,17 +11556,16 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
   audio.addEventListener("timeupdate", () => { if (stopAt != null && audio.currentTime >= stopAt) { audio.pause(); stopAt = null; } });
   const time = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
 
-  // Which step you're on, shown at the top; each screen is one of these.
-  const STEPS = ["Words", "How", "Place", "Check"];
-  const steps = el("ol", { className: "lyrics-steps" }, ...STEPS.map((t) => el("li", { textContent: t })));
+  // Which step you're on, shown at the top as in the app's other step-by-step windows.
+  const steps = el("p", { className: "hint ns-step" });
   const screens = {};
-  const screen = (name, step, ...kids) => (screens[name] = Object.assign(el("section", { className: "lyrics-screen", hidden: true }, ...kids), { step }));
+  const screen = (name, step, label, ...kids) => (screens[name] = Object.assign(el("section", { className: "lyrics-screen", hidden: true }, ...kids), { step, label }));
 
   // 1. The words.
   const text = el("textarea", { rows: 10, className: "lyrics-text", value: lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
   text.setAttribute("aria-label", "The song's words");
   const wordsHint = el("p", { className: "hint" });
-  screen("words", 0, el("p", { className: "hint", textContent: "Paste the song's words, one line of the song per line. Blank lines are left out." }), text, wordsHint);
+  screen("words", 1, "the words", el("p", { className: "hint", textContent: "Paste the song's words, one line of the song per line. Blank lines are left out." }), text, wordsHint);
 
   // 2. How to place them: three ways, each saying what it does and whether an AI does it.
   const way = (icon, title, tag, ai, what, onclick) => {
@@ -11573,7 +11582,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
     return b;
   };
   const howHint = el("p", { className: "hint" });
-  screen("how", 1, el("p", { className: "hint", textContent: "How should the words be placed in the song? You can try another way afterwards." }),
+  screen("how", 2, "how to place them", el("p", { className: "hint", textContent: "How should the words be placed in the song? You can try another way afterwards." }),
     el("div", { className: "lyrics-ways" },
       way("ai", "Line up with the singing", "AI · a minute or two", true,
         "An AI listens to the song's vocals and puts each word where it's sung. The most accurate. Works best on English songs, and once the song's split into parts.", () => lineUp()),
@@ -11591,7 +11600,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
   alignText.setAttribute("aria-live", "polite");
   const alignBar = el("progress", { className: "busy-progress", max: 1 });
   const alignCancel = button("Cancel", () => aborter?.abort(), "ghost");
-  screen("align", 2, el("p", { className: "busy-row" }, el("span", { className: "spinner" }), alignText), alignBar,
+  screen("align", 3, "lining up with the singing", el("p", { className: "busy-row" }, el("span", { className: "spinner" }), alignText), alignBar,
     el("p", { className: "hint", textContent: "An AI in this browser is listening to the song's vocals for each word. Keep this page open until it's done." }),
     el("p", { className: "row" }, alignCancel));
   async function lineUp() {
@@ -11617,7 +11626,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
   const tapNow = el("p", { className: "lyrics-now" }), tapNext = el("p", { className: "hint lyrics-next" }), tapCount = el("p", { className: "hint" });
   const tapButton = button("", () => tap(), "primary lyrics-tap");
   const tapStop = button("Stop", () => { endTapping(); show("check", "Stopped: lines you tapped have their new starts, the rest are as they were."); }, "ghost");
-  screen("tap", 2, tapCount, tapNow, tapNext, tapButton,
+  screen("tap", 3, "tap along", tapCount, tapNow, tapNext, tapButton,
     el("p", { className: "hint", textContent: "Press the button, or the space bar, just as each line starts. The song plays from the beginning." }),
     el("p", { className: "row" }, tapStop));
   function tapAlong() {
@@ -11657,7 +11666,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
   const list = el("div", { className: "lyrics-lines" });
   const checkHint = el("p", { className: "hint" });
   const undo = button("Undo the line-up", () => { if (before) { lines = before; before = null; draw(); checkHint.textContent = "Put back as they were."; } undo.hidden = true; }, "ghost small");
-  screen("check", 3, checkHint, list,
+  screen("check", 4, "check", checkHint, list,
     el("p", { className: "row" }, button("Try another way", () => show("how"), "ghost"), button("Change the words", () => show("words"), "ghost"), undo),
     el("p", { className: "hint", textContent: "To get each word just right, "
       + (inMusic ? "save, then drag it on the Lyrics lane under the sections." : "open the song in the Music editor and drag it on its Lyrics lane.") }));
@@ -11702,8 +11711,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
     if (current === "tap" && name !== "tap") endTapping();
     current = name;
     for (const [n, sc] of Object.entries(screens)) sc.hidden = n !== name;
-    const step = screens[name].step;
-    [...steps.children].forEach((li, k) => { li.classList.toggle("done", k < step); li.classList.toggle("now", k === step); });
+    steps.textContent = `Step ${screens[name].step} of 4: ${screens[name].label}`;
     back.hidden = !["how", "check"].includes(name);
     next.hidden = name !== "words";
     save.hidden = name !== "check";
@@ -11730,7 +11738,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
     w.dlg.close();
     status(words ? `Lyrics saved with ${ref.path}: Singing faces mouth them` : "Lyrics removed", "saved", "show");
   }
-  show(lines.length && text.value ? "check" : "words");
+  show(start && (start !== "check" || lines.length) ? start : lines.length && text.value ? "check" : "words");
   w.dlg.showModal();
   return new Promise((done) => w.dlg.addEventListener("close", done, { once: true }));
 }
