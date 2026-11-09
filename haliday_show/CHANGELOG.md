@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.438
+
+- **See WLED's own effects move in the preview.** A light on **WLED's own effect** in a scene now shows the effect as the WLED draws it, worked out with WLED's own code: **Fire 2012**, **Pacifica**, **Twinklefox**, **Rainbow**, **Colorloop**, **Candle**, **Meteor**, **Juggle**, **Fireworks Starburst**, **Plasma**, **Lightning** and about 20 more, in your chosen palette, colours and speed. Other WLED effects show a rough moving stand-in for now, and the light's row says which you're seeing. More effects will follow.
+
 ## 0.2.437
 
 - **Playlists of scenes play.** A playlist made only of scene blocks (or colour, off or effect blocks), with no shows, can now be played: its **Play** button works, and its schedule starts it. Before, it said **No shows yet** and wouldn't play, even from the schedule. Its card now shows how many blocks it has and how long it takes to go round.

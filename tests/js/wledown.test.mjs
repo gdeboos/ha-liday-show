@@ -7,12 +7,13 @@ import { SCENE_EFFECTS, changeEffect, sceneShow } from "../../haliday_show/app/h
 import { effectsForAI } from "../../haliday_show/app/halidayshow/static/js/aiclips.js";
 import { paletteKeys } from "../../haliday_show/app/halidayshow/static/js/palettes.js";
 
-test("WLED's own effect: a still stand-in in its colours, offered only where it's asked for", () => {
+test("WLED's own effect: previewed by WLED's own code, offered only where it's asked for", () => {
   const clip = { ...newClip("wled", 0, 10), color: "#ff0000", color2: "#00ff00", color3: "#0000ff" };
   const a = renderTrack([clip], 1, 3), b = renderTrack([clip], 7, 3);
-  assert.deepEqual(a, b); // the preview can't show WLED's effect, so it doesn't pretend to move
-  assert.deepEqual([...a.subarray(0, 3)], [255, 0, 0]);
-  assert.deepEqual([...a.subarray(6, 9)], [0, 0, 255]);
+  assert.deepEqual(a, b); // Solid (effect 0) stays put, in its first colour, as on the WLED
+  assert.deepEqual([...a], [255, 0, 0, 255, 0, 0, 255, 0, 0]);
+  const loop = { ...clip, fx: 8 }; // Colorloop moves
+  assert.notDeepEqual([...renderTrack([loop], 1, 3)], [...renderTrack([loop], 2, 3)]);
   assert.ok(!BLOCK_EFFECTS.includes("wled") && !SCENE_EFFECTS.includes("wled")); // the scene editor adds it on WLED rows
   assert.ok(!effectsForAI().some((e) => e.key === "wled"));
   assert.deepEqual(paletteKeys("wled"), ["color", "color2", "color3"]); // palettes colour it

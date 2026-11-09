@@ -2142,7 +2142,12 @@ and not on the schedule) and **Remove…**.
   effects and palettes, read from the light itself (so the light needs its IP address). Its colours,
   **Speed**, **Brightness** and **Intensity** go to the WLED too. When the scene starts, HA-liday Show
   tells the WLED to play that effect and sends it nothing else; your other lights play as usual. The
-  **Preview** can't show WLED's effect, so the light shows its colours, still, and its row says so.
+  **Preview** shows the effect moving as the WLED draws it, worked out with WLED's own code, for most of
+  the popular effects so far (such as **Fire 2012**, **Pacifica**, **Twinklefox**, **Rainbow**,
+  **Colorloop**, **Candle**, **Meteor**, **Juggle** and **Fireworks Starburst**). The others show a
+  rough stand-in, their palette or colours drifting along the light, and the light's row says so. The
+  preview assumes WLED's standard settings for the effect's extra sliders and options, which HA-liday
+  Show doesn't change.
   WLED's sound-reactive effects follow the WLED's own microphone, while **React to music**, the scenes'
   brightness, and House lane or group lane effects don't reach this light. When a show starts, the
   light is taken back as usual. When the scene stops, the WLED carries on with its effect (as a WLED

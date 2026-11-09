@@ -539,4 +539,7 @@ fills one in for you, with the details that help, and takes out names, addresses
 
 ## 📄 Licence
 
-MIT, see [LICENSE](LICENSE). Not affiliated with Govee, WLED, Twinkly or Home Assistant.
+MIT, see [LICENSE](LICENSE), except one folder: `haliday_show/app/halidayshow/static/js/wled-effects/`
+holds WLED's own effects translated to JavaScript (to preview them in the editor), and stays under
+WLED's licence, the EUPL 1.2 (see the `LICENSE` and `README.md` in that folder). Not affiliated with
+Govee, WLED, Twinkly or Home Assistant.

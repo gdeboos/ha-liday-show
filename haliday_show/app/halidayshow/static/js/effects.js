@@ -8,6 +8,7 @@ import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture, phoneKey } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
 import { CHARACTERS, FACE_ASPECT, SHAPES, blinkAt, faceDrawer, lookAt, mouthFor, quickDrawer } from "./faces.js";
+import { wledPixel } from "./wled-effects/index.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_SAMPLE, PHONE_SHARP, hasPhonesLane, singerOf, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
 
 export const FPS = 40;
@@ -1176,15 +1177,16 @@ Object.assign(EFFECTS, {
 
 // Headings in the effect window, in order. House lane effects all go under "Across the house".
 // WLED's own effect, for a WLED light in a scene: the WLED plays one of its built-in effects itself
-// (runner.py sends it the settings; no frames go to it). The editor can't show the real effect, so this
-// draws a still stand-in in its colours. Only offered in scenes, on a whole WLED light.
+// (runner.py sends it the settings; no frames go to it). The preview runs WLED's own effect code, ported
+// in wled-effects/ (under WLED's EUPL licence); effects not ported yet show a moving stand-in from their
+// palette. Only offered in scenes.
 EFFECTS.wled = {
   label: "WLED's own effect", wledOwn: true, sceneOnly: true, wholeLoop: true, group: "wled",
   params: [{ key: "fx", label: "Effect", type: "wledfx", default: 0 }, { key: "palette", label: "Palette", type: "wledpal", default: 0 },
     num("speed", "Speed", 128, 0, 255, 1), num("intensity", "Intensity", 128, 0, 255, 1),
     color("color", "Colour 1", "#ff0000"), color("color2", "Colour 2", "#ffffff"), color("color3", "Colour 3", "#00b000"),
     { key: "fxName", label: "", type: "hidden", default: "" }, { key: "palName", label: "", type: "hidden", default: "" }],
-  render: (p, t, dur, n, i) => blendList([p.color, p.color2, p.color3].map(hexToRgb), n > 1 ? i / (n - 1) : 0),
+  render: (p, t, dur, n, i) => wledPixel(p, t, n, i),
 };
 
 // Live music: effects that follow what a WLED with a microphone hears, in scenes (livemusic.py).
