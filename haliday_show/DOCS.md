@@ -2136,10 +2136,12 @@ and not on the schedule) and **Remove…**.
   per light, below) or **Advanced** (straight into the Show editor, further down). The palette starts on
   the season's, or the one you last used. Each light starts on a steady colour from it, one colour after
   another along your lights. Pick **None** and every light starts on a warm white instead. Either way it does something the moment you play it.
-- **Palette**, above the lights, is the scene's palette, as a show has one. A light you turn on from
-  **Off** takes its colours, and the effect window shows every effect in them. Change it and you're
-  asked whether to recolour the lights already on. A light that's on keeps its own colours when you
-  change its effect.
+- **Palette**, above the lights, is the scene's palette, as a show has one. Any effect you pick for a
+  light takes its colours, going round the palette from light to light, and the effect window shows
+  every effect in them. That includes **WLED's own effect**, which then uses the WLED palette
+  **\* Colors Only**, so the WLED draws in your colours. Change the palette and you're asked whether to
+  recolour the lights already on. You can still set a light's own colours afterwards with its colour
+  boxes or **Palette…**.
 - In the editor, each light has its own row: its **Effect**, its **Colours** (a colour box for each,
   and **Palette…** to use one of your palettes), and **Speed**, **Brightness** and **Glitter** sliders
   (white sparkles over the effect; all the way left is none). Press the

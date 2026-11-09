@@ -26,11 +26,21 @@ export const newLook = (effect = "solid") => ({
 
 // A light's look with a different effect, keeping the colours it had where the new effect has room.
 // A light that was off takes the scene's palette, when it has one.
-export function changeEffect(look, effect, palette = null) {
+export function changeEffect(look, effect, palette = null, offset = 0) {
   const next = newLook(effect);
-  if (!look) return palette?.colors?.length ? withPalette(next, palette.colors) : next;
-  const old = clipFor(look, 0, 1);
-  const colours = usedColourKeys(look.effect, old).map((k) => old[k]).filter(Boolean);
+  const colours = look ? (() => { const old = clipFor(look, 0, 1); return usedColourKeys(look.effect, old).map((k) => old[k]).filter(Boolean); })() : [];
+  if (palette?.colors?.length) {
+    // The scene's palette colours every effect picked, the light keeping its place in it (or starting
+    // `offset` colours in), so lights along the house go through the palette in turn.
+    const at = palette.colors.findIndex((c) => c.toLowerCase() === colours[0]?.toLowerCase());
+    withPalette(next, palette.colors, at >= 0 ? at : offset);
+    // A WLED's own effect draws in those colours too, on WLED's "* Colors Only" palette.
+    if (effect === "wled") Object.assign(next.params, { palette: 5, palName: "* Colors Only" });
+    if (look?.params.brightness != null) next.params.brightness = look.params.brightness;
+    if (look?.params.glitter) next.params.glitter = look.params.glitter;
+    return next;
+  }
+  if (!look) return next;
   paletteKeys(effect).forEach((k, i) => { if (i < colours.length) next.params[k] = colours[i]; });
   // A list of colours takes as many as the old look had (at least two).
   if (EFFECTS[effect]?.list && colours.length >= 2) next.params.count = String(Math.min(colours.length, paletteKeys(effect).length));

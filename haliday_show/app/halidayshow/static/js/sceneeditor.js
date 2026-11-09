@@ -479,6 +479,10 @@ export class SceneEditor {
     // segments), and a part that's one of its WLED segments.
     const wledOK = !!dev && dev.kind === "wled" && (!dev.parent || wledSegmentPart(dev, dev.part));
     const own = !!EFFECTS[look?.effect]?.wledOwn;
+    // Where this row is along the lights, so a palette goes round them in turn (as Recolour does).
+    const [lightId, partId] = String(devId ?? "").split("#");
+    const lightAt = this.d.lights().findIndex((d) => d.id === lightId);
+    const place = Math.max(0, lightAt) + Math.max(0, this.d.lights()[lightAt]?.parts?.findIndex((p) => p.id === partId) ?? 0);
     const eff = el("button", { type: "button", class: "sc-effect picker-button", "aria-haspopup": "dialog",
       "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: `${fxName}. Pick an effect or preset, with a preview of each` },
       el("span", { class: "picker-name" }, fxName), el("span", { class: "picker-change", "aria-hidden": "true" }, "Change…"));
@@ -489,11 +493,11 @@ export class SceneEditor {
       // Each effect previews as it would be picked: this light's colours carried over.
       palette: this.palette(),
       paramsFor: (key) => {
-        const { start, end, effect, ...params } = clipFor(changeEffect(look, key, this.palette()), 0, 1);
+        const { start, end, effect, ...params } = clipFor(changeEffect(look, key, this.palette(), place), 0, 1);
         return params;
       },
       onPick: (key, picked) => {
-        const next = changeEffect(look, key, this.palette());
+        const next = changeEffect(look, key, this.palette(), place);
         if (picked) next.params = { ...next.params, ...presetParams(picked, clipFor(next, 0, 1)) };
         set(next);
         changed(true);
