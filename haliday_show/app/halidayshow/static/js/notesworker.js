@@ -132,7 +132,7 @@ async function load() {
   env.remoteHost = "https://notes.invalid/";
   env.remotePathTemplate = "{model}/";
   env.fetch = async (url) => {
-    const path = String(url).split("https://notes.invalid/notes/")[1]?.split("?")[0];
+    const path = String(url?.url ?? url).split("https://notes.invalid/notes/")[1]?.split("?")[0];
     const ours = path && MODEL[path];
     const res = ours && (await cache.match(file(ours)));
     return res || new Response("not here", { status: 404 });
@@ -156,13 +156,19 @@ async function write(items, maxTokens) {
   return out;
 }
 
+// Every answer carries the asking message's id, so the page never takes one for another's.
 self.onmessage = async ({ data }) => {
+  const progress = self.postMessage.bind(self);
+  const id = data.id, reply = (msg) => progress({ ...msg, id });
+  self.postMessage = (msg) => progress({ ...msg, id });
   try {
-    if (data.check) postMessage({ kept: await kept(), gpu: await gpu() });
-    else if (data.download) { await download(); postMessage({ downloaded: true }); }
-    else if (data.write) postMessage({ written: await write(data.write, data.maxTokens) });
-    else if (data.forget) { generator = null; await caches.delete(CACHE).catch(() => {}); postMessage({ forgotten: true }); }
+    if (data.check) reply({ kept: await kept(), gpu: await gpu() });
+    else if (data.download) { await download(); reply({ downloaded: true }); }
+    else if (data.write) reply({ written: await write(data.write, data.maxTokens) });
+    else if (data.forget) { generator = null; await caches.delete(CACHE).catch(() => {}); reply({ forgotten: true }); }
   } catch (e) {
-    postMessage({ error: e?.message || String(e) });
+    reply({ error: e?.message || String(e) });
+  } finally {
+    self.postMessage = progress;
   }
 };

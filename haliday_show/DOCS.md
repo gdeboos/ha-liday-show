@@ -3256,6 +3256,8 @@ the notes one section at a time from what was found in each; it doesn't rename s
 Claude or Home Assistant does. The first time in a session it takes a little while to load. Without the
 model or an AI, the notes are written from simple rules. The other AI features still need Claude or
 Home Assistant.
+While it downloads, HA-liday Show keeps its own copy in its temporary folder until it next restarts, so
+the Home Assistant machine needs about 1.2 GB free for a while.
 
 ## Packet lab
 

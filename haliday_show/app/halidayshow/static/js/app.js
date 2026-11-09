@@ -13463,19 +13463,25 @@ function renderAiPaletteIdeas() {
 // Section notes on this device (notesworker.js): a small model this browser keeps, used instead of
 // Claude or Home Assistant when it's downloaded here, this browser can run it, and Setup → AI says to.
 const deviceNotes = {
-  worker: null, kept: false, gpu: null, busy: null, queue: Promise.resolve(),
+  worker: null, kept: false, gpu: null, busy: null, queue: Promise.resolve(), asked: 0,
   ready() { return this.kept && this.gpu === "ok" && prefs.get("notesWith", "device") !== "ai"; },
-  // One request at a time; `progress(stage, done)` hears how it's going.
-  ask(msg, progress = () => {}) {
+  stop() { this.worker?.terminate(); this.worker = null; },
+  // One request at a time; `progress(stage, done)` hears how it's going. Writing that takes longer than
+  // `limit` (a stuck graphics chip, say) stops the model, so nothing waits on it for ever.
+  ask(msg, progress = () => {}, limit = 0) {
     const run = () => new Promise((resolve, reject) => {
+      const id = ++this.asked;
       this.worker ||= new Worker(new URL("./notesworker.js", import.meta.url), { type: "module" });
+      const timer = limit && setTimeout(() => { this.stop(); reject(new Error("it took too long, so it was stopped")); }, limit);
+      const done = (fn, v) => { clearTimeout(timer); fn(v); };
       this.worker.onmessage = ({ data }) => {
+        if (data.id !== id) return; // from a request that has already given up
         if (data.stage) progress(data.stage, data.done);
-        else if (data.error) reject(new Error(data.error));
-        else resolve(data);
+        else if (data.error) done(reject, new Error(data.error));
+        else done(resolve, data);
       };
-      this.worker.onerror = (e) => reject(new Error(e.message || "the notes model stopped"));
-      this.worker.postMessage(msg);
+      this.worker.onerror = (e) => { this.stop(); done(reject, new Error(e.message || "the notes model stopped")); };
+      this.worker.postMessage({ ...msg, id });
     });
     const p = this.queue.then(run, run);
     this.queue = p.catch(() => {});
@@ -13489,7 +13495,7 @@ async function deviceSectionNotes(sections, traits, song) {
   try {
     const { written } = await deviceNotes.ask({ write: asks.map(({ index, messages }) => ({ index, messages })), maxTokens: 160 },
       (stage, done) => status(stage === "load" ? "Loading the notes model on this device…"
-        : `Writing section notes on this device… ${Math.round((done || 0) * 100)}%`));
+        : `Writing section notes on this device… ${Math.round((done || 0) * 100)}%`), (2 + asks.length) * 60000);
     const got = describeWithAI(sections, traits, fromDevice(written));
     if (!got.used) status("The notes model's answer couldn't be used, so the section notes stay as they were", "hint");
     return got;
@@ -13505,9 +13511,10 @@ async function renderNotesCard({ check = false } = {}) {
   }
   const { kept, gpu, busy } = deviceNotes;
   $("notes-state").textContent = busy ? busy
-    : gpu === "none" ? "This browser can't run it: it needs WebGPU, which Chrome and Edge on a computer have."
-      : gpu === "no-f16" ? "This computer's graphics chip can't run it (it lacks the 16-bit maths the model needs)."
-        : kept ? "Downloaded in this browser." : "Not downloaded in this browser yet.";
+    : gpu === null ? "Checking…"
+      : gpu === "none" ? "This browser can't run it: use Chrome or Edge on a computer."
+        : gpu === "no-f16" ? "This computer's graphics chip can't run it."
+          : kept ? "Downloaded in this browser." : "Not downloaded in this browser yet.";
   $("notes-download").hidden = kept || gpu !== "ok";
   $("notes-download").disabled = !!busy;
   $("notes-forget").hidden = !kept || !!busy;
@@ -13524,6 +13531,7 @@ $("notes-download").addEventListener("click", async () => {
       $("notes-state").textContent = deviceNotes.busy;
     });
     deviceNotes.busy = null;
+    prefs.set("notesModelHere", true);
     status("The notes model is downloaded: Detect and Describe sections will use it");
   } catch (e) {
     deviceNotes.busy = null;
@@ -13533,12 +13541,13 @@ $("notes-download").addEventListener("click", async () => {
 });
 $("notes-forget").addEventListener("click", async () => {
   await deviceNotes.ask({ forget: true }).catch(() => {});
-  deviceNotes.worker?.terminate();
-  deviceNotes.worker = null;
+  deviceNotes.stop();
+  prefs.set("notesModelHere", false);
   renderNotesCard({ check: true });
 });
 $("notes-with").addEventListener("change", (e) => prefs.set("notesWith", e.target.value));
-renderNotesCard({ check: true });
+// Only browsers that have downloaded it look at start-up (the rest when Setup → AI is opened).
+if (prefs.get("notesModelHere", false)) renderNotesCard({ check: true });
 
 // Describe it: effects from a request in words, made by the AI the add-on is set up with.
 let aiVia = null; // how AI requests go ("claude" or "ha"), or null when no AI is set up
@@ -13740,6 +13749,7 @@ function showView(view, { push = true } = {}) {
   if (view in open && !open[view]) view = EDITOR_LIST[view];
   if (view === "labs" && !labsOn()) view = "settings";
   if (view === "public" && $("tab-public").hidden) view = "settings";
+  if (view === "ai") renderNotesCard({ check: true });
   // Live music effects move to what a WLED hears (or a made-up song) while a scene is being edited.
   const live = (view === "scene" && app.sceneChosen) || (view === "editor" && !!app.sceneId);
   if (live !== livePreviewing) { livePreviewing = live; if (live) startLivePreview(api); else stopLivePreview(); }
