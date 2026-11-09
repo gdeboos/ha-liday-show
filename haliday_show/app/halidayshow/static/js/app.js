@@ -308,7 +308,7 @@ volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
   opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), songFacts: (ref) => songFacts(ref), hasAI: () => !!aiVia || deviceNotes.ready(),
-  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref), songLyrics: (ref) => openSongLyrics(ref), lyricsChanged: () => madeFrom.clear(), partsLater: (ref) => prepareParts([ref], { first: true }),
+  draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref), songLyrics: (ref, opts) => openSongLyrics(ref, opts), lyricsChanged: () => madeFrom.clear(), partsLater: (ref) => prepareParts([ref], { first: true }),
   pickSong: (o) => pickSong(o) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
 
@@ -11807,16 +11807,32 @@ async function openShowLyrics() {
 
 // Lyrics… in the Music editor: the song's lyrics, for every show on it.
 // start: the screen to open on ("words", "how" or "check"), else the check if it has words.
-async function openSongLyrics(ref, { start = null } = {}) {
-  status("Loading the song…");
+// song: the song already decoded ({duration, sampleRate, numberOfChannels, getChannelData}), if the
+// caller has it, so it isn't fetched again. A window says what's happening until the words are ready.
+async function openSongLyrics(ref, { start = null, song = null } = {}) {
+  const wait = editWindow(`Lyrics for ${ref.path.replace(/^.*\//, "").replace(/\.[^.]+$/, "")}`);
+  const note = Object.assign(document.createElement("p"), { className: "hint", textContent: song ? "Getting the words ready…" : "Loading the song…" });
+  const bar = Object.assign(document.createElement("progress"), { className: "lyrics-wait" });
+  wait.body.append(note, bar);
+  wait.foot.append(button("Cancel", () => wait.dlg.close()));
+  let cancelled = false;
+  wait.dlg.addEventListener("close", () => { cancelled = true; });
+  wait.dlg.showModal();
   try {
     audioCtx ||= new AudioContext();
-    const song = await audioCtx.decodeAudioData(await fetchSong(audioUrl(ref)));
+    song ||= await audioCtx.decodeAudioData(await fetchSong(audioUrl(ref)));
+    if (cancelled) return;
+    note.textContent = "Getting the words ready…";
     const [voice, kept] = await Promise.all([songVoice(ref, song), api(songExtraUrl("lyrics", ref)).catch(() => null)]);
-    status("");
+    if (cancelled) return;
+    cancelled = true;
+    wait.dlg.close();
     await openLyrics({ ref, duration: song.duration, inMusic: true, voice, lyrics: kept, start,
       save: (words) => api(songExtraUrl("lyrics", ref), { method: "PUT", json: words }).then(() => madeFrom.clear()) });
-  } catch (e) { status(`Couldn't open the lyrics: ${e.message}`, true); }
+  } catch (e) {
+    if (!cancelled) wait.dlg.close();
+    status(`Couldn't open the lyrics: ${plainError(e)}`, true);
+  }
 }
 
 // Lyrics… (lyrics.js): a song's words, placed across the singing for the Singing face to mouth. One step at
