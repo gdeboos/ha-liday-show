@@ -1663,6 +1663,20 @@ dialog { overscroll-behavior: contain; }
 .lyrics-lines { display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow: auto; }
 .lyrics-line { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border-radius: 6px; }
 .lyrics-line.tapping { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+/* Lyrics…, a step at a time: where you are, and the tap-along screen's line being sung and its big button */
+.lyrics-steps { display: flex; gap: 6px; list-style: none; margin: 0 0 12px; padding: 0; counter-reset: lyr; font-size: 12.5px; color: var(--muted); }
+.lyrics-steps li { counter-increment: lyr; display: flex; align-items: center; gap: 6px; }
+.lyrics-steps li::before { content: counter(lyr); display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid var(--line); font-size: 11px; font-weight: 600; }
+.lyrics-steps li + li::after { order: -1; content: ""; width: 14px; height: 1px; background: var(--line); }
+.lyrics-steps li.now { color: var(--text); font-weight: 600; }
+.lyrics-steps li.now::before { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.lyrics-steps li.done::before { content: "✓"; border-color: var(--accent); color: var(--accent); }
+.lyrics-screen .busy-progress { width: 100%; }
+.lyrics-now { font-size: 22px; font-weight: 600; margin: 8px 0 2px; }
+.lyrics-next { margin: 0 0 14px; }
+.lyrics-tap { width: 100%; padding: 14px; font-size: 17px; height: auto; margin-bottom: 8px; }
+.lyrics-screen .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .lyrics-start { width: 6em; }
 .lyrics-words { flex: 1; min-width: 0; }
 /* Cards (liblayout.js): Library → Shows, Scenes, Pictures, Faces, Palettes and Presets as a grid of cards, each with its

@@ -11530,69 +11530,35 @@ async function openSongLyrics(ref) {
   } catch (e) { status(`Couldn't open the lyrics: ${e.message}`, true); }
 }
 
-// Lyrics… (lyrics.js): a song's words, placed across the singing for the Singing face to mouth, then
-// tweaked line by line: each line's start typed in, or tapped in time with the song. save({text,
-// lines}) keeps them with the song, or save(null) removes them. inMusic: opened from the Music editor, where
-// the words are then placed one by one on its Lyrics lane. Resolves once it's closed.
+// Lyrics… (lyrics.js): a song's words, placed across the singing for the Singing face to mouth. One step at
+// a time in one window: the words, how to place them, that way's own screen (the AI's progress, or tapping
+// along), then a check of every line before saving. Words already kept with the song open on the check.
+// save({text, lines}) keeps them with the song, or save(null) removes them. inMusic: opened from the Music
+// editor, where the words can then be placed one by one on its Lyrics lane. Resolves once it's closed.
 function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep }) {
   const w = editWindow(`Lyrics for ${ref.path.replace(/^.*\//, "").replace(/\.[^.]+$/, "")}`);
   w.dlg.classList.add("lyrics-dialog");
-  const intro = Object.assign(document.createElement("p"), { className: "hint",
-    textContent: "Paste the words, one line of the song per line, then pick one of the three ways below to place them "
-      + "in the song. You can mix them: line up with the singing, then tap along or type a start for any line that's off. "
-      + "To get each word just right, "
-      + (inMusic ? "save, then drag it on the Lyrics lane under the sections." : "open the song in the Music editor and drag it on its Lyrics lane.") });
-  const text = Object.assign(document.createElement("textarea"), { rows: 7, className: "lyrics-text",
-    value: lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
-  text.setAttribute("aria-label", "The song's words");
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
   let lines = savedLines(lyrics) || [];
-  const list = Object.assign(document.createElement("div"), { className: "lyrics-lines" });
-  const hint = Object.assign(document.createElement("p"), { className: "hint" });
   const audio = new Audio(audioUrl(ref));
   audio.volume = volume.gain ?? 1;
-  let stopAt = null, tapping = -1;
+  let stopAt = null, tapping = -1, starts = [], before = null, aborter = null;
   audio.addEventListener("timeupdate", () => { if (stopAt != null && audio.currentTime >= stopAt) { audio.pause(); stopAt = null; } });
-  const time = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
-  const place = () => { lines = placeLines(parseLyrics(text.value), voice, duration); draw(); };
-  const draw = () => {
-    list.replaceChildren(...lines.map((l, i) => {
-      const row = document.createElement("div");
-      row.className = "lyrics-line" + (i === tapping ? " tapping" : "");
-      const start = Object.assign(document.createElement("input"), { type: "number", min: 0, max: Math.floor(duration), step: 0.05,
-        value: l.start.toFixed(2), className: "lyrics-start" });
-      start.setAttribute("aria-label", `When "${l.text}" starts, in seconds`);
-      start.addEventListener("change", () => {
-        const starts = lines.map((x) => x.start);
-        starts[i] = Math.min(Math.max(Number(start.value) || 0, 0), duration);
-        lines = fromStarts(lines, starts, voice, duration);
-        draw();
-      });
-      const play = button("▶", () => { audio.currentTime = Math.max(0, l.start - 0.3); stopAt = l.end + 0.3; audio.play(); }, "ghost small");
-      play.setAttribute("aria-label", `Play "${l.text}"`);
-      const words = Object.assign(document.createElement("span"), { className: "lyrics-words", textContent: l.text });
-      const when = Object.assign(document.createElement("span"), { className: "hint", textContent: `${time(l.start)} – ${time(l.end)}` });
-      row.append(start, play, words, when);
-      return row;
-    }));
-    hint.textContent = !lines.length ? "" : voice ? `${lines.length} lines, placed across the singing.`
-      : `${lines.length} lines, spread evenly (the singer hasn't been measured).`;
-  };
-  // Placed as you paste or type (after a pause), so leaving the box doesn't grow the window under the
-  // pointer and lose the press of a button below it.
-  let typing = null;
-  text.addEventListener("input", () => { clearTimeout(typing); typing = setTimeout(changed, 400); });
-  text.addEventListener("change", () => { clearTimeout(typing); changed(); });
-  function changed() {
-    const now = parseLyrics(text.value);
-    // The same number of lines: keep their starts; otherwise place them all again.
-    if (now.length && now.length === lines.length) {
-      // A line with the same number of words keeps its words' times.
-      const kept = now.map((l, i) => (lines[i].times && lines[i].words.length === l.words.length ? { ...l, start: lines[i].start, times: lines[i].times } : l));
-      lines = fromStarts(kept, lines.map((l) => l.start), voice, duration);
-      draw();
-    } else place();
-  }
-  // The three ways to place the words, each saying what it does and whether an AI does it.
+  const time = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+
+  // Which step you're on, shown at the top; each screen is one of these.
+  const STEPS = ["Words", "How", "Place", "Check"];
+  const steps = el("ol", { className: "lyrics-steps" }, ...STEPS.map((t) => el("li", { textContent: t })));
+  const screens = {};
+  const screen = (name, step, ...kids) => (screens[name] = Object.assign(el("section", { className: "lyrics-screen", hidden: true }, ...kids), { step }));
+
+  // 1. The words.
+  const text = el("textarea", { rows: 10, className: "lyrics-text", value: lyrics?.text || "", placeholder: "Run, run Rudolph\nSanta's got to make it to town…" });
+  text.setAttribute("aria-label", "The song's words");
+  const wordsHint = el("p", { className: "hint" });
+  screen("words", 0, el("p", { className: "hint", textContent: "Paste the song's words, one line of the song per line. Blank lines are left out." }), text, wordsHint);
+
+  // 2. How to place them: three ways, each saying what it does and whether an AI does it.
   const way = (icon, title, tag, ai, what, onclick) => {
     const b = button("", onclick, `lyrics-way${ai ? " ai" : ""}`);
     b.type = "button";
@@ -11602,98 +11568,156 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
     const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
     use.setAttribute("href", `#i-${icon}`);
     svg.append(use);
-    const head = Object.assign(document.createElement("span"), { className: "lyrics-way-head" });
-    head.append(svg, Object.assign(document.createElement("b"), { textContent: title }),
-      Object.assign(document.createElement("span"), { className: "lyrics-way-tag", textContent: tag }));
-    b.append(head, Object.assign(document.createElement("span"), { className: "lyrics-way-what", textContent: what }));
+    b.append(el("span", { className: "lyrics-way-head" }, svg, el("b", { textContent: title }), el("span", { className: "lyrics-way-tag", textContent: tag })),
+      el("span", { className: "lyrics-way-what", textContent: what }));
     return b;
   };
-  const auto = way("spread", "Spread them out", "Instant · no AI", false,
-    "Places the lines evenly over where the song sounds like singing, longer words taking longer. A rough start.", place);
-  // Line up with the singing (align.js): an AI hears where each word is sung in the vocals and places
-  // every line and word afresh. Undo puts back what was there.
-  let before = null;
-  const undo = button("Undo", () => { if (before) { lines = before; before = null; undo.hidden = true; draw(); } }, "ghost small");
-  undo.hidden = true;
-  const lineUp = way("ai", "Line up with the singing", "AI · a minute or two", true,
-    "An AI listens to the song's vocals and puts each word where it's sung. The most accurate. Works best on English songs, and once the song's split into parts.", async () => {
-    clearTimeout(typing);
+  const howHint = el("p", { className: "hint" });
+  screen("how", 1, el("p", { className: "hint", textContent: "How should the words be placed in the song? You can try another way afterwards." }),
+    el("div", { className: "lyrics-ways" },
+      way("ai", "Line up with the singing", "AI · a minute or two", true,
+        "An AI listens to the song's vocals and puts each word where it's sung. The most accurate. Works best on English songs, and once the song's split into parts.", () => lineUp()),
+      way("spread", "Spread them out", "Instant · no AI", false,
+        "Places the lines evenly over where the song sounds like singing, longer words taking longer. A rough start.", () => {
+          place();
+          show("check", `${lines.length} lines spread across the singing. Press ▶ on a line to check it, and type a better start for any that's off.`);
+        }),
+      way("tap", "Tap along", "You · as it plays", false,
+        "The song plays and you press Space (or the button) as each line starts. Good for fixing lines that are off.", () => tapAlong())),
+    howHint);
+
+  // 3a. Lining up with the singing (align.js), in this window, with Cancel.
+  const alignText = el("span", { textContent: "Starting…" });
+  alignText.setAttribute("aria-live", "polite");
+  const alignBar = el("progress", { className: "busy-progress", max: 1 });
+  const alignCancel = button("Cancel", () => aborter?.abort(), "ghost");
+  screen("align", 2, el("p", { className: "busy-row" }, el("span", { className: "spinner" }), alignText), alignBar,
+    el("p", { className: "hint", textContent: "An AI in this browser is listening to the song's vocals for each word. Keep this page open until it's done." }),
+    el("p", { className: "row" }, alignCancel));
+  async function lineUp() {
     const words = parseLyrics(text.value);
-    if (!words.length) { hint.textContent = "Paste the words first, one line of the song per line."; return; }
-    lineUp.disabled = auto.disabled = tapAlong.disabled = save.disabled = true;
-    // It takes a minute or two, so it shows in its own window, with Cancel.
-    const stop = new AbortController();
-    const busy = progressWindow("Lining up the words with the singing", () => stop.abort(),
-      "An AI in this browser is listening to the song's vocals for each word. Keep this page open until it's done.");
+    show("align");
+    alignText.textContent = "Starting…";
+    alignBar.value = 0;
+    aborter = new AbortController();
     try {
-      const got = await lineUpLyrics(ref, api, words, (t, done) => busy.say(t, done), stop.signal);
-      if (!got) { hint.textContent = "Couldn't fit these words to the song. Check they're its words, one line of the song per line."; return; }
-      before = lines;
+      const got = await lineUpLyrics(ref, api, words, (t, done) => { alignText.textContent = t; if (done != null) alignBar.value = done; }, aborter.signal);
+      if (!got) return show("how", null, "Couldn't fit these words to the song. Check they're its words, one line of the song per line.");
+      before = lines.length ? lines : null;
       lines = got.lines;
-      undo.hidden = false;
-      draw();
-      hint.textContent = `${lines.length} lines lined up with the singing${got.vocals ? "" : " (the song isn't split into parts, so it listened to the whole song: splitting it first lines up better)"}. Press ▶ on a line to check it.`;
+      show("check", `${lines.length} lines lined up with the singing${got.vocals ? "" : " (the song isn't split into parts, so it listened to the whole song: splitting it first lines up better)"}. Press ▶ on a line to check it.`);
     } catch (e) {
-      hint.textContent = e.cancelled ? "Stopped: the words are as they were." : `Couldn't line up the words: ${plainError(e)}`;
+      show("how", null, e.cancelled || aborter.signal.aborted ? "Stopped: the words are as they were." : `Couldn't line up the words: ${plainError(e)}`);
     } finally {
-      busy.close();
-      lineUp.disabled = auto.disabled = tapAlong.disabled = save.disabled = false;
+      aborter = null;
     }
-  });
-  // Tap along: the song plays from the start, and each press of the button (or the space bar) starts the
-  // line it names there, the first line included.
-  const next = button("", () => tap(), "primary");
-  const cue = () => {
-    next.textContent = `Line ${tapping + 1} starts`;
-    hint.textContent = `Press Line ${tapping + 1} starts (or the space bar) when "${lines[tapping].text}" starts.`;
-  };
-  next.hidden = true;
-  const tapAlong = way("tap", "Tap along", "You · as it plays", false,
-    "The song plays and you press Space (or the button) as each line starts. Good for fixing lines that are off.", () => {
+  }
+
+  // 3b. Tapping along: the song plays from the start, and each press starts the line it names.
+  const tapNow = el("p", { className: "lyrics-now" }), tapNext = el("p", { className: "hint lyrics-next" }), tapCount = el("p", { className: "hint" });
+  const tapButton = button("", () => tap(), "primary lyrics-tap");
+  const tapStop = button("Stop", () => { endTapping(); show("check", "Stopped: lines you tapped have their new starts, the rest are as they were."); }, "ghost");
+  screen("tap", 2, tapCount, tapNow, tapNext, tapButton,
+    el("p", { className: "hint", textContent: "Press the button, or the space bar, just as each line starts. The song plays from the beginning." }),
+    el("p", { className: "row" }, tapStop));
+  function tapAlong() {
     if (!lines.length) place();
     if (!lines.length) return;
+    before = null;
     tapping = 0;
     starts = lines.map((l) => l.start);
+    show("tap");
+    cue();
     audio.currentTime = 0;
     stopAt = null;
     audio.play();
-    next.hidden = false;
-    draw();
-    cue();
-    next.focus();
-  });
-  let starts = [];
+    tapButton.focus();
+  }
+  function cue() {
+    tapCount.textContent = `Line ${tapping + 1} of ${lines.length}`;
+    tapNow.textContent = `“${lines[tapping].text}”`;
+    tapNext.textContent = lines[tapping + 1] ? `Then: ${lines[tapping + 1].text}` : "That's the last line.";
+    tapButton.textContent = `Line ${tapping + 1} starts`;
+  }
   function tap() {
     if (tapping < 0) return;
     starts[tapping] = audio.currentTime;
     tapping++;
-    if (tapping >= lines.length) {
-      tapping = -1;
-      next.hidden = true;
-      audio.pause();
-    }
     lines = fromStarts(lines, starts, voice, duration);
-    draw();
-    if (tapping >= 0) cue(); else hint.textContent = "Done. Press ▶ on a line to check it.";
+    if (tapping < lines.length) return cue();
+    endTapping();
+    show("check", "Done. Press ▶ on a line to check it.");
   }
+  function endTapping() { tapping = -1; audio.pause(); }
   // Space taps, once: its keyup is stopped too, as some browsers press a focused button on keyup.
   w.dlg.addEventListener("keydown", (e) => { if (tapping >= 0 && e.code === "Space") { e.preventDefault(); if (!e.repeat) tap(); } });
   w.dlg.addEventListener("keyup", (e) => { if (e.code === "Space") e.preventDefault(); });
-  const ways = Object.assign(document.createElement("div"), { className: "lyrics-ways" });
-  ways.append(lineUp, auto, tapAlong);
-  const tools = Object.assign(document.createElement("div"), { className: "row" });
-  tools.append(next, undo);
-  w.body.append(intro, text, ways, tools, hint, list);
+
+  // 4. Check every line: hear it, or type a better start.
+  const list = el("div", { className: "lyrics-lines" });
+  const checkHint = el("p", { className: "hint" });
+  const undo = button("Undo the line-up", () => { if (before) { lines = before; before = null; draw(); checkHint.textContent = "Put back as they were."; } undo.hidden = true; }, "ghost small");
+  screen("check", 3, checkHint, list,
+    el("p", { className: "row" }, button("Try another way", () => show("how"), "ghost"), button("Change the words", () => show("words"), "ghost"), undo),
+    el("p", { className: "hint", textContent: "To get each word just right, "
+      + (inMusic ? "save, then drag it on the Lyrics lane under the sections." : "open the song in the Music editor and drag it on its Lyrics lane.") }));
+  const place = () => { lines = placeLines(parseLyrics(text.value), voice, duration); };
+  const draw = () => {
+    list.replaceChildren(...lines.map((l, i) => {
+      const start = el("input", { type: "number", min: 0, max: Math.floor(duration), step: 0.05, value: l.start.toFixed(2), className: "lyrics-start" });
+      start.setAttribute("aria-label", `When "${l.text}" starts, in seconds`);
+      start.addEventListener("change", () => {
+        const at = lines.map((x) => x.start);
+        at[i] = Math.min(Math.max(Number(start.value) || 0, 0), duration);
+        lines = fromStarts(lines, at, voice, duration);
+        draw();
+      });
+      const play = button("▶", () => { audio.currentTime = Math.max(0, l.start - 0.3); stopAt = l.end + 0.3; audio.play(); }, "ghost small");
+      play.setAttribute("aria-label", `Play "${l.text}"`);
+      return el("div", { className: "lyrics-line" }, start, play, el("span", { className: "lyrics-words", textContent: l.text }),
+        el("span", { className: "hint", textContent: `${time(l.start)} – ${time(l.end)}` }));
+    }));
+  };
+
+  // The footer changes with the screen: Back, and Next (the words) or Save (the check).
+  const back = button("Back", () => (current === "check" ? show("how") : show("words")), "ghost");
+  const next = button("Next", () => {
+    if (!parseLyrics(text.value).length) { wordsHint.textContent = "Paste the words first, one line of the song per line."; return; }
+    // The same lines as before keep their starts (a typo fixed, say); otherwise they're placed afresh.
+    const now = parseLyrics(text.value);
+    if (lines.length && now.length === lines.length) {
+      const kept = now.map((l, i) => (lines[i].times && lines[i].words.length === l.words.length ? { ...l, start: lines[i].start, times: lines[i].times } : l));
+      lines = fromStarts(kept, lines.map((l) => l.start), voice, duration);
+    } else lines = [];
+    show("how");
+  }, "primary");
+  const save = button("Save", () => finish(songLyrics(savedLyrics(text.value, lines, voice, duration))), "primary");
   const remove = button("Remove lyrics", () => finish(null), "ghost danger");
   remove.hidden = !lyrics;
-  const save = button("Save", () => {
-    if (!lines.length) place();
-    if (!lines.length) { w.dlg.close(); return; }
-    finish(songLyrics(savedLyrics(text.value, lines, voice, duration)));
-  }, "primary");
-  const spacer = Object.assign(document.createElement("span"), { className: "spacer" });
-  w.foot.append(remove, spacer, button("Cancel", () => w.dlg.close(), "ghost"), save);
-  w.dlg.addEventListener("close", () => audio.pause());
+  w.foot.append(remove, el("span", { className: "spacer" }), back, button("Cancel", () => w.dlg.close(), "ghost"), next, save);
+  w.body.append(steps, ...Object.values(screens));
+
+  let current = null;
+  function show(name, message = null, howMessage = null) {
+    if (current === "tap" && name !== "tap") endTapping();
+    current = name;
+    for (const [n, sc] of Object.entries(screens)) sc.hidden = n !== name;
+    const step = screens[name].step;
+    [...steps.children].forEach((li, k) => { li.classList.toggle("done", k < step); li.classList.toggle("now", k === step); });
+    back.hidden = !["how", "check"].includes(name);
+    next.hidden = name !== "words";
+    save.hidden = name !== "check";
+    remove.hidden = !lyrics || name !== "check";
+    if (name === "how") howHint.textContent = howMessage || "";
+    if (name === "words") wordsHint.textContent = "";
+    if (name === "check") {
+      draw();
+      checkHint.textContent = message || `${lines.length} lines. Press ▶ on a line to check it, and type a better start for any that's off.`;
+      undo.hidden = !before;
+    }
+    (name === "words" ? text : name === "tap" ? tapButton : screens[name].querySelector("button"))?.focus();
+  }
+  w.dlg.addEventListener("close", () => { audio.pause(); aborter?.abort(); });
   async function finish(words) {
     save.disabled = remove.disabled = true;
     try {
@@ -11706,7 +11730,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
     w.dlg.close();
     status(words ? `Lyrics saved with ${ref.path}: Singing faces mouth them` : "Lyrics removed", "saved", "show");
   }
-  if (!lines.length && text.value) place(); else draw();
+  show(lines.length && text.value ? "check" : "words");
   w.dlg.showModal();
   return new Promise((done) => w.dlg.addEventListener("close", done, { once: true }));
 }

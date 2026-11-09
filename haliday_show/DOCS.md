@@ -2016,33 +2016,37 @@ them; an Advanced scene can.
 To make a Singing face mouth the actual words, select its clip and press **Lyrics…** under **Mouth**,
 or open the song in the Music editor and press **Lyrics…** under **Beats and sections**.
 
-1. Paste the song's words, one line of the song per line.
-2. They're placed across the singing for you, each word taking longer the more syllables it has. Each
-   line shows when it starts and ends; press **▶** beside one to hear it.
-3. Under the words are three ways to place them, each saying what it does. The one marked **AI** is the
+The window takes you through it a step at a time (the steps show along the top), and a song that
+already has its words opens straight on the last step, **Check**.
+
+1. **Words:** paste the song's words, one line of the song per line, then press **Next**.
+2. **How:** pick one of three ways to place them, each saying what it does. The one marked **AI** is the
    only one that uses an AI:
    - **Line up with the singing** (**AI**): an AI listens to the song's vocals and places every line and
-     word where it's actually sung, replacing what was there (**Undo** puts it back). It runs in a
-     window of its own saying how far along it is, with **Cancel**. The first time, your browser
-     downloads it (about 95 MB). It takes about a minute or two for a song, in your browser. It works
-     best once the song is [split into parts](#split-into-parts), as it then hears the singing on its
-     own; it understands English songs. It needs the song's words, in order: a chorus sung three times
-     needs pasting three times.
-   - **Spread them out** (instant, no AI): places the lines across the singing again, as in step 2.
-   - **Tap along** (you, as it plays): see the next step.
-4. If a line comes in early or late, type its start, or press **Tap along**: the song plays from the
-   beginning and you press **Line 1 starts** (or the space bar) as the first line starts, then again for
-   each line after (the button says which line it's waiting for). The words of each line
-   are spread across the singing after its start.
-5. Press **Save**. **Lyrics… (placed)** shows it has them; **Remove lyrics** goes back to the shapes
+     word where it's actually sung. The window shows how far along it is, with **Cancel**. The first
+     time, your browser downloads it (about 95 MB). It takes about a minute or two for a song, in your
+     browser. It works best once the song is [split into parts](#split-into-parts), as it then hears the
+     singing on its own; it understands English songs. It needs the song's words, in order: a chorus
+     sung three times needs pasting three times.
+   - **Spread them out** (instant, no AI): places the lines across the singing, each word taking longer
+     the more syllables it has. A rough start.
+   - **Tap along** (you, as it plays): the song plays from the beginning and the window shows the line
+     to listen for, with the next one under it. Press **Line 1 starts** (or the space bar) as it starts,
+     then again for each line after. **Stop** keeps the lines you've tapped. The words of each line are
+     spread across the singing after its start.
+3. **Check:** every line with when it starts and ends. Press **▶** beside one to hear it, and type a
+   better start for any that's off. **Try another way** goes back to the three ways (after lining up
+   with the singing, **Undo the line-up** puts back what was there), and **Change the words** goes back
+   to the words; lines that are still the same keep their starts.
+4. Press **Save**. **Lyrics… (placed)** shows it has them; **Remove lyrics** goes back to the shapes
    guessed from the sound.
-6. To get each word just right, open the song in the Music editor. Under the sections there's a
+5. To get each word just right, open the song in the Music editor. Under the sections there's a
    **Lyrics** lane with each word as a block, lined up with the waveform. Drag a word to move it, or
    drag its left or right edge to make it start sooner or later, or last longer or shorter; click a
    word to hear it. It zooms and scrolls with the waveform. A line ends where its last word ends, so
    the mouth stays shut through an instrumental: if a line runs into one, drag its last word's right
-   edge back to where the singing stops. Your changes are kept with the song as you go. **Place
-   automatically** in **Lyrics…** starts again from scratch.
+   edge back to where the singing stops. Your changes are kept with the song as you go. **Spread them
+   out** in **Lyrics…** starts again from scratch.
 
 Each word's mouth shapes come from its spelling (an "oo" for "moon", a wide "ee" for "see", lips
 closed for m, b, p, f and v), and the mouth shuts between words. With lyrics placed, you don't need to split the song into parts: the
