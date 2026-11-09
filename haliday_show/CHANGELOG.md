@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.461
+
+- **The demo's song comes ready.** **Try the demo** now adds the sample *Jingle Bells* already split into its vocals, drums, bass and the rest, with when each drum lands, its sounds and its words placed. The demo show follows the drums, the Music editor shows its parts, and the words appear on the timeline, with no split to wait for.
+
 ## 0.2.460
 
 - **The setup guide catches up.** In its last step, **Add my own song…** now opens **Add a song**, so your song is split into its vocals, drums and bass, keeps its words if you paste them and offers its cover's colours, and your first show is made in those colours. A new last page, **What next**, points you to the Music editor, Singing faces, the pre-show check, the schedule and public page, and the AI.
