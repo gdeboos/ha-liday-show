@@ -9815,6 +9815,8 @@ async function asGetReady(ref, name, { split, words, detected, notes = null }) {
     say(text, step?.done ?? done);
     const id = step?.id === "cut" ? "vocals" : step?.id;
     if (!rows.has(id)) return;
+    // The AI's download only gets a line when there's one to wait for (not when it's to hand already).
+    if (id === "download" && rows.get(id).hidden && (step.done ?? 0) >= 1) return;
     at(id, step.done ?? null, order.indexOf(partSteps[0]));
     if (step.via === "cpu" && step.gaveUp) mark(id, "now", `${Math.round((step.done || 0) * 100)}% · on the processor (the graphics chip ran out of memory)`);
     else if (step.via) mark(id, "now", `${Math.round((step.done || 0) * 100)}% · ${step.via === "gpu" ? "on the graphics chip" : "on the processor, which is slower"}`);
@@ -13611,7 +13613,10 @@ async function deviceSectionNotes(sections, traits, song, say = null) {
       (stage, done) => (stage === "load" ? tell("Loading the notes model on this device…", null)
         : tell(`Writing section notes on this device… ${Math.round((done || 0) * 100)}%`, done || 0)), (2 + asks.length) * 60000), "notes");
     const got = describeWithAI(sections, traits, fromDevice(written));
-    if (!got.used) status("The notes model's answer couldn't be used, so the section notes stay as they were", "hint");
+    if (!got.used) {
+      console.info("HA-liday Show: the notes model wrote", written); // so its answers can be looked at
+      status("The notes model's answer couldn't be used, so the section notes stay as they were", "hint");
+    }
     return got;
   } catch (e) {
     status(`The notes model couldn't write the notes, so they stay as they were: ${notesProblem(e)}`, "hint");

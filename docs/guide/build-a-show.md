@@ -343,8 +343,10 @@ and they go wherever the song goes (renamed, copied, archived or deleted with it
   the song, every part dips with it.
 
 **New songs are split by default.** When you add a song (**+ Add a song**), the window stays open
-while it gets the song ready, with a line for each thing it does and how far along it is: added (and
-its beats and sections found), split into its parts, and its words kept with it if you pasted them.
+while it gets the song ready, with a line for each thing it does and its own percentage: added (and
+its beats and sections found), its section notes (when an AI or the notes model writes them), its
+vocals, drums and bass found (saying whether that's on your graphics chip or the slower processor), its
+parts kept, listening for the sounds in it, and its words lined up if you pasted them.
 It takes several minutes. **Stop** stops it, keeping whatever's done, and **Done** closes the window
 when it's finished. On a slower computer, turn off **Split it into parts** in the second step of
 **Add a song** to leave that for later: the song is then only listened to (see below), which takes

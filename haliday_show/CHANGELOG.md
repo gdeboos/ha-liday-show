@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.458
+
+- **See each step as a song is got ready.** After **Add song**, every step has its own line with its own percentage: the section notes, then the vocals, drums and bass (saying whether it's on the graphics chip or the slower processor), keeping the parts, listening for sounds, and lining up the words. A ✓ shows each one done, and the AI's first download gets a line of its own only when there is one.
+- **Section notes from this device get used more often.** When the notes model leaves out the "Notes:" label but writes proper sentences, they're now kept instead of thrown away. If its answer still can't be used, what it wrote goes to the browser's console, so it can be looked into.
+
 ## 0.2.457
 
 - **Fixed: section notes failing while a song splits.** Writing section notes on this device and splitting a song into parts both use your graphics chip, and running together could lose it ("Failed to create a WebGPU compute pipeline…"). The AI in your browser now does one thing at a time, so adding a song writes its notes, then splits it. If the notes ever do fail, the message says so in plain words.
