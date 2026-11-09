@@ -1,9 +1,13 @@
 # Changelog
 
-## 0.2.444
+## 0.2.445
 
 - **Adding a song gets it all ready in front of you.** After **Add song**, the window stays open with a line for each step and how far along it is: added (with its beats and sections), split into its parts, and its words. **Stop** keeps whatever's done, and **Done** closes it. It no longer splits in the background afterwards.
 - **Paste a song's words as you add it.** Step 2 of **Add a song** has an optional **Words** box. Once the song's split, its words are lined up with the singing, ready for Singing faces and the lyrics row.
+
+## 0.2.444
+
+- **Pick WLED effects by eye.** In a scene, **WLED's own effect** now sits first in the effect window, in its own blue box, so it's easy to find. Picking it opens a new **WLED effect** window showing every one of your WLED's effects moving, in the light's colours, with a search box. Press one to pick it. To change it later, press the effect's name under **WLED's own effect**.
 
 ## 0.2.443
 

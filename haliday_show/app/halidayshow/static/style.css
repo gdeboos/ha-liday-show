@@ -1575,6 +1575,12 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
 .fx-count { font-size: 11px; font-weight: 600; color: var(--muted); background: var(--panel); border: 1px solid var(--line);
   border-radius: 999px; padding: 0 7px; }
 .fx-kind .effect-picker button { background: var(--panel); }
+.fx-kind-wled { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--track-alt)); }
+.fx-kind-wled .effect-dialog-kind::before { content: "WLED"; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  color: var(--accent-text); background: var(--accent); border-radius: 4px; padding: 1px 5px; }
+.fx-kind > .hint { margin: -2px 0 8px; font-size: 12px; }
+.wled-fx-dialog .fx-filters .hint { flex-basis: 100%; margin: 0; font-size: 12px; }
+.sc-wled .wled-fx-button { max-width: 220px; }
 
 /* While a window (or the loading box) is open, the page behind it stays put: no scrolling under it,
    and scrolling to the end of a window doesn't carry on into the page. */
