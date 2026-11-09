@@ -875,7 +875,7 @@ M4A, AAC, OGG, Opus, WAV, FLAC or WebM; see below). Songs you add go to `/media/
 players can play them. For a lights-only show, choose **No song, lights only** and set its **Length with no song**.
 
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
-tempo and sections) or "not detected yet", and which shows use it. Under that, **♪ Lyrics** shows it has
+tempo and sections) or "not detected yet", and which shows use it. Under that, a pink **♪ Lyrics** pill shows it has
 its words. An edit cut from a song with words shows it too, as its shows use the song's words
 (a mashup only shows it if it has words of its own), and **Parts:** with a coloured dot for each part shows it's been split into its vocals, drums,
 bass and the rest (the same as in the Music editor). Type in **Find** to narrow the
@@ -2142,7 +2142,7 @@ on their own.
 A scene sets every light at once, like a preset in WLED or a one-tap scene in a lights app, and
 plays until you choose something else. Use one for the hours your lights are on between shows.
 
-Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
+Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours, a **Basic** or **Advanced** pill (which editor it was made in) and what it plays, with **▶ Play** (or **■ Stop**
 while it's on), **Edit**, and under **⋯**, **Rename…**, **Duplicate** (a copy called "… copy", ready to play
 and not on the schedule) and **Remove…**.
 

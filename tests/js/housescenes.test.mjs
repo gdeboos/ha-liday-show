@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { bake } from "../../haliday_show/app/halidayshow/static/js/effects.js";
 import {
-  SCENE_EFFECTS, WARM_WHITE, lookFor, newScene, sceneColours, sceneLoop, sceneShow, sceneSummary, setSame, speedParam,
+  SCENE_EFFECTS, WARM_WHITE, lookFor, newScene, sceneColours, sceneLoop, sceneModeLabel, sceneShow, sceneSummary, setSame, speedParam,
 } from "../../haliday_show/app/halidayshow/static/js/housescenes.js";
 
 const roof = { id: "roof", name: "Roof", segments: 4, parts: [] };
@@ -91,7 +91,9 @@ test("Basic to Advanced and back, while nothing would be lost", async () => {
   const house = structuredClone(adv);
   house.tracks.push({ device: "@house", clips: [{ effect: "sweep", start: 0, end: 20 }] });
   assert.ok(!canBasic(house, lights));
-  assert.match(sceneSummary(adv, lights), /^Advanced · goes round every 20 s · Chase$/);
+  assert.match(sceneSummary(adv, lights), /^Goes round every 20 s · Chase$/);
+  assert.equal(sceneModeLabel(adv), "Advanced");
+  assert.equal(sceneModeLabel({ name: "x", lights: {} }), "Basic");
   assert.deepEqual(sceneColours(adv, lights), ["#ff0000"]);
   assert.equal(sceneLoop(adv, lights, 40), 20);
 });

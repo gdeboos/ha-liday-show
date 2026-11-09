@@ -8,7 +8,7 @@ import { gatherPart } from "./parts.js";
 import { isPorted } from "./wled-effects/index.js";
 import {
   LIVE_EFFECTS, SCENE_EFFECTS, byParts, wledSegmentPart, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
-  forBaking, sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
+  forBaking, sceneModeLabel, sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
 import { setShowPalette, showPalette } from "./showpalette.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
@@ -99,7 +99,10 @@ export class SceneEditor {
         x.style.background = c;
         return x;
       }));
-    const head = el("div", {}, el("b", { class: "show-name" }, s.name));
+    const mode = sceneModeLabel(s);
+    const head = el("div", {}, el("b", { class: "show-name" }, s.name),
+      el("span", { class: `song-badge scene-mode ${mode.toLowerCase()}`, title: mode === "Advanced"
+        ? "Made on the timeline, like a show without a song" : "One look per light, set in the Scene editor" }, mode));
     if (playing) head.append(el("span", { class: "show-last" }, "▶ Playing now"));
     if (waiting) head.append(el("span", { class: "show-last" }, "Comes back after the show"));
     if (!s.baked) head.append(el("span", { class: "badge warn", title: "Open it once so it's ready to play" }, "⚠ Not ready yet"));

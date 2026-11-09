@@ -181,13 +181,16 @@ export function sceneColours(scene, lights) {
   return out;
 }
 
-// The row's line of detail: "5 lights · Chase, Twinkle" or "Every light · Rainbow".
+// The row's line of detail: "5 lights · Chase, Twinkle" or "Every light · Rainbow". Basic or Advanced is
+// the row's pill (sceneModeLabel), not part of the line.
+export const sceneModeLabel = (scene) => (scene.mode === "advanced" ? "Advanced" : "Basic");
+
 export function sceneSummary(scene, lights) {
   const label = (look) => EFFECTS[look.effect]?.label || look.effect;
   if (scene.mode === "advanced") {
     const effects = [...new Set((scene.tracks || []).flatMap((t) => t.clips).map(label))];
     const shown = effects.slice(0, 3).join(", ") + (effects.length > 3 ? "…" : "");
-    return `Advanced · goes round every ${fmtLoop(scene.loop)}${shown ? ` · ${shown}` : ""}`;
+    return `Goes round every ${fmtLoop(scene.loop)}${shown ? ` · ${shown}` : ""}`;
   }
   if (scene.all) return `Every light · ${label(scene.all)}`;
   const on = lights.filter((d) => looksOf(scene, d).length);
