@@ -828,7 +828,7 @@
       <div class="effect-dialog-head"><h3 id="as-title">Add a song</h3>
         <button type="button" class="ghost" data-as="cancel" aria-label="Close">✕</button></div>
       <div class="form-dialog-body" id="as-step-1">
-        <p class="hint ns-step">Step 1 of 2: pick the song</p>
+        <p class="hint ns-step">Step 1 of 3: pick the song</p>
         <div class="as-file">
           <label class="button">Choose a file…<input id="as-file" type="file" accept="audio/*" hidden></label>
           <span id="as-file-name" class="hint">No file chosen yet</span>
@@ -837,16 +837,17 @@
           <span class="hint">It's saved under this name in HA-liday Show's songs folder, so every speaker can play it.</span></label>
       </div>
       <div class="form-dialog-body" id="as-step-2" hidden>
-        <p class="hint ns-step">Step 2 of 2: get it ready</p>
+        <p class="hint ns-step">Step 2 of 3: get it ready</p>
         <div id="as-starts" class="song-list" role="radiogroup" aria-label="Detect the song"></div>
         <label class="field"><span><input id="as-split" type="checkbox" checked> Split it into parts</span>
           <span class="hint">Its vocals, drums, bass and the rest, for Singing faces, Generate and layers. It's done here
             before the window closes, and takes several minutes, longer on a slower computer. Turn it off to do it
             later with <b>Split all songs into parts</b>.</span></label>
         <label class="field">Words <span class="hint">(optional)</span>
-          <textarea id="as-words" rows="4" placeholder="Paste the song's words, one sung line per line"></textarea>
-          <span class="hint">For Singing faces and the timeline's lyrics row. Once it's split into parts, they're lined up
-            with the singing (English songs). A chorus sung three times needs pasting three times.</span></label>
+          <textarea id="as-words" rows="4" placeholder="Paste the song's words, one line of the song per line"></textarea>
+          <span class="hint">For Singing faces and the timeline's lyrics row. If it's split into parts, they're lined up
+            with the singing (English songs); otherwise they're spread out roughly. Either way you can check them
+            at the end. A chorus sung three times needs pasting three times.</span></label>
         <p id="as-progress" class="hint" aria-live="polite"></p>
       </div>
       <div class="form-dialog-body" id="as-step-3" hidden>
@@ -854,6 +855,8 @@
         <ol id="as-tasks" class="as-tasks"></ol>
         <p id="as-doing" class="hint" aria-live="polite"></p>
         <progress id="as-bar" max="1"></progress>
+        <p class="row" id="as-words-row" hidden><button type="button" id="as-check-words"></button>
+          <span class="hint" id="as-words-note"></span></p>
       </div>
       <div class="form-dialog-foot">
         <button type="button" class="ghost" id="as-back" hidden>← Back</button>

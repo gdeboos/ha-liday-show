@@ -1,10 +1,21 @@
 # Changelog
 
-## 0.2.455
+## 0.2.456
 
 - **A clearer AI tab.** **Setup → AI** now shows the two places AI runs (in your browser, free and private, or Claude / Home Assistant's AI for writing), then a list of every feature that uses AI, where it runs, and whether it's ready.
 - **Download the in-browser models ahead of time.** Each model (Split into parts, Sounds in a song, Line up the words, Section notes) has **Download** and shows **✓ Downloaded** once your browser has it. **Download all models** and **Remove them from this browser** do them all at once.
 - **Pick Claude or Home Assistant's AI.** With both set up, **Use** chooses which one writes for you. Before, your Claude key always won.
+
+## 0.2.455
+
+- **Lyrics…** now goes a step at a time, like the other step-by-step windows ("Step 2 of 4: how to place them").
+  Paste the words, pick how to place them, then that way's own screen (the AI's progress with **Cancel**, or
+  **Tap along** showing the line to listen for in big letters with the next one under it), then **Check** every
+  line before you **Save**. The three ways all look alike now, so none looks already chosen. A song that already
+  has its words opens on **Check**, with **Try another way** and **Change the words**.
+- **Add a song** says **Step 1 of 3** to **Step 3 of 3** (it said "of 2" before its last screen). When it's
+  done, **Check the words…** opens the Lyrics window to check the words you pasted (or pick a better way, if
+  they were only placed roughly), and **Add words…** lets you paste them if you didn't.
 
 ## 0.2.454
 
