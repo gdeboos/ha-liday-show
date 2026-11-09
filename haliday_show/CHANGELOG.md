@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.455
+
+- **Lyrics…** now goes a step at a time, like the other step-by-step windows ("Step 2 of 4: how to place them").
+  Paste the words, pick how to place them, then that way's own screen (the AI's progress with **Cancel**, or
+  **Tap along** showing the line to listen for in big letters with the next one under it), then **Check** every
+  line before you **Save**. The three ways all look alike now, so none looks already chosen. A song that already
+  has its words opens on **Check**, with **Try another way** and **Change the words**.
+- **Add a song** says **Step 1 of 3** to **Step 3 of 3** (it said "of 2" before its last screen). When it's
+  done, **Check the words…** opens the Lyrics window to check the words you pasted (or pick a better way, if
+  they were only placed roughly), and **Add words…** lets you paste them if you didn't.
+
 ## 0.2.454
 
 - **Edits show ♪ Lyrics when they use their original's words.** In **Library → Songs**, an edit cut from a song with lyrics now has the **♪ Lyrics** badge too, as its shows sing the original's words through your cuts.

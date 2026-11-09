@@ -351,10 +351,12 @@ when it's finished. On a slower computer, turn off **Split it into parts** in th
 seconds, and **Split all songs into parts** splits it whenever suits you, overnight say. **Add a
 song** remembers your choice for next time.
 
-**Words** in the second step of **Add a song** is optional: paste the song's words, one sung line per
-line, and they're kept with the song (a **♪ Lyrics** badge shows on its row). Once it's split, they're
+**Words** in the second step of **Add a song** is optional: paste the song's words, one line of the song
+per line, and they're kept with the song (a **♪ Lyrics** badge shows on its row). Once it's split, they're
 lined up with the singing, as **Line up with the singing** does under [Lyrics…](effects.md#lyrics-for-a-singing-face).
-Left unsplit, they're placed roughly across the song until you line them up.
+Left unsplit, they're placed roughly across the song. When it's done, **Check the words…** opens the
+**Lyrics…** window to check every line (or, if they were only placed roughly, to pick a better way to place
+them), and if you didn't paste any, **Add words…** opens it to paste them.
 
 When songs are split another way (**Split all songs into parts**, or **Split into parts…** on one), a bar above your songs in **Library → Songs** says which song
 it's on and how far along it is, and the line at the bottom of the page says so on other pages too.
