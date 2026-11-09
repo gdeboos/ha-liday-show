@@ -3052,6 +3052,10 @@ async def put_public(request):
         raise web.HTTPBadRequest(text="expected the public page settings")
     storage = request.app[STORAGE]
     stored = public.load(storage) or public.clean(None)
+    if "more_hours" in body and (not isinstance(body["more_hours"], list) or len(body["more_hours"]) > public.MAX_MORE_HOURS
+                                 or len(public.clean_more_hours(body["more_hours"])) != len(body["more_hours"])):
+        raise web.HTTPBadRequest(text=f"each extra set of opening hours needs a start, a different end time and its days "
+                                      f"(up to {public.MAX_MORE_HOURS})")
     if "hours" in body and playlists.clean_schedule({**body["hours"], "from": "", "to": ""}
                                                     if isinstance(body["hours"], dict) else None) is None:
         raise web.HTTPBadRequest(text="opening hours need a start, a different end time and their days")

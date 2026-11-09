@@ -2566,6 +2566,11 @@ when:
   close).
 - **On these days**: press a day to turn it on or off.
 
+For different hours on other days (later at the weekend, say), press **+ Add more hours**. Each extra
+set, headed **And also**, has its own **Opens**, **Closes** and days; **✕ Remove** takes it away. The page
+is open whenever any set is. Where sets cover the same time (your first set includes Saturday, and an extra
+set opens later on Saturday too), the page stays open until the later closing time.
+
 **Shows finish by closing time** (on to start with): a pick that wouldn't finish before closing,
 counting everything already waiting, isn't taken. Its button says **Too long for tonight** and the
 visitor is told when you close. Your admin phone isn't held to it.

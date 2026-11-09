@@ -170,7 +170,7 @@ def test_settings_are_cleaned():
                                                 {"kind": "show", "id": "c", "from": "02-30", "to": "03-01"}],
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
-        "look": public.clean_look(None), "looks": [], "hours": public.DEFAULT_HOURS, "words": {},
+        "look": public.clean_look(None), "looks": [], "hours": public.DEFAULT_HOURS, "more_hours": [], "words": {},
         "listen": False, "listen_pin": "", "listen_offset": 0.0, "phones": False, "admin_pin": "", "pick": "queue", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
@@ -432,6 +432,35 @@ def test_opening_hours():
     # Sunset with nowhere to work it out from never opens.
     dusk = public.clean({"hours": {"on": True, "start": "sunset", "offset": 0, "end": "22:00", "days": [0, 1, 2, 3, 4, 5, 6]}})
     assert public.hours_now(dusk, None, sat) == {"open": False, "next": None, "now": "2026-10-31T18:00"}
+
+
+def test_more_sets_of_opening_hours():
+    from datetime import datetime
+    p = public.clean({"hours": {"on": True, "start": "17:00", "end": "20:00", "days": [0, 1, 2, 3, 4]},
+                      "more_hours": [{"start": "16:00", "end": "22:00", "days": [5, 6]}, {"start": "99:00"}, "x"]})
+    assert p["more_hours"] == [{"start": "16:00", "end": "22:00", "days": [5, 6]}]  # broken ones left out
+    assert public.hours_now(p, None, datetime(2026, 10, 30, 21, 0))["open"] is False  # Friday after 8
+    sat = public.hours_now(p, None, datetime(2026, 10, 31, 21, 0))
+    assert sat == {"open": True, "until": "2026-10-31T22:00"}
+    assert public.hours_now(p, None, datetime(2026, 10, 31, 9, 0))["next"] == "2026-10-31T16:00"
+    assert public.closes_at({**p, "finish_by_close": True}, None, datetime(2026, 10, 31, 17, 0)) == datetime(2026, 10, 31, 22, 0)
+    # Sets that follow on join up: open 17:00 to 23:00.
+    joined = public.clean({"hours": {"on": True, "start": "17:00", "end": "20:00", "days": [4]},
+                           "more_hours": [{"start": "20:00", "end": "23:00", "days": [4]}]})
+    assert public.hours_now(joined, None, datetime(2026, 10, 30, 18, 0))["until"] == "2026-10-30T23:00"
+    # Hours switched off: the extra sets don't count either.
+    off = public.clean({**p, "hours": {**p["hours"], "on": False}})
+    assert public.hours_now(off, None, datetime(2026, 10, 30, 3, 0)) == {"open": True}
+
+
+async def test_more_hours_are_saved_and_checked(client):
+    sets = [{"start": "sunset", "offset": 0, "end": "23:00", "days": [5, 6]}]
+    view = await (await client.put("/api/public", json={"more_hours": sets})).json()
+    assert view["more_hours"] == sets
+    assert (await client.put("/api/public", json={"more_hours": [{"start": "20:00", "end": "20:00", "days": [1]}]})).status == 400
+    assert (await client.put("/api/public", json={"more_hours": [sets[0]] * 7})).status == 400
+    # Not sent: kept as they were.
+    assert (await (await client.put("/api/public", json={"queue": 4})).json())["more_hours"] == sets
 
 
 async def test_outside_the_hours_visitors_are_told_and_refused(client, monkeypatch):
