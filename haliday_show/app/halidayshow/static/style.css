@@ -1730,11 +1730,18 @@ h2.with-layout-switch .layout-switch { margin-left: auto; font-size: 13px; font-
 
 /* Lyrics…: the three ways to place the words, each saying what it does and whether an AI does it */
 .lyrics-ways { display: grid; gap: 8px; margin: 8px 0; }
-.lyrics-way { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; padding: 10px 12px;
-  height: auto; white-space: normal; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; }
-.lyrics-way:hover:not(:disabled) { border-color: var(--accent); }
+.lyrics-way { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left;
+  padding: 10px 40px 10px 12px; height: auto; white-space: normal; border: 1px solid var(--line); background: var(--panel);
+  border-radius: 8px; cursor: pointer; }
+/* All three look alike until you point at one, with an arrow saying it starts something: none is "chosen". */
+.lyrics-way::after { content: "›"; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 24px;
+  line-height: 1; color: var(--muted); transition: transform 0.12s, color 0.12s; }
+.lyrics-way:hover:not(:disabled) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.lyrics-way:hover:not(:disabled)::after { color: var(--accent); transform: translate(3px, -50%); }
+.lyrics-way:active:not(:disabled) { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); }
 .lyrics-way:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.lyrics-way.ai { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.lyrics-way:disabled { cursor: default; opacity: 0.55; }
+.lyrics-way:disabled::after { content: none; }
 .lyrics-way-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .lyrics-way-head .ico { width: 18px; height: 18px; flex: none; }
 .lyrics-way.ai .lyrics-way-head .ico { color: var(--accent); }
