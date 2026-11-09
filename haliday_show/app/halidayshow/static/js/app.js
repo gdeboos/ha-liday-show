@@ -7553,7 +7553,7 @@ function wirePublic() {
 // One window that walks a new user from nothing to a show. Each step uses the add-on's own windows
 // (Add a light, Find, Add a speaker), so there's one way of doing each thing.
 const WZ_STEPS = ["welcome", "lights", "check", "speaker", "house", "show", "next"];
-const wz = { step: "welcome", start: "setup", house: "sample", song: "sample", file: null };
+const wz = { step: "welcome", start: "setup", house: "sample", song: "sample", ref: null };
 
 function openWizard() {
   Object.assign(wz, { start: canStartDemo(app.deviceList) ? "demo" : "setup", house: "sample", song: "sample", ref: null });
@@ -7707,10 +7707,11 @@ async function wizardNext() {
 async function wizardMakeShow(generated) {
   const name = $("wz-show-name").value.trim() || "My first show";
   if (wz.song === "file" && !wz.ref) { $("wz-error").textContent = "Add your song first, or use the sample song."; $("wz-error").hidden = false; return; }
-  const song = wz.song === "file" ? wz.ref : await sampleSong();
   $("wizard").close();
+  prefs.set("wizard.done", true); // even if the page is closed while the show is made
   showView("editor");
   try {
+    const song = wz.song === "file" ? wz.ref : await sampleSong();
     // Your own song's colours when you picked some as it was added, else the season's.
     const own = wz.song === "file" ? await songPalette(wz.ref) : null;
     const palette = own || seasonalPalette() || allPalettes().find((p) => p.name === "Christmas");
@@ -7748,7 +7749,9 @@ function wireWizard() {
     const song = e.target.closest("[data-song]")?.dataset.song;
     if (song === "sample") { wz.song = "sample"; pick("wz-song", "song", "sample"); }
     // Your own song goes through Add a song, so it's split, its words kept and its colours offered too.
-    if (song === "file") {
+    // Back to the one you added; pressed again, it adds another instead.
+    if (song === "file" && wz.ref && wz.song !== "file") { wz.song = "file"; pick("wz-song", "song", "file"); }
+    else if (song === "file") {
       openAddSong({ onAdded: (v) => {
         if (!v) return;
         wz.ref = JSON.parse(v);
