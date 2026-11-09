@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.448
+
+- **Fixed: edits failing to split with "lost touch".** Home Assistant sometimes cuts off a big song or part as your browser downloads it (it says "Connection lost" in its log). HA-liday Show now carries on from where the download got to instead of giving up, so splitting songs, cutting an edit's parts and lining up words get through. Press **Split all songs into parts** to finish the edits that failed.
+
 ## 0.2.447
 
 - **Clearer ways to place a song's words.** In **Lyrics…**, the three buttons are now cards with an icon and a line saying what each does: **Line up with the singing** (marked **AI**), **Spread them out** (instant, no AI; it was **Place automatically**) and **Tap along** (you, as the song plays).

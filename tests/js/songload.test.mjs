@@ -40,3 +40,30 @@ test("a dropped connection is tried again, and said plainly if it stays down", a
   assert.match(plainError(new TypeError("Failed to fetch")), /lost touch with HA-liday Show/);
   assert.equal(plainError(new Error("too long")), "too long");
 });
+
+test("a download cut off part way carries on from where it got to", async () => {
+  const body = (parts, fail) => ({ getReader() {
+    let k = 0;
+    return { read: async () => {
+      if (k < parts.length) return { done: false, value: Uint8Array.from(parts[k++]) };
+      if (fail) throw new TypeError("network error");
+      return { done: true };
+    } };
+  } });
+  const asked = [];
+  const get = async (url, init) => {
+    asked.push(init?.headers?.Range || "all");
+    return asked.length === 1 ? { status: 200, ok: true, body: body([[1, 2], [3]], true) }
+      : asked.length === 2 ? { status: 206, ok: true, body: body([[4], [5]], true) }
+        : { status: 206, ok: true, body: body([[6]], false) };
+  };
+  const slept = [];
+  const bytes = new Uint8Array(await fetchSong("x", get, { waits: [], sleep: async (ms) => slept.push(ms) }));
+  assert.deepEqual([...bytes], [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(asked, ["all", "bytes=3-", "bytes=5-"]);
+  assert.deepEqual(slept, [], "getting further each time needs no wait, so it isn't given up on");
+  // A server that sends it all again instead starts afresh.
+  let n = 0;
+  const again = async () => (++n === 1 ? { status: 200, ok: true, body: body([[9]], true) } : { status: 200, ok: true, body: body([[1, 2]], false) });
+  assert.deepEqual([...new Uint8Array(await fetchSong("x", again, { waits: [] }))], [1, 2]);
+});

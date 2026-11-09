@@ -1016,7 +1016,8 @@ it's on and how far along it is, and the line at the bottom of the page says so 
 You can carry on using HA-liday Show meanwhile, but keep the page open until it's done. **Stop** stops
 it; parts already made are kept. If the connection drops part way (the Wi-Fi blips, or the app restarts
 after an update), it waits and tries again for about a minute before giving up on that song; if it does
-give up, it says it lost touch, and **Split into parts…** on that song tries again.
+give up, it says it lost touch, and **Split into parts…** on that song tries again. A song cut off part way as it
+downloads to your browser carries on from where it got to.
 
 **Split all songs into parts** (under the list in **Library → Songs**) does the same for every song
 that isn't split yet, one after another, and listens to any song split before HA-liday Show listened
