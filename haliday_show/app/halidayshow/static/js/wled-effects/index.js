@@ -6,7 +6,7 @@
 // Copyright (c) 2016-present Christian Schwinne and individual WLED contributors
 // This folder is under the EUPL 1.2 (see LICENSE here), not the MIT licence of the rest of HA-liday Show.
 
-import { FRAMETIME, B, G, R, Segment, getSeed, setSeed, strip } from "./engine.js";
+import { ColorFromPalette, DEFAULT_PALETTE, FRAMETIME, B, G, R, Segment, getSeed, setSeed, strip } from "./engine.js";
 import { MODES } from "./effects.js";
 
 export const isPorted = (fx) => Object.hasOwn(MODES, Number(fx));
@@ -85,4 +85,21 @@ let last = { p: null, t: -1, n: -1, out: null };
 export function wledPixel(p, t, n, i) {
   if (last.p !== p || last.t !== t || last.n !== n) last = { p, t, n, out: wledFrame(p, t, n) };
   return [last.out[i * 3], last.out[i * 3 + 1], last.out[i * 3 + 2]];
+}
+
+// What palette `pal` looks like for the light's effect and colours in `p`, as n colours (r, g, b each):
+// for the WLED palette window. Default is the effect's own palette where WLED gives it one; otherwise
+// the effect draws in your three colours, so that's what it shows.
+export function wledPaletteColours(p, pal, n) {
+  const set = settings(p), out = new Uint8Array(n * 3);
+  if (pal === 0 && DEFAULT_PALETTE[set.fx] === undefined) {
+    for (let i = 0; i < n; i++) {
+      const c = set.colors[Math.min(2, Math.floor((i * 3) / n))];
+      out.set([R(c), G(c), B(c)], i * 3);
+    }
+    return out;
+  }
+  const seg = new Segment(1, { mode: set.fx, palette: pal, colors: set.colors });
+  for (let i = 0; i < n; i++) out.set(ColorFromPalette(seg.pal, n > 1 ? Math.floor((i * 255) / (n - 1)) : 0, 255, true), i * 3);
+  return out;
 }
