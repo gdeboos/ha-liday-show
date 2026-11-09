@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.446
+
+- **Pick WLED palettes by eye too.** For a light on **WLED's own effect**, the palette is now a button showing its colours. Press it to open the **WLED palette** window, which shows every palette your WLED has as a strip of colours, with a search box. **Default** shows the colours your chosen effect uses on its own, such as **Fire 2012**'s fire colours.
+
 ## 0.2.445
 
 - **Adding a song gets it all ready in front of you.** After **Add song**, the window stays open with a line for each step and how far along it is: added (with its beats and sections), split into its parts, and its words. **Stop** keeps whatever's done, and **Done** closes it. It no longer splits in the background afterwards.

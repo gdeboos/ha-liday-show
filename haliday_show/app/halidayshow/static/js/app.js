@@ -22,7 +22,8 @@ import { makeParts, prepared, splitVocals, splitting, stemNames, lineUpLyrics } 
 import { FITS, mashFit, rankFits } from "./mashfit.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic, wledSegmentPart } from "./housescenes.js";
-import { wledEffectChoices } from "./wledchoices.js";
+import { wledEffectChoices, wledPaletteChoices } from "./wledchoices.js";
+import { wledPaletteColours } from "./wled-effects/index.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
 import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
@@ -1799,61 +1800,113 @@ function wledList(dev) {
   return wledLists.get(dev.ip);
 }
 
-// Picks one of a WLED's own effects (kind "wledfx", a button opening the WLED effect window) or palettes
-// ("wledpal", a list) for a clip or a scene light's settings `p`, kept by number with its name beside it
-// (for the editor to show).
+// Picks one of a WLED's own effects (kind "wledfx") or palettes ("wledpal") for a clip or a scene light's
+// settings `p`: a button showing the current one that opens the WLED effect or palette window. Kept by
+// number with its name beside it (for the editor to show without asking the WLED).
 function wledPicker(kind, dev, p, onChange) {
-  if (kind === "wledfx") return wledEffectButton(dev, p, onChange);
-  const key = kind === "wledfx" ? "fx" : "palette", nameKey = key === "fx" ? "fxName" : "palName";
-  const what = key === "fx" ? "effect" : "palette";
-  const sel = document.createElement("select");
-  sel.className = "wled-pick";
-  sel.setAttribute("aria-label", `The WLED's own ${what}`);
-  sel.add(new Option(p[nameKey] || `${what[0].toUpperCase()}${what.slice(1)} ${p[key] ?? 0}`, p[key] ?? 0, false, true));
-  const list = wledList(dev);
-  if (!list) {
-    sel.disabled = true;
-    sel.title = `Give this light its IP address under Setup → Devices to pick from its own ${what}s`;
-    return sel;
-  }
-  sel.title = `Pick from this WLED's own ${what}s`;
-  list.then(({ effects, palettes }) => {
-    const names = key === "fx" ? effects : palettes;
-    if (!names.length) return;
-    sel.replaceChildren(...names.map((n, i) => (n ? new Option(n, i, false, i === (p[key] ?? 0)) : null)).filter(Boolean));
-  }).catch(() => { sel.title = `Couldn't reach this WLED to read its ${what}s. Is it on?`; });
-  sel.addEventListener("change", () => {
-    p[key] = Number(sel.value);
-    p[nameKey] = sel.selectedOptions[0]?.textContent.slice(0, 40) || "";
-    onChange();
-  });
-  return sel;
-}
-
-function wledEffectButton(dev, p, onChange) {
+  const fx = kind === "wledfx", key = fx ? "fx" : "palette", nameKey = fx ? "fxName" : "palName";
+  const what = fx ? "effect" : "palette";
   let known = "";
-  const name = () => p.fxName || known || `Effect ${p.fx ?? 0}`;
+  const name = () => p[nameKey] || known || `${fx ? "Effect" : "Palette"} ${p[key] ?? 0}`;
   const label = Object.assign(document.createElement("span"), { className: "picker-name" });
   const b = document.createElement("button");
   b.type = "button";
-  b.className = "picker-button wled-fx-button";
+  b.className = `picker-button wled-${key}-button`;
   b.setAttribute("aria-haspopup", "dialog");
+  // A palette shows its colours on the button too.
+  const swatch = fx ? null : Object.assign(document.createElement("canvas"), { className: "picker-swatch" });
   const show = () => {
     label.textContent = name();
-    b.setAttribute("aria-label", `The WLED's own effect: ${name()}. Change…`);
+    b.setAttribute("aria-label", `The WLED's own ${what}: ${name()}. Change…`);
+    if (swatch) requestAnimationFrame(() => swatch.isConnected && drawStrip(swatch, wledPaletteColours(p, p.palette ?? 0, 24), 24));
   };
+  if (swatch) b.append(swatch);
   b.append(label, Object.assign(document.createElement("span"), { className: "picker-change", textContent: "Change…", ariaHidden: "true" }));
   show();
   if (!wledList(dev)) {
     b.disabled = true;
-    b.title = "Give this light its IP address under Setup → Devices to pick from its own effects";
+    b.title = `Give this light its IP address under Setup → Devices to pick from its own ${what}s`;
     return b;
   }
-  b.title = "Pick one of this WLED's own effects, with a preview of each";
+  b.title = `Pick one of this WLED's own ${what}s, with a preview of each`;
   // Not picked here yet (just switched to WLED's own effect): its name, from the WLED.
-  if (!p.fxName) wledList(dev).then(({ effects }) => { known = effects[p.fx ?? 0] || ""; show(); }).catch(() => {});
-  b.addEventListener("click", () => chooseWledEffect({ dev, params: p, onPick: () => { show(); onChange(); } }));
+  if (!p[nameKey]) wledList(dev).then((l) => { known = (fx ? l.effects : l.palettes)[p[key] ?? 0] || ""; show(); }).catch(() => {});
+  b.addEventListener("click", () => (fx ? chooseWledEffect : chooseWledPalette)({ dev, params: p, onPick: () => { show(); onChange(); } }));
   return b;
+}
+
+// The WLED palette window: every palette the WLED has, each as a strip of its colours for this light's
+// effect and colours. Picking one sets p.palette and p.palName.
+function chooseWledPalette({ dev, params: p, title = `WLED palette for ${dev?.name || "this light"}`, onPick }) {
+  const dlg = document.createElement("dialog");
+  dlg.className = "effect-dialog wled-fx-dialog";
+  const head = document.createElement("div");
+  head.className = "effect-dialog-head";
+  const h = document.createElement("h3");
+  h.textContent = title;
+  const close = button("✕", () => dlg.close(), "ghost");
+  close.title = "Close (Esc)";
+  const filters = document.createElement("div");
+  filters.className = "fx-filters";
+  const find = Object.assign(document.createElement("input"), { type: "search", placeholder: "Find a WLED palette", autocomplete: "off" });
+  find.setAttribute("aria-label", "Find a WLED palette");
+  filters.append(find, Object.assign(document.createElement("span"), { className: "hint",
+    textContent: "The colours this light's effect draws with. Those starting with * are made from your colours." }));
+  head.append(h, close, filters);
+  const body = document.createElement("div");
+  body.className = "effect-dialog-body";
+  body.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "Reading this WLED's palettes…" }));
+  dlg.append(head, body);
+  let names = [];
+  const render = () => {
+    const list = wledPaletteChoices(names, find.value);
+    body.replaceChildren();
+    if (!list.length) {
+      const none = Object.assign(document.createElement("p"), { className: "hint fx-none", textContent: "No WLED palettes are called that. " });
+      none.append(button("Show them all", () => { find.value = ""; render(); }, "link-button"));
+      body.append(none);
+      return;
+    }
+    const box = document.createElement("section");
+    box.className = "fx-kind";
+    const row = document.createElement("div");
+    row.className = "effect-picker";
+    const strips = [];
+    for (const { id, name } of list) {
+      const b = button("", () => {
+        p.palette = id;
+        p.palName = name.slice(0, 40);
+        dlg.close();
+        onPick(id, name);
+      }, id === (p.palette ?? 0) ? "active" : "");
+      const strip = document.createElement("canvas");
+      strip.className = "fx-strip";
+      b.append(strip, Object.assign(document.createElement("span"), { textContent: name }));
+      strips.push([strip, id]);
+      row.append(b);
+    }
+    box.append(row);
+    body.append(box);
+    requestAnimationFrame(() => { for (const [c, id] of strips) drawStrip(c, wledPaletteColours(p, id, 48), 48); });
+  };
+  find.addEventListener("input", () => render());
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  dlg.addEventListener("close", () => dlg.remove());
+  document.body.append(dlg);
+  dlg.showModal();
+  const unread = (text) => body.replaceChildren(Object.assign(document.createElement("p"), { className: "hint error", textContent: text }));
+  const list = wledList(dev);
+  if (!list) unread("Give this light its IP address under Setup → Devices to pick from its own palettes.");
+  else {
+    list.then(({ palettes }) => {
+      if (!dlg.open) return;
+      names = palettes;
+      render();
+      body.querySelector(".active")?.scrollIntoView({ block: "nearest" });
+      find.focus();
+    }, () => unread("Couldn't reach this WLED to read its palettes. Is it on?"));
+  }
+  return dlg;
 }
 
 // The WLED effect window: every effect the WLED has, read from it, each previewing as the WLED draws
