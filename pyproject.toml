@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "haliday-show"
-version = "0.2.443"
+version = "0.2.444"
 description = "Music-synchronised light shows for WLED, pixel-controller and Govee lights"
 license = "MIT AND EUPL-1.2"  # EUPL: static/js/wled-effects/ only (ported WLED effects)
 requires-python = ">=3.12"
