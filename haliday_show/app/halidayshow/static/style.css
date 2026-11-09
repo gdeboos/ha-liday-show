@@ -1754,3 +1754,20 @@ h2.with-layout-switch .layout-switch { margin-left: auto; font-size: 13px; font-
 .lyrics-way-tag { font-size: 11px; font-weight: 600; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 .lyrics-way.ai .lyrics-way-tag { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
 .lyrics-way-what { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+
+/* Setup → AI */
+.ai-places { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.ai-place { border: 1px solid var(--line); border-left: 4px solid var(--ai-c); border-radius: 8px; padding: 10px 14px; }
+.ai-place.browser, .ai-tag.browser { --ai-c: #2e9e6b; }
+.ai-place.writer, .ai-tag.writer { --ai-c: #8e5cd9; }
+.ai-tag { font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--ai-c) 50%, var(--line));
+  color: var(--ai-c); white-space: nowrap; }
+.song-badge.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); }
+table.ai-uses { width: 100%; min-width: 0; table-layout: fixed; }
+table.ai-uses td { white-space: normal; vertical-align: middle; }
+table.ai-uses col.ai-what { width: 40%; } table.ai-uses col.ai-where { width: 22%; }
+table.ai-uses col.ai-size { width: 10%; } table.ai-uses col.ai-state { width: 28%; }
+table.ai-uses select { max-width: 100%; }
+table.ai-uses td.ai-model-state, table.ai-uses td:last-child { display: table-cell; }
+table.ai-uses td:last-child button { margin: 2px 4px 2px 0; }
+@media (max-width: 640px) { table.ai-uses col.ai-size { width: 0; } table.ai-uses td:nth-child(3), table.ai-uses th:nth-child(3) { display: none; } }

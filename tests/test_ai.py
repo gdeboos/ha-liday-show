@@ -109,6 +109,14 @@ async def test_uses_claude_with_a_key(no_options, monkeypatch):
     assert sent["output_config"]["format"]["schema"] == ai.SCHEMA
     assert sent["fallbacks"] == "default"
     assert (await ai.status(ha))["via"] == "claude"
+    # Picking Home Assistant's AI under Setup → AI sends it there instead, key or no key.
+    st = await ai.status(ha, "ha")
+    assert st["via"] == "ha" and st["claude"] is True and st["entities"] == ["ai_task.openai"]
+    sent.clear()
+    out = await ai.create_clips(FakeHA(reply=json.dumps(REPLY)), "red chase", {"lights": []}, prefer="ha")
+    assert out["via"] == "ha" and not sent
+    # With no AI Task in Home Assistant, the key is used whatever was picked.
+    assert (await ai.status(FakeHA(entities=()), "ha"))["via"] == "claude"
 
 
 async def test_ai_endpoints(aiohttp_client, tmp_path, monkeypatch):
@@ -116,7 +124,12 @@ async def test_ai_endpoints(aiohttp_client, tmp_path, monkeypatch):
     app = server.make_app(tmp_path / "config", tmp_path / "media", allow_all=True)
     client = await aiohttp_client(app)
     st = await (await client.get("/api/ai")).json()
-    assert st["via"] == "ha" and st["entities"] == ["ai_task.openai"]
+    assert st["via"] == "ha" and st["entities"] == ["ai_task.openai"] and st["claude"] is False
+    # Which writing AI to use is kept with the settings; anything else is refused.
+    assert (await (await client.put("/api/ai/with", json={"with": "ha"})).json())["prefer"] == "ha"
+    assert (await (await client.get("/api/ai")).json())["prefer"] == "ha"
+    assert (await client.put("/api/ai/with", json={"with": "gpt"})).status == 400
+    assert (await (await client.put("/api/ai/with", json={"with": None})).json())["prefer"] is None
     resp = await client.post("/api/ai/clips", json={"request": "red chase", "context": {}})
     assert resp.status == 200 and (await resp.json())["clips"] == REPLY["clips"]
     resp = await client.post("/api/ai/clips", json={"request": "", "context": {}})
