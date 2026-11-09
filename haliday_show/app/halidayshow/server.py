@@ -3580,6 +3580,14 @@ async def restore_copy(request):
         raise web.HTTPBadRequest(text=f"Couldn't restore that copy: {e}")
 
 
+async def delete_copy(request):
+    p = backup.copy_path(request.app[STORAGE].config_dir, request.match_info["name"])
+    if p is None:
+        raise web.HTTPNotFound(text="that copy has gone")
+    p.unlink(missing_ok=True)
+    return web.json_response(backup.copies(request.app[STORAGE].config_dir))
+
+
 async def download_copy(request):
     p = backup.copy_path(request.app[STORAGE].config_dir, request.match_info["name"])
     if p is None:
@@ -3822,6 +3830,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/backup/reset", start_afresh)
     r.add_get("/api/backup/copies", list_copies)
     r.add_get("/api/backup/copies/{name}", download_copy)
+    r.add_delete("/api/backup/copies/{name}", delete_copy)
     r.add_post("/api/backup/copies/{name}/restore", restore_copy)
     r.add_post("/api/command", run_command)
     r.add_get("/api/ai", ai_status)

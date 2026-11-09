@@ -835,6 +835,15 @@ async def test_export_start_afresh_and_import_back(client):
     assert [s["id"] for s in await (await client.get("/api/shows")).json()] == [created["id"]]
 
 
+async def test_a_kept_copy_can_be_deleted(client):
+    await client.put("/api/devices", json=[{"id": "roof", "name": "Roof", "ip": "", "segments": 10}])
+    kept = (await (await client.post("/api/backup/reset")).json())["kept"]
+    assert (await client.delete("/api/backup/copies/nope.zip")).status == 404
+    assert (await client.delete("/api/backup/copies/..%2Fsettings.json")).status == 404
+    assert await (await client.delete(f"/api/backup/copies/{kept}")).json() == []
+    assert (await client.get(f"/api/backup/copies/{kept}")).status == 404
+
+
 async def test_a_bad_import_is_refused_and_changes_nothing(client):
     await client.put("/api/devices", json=[{"id": "roof", "name": "Roof", "ip": "", "segments": 10}])
     resp = await client.post("/api/backup", data=b"not a zip")

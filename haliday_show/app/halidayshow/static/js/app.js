@@ -6680,8 +6680,17 @@ async function renderCopies() {
       href: `api/backup/copies/${encodeURIComponent(c.name)}`, download: c.name });
     const put = button("Put back", () => replaceData(`api/backup/copies/${encodeURIComponent(c.name)}/restore`, null,
       `Put back the copy from ${when(c.made)}? It replaces what you have now, and a copy of that is kept first.`));
+    const del = button("Delete", async () => {
+      if (!(await askYes(`Delete the copy from ${when(c.made)}? You can't put it back afterwards.`, { yes: "Delete", danger: true }))) return;
+      try {
+        await api(`api/backup/copies/${encodeURIComponent(c.name)}`, { method: "DELETE" });
+        status("Deleted that copy");
+      } catch (e) { status(`Couldn't delete that copy: ${e.message}`, true); }
+      renderCopies();
+    });
+    del.classList.add("danger");
     return wizardRow(c.reason === "import" ? "Before an import" : c.reason === "delete" ? "Before deleting" : "Before a fresh start",
-      `${when(c.made)} · ${Math.max(1, Math.round(c.size / 1024))} KB`, get, put);
+      `${when(c.made)} · ${Math.max(1, Math.round(c.size / 1024))} KB`, get, put, del);
   }));
 }
 
