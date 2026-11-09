@@ -13551,10 +13551,9 @@ $("notes-forget").addEventListener("click", async () => {
   await deviceNotes.ask({ forget: true }).catch(() => {});
   deviceNotes.stop();
   prefs.set("notesModelHere", false);
-  renderNotesCard({ check: true });
+  renderNotesCard({ check: true }).then(renderAiModels);
 });
 $("notes-with").addEventListener("change", (e) => prefs.set("notesWith", e.target.value));
-$("notes-forget").addEventListener("click", () => setTimeout(renderAiModels, 500));
 // Only browsers that have downloaded it look at start-up (the rest when Setup → AI is opened).
 if (prefs.get("notesModelHere", false)) renderNotesCard({ check: true });
 

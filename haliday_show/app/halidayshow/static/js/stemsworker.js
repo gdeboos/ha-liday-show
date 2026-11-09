@@ -215,11 +215,13 @@ async function manage({ kept: ask, fetch: get, forget }) {
   if (forget) { await (self.caches ? caches.delete(CACHE) : null)?.catch?.(() => {}); return { forgotten: true }; }
   if (ask) {
     const out = {};
-    for (const name of ask) out[name] = Boolean(await keptModel(name).catch(() => null));
+    const store = self.caches ? await caches.open(CACHE).catch(() => null) : null;
+    for (const name of ask) out[name] = Boolean(store && (await store.match(file(name)).catch(() => null))); // without reading it in
     return { kept: out, store: Boolean(self.caches) };
   }
   const todo = [];
-  for (const name of get) if (!(await keptModel(name).catch(() => null))) todo.push(name);
+  const store = self.caches ? await caches.open(CACHE).catch(() => null) : null;
+  for (const name of get) if (!(store && (await store.match(file(name)).catch(() => null)))) todo.push(name);
   if (!todo.length) return { fetched: true };
   const files = await prepared(todo, (done) => self.postMessage({ stage: "download", done: done / 2 }));
   const all = todo.reduce((n, name) => n + files[name].size, 0);
