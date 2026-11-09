@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.460
+
+- **The setup guide catches up.** In its last step, **Add my own song…** now opens **Add a song**, so your song is split into its vocals, drums and bass, keeps its words if you paste them and offers its cover's colours, and your first show is made in those colours. A new last page, **What next**, points you to the Music editor, Singing faces, the pre-show check, the schedule and public page, and the AI.
+
 ## 0.2.459
 
 - **See each step as a song is got ready.** After **Add song**, every step has its own line with its own percentage: the section notes, then the vocals, drums and bass (saying whether it's on the graphics chip or the slower processor), keeping the parts, listening for sounds, and lining up the words. A ✓ shows each one done, and the AI's first download gets a line of its own only when there is one.

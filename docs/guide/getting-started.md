@@ -78,7 +78,11 @@ Help →** for the rest.
 
 The first time you open HA-liday Show, the **setup guide** opens and walks you through these steps in one
 window: add your lights, check each one, pick a speaker, choose the sample house or your own photo, and
-make your first show from a song. Every step can be skipped, **← Back** goes back, and you can run it
+make your first show from a song. **Add my own song…** there opens [Add a song](build-a-show.md#songs), so your song is
+split into its parts, its words kept if you paste them and its cover's colours offered, as when you add one
+anywhere else; the show is then made in those colours. Its last page, **What next**, points you to the
+Music editor, Singing faces, the pre-show check, the schedule and public page, and the AI. Every step can be
+skipped, **← Back** goes back, and you can run it
 again any time with **Run the setup guide** under **Setup → More**. Its first page also offers
 **Try the demo** (see [The demo](#the-demo)). To do it by hand instead:
 

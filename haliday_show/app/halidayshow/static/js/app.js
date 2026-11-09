@@ -6590,8 +6590,12 @@ async function sampleSong() {
 // A new show called `name` on the song `file`: uploaded to the songs folder (so speakers can play it),
 // listened to, generated in `colors` (or left blank without them) and saved.
 async function makeShow(name, file, colors, palette = null) {
-  status(`Adding ${file.name}…`);
-  const ref = await uploadSong(api, file);
+  // A song file to add first, or one already added ({source, path}).
+  let ref = file;
+  if (file instanceof Blob) {
+    status(`Adding ${file.name}…`);
+    ref = await uploadSong(api, file);
+  }
   await openShow(null);
   setShowPalette(app.show, palette);
   app.show.name = name;
@@ -7548,13 +7552,13 @@ function wirePublic() {
 // setup guide ----------------------------------------------------------------
 // One window that walks a new user from nothing to a show. Each step uses the add-on's own windows
 // (Add a light, Find, Add a speaker), so there's one way of doing each thing.
-const WZ_STEPS = ["welcome", "lights", "check", "speaker", "house", "show"];
-const wz = { step: "welcome", start: "setup", house: "sample", song: "sample", file: null };
+const WZ_STEPS = ["welcome", "lights", "check", "speaker", "house", "show", "next"];
+const wz = { step: "welcome", start: "setup", house: "sample", song: "sample", ref: null };
 
 function openWizard() {
-  Object.assign(wz, { start: canStartDemo(app.deviceList) ? "demo" : "setup", house: "sample", song: "sample", file: null });
+  Object.assign(wz, { start: canStartDemo(app.deviceList) ? "demo" : "setup", house: "sample", song: "sample", ref: null });
   $("wz-show-name").value = "My first show";
-  $("wz-song-name").textContent = "An MP3 or other song file from this device.";
+  $("wz-song-name").textContent = "An MP3 or other song file from this device. It's split into its vocals, drums and bass as it's added, and you can paste its words.";
   wizardStep("welcome");
   if (!$("wizard").open) $("wizard").showModal();
 }
@@ -7576,7 +7580,7 @@ function wizardStep(step) {
     { className: i <= n ? "on" : "" })));
   $("wz-step").textContent = `Step ${n + 1} of ${WZ_STEPS.length}`;
   $("wz-title").textContent = { welcome: "Welcome to HA-liday Show", lights: "Add your lights", check: "Check each light",
-    speaker: "Where should the music play?", house: "Your house", show: "Make your first show" }[step];
+    speaker: "Where should the music play?", house: "Your house", show: "Make your first show", next: "What next" }[step];
   const q = (w) => $("wizard").querySelector(`[data-wz="${w}"]`);
   const back = q("back"), second = q("secondary"), first = q("primary");
   back.hidden = step === "welcome";
@@ -7606,6 +7610,10 @@ function wizardStep(step) {
       : wz.house === "photo" && !house.sample ? "Photo saved. Trace your lights on it under <b>Setup → House</b> when you're ready." : "";
     second.textContent = "Skip";
     first.textContent = "Next";
+  } else if (step === "next") {
+    back.hidden = true;
+    second.hidden = true;
+    first.textContent = "Done";
   } else if (step === "show") {
     pick("wz-song", "song", wz.song);
     second.textContent = "Start with a blank show";
@@ -7693,19 +7701,29 @@ async function wizardNext() {
     }
     wizardStep("show");
   } else if (step === "show") await wizardMakeShow(true);
+  else if (step === "next") closeWizard();
 }
 
 async function wizardMakeShow(generated) {
   const name = $("wz-show-name").value.trim() || "My first show";
-  const file = wz.song === "file" ? wz.file : await sampleSong();
-  if (!file) { $("wz-error").textContent = "Choose a song first, or use the sample song."; $("wz-error").hidden = false; return; }
-  closeWizard();
+  if (wz.song === "file" && !wz.ref) { $("wz-error").textContent = "Add your song first, or use the sample song."; $("wz-error").hidden = false; return; }
+  $("wizard").close();
+  prefs.set("wizard.done", true); // even if the page is closed while the show is made
   showView("editor");
   try {
-    const palette = seasonalPalette() || allPalettes().find((p) => p.name === "Christmas");
-    await makeShow(name, file, generated ? palette.colors : null, palette);
+    const song = wz.song === "file" ? wz.ref : await sampleSong();
+    // Your own song's colours when you picked some as it was added, else the season's.
+    const own = wz.song === "file" ? await songPalette(wz.ref) : null;
+    const palette = own || seasonalPalette() || allPalettes().find((p) => p.name === "Christmas");
+    await makeShow(name, song, generated ? palette.colors : null, palette);
     status(generated ? `${name} is ready: press ▶ Play` : `${name} is ready for your effects`);
+    // Then where to go next, as the guide's last page.
+    $("wz-next-lead").innerHTML = generated ? `<b>${esc(name)}</b> is ready. Press <b>▶ Play</b> to watch it on the house.`
+      : `<b>${esc(name)}</b> is ready for your effects: drag across a light's track and press <b>＋ Add effect…</b>.`;
+    wizardStep("next");
+    $("wizard").showModal();
   } catch (e) {
+    prefs.set("wizard.done", true);
     status(`Couldn't make the show: ${e.message}`, true);
   }
 }
@@ -7730,6 +7748,20 @@ function wireWizard() {
     if (where === "sample") { wz.house = "sample"; pick("wz-house", "house", "sample"); }
     const song = e.target.closest("[data-song]")?.dataset.song;
     if (song === "sample") { wz.song = "sample"; pick("wz-song", "song", "sample"); }
+    // Your own song goes through Add a song, so it's split, its words kept and its colours offered too.
+    // Back to the one you added; pressed again, it adds another instead.
+    if (song === "file" && wz.ref && wz.song !== "file") { wz.song = "file"; pick("wz-song", "song", "file"); }
+    else if (song === "file") {
+      openAddSong({ onAdded: (v) => {
+        if (!v) return;
+        wz.ref = JSON.parse(v);
+        wz.song = "file";
+        const title = songLabel(wz.ref);
+        $("wz-song-name").textContent = `${title}, added`;
+        if ($("wz-show-name").value === "My first show") $("wz-show-name").value = title;
+        pick("wz-song", "song", "file");
+      } });
+    }
   });
   $("wz-photo").addEventListener("change", async (e) => {
     const file = e.target.files[0];
@@ -7739,15 +7771,6 @@ function wireWizard() {
     wz.house = "photo";
     renderHouseLights();
     wizardStep("house");
-  });
-  $("wz-song-file").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    wz.file = file;
-    wz.song = "file";
-    $("wz-song-name").textContent = file.name;
-    if ($("wz-show-name").value === "My first show") $("wz-show-name").value = file.name.replace(/\.[^.]+$/, "");
-    pick("wz-song", "song", "file");
   });
   $("wz-add-light").addEventListener("click", openAddLight);
   $("add-dialog").addEventListener("close", () => { if (dlg.open) renderWizardLights(); });
