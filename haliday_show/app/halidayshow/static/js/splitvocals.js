@@ -140,7 +140,10 @@ export const routeWords = (via, gaveUp = false) => via === "gpu" ? " · on the g
 // parts yet). say(text, done 0-1 or null) hears how it's going. Returns {lines (each with start, end and
 // times), vocals: whether the vocals part was used}, or null when the words can't be fitted to the song.
 // signal: an AbortSignal that stops it (it then rejects with an error marked `cancelled`).
-export async function lineUpLyrics(ref, api, lines, say = () => {}, signal = null) {
+export function lineUpLyrics(ref, api, lines, say = () => {}, signal = null) {
+  return gpuTurn(() => lineUpNow(ref, api, lines, say, signal), "lineup");
+}
+async function lineUpNow(ref, api, lines, say, signal) {
   const cancelled = () => Object.assign(new Error("cancelled"), { cancelled: true });
   const check = () => { if (signal?.aborted) throw cancelled(); };
   const parts = await api(`api/audio/parts?${q(ref)}`).catch(() => ({}));
@@ -219,13 +222,26 @@ async function listenTo(ref, api, say, track) {
 // say) aren't made again, unless `again`. An edit of a song with parts (edit: see cutFromOriginal) has
 // its parts cut from the original's instead. say(text, done 0-1 or null) hears how it's going;
 // started(stop) is given a function that stops it. One song at a time: anything else waits its turn.
-let turn = Promise.resolve(), waiting = 0;
-export function makeParts(ref, api, { again = false, edit = null, listenOnly = false, cutOnly = false, say = () => {}, started = () => {} } = {}) {
-  waiting++;
-  const run = () => makePartsNow(ref, api, { again, edit, listenOnly, cutOnly, say, started });
-  const mine = turn.then(run, run).finally(() => { waiting--; });
+//
+// The AI in this browser takes turns on the graphics chip: splitting, lining up words and the section
+// notes model each wait for the one before. Two at once can lose the chip ("A valid external Instance
+// reference no longer exists") and fail both. `before(who)` hooks run as each turn starts, so a model
+// left loaded by another job (the notes model) can let go of the chip first.
+let turn = Promise.resolve(), waiting = 0, queued = 0; // waiting: splits not started yet; queued: anything
+const before = [];
+export const beforeGpuTurn = (hook) => { before.push(hook); };
+export function gpuTurn(fn, who = "") {
+  queued++;
+  const run = async () => { for (const hook of before) await hook(who); return fn(); };
+  const mine = turn.then(run, run).finally(() => { queued--; });
   turn = mine.catch(() => {});
   return mine;
+}
+// Whether the graphics chip has anything queued or running (another song splitting, the notes model…).
+export const gpuBusy = () => queued > 0;
+export function makeParts(ref, api, { again = false, edit = null, listenOnly = false, cutOnly = false, say = () => {}, started = () => {} } = {}) {
+  waiting++;
+  return gpuTurn(() => makePartsNow(ref, api, { again, edit, listenOnly, cutOnly, say, started }), "split").finally(() => { waiting--; });
 }
 
 // cutOnly: an edit whose parts are only to be cut from its original's (never split by the AI).

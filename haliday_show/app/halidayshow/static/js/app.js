@@ -18,7 +18,7 @@ import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin, singerOf } from "./phones.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
-import { makeParts, prepared, progressWindow, splitVocals, splitting, stemNames, lineUpLyrics } from "./splitvocals.js";
+import { beforeGpuTurn, gpuBusy, gpuTurn, makeParts, prepared, progressWindow, splitVocals, splitting, stemNames, lineUpLyrics } from "./splitvocals.js";
 import { FITS, mashFit, rankFits } from "./mashfit.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic, wledSegmentPart } from "./housescenes.js";
@@ -9772,7 +9772,7 @@ async function asGetReady(ref, name, { split, words, detected }) {
   // Its parts, or just listening to it.
   const step = split ? "parts" : "listen";
   mark(step, "now");
-  if (partsLine.now || splitting()) say("Waiting for the song being split already to finish…");
+  if (partsLine.now || gpuBusy()) say("Waiting for the AI in this browser to finish what it's doing (one thing at a time)…");
   try {
     await makeParts(ref, api, { listenOnly: !split, say, started: (stop) => { addSong.stop = stop; if (addSong.stopped) stop(); } });
     mark(step, "done");
@@ -13528,18 +13528,25 @@ const deviceNotes = {
   },
 };
 
+// Anything else on the graphics chip (splitting, lining up words) frees the notes model first.
+beforeGpuTurn((who) => { if (who !== "notes") deviceNotes.stop(); });
+
+// What the notes model's failure means, without the graphics chip's own words.
+const notesProblem = (e) => (/webgpu|ortrun|gpu|device|instance/i.test(e?.message || "")
+  ? "the graphics chip stopped it (it may have been busy). Describe sections tries again" : e?.message || String(e));
+
 async function deviceSectionNotes(sections, traits, song) {
   const asks = devicePrompts(sections, traits, song);
   if (!asks.length) return null;
   try {
-    const { written } = await deviceNotes.ask({ write: asks.map(({ index, messages }) => ({ index, messages })), maxTokens: 160 },
+    const { written } = await gpuTurn(() => deviceNotes.ask({ write: asks.map(({ index, messages }) => ({ index, messages })), maxTokens: 160 },
       (stage, done) => status(stage === "load" ? "Loading the notes model on this device…"
-        : `Writing section notes on this device… ${Math.round((done || 0) * 100)}%`), (2 + asks.length) * 60000);
+        : `Writing section notes on this device… ${Math.round((done || 0) * 100)}%`), (2 + asks.length) * 60000), "notes");
     const got = describeWithAI(sections, traits, fromDevice(written));
     if (!got.used) status("The notes model's answer couldn't be used, so the section notes stay as they were", "hint");
     return got;
   } catch (e) {
-    status(`The notes model couldn't write the notes, so they stay as they were: ${e.message}`, "hint");
+    status(`The notes model couldn't write the notes, so they stay as they were: ${notesProblem(e)}`, "hint");
     return null;
   }
 }
