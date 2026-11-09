@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.448
+## 0.2.449
 
 - **Detect** and **✨ Describe sections** write richer section notes. As well as how loud each part is,
   they now say what can be heard in it (a choir, sleigh bells, brass), where the singing starts and
@@ -8,6 +8,10 @@
   to match: twinkles for bells, slow washes for a choir, everything in when the drums start. That comes
   from what's already been found for the song (by **Split into parts** and **Lyrics**), so it works
   without an AI, and the AI gets it too when you have one set up.
+
+## 0.2.448
+
+- **A scene's palette now colours every effect you pick.** In a Basic scene with a palette, changing a light's effect gives it the palette's colours, going round the palette from light to light, instead of keeping the light's old colours. So you don't have to recolour each light after picking its effect. **WLED's own effect** picks up the palette too: its three colours come from it and the WLED palette starts on **\* Colors Only**, so the WLED draws in your colours.
 
 ## 0.2.447
 

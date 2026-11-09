@@ -164,10 +164,19 @@ test("a scene's palette: new scenes take its colours in turn, and lights that we
   assert.deepEqual(s.palette, palette);
   assert.deepEqual(Object.values(s.lights).map((l) => l.params.color), ["#ff0000", "#ffffff", "#ff0000"]);
   assert.ok(!("palette" in newScene("Plain", lights)));
-  // Off → an effect: the palette's colours. A light already on keeps its own.
+  // Any effect picked takes the palette's colours, whether the light was off or on.
   assert.equal(changeEffect(null, "chase", palette).params.color, "#ff0000");
-  assert.equal(changeEffect({ effect: "solid", params: { color: "#00ff00" } }, "chase", palette).params.color, "#00ff00");
+  assert.equal(changeEffect({ effect: "solid", params: { color: "#00ff00", brightness: 60 } }, "chase", palette).params.color, "#ff0000");
+  assert.equal(changeEffect({ effect: "solid", params: { color: "#00ff00", brightness: 60 } }, "chase", palette).params.brightness, 60);
   assert.deepEqual(changeEffect(null, "rainbow", palette), { effect: "rainbow", params: {} });
+  // Further along the lights it starts further into the palette; a light already on one of its
+  // colours keeps its place.
+  assert.equal(changeEffect(null, "solid", palette, 1).params.color, "#ffffff");
+  const trio = changeEffect({ effect: "solid", params: { color: "#FFFFFF" } }, "trio", palette, 0);
+  assert.deepEqual([trio.params.color, trio.params.color2], ["#ffffff", "#ff0000"]);
+  // WLED's own effect draws in the palette too: its colours, on WLED's "* Colors Only" palette.
+  const own = changeEffect({ effect: "solid", params: { color: "#00ff00" } }, "wled", palette);
+  assert.deepEqual([own.params.color, own.params.palette, own.params.palName], ["#ff0000", 5, "* Colors Only"]);
   // Recolouring goes through every light, one colour on each time.
   const r = newScene("R", [roof, tree]);
   assert.equal(recolourScene(r, [roof, tree], ["#111111", "#222222"]), 2);
