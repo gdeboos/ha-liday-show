@@ -116,9 +116,9 @@ async def test_scan_finds_lights_that_answer_for_the_wled_service(aiohttp_server
 def test_wled_s_own_effect_as_the_state_to_send():
     s = wled.own_effect_state({"fx": 300, "speed": 99.6, "intensity": -5, "palette": 4, "color": "#FF8000",
                                "color2": "nope", "brightness": 50})
-    assert s == {"on": True, "live": False, "seg": {"fx": 255, "sx": 100, "ix": 0, "pal": 4,
+    assert s == {"on": True, "live": False, "seg": {"fx": 255, "fxdef": True, "sx": 100, "ix": 0, "pal": 4,
                                                       "col": [[255, 128, 0], [0, 0, 0], [0, 176, 0]], "bri": 128}}
-    assert wled.own_effect_state({})["seg"] == {"fx": 0, "sx": 128, "ix": 128, "pal": 0,
+    assert wled.own_effect_state({})["seg"] == {"fx": 0, "fxdef": True, "sx": 128, "ix": 128, "pal": 0,
                                                 "col": [[255, 0, 0], [255, 255, 255], [0, 176, 0]]}  # as the editor shows
 
 

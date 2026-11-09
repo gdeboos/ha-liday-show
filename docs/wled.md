@@ -140,9 +140,13 @@ time starts afresh; more than 20 s ahead starts 5 s before). `EFFECTS.wled.rende
 - No gamma: WLED gamma-corrects (2.8) picked colours and the simple palettes (2-5) but not gradient
   palettes or the colour wheel. The preview skips it throughout, as HA-liday Show's previews show the
   values a light is sent; picked colours look as picked, the rest exactly as WLED sends them.
-- `own_effect_state` sends no `fxdef`, so a WLED keeps the extra settings (`c1`-`c3`, `o1`-`o3`) it had;
-  the preview assumes WLED's segment defaults (128, 128, 16, all off). With those, **Palette** (65) is one
-  colour and **Scanner** (40) pauses about 3 s at each end, on the WLED as in the preview.
+- From 0.2.440 `own_effect_state` sends `fxdef: true`: on an effect change WLED's `Segment::setMode`
+  loads the effect's defaults from its effect string (sx, ix, c1-c3, o1-o3, pal, m12...), then
+  `deserializeSegment` applies our `sx`, `ix` and `pal` after it, so ours win. Only on a change of effect:
+  a WLED already on that effect keeps what it had. `defaults.js` (`EXTRAS`, generated from FX.cpp's
+  effect strings; 13 effects set any) gives the preview the same c1-c3/o1-o3. Before 0.2.440 the WLED
+  kept whatever extras it had, so **Palette** (65) showed one colour and **Scanner** (40) paused about
+  3 s at each end.
 - Batch 1 (0.2.439): 0-3, 8-13, 15-17, 20, 23, 28, 40, 52, 57, 60, 64-67, 76, 80, 81, 88, 89, 97, 101,
   102. The rest of the strip effects follow in batches; others show `standIn` (palette, or the colours
   when the palette is Default, drifting).

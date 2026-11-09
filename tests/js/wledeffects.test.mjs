@@ -68,3 +68,18 @@ test("effects not ported yet drift through their colours", () => {
   const run = frames(look(150, { color: "#ff0000", color2: "#00ff00" }), 20, 4, 0.5);
   assert.ok(new Set(run.map((f) => f.join())).size > 1);
 });
+
+test("the preview uses each effect's own extras, as the WLED loads them (fxdef)", async () => {
+  const { Segment } = await import("../../haliday_show/app/halidayshow/static/js/wled-effects/engine.js");
+  const scanner = new Segment(10, { mode: 40 });
+  assert.equal(scanner.custom1, 0); // no pause at the ends
+  const palette = new Segment(10, { mode: 65 });
+  assert.deepEqual([palette.custom1, palette.check1, palette.check2, palette.check3], [0, true, false, true]);
+  const plain = new Segment(10, { mode: 2 });
+  assert.deepEqual([plain.custom1, plain.custom2, plain.custom3, plain.check1], [128, 128, 16, false]);
+  // Palette now shows its colours along the light, moving.
+  const p = look(65, { palette: 11 });
+  const f = Array.from(wledFrame(p, 1, 20));
+  assert.ok(new Set([0, 5, 10, 15].map((i) => f.slice(i * 3, i * 3 + 3).join())).size > 1);
+  assert.notDeepEqual(Array.from(wledFrame(p, 4, 20)), f);
+});
