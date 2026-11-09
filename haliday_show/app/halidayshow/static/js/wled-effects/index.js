@@ -25,6 +25,7 @@ const byte = (v, d) => (Number.isFinite(Number(v)) ? Math.max(0, Math.min(255, M
 
 function settings(p) {
   return {
+    standIn: !!p.standIn, // the quick stand-in even for effects ported (baking frames no WLED is sent)
     fx: byte(p.fx, 0), speed: byte(p.speed, 128), intensity: byte(p.intensity, 128), palette: byte(p.palette, 0),
     colors: [hex(p.color, 0xFF0000), hex(p.color2, 0xFFFFFF), hex(p.color3, 0x00B000)],
   };
@@ -35,7 +36,7 @@ const CATCH_UP_MS = 20000; // further ahead than this, start afresh a little bef
 const sims = new Map();
 
 function freshSim(n, set, from) {
-  const ported = isPorted(set.fx);
+  const ported = isPorted(set.fx) && !set.standIn;
   // A stand-in blends through the colours when the palette is "Default", like WLED's "Colors Only".
   const seg = new Segment(n, { mode: set.fx, speed: set.speed, intensity: set.intensity,
     palette: ported || set.palette ? set.palette : 5, colors: set.colors });
@@ -45,7 +46,7 @@ function freshSim(n, set, from) {
 // The colours (r, g, b per light, as the editor shows them) a WLED shows `t` seconds into its effect.
 export function wledFrame(p, t, n) {
   const set = settings(p);
-  const key = `${n}|${set.fx}|${set.speed}|${set.intensity}|${set.palette}|${set.colors.join(",")}`;
+  const key = `${n}|${set.standIn ? "s" : ""}${set.fx}|${set.speed}|${set.intensity}|${set.palette}|${set.colors.join(",")}`;
   const target = Math.max(0, Math.floor(t * 1000));
   let sim = sims.get(key);
   if (sim) { sims.delete(key); sims.set(key, sim); } // most recently used last, so a big bake keeps its lights
