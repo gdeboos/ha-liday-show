@@ -18,7 +18,7 @@ import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin, singerOf } from "./phones.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
-import { makeParts, prepared, progressWindow, splitVocals, splitting, stemNames, lineUpLyrics } from "./splitvocals.js";
+import { beforeGpuTurn, gpuBusy, gpuTurn, makeParts, prepared, progressWindow, splitVocals, splitting, stemNames, lineUpLyrics } from "./splitvocals.js";
 import { FITS, mashFit, rankFits } from "./mashfit.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic, wledSegmentPart } from "./housescenes.js";
@@ -9772,7 +9772,7 @@ async function asGetReady(ref, name, { split, words, detected }) {
   // Its parts, or just listening to it.
   const step = split ? "parts" : "listen";
   mark(step, "now");
-  if (partsLine.now || splitting()) say("Waiting for the song being split already to finish…");
+  if (partsLine.now || gpuBusy()) say("Waiting for the AI in this browser to finish what it's doing (one thing at a time)…");
   try {
     await makeParts(ref, api, { listenOnly: !split, say, started: (stop) => { addSong.stop = stop; if (addSong.stopped) stop(); } });
     mark(step, "done");
@@ -13502,24 +13502,32 @@ function renderAiPaletteIdeas() {
 // Section notes on this device (notesworker.js): a small model this browser keeps, used instead of
 // Claude or Home Assistant when it's downloaded here, this browser can run it, and Setup → AI says to.
 const deviceNotes = {
-  worker: null, kept: false, gpu: null, busy: null, queue: Promise.resolve(), asked: 0,
+  worker: null, kept: false, gpu: null, busy: null, queue: Promise.resolve(), asked: 0, pending: null,
   ready() { return this.kept && this.gpu === "ok" && prefs.get("notesWith", "device") !== "ai"; },
-  stop() { this.worker?.terminate(); this.worker = null; },
+  // Stopping it fails the request in hand (a stopped worker never answers, and the next would wait on it).
+  stop(why = "the notes model was stopped") {
+    this.worker?.terminate();
+    this.worker = null;
+    const p = this.pending;
+    this.pending = null;
+    p?.(new Error(why));
+  },
   // One request at a time; `progress(stage, done)` hears how it's going. Writing that takes longer than
   // `limit` (a stuck graphics chip, say) stops the model, so nothing waits on it for ever.
   ask(msg, progress = () => {}, limit = 0) {
     const run = () => new Promise((resolve, reject) => {
       const id = ++this.asked;
       this.worker ||= new Worker(new URL("./notesworker.js", import.meta.url), { type: "module" });
-      const timer = limit && setTimeout(() => { this.stop(); reject(new Error("it took too long, so it was stopped")); }, limit);
-      const done = (fn, v) => { clearTimeout(timer); fn(v); };
+      const timer = limit && setTimeout(() => this.stop("it took too long, so it was stopped"), limit);
+      const done = (fn, v) => { clearTimeout(timer); this.pending = null; fn(v); };
+      this.pending = (e) => done(reject, e);
       this.worker.onmessage = ({ data }) => {
         if (data.id !== id) return; // from a request that has already given up
         if (data.stage) progress(data.stage, data.done);
         else if (data.error) done(reject, new Error(data.error));
         else done(resolve, data);
       };
-      this.worker.onerror = (e) => { this.stop(); done(reject, new Error(e.message || "the notes model stopped")); };
+      this.worker.onerror = (e) => this.stop(e.message || "the notes model stopped");
       this.worker.postMessage({ ...msg, id });
     });
     const p = this.queue.then(run, run);
@@ -13528,18 +13536,27 @@ const deviceNotes = {
   },
 };
 
+// Anything else on the graphics chip (splitting, lining up words) frees the notes model first.
+// Not while it's busy outside a turn (downloading, or checking this browser can run it): that doesn't
+// hold the chip for long, and stopping it would undo the download.
+beforeGpuTurn((who) => { if (who !== "notes" && !deviceNotes.pending) deviceNotes.stop(); });
+
+// What the notes model's failure means, without the graphics chip's own words.
+const notesProblem = (e) => (/webgpu|ortrun|compute pipeline|external instance/i.test(e?.message || "")
+  ? "the graphics chip stopped it (it may have been busy). Describe sections tries again" : e?.message || String(e));
+
 async function deviceSectionNotes(sections, traits, song) {
   const asks = devicePrompts(sections, traits, song);
   if (!asks.length) return null;
   try {
-    const { written } = await deviceNotes.ask({ write: asks.map(({ index, messages }) => ({ index, messages })), maxTokens: 160 },
+    const { written } = await gpuTurn(() => deviceNotes.ask({ write: asks.map(({ index, messages }) => ({ index, messages })), maxTokens: 160 },
       (stage, done) => status(stage === "load" ? "Loading the notes model on this device…"
-        : `Writing section notes on this device… ${Math.round((done || 0) * 100)}%`), (2 + asks.length) * 60000);
+        : `Writing section notes on this device… ${Math.round((done || 0) * 100)}%`), (2 + asks.length) * 60000), "notes");
     const got = describeWithAI(sections, traits, fromDevice(written));
     if (!got.used) status("The notes model's answer couldn't be used, so the section notes stay as they were", "hint");
     return got;
   } catch (e) {
-    status(`The notes model couldn't write the notes, so they stay as they were: ${e.message}`, "hint");
+    status(`The notes model couldn't write the notes, so they stay as they were: ${notesProblem(e)}`, "hint");
     return null;
   }
 }

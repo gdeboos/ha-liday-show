@@ -174,6 +174,8 @@ once the model is downloaded in this browser) or **Claude or HA's AI**. The mode
 section at a time from what was found in each; it doesn't rename sections, which only Claude or Home
 Assistant does. The first time in a session it takes a little while to load. Without the model or an AI,
 the notes are written from simple rules.
+The AI in your browser does one thing at a time on the graphics chip, so notes being written, a song
+being split and words being lined up wait for each other rather than running together.
 While it downloads, HA-liday Show keeps its own copy in its temporary folder until it next restarts, so
 the Home Assistant machine needs about 1.2 GB free for a while.
 

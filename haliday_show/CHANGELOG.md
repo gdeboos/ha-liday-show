@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.457
+
+- **Fixed: section notes failing while a song splits.** Writing section notes on this device and splitting a song into parts both use your graphics chip, and running together could lose it ("Failed to create a WebGPU compute pipeline…"). The AI in your browser now does one thing at a time, so adding a song writes its notes, then splits it. If the notes ever do fail, the message says so in plain words.
+
 ## 0.2.456
 
 - **A clearer AI tab.** **Setup → AI** now shows the two places AI runs (in your browser, free and private, or Claude / Home Assistant's AI for writing), then a list of every feature that uses AI, where it runs, and whether it's ready.
