@@ -149,9 +149,21 @@ time starts afresh; more than 20 s ahead starts 5 s before). `EFFECTS.wled.rende
   3 s at each end.
 - Batch 1 (0.2.439): 0-3, 8-13, 15-17, 20, 23, 28, 40, 52, 57, 60, 64-67, 76, 80, 81, 88, 89, 97, 101,
   102. Batch 2 (0.2.441): 4-7, 14, 18, 19, 21, 22, 24-27, 29-37, 39, 41, 45-47, 50, 54-56, 58, 59,
-  61-63, 68, 83-87, 92-94, 98, 100, 103, 105, 106, 108, 113, 115, 117. Still to come: the noise effects
-  (need FastLED's `inoise8/16`), the rest of the 1D list, and the particle-system (PS) ones; they show
-  `standIn` (palette, or the colours when the palette is Default, drifting).
+  61-63, 68, 83-87, 92-94, 98, 100, 103, 105, 106, 108, 113, 115, 117. Batch 3 (0.2.443): the rest of
+  the 1D list, 38, 42-44, 48, 49, 51, 69-75, 77-79, 82, 90, 91, 95, 96, 99, 104, 107, 109-112, 116, 147,
+  179, 184. Not ported: the 2D effects, the sound-reactive ones (they need the WLED's microphone) and
+  the particle-system (PS) ones; they show `standIn` (palette, or the colours when the palette is
+  Default, drifting).
+- `noise.js` is FastLED 3.6's `inoise8`/`inoise16` (1-3D) as WLED builds it (`FASTLED_NOISE_FIXED`,
+  no average overflow); checked against the C code built natively on 4000 random inputs, all equal.
+- On palette **Default** WLED's `color_from_palette` returns the effect's first colour for any slot under
+  3 (`palette == 0 && mcol < NUM_COLORS`), so Fill Noise, Noise 1 and Noise 4 are one solid colour there
+  on the WLED itself; the preview matches. Pick a palette to see them.
+- Float effects (Aurora, Rolling Balls, Bouncing Balls, Popcorn, Drip, Fireworks 1D, Tetrix, Dancing
+  Shadows) use JS doubles, not 32-bit floats. Where C leaves the order of `random8()` calls in one
+  expression open (Aurora's wave colour, Noise Pal's palette), the preview takes them left to right.
+- Assumed: a WLED brightness above 28 (Colortwinkles fades by it), and Sunrise times itself from the
+  effect start rather than `millis()`.
 - Pace: an effect returns the delay before WLED should call it again (most return `FRAMETIME`).
   `WS2812FX::service` only runs every `FRAMETIME`, calls an effect once `now >= next_time` and then sets
   `next_time = now + delay`, so `index.js` calls it on the first 23 ms tick at or after that. Android,
