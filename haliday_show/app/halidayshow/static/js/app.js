@@ -55,7 +55,7 @@ import { SchedulePage } from "./schedulepage.js";
 import { readability } from "../public/colours.js";
 import { addressText, emptyPlaylists, itemText, nearbyText, queueText, visitorLink, tonightRows,
   DATED_KEYS, newDatedLook, lookFor, datedLookText, todayLookText } from "./publicsettings.js";
-import { fetchSong, songLoadMessage } from "./songload.js";
+import { fetchSong, plainError, songLoadMessage } from "./songload.js";
 import { StatusLine } from "./statusline.js";
 import { freeName, startChoices } from "./newshow.js";
 import { copyName, inSeasonFilter, length as fmtLength, showRows, showThumb, songName, tileBackground } from "./showlist.js";
@@ -8630,7 +8630,7 @@ async function runPartsLine() {
     } catch (e) {
       if (e.cancelled) break;
       partsLine.failed++;
-      lastError = `Couldn't split ${songLabel(ref)} into parts: ${e.message}`;
+      lastError = `Couldn't split ${songLabel(ref)} into parts: ${plainError(e)}`;
       status(lastError, true, "parts");
     }
     await refresh();

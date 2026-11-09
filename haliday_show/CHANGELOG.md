@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.442
+
+- **Splitting into parts rides out a dropped connection.** If the connection to HA-liday Show drops while songs are being split or an edit's parts are being cut (the Wi-Fi blips, or the app restarts after an update), it now waits and tries again for about a minute instead of failing with "Failed to fetch". If it still can't, it says it lost touch, so you know to press **Split into parts…** on that song again.
+
 ## 0.2.441
 
 - **More WLED effects move in the preview.** Another 54 of WLED's own effects now show as the WLED draws them, including **Sinelon**, **Pride 2015**, **Glitter**, **Dissolve**, **Heartbeat**, **Bpm**, **Blends**, **Lighthouse**, **Stream**, **Oscillate**, **Spots**, **Phased**, **Sine**, **Washing Machine**, **Traffic Light**, **ICU** and the chase, strobe, sparkle, sweep and wipe effects. Effects that keep their own pace, such as **ICU**'s pauses and **Chase Flash**'s flashes, keep it in the preview too. The noise effects and the rest still show the rough stand-in for now.
