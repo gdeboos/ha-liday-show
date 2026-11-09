@@ -1,3 +1,3 @@
 """Govee light-show sequencer: Home Assistant add-on service."""
 
-__version__ = "0.2.446"
+__version__ = "0.2.447"

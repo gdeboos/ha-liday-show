@@ -1580,7 +1580,8 @@ label.volume .ico.glyph { width: 1.15em; height: 1.15em; color: var(--muted); }
   color: var(--accent-text); background: var(--accent); border-radius: 4px; padding: 1px 5px; }
 .fx-kind > .hint { margin: -2px 0 8px; font-size: 12px; }
 .wled-fx-dialog .fx-filters .hint { flex-basis: 100%; margin: 0; font-size: 12px; }
-.sc-wled .wled-fx-button { max-width: 220px; }
+.sc-wled .wled-fx-button, .sc-wled .wled-palette-button { max-width: 220px; }
+.picker-swatch { flex: none; width: 36px; height: 12px; border-radius: 3px; }
 
 /* While a window (or the loading box) is open, the page behind it stays put: no scrolling under it,
    and scrolling to the end of a window doesn't carry on into the page. */
