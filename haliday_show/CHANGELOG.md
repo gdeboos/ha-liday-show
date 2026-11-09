@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.453
+
+- **Section notes written on your own computer.** Under **Setup → AI**, the new **Section notes on this
+  device** card lets you download a small AI model (1.2 GB, once) that your browser keeps. After that,
+  **Detect** and **✨ Describe sections** have it write each section's notes right there, so nothing about
+  your songs leaves the house and there's nothing to pay. It needs Chrome or Edge on a computer, and the
+  card says if yours can't run it. **Write section notes with** picks it or Claude / Home Assistant; it's
+  the default once downloaded. It writes notes only; renaming sections still needs Claude or Home Assistant.
+
 ## 0.2.452
 
 - **Fixed: edits failing to split with "lost touch".** Home Assistant sometimes cuts off a big song or part as your browser downloads it (it says "Connection lost" in its log). HA-liday Show now carries on from where the download got to instead of giving up, so splitting songs, cutting an edit's parts and lining up words get through. Press **Split all songs into parts** to finish the edits that failed.

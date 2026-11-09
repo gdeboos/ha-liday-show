@@ -140,6 +140,22 @@ the effect list, the song's tempo, beats and sections, your palettes, the select
 already on the lights (for suggested cuts: the song's name, sections, notes and marks, and the cuts
 found). It's never sent the song itself.
 
+### Section notes on this device
+
+The section notes that **Detect** and **✨ Describe sections** write can come from a small AI model that
+runs in your browser instead, so nothing about your songs leaves the house and there's nothing to pay.
+Under **Setup → AI**, **Section notes on this device**, press **Download the notes model (1.2 GB)**. It's a
+one-off download (HA-liday Show fetches it and checks it, then your browser keeps it), and it needs a
+recent browser and graphics chip: Chrome or Edge on a computer. The card says if yours can't run it, and
+**Remove it from this browser** frees the space again.
+
+**Write section notes with** chooses which writes them when both are there: **On this device** (the
+default, once the model is downloaded in this browser) or **Claude or Home Assistant**. The model writes
+the notes one section at a time from what was found in each; it doesn't rename sections, which only
+Claude or Home Assistant does. The first time in a session it takes a little while to load. Without the
+model or an AI, the notes are written from simple rules. The other AI features still need Claude or
+Home Assistant.
+
 ---
 
 [← Automations](automations.md) · [Contents](README.md) · [Labs and experiments →](labs.md)
