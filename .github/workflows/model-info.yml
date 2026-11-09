@@ -1,0 +1,43 @@
+# Prints what's in AI model repos on Hugging Face (each file's size and SHA-256, at the repo's current
+# commit), for pinning a new model in server.py's STEM_FILES. Run by hand from the Actions tab, or by a
+# Claude session (a cloud session can't reach Hugging Face itself). Changes nothing.
+name: Model info
+
+on:
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: "Hugging Face model repos, separated by spaces"
+        required: true
+        default: "onnx-community/Qwen2.5-1.5B-Instruct onnx-community/Qwen2.5-0.5B-Instruct"
+
+permissions:
+  contents: read
+
+jobs:
+  info:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: List files
+        env:
+          REPOS: ${{ inputs.repos }}
+        run: |
+          set -euo pipefail
+          pip install -q huggingface_hub==0.36.0
+          python - <<'PY'
+          import hashlib, os, urllib.request
+          from huggingface_hub import HfApi
+          api = HfApi()
+          for repo in os.environ["REPOS"].split():
+              info = api.model_info(repo, files_metadata=True)
+              print(f"== {repo} @ {info.sha} licence={getattr(info.card_data, 'license', None) if info.card_data else None}")
+              for f in info.siblings:
+                  sha = f.lfs.sha256 if f.lfs else None
+                  if not sha and (f.size or 0) < 20_000_000:
+                      url = f"https://huggingface.co/{repo}/resolve/{info.sha}/{f.rfilename}"
+                      sha = hashlib.sha256(urllib.request.urlopen(url).read()).hexdigest()
+                  print(f"{f.rfilename}\t{f.size}\t{sha}")
+          PY
