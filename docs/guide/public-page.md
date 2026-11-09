@@ -396,7 +396,8 @@ What visitors get:
 - **During one of your playlists**, a visitor's pick plays after the show that's on (and any pause after
   it), then your playlist carries on with its next show. A building block (a scene, colour, effect or Off)
   doesn't hold a pick back: the pick plays straight away and the playlist carries on after. While a block
-  is on, the page shows your playlist's name, with no **Listen** button since there's no song. A scheduled playlist that's due to start waits until a
+  is on, the page shows your playlist's name, with no **Listen** button since there's no song. The button
+  still says **Start**, as it does over a scene. A scheduled playlist that's due to start waits until a
   visitor's show has finished.
 - **A playlist** a visitor picks plays its shows through once, not round and round, without its
   building blocks.

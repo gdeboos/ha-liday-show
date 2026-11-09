@@ -865,10 +865,8 @@ class Runner:
     def queue_waits(self) -> list[float]:
         """Roughly how many seconds until each waiting request starts."""
         now_left = 0.0
-        if self.scene_playing:
-            pass  # a pick takes over from a scene at once
-        elif self.player.playing and self.block:
-            now_left = max(self.block["seconds"] - self.player.position(), 0)
+        if self.scene_playing or (self.player.playing and self.block):
+            pass  # a pick takes over from a scene, or a playlist's block, at once
         elif self.player.playing and self.player.baked:
             now_left = max(self.player.baked.duration - self.player.position(), 0)
         if self.public_now:  # the rest of a visitor's playlist still to come

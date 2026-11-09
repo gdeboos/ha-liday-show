@@ -316,6 +316,7 @@ async def test_a_visitors_pick_doesnt_wait_for_a_playlist_of_scenes(runner):
     await runner.play_playlist({"id": "evening", "name": "Evening", "shows": [], "gap": 0, "items": items})
     assert await _until(lambda: runner.block is not None)
     assert runner.status()["name"] == "Warm glow"  # the scene's name, not "Scene block"
+    assert runner.wait_for_new() < 5  # a pick added now starts at once, not after the block
     runner.add_request(_request("r1", ["vis"]))
     # Played straight away, not after the 10-minute block; then the scenes carry on.
     assert await _until(lambda: runner.player.show_id == "vis", tries=30)

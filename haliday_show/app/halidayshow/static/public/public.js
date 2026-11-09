@@ -170,7 +170,8 @@ export function voteOf(c, st) {
 export const listensToo = (c, st, listening) => !!(st.listen && c.speaker === false && !listening);
 
 // The button on each show: Start when it would play straight away, Queue when it would wait.
-export const startWord = (st) => (st.now || (st.queue || []).length ? "queue_btn" : "start");
+// A scene or a playlist's block on now doesn't hold a pick back, so its button still says Start.
+export const startWord = (st) => ((st.now && !st.now.ambient) || (st.queue || []).length ? "queue_btn" : "start");
 
 // Your headings, in the order they first appear, for the buttons above the shows.
 export function headingsOf(choices) {

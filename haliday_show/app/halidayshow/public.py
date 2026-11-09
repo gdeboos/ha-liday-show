@@ -671,7 +671,8 @@ def now_named(st: dict) -> dict:
     block, playlist = st.get("block"), st.get("playlist")
     name = playlist["name"] if block and playlist else st["name"]
     song = not block and not (st.get("scene") or {}).get("playing")
-    return {"name": name, "song": song}
+    # No song means a scene or block, which a pick takes over from at once: its button says Start.
+    return {"name": name, "song": song, **({} if song else {"ambient": True})}
 
 
 def now_art(storage: Storage, runner: Runner, picks: list[dict], look: dict) -> dict:

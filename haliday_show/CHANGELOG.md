@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.468
+
+- **Visitors can start a show straight away over your scenes.** While a scene, or a block of your playlist (such as your scenes playlist), is on, the visitors' page now offers **Start** instead of **Queue**, and no longer says they'll wait for the block to finish. Their pick takes over at once, then your scenes carry on.
+
 ## 0.2.467
 
 - **Fixed: visitors' picks waited behind a playlist of scenes.** While a playlist's scene, colour, effect or off block was on, a visitor's pick waited for a show that never came, so with a scenes-only playlist it never played. Now a block doesn't hold a pick back, just as a scene on its own doesn't: the pick plays straight away, then your playlist carries on with its next item. Pauses still play out in full first.

@@ -182,6 +182,7 @@ test("the button says Queue when a pick would wait, Start when it would play now
   assert.equal(page.startWord({ now: null, queue: [] }), "start");
   assert.equal(page.startWord({ now: { name: "Party" }, queue: [] }), "queue_btn");
   assert.equal(page.startWord({ now: null, queue: [{ name: "Party" }] }), "queue_btn");
+  assert.equal(page.startWord({ now: { name: "Evening", ambient: true }, queue: [] }), "start");  // a scene or block
 });
 
 test("a press on a show with no speaker also starts listening, once", () => {
