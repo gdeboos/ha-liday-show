@@ -7,7 +7,7 @@ import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, 
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
-import { aiRequest, describeSections, describeWithAI, keepYours } from "./sectionnotes.js";
+import { aiRequest, describeSections, describeWithAI, keepYours, sectionFacts, withFacts } from "./sectionnotes.js";
 import { FEELS, FEEL_KEYS, STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
@@ -305,7 +305,7 @@ const volume = createVolume();
 volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
-  opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), hasAI: () => !!aiVia,
+  opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), songFacts: (ref) => songFacts(ref), hasAI: () => !!aiVia,
   draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref), songLyrics: (ref) => openSongLyrics(ref), lyricsChanged: () => madeFrom.clear(), partsLater: (ref) => prepareParts([ref], { first: true }),
   pickSong: (o) => pickSong(o) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
@@ -12375,6 +12375,8 @@ async function analyseSong({ ai = false, cancelled = () => false } = {}) {
   let r;
   try {
     r = await analyseInWorker(samples, rate);
+    // What's kept with the song (sounds, singing, drums, words) goes into the notes too.
+    if (app.show.audio) r.traits = withFacts(r.traits, sectionFacts(r.sections, await songFacts(app.show.audio)));
   } catch (e) {
     status(`Couldn't analyse the song: ${e.message}`, true);
     return null;
@@ -13077,6 +13079,16 @@ function generateAgain() {
 }
 
 // What can be heard in a show's song (sounds.js), once it's been listened to; null if not.
+// What's kept with a song beyond Detect, for the section notes (sectionnotes.js sectionFacts): what can
+// be heard in it, the singing (only measured from its vocals part, as the whole song's is a guess), the
+// drum hits and the lined-up lyrics. Whatever isn't there yet is null.
+async function songFacts(ref) {
+  if (!ref?.path) return {};
+  const get = (what) => api(songExtraUrl(what, ref)).catch(() => null);
+  const [sounds, voice, drums, lyrics] = await Promise.all(["sounds", "voice", "drums", "lyrics"].map(get));
+  return { sounds, voice: voice?.from === "vocals" ? voice : null, drums, lyrics };
+}
+
 async function songSounds(ref) {
   if (!ref?.path) return null;
   return api(songExtraUrl("sounds", ref)).catch(() => null);

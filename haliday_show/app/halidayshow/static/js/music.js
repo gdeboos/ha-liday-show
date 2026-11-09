@@ -17,7 +17,7 @@ import { GAIN_MAX, GAIN_MIN, MUTE, SONG_PARTS, addPart, changesIn, emptyParts, p
 import { PARTS, savePart, splitVocals } from "./splitvocals.js";
 import { drumHits } from "./drumhits.js";
 import { askChoice, askText, askYes } from "./ask.js";
-import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
+import { describeSections, keepYours, ruleNote, sectionFacts, withFacts } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
 import { fetchSong, plainError, songLoadMessage } from "./songload.js";
@@ -911,6 +911,8 @@ export class MusicEditor {
     $("music-detect").disabled = true;
     try {
       const r = await analyseInWorker(samples, rate);
+      // What's kept with the song (sounds, singing, drums, words) goes into the notes too.
+      r.traits = withFacts(r.traits, sectionFacts(r.sections, (await this.host.songFacts?.(ref)) || {}));
       // Names and notes you wrote on the old sections carry over to the new ones.
       const old = this.base === ref ? this.info?.sections : null;
       const sections = describeSections(keepYours(r.sections, old || []), r.traits);
@@ -940,7 +942,8 @@ export class MusicEditor {
     this.host.status(`Listening to each part of ${nameOf(ref)}…`);
     $("music-describe").disabled = true;
     try {
-      const traits = await analyseInWorker(samples, rate, sections.map(({ start, end }) => ({ start, end })));
+      const measured = await analyseInWorker(samples, rate, sections.map(({ start, end }) => ({ start, end })));
+      const traits = withFacts(measured, sectionFacts(sections, (await this.host.songFacts?.(ref)) || {}));
       if (this.base !== ref || this.info?.sections !== sections) {
         this.host.status("The sections changed while listening; press Describe sections again", "hint");
         return;

@@ -1491,15 +1491,18 @@ You don't have to write them all yourself. **Detect** writes notes for every sec
 sections** writes them again for the sections as they are now (after you've split or moved them,
 say). It listens to each section and notes how loud it is, whether it builds up or fades, whether it's
 busy or sparse, bass-heavy or bright, any big hits or moments it goes quiet (with their times), and
-which earlier section it's like. It then suggests how to light it, for example: "Loud, busy, lots of
-hits; builds up through it; big hit at 0:42. Everything on, moving and flashing on the beat; flash
-everything on the hit." Notes you've typed or changed are never replaced, and nor are names you've
+which earlier section it's like. Once the song has been through **Split into parts** (and its words
+lined up with **Lyrics**), the notes also say what can be heard in each section (a choir, sleigh bells,
+brass), where the singing starts and stops, when the drums come in, any cymbal crashes and the line
+being sung. It then suggests how to light it, for example: "Loud; you can hear a choir; singing from
+0:26 to 0:44; drums come in at 0:24. Everything on, moving and flashing on the beat; slow washes for the
+choir; bring everything in when the drums start; drop to a soft glow when the singing stops." Notes you've typed or changed are never replaced, and nor are names you've
 given sections: pressing **Detect** again carries them over to the new section that covers the same
 stretch of the song. Edit anything it writes; once you do, it's yours.
 
 With an AI set up (see [Setting up the AI](#setting-up-the-ai)), the AI then rewrites those notes,
 usually within a minute, while you carry on. It can't hear the song, so it works from the same
-measurements and the song's name. If it knows the song, it uses what it knows: which part is the verse
+measurements (including what can be heard, the singing, drums and words) and the song's name. If it knows the song, it uses what it knows: which part is the verse
 or the chorus, where it builds. It also gives the sections Detect named itself better names, such as
 **Part B** becoming **Verse**, but never a name you gave. If you edit the sections before it's done,
 its notes aren't used, so press **✨ Describe sections** to ask again. Without an AI, or if it can't

@@ -148,3 +148,50 @@ test("the AI's notes and names are checked, and the rules fill any it skipped", 
   assert.equal(none.used, 0);
   assert.deepEqual(none.sections.map((s) => s.label), secs.map((s) => s.label));
 });
+
+// --- What else is known about each section (sounds, singing, drums, words) ---
+import { aiRequest, sectionFacts, withFacts } from "../../haliday_show/app/halidayshow/static/js/sectionnotes.js";
+
+const two = [{ start: 0, end: 20, label: "Intro" }, { start: 20, end: 40, label: "Chorus" }];
+// Every half second for 40 s: a choir all through the chorus, sleigh bells in the intro.
+const sounds = { step: 0.5, sounds: {
+  choir: Array.from({ length: 80 }, (_, k) => (k >= 40 ? 60 : 0)),
+  sleighbells: Array.from({ length: 80 }, (_, k) => (k < 40 ? 50 : 0)),
+  christmas: Array.from({ length: 80 }, () => 30),
+} };
+// Singing from 26 s to 34 s (10 frames a second).
+const voice = { fps: 10, from: "vocals", values: Array.from({ length: 400 }, (_, k) => (k >= 260 && k < 340 ? 60 : 0)) };
+// Drums from 24 s, every half second; a crash at 30 s.
+const drums = { kick: Array.from({ length: 32 }, (_, k) => 24 + k * 0.5), snare: [], hat: [], crash: [30] };
+const lyrics = { text: "Dashing through the snow\nIn a one-horse open sleigh", lines: [{ start: 26, end: 30 }, { start: 30, end: 34 }] };
+
+test("each section's facts come from what's kept with the song, and only what's known", () => {
+  const [intro, chorus] = sectionFacts(two, { sounds, voice, drums, lyrics });
+  assert.deepEqual(intro, { heard: ["sleighbells"], mood: ["christmas"], singing: "none", drums: "none" });
+  assert.deepEqual(chorus, { heard: ["choir"], mood: ["christmas"], singing: "some", singingStarts: [26], singingStops: [34],
+    drums: "in", drumsStart: 24, crashes: [30], lyrics: ["Dashing through the snow", "In a one-horse open sleigh"] });
+  assert.deepEqual(sectionFacts(two, {}), [{}, {}], "nothing known, nothing said");
+  assert.deepEqual(sectionFacts(two, { lyrics: { text: "One line", lines: [] } }), [{}, {}], "lyrics not lined up are left out");
+});
+
+test("the notes and the AI hear about the sounds, singing, drums and words", () => {
+  const facts = sectionFacts(two, { sounds, voice, drums, lyrics });
+  const traits = withFacts([{ ...trait, hits: [], shape: "steady" }, { ...trait, hits: [], shape: "steady" }], facts);
+  const [, chorus] = describeSections(two, traits);
+  assert.match(chorus.notes, /you can hear a choir/);
+  assert.match(chorus.notes, /singing from 0:26 to 0:34/);
+  assert.match(chorus.notes, /drums come in at 0:24/);
+  assert.match(chorus.notes, /slow washes for the choir/);
+  assert.match(chorus.notes, /bring everything in when the drums start/);
+  assert.ok(chorus.notes.length <= 300);
+  const [intro] = describeSections(two, traits);
+  assert.match(intro.notes, /sleigh bells/);
+  assert.match(intro.notes, /twinkles for the sleigh bells/);
+  const sent = aiRequest(two, traits, { name: "Jingle", duration: 40, tempo: 120 }).context.sections[1].measured;
+  assert.deepEqual(sent.can_hear, ["Choir"]);
+  assert.equal(sent.drums_come_in, 24);
+  assert.deepEqual(sent.lyrics, ["Dashing through the snow", "In a one-horse open sleigh"]);
+  // A section with only facts (no loudness words) still starts with a capital.
+  const only = describeSections([two[0]], withFacts([{ alone: true, hits: [], drops: [], shape: "steady" }], [facts[0]]))[0];
+  assert.match(only.notes, /^You can hear/);
+});

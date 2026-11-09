@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.446
+
+- **Detect** and **✨ Describe sections** write richer section notes. As well as how loud each part is,
+  they now say what can be heard in it (a choir, sleigh bells, brass), where the singing starts and
+  stops, when the drums come in, any cymbal crashes and the line being sung, and they suggest lighting
+  to match: twinkles for bells, slow washes for a choir, everything in when the drums start. That comes
+  from what's already been found for the song (by **Split into parts** and **Lyrics**), so it works
+  without an AI, and the AI gets it too when you have one set up.
+
 ## 0.2.445
 
 - **Adding a song gets it all ready in front of you.** After **Add song**, the window stays open with a line for each step and how far along it is: added (with its beats and sections), split into its parts, and its words. **Stop** keeps whatever's done, and **Done** closes it. It no longer splits in the background afterwards.
