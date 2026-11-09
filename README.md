@@ -243,6 +243,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **Layers** in the Music editor: samples or songs played over a song, pinned to the music so they follow cuts, mixed into the song file, optionally quietening the song under them by as much as you choose, or going quieter themselves while the song sings, and muted, quieter or faded over any stretch
 - **Mixer** in the Music editor: bass, mid and treble faders and a DJ filter on the song and each layer, changing partway through, layers moved into the song's key, and layers matched to the song's tempo, with mute and solo on every row and faders for the song's own vocals, drums, bass and rest, for mash-ups
 - **Samples**: short sounds (sleigh bells, a "ho ho ho") to layer over songs, made from part of a song (as you hear it, or just its drums, vocals, bass or a layer) or added as files
+- **Section notes**: what each part of a song is like (loudness, the sounds heard, singing, drums, words) and how to light it, written by rules, by Claude or Home Assistant's AI, or by a small AI model in your browser so nothing leaves the house
 - **Suggest cuts**: shorten the song or one section to a length you pick, by whole bars where the join isn't heard; with an AI, it picks the best and says why
 - **Marks**: flag and name moments in a song (a big hit, the bells coming in); every show using the song sees them and clips snap to them
 - A volume slider for the song while you edit, in the **Show editor** and **Music editor**
@@ -466,6 +467,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/sceneeditor.js                   Scene editor and Your scenes: rows per light, preview, saving and baking
     js/stems.js                         Split into parts: the song's spectrum in and out of each AI model (MDX-Net: vocals, drums, bass), chunk by chunk
     js/stemsworker.js                   Split vocals' worker: fetches the model and its runtime, runs the split
+    js/notesworker.js                   Section notes on this device: a small AI model (Qwen2.5-1.5B) run in the browser
     js/stemsmath.js                     Split into parts' helpers: the spectrum maths, on several cores
     js/splitvocals.js                   Split into parts… on a song: decode, split in the worker, keep each part with the song, find the drum hits
     js/roles.js                         Light roles: what each light reacts to, guessed, then your house's and each show's own

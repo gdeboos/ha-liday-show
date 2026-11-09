@@ -209,6 +209,53 @@ export function aiRequest(sections, traits, song) {
   };
 }
 
+// On your own device (notesworker.js): a small model writes one section at a time, from that section's
+// facts in plain words (the rule note) and the shape of the whole song. It only writes notes: its names
+// for sections were too often wrong, so renaming is left to Claude or Home Assistant. One item per section
+// it may write: {index, messages} (a chat for the model).
+const DEVICE_SYSTEM = "You write short notes for someone designing a Christmas or Halloween light show to a song on their "
+  + "house. Write plain British English, in one or two short sentences: what this part of the song is like, then how to "
+  + "light it. Keep times as m:ss. Only mention instruments, singing or words you are given; never make them up.";
+export function devicePrompts(sections, traits, song) {
+  const shape = sections.map((sec, i) => {
+    const t = traits[i] || {};
+    const level = t.alone ? "" : t.level < 0.35 ? "quiet" : t.level < 0.7 ? "medium" : "loud";
+    return `${sec.label} ${at(sec.start)}-${at(sec.end)}${level ? ` (${level})` : ""}`;
+  }).join("; ");
+  const head = `Song: ${song.name || "unknown"}${song.tempo ? `, ${Math.round(song.tempo)} BPM` : ""}.\nIts parts: ${shape}.`;
+  const out = [];
+  sections.forEach((sec, i) => {
+    if (!traits[i] || !notesFree(sec)) return;
+    const [facts, ideas = ""] = ruleNote(traits[i], sec, sections).replace(/\.$/, "").split(". ");
+    const lines = [head, "", `Write about the part called ${sec.label}, from ${at(sec.start)} to ${at(sec.end)}.`,
+      `What was heard in it: ${facts}.`, ...(ideas ? [`Lighting ideas: ${ideas}.`] : []), "",
+      "Write in your own words, in one or two sentences under 250 characters: what this part is like, then how to light it. "
+        + "Don't copy the lists above.", "", "Reply in exactly this form:",
+      "Notes: <your notes>"];
+    out.push({ index: i, messages: [{ role: "system", content: DEVICE_SYSTEM }, { role: "user", content: lines.join("\n") }] });
+  });
+  return out;
+}
+
+// The model's answers (one {index, text} per section) as a reply describeWithAI understands. One that
+// just copies the lists it was given back is left out (the rules' note stays), and a long one ends at
+// the last whole sentence that fits in 300 characters.
+export function fromDevice(written) {
+  const sections = [];
+  for (const { index, text } of written || []) {
+    const t = String(text || "");
+    let notes = (/Notes:\s*([\s\S]*)/i.exec(t)?.[1] ?? "").split(/\n\s*\n|\n\s*(?:Name|Lighting ideas?):/i)[0];
+    notes = notes.replace(/\*\*|__/g, "").replace(/^[\s"'<#*]+|[\s"'>*]+$/g, "").replace(/\s+/g, " ").trim();
+    if (!notes || /lighting ideas?:|what was heard/i.test(notes) || (notes.match(/;/g) || []).length >= 3) continue;
+    if (notes.length > 300) {
+      const cut = notes.slice(0, 300), end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "));
+      notes = end > 40 ? cut.slice(0, end + 1) : `${cut.slice(0, 299).replace(/\s+\S*$/, "")}…`;
+    }
+    sections.push({ index, notes, name: "" });
+  }
+  return { sections };
+}
+
 // The AI's reply checked: notes (up to 300 characters) only for sections it may write, names (up to
 // 40) only for sections it may rename. Returns {notes: {index: text}, names: {index: name}}.
 export function fromAI(reply, sections) {

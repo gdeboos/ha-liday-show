@@ -1279,6 +1279,18 @@
       one such as Ollama. It sends the AI your lights' names, the effect list, the song's beats and sections,
       and the selection; never the song itself.</p>
   </section>
+  <section class="card" id="notes-card">
+    <h2>Section notes on this device</h2>
+    <p class="hint"><b>Detect</b> and <b>✨ Describe sections</b> can have a small AI model write the section notes right
+      here in your browser, so nothing about your songs leaves the house. It's a one-off 1.2&nbsp;GB download, kept by
+      this browser, and needs a recent browser and graphics chip: Chrome or Edge on a computer.</p>
+    <p class="hint" id="notes-state">Checking…</p>
+    <p class="row"><button id="notes-download" type="button" hidden>Download the notes model (1.2 GB)</button>
+      <button id="notes-forget" type="button" class="ghost danger" hidden>Remove it from this browser</button></p>
+    <p><label for="notes-with">Write section notes with</label>
+      <select id="notes-with"><option value="device">On this device</option><option value="ai">Claude or Home Assistant</option></select></p>
+    <p class="hint">Without the model or an AI, the notes are written from simple rules.</p>
+  </section>
 </main>
 <main id="view-data" class="view settings" hidden>
   <section class="card">

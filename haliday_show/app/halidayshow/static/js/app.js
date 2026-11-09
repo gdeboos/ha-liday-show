@@ -7,7 +7,7 @@ import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, 
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
-import { aiRequest, describeSections, describeWithAI, keepYours, sectionFacts, withFacts } from "./sectionnotes.js";
+import { aiRequest, describeSections, describeWithAI, devicePrompts, fromDevice, keepYours, sectionFacts, withFacts } from "./sectionnotes.js";
 import { FEELS, FEEL_KEYS, STYLES, applyGenerated, applyGeneratedPart, clearPart, generateShow, partOf, splitLong, suggestLooks } from "./autogen.js";
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
@@ -306,7 +306,7 @@ const volume = createVolume();
 volume.bind($("volume"), (g) => { audio.volume = g; });
 const timeline = new Timeline(app);
 const music = new MusicEditor({ api, status, volume, songs: () => app.songs || [], songsChanged: () => refreshAudio(),
-  opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), songFacts: (ref) => songFacts(ref), hasAI: () => !!aiVia,
+  opened: (ref) => prefs.set("lastSong", songKey(ref)), aiSectionNotes: (...a) => aiSectionNotes(...a), songFacts: (ref) => songFacts(ref), hasAI: () => !!aiVia || deviceNotes.ready(),
   draftsChanged: () => draftsChanged(), songColours: (ref) => offerSongColours(ref), songLyrics: (ref) => openSongLyrics(ref), lyricsChanged: () => madeFrom.clear(), partsLater: (ref) => prepareParts([ref], { first: true }),
   pickSong: (o) => pickSong(o) });
 const hasAudio = () => !!app.show.audio && audio.src !== "";
@@ -12505,6 +12505,7 @@ const songTitle = (ref) => (ref?.path || "").split("/").pop().replace(/\.[^.]+$/
 // {sections, used} (used: how many of its notes or names were kept), or null without an AI or if it
 // fails, when the notes stay as they were.
 async function aiSectionNotes(sections, traits, song) {
+  if (deviceNotes.ready()) return deviceSectionNotes(sections, traits, song);
   if (!aiVia || !sections?.length) return null;
   const { request, context } = aiRequest(sections, traits, song);
   try {
@@ -13459,6 +13460,95 @@ function renderAiPaletteIdeas() {
   }));
 }
 
+// Section notes on this device (notesworker.js): a small model this browser keeps, used instead of
+// Claude or Home Assistant when it's downloaded here, this browser can run it, and Setup → AI says to.
+const deviceNotes = {
+  worker: null, kept: false, gpu: null, busy: null, queue: Promise.resolve(), asked: 0,
+  ready() { return this.kept && this.gpu === "ok" && prefs.get("notesWith", "device") !== "ai"; },
+  stop() { this.worker?.terminate(); this.worker = null; },
+  // One request at a time; `progress(stage, done)` hears how it's going. Writing that takes longer than
+  // `limit` (a stuck graphics chip, say) stops the model, so nothing waits on it for ever.
+  ask(msg, progress = () => {}, limit = 0) {
+    const run = () => new Promise((resolve, reject) => {
+      const id = ++this.asked;
+      this.worker ||= new Worker(new URL("./notesworker.js", import.meta.url), { type: "module" });
+      const timer = limit && setTimeout(() => { this.stop(); reject(new Error("it took too long, so it was stopped")); }, limit);
+      const done = (fn, v) => { clearTimeout(timer); fn(v); };
+      this.worker.onmessage = ({ data }) => {
+        if (data.id !== id) return; // from a request that has already given up
+        if (data.stage) progress(data.stage, data.done);
+        else if (data.error) done(reject, new Error(data.error));
+        else done(resolve, data);
+      };
+      this.worker.onerror = (e) => { this.stop(); done(reject, new Error(e.message || "the notes model stopped")); };
+      this.worker.postMessage({ ...msg, id });
+    });
+    const p = this.queue.then(run, run);
+    this.queue = p.catch(() => {});
+    return p;
+  },
+};
+
+async function deviceSectionNotes(sections, traits, song) {
+  const asks = devicePrompts(sections, traits, song);
+  if (!asks.length) return null;
+  try {
+    const { written } = await deviceNotes.ask({ write: asks.map(({ index, messages }) => ({ index, messages })), maxTokens: 160 },
+      (stage, done) => status(stage === "load" ? "Loading the notes model on this device…"
+        : `Writing section notes on this device… ${Math.round((done || 0) * 100)}%`), (2 + asks.length) * 60000);
+    const got = describeWithAI(sections, traits, fromDevice(written));
+    if (!got.used) status("The notes model's answer couldn't be used, so the section notes stay as they were", "hint");
+    return got;
+  } catch (e) {
+    status(`The notes model couldn't write the notes, so they stay as they were: ${e.message}`, "hint");
+    return null;
+  }
+}
+
+async function renderNotesCard({ check = false } = {}) {
+  if (check) {
+    try { Object.assign(deviceNotes, await deviceNotes.ask({ check: true })); } catch { deviceNotes.gpu = "none"; }
+  }
+  const { kept, gpu, busy } = deviceNotes;
+  $("notes-state").textContent = busy ? busy
+    : gpu === null ? "Checking…"
+      : gpu === "none" ? "This browser can't run it: use Chrome or Edge on a computer."
+        : gpu === "no-f16" ? "This computer's graphics chip can't run it."
+          : kept ? "Downloaded in this browser." : "Not downloaded in this browser yet.";
+  $("notes-download").hidden = kept || gpu !== "ok";
+  $("notes-download").disabled = !!busy;
+  $("notes-forget").hidden = !kept || !!busy;
+  $("notes-with").value = prefs.get("notesWith", "device");
+}
+
+$("notes-download").addEventListener("click", async () => {
+  navigator.storage?.persist?.().catch(() => {}); // so the browser keeps it rather than clearing it when space runs low
+  deviceNotes.busy = "Downloading… 0%";
+  renderNotesCard();
+  try {
+    await deviceNotes.ask({ download: true }, (stage, done) => {
+      deviceNotes.busy = `Downloading… ${Math.round((done || 0) * 100)}% (you can carry on meanwhile)`;
+      $("notes-state").textContent = deviceNotes.busy;
+    });
+    deviceNotes.busy = null;
+    prefs.set("notesModelHere", true);
+    status("The notes model is downloaded: Detect and Describe sections will use it");
+  } catch (e) {
+    deviceNotes.busy = null;
+    status(`Couldn't download the notes model: ${e.message}`, true);
+  }
+  renderNotesCard({ check: true });
+});
+$("notes-forget").addEventListener("click", async () => {
+  await deviceNotes.ask({ forget: true }).catch(() => {});
+  deviceNotes.stop();
+  prefs.set("notesModelHere", false);
+  renderNotesCard({ check: true });
+});
+$("notes-with").addEventListener("change", (e) => prefs.set("notesWith", e.target.value));
+// Only browsers that have downloaded it look at start-up (the rest when Setup → AI is opened).
+if (prefs.get("notesModelHere", false)) renderNotesCard({ check: true });
+
 // Describe it: effects from a request in words, made by the AI the add-on is set up with.
 let aiVia = null; // how AI requests go ("claude" or "ha"), or null when no AI is set up
 
@@ -13659,6 +13749,7 @@ function showView(view, { push = true } = {}) {
   if (view in open && !open[view]) view = EDITOR_LIST[view];
   if (view === "labs" && !labsOn()) view = "settings";
   if (view === "public" && $("tab-public").hidden) view = "settings";
+  if (view === "ai") renderNotesCard({ check: true });
   // Live music effects move to what a WLED hears (or a made-up song) while a scene is being edited.
   const live = (view === "scene" && app.sceneChosen) || (view === "editor" && !!app.sceneId);
   if (live !== livePreviewing) { livePreviewing = live; if (live) startLivePreview(api); else stopLivePreview(); }
