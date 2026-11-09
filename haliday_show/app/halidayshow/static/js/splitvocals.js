@@ -142,11 +142,17 @@ export const routeWords = (via, gaveUp = false) => via === "gpu" ? " · on the g
 // signal: an AbortSignal that stops it (it then rejects with an error marked `cancelled`).
 export async function lineUpLyrics(ref, api, lines, say = () => {}, signal = null) {
   const cancelled = () => Object.assign(new Error("cancelled"), { cancelled: true });
+  const check = () => { if (signal?.aborted) throw cancelled(); };
   const parts = await api(`api/audio/parts?${q(ref)}`).catch(() => ({}));
+  check();
   const path = parts?.vocals || ref.path;
   say("Loading the singing…", null);
-  const bytes = await fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(path)}`);
+  // Cancel stops the download too (an aborted fetch isn't a dropped connection, so it isn't tried again).
+  const bytes = await fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(path)}`,
+    (u) => fetch(u, signal ? { signal } : {})).catch((e) => { check(); throw e; });
+  check();
   const d = await new OfflineAudioContext(1, 1, 16000).decodeAudioData(bytes);
+  check();
   const samples = new Float32Array(d.length);
   for (let c = 0; c < d.numberOfChannels; c++) {
     const ch = d.getChannelData(c);
@@ -154,7 +160,7 @@ export async function lineUpLyrics(ref, api, lines, say = () => {}, signal = nul
   }
   const worker = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
   try {
-    if (signal?.aborted) throw cancelled();
+    check();
     const logp = await new Promise((resolve, reject) => {
       signal?.addEventListener("abort", () => reject(cancelled()), { once: true });
       worker.onmessage = ({ data }) => {
@@ -166,6 +172,7 @@ export async function lineUpLyrics(ref, api, lines, say = () => {}, signal = nul
       worker.onerror = (e) => reject(new Error(e.message || "the AI couldn't start in this browser"));
       worker.postMessage({ align: samples }, [samples.buffer]);
     });
+    check();
     say("Placing the words…", null);
     const placed = alignLyrics(logp, lines);
     return placed && { lines: placed, vocals: !!parts?.vocals };

@@ -11556,7 +11556,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep 
   const undo = button("Undo", () => { if (before) { lines = before; before = null; undo.hidden = true; draw(); } }, "ghost small");
   undo.hidden = true;
   const lineUp = way("ai", "Line up with the singing", "AI · a minute or two", true,
-    "An AI listens to the song's vocals and puts each word where it's sung. Most accurate; English songs, best once the song's split into parts.", async () => {
+    "An AI listens to the song's vocals and puts each word where it's sung. The most accurate. Works best on English songs, and once the song's split into parts.", async () => {
     clearTimeout(typing);
     const words = parseLyrics(text.value);
     if (!words.length) { hint.textContent = "Paste the words first, one line of the song per line."; return; }

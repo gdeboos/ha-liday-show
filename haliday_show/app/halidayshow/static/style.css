@@ -1731,6 +1731,7 @@ h2.with-layout-switch .layout-switch { margin-left: auto; font-size: 13px; font-
 .lyrics-way { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; padding: 10px 12px;
   height: auto; white-space: normal; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; }
 .lyrics-way:hover:not(:disabled) { border-color: var(--accent); }
+.lyrics-way:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .lyrics-way.ai { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
 .lyrics-way-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .lyrics-way-head .ico { width: 18px; height: 18px; flex: none; }
