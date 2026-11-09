@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.466
+
+- **Lyrics… opens straight away.** In the Music editor, **Lyrics…** no longer downloads the whole song again before opening, so it's much quicker. Wherever it does still need to load the song, a window now opens at once saying so, with a **Cancel** button, instead of nothing seeming to happen.
+
 ## 0.2.465
 
 - **Different opening hours on different days.** Under **Public page → Hours**, press **+ Add more hours** for another set of opening hours with its own days, such as staying open until 22:30 on Saturday and Sunday. Each set has its own **Opens**, **Closes** and days, and **✕ Remove** takes one away. Where two sets cover the same time, the page stays open until the later closing, and **Shows finish by closing time** goes by that later time too. Your existing hours stay as they were.

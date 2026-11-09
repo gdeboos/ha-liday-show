@@ -4162,7 +4162,11 @@ export class MusicEditor {
     $("music-colours").addEventListener("click", () => { if (this.base) this.host.songColours?.(this.base); });
     $("music-lyrics").addEventListener("click", async () => {
       if (!this.base) return;
-      await this.host.songLyrics?.(this.base);
+      // The song's already loaded here, so Lyrics… needn't fetch it again.
+      const ch = this.sources[keyOf(this.base)];
+      const rate = this.audio?.sampleRate;
+      const song = ch && rate ? { duration: ch[0].length / rate, sampleRate: rate, numberOfChannels: ch.length, getChannelData: (c) => ch[c] } : null;
+      await this.host.songLyrics?.(this.base, { song });
       this.loadLyrics(); // the words or their places may have changed
     });
     $("music-suggest").addEventListener("click", () => this.openCuts(this.secSel >= 0 ? this.secSel : null));
