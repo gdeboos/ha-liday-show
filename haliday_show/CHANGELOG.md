@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.447
+
+- **Clearer ways to place a song's words.** In **Lyrics…**, the three buttons are now cards with an icon and a line saying what each does: **Line up with the singing** (marked **AI**), **Spread them out** (instant, no AI; it was **Place automatically**) and **Tap along** (you, as the song plays).
+- **Lining up with the singing shows in its own window**, saying how far along it is, with **Cancel**.
+
 ## 0.2.446
 
 - **Pick WLED palettes by eye too.** For a light on **WLED's own effect**, the palette is now a button showing its colours. Press it to open the **WLED palette** window, which shows every palette your WLED has as a strip of colours, with a search box. **Default** shows the colours your chosen effect uses on its own, such as **Fire 2012**'s fire colours.
