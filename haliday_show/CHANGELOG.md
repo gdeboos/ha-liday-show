@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.447
+## 0.2.448
 
 - **Detect** and **✨ Describe sections** write richer section notes. As well as how loud each part is,
   they now say what can be heard in it (a choir, sleigh bells, brass), where the singing starts and
@@ -8,6 +8,11 @@
   to match: twinkles for bells, slow washes for a choir, everything in when the drums start. That comes
   from what's already been found for the song (by **Split into parts** and **Lyrics**), so it works
   without an AI, and the AI gets it too when you have one set up.
+
+## 0.2.447
+
+- **Clearer ways to place a song's words.** In **Lyrics…**, the three buttons are now cards with an icon and a line saying what each does: **Line up with the singing** (marked **AI**), **Spread them out** (instant, no AI; it was **Place automatically**) and **Tap along** (you, as the song plays).
+- **Lining up with the singing shows in its own window**, saying how far along it is, with **Cancel**.
 
 ## 0.2.446
 

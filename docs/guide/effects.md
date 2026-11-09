@@ -121,13 +121,18 @@ or open the song in the Music editor and press **Lyrics…** under **Beats and s
 1. Paste the song's words, one line of the song per line.
 2. They're placed across the singing for you, each word taking longer the more syllables it has. Each
    line shows when it starts and ends; press **▶** beside one to hear it.
-3. Press **Line up with the singing**: an AI listens to the song's vocals and places every line and
-   word where it's actually sung, replacing what was there (**Undo** puts it back). The first time,
-   your browser downloads it (about 95 MB). It takes about a minute or two for a song, in your browser.
-   It works best once the song is [split into parts](build-a-show.md#split-into-parts), as it then hears the singing on
-   its own; it understands English songs. It needs the song's words, in order: a chorus sung three times
-   needs pasting three times.
-4. If a line comes in early or late, type its start, or press **Tap along…**: the song plays from the
+3. Under the words are three ways to place them, each saying what it does. The one marked **AI** is the
+   only one that uses an AI:
+   - **Line up with the singing** (**AI**): an AI listens to the song's vocals and places every line and
+     word where it's actually sung, replacing what was there (**Undo** puts it back). It runs in a
+     window of its own saying how far along it is, with **Cancel**. The first time, your browser
+     downloads it (about 95 MB). It takes about a minute or two for a song, in your browser. It works
+     best once the song is [split into parts](build-a-show.md#split-into-parts), as it then hears the singing on its
+     own; it understands English songs. It needs the song's words, in order: a chorus sung three times
+     needs pasting three times.
+   - **Spread them out** (instant, no AI): places the lines across the singing again, as in step 2.
+   - **Tap along** (you, as it plays): see the next step.
+4. If a line comes in early or late, type its start, or press **Tap along**: the song plays from the
    beginning and you press **Line 1 starts** (or the space bar) as the first line starts, then again for
    each line after (the button says which line it's waiting for). The words of each line
    are spread across the singing after its start.
