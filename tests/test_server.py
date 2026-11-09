@@ -844,6 +844,20 @@ async def test_a_kept_copy_can_be_deleted(client):
     assert (await client.get(f"/api/backup/copies/{kept}")).status == 404
 
 
+async def test_a_backup_imports_in_pieces(client):
+    await client.put("/api/devices", json=[{"id": "roof", "name": "Roof", "ip": "", "segments": 10}])
+    exported = await (await client.get("/api/backup")).read()
+    await client.post("/api/backup/reset")
+    half = len(exported) // 2
+    up = "00112233445566778899aabb"
+    first = await client.post(f"/api/backup/part?upload={up}&offset=0", data=exported[:half])
+    assert (await first.json()) == {"received": half}
+    last = await client.post(f"/api/backup/part?upload={up}&offset={half}&done=1", data=exported[half:])
+    assert last.status == 200 and (await last.json())["restored"] >= 1
+    assert [d["name"] for d in await (await client.get("/api/devices")).json()] == ["Roof"]
+    assert not list((client.server.app[server.STORAGE].upload_dir).glob(".upload-*.part"))
+
+
 async def test_a_bad_import_is_refused_and_changes_nothing(client):
     await client.put("/api/devices", json=[{"id": "roof", "name": "Roof", "ip": "", "segments": 10}])
     resp = await client.post("/api/backup", data=b"not a zip")

@@ -6703,7 +6703,10 @@ async function replaceData(url, body, question) {
     // Save the open show first, so the copy kept beforehand has your latest changes.
     if (app.dirty && worthSaving()) await save();
     status("Working…");
-    const r = await api(url, { method: "POST", ...(body ? { body, headers: { "Content-Type": "application/zip" } } : {}) });
+    // A big backup goes up in pieces: Home Assistant refuses any one request over 16 MB.
+    const r = body && body.size > PART
+      ? await sendParts(api, `${url}/part`, body, {}, (f) => status(`Sending… ${Math.round(f * 100)}%`))
+      : await api(url, { method: "POST", ...(body ? { body, headers: { "Content-Type": "application/zip" } } : {}) });
     if (url.endsWith("/reset")) {
       // A fresh start in this browser too: its layout, choices and the setup guide's "done".
       for (const k of Object.keys(localStorage)) if (k.startsWith("halidayshow.")) localStorage.removeItem(k);

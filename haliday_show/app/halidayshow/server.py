@@ -3562,6 +3562,21 @@ async def import_backup(request):
         raise web.HTTPBadRequest(text=f"Couldn't import: {e}")
 
 
+async def import_backup_part(request):
+    """A backup over 16 MB, in pieces (Home Assistant's ingress proxy refuses bigger requests)."""
+    part, size, done = await _receive_part(request, request.app[STORAGE].upload_dir)
+    if not done:
+        return web.json_response({"received": size})
+    try:
+        data = await asyncio.to_thread(part.read_bytes)
+    finally:
+        part.unlink(missing_ok=True)
+    try:
+        return web.json_response(await _replace_data(request.app, "import", data))
+    except backup.BackupError as e:
+        raise web.HTTPBadRequest(text=f"Couldn't import: {e}")
+
+
 async def start_afresh(request):
     return web.json_response(await _replace_data(request.app, "fresh-start", None))
 
@@ -3827,6 +3842,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_delete("/api/house/photo", delete_house_photo)
     r.add_get("/api/backup", export_backup)
     r.add_post("/api/backup", import_backup)
+    r.add_post("/api/backup/part", import_backup_part)
     r.add_post("/api/backup/reset", start_afresh)
     r.add_get("/api/backup/copies", list_copies)
     r.add_get("/api/backup/copies/{name}", download_copy)
