@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.446
+## 0.2.447
 
 - **Detect** and **✨ Describe sections** write richer section notes. As well as how loud each part is,
   they now say what can be heard in it (a choir, sleigh bells, brass), where the singing starts and
@@ -8,6 +8,10 @@
   to match: twinkles for bells, slow washes for a choir, everything in when the drums start. That comes
   from what's already been found for the song (by **Split into parts** and **Lyrics**), so it works
   without an AI, and the AI gets it too when you have one set up.
+
+## 0.2.446
+
+- **Pick WLED palettes by eye too.** For a light on **WLED's own effect**, the palette is now a button showing its colours. Press it to open the **WLED palette** window, which shows every palette your WLED has as a strip of colours, with a search box. **Default** shows the colours your chosen effect uses on its own, such as **Fire 2012**'s fire colours.
 
 ## 0.2.445
 

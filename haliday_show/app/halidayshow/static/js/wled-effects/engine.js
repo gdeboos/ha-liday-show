@@ -257,7 +257,7 @@ const gradients = GRADIENTS.map((g) => gradientPalette(g));
 export const PALETTE_COUNT = 13 + GRADIENTS.length;
 
 // Which palette "Default" (0) means for an effect (Segment::loadPalette).
-const DEFAULT_PALETTE = { 66: 35, 67: 26, 69: 9, 70: 20, 71: 43, 72: 35, 73: 26, 87: 11, 104: 35, 78: 3 };
+export const DEFAULT_PALETTE = { 66: 35, 67: 26, 69: 9, 70: 20, 71: 43, 72: 35, 73: 26, 87: 11, 104: 35, 78: 3 };
 
 // FastLED's ColorFromPalette for a 16-entry palette.
 export function ColorFromPalette(pal, index, brightness = 255, blend = true) {

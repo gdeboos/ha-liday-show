@@ -84,7 +84,9 @@ and not on the schedule) and **Remove…**.
   then opens: every effect the WLED has, read from the light itself (so the light needs its IP address),
   each moving as the WLED draws it in the light's colours. Type in **Find a WLED effect** to narrow them
   down, and press one to pick it. To change it later, press its name (**Change…**) under **WLED's own
-  effect**; the WLED's palette is in the list below it. Its colours,
+  effect**. The button under that, with a strip of colours, is the WLED's palette: press it to see every
+  palette your WLED has as a strip of its colours, and pick one. **Default** shows the colours the effect
+  uses when no palette is picked. Its colours,
   **Speed**, **Brightness** and **Intensity** go to the WLED too. When the scene starts, HA-liday Show
   tells the WLED to play that effect and sends it nothing else; your other lights play as usual. The
   **Preview** shows the effect moving as the WLED draws it, worked out with WLED's own code, for all of
