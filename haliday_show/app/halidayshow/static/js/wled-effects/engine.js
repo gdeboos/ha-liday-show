@@ -27,8 +27,9 @@ export const setSeed = (v) => { seed = v & 0xFFFF; };
 export function random16(a, b) {
   seed = (seed * 2053 + 13849) & 0xFFFF;
   if (a === undefined) return seed;
-  if (b === undefined) return Math.floor((seed * a) / 65536);
-  return a + Math.floor((seed * (b - a)) / 65536);
+  if (b === undefined) return Math.floor((seed * (a & 0xFFFF)) / 65536);
+  a &= 0xFFFF; b &= 0xFFFF; // uint16_t arguments
+  return (a + Math.floor((seed * ((b - a) & 0xFFFF)) / 65536)) & 0xFFFF;
 }
 export function random8(a, b) {
   seed = (seed * 2053 + 13849) & 0xFFFF;
@@ -168,6 +169,7 @@ export const fromCRGB = (c) => RGBW32(c[0], c[1], c[2], 0);
 export const getAverageLight = (c) => scale8(c[0], 85) + scale8(c[1], 85) + scale8(c[2], 85);
 export const nscale8_video = (c, s) => c.map((v) => scale8_video(v, s));
 export const addCRGB = (a, b) => [qadd8(a[0], b[0]), qadd8(a[1], b[1]), qadd8(a[2], b[2])];
+export const nscale8 = (c, s) => c.map((v) => scale8(v, s));
 export const maxCRGB = (a, b) => [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2])];
 
 // FastLED's hsv2rgb_rainbow.

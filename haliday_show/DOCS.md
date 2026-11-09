@@ -2146,11 +2146,12 @@ and not on the schedule) and **Remove…**.
   effects and palettes, read from the light itself (so the light needs its IP address). Its colours,
   **Speed**, **Brightness** and **Intensity** go to the WLED too. When the scene starts, HA-liday Show
   tells the WLED to play that effect and sends it nothing else; your other lights play as usual. The
-  **Preview** shows the effect moving as the WLED draws it, worked out with WLED's own code, for most
-  of WLED's effects so far (such as **Fire 2012**, **Pacifica**, **Twinklefox**, **Rainbow**,
-  **Colorloop**, **Candle**, **Meteor**, **Juggle**, **Fireworks Starburst**, **Sinelon**, **Pride
-  2015**, **Glitter**, **Dissolve** and **Heartbeat**). The others show a rough stand-in, their palette
-  or colours drifting along the light, and the light's row says so. When it
+  **Preview** shows the effect moving as the WLED draws it, worked out with WLED's own code, for all of
+  WLED's effects for a strip of lights (such as **Fire 2012**, **Pacifica**, **Twinklefox**, **Aurora**,
+  **Noise 1** to **4**, **Bouncing Balls**, **Halloween Eyes** and **TV Simulator**). The 2D, sound-reactive
+  and particle (**PS**) effects show a rough stand-in, their palette or colours drifting along the light,
+  and the light's row says so. On the **Default** palette, some effects (such as **Fill Noise**) show a
+  single colour, on the WLED as in the preview: pick a palette to see them properly. When it
   switches the WLED to an effect, HA-liday Show also has the WLED load that effect's own settings for
   its extra sliders and options (your speed, intensity, palette and colours still apply), so effects
   such as **Palette** and **Scanner** play as WLED intends; the preview uses the same settings.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.443
+
+- **Every WLED strip effect now moves in the preview.** The last 33 of WLED's effects for a strip of lights now show as the WLED draws them, including **Aurora**, **Noise 1** to **4**, **Fill Noise**, **Noise Pal**, **Lake**, **Colortwinkles**, **Bouncing Balls**, **Popcorn**, **Drip**, **Rolling Balls**, **Fireworks 1D**, **Ripple**, **Halloween Eyes**, **Fairy**, **Sunrise**, **Dancing Shadows** and **TV Simulator**. Only WLED's 2D, sound-reactive and particle (**PS**) effects still show the rough stand-in. Tip: on the **Default** palette, some noise effects are a single colour on the WLED itself, and the preview shows that too; pick a palette to see them move.
+
 ## 0.2.442
 
 - **Splitting into parts rides out a dropped connection.** If the connection to HA-liday Show drops while songs are being split or an edit's parts are being cut (the Wi-Fi blips, or the app restarts after an update), it now waits and tries again for about a minute instead of failing with "Failed to fetch". If it still can't, it says it lost touch, so you know to press **Split into parts…** on that song again.

@@ -46,10 +46,34 @@ test("a solid colour previews as the colour picked, and gradient palettes as WLE
 test("every ported effect runs, moves and stays in range", () => {
   const still = [0, 65, 83, 84, 85]; // Solid, Palette (unrotated), Solid Pattern, Solid Pattern Tri, Spots
   for (const fx of Object.keys(MODES).map(Number)) {
-    const run = frames(look(fx), 40, 20, 0.1); // Traffic Light changes every 13 s at this speed
-    for (const f of run) assert.ok(f.every((v) => Number.isInteger(v) && v >= 0 && v <= 255), `effect ${fx}`);
-    const moving = new Set(run.map((f) => f.join())).size;
-    if (!still.includes(fx)) assert.ok(moving > 1, `effect ${fx} should move`);
+    for (const palette of [0, 11]) { // on Default, the noise effects are one colour, as on the WLED
+      const run = frames(look(fx, { palette }), 40, 20, 0.1); // Traffic Light changes every 13 s at this speed
+      for (const f of run) assert.ok(f.every((v) => Number.isInteger(v) && v >= 0 && v <= 255), `effect ${fx}`);
+      const moving = new Set(run.map((f) => f.join())).size;
+      if (palette === 11 && !still.includes(fx)) assert.ok(moving > 1, `effect ${fx} should move`);
+    }
+  }
+});
+
+test("Perlin noise matches FastLED's, as the WLED computes it", async () => {
+  const { inoise8, inoise16 } = await import("../../haliday_show/app/halidayshow/static/js/wled-effects/noise.js");
+  // x, y, z, then inoise16(x, y, z), (x, y), (x), inoise8(x, y, z), (x, y), (x): from FastLED 3.6's noise.cpp built in C
+  const known = [
+    [1103527590, 2524885223, 662824084, 45454, 36810, 34444, 112, 144, 170],
+    [3295386429, 4182499122, 2516284547, 38675, 36944, 31204, 56, 110, 84],
+    [3655513600, 2633739833, 3210001534, 48470, 31206, 38510, 126, 144, 128],
+    [267834847, 180171308, 836760821, 30265, 23422, 29516, 108, 124, 144],
+    [595337866, 2937909499, 2111915288, 45194, 31649, 25064, 130, 192, 128],
+    [3297241969, 3791773014, 3535774167, 38608, 40260, 31238, 198, 172, 116],
+    [3794901700, 3823029677, 3914758370, 16819, 28945, 31908, 154, 66, 170],
+    [2473755763, 1343201072, 675780521, 25427, 18329, 25618, 138, 206, 30],
+    [744964398, 1969681615, 1116175964, 47308, 21454, 16928, 142, 144, 176],
+    [3008955749, 1303003706, 3834121963, 41526, 42280, 35306, 212, 58, 164],
+    [4147913800, 4015624929, 4008331270, 28618, 18450, 35744, 128, 166, 96],
+    [1448521415, 3776134388, 3397090333, 50196, 32227, 47424, 162, 118, 146]
+  ];
+  for (const [x, y, z, ...want] of known) {
+    assert.deepEqual([inoise16(x, y, z), inoise16(x, y), inoise16(x), inoise8(x, y, z), inoise8(x, y), inoise8(x)], want);
   }
 });
 
