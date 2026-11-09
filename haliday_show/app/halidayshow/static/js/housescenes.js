@@ -37,7 +37,7 @@ export function changeEffect(look, effect, palette = null, offset = 0) {
     // A WLED's own effect draws in those colours too, on WLED's "* Colors Only" palette.
     if (effect === "wled") Object.assign(next.params, { palette: 5, palName: "* Colors Only" });
     if (look?.params.brightness != null) next.params.brightness = look.params.brightness;
-    if (look?.params.glitter) next.params.glitter = look.params.glitter;
+    if (look?.params.glitter && effect !== "wled") next.params.glitter = look.params.glitter;
     return next;
   }
   if (!look) return next;
@@ -45,7 +45,7 @@ export function changeEffect(look, effect, palette = null, offset = 0) {
   // A list of colours takes as many as the old look had (at least two).
   if (EFFECTS[effect]?.list && colours.length >= 2) next.params.count = String(Math.min(colours.length, paletteKeys(effect).length));
   if (look.params.brightness != null) next.params.brightness = look.params.brightness;
-  if (look.params.glitter) next.params.glitter = look.params.glitter;
+  if (look.params.glitter && effect !== "wled") next.params.glitter = look.params.glitter; // no glitter on a WLED's own effect
   return next;
 }
 
