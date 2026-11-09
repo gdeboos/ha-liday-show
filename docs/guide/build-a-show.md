@@ -220,7 +220,7 @@ players can play them. For a lights-only show, choose **No song, lights only** a
 
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
 tempo and sections) or "not detected yet", and which shows use it. Under that, **♪ Lyrics** shows it has
-its words, and **Parts:** with a coloured dot for each part shows it's been split into its vocals, drums,
+its words (an edit cut from a song with words shows it too, as it uses those), and **Parts:** with a coloured dot for each part shows it's been split into its vocals, drums,
 bass and the rest (the same as in the Music editor). Type in **Find** to narrow the
 list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Remove…** archives
 or deletes one. The song you last opened in the Music editor has a **Last edited** badge.

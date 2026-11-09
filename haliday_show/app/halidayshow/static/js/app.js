@@ -9120,7 +9120,7 @@ function songFamilyCard(f) {
     const h = document.createElement("div");
     h.className = "song-kids-head";
     h.textContent = "Edits of this song";
-    kids.append(h, ...f.edits.map(editKid), ...f.drafts.map(draftKid));
+    kids.append(h, ...f.edits.map((e) => editKid(e, f.original)), ...f.drafts.map(draftKid));
     card.append(kids);
   }
   if (f.splits?.length) {
@@ -9198,14 +9198,17 @@ function splitButton(r, base = null) {
 
 // After a song's details: a Lyrics badge if it has words, and its parts in their colours, as the
 // Music editor shows them.
-function songTags(r) {
+// inherited: an edit with no words of its own whose original has them (its shows use those, through
+// its cuts).
+function songTags(r, inherited = false) {
   const chip = partsChip(r.parts);
-  if (!chip && !r.lyrics) return null;
+  if (!chip && !r.lyrics && !inherited) return null;
   const marks = document.createElement("div");
   marks.className = "song-marks";
-  if (r.lyrics) {
+  if (r.lyrics || inherited) {
     marks.append(Object.assign(document.createElement("span"), { className: "song-badge lyrics", textContent: "♪ Lyrics",
-      title: "It has its words, for Singing faces and the timeline's lyrics row" }));
+      title: r.lyrics ? "It has its words, for Singing faces and the timeline's lyrics row"
+        : "Its original's words, through your cuts, for Singing faces and the timeline's lyrics row" }));
   }
   if (chip) {
     chip.classList.add("small");
@@ -9215,14 +9218,16 @@ function songTags(r) {
   return marks;
 }
 
-function editKid(e) {
+function editKid(e, original = null) {
   const r = e.row, d = e.draft;
+  // Cut from its original alone (no other songs layered or spliced in): its shows use the original's words.
+  const inherits = !r.lyrics && !!d && !!original?.lyrics && (d.uses || []).every((p) => p === original.ref.path);
   const details = document.createElement("div");
   details.className = "hint";
   const len = document.createElement("span");
   len.textContent = "…";
   details.append(len, ` · ${r.found} · `, d ? `made from the draft "${d.name}"` : "made before drafts, so Edit starts a new one");
-  const marks = songTags(r);
+  const marks = songTags(r, inherits);
   const uses = document.createElement("div");
   uses.className = "hint";
   uses.textContent = r.uses;
