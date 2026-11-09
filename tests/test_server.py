@@ -2246,8 +2246,11 @@ async def test_a_song_keeps_its_lyrics_and_singer(client, tmp_path):
     song.write_bytes(b"RIFF....WAVEfmt " + b"\0" * 100)
     q = "source=media&path=carol.wav"
     assert await (await client.get(f"/api/audio/lyrics?{q}")).json() is None
+    has_words = lambda songs: {x["path"]: x for x in songs["songs"]}["carol.wav"]["lyrics"]  # noqa: E731
+    assert has_words(await (await client.get("/api/songs")).json()) is False
     lyrics = {"text": "Silent night\nholy night", "lines": [{"start": 1, "end": 3.5}, {"start": 4, "end": 6}]}
     assert (await client.put(f"/api/audio/lyrics?{q}", json=lyrics)).status == 200
+    assert has_words(await (await client.get("/api/songs")).json()) is True  # Library → Songs shows its Lyrics badge
     assert await (await client.get(f"/api/audio/lyrics?{q}")).json() == {"text": lyrics["text"], "lines": [
         {"start": 1.0, "end": 3.5}, {"start": 4.0, "end": 6.0}]}
     words = {"text": "a b", "lines": [{"start": 1, "end": 3, "words": [{"start": 1, "end": 2}, {"start": 2.5, "end": 3}]}]}

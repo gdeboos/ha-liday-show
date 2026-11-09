@@ -597,6 +597,23 @@ function learnParts(songs) {
 // Each part's name and colour, the same wherever parts are shown.
 export const PART_LOOK = { vocals: ["Vocals", "#8e5cd9"], drums: ["Drums", "#d84a3a"], bass: ["Bass", "#2f7fd1"],
   rest: ["Rest", "#2e9e6b"], music: ["Music", "#c17d11"] };
+// "Parts: ● vocals ● drums ● bass ● rest", each dot in its part's colour: the Music editor's Song panel
+// and Library → Songs. Only the parts a song has; music only when that's all there is beside vocals
+// (split before songs had all four). null for none.
+export function partsChip(parts) {
+  const four = PARTS.filter((p) => parts?.[p]);
+  const names = four.length === PARTS.length ? four : ["vocals", "drums", "bass", "rest", "music"].filter((p) => parts?.[p]);
+  if (!names.length) return null;
+  const chip = document.createElement("span");
+  chip.className = "parts-chip";
+  chip.append("Parts:", ...names.flatMap((p) => {
+    const dot = document.createElement("i");
+    dot.style.background = PART_LOOK[p][1];
+    return [" ", dot, ` ${PART_LOOK[p][0].toLowerCase()}`];
+  }));
+  return chip;
+}
+
 // The song a clip's audio is from: its song for a part of one, else itself.
 const songOfClip = (ref) => partOfPath.get(ref.path)?.of || ref;
 // The info key of a clip's song (its song's, for a part of one).
@@ -1789,11 +1806,7 @@ export class MusicEditor {
     chip.hidden = !ready;
     if (ready && chip.dataset.for !== keyOf(this.base)) {
       chip.dataset.for = keyOf(this.base);
-      chip.replaceChildren("Parts:", ...PARTS.flatMap((p) => {
-        const dot = document.createElement("i");
-        dot.style.background = PART_LOOK[p][1];
-        return [" ", dot, ` ${PART_LOOK[p][0].toLowerCase()}`];
-      }));
+      chip.replaceChildren(...partsChip(have).childNodes);
       chip.title = "The song's vocals, drums, bass and the rest, kept with it: pick them as layers, and Singing faces and Generate follow them";
     }
     const split = $("music-split");
