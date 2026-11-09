@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.444
+
+- **Pick WLED effects by eye.** In a scene, **WLED's own effect** now sits first in the effect window, in its own blue box, so it's easy to find. Picking it opens a new **WLED effect** window showing every one of your WLED's effects moving, in the light's colours, with a search box. Press one to pick it. To change it later, press the effect's name under **WLED's own effect**.
+
 ## 0.2.443
 
 - **Every WLED strip effect now moves in the preview.** The last 33 of WLED's effects for a strip of lights now show as the WLED draws them, including **Aurora**, **Noise 1** to **4**, **Fill Noise**, **Noise Pal**, **Lake**, **Colortwinkles**, **Bouncing Balls**, **Popcorn**, **Drip**, **Rolling Balls**, **Fireworks 1D**, **Ripple**, **Halloween Eyes**, **Fairy**, **Sunrise**, **Dancing Shadows** and **TV Simulator**. Only WLED's 2D, sound-reactive and particle (**PS**) effects still show the rough stand-in. Tip: on the **Default** palette, some noise effects are a single colour on the WLED itself, and the preview shows that too; pick a palette to see them move.

@@ -43,6 +43,7 @@ export class SceneEditor {
   // scheduleLine(id) (the same in words, or "" when it isn't on the schedule),
   // chooseEffect(options) (the Show editor's effect window, with its moving previews),
   // wledPicker(kind, dev, params, onChange) (a WLED's own effects or palettes, read from it),
+  // chooseWledEffect({dev, params, onPick}) (the WLED effect window),
   // palettePicker(name, onPick, options) (a button to pick a palette by eye), paletteRows() (the
   // palettes as rows for radioRows(box, name, rows, picked, onPick)), firstPalette() (the one New
   // scene starts on), askYes(text, options)
@@ -496,6 +497,11 @@ export class SceneEditor {
         if (picked) next.params = { ...next.params, ...presetParams(picked, clipFor(next, 0, 1)) };
         set(next);
         changed(true);
+        // Switching to WLED's own effect goes straight on to which one, when the WLED can be asked.
+        // After the effect window has closed (its close clears the moving previews).
+        if (key === "wled" && !own && dev?.ip) {
+          setTimeout(() => this.d.chooseWledEffect({ dev, params: next.params, onPick: () => { set(next); changed(true); } }), 0);
+        }
       },
     }));
     const fx = el("span", { class: "sc-fx" }, eff);
@@ -506,7 +512,7 @@ export class SceneEditor {
     if (own) {
       // Which of the WLED's effects and palettes. The preview runs WLED's own code for the effects ported
       // so far (wled-effects/); the rest show a moving stand-in, and say so.
-      fx.append(el("span", { class: "sc-wled" }, this.d.wledPicker("wledfx", dev, look.params, () => changed(false)),
+      fx.append(el("span", { class: "sc-wled" }, this.d.wledPicker("wledfx", dev, look.params, () => changed(true)),
         this.d.wledPicker("wledpal", dev, look.params, () => changed(false)),
         el("span", { class: "hint" }, isPorted(look.params?.fx ?? 0)
           ? "Plays on the WLED itself; the preview shows it as the WLED draws it"

@@ -2139,11 +2139,14 @@ and not on the schedule) and **Remove…**.
   microphone hears (see [Live music effects](#live-music-effects)). Its row then has **Follows** (and
   **Fills** or **Burst**) under the effect.
 - A WLED light can play one of **WLED's own effects** instead: pick **WLED's own effect** under
-  **On this WLED** in the effect window. A light split into parts offers it on its own row (with
+  **On this WLED**, the blue box at the top of the effect window. A light split into parts offers it on its own row (with
   **Each part on its own** off), and the WLED plays it across all its segments. With **Each part on
   its own** on, each part made from the WLED's segments (with **Fetch segments**) can have its own:
-  say Fire on Left and Twinkle on Right. Parts you drew yourself don't offer it. Under it, pick which of the WLED's
-  effects and palettes, read from the light itself (so the light needs its IP address). Its colours,
+  say Fire on Left and Twinkle on Right. Parts you drew yourself don't offer it. The **WLED effect** window
+  then opens: every effect the WLED has, read from the light itself (so the light needs its IP address),
+  each moving as the WLED draws it in the light's colours. Type in **Find a WLED effect** to narrow them
+  down, and press one to pick it. To change it later, press its name (**Change…**) under **WLED's own
+  effect**; the WLED's palette is in the list below it. Its colours,
   **Speed**, **Brightness** and **Intensity** go to the WLED too. When the scene starts, HA-liday Show
   tells the WLED to play that effect and sends it nothing else; your other lights play as usual. The
   **Preview** shows the effect moving as the WLED draws it, worked out with WLED's own code, for all of

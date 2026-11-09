@@ -22,6 +22,7 @@ import { makeParts, prepared, splitVocals, splitting, stemNames, lineUpLyrics } 
 import { FITS, mashFit, rankFits } from "./mashfit.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic, wledSegmentPart } from "./housescenes.js";
+import { wledEffectChoices } from "./wledchoices.js";
 import { controllerId, nextFirstLed, nextUniverse, overlapping } from "./controllers.js";
 import { partsFrame } from "./devicetest.js";
 import { asShown, isSlow } from "./lightspeed.js";
@@ -1798,9 +1799,11 @@ function wledList(dev) {
   return wledLists.get(dev.ip);
 }
 
-// A list to pick one of a WLED's own effects (kind "wledfx") or palettes ("wledpal") for a clip or a
-// scene light's settings `p`, kept by number with its name beside it (for the editor to show).
+// Picks one of a WLED's own effects (kind "wledfx", a button opening the WLED effect window) or palettes
+// ("wledpal", a list) for a clip or a scene light's settings `p`, kept by number with its name beside it
+// (for the editor to show).
 function wledPicker(kind, dev, p, onChange) {
+  if (kind === "wledfx") return wledEffectButton(dev, p, onChange);
   const key = kind === "wledfx" ? "fx" : "palette", nameKey = key === "fx" ? "fxName" : "palName";
   const what = key === "fx" ? "effect" : "palette";
   const sel = document.createElement("select");
@@ -1825,6 +1828,120 @@ function wledPicker(kind, dev, p, onChange) {
     onChange();
   });
   return sel;
+}
+
+function wledEffectButton(dev, p, onChange) {
+  let known = "";
+  const name = () => p.fxName || known || `Effect ${p.fx ?? 0}`;
+  const label = Object.assign(document.createElement("span"), { className: "picker-name" });
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "picker-button wled-fx-button";
+  b.setAttribute("aria-haspopup", "dialog");
+  const show = () => {
+    label.textContent = name();
+    b.setAttribute("aria-label", `The WLED's own effect: ${name()}. Change…`);
+  };
+  b.append(label, Object.assign(document.createElement("span"), { className: "picker-change", textContent: "Change…", ariaHidden: "true" }));
+  show();
+  if (!wledList(dev)) {
+    b.disabled = true;
+    b.title = "Give this light its IP address under Setup → Devices to pick from its own effects";
+    return b;
+  }
+  b.title = "Pick one of this WLED's own effects, with a preview of each";
+  // Not picked here yet (just switched to WLED's own effect): its name, from the WLED.
+  if (!p.fxName) wledList(dev).then(({ effects }) => { known = effects[p.fx ?? 0] || ""; show(); }).catch(() => {});
+  b.addEventListener("click", () => chooseWledEffect({ dev, params: p, onPick: () => { show(); onChange(); } }));
+  return b;
+}
+
+// The WLED effect window: every effect the WLED has, read from it, each previewing as the WLED draws
+// it in this light's palette, colours, speed and intensity. Picking one sets p.fx and p.fxName.
+function chooseWledEffect({ dev, params: p, title = `WLED effect for ${dev?.name || "this light"}`, onPick }) {
+  const dlg = document.createElement("dialog");
+  dlg.className = "effect-dialog wled-fx-dialog";
+  const head = document.createElement("div");
+  head.className = "effect-dialog-head";
+  const h = document.createElement("h3");
+  h.textContent = title;
+  const close = button("✕", () => dlg.close(), "ghost");
+  close.title = "Close (Esc)";
+  const filters = document.createElement("div");
+  filters.className = "fx-filters";
+  const find = Object.assign(document.createElement("input"), { type: "search", placeholder: "Find a WLED effect", autocomplete: "off" });
+  find.setAttribute("aria-label", "Find a WLED effect");
+  filters.append(find, Object.assign(document.createElement("span"), { className: "hint",
+    textContent: "Plays on the WLED itself. Previews use this light's palette, colours, speed and intensity." }));
+  head.append(h, close, filters);
+  const body = document.createElement("div");
+  body.className = "effect-dialog-body";
+  body.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "Reading this WLED's effects…" }));
+  dlg.append(head, body);
+  let names = [];
+  // p may be a clip (Advanced scenes): only its settings, not its place.
+  const { start: _s, end: _e, effect: _f, ...look } = p;
+  const tile = ({ id, name }) => {
+    const b = button("", () => {
+      p.fx = id;
+      p.fxName = name.slice(0, 40);
+      dlg.close();
+      onPick(id, name);
+    }, id === (p.fx ?? 0) ? "active" : "");
+    const strip = document.createElement("canvas");
+    strip.className = `fx-strip${gridOf(dev) ? " grid" : ""}`;
+    b.append(strip, Object.assign(document.createElement("span"), { textContent: name }));
+    // A long loop, so effects that build up (Fire, Aurora) have time to.
+    pickerPreview.items.push({ canvas: strip, clip: { ...look, effect: "wled", start: 0, end: 30, fx: id }, dev });
+    return b;
+  };
+  const render = () => {
+    pickerPreview.items = [];
+    pickerPreview.owner = dlg;
+    pickerPreview.started = performance.now();
+    const { drawn, rough } = wledEffectChoices(names, find.value);
+    body.replaceChildren();
+    for (const [heading, list, note] of [["Shown as the WLED draws them", drawn, ""],
+      ["Rough preview only", rough, "2D and sound-reactive effects: the preview can only hint at these"]]) {
+      if (!list.length) continue;
+      const box = document.createElement("section");
+      box.className = "fx-kind";
+      const sub = document.createElement("div");
+      sub.className = "effect-dialog-kind";
+      sub.append(heading, Object.assign(document.createElement("span"), { className: "fx-count", textContent: String(list.length) }));
+      box.append(sub);
+      if (note) box.append(Object.assign(document.createElement("p"), { className: "hint", textContent: note }));
+      const row = document.createElement("div");
+      row.className = "effect-picker";
+      row.append(...list.map(tile));
+      box.append(row);
+      body.append(box);
+    }
+    if (!body.children.length) {
+      const none = Object.assign(document.createElement("p"), { className: "hint fx-none", textContent: "No WLED effects are called that. " });
+      none.append(button("Show them all", () => { find.value = ""; render(); }, "link-button"));
+      body.append(none);
+    }
+  };
+  find.addEventListener("input", () => render());
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  // Only if no other window has taken the previews over since (one can open as this one closes).
+  dlg.addEventListener("close", () => { if (pickerPreview.owner === dlg) pickerPreview.items = []; dlg.remove(); });
+  document.body.append(dlg);
+  dlg.showModal();
+  const unread = (text) => body.replaceChildren(Object.assign(document.createElement("p"), { className: "hint error", textContent: text }));
+  const list = wledList(dev);
+  if (!list) unread("Give this light its IP address under Setup → Devices to pick from its own effects.");
+  else {
+    list.then(({ effects }) => {
+      if (!dlg.open) return;
+      names = effects;
+      render();
+      body.querySelector(".active")?.scrollIntoView({ block: "nearest" });
+      find.focus();
+    }, () => unread("Couldn't reach this WLED to read its effects. Is it on?"));
+  }
+  return dlg;
 }
 
 // Find segments: light one segment at a time and halve the range on each answer. A light with
@@ -2908,7 +3025,7 @@ const sceneEd = new SceneEditor({
   picturesReady: () => picturesReady,
   scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => (entriesFor(scheduleState.entries || [], "scene", id).length
     ? scheduleLine(scheduleState.entries, "scene", id, scheduleState) : ""),
-  chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }), wledPicker,
+  chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }), wledPicker, chooseWledEffect,
   palettePicker: (name, onPick, opts) => palettePicker(name, onPick, { none: PALETTE_NONE, ...opts }),
   paletteRows: () => [{ value: "", label: "None", detail: "Each light starts on a warm white" },
     ...allPalettes().map((p) => ({ value: p.name, label: p.name, detail: `${p.colors.length} colours`, picture: paletteBar(p.colors) }))],
@@ -3767,7 +3884,7 @@ const shownGroup = (key, fx, house, matrix) => (matrix && house === false && ON_
 
 // Previews in the effect chooser: each strip loops its effect for as long as the clip or selection
 // (within reason) on the light's own segments.
-const pickerPreview = { items: [], started: 0 };
+const pickerPreview = { items: [], started: 0, owner: null };
 const SHOW_PRESETS_KEY = "halidayshow.showPresets";
 const MINE_ONLY_KEY = "halidayshow.myPresetsOnly";
 
@@ -3901,6 +4018,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
   };
   const render = () => {
     pickerPreview.items = [];
+    pickerPreview.owner = dlg;
     pickerPreview.started = performance.now();
     body.replaceChildren();
     note.hidden = true;
@@ -3939,17 +4057,23 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         // strip they show one row of the picture, so Scrolling text and Picture show next to nothing.
         .filter(([key, fx]) => !fx.grid || !dev || !!gridOf(dev) || allow.checked || key === current);
       // Under small headings (Basics, Movement, ...) when there's more than one kind.
-      const kinds = EFFECT_GROUPS.map(([g, label]) => [label, all.filter(([key, fx]) => shownGroup(key, fx, house, matrix) === g)])
-        .filter(([, e]) => e.length);
-      for (const [kind, effects] of kinds) {
+      // A WLED's own effect comes first, in a box of its own look: it's a different way of playing.
+      const kinds = EFFECT_GROUPS.map(([g, label]) => [label, all.filter(([key, fx]) => shownGroup(key, fx, house, matrix) === g), g])
+        .filter(([, e]) => e.length)
+        .sort((a, b) => (b[2] === "wled") - (a[2] === "wled"));
+      for (const [kind, effects, g] of kinds) {
         // Each kind in its own box, its name and how many there are on top.
         const box = document.createElement("section");
-        box.className = "fx-kind";
+        box.className = `fx-kind${g === "wled" ? " fx-kind-wled" : ""}`;
         if (kinds.length > 1 && !(toggle.checked && onlyMine)) {
           const sub = document.createElement("div");
           sub.className = "effect-dialog-kind";
           sub.append(kind, Object.assign(document.createElement("span"), { className: "fx-count", textContent: String(effects.length) }));
           box.append(sub);
+        }
+        if (g === "wled") {
+          box.append(Object.assign(document.createElement("p"), { className: "hint",
+            textContent: "Runs one of the WLED's own effects on the light itself: HA-liday Show tells it once, then sends nothing more." }));
         }
         body.append(box);
         if (!toggle.checked) {
@@ -4002,7 +4126,8 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     });
   }
   dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); }); // the backdrop
-  dlg.addEventListener("close", () => { pickerPreview.items = []; dlg.remove(); });
+  // Only if no other window has taken the previews over since (one can open as this one closes).
+  dlg.addEventListener("close", () => { if (pickerPreview.owner === dlg) pickerPreview.items = []; dlg.remove(); });
   render();
   document.body.append(dlg);
   dlg.showModal();
