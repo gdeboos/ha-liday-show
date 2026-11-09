@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.463
+
+- **Fixed: big backups wouldn't import.** **Import…** on **Setup → Settings → Your data** stopped with "Maximum request body size 16777216 exceeded" for an export over 16 MB (lots of pictures or faces, say), because Home Assistant turns away anything bigger in one go. Big backups now go up in pieces, with how far it's got shown as it sends.
+
 ## 0.2.462
 
 - **Delete copies you don't need.** Each copy kept under **Setup → Settings → Your data** now has a **Delete** button, which asks first, so you can clear out old ones.

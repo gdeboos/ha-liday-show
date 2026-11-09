@@ -89,7 +89,8 @@ phone has its own. It holds:
   It's the same on every install, so you can move your shows to another Home Assistant, or between
   HA-liday Show and a Docker or pipx install.
 - **Import…** replaces all of that with what's in an exported file. A file that isn't an HA-liday Show
-  export is refused and nothing changes.
+  export is refused and nothing changes. A big file goes up in pieces, so it takes a moment; the
+  status line shows how far it's got.
 - **Start afresh…** removes it all, so HA-liday Show is like new and the setup guide opens. It also resets
   this browser's layout and choices (like **Show the Labs tab**). Your songs are kept.
 
