@@ -5,6 +5,7 @@
 import { bakeLiveOff, bakeOff } from "./bakeoff.js";
 import { EFFECTS, FPS, MADE_UP, composeLight, withoutLive, matchesPreset, presetParams, unusedColour, withMusicLevels } from "./effects.js";
 import { gatherPart } from "./parts.js";
+import { isPorted } from "./wled-effects/index.js";
 import {
   LIVE_EFFECTS, SCENE_EFFECTS, byParts, wledSegmentPart, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
   sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
@@ -503,10 +504,13 @@ export class SceneEditor {
         title: "Off in this scene", onclick: () => { set(null); changed(true); } }, "Off"));
     }
     if (own) {
-      // Which of the WLED's effects and palettes: the preview only shows a still stand-in in its colours.
+      // Which of the WLED's effects and palettes. The preview runs WLED's own code for the effects ported
+      // so far (wled-effects/); the rest show a moving stand-in, and say so.
       fx.append(el("span", { class: "sc-wled" }, this.d.wledPicker("wledfx", dev, look.params, () => changed(false)),
         this.d.wledPicker("wledpal", dev, look.params, () => changed(false)),
-        el("span", { class: "hint" }, "Plays on the WLED itself; the preview shows only its colours"),
+        el("span", { class: "hint" }, isPorted(look.params?.fx ?? 0)
+          ? "Plays on the WLED itself; the preview shows it as the WLED draws it"
+          : "Plays on the WLED itself; the preview of this one is only a rough stand-in so far"),
         ...this.sharingWled(dev)));
     }
     if (EFFECTS[look?.effect]?.live) {

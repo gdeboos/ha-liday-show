@@ -383,7 +383,7 @@ export class Timeline {
       ctx.font = "600 11px system-ui, sans-serif";
       const tx = Math.max(x0, HEADER_W) + 4;
       // Trimmed to its own clip, so a short clip's name doesn't run into the next one.
-      // WLED's own effect says which one, as the clip only shows a stand-in in its colours.
+      // WLED's own effect says which one (WLED's own name for it).
       const name = EFFECTS[clip.effect]?.wledOwn ? `WLED: ${clip.fxName || `effect ${clip.fx ?? 0}`}` : EFFECTS[clip.effect]?.label || clip.effect;
       const label = clipText(ctx, `${level === "ok" ? "" : "⚠ "}${name}`, x1 - tx - 8);
       ctx.fillStyle = "rgba(0,0,0,0.55)";

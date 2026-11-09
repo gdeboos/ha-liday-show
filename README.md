@@ -213,7 +213,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   the same for every light, or switch one to **Advanced** to give it a timeline and the House lane in
   the Show editor. In Home Assistant each scene is a scene entity, and one light turns them on and off
   and dims them. Scenes can come on and go off by themselves, at set times or from sunset. A WLED light
-  in a scene can play one of WLED's own effects instead
+  in a scene can play one of WLED's own effects instead, previewed moving as the WLED draws it
 - **Live music**: see what a WLED with a microphone hears (loudness, beats, bass to treble) in Settings,
   and have scenes **react to music**: brighter when it's louder, a flash on each beat, other scenes for
   strong bass or treble, and **live music effects** on scene lights (a level meter or a burst on every beat, following the
@@ -539,4 +539,7 @@ fills one in for you, with the details that help, and takes out names, addresses
 
 ## 📄 Licence
 
-MIT, see [LICENSE](LICENSE). Not affiliated with Govee, WLED, Twinkly or Home Assistant.
+MIT, see [LICENSE](LICENSE), except one folder: `haliday_show/app/halidayshow/static/js/wled-effects/`
+holds WLED's own effects translated to JavaScript (to preview them in the editor), and stays under
+WLED's licence, the EUPL 1.2 (see the `LICENSE` and `README.md` in that folder). Not affiliated with
+Govee, WLED, Twinkly or Home Assistant.
