@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.469
+
+- **Lyrics… no longer keeps you waiting.** The window opens straight away instead of sitting on "Getting the words ready…". The first time you open it for a song, it still has to find where the singing is, which can take a while; a line at the top says so, and you can read or type the words meanwhile. Only placing the words and **Save** wait for it.
+
 ## 0.2.468
 
 - **Visitors can start a show straight away over your scenes.** While a scene, or a block of your playlist (such as your scenes playlist), is on, the visitors' page now offers **Start** instead of **Queue**, and no longer says they'll wait for the block to finish. Their pick takes over at once, then your scenes carry on.
