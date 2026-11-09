@@ -1879,6 +1879,8 @@ function chooseWledEffect({ dev, params: p, title = `WLED effect for ${dev?.name
   body.append(Object.assign(document.createElement("p"), { className: "hint", textContent: "Reading this WLED's effects…" }));
   dlg.append(head, body);
   let names = [];
+  // p may be a clip (Advanced scenes): only its settings, not its place.
+  const { start: _s, end: _e, effect: _f, ...look } = p;
   const tile = ({ id, name }) => {
     const b = button("", () => {
       p.fx = id;
@@ -1890,11 +1892,12 @@ function chooseWledEffect({ dev, params: p, title = `WLED effect for ${dev?.name
     strip.className = `fx-strip${gridOf(dev) ? " grid" : ""}`;
     b.append(strip, Object.assign(document.createElement("span"), { textContent: name }));
     // A long loop, so effects that build up (Fire, Aurora) have time to.
-    pickerPreview.items.push({ canvas: strip, clip: { effect: "wled", start: 0, end: 30, ...p, fx: id }, dev });
+    pickerPreview.items.push({ canvas: strip, clip: { ...look, effect: "wled", start: 0, end: 30, fx: id }, dev });
     return b;
   };
   const render = () => {
     pickerPreview.items = [];
+    pickerPreview.owner = dlg;
     pickerPreview.started = performance.now();
     const { drawn, rough } = wledEffectChoices(names, find.value);
     body.replaceChildren();
@@ -1922,19 +1925,22 @@ function chooseWledEffect({ dev, params: p, title = `WLED effect for ${dev?.name
   };
   find.addEventListener("input", () => render());
   dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
-  dlg.addEventListener("close", () => { pickerPreview.items = []; dlg.remove(); });
+  // Only if no other window has taken the previews over since (one can open as this one closes).
+  dlg.addEventListener("close", () => { if (pickerPreview.owner === dlg) pickerPreview.items = []; dlg.remove(); });
   document.body.append(dlg);
   dlg.showModal();
-  wledList(dev)?.then(({ effects }) => {
-    if (!dlg.open) return;
-    names = effects;
-    render();
-    body.querySelector(".active")?.scrollIntoView({ block: "nearest" });
-    find.focus();
-  }).catch(() => {
-    body.replaceChildren(Object.assign(document.createElement("p"), { className: "hint error",
-      textContent: "Couldn't reach this WLED to read its effects. Is it on?" }));
-  });
+  const unread = (text) => body.replaceChildren(Object.assign(document.createElement("p"), { className: "hint error", textContent: text }));
+  const list = wledList(dev);
+  if (!list) unread("Give this light its IP address under Setup → Devices to pick from its own effects.");
+  else {
+    list.then(({ effects }) => {
+      if (!dlg.open) return;
+      names = effects;
+      render();
+      body.querySelector(".active")?.scrollIntoView({ block: "nearest" });
+      find.focus();
+    }, () => unread("Couldn't reach this WLED to read its effects. Is it on?"));
+  }
   return dlg;
 }
 
@@ -3878,7 +3884,7 @@ const shownGroup = (key, fx, house, matrix) => (matrix && house === false && ON_
 
 // Previews in the effect chooser: each strip loops its effect for as long as the clip or selection
 // (within reason) on the light's own segments.
-const pickerPreview = { items: [], started: 0 };
+const pickerPreview = { items: [], started: 0, owner: null };
 const SHOW_PRESETS_KEY = "halidayshow.showPresets";
 const MINE_ONLY_KEY = "halidayshow.myPresetsOnly";
 
@@ -4012,6 +4018,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
   };
   const render = () => {
     pickerPreview.items = [];
+    pickerPreview.owner = dlg;
     pickerPreview.started = performance.now();
     body.replaceChildren();
     note.hidden = true;
@@ -4119,7 +4126,8 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     });
   }
   dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); }); // the backdrop
-  dlg.addEventListener("close", () => { pickerPreview.items = []; dlg.remove(); });
+  // Only if no other window has taken the previews over since (one can open as this one closes).
+  dlg.addEventListener("close", () => { if (pickerPreview.owner === dlg) pickerPreview.items = []; dlg.remove(); });
   render();
   document.body.append(dlg);
   dlg.showModal();

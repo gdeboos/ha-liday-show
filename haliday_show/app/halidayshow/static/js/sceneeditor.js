@@ -498,7 +498,10 @@ export class SceneEditor {
         set(next);
         changed(true);
         // Switching to WLED's own effect goes straight on to which one, when the WLED can be asked.
-        if (key === "wled" && !own && dev?.ip) this.d.chooseWledEffect({ dev, params: next.params, onPick: () => { set(next); changed(true); } });
+        // After the effect window has closed (its close clears the moving previews).
+        if (key === "wled" && !own && dev?.ip) {
+          setTimeout(() => this.d.chooseWledEffect({ dev, params: next.params, onPick: () => { set(next); changed(true); } }), 0);
+        }
       },
     }));
     const fx = el("span", { class: "sc-fx" }, eff);
