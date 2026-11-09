@@ -1102,6 +1102,8 @@ async def upload_audio(request):
 # long download through Home Assistant's ingress can be cut off part way. HALIDAY_SHOW_STEMS_FROM points
 # at a mirror of them instead, for an install with no internet.
 _ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/"
+_ORT_NOTES = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.0-dev.20260914-8d85527a0/dist/"  # transformers.js 4.3.1's
+_NOTES = "https://github.com/gdeboos/ha-liday-show/releases/download/models-notes-1/notes-"
 STEM_FILES = {
     "model.onnx": ("https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR-MDX-NET-Voc_FT.onnx",
                    "application/octet-stream", 66762490, "534b2070fcc7df514b13ef660dc8cbb328679c2374d04354a5c42bb14ecce111"),
@@ -1119,6 +1121,22 @@ STEM_FILES = {
     # smaller and published in this repo by .github/workflows/models.yml.
     "align.onnx": ("https://github.com/gdeboos/ha-liday-show/releases/download/models-align-1/align-en-int8.onnx",
                    "application/octet-stream", 95288193, "e57bd381bb19a790e6a998142d7ab3e1b1362734381c06e1e1fb628089d1240d"),
+    # Section notes on your own device (static/js/notesworker.js): Qwen2.5-1.5B-Instruct (Apache 2.0) as
+    # 4-bit ONNX, published in this repo by .github/workflows/models.yml, run by transformers.js (Apache 2.0)
+    # on its own copy of the ONNX runtime. Only downloaded when asked for by name (see NAMED_ONLY).
+    **{f"notes-{n}": (_NOTES + n, kind, size, sha) for n, kind, size, sha in (
+        ("model.onnx", "application/octet-stream", 1221878940, "19dec9f63488016185ba997d5e4492b5ac5b4f7ef1abb45243a91de958838dcd"),
+        ("tokenizer.json", "application/json", 7031673, "a8506e7111b80c6d8635951a02eab0f4e1a8e4e5772da83846579e97b16f61bf"),
+        ("tokenizer_config.json", "application/json", 7849, "6a14243f0ae04884e597b3f032c05e15de9f417318fdcac24ab4e2680e691430"),
+        ("config.json", "application/json", 809, "215eb99c4955b0c42ea9f6e0980d922c228950c5dbc09bde6dc451fbba4d21f3"),
+        ("generation_config.json", "application/json", 242, "f7e7ce458658b2d40d9eb213b91b77a8bf698845ab89360976722d7ac46928a3"),
+    )},
+    "transformers.min.js": ("https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1/dist/transformers.min.js",
+                            "text/javascript", 586230, "8d6716d9086f57c30a4bf367dba61b887593573c770c454465e8019b2703e743"),
+    "ort-wasm-simd-threaded.asyncify.mjs": (_ORT_NOTES + "ort-wasm-simd-threaded.asyncify.mjs", "text/javascript", 53057,
+                                            "0966b6105cd936744498aa60df7a22cbd47af3374dbc64a9ab561c08a71e3611"),
+    "ort-wasm-simd-threaded.asyncify.wasm": (_ORT_NOTES + "ort-wasm-simd-threaded.asyncify.wasm", "application/wasm", 26861777,
+                                             "49871f5a4409519797e127440868a6d1923339d9185907f301a5b2a1d90af082"),
     "ort.webgpu.min.mjs": (_ORT + "ort.webgpu.min.mjs", "text/javascript", 333468,
                            "e1a0817ac08d5a6ade7f229754c2aecd444bff0bd22c259ca148a04b9f9e9f65"),
     "ort-wasm-simd-threaded.jsep.mjs": (_ORT + "ort-wasm-simd-threaded.jsep.mjs", "text/javascript", 46839,
@@ -1134,7 +1152,8 @@ class StemsUnavailable(Exception):
 
 async def _stream_from(url: str):
     try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1800, sock_connect=20, sock_read=60),
+        # No overall limit (the section notes model is over a gigabyte): a download that stalls for a minute stops.
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None, sock_connect=20, sock_read=60),
                                          trust_env=True) as s:
             async with s.get(url) as r:
                 if r.status != 200:
@@ -1183,7 +1202,7 @@ class StemFiles:
         `retry`, any that failed before)."""
         out = {}
         for name, (_, _, size, _) in STEM_FILES.items():
-            if names is not None and name not in names:
+            if (names is not None and name not in names) or (names is None and name in NAMED_ONLY):
                 continue
             self.start(name, retry)
             done = self.path(name) is not None
@@ -1228,6 +1247,9 @@ class StemFiles:
 
 
 STEMS = web.AppKey("stems", StemFiles)
+# Big downloads that only start when asked for by name: never part of "all of them".
+NAMED_ONLY = {n for n in STEM_FILES if n.startswith("notes-")} | {"transformers.min.js", "ort-wasm-simd-threaded.asyncify.mjs",
+                                                                  "ort-wasm-simd-threaded.asyncify.wasm"}
 
 
 async def post_stems_prepare(request):

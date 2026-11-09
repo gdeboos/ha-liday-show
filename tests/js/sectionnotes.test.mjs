@@ -195,3 +195,44 @@ test("the notes and the AI hear about the sounds, singing, drums and words", () 
   const only = describeSections([two[0]], withFacts([{ alone: true, hits: [], drops: [], shape: "steady" }], [facts[0]]))[0];
   assert.match(only.notes, /^You can hear/);
 });
+
+// --- Written on your own device ---
+import { devicePrompts, fromDevice, describeWithAI } from "../../haliday_show/app/halidayshow/static/js/sectionnotes.js";
+
+test("the on-device model is asked about each section it may write, in plain words", () => {
+  const secs = [{ start: 0, end: 20, label: "Intro", notes: "Mine", named: true }, { start: 20, end: 40, label: "Part B" }];
+  const traits = withFacts([{ ...trait, hits: [] }, { ...trait, hits: [] }], sectionFacts(secs, { sounds }));
+  const asks = devicePrompts(secs, traits, { name: "Jingle", tempo: 120.1 });
+  assert.deepEqual(asks.map((a) => a.index), [1], "your notes are left alone");
+  const user = asks[0].messages[1].content;
+  assert.match(user, /Song: Jingle, 120 BPM/);
+  assert.match(user, /Intro 0:00-0:20 \(loud\); Part B 0:20-0:40/);
+  assert.match(user, /What was heard in it: Loud, busy, lots of hits, bass-heavy; builds up through it; you can hear a choir/);
+  assert.match(user, /Lighting ideas: Everything on/);
+  assert.match(user, /Notes: <your notes>$/);
+  assert.doesNotMatch(user, /Name:/, "it isn't asked to rename");
+  assert.equal(asks[0].messages[0].role, "system");
+});
+
+test("the on-device model's answers are read, tidied and checked", () => {
+  const secs = [{ start: 0, end: 20, label: "Intro", notes: "Mine", named: true }, { start: 20, end: 40, label: "Part B" },
+    { start: 40, end: 60, label: "Part C" }];
+  const long = "The choir swells over driving drums. ".repeat(6) + "Bring every light in.";
+  const reply = fromDevice([
+    { index: 1, text: 'Notes: "The choir swells over driving drums; bring every light in, slow washes of white."\nName: Chorus.' },
+    { index: 0, text: "Notes: should be ignored, the notes are yours" },
+    { index: 2, text: "Notes: Quiet, sparse; feels christmassy; no singing; no drums. Lighting ideas: Keep it gentle." },
+    { index: 3, text: `Notes: ${long}${long}` },
+  ]);
+  assert.deepEqual(reply.sections[0], { index: 1, notes: "The choir swells over driving drums; bring every light in, slow washes of white.", name: "" });
+  assert.deepEqual(reply.sections.map((r) => r.index), [1, 0, 3], "the copied lists are left out");
+  const cut = reply.sections[2].notes;
+  assert.ok(cut.length <= 300 && cut.endsWith("drums."), cut);
+  const got = describeWithAI(secs, [{ ...trait }, { ...trait }, { ...trait }], reply);
+  assert.equal(got.sections[1].label, "Part B", "names stay");
+  assert.match(got.sections[1].notes, /^The choir swells/);
+  assert.equal(got.sections[0].notes, "Mine");
+  assert.match(got.sections[2].notes, /^Loud, busy/, "the rules' note where its answer was no use");
+  assert.deepEqual(fromDevice([{ index: 2, text: "rambling with no form" }]).sections, []);
+  assert.equal(fromDevice([{ index: 2, text: "Notes: ** The Chorus is **loud**." }]).sections[0].notes, "The Chorus is loud.");
+});

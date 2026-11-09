@@ -1938,6 +1938,20 @@ async def _stems_ready(client, names="model.onnx"):
     return st
 
 
+async def test_the_section_notes_model_is_only_downloaded_when_asked_for(client, monkeypatch):
+    started = []
+    monkeypatch.setattr(server.StemFiles, "start", lambda self, name, again=True: started.append(name))
+    everything = await (await client.post("/api/stems/prepare")).json()
+    assert "model.onnx" in everything and not set(everything) & server.NAMED_ONLY
+    assert not set(started) & server.NAMED_ONLY, "asking for all of them leaves the 1.2 GB model out"
+    asked = await (await client.post("/api/stems/prepare?names=notes-model.onnx,transformers.min.js")).json()
+    assert set(asked) == {"notes-model.onnx", "transformers.min.js"} and asked["notes-model.onnx"]["size"] > 10**9
+    # Every notes file comes from this repo's release or a pinned package version.
+    for name in server.NAMED_ONLY:
+        url = server.STEM_FILES[name][0]
+        assert url.startswith("https://github.com/gdeboos/ha-liday-show/releases/download/models-notes-1/") or "@" in url
+
+
 async def test_split_vocals_files_are_downloaded_once_checked_and_served_in_pieces(client, monkeypatch):
     import hashlib
     good = b"abcdef" * 30000
