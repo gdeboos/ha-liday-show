@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.455
+
+- In **Lyrics…**, the three ways to place the words no longer look as if **Line up with the singing** is already
+  chosen. All three cards now look the same, each with an arrow to show it starts something, and the one
+  you point at lights up.
+
 ## 0.2.454
 
 - **Edits show ♪ Lyrics when they use their original's words.** In **Library → Songs**, an edit cut from a song with lyrics now has the **♪ Lyrics** badge too, as its shows sing the original's words through your cuts.
