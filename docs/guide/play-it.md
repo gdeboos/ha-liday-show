@@ -52,7 +52,7 @@ on their own.
 A scene sets every light at once, like a preset in WLED or a one-tap scene in a lights app, and
 plays until you choose something else. Use one for the hours your lights are on between shows.
 
-Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours and what it plays, with **▶ Play** (or **■ Stop**
+Your scenes are under **Library → Scenes**, and **Edit** opens one in the **Scene editor**. Each scene shows its colours, a **Basic** or **Advanced** pill (which editor it was made in) and what it plays, with **▶ Play** (or **■ Stop**
 while it's on), **Edit**, and under **⋯**, **Rename…**, **Duplicate** (a copy called "… copy", ready to play
 and not on the schedule) and **Remove…**.
 

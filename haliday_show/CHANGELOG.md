@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.457
+
+- **Lyrics stand out.** On **Library → Songs**, a song with words now has a pink **♪ Lyrics** pill, the same size as its **Parts** pill, instead of a faint grey one.
+- **Basic or Advanced on every scene.** **Library → Scenes** shows a green **Basic** or purple **Advanced** pill beside each scene's name, in both **Cards** and **List**. An Advanced scene's line now starts "Goes round every…".
+
 ## 0.2.456
 
 - **A clearer AI tab.** **Setup → AI** now shows the two places AI runs (in your browser, free and private, or Claude / Home Assistant's AI for writing), then a list of every feature that uses AI, where it runs, and whether it's ready.
