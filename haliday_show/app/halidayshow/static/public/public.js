@@ -935,7 +935,7 @@ export function start() {
     const offered = !!(st && st.open && st.listen && !st.locked);
     const btn = $("pp-listen-btn");
     // Nothing on: nothing to hear yet, so no button (Start on a show with no speaker still starts listening).
-    btn.hidden = !(me.on || (offered && !!st.now && canStart(needsLocation, where)));
+    btn.hidden = !(me.on || (offered && !!st.now && st.now.song !== false && canStart(needsLocation, where)));
     const playing = me.on && me.state !== "tap";
     iconLabel(btn, playing ? "soundoff" : "headphones", say_(w, playing ? "listening_short" : "listen_short"));
     btn.setAttribute("aria-pressed", String(playing));

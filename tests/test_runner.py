@@ -308,6 +308,21 @@ async def test_a_playlist_of_scenes_plays_without_any_shows(runner):
                                               {"type": "pause", "id": "p", "seconds": 5}]})
 
 
+async def test_a_visitors_pick_doesnt_wait_for_a_playlist_of_scenes(runner):
+    runner.storage.save_scene("glow", {"name": "Warm glow", "mode": "basic", "lights": {"a": {"effect": "solid", "params": {}}}})
+    runner.storage.save_scene_baked("glow", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 4))
+    _short_show(runner.storage, "vis")
+    items = [{"type": "scene", "id": "s1", "seconds": 600, "scene": "glow"}]
+    await runner.play_playlist({"id": "evening", "name": "Evening", "shows": [], "gap": 0, "items": items})
+    assert await _until(lambda: runner.block is not None)
+    assert runner.status()["name"] == "Warm glow"  # the scene's name, not "Scene block"
+    runner.add_request(_request("r1", ["vis"]))
+    # Played straight away, not after the 10-minute block; then the scenes carry on.
+    assert await _until(lambda: runner.player.show_id == "vis", tries=30)
+    assert await _until(lambda: runner.block is not None and runner.public_now is None)
+    assert runner.status()["playlist"]["name"] == "Evening"
+
+
 async def test_automation_plays_a_playlist_by_name(runner):
     _short_show(runner.storage, "one", frames=400)
     _save_playlists(runner.storage, [{"id": "night", "name": "Halloween night", "shows": ["one"], "gap": 5}])

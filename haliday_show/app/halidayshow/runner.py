@@ -120,13 +120,21 @@ class Runner:
         block = self.block if st["playing"] else None
         return {**st, "media_player": self.media_player if st["playing"] else None,
                 "name": show.get("name") if show else timingtest.NAME if st["show"] == timingtest.TIMING_ID
-                else f"{block['type'].title()} block" if block
+                else self._block_name(block) if block
                 else self.scene["name"] if scene and scene["playing"] else None,
                 "playlist": {"id": playlist["id"], "name": playlist["name"], "finishing": self.finishing}
                 if playlist else None,
                 "song": self.song if st["playing"] else None, "started": self.started,
                 "block": {k: block[k] for k in ("type", "id", "seconds", "effect", "scene") if k in block} if block else None,
                 "scene": scene}
+
+    def _block_name(self, block: dict) -> str:
+        """A building block's name: a scene block's scene, otherwise its kind ("Colour block")."""
+        if block["type"] == "scene":
+            scene = self.storage.load_scene(block.get("scene") or "")
+            if scene and scene.get("name"):
+                return scene["name"]
+        return f"{block['type'].title()} block"
 
     async def play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
                    position: float = 0.0, offset: float = 0.0):
@@ -529,7 +537,7 @@ class Runner:
 
     async def _play_block(self, item: dict) -> bool:
         """Play one of a playlist's building blocks; False if there was nothing to play."""
-        if item["type"] == "pause":  # the lights as they normally are
+        if item["type"] == "pause":  # the lights as they normally are; a gap visitors wait for too
             await asyncio.sleep(item["seconds"])
             return False
         # A scene block plays the scene's own frames (baked by the Scene editor), dimmed as scenes are.
@@ -555,9 +563,14 @@ class Runner:
                 self._wled_own(own)
                 self._react(self.storage.load_scene(item["scene"]))
                 self._live_effects(item["scene"], own)
-        while self.player.playing and self.block is item:
+        # A block doesn't hold a visitor's pick back, as a scene doesn't: the pick plays now and the
+        # playlist carries on with its next item after.
+        while self.player.playing and self.block is item and not self._pick_waiting():
             await asyncio.sleep(0.1)
         return True
+
+    def _pick_waiting(self) -> bool:
+        return bool(self.requests or self.votes) and not self.finishing
 
     async def _visitors(self, playlist: dict) -> bool:
         """Play visitors' requests waiting, each followed by the playlist's pause. True if the playlist
@@ -587,7 +600,9 @@ class Runner:
                 for k, item in enumerate(items):
                     if item["type"] != "show":
                         played = await self._play_block(item) or played
-                        if visitors_due and await self._visitors(playlist):
+                        # Visitors' picks waiting play after any block (a playlist of scenes has no
+                        # shows to wait for).
+                        if await self._visitors(playlist):
                             return
                         visitors_due = False
                         continue
