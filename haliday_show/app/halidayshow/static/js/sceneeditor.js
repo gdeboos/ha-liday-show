@@ -8,7 +8,7 @@ import { gatherPart } from "./parts.js";
 import { isPorted } from "./wled-effects/index.js";
 import {
   LIVE_EFFECTS, SCENE_EFFECTS, byParts, wledSegmentPart, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
-  sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
+  forBaking, sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
 import { setShowPalette, showPalette } from "./showpalette.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
@@ -648,7 +648,7 @@ export class SceneEditor {
     if (!lights.length) return;
     const loop = withoutLive(() => sceneLoop(scene, lights, FPS)); // live effects loop on their idle glow
     const advanced = scene.mode === "advanced";
-    const show = sceneShow(scene, lights, loop);
+    const show = forBaking(sceneShow(scene, lights, loop));
     await this.d.picturesReady?.();
     const blob = await bakeOff(show, this.d.devices(), FPS, advanced ? this.d.positions() : {},
       advanced ? this.d.groups?.() || [] : []);

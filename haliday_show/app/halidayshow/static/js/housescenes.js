@@ -148,13 +148,22 @@ export function sceneShow(scene, lights, loop) {
 // (as a playlist's Effect block) where the lights look most like they did at the start.
 export function sceneLoop(scene, lights, fps) {
   if (scene.mode === "advanced") return scene.loop;
-  const probe = sceneShow(scene, lights, 3600);
+  // A WLED playing its own effect is sent no frames, so it doesn't count (and running WLED's effect
+  // code back and forth through the search would take ages).
+  const probe = withoutWledOwn(sceneShow(scene, lights, 3600));
   const trackOf = (id) => probe.tracks.find((tr) => tr.device === id);
   const look = (t) => lights.flatMap((l) => [...composeLight(l, trackOf, t)]);
   const first = look(0).join();
   if ([0.37, 1.1, 2.9, 7.3].every((t) => look(t).join() === first)) return 1;
   return loopLength({ type: "effect", seconds: 3600 }, fps, look);
 }
+
+const withoutWledOwn = (show) => ({ ...show, tracks: show.tracks.filter((t) => !t.clips.some((c) => EFFECTS[c.effect]?.wledOwn)) });
+
+// The scene's show for baking: lights on WLED's own effect get the quick stand-in (wled-effects/index.js),
+// as the WLED is sent none of their frames; they're only there for pictures of the house.
+export const forBaking = (show) => ({ ...show,
+  tracks: show.tracks.map((t) => ({ ...t, clips: t.clips.map((c) => (EFFECTS[c.effect]?.wledOwn ? { ...c, standIn: true } : c)) })) });
 
 // Up to three colours to show for the scene on its row in Your scenes.
 export function sceneColours(scene, lights) {

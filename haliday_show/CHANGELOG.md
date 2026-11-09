@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.450
+
+- **Scenes with a WLED on its own effect are quick again.** Opening such a scene took several seconds since 0.2.439, and the page froze for a while after each change (such as **Recolour**). It now opens in about half a second and stays responsive. The WLED effect previews in the editor still move as before.
+
 ## 0.2.449
 
 - **Clearer sliders on WLED rows.** In a Basic scene, a light on **WLED's own effect** now names its sliders on its row: **Speed** and **Intensity** are the WLED's own sliders for that effect (Intensity sits where other lights have **Glitter**). Switching a light to WLED's own effect no longer keeps a Glitter setting it can't use.
