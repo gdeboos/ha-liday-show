@@ -56,6 +56,13 @@ function ease8InOutCubic(i) {
   return r1 & 0x100 ? 255 : r1 & 0xFF;
 }
 export const cubicwave8 = (i) => ease8InOutCubic(triwave8(i));
+function ease8InOutQuad(i) {
+  i &= 0xFF;
+  const j = i & 0x80 ? 255 - i : i;
+  const jj2 = (scale8(j, j) << 1) & 0xFF;
+  return i & 0x80 ? 255 - jj2 : jj2;
+}
+export const quadwave8 = (i) => ease8InOutQuad(triwave8(i));
 
 export function beat88(bpm88, timebase = 0) {
   return Math.floor(((strip.now - timebase) * (bpm88 & 0xFFFF) * 280) / 65536) & 0xFFFF;
@@ -324,8 +331,8 @@ export class Segment {
     return true;
   }
 
-  setPixelColor(i, c, g, b) {
-    if (g !== undefined) c = RGBW32(c, g, b, 0);
+  setPixelColor(i, c, g, b, w = 0) {
+    if (g !== undefined) c = RGBW32(c, g, b, w);
     i = Math.trunc(i);
     if (i >= 0 && i < this.len) this.px[i] = c >>> 0;
   }

@@ -44,12 +44,25 @@ test("a solid colour previews as the colour picked, and gradient palettes as WLE
 });
 
 test("every ported effect runs, moves and stays in range", () => {
+  const still = [0, 65, 83, 84, 85]; // Solid, Palette (unrotated), Solid Pattern, Solid Pattern Tri, Spots
   for (const fx of Object.keys(MODES).map(Number)) {
-    const run = frames(look(fx), 40, 6);
+    const run = frames(look(fx), 40, 20, 0.1); // Traffic Light changes every 13 s at this speed
     for (const f of run) assert.ok(f.every((v) => Number.isInteger(v) && v >= 0 && v <= 255), `effect ${fx}`);
     const moving = new Set(run.map((f) => f.join())).size;
-    if (![0, 65].includes(fx)) assert.ok(moving > 1, `effect ${fx} should move`);
+    if (!still.includes(fx)) assert.ok(moving > 1, `effect ${fx} should move`);
   }
+});
+
+test("effects that set their own pace are drawn when WLED would draw them", () => {
+  // ICU looks about, then holds its gaze for 1-3 seconds (it asks WLED to wait before drawing it again).
+  const run = frames(look(58), 30, 12, 0.05);
+  let longest = 0, still = 0;
+  for (let k = 1; k < run.length; k++) {
+    still = run[k].join() === run[k - 1].join() ? still + 1 : 0;
+    longest = Math.max(longest, still);
+  }
+  assert.ok(longest * 50 >= 900, `ICU held still for ${longest * 50} ms at most`);
+  assert.equal(isPorted(58), true);
 });
 
 test("the same moment always looks the same, going back in time included", () => {

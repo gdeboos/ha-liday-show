@@ -1,6 +1,7 @@
 // WLED's own effects, translated to JavaScript from WLED 0.15.5 wled00/FX.cpp so the editor can preview
 // them. Each takes the Segment (engine.js) and draws one frame at strip.now, as WLED does about 42 times
-// a second. Keyed by WLED's effect id (FX.h). Effects not here yet get a stand-in in index.js.
+// a second; some return how long (ms) until WLED should draw them again. Keyed by WLED's effect id (FX.h).
+// Effects not here yet get a stand-in in index.js.
 //
 // SPDX-License-Identifier: EUPL-1.2
 // Copyright (c) 2016-present Christian Schwinne and individual WLED contributors
@@ -9,10 +10,10 @@
 // This folder is under the EUPL 1.2 (see LICENSE here), not the MIT licence of the rest of HA-liday Show.
 
 import {
-  BLACK, FRAMETIME, STARBURST_MAX_FRAG, WHITE, addCRGB, beat16, beat8, beatsin16_t, beatsin88_t, beatsin8_t,
-  ColorFromPalette, color_blend, cos8_t, crgb, cubicwave8, fromCRGB, get_random_wheel_index, getAverageLight,
-  hsv2rgb_rainbow, map, maxCRGB, nscale8_video, qadd8, qsub8, random16, random8, RGBW32, scale16, scale8, sin16_t,
-  sin8_t, sin_gap, strip, triwave16,
+  B, BLACK, FRAMETIME, G, R, STARBURST_MAX_FRAG, W, WHITE, addCRGB, beat16, beat8, beatsin16_t, beatsin88_t,
+  beatsin8_t, ColorFromPalette, color_blend, cos8_t, crgb, cubicwave8, fromCRGB, get_random_wheel_index,
+  getAverageLight, getSeed, hsv2rgb_rainbow, map, maxCRGB, nscale8_video, qadd8, quadwave8, qsub8, random16, random8,
+  RGBW32, scale16, scale8, setSeed, sin16_t, sin8_t, sin_gap, strip, triwave16,
 } from "./engine.js";
 
 function mode_static(s) {
@@ -545,6 +546,630 @@ function mode_pacifica(s) {
   strip.now = nowOld;
 }
 
+// ---- More effects: some set their own pace by returning a delay in ms (none means the next frame) -----
+
+const FLASH_COUNT = 4, MAX_COMETS = 8, ULTRAWHITE = 0xFFFFFFFF;
+const speedFormulaL = (s) => 5 + Math.floor((50 * (255 - s.speed)) / s.len);
+
+function tristate_square8(x, pulsewidth, attdec) {
+  x &= 0xFF;
+  let a = 127;
+  if (x > 127) { a = -127; x -= 127; }
+  if (x < attdec) return Math.trunc((x * a) / attdec);
+  if (x < pulsewidth - attdec) return a;
+  if (x < pulsewidth) return Math.trunc(((pulsewidth - x) * a) / attdec);
+  return 0;
+}
+
+function mode_random_color(s) {
+  const cycleTime = 200 + (255 - s.speed) * 50;
+  const it = Math.floor(strip.now / cycleTime), rem = strip.now % cycleTime;
+  const fadedur = (cycleTime * s.intensity) >> 8;
+  let fade = 255;
+  if (fadedur) fade = Math.min(255, Math.floor((rem * 255) / fadedur));
+  if (s.call === 0) { s.aux0 = random8(); s.step = 2; }
+  if (it !== s.step) { s.aux1 = s.aux0; s.aux0 = get_random_wheel_index(s.aux0); s.step = it; }
+  s.fill(color_blend(s.color_wheel(s.aux1), s.color_wheel(s.aux0), fade));
+}
+
+function mode_dynamic(s) {
+  s.allocateData(s.len);
+  if (s.call === 0) for (let i = 0; i < s.len; i++) s.data[i] = random8();
+  const cycleTime = 50 + (255 - s.speed) * 15;
+  const it = Math.floor(strip.now / cycleTime);
+  if (it !== s.step && s.speed !== 0) {
+    for (let i = 0; i < s.len; i++) if (random8() <= s.intensity) s.data[i] = random8();
+    s.step = it;
+  }
+  for (let i = 0; i < s.len; i++) {
+    if (s.check1) s.blendPixelColor(i, s.color_wheel(s.data[i]), 16);
+    else s.setPixelColor(i, s.color_wheel(s.data[i]));
+  }
+}
+
+function dissolve(s, color) {
+  if (!s.state) s.state = new Uint32Array(s.len);
+  const pixels = s.state;
+  if (s.call === 0) { pixels.fill(s.SEGCOLOR(1)); s.aux0 = 1; }
+  for (let j = 0; j <= Math.floor(s.len / 15); j++) {
+    if (random8() <= s.intensity) {
+      for (let times = 0; times < 10; times++) {
+        const i = random16(s.len);
+        if (s.aux0) {
+          if (pixels[i] === s.SEGCOLOR(1)) {
+            pixels[i] = color === s.SEGCOLOR(0) ? s.color_from_palette(i, true, false, 0) : color;
+            break;
+          }
+        } else if (pixels[i] !== s.SEGCOLOR(1)) { pixels[i] = s.SEGCOLOR(1); break; }
+      }
+    }
+  }
+  for (let i = 0; i < s.len; i++) s.setPixelColor(i, pixels[i]);
+  if (s.step > 255 - s.speed + 15) { s.aux0 = s.aux0 ? 0 : 1; s.step = 0; } else s.step++;
+}
+
+function sparkle_flash(s, hyper) {
+  if (!s.check2) for (let i = 0; i < s.len; i++) s.setPixelColor(i, s.color_from_palette(i, true, false, 0));
+  if (((strip.now - s.aux0) >>> 0) > s.step) {
+    if (random8((255 - s.intensity) >> 4) === 0) {
+      const n = hyper ? Math.max(1, Math.floor(s.len / 3)) : 1;
+      for (let i = 0; i < n; i++) s.setPixelColor(random16(s.len), s.SEGCOLOR(1));
+    }
+    s.step = strip.now;
+    s.aux0 = 255 - s.speed;
+  }
+}
+
+function mode_multi_strobe(s) {
+  for (let i = 0; i < s.len; i++) s.setPixelColor(i, s.color_from_palette(i, true, false, 1));
+  s.aux0 = 50 + 20 * (255 - s.speed);
+  const count = 2 * (Math.floor(s.intensity / 10) + 1);
+  if (s.aux1 < count) {
+    if ((s.aux1 & 1) === 0) { s.fill(s.SEGCOLOR(0)); s.aux0 = 15; } else s.aux0 = 50;
+  }
+  if (((strip.now - s.aux0) >>> 0) > s.step) {
+    s.aux1++;
+    if (s.aux1 > count) s.aux1 = 0;
+    s.step = strip.now;
+  }
+}
+
+function mode_android(s) {
+  for (let i = 0; i < s.len; i++) s.setPixelColor(i, s.color_from_palette(i, true, false, 1));
+  if (s.aux1 > Math.floor((s.intensity * s.len) / 255)) s.aux0 = 1;
+  else if (s.aux1 < 2) s.aux0 = 0;
+  let a = s.step & 0xFFFF;
+  if (s.aux0 === 0) { if (s.call % 3 === 1) a++; else s.aux1++; } else { a++; if (s.call % 3 !== 1) s.aux1 = (s.aux1 - 1) & 0xFFFF; }
+  if (a >= s.len) a = 0;
+  if (a + s.aux1 < s.len) {
+    for (let i = a; i < a + s.aux1; i++) s.setPixelColor(i, s.SEGCOLOR(0));
+  } else {
+    for (let i = a; i < s.len; i++) s.setPixelColor(i, s.SEGCOLOR(0));
+    for (let i = 0; i < s.aux1 - (s.len - a); i++) s.setPixelColor(i, s.SEGCOLOR(0));
+  }
+  s.step = a;
+  return 3 + Math.floor((8 * (255 - s.speed)) / s.len);
+}
+
+function mode_chase_rainbow(s) {
+  const sep = Math.floor(256 / s.len) || 1;
+  const color = s.color_wheel((s.step * sep + (s.call & 0xFF)) & 0xFF);
+  chase(s, color, s.SEGCOLOR(0), s.SEGCOLOR(1), false);
+}
+
+function mode_chase_flash(s) {
+  if (s.len === 1) return mode_static(s);
+  const flashStep = s.call % (FLASH_COUNT * 2 + 1);
+  for (let i = 0; i < s.len; i++) s.setPixelColor(i, s.color_from_palette(i, true, false, 0));
+  let delay = 10 + Math.floor((30 * (255 - s.speed)) / s.len);
+  if (flashStep < FLASH_COUNT * 2) {
+    if (flashStep % 2 === 0) {
+      s.setPixelColor(s.step, s.SEGCOLOR(1));
+      s.setPixelColor((s.step + 1) % s.len, s.SEGCOLOR(1));
+      delay = 20;
+    } else delay = 30;
+  } else s.step = (s.step + 1) % s.len;
+  return delay;
+}
+
+function mode_chase_flash_random(s) {
+  if (s.len === 1) return mode_static(s);
+  const flashStep = s.call % (FLASH_COUNT * 2 + 1);
+  for (let i = 0; i < s.aux1; i++) s.setPixelColor(i, s.color_wheel(s.aux0));
+  let delay = 1 + Math.floor((10 * (255 - s.speed)) / s.len);
+  if (flashStep < FLASH_COUNT * 2) {
+    const n = s.aux1, m = (s.aux1 + 1) % s.len;
+    if (flashStep % 2 === 0) {
+      s.setPixelColor(n, s.SEGCOLOR(0)); s.setPixelColor(m, s.SEGCOLOR(0));
+      delay = 20;
+    } else {
+      s.setPixelColor(n, s.color_wheel(s.aux0)); s.setPixelColor(m, s.SEGCOLOR(1));
+      delay = 30;
+    }
+  } else {
+    s.aux1 = (s.aux1 + 1) % s.len;
+    if (s.aux1 === 0) s.aux0 = get_random_wheel_index(s.aux0);
+  }
+  return delay;
+}
+
+function mode_chase_rainbow_white(s) {
+  const n = s.step & 0xFFFF, m = (n + 1) % s.len;
+  const color2 = s.color_wheel((Math.floor((n * 256) / s.len) + (s.call & 0xFF)) & 0xFF);
+  const color3 = s.color_wheel((Math.floor((m * 256) / s.len) + (s.call & 0xFF)) & 0xFF);
+  chase(s, s.SEGCOLOR(0), color2, color3, false);
+}
+
+function mode_colorful(s) {
+  let numColors = 4;
+  const cols = [0xFF0000, 0xEEBB00, 0x00EE00, 0x0077CC, 0, 0, 0, 0, 0];
+  if (s.intensity > 160 || s.palette) {
+    if (!s.palette) { numColors = 3; for (let i = 0; i < 3; i++) cols[i] = s.SEGCOLOR(i); } else {
+      let fac = 80;
+      if (s.palette === 52) { numColors = 5; fac = 61; }
+      for (let i = 0; i < numColors; i++) cols[i] = s.color_from_palette(i * fac, false, true, 255);
+    }
+  } else if (s.intensity < 80) { cols[0] = 0xFF8040; cols[1] = 0xE5D241; cols[2] = 0x77FF77; cols[3] = 0x77F0F0; }
+  for (let i = numColors; i < numColors * 2 - 1; i++) cols[i] = cols[i - numColors];
+  const cycleTime = 50 + 8 * (255 - s.speed);
+  const it = Math.floor(strip.now / cycleTime);
+  if (it !== s.step) {
+    if (s.speed > 0) s.aux0++;
+    if (s.aux0 >= numColors) s.aux0 = 0;
+    s.step = it;
+  }
+  for (let i = 0; i < s.len; i += numColors) for (let j = 0; j < numColors; j++) s.setPixelColor(i + j, cols[s.aux0 + j]);
+}
+
+function mode_traffic_light(s) {
+  if (s.len === 1) return mode_static(s);
+  for (let i = 0; i < s.len; i++) s.setPixelColor(i, s.color_from_palette(i, true, false, 1));
+  let mdelay = 500;
+  const long = 150 + 100 * (255 - s.speed), short = 150 + 20 * (255 - s.speed);
+  for (let i = 0; i < s.len - 2; i += 3) {
+    switch (s.aux0) {
+      case 0: s.setPixelColor(i, 0xFF0000); mdelay = long; break;
+      case 1: s.setPixelColor(i, 0xFF0000); mdelay = short; s.setPixelColor(i + 1, 0xEECC00); break;
+      case 2: s.setPixelColor(i + 2, 0x00FF00); mdelay = long; break;
+      case 3: s.setPixelColor(i + 1, 0xEECC00); mdelay = short; break;
+    }
+  }
+  if (strip.now - s.step > mdelay) {
+    s.aux0++;
+    if (s.aux0 === 1 && s.intensity > 140) s.aux0 = 2;
+    if (s.aux0 > 3) s.aux0 = 0;
+    s.step = strip.now;
+  }
+}
+
+function mode_running_random(s) {
+  const cycleTime = 25 + 3 * (255 - s.speed);
+  const it = Math.floor(strip.now / cycleTime);
+  if (s.call === 0) s.aux0 = random16();
+  const zoneSize = ((255 - s.intensity) >> 4) + 1;
+  let prng = s.aux0;
+  let z = it % zoneSize;
+  let nzone = !z && it !== s.aux1;
+  for (let i = s.len - 1; i >= 0; i--) {
+    if (nzone || z >= zoneSize) {
+      const lastrand = prng >> 8;
+      let diff = 0;
+      while (Math.abs(diff) < 42) {
+        prng = (prng * 2053 + 13849) & 0xFFFF;
+        diff = (prng >> 8) - lastrand;
+      }
+      if (nzone) { s.aux0 = prng; nzone = false; }
+      z = 0;
+    }
+    s.setPixelColor(i, s.color_wheel(prng >> 8));
+    z++;
+  }
+  s.aux1 = it & 0xFFFF;
+}
+
+function mode_comet(s) {
+  if (s.len === 1) return mode_static(s);
+  const counter = (strip.now * ((s.speed >> 2) + 1)) & 0xFFFF;
+  const index = (counter * s.len) >> 16;
+  if (s.call === 0) s.aux0 = index;
+  s.fade_out(s.intensity);
+  s.setPixelColor(index, s.color_from_palette(index, true, false, 0));
+  if (index > s.aux0) {
+    for (let i = s.aux0; i < index; i++) s.setPixelColor(i, s.color_from_palette(i, true, false, 0));
+  } else if (index < s.aux0 && index < 10) {
+    for (let i = 0; i < index; i++) s.setPixelColor(i, s.color_from_palette(i, true, false, 0));
+  }
+  s.aux0 = index;
+}
+
+function mode_fire_flicker(s) {
+  const cycleTime = 40 + (255 - s.speed);
+  const it = Math.floor(strip.now / cycleTime);
+  if (s.step === it) return;
+  const c = s.SEGCOLOR(0);
+  const w = W(c), r = R(c), g = G(c), b = B(c);
+  let lum = s.palette === 0 ? Math.max(w, r, g, b) : 255;
+  lum = Math.floor(lum / (Math.floor((256 - s.intensity) / 16) + 1));
+  for (let i = 0; i < s.len; i++) {
+    const flicker = random8(lum);
+    if (s.palette === 0) s.setPixelColor(i, Math.max(r - flicker, 0), Math.max(g - flicker, 0), Math.max(b - flicker, 0), Math.max(w - flicker, 0));
+    else s.setPixelColor(i, s.color_from_palette(i, true, false, 0, 255 - flicker));
+  }
+  s.step = it;
+}
+
+function gradient_base(s, loading) {
+  if (s.len === 1) return mode_static(s);
+  const counter = (strip.now * ((s.speed >> 2) + 1)) & 0xFFFF;
+  let pp = (counter * s.len) >> 16;
+  if (s.call === 0) pp = 0;
+  const brd = s.intensity >> 1; // "1 + loading ? a : b" in WLED is always a
+  const p1 = pp - s.len, p2 = pp + s.len;
+  for (let i = 0; i < s.len; i++) {
+    let val = loading ? Math.abs((i > pp ? p2 : pp) - i) : Math.min(Math.abs(pp - i), Math.abs(p1 - i), Math.abs(p2 - i));
+    val = brd > val ? Math.floor((val * 255) / brd) : 255;
+    s.setPixelColor(i, color_blend(s.SEGCOLOR(0), s.color_from_palette(i, true, false, 1), val));
+  }
+}
+
+function police_base(s, color1, color2) {
+  if (s.len === 1) return mode_static(s);
+  const delay = 1 + Math.floor((FRAMETIME << 3) / s.len);
+  const it = Math.floor(strip.now / map(s.speed, 0, 255, delay << 4, delay));
+  const offset = it % s.len;
+  const width = ((s.len * (s.intensity + 1)) >> 9) || 1;
+  for (let i = 0; i < width; i++) {
+    s.setPixelColor((offset + i) % s.len, color1);
+    s.setPixelColor((offset + i + (s.len >> 1)) % s.len, color2);
+  }
+}
+
+function tricolor_chase(s, color1, color2) {
+  const cycleTime = 50 + ((255 - s.speed) << 1);
+  const it = Math.floor(strip.now / cycleTime);
+  const width = 1 + (s.intensity >> 4);
+  let index = it % (width * 3);
+  for (let i = 0; i < s.len; i++, index++) {
+    if (index > width * 3 - 1) index = 0;
+    let color = color1;
+    if (index > (width << 1) - 1) color = s.color_from_palette(i, true, false, 1);
+    else if (index > width - 1) color = color2;
+    s.setPixelColor(s.len - i - 1, color);
+  }
+}
+
+function mode_tricolor_wipe(s) {
+  const cycleTime = 1000 + (255 - s.speed) * 200;
+  const perc = strip.now % cycleTime;
+  const prog = Math.floor((perc * 65535) / cycleTime);
+  const ledIndex = Math.floor((prog * s.len * 3) / 65536);
+  for (let i = 0; i < s.len; i++) s.setPixelColor(i, s.color_from_palette(i, true, false, 2));
+  if (ledIndex < s.len) {
+    for (let i = 0; i < s.len; i++) s.setPixelColor(i, i > ledIndex ? s.SEGCOLOR(0) : s.SEGCOLOR(1));
+  } else if (ledIndex < s.len * 2) {
+    for (let i = ledIndex - s.len + 1; i < s.len; i++) s.setPixelColor(i, s.SEGCOLOR(1));
+  } else {
+    for (let i = 0; i <= ledIndex - s.len * 2; i++) s.setPixelColor(i, s.SEGCOLOR(0));
+  }
+}
+
+function mode_tricolor_fade(s) {
+  const counter = (strip.now * ((s.speed >> 3) + 1)) & 0xFFFF;
+  const prog = (counter * 768) >> 16;
+  const stage = prog < 256 ? 0 : prog < 512 ? 1 : 2;
+  const color1 = s.SEGCOLOR(stage), color2 = s.SEGCOLOR((stage + 1) % 3);
+  const stp = prog & 0xFF;
+  for (let i = 0; i < s.len; i++) {
+    let color;
+    if (stage === 2) color = color_blend(s.color_from_palette(i, true, false, 2), color2, stp);
+    else if (stage === 1) color = color_blend(color1, s.color_from_palette(i, true, false, 2), stp);
+    else color = color_blend(color1, color2, stp);
+    s.setPixelColor(i, color);
+  }
+}
+
+function mode_icu(s) {
+  let dest = s.step & 0xFFFF;
+  const space = (s.intensity >> 3) + 2;
+  const gap = Math.floor(s.len / space);
+  if (!s.check2) s.fill(s.SEGCOLOR(1));
+  const pindex = map(dest, 0, s.len - gap, 0, 255) & 0xFF;
+  const col = s.color_from_palette(pindex, false, false, 0);
+  s.setPixelColor(dest, col);
+  s.setPixelColor(dest + gap, col);
+  if (s.aux0 === dest) {
+    if (random8(6) === 0) {
+      s.setPixelColor(dest, s.SEGCOLOR(1));
+      s.setPixelColor(dest + gap, s.SEGCOLOR(1));
+      return 200;
+    }
+    s.aux0 = random16(s.len - gap);
+    return 1000 + random16(2000);
+  }
+  if (s.aux0 > s.step) { s.step++; dest++; } else if (s.aux0 < s.step) { s.step--; dest--; }
+  s.setPixelColor(dest, col);
+  s.setPixelColor(dest + gap, col);
+  return speedFormulaL(s);
+}
+
+function mode_multi_comet(s) {
+  const cycleTime = 10 + (255 - s.speed);
+  const it = Math.floor(strip.now / cycleTime);
+  if (s.step === it) return;
+  if (!s.state) s.state = new Uint16Array(MAX_COMETS);
+  const comets = s.state;
+  s.fade_out((s.intensity >> 1) + 128);
+  for (let i = 0; i < MAX_COMETS; i++) {
+    if (comets[i] < s.len) {
+      const index = comets[i];
+      if (s.SEGCOLOR(2) !== 0) s.setPixelColor(index, i % 2 ? s.color_from_palette(index, true, false, 0) : s.SEGCOLOR(2));
+      else s.setPixelColor(index, s.color_from_palette(index, true, false, 0));
+      comets[i]++;
+    } else if (!random16(s.len)) comets[i] = 0;
+  }
+  s.step = it;
+}
+
+function mode_random_chase(s) {
+  if (s.call === 0) { s.step = RGBW32(random8(), random8(), random8(), 0); s.aux0 = random16(); }
+  const prevSeed = getSeed();
+  const cycleTime = 25 + 3 * (255 - s.speed);
+  const it = Math.floor(strip.now / cycleTime);
+  let color = s.step;
+  setSeed(s.aux0);
+  for (let i = s.len - 1; i >= 0; i--) {
+    const r = random8(6) !== 0 ? (color >>> 16) & 0xFF : random8();
+    const g = random8(6) !== 0 ? (color >>> 8) & 0xFF : random8();
+    const b = random8(6) !== 0 ? color & 0xFF : random8();
+    color = RGBW32(r, g, b, 0);
+    s.setPixelColor(i, color);
+    if (i === s.len - 1 && s.aux1 !== (it & 0xFFFF)) { s.step = color; s.aux0 = getSeed(); }
+  }
+  s.aux1 = it & 0xFFFF;
+  setSeed(prevSeed);
+}
+
+function mode_oscillate(s) {
+  const len = s.len;
+  if (s.call === 0 || !s.state) {
+    const size = (len >> 3) & 0xFF;
+    s.state = [
+      { pos: len >> 2, size, dir: 1, speed: 1 },
+      { pos: ((len >> 2) * 3) & 0xFFFF, size, dir: 1, speed: 2 },
+      { pos: ((len >> 2) * 2) & 0xFFFF, size, dir: -1, speed: 1 },
+    ];
+  }
+  const cycleTime = 20 + 2 * (255 - s.speed);
+  const it = Math.floor(strip.now / cycleTime);
+  for (const o of s.state) {
+    if (it !== s.step) o.pos = (o.pos + o.dir * o.speed) & 0xFFFF;
+    o.size = Math.floor(len / (3 + (s.intensity >> 3))) & 0xFF;
+    if (o.dir === -1 && o.pos > len << 1) { o.pos = 0; o.dir = 1; o.speed = s.speed > 100 ? random8(2, 4) : random8(1, 3); }
+    if (o.dir === 1 && o.pos >= len - 1) { o.pos = len - 1; o.dir = -1; o.speed = s.speed > 100 ? random8(2, 4) : random8(1, 3); }
+  }
+  for (let i = 0; i < len; i++) {
+    let color = BLACK;
+    for (let j = 0; j < 3; j++) {
+      const o = s.state[j];
+      if (i >= o.pos - o.size && i <= o.pos + o.size) color = color === BLACK ? s.SEGCOLOR(j) : color_blend(color, s.SEGCOLOR(j), 128);
+    }
+    s.setPixelColor(i, color);
+  }
+  s.step = it;
+}
+
+function mode_pride_2015(s) {
+  const duration = 10 + s.speed;
+  let pseudo = s.step >>> 0, sHue16 = s.aux0 & 0xFFFF;
+  const sat8 = beatsin88_t(87, 220, 250) & 0xFF;
+  const brightdepth = beatsin88_t(341, 96, 224) & 0xFF;
+  const thetaInc = beatsin88_t(203, 25 * 256, 40 * 256);
+  const msmult = beatsin88_t(147, 23, 60);
+  let hue16 = sHue16;
+  const hueinc16 = beatsin88_t(113, 1, 3000);
+  pseudo = (pseudo + duration * msmult) >>> 0;
+  sHue16 = (sHue16 + duration * beatsin88_t(400, 5, 9)) >>> 0;
+  let theta = pseudo;
+  for (let i = 0; i < s.len; i++) {
+    hue16 = (hue16 + hueinc16) >>> 0;
+    const hue8 = (hue16 >>> 8) & 0xFF;
+    theta = (theta + thetaInc) >>> 0;
+    const b16 = sin16_t(theta & 0xFFFF) + 32768;
+    const bri16 = Math.floor((b16 * b16) / 65536);
+    const bri8 = (Math.floor((bri16 * brightdepth) / 65536) + (255 - brightdepth)) & 0xFF;
+    s.blendPixelColor(i, fromCRGB(hsv2rgb_rainbow(hue8, sat8, bri8)), 64);
+  }
+  s.step = pseudo;
+  s.aux0 = sHue16 & 0xFFFF;
+}
+
+function mode_bpm(s) {
+  const stp = Math.floor(strip.now / 20) & 0xFF;
+  const beat = beatsin8_t(s.speed, 64, 255);
+  for (let i = 0; i < s.len; i++) s.setPixelColor(i, s.color_from_palette((stp + i * 2) & 0xFFFF, false, false, 0, (beat - stp + i * 10) & 0xFF));
+}
+
+function mode_static_pattern(s) {
+  const lit = 1 + s.speed, unlit = 1 + s.intensity;
+  let drawingLit = true, cnt = 0;
+  for (let i = 0; i < s.len; i++) {
+    s.setPixelColor(i, drawingLit ? s.color_from_palette(i, true, false, 0) : s.SEGCOLOR(1));
+    if (++cnt >= (drawingLit ? lit : unlit)) { cnt = 0; drawingLit = !drawingLit; }
+  }
+}
+
+function mode_tri_static_pattern(s) {
+  const segSize = (s.intensity >> 5) + 1;
+  let currSeg = 0, count = 0;
+  for (let i = 0; i < s.len; i++) {
+    s.setPixelColor(i, s.SEGCOLOR(currSeg % 3));
+    if (++count >= segSize) { currSeg++; count = 0; }
+  }
+}
+
+function spots_base(s, threshold) {
+  if (s.len === 1) return mode_static(s);
+  if (!s.check2) s.fill(s.SEGCOLOR(1));
+  const maxZones = s.len >> 2;
+  const zones = 1 + ((s.intensity * maxZones) >> 8);
+  const zoneLen = Math.floor(s.len / zones);
+  const offset = (s.len - zones * zoneLen) >> 1;
+  for (let z = 0; z < zones; z++) {
+    const pos = offset + z * zoneLen;
+    for (let i = 0; i < zoneLen; i++) {
+      const wave = triwave16(Math.floor((i * 0xFFFF) / zoneLen));
+      if (wave > threshold) {
+        const index = pos + i;
+        const sv = Math.floor(((wave - threshold) * 255) / (0xFFFF - threshold));
+        s.setPixelColor(index, color_blend(s.color_from_palette(index, true, false, 0), s.SEGCOLOR(1), 255 - sv));
+      }
+    }
+  }
+}
+
+function mode_spots_fade(s) {
+  const counter = strip.now * ((s.speed >> 2) + 8);
+  const t = triwave16(counter & 0xFFFF);
+  spots_base(s, (t >> 1) + (t >> 2));
+}
+
+function glitter_base(s, intensity, col = ULTRAWHITE) {
+  if (intensity > random8()) s.setPixelColor(random16(s.len), col);
+}
+
+function mode_glitter(s) {
+  if (!s.check2) {
+    let counter = 0;
+    if (s.speed !== 0) counter = ((strip.now * ((s.speed >> 3) + 1)) & 0xFFFF) >> 8;
+    const noWrap = s.speed === 0;
+    for (let i = 0; i < s.len; i++) {
+      let ci = Math.floor((i * 255) / s.len) - counter;
+      if (noWrap) ci = map(ci, 0, 255, 0, 240);
+      s.setPixelColor(i, s.color_from_palette(ci & 0xFFFF, false, true, 255));
+    }
+  }
+  glitter_base(s, s.intensity, s.SEGCOLOR(2) ? s.SEGCOLOR(2) : ULTRAWHITE);
+}
+
+function sinelon_base(s, dual, rainbow = false) {
+  if (s.len === 1) return mode_static(s);
+  s.fade_out(s.intensity);
+  const pos = beatsin16_t(Math.floor(s.speed / 10), 0, s.len - 1);
+  if (s.call === 0) s.aux0 = pos;
+  let color1 = s.color_from_palette(pos, true, false, 0);
+  let color2 = s.SEGCOLOR(2);
+  if (rainbow) color1 = s.color_wheel((pos & 0x07) * 32);
+  s.setPixelColor(pos, color1);
+  if (dual) {
+    if (!color2) color2 = s.color_from_palette(pos, true, false, 0);
+    if (rainbow) color2 = color1;
+    s.setPixelColor(s.len - 1 - pos, color2);
+  }
+  if (s.aux0 !== pos) {
+    if (s.aux0 < pos) {
+      for (let i = s.aux0; i < pos; i++) { s.setPixelColor(i, color1); if (dual) s.setPixelColor(s.len - 1 - i, color2); }
+    } else {
+      for (let i = s.aux0; i > pos; i--) { s.setPixelColor(i, color1); if (dual) s.setPixelColor(s.len - 1 - i, color2); }
+    }
+    s.aux0 = pos;
+  }
+}
+
+function mode_percent(s) {
+  const percent = Math.min(s.intensity, 200);
+  const active = Math.round((s.len * (percent < 100 ? percent : 200 - percent)) / 100);
+  const size = s.speed === 255 ? 255 : 1 + ((s.speed * s.len) >> 11);
+  for (let i = 0; i < s.len; i++) {
+    const lit = percent <= 100 ? i < s.aux1 : i >= s.len - s.aux1;
+    if (!lit) s.setPixelColor(i, s.SEGCOLOR(1));
+    else if (s.check1) s.setPixelColor(i, s.color_from_palette(percent <= 100 ? map(percent, 0, 100, 0, 255) : map(percent, 100, 200, 255, 0), false, false, 0));
+    else s.setPixelColor(i, s.color_from_palette(i, true, false, 0));
+  }
+  if (active > s.aux1) { s.aux1 += size; if (s.aux1 > active) s.aux1 = active; } else if (active < s.aux1) {
+    s.aux1 = s.aux1 > size ? s.aux1 - size : 0;
+    if (s.aux1 < active) s.aux1 = active;
+  }
+}
+
+function mode_heartbeat(s) {
+  const bpm = 40 + (s.speed >> 3);
+  const msPerBeat = Math.floor(60000 / bpm), secondBeat = Math.floor(msPerBeat / 3);
+  const beatTimer = strip.now - s.step;
+  s.aux1 = Math.floor((s.aux1 * 2042) / (2048 + s.intensity));
+  if (beatTimer > secondBeat && !s.aux0) { s.aux1 = 0xFFFF; s.aux0 = 1; }
+  if (beatTimer > msPerBeat) { s.aux1 = 0xFFFF; s.aux0 = 0; s.step = strip.now; }
+  for (let i = 0; i < s.len; i++) s.setPixelColor(i, color_blend(s.color_from_palette(i, true, false, 0), s.SEGCOLOR(1), 255 - (s.aux1 >> 8)));
+}
+
+function mode_solid_glitter(s) {
+  s.fill(s.SEGCOLOR(0));
+  glitter_base(s, s.intensity, s.SEGCOLOR(2) ? s.SEGCOLOR(2) : ULTRAWHITE);
+}
+
+function phased_base(s) { // the "Phased" (moder 0) case; WLED keeps the phase as a float in SEGENV.step
+  if (s.call === 0 || typeof s.state !== "number") s.state = 0;
+  const cutOff = 255 - s.intensity, modVal = 5;
+  let index = Math.floor(strip.now / 64);
+  s.state = Math.fround(s.state + s.speed / 32);
+  for (let i = 0; i < s.len; i++) {
+    let val = (i + 1) * 16;
+    val = Math.trunc(Math.fround(val + Math.fround((s.state * ((i % modVal) + 1)) / 2))) >>> 0;
+    let b = cubicwave8(val & 0xFF);
+    b = b > cutOff ? b - cutOff : 0;
+    s.setPixelColor(i, color_blend(s.SEGCOLOR(1), s.color_from_palette(index & 0xFFFF, false, false, 0), b));
+    index += Math.floor(256 / s.len);
+    if (s.len > 256) index++;
+  }
+}
+
+function mode_twinkleup(s) {
+  const prevSeed = getSeed();
+  setSeed(535);
+  for (let i = 0; i < s.len; i++) {
+    const ranstart = random8();
+    let pixBri = sin8_t((ranstart + Math.floor(((16 * strip.now) >>> 0) / (256 - s.speed))) & 0xFF);
+    if (random8() > s.intensity) pixBri = 0;
+    s.setPixelColor(i, color_blend(s.SEGCOLOR(1), s.color_from_palette((random8() + Math.floor(strip.now / 100)) & 0xFFFF, false, false, 0), pixBri));
+  }
+  setSeed(prevSeed);
+}
+
+function mode_sinewave(s) {
+  const colorIndex = Math.floor(strip.now / 32);
+  s.step = (s.step + (s.speed >> 4)) >>> 0;
+  const freq = s.intensity >> 2;
+  for (let i = 0; i < s.len; i++) {
+    const pixBri = cubicwave8((i * freq + s.step) & 0xFF);
+    s.setPixelColor(i, color_blend(s.SEGCOLOR(1), s.color_from_palette(Math.floor(((i * colorIndex) >>> 0) / 255) & 0xFFFF, false, false, 0), pixBri));
+  }
+}
+
+function mode_washing_machine(s) {
+  const speed = tristate_square8((strip.now >>> 7) & 0xFF, 90, 15);
+  s.step = (s.step + Math.trunc((speed * 2048) / (512 - s.speed))) >>> 0;
+  for (let i = 0; i < s.len; i++) {
+    const col = sin8_t((Math.floor(((Math.floor(s.intensity / 25) + 1) * 255 * i) / s.len) + (s.step >>> 7)) & 0xFF);
+    s.setPixelColor(i, s.color_from_palette(col, false, false, 3));
+  }
+}
+
+function mode_blends(s) {
+  const pixelLen = Math.min(s.len, 255);
+  if (!s.state || s.state.length !== pixelLen + 1) s.state = new Uint32Array(pixelLen + 1);
+  const pixels = s.state;
+  const blendSpeed = map(s.intensity, 0, 255, 10, 128);
+  let shift = ((strip.now * ((s.speed >> 3) + 1)) >>> 0) >>> 8;
+  for (let i = 0; i < pixelLen; i++) {
+    pixels[i] = color_blend(pixels[i], s.color_from_palette((shift + quadwave8((i + 1) * 16)) & 0xFFFF, false, true, 255), blendSpeed);
+    shift += 3;
+  }
+  let offset = 0;
+  for (let i = 0; i < s.len; i++) {
+    s.setPixelColor(i, pixels[offset++]);
+    if (offset > pixelLen) offset = 0;
+  }
+}
+
 // WLED effect id (FX.h) -> one frame of it.
 export const MODES = {
   0: mode_static,
@@ -579,5 +1204,62 @@ export const MODES = {
   97: mode_plasma, // Plasma
   101: mode_pacifica, // Pacifica
   102: (s) => candle(s, true), // Candle Multi
+  4: (s) => color_wipe(s, false, true), // Wipe Random
+  5: mode_random_color, // Random Colors
+  6: (s) => color_wipe(s, true, false), // Sweep
+  7: mode_dynamic, // Dynamic
+  14: (s) => running(s, s.color_wheel(s.step & 0xFF), s.SEGCOLOR(1), true), // Theater Rainbow
+  18: (s) => dissolve(s, s.check1 ? s.color_wheel(random8()) : s.SEGCOLOR(0)), // Dissolve
+  19: (s) => dissolve(s, s.color_wheel(random8())), // Dissolve Rnd
+  21: (s) => sparkle_flash(s, false), // Sparkle Dark
+  22: (s) => sparkle_flash(s, true), // Sparkle+
+  24: (s) => blink(s, s.color_wheel(s.call & 0xFF), s.SEGCOLOR(1), true, false), // Strobe Rainbow
+  25: mode_multi_strobe, // Strobe Mega
+  26: (s) => blink(s, s.color_wheel(s.call & 0xFF), s.SEGCOLOR(1), false, false), // Blink Rainbow
+  27: mode_android, // Android
+  29: (s) => chase(s, s.SEGCOLOR(1), s.SEGCOLOR(2) ? s.SEGCOLOR(2) : s.SEGCOLOR(0), s.SEGCOLOR(0), false), // Chase Random
+  30: mode_chase_rainbow, // Chase Rainbow
+  31: mode_chase_flash, // Chase Flash
+  32: mode_chase_flash_random, // Chase Flash Rnd
+  33: mode_chase_rainbow_white, // Rainbow Runner
+  34: mode_colorful, // Colorful
+  35: mode_traffic_light, // Traffic Light
+  36: (s) => color_wipe(s, true, true), // Sweep Random
+  37: (s) => running(s, s.SEGCOLOR(0), s.SEGCOLOR(1), false), // Chase 2
+  39: mode_running_random, // Stream
+  41: mode_comet, // Lighthouse
+  45: mode_fire_flicker, // Fire Flicker
+  46: (s) => gradient_base(s, false), // Gradient
+  47: (s) => gradient_base(s, true), // Loading
+  50: (s) => { // Two Dots
+    if (!s.check2) s.fill(s.SEGCOLOR(2));
+    police_base(s, s.SEGCOLOR(0), s.SEGCOLOR(1) === s.SEGCOLOR(2) ? s.SEGCOLOR(0) : s.SEGCOLOR(1));
+  },
+  54: (s) => tricolor_chase(s, s.SEGCOLOR(2), s.SEGCOLOR(0)), // Chase 3
+  55: mode_tricolor_wipe, // Tri Wipe
+  56: mode_tricolor_fade, // Tri Fade
+  58: mode_icu, // ICU
+  59: mode_multi_comet, // Multi Comet
+  61: mode_random_chase, // Stream 2
+  62: mode_oscillate, // Oscillate
+  63: mode_pride_2015, // Pride 2015
+  68: mode_bpm, // Bpm
+  83: mode_static_pattern, // Solid Pattern
+  84: mode_tri_static_pattern, // Solid Pattern Tri
+  85: (s) => spots_base(s, (255 - s.speed) << 8), // Spots
+  86: mode_spots_fade, // Spots Fade
+  87: mode_glitter, // Glitter
+  92: (s) => sinelon_base(s, false), // Sinelon
+  93: (s) => sinelon_base(s, true), // Sinelon Dual
+  94: (s) => sinelon_base(s, false, true), // Sinelon Rainbow
+  98: mode_percent, // Percent
+  100: mode_heartbeat, // Heartbeat
+  103: mode_solid_glitter, // Solid Glitter
+  105: phased_base, // Phased
+  106: mode_twinkleup, // Twinkleup
+  108: mode_sinewave, // Sine
+  113: mode_washing_machine, // Washing Machine
+  115: mode_blends, // Blends
+  117: (s) => { const old = s.check1; s.check1 = true; mode_dynamic(s); s.check1 = old; }, // Dynamic Smooth
 };
 export { BLACK, RGBW32 };

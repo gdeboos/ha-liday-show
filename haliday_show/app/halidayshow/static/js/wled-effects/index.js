@@ -60,11 +60,12 @@ export function wledFrame(p, t, n) {
   const saved = getSeed();
   setSeed(sim.seed);
   const { seg } = sim;
+  // WLED draws an effect on the first frame after the delay it asked for (FX_fcn.cpp, WS2812FX::service).
   while (sim.next <= target) {
     strip.now = sim.next;
-    sim.draw(seg);
+    const delay = sim.draw(seg) ?? FRAMETIME;
     seg.call++;
-    sim.next += FRAMETIME;
+    sim.next += Math.max(1, Math.ceil(delay / FRAMETIME)) * FRAMETIME;
   }
   sim.seed = getSeed();
   setSeed(saved);
