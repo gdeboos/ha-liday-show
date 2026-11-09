@@ -11862,13 +11862,17 @@ function openLyrics({ ref, duration, voice: voiceSoon, lyrics, inMusic = false, 
   let voice = null;
   const listening = el("p", { className: "hint busy-row lyrics-listening", hidden: true }, el("span", { className: "spinner" }),
     el("span", { textContent: "Finding where the singing is. You can carry on: placing the words waits for this." }));
-  const voiceReady = Promise.resolve(voiceSoon).then((v) => { voice = v; }, () => {}).finally(() => { listening.hidden = true; });
+  const voiceReady = Promise.resolve(voiceSoon).then((v) => { voice = v; listening.hidden = true; }, (e) => {
+    // Placing still works without it, evenly over the whole song, so say so rather than stop.
+    listening.replaceChildren(`Couldn't find where the singing is (${plainError(e)}), so placing spreads the lines over the whole song.`);
+  });
   if (voiceSoon instanceof Promise) listening.hidden = false;
-  // Runs fn once the singing's been found, with `b` (the button pressed) showing it's waiting meanwhile.
+  // Runs fn once the singing's been found, with `b` (the button pressed) showing it's waiting meanwhile,
+  // unless the window was closed while it waited.
   const withVoice = async (b, fn) => {
     if (b) b.disabled = true;
     try { await voiceReady; } finally { if (b) b.disabled = false; }
-    return fn();
+    if (w.dlg.open) return fn();
   };
   const screens = {};
   const screen = (name, step, label, ...kids) => (screens[name] = Object.assign(el("section", { className: "lyrics-screen", hidden: true }, ...kids), { step, label }));
