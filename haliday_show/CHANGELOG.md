@@ -2,9 +2,11 @@
 
 ## 0.2.455
 
-- In **Lyrics…**, the three ways to place the words no longer look as if **Line up with the singing** is already
-  chosen. All three cards now look the same, each with an arrow to show it starts something, and the one
-  you point at lights up.
+- **Lyrics…** now goes a step at a time, with the steps along the top: paste the **Words**, pick **How** to
+  place them, then that way's own screen (the AI's progress with **Cancel**, or **Tap along** showing the line
+  to listen for in big letters with the next one under it), then **Check** every line before you **Save**.
+  The three ways all look alike now, so none looks already chosen. A song that already has its words opens
+  on **Check**, with **Try another way** and **Change the words**.
 
 ## 0.2.454
 
