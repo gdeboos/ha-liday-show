@@ -67,3 +67,20 @@ test("a download cut off part way carries on from where it got to", async () => 
   const again = async () => (++n === 1 ? { status: 200, ok: true, body: body([[9]], true) } : { status: 200, ok: true, body: body([[1, 2]], false) });
   assert.deepEqual([...new Uint8Array(await fetchSong("x", again, { waits: [] }))], [1, 2]);
 });
+
+test("a download cut at the same place every time gives up after the waits", async () => {
+  const stuck = async (url, init) => ({ status: init ? 206 : 200, ok: true, body: { getReader() {
+    let sent = !!init;
+    return { read: async () => { if (!sent) { sent = true; return { done: false, value: Uint8Array.from([1]) }; } throw new TypeError("network error"); } };
+  } } });
+  const slept = [];
+  await assert.rejects(fetchSong("x", stuck, { waits: [1, 2], sleep: async (ms) => slept.push(ms) }), TypeError);
+  assert.deepEqual(slept, [1, 2]);
+  // A piece that doesn't start where it got to starts afresh rather than joining the wrong bytes.
+  let n = 0;
+  const odd = async () => (++n === 1
+    ? { status: 200, ok: true, body: { getReader() { let k = 0; return { read: async () => { if (k++ === 0) return { done: false, value: Uint8Array.from([7]) }; throw new TypeError("network error"); } }; } } }
+    : n === 2 ? { status: 206, ok: true, headers: { get: () => "bytes 0-1/2" }, body: { getReader() { let k = 0; return { read: async () => (k++ === 0 ? { done: false, value: Uint8Array.from([1, 2]) } : { done: true }) }; } } }
+      : null);
+  assert.deepEqual([...new Uint8Array(await fetchSong("x", odd, { waits: [] }))], [1, 2]);
+});

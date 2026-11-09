@@ -36,13 +36,15 @@ export async function fetchSong(url, get = fetch, { waits = [2000, 5000, 15000, 
   const chunks = [];
   let got = 0;
   for (let i = 0; ;) {
-    const before = got;
+    let further = false; // whether this try got any more of it
     try {
       const r = await get(url, got ? { headers: { Range: `bytes=${got}-` } } : undefined);
       if ([502, 503, 504].includes(r.status)) throw Object.assign(new SongServerError(`HTTP ${r.status}`), { status: r.status });
       if (r.status === 404) throw new SongMissing("not found");
       if (!r.ok) throw new SongServerError(`HTTP ${r.status}`);
-      if (got && r.status !== 206) { chunks.length = 0; got = 0; } // it sent the whole song again
+      // A whole song again (200), or a piece that doesn't start where we got to: start afresh.
+      const from = Number(/^bytes (\d+)-/.exec(r.headers?.get?.("Content-Range") || "")?.[1] ?? got);
+      if (got && (r.status !== 206 || from !== got)) { chunks.length = 0; got = 0; }
       if (!r.body?.getReader) { const b = new Uint8Array(await r.arrayBuffer()); chunks.push(b); got += b.length; break; }
       const reader = r.body.getReader();
       for (;;) {
@@ -50,12 +52,14 @@ export async function fetchSong(url, get = fetch, { waits = [2000, 5000, 15000, 
         if (done) break;
         chunks.push(value);
         got += value.length;
+        further = true;
       }
       break;
     } catch (e) {
       if (!lostTouch(e)) throw e;
-      if (got === before && i >= waits.length) throw e;
-      if (got === before) await sleep(waits[i++]);
+      if (further) continue;
+      if (i >= waits.length) throw e;
+      await sleep(waits[i++]);
     }
   }
   const out = new Uint8Array(got);
