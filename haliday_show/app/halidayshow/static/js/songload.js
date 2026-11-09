@@ -7,7 +7,8 @@ export class SongServerError extends Error {}
 // Whether an error is the connection dropping, rather than an answer: the browser's "Failed to fetch"
 // (Wi-Fi blipped, the computer woke from sleep) or Home Assistant saying the app's away for a moment
 // (restarting after an update).
-export const lostTouch = (err) => err instanceof TypeError || [502, 503, 504].includes(err?.status);
+export const lostTouch = (err) => (err instanceof TypeError && /fetch|load failed|network/i.test(err.message))
+  || [502, 503, 504].includes(err?.status);
 
 // fn() again after a short wait each time the connection drops, up to `waits.length` more times (about
 // a minute in all: long enough for the app to restart after an update).

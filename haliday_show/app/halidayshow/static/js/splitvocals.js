@@ -5,7 +5,7 @@
 import { MDX } from "./stems.js";
 import { drumHits } from "./drumhits.js";
 import { soundsFrom } from "./sounds.js";
-import { fetchSong, retrying, songLoadMessage } from "./songload.js";
+import { fetchSong, plainError, retrying, songLoadMessage } from "./songload.js";
 import { sendParts } from "./upload.js";
 import { alignLyrics } from "./align.js";
 
@@ -287,7 +287,7 @@ async function makePartsNow(ref, api, { again, edit, listenOnly, cutOnly, say, s
     }));
     say(`Keeping ${song}'s parts with it…`, null);
     await saving;
-    if (saveFailed) throw new Error(`couldn't keep its parts with it: ${saveFailed.message}`);
+    if (saveFailed) throw new Error(`couldn't keep its parts with it: ${plainError(saveFailed)}`);
     if (drums) {
       say(`Finding when each drum lands in ${song}…`, null);
       await new Promise((r) => setTimeout(r, 0));
@@ -338,7 +338,7 @@ export async function splitVocals(ref, host) {
     host.status(`Split ${song} into its parts: vocals, drums, bass and the rest, kept with the song. Pick them as layers in the Music editor`, "saved");
   } catch (e) {
     if (e.cancelled) { host.status(`Split into parts stopped. Any part ${song} finished is kept with it`, "hint"); await host.songsChanged?.(); }
-    else host.status(`Couldn't split ${song}: ${e.message}`, true);
+    else host.status(`Couldn't split ${song}: ${plainError(e)}`, true);
   } finally {
     win?.close();
   }

@@ -20,7 +20,7 @@ import { askChoice, askText, askYes } from "./ask.js";
 import { describeSections, keepYours, ruleNote } from "./sectionnotes.js";
 import { uploadSong } from "./upload.js";
 import { MARK_COLOUR, SECTION_ALPHA, fmtTime, markText, sectionHue, sectionTint } from "./timeline.js";
-import { fetchSong, songLoadMessage } from "./songload.js";
+import { fetchSong, plainError, songLoadMessage } from "./songload.js";
 import { lineWords, moveWord, savedLines, savedLyrics, songLyrics } from "./lyrics.js";
 
 const EPS = 1e-6;
@@ -1087,7 +1087,7 @@ export class MusicEditor {
     for (const path of [...new Set(want)]) {
       try { await this.source({ source: "media", path }); loaded = true; } catch (e) {
         this.partsFailed.add(path);
-        this.host.status(`Couldn't load the song's parts: ${e.message}. It plays as it is`, true);
+        this.host.status(`Couldn't load the song's parts: ${plainError(e)}. It plays as it is`, true);
       }
     }
     this.partsLoading = false;
@@ -2905,7 +2905,7 @@ export class MusicEditor {
       if (carry) await this.host.api(infoUrl(ref), { method: "PUT", json: carry });
       else await this.detectMade(ref, rendered, rate, marks);
       if (lyrics || mashed) await this.host.api(lyricsUrl(ref), { method: "PUT", json: lyrics }).catch(() => {});
-      await this.makeParts(ref, cut).catch((e) => this.host.status(`Made ${ref.path}, but couldn't keep its parts with it: ${e.message}`, true, "music-save"));
+      await this.makeParts(ref, cut).catch((e) => this.host.status(`Made ${ref.path}, but couldn't keep its parts with it: ${plainError(e)}`, true, "music-save"));
       this.host.songsChanged();
     } catch (e) {
       this.host.status(`Couldn't make the song file: ${e.message}`, true, "music-save");
