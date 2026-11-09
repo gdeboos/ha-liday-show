@@ -1005,7 +1005,9 @@ suits you, overnight say. **Add a song** remembers your choice for next time.
 A bar above your songs in **Library → Songs** says which song
 it's on and how far along it is, and the line at the bottom of the page says so on other pages too.
 You can carry on using HA-liday Show meanwhile, but keep the page open until it's done. **Stop** stops
-it; parts already made are kept.
+it; parts already made are kept. If the connection drops part way (the Wi-Fi blips, or the app restarts
+after an update), it waits and tries again for about a minute before giving up on that song; if it does
+give up, it says it lost touch, and **Split into parts…** on that song tries again.
 
 **Split all songs into parts** (under the list in **Library → Songs**) does the same for every song
 that isn't split yet, one after another, and listens to any song split before HA-liday Show listened

@@ -5,7 +5,7 @@
 import { MDX } from "./stems.js";
 import { drumHits } from "./drumhits.js";
 import { soundsFrom } from "./sounds.js";
-import { fetchSong, songLoadMessage } from "./songload.js";
+import { fetchSong, plainError, retrying, songLoadMessage } from "./songload.js";
 import { sendParts } from "./upload.js";
 import { alignLyrics } from "./align.js";
 
@@ -37,7 +37,9 @@ export function wav16(channels, rate) {
 // Keeps `channels` (at `rate`) as the song's `part`, a WAV sent in pieces. Returns where it's kept.
 export function savePart(api, ref, part, channels, rate, progress = null) {
   const q = new URLSearchParams({ source: ref.source, path: ref.path, part });
-  return sendParts(api, `api/audio/parts?${q}`, new Blob([wav16(channels, rate)], { type: "audio/wav" }), {}, progress);
+  const blob = new Blob([wav16(channels, rate)], { type: "audio/wav" });
+  // Each try is a fresh upload, so a piece that half-arrived before the connection dropped doesn't matter.
+  return retrying(() => sendParts(api, `api/audio/parts?${q}`, blob, {}, progress));
 }
 
 let busy = false;
@@ -285,7 +287,7 @@ async function makePartsNow(ref, api, { again, edit, listenOnly, cutOnly, say, s
     }));
     say(`Keeping ${song}'s parts with it…`, null);
     await saving;
-    if (saveFailed) throw new Error(`couldn't keep its parts with it: ${saveFailed.message}`);
+    if (saveFailed) throw new Error(`couldn't keep its parts with it: ${plainError(saveFailed)}`);
     if (drums) {
       say(`Finding when each drum lands in ${song}…`, null);
       await new Promise((r) => setTimeout(r, 0));
@@ -336,7 +338,7 @@ export async function splitVocals(ref, host) {
     host.status(`Split ${song} into its parts: vocals, drums, bass and the rest, kept with the song. Pick them as layers in the Music editor`, "saved");
   } catch (e) {
     if (e.cancelled) { host.status(`Split into parts stopped. Any part ${song} finished is kept with it`, "hint"); await host.songsChanged?.(); }
-    else host.status(`Couldn't split ${song}: ${e.message}`, true);
+    else host.status(`Couldn't split ${song}: ${plainError(e)}`, true);
   } finally {
     win?.close();
   }
