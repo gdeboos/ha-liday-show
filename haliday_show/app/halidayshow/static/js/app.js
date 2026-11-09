@@ -13521,7 +13521,8 @@ async function renderNotesCard({ check = false } = {}) {
     : gpu === null ? "Checking…"
       : gpu === "none" ? "This browser can't run it: use Chrome or Edge on a computer."
         : gpu === "no-f16" ? "This computer's graphics chip can't run it."
-          : kept ? "Downloaded in this browser." : "Not downloaded in this browser yet.";
+          : kept ? "✓ Downloaded" : "";
+  $("notes-state").className = kept && !busy ? "song-badge ok" : "hint";
   $("notes-download").hidden = kept || gpu !== "ok";
   $("notes-download").disabled = !!busy;
   $("notes-forget").hidden = !kept || !!busy;
@@ -13544,7 +13545,7 @@ $("notes-download").addEventListener("click", async () => {
     deviceNotes.busy = null;
     status(`Couldn't download the notes model: ${e.message}`, true);
   }
-  renderNotesCard({ check: true });
+  renderNotesCard({ check: true }).then(renderAiModels);
 });
 $("notes-forget").addEventListener("click", async () => {
   await deviceNotes.ask({ forget: true }).catch(() => {});
@@ -13553,8 +13554,85 @@ $("notes-forget").addEventListener("click", async () => {
   renderNotesCard({ check: true });
 });
 $("notes-with").addEventListener("change", (e) => prefs.set("notesWith", e.target.value));
+$("notes-forget").addEventListener("click", () => setTimeout(renderAiModels, 500));
 // Only browsers that have downloaded it look at start-up (the rest when Setup → AI is opened).
 if (prefs.get("notesModelHere", false)) renderNotesCard({ check: true });
+
+$("ai-with").addEventListener("change", async (e) => {
+  try {
+    await api("api/ai/with", { method: "PUT", json: { with: e.target.value } });
+    await loadAiStatus();
+    status(`Writing with ${e.target.value === "ha" ? "Home Assistant's AI Task" : "Claude"} from now on`, "saved");
+  } catch (err) { status(`Couldn't change it: ${err.message}`, true); }
+});
+
+// Setup → AI: the models that run in this browser, whether it has each, and getting them ahead of time.
+// The stems worker (stemsworker.js) keeps them; a short-lived one answers here.
+const aiModels = { busy: null };
+function modelsWorker(msg, progress = () => {}) {
+  return new Promise((resolve, reject) => {
+    const w = new Worker(new URL("./stemsworker.js", import.meta.url), { type: "module" });
+    const done = (fn, v) => { w.terminate(); fn(v); };
+    w.onmessage = ({ data }) => {
+      if (data.error) done(reject, new Error(data.error));
+      else if (data.stage === "download") progress(data.done);
+      else done(resolve, data);
+    };
+    w.onerror = (e) => done(reject, new Error(e.message || "it couldn't start in this browser"));
+    w.postMessage(msg);
+  });
+}
+const modelRows = () => [...document.querySelectorAll("#view-ai tr[data-models]")];
+async function renderAiModels() {
+  const rows = modelRows(), names = rows.flatMap((r) => r.dataset.models.split(","));
+  let kept = {}, store = true;
+  try { ({ kept, store } = await modelsWorker({ kept: names })); } catch { store = false; }
+  let have = 0;
+  for (const row of rows) {
+    const mine = row.dataset.models.split(","), here = mine.every((n) => kept[n]);
+    have += here ? 1 : 0;
+    const cell = row.querySelector(".ai-model-state");
+    if (aiModels.busy === row) continue;
+    if (here) cell.replaceChildren(Object.assign(document.createElement("span"), { className: "song-badge ok", textContent: "✓ Downloaded" }));
+    else if (!store) cell.replaceChildren(Object.assign(document.createElement("span"), { className: "hint", textContent: "Downloads when it's used" }));
+    else cell.replaceChildren(button("Download", () => getModels([row]), "small"));
+  }
+  // The notes model only counts where this browser can run it.
+  const notes = deviceNotes.kept ? 1 : 0, all = rows.length + (deviceNotes.gpu === "ok" || notes ? 1 : 0);
+  const badge = $("ai-browser-state");
+  badge.textContent = !store ? "Downloads when used" : have + notes === all ? "✓ All downloaded" : `${have + notes} of ${all} downloaded`;
+  badge.className = `song-badge ${store && have + notes === all ? "ok" : "original"}`;
+  $("ai-get-all").hidden = !store || (have === rows.length && (deviceNotes.kept || deviceNotes.gpu !== "ok"));
+  $("ai-forget-all").hidden = !store || (!have && !notes);
+  $("ai-models-note").textContent = store ? ""
+    : "This browser can't keep the models, as HA-liday Show isn't open over https here: each one is downloaded when it's used.";
+}
+async function getModels(rows) {
+  if (aiModels.busy) return;
+  for (const row of rows) {
+    aiModels.busy = row;
+    const cell = row.querySelector(".ai-model-state");
+    const say = (done) => { cell.textContent = `Downloading… ${Math.round(done * 100)}%`; };
+    say(0);
+    try { await modelsWorker({ fetch: row.dataset.models.split(",") }, say); } catch (e) {
+      status(`Couldn't download it: ${e.message}`, true);
+    }
+    aiModels.busy = null;
+    await renderAiModels();
+  }
+}
+$("ai-get-all").addEventListener("click", async () => {
+  navigator.storage?.persist?.().catch(() => {}); // so the browser keeps them rather than clearing them when space runs low
+  const todo = modelRows().filter((r) => !r.querySelector(".song-badge.ok"));
+  await getModels(todo);
+  if (!$("notes-download").hidden) $("notes-download").click();
+});
+$("ai-forget-all").addEventListener("click", async () => {
+  if (!(await askYes("Remove the AI models from this browser? They're downloaded again when they're next used.", { yes: "Remove" }))) return;
+  await modelsWorker({ forget: true }).catch(() => {});
+  if (deviceNotes.kept) $("notes-forget").click();
+  await renderAiModels();
+});
 
 // Describe it: effects from a request in words, made by the AI the add-on is set up with.
 let aiVia = null; // how AI requests go ("claude" or "ha"), or null when no AI is set up
@@ -13567,6 +13645,17 @@ async function loadAiStatus() {
     : st.via === "ha" ? `Using Home Assistant's AI Task${st.entity ? ` (${st.entity})` : ""}.`
       : "Not set up yet: add a Claude API key on the app's Configuration tab, or set up an AI integration with an AI Task entity in Home Assistant.";
   $("ai-status").textContent = text;
+  // Setup → AI: which one is in use, and the choice when both are set up.
+  const both = Boolean(st.claude && st.entities?.length);
+  $("ai-with-row").hidden = !both;
+  if (both) $("ai-with").value = st.via === "ha" ? "ha" : "claude";
+  const writer = $("ai-writer-state");
+  writer.textContent = st.via === "claude" ? "✓ Using Claude" : st.via === "ha" ? "✓ Using Home Assistant's AI" : "Not set up";
+  writer.className = `song-badge ${st.via ? "ok" : "original"}`;
+  for (const td of document.querySelectorAll(".ai-writer-ready")) {
+    td.replaceChildren(Object.assign(document.createElement("span"), { className: `song-badge ${st.via ? "ok" : "original"}`,
+      textContent: st.via ? "✓ Ready" : "Not set up" }));
+  }
   $("ai-hint").textContent = st.via ? "" : "Set up an AI under Setup → AI to use this.";
   $("ai-hint").hidden = !!st.via;
   $("ai-preset-hint").textContent = st.via ? "" : $("ai-hint").textContent;
@@ -13756,7 +13845,7 @@ function showView(view, { push = true } = {}) {
   if (view in open && !open[view]) view = EDITOR_LIST[view];
   if (view === "labs" && !labsOn()) view = "settings";
   if (view === "public" && $("tab-public").hidden) view = "settings";
-  if (view === "ai") renderNotesCard({ check: true });
+  if (view === "ai") { renderNotesCard({ check: true }).then(renderAiModels); loadAiStatus(); }
   // Live music effects move to what a WLED hears (or a made-up song) while a scene is being edited.
   const live = (view === "scene" && app.sceneChosen) || (view === "editor" && !!app.sceneId);
   if (live !== livePreviewing) { livePreviewing = live; if (live) startLivePreview(api); else stopLivePreview(); }

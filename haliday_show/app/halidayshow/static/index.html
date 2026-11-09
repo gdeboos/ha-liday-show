@@ -946,7 +946,7 @@
     <button class="subtab" data-view="house"><svg class="ico" aria-hidden="true"><use href="#i-house"/></svg><b>House</b><span>Photo and tracing</span></button>
     <button class="subtab" data-view="editors"><svg class="ico" aria-hidden="true"><use href="#i-layout"/></svg><b>Editors</b><span>Layout of each editor</span></button>
     <button class="subtab" data-view="livemusic"><svg class="ico" aria-hidden="true"><use href="#i-mic"/></svg><b>Live music</b><span>WLED sound sync</span></button>
-    <button class="subtab" data-view="ai"><svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg><b>AI</b><span>Claude key and options</span></button>
+    <button class="subtab" data-view="ai"><svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg><b>AI</b><span>What uses AI, and where</span></button>
     <button class="subtab" data-view="data"><svg class="ico" aria-hidden="true"><use href="#i-data"/></svg><b>Your data</b><span>Export, import, backups</span></button>
     <button class="subtab" data-view="settings"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><b>More</b><span>Public page, guide, demo</span></button>
     <button class="subtab" data-view="labs" id="tab-labs" hidden><svg class="ico" aria-hidden="true"><use href="#i-labs"/></svg><b>Labs</b><span>Packet lab and listening</span></button>
@@ -1272,24 +1272,57 @@
 <main id="view-ai" class="view settings" hidden>
   <section class="card">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-ai"/></svg>AI</h2>
-    <p class="hint" id="ai-status">Checking…</p>
-    <p class="hint">The <b>Describe it</b> panel turns a request in words into effects, using either Claude with
-      your own API key (set it on the app's <b>Configuration</b> tab in Home Assistant), or else Home
-      Assistant's <b>AI Task</b>, which uses whichever AI integration you have set up there, including a local
-      one such as Ollama. It sends the AI your lights' names, the effect list, the song's beats and sections,
-      and the selection; never the song itself.</p>
+    <p class="hint">HA-liday Show uses AI in two places. Nothing needs it: without it, everything still works from simple
+      rules.</p>
+    <div class="ai-places">
+      <div class="ai-place browser"><b>In this browser</b> <span id="ai-browser-state" class="song-badge original">Checking…</span>
+        <p class="hint">Free and private: your songs never leave the house. Each model is downloaded once and kept by
+          this browser, so it starts straight away next time. Quickest on a computer with a graphics chip.</p></div>
+      <div class="ai-place writer"><b>Claude or Home Assistant's AI</b> <span id="ai-writer-state" class="song-badge original">Checking…</span>
+        <p class="hint">For writing: effects from your words, show ideas, section names and notes. It gets your lights'
+          names and the song's beats and sections, never the song itself.</p></div>
+    </div>
   </section>
-  <section class="card" id="notes-card">
-    <h2>Section notes on this device</h2>
-    <p class="hint"><b>Detect</b> and <b>✨ Describe sections</b> can have a small AI model write the section notes right
-      here in your browser, so nothing about your songs leaves the house. It's a one-off 1.2&nbsp;GB download, kept by
-      this browser, and needs a recent browser and graphics chip: Chrome or Edge on a computer.</p>
-    <p class="hint" id="notes-state">Checking…</p>
-    <p class="row"><button id="notes-download" type="button" hidden>Download the notes model (1.2 GB)</button>
-      <button id="notes-forget" type="button" class="ghost danger" hidden>Remove it from this browser</button></p>
-    <p><label for="notes-with">Write section notes with</label>
-      <select id="notes-with"><option value="device">On this device</option><option value="ai">Claude or Home Assistant</option></select></p>
-    <p class="hint">Without the model or an AI, the notes are written from simple rules.</p>
+  <section class="card">
+    <h2>What uses AI, and where</h2>
+    <table class="devices ai-uses">
+      <colgroup><col class="ai-what"><col class="ai-where"><col class="ai-size"><col class="ai-state"></colgroup>
+      <thead><tr><th>Feature</th><th>Where</th><th>Model</th><th></th></tr></thead>
+      <tbody>
+        <tr data-models="model.onnx,drums.onnx,bass.onnx"><td><b>Split into parts</b><br><span class="hint">vocals, drums, bass and the rest</span></td>
+          <td><span class="ai-tag browser">This browser</span></td><td>126 MB</td><td class="ai-model-state"></td></tr>
+        <tr data-models="yamnet.onnx"><td><b>Sounds in a song</b><br><span class="hint">bells, a choir, brass…</span></td>
+          <td><span class="ai-tag browser">This browser</span></td><td>16 MB</td><td class="ai-model-state"></td></tr>
+        <tr data-models="align.onnx"><td><b>Line up the words</b><br><span class="hint">Lyrics… → Line up with the singing</span></td>
+          <td><span class="ai-tag browser">This browser</span></td><td>95 MB</td><td class="ai-model-state"></td></tr>
+        <tr id="notes-row"><td><b>Section notes</b><br><span class="hint">Detect and ✨ Describe sections</span></td>
+          <td><select id="notes-with" aria-label="Write section notes with"><option value="device">This browser</option>
+            <option value="ai">Claude or HA's AI</option></select></td><td>1.2 GB</td>
+          <td><span id="notes-state" class="hint">Checking…</span>
+            <button id="notes-download" type="button" class="small" hidden>Download</button>
+            <button id="notes-forget" type="button" class="ghost danger small" hidden>Remove</button></td></tr>
+        <tr class="ai-writes"><td><b>Describe it</b><br><span class="hint">effects from your words</span></td>
+          <td><span class="ai-tag writer">Claude or HA's AI</span></td><td>–</td><td class="ai-writer-ready"></td></tr>
+        <tr class="ai-writes"><td><b>✨ Generate my show</b><br><span class="hint">with the AI's ideas</span></td>
+          <td><span class="ai-tag writer">Claude or HA's AI</span></td><td>–</td><td class="ai-writer-ready"></td></tr>
+        <tr class="ai-writes"><td><b>Everything else from words</b><br><span class="hint">section names, song colours, presets,
+          palettes, Suggest cuts</span></td><td><span class="ai-tag writer">Claude or HA's AI</span></td><td>–</td><td class="ai-writer-ready"></td></tr>
+      </tbody>
+    </table>
+    <p class="hint">The section notes model needs Chrome or Edge on a computer. Without it, or an AI, notes are written
+      from simple rules.</p>
+    <p class="row"><button id="ai-get-all" type="button" class="primary">Download all models</button>
+      <button id="ai-forget-all" type="button" class="ghost danger">Remove them from this browser</button></p>
+    <p class="hint" id="ai-models-note" aria-live="polite"></p>
+  </section>
+  <section class="card">
+    <h2>Claude or Home Assistant's AI</h2>
+    <p class="hint" id="ai-status">Checking…</p>
+    <p id="ai-with-row" hidden><label for="ai-with">Use</label>
+      <select id="ai-with"><option value="claude">Claude</option><option value="ha">Home Assistant's AI Task</option></select></p>
+    <p class="hint">Claude uses your own API key (set it on the app's <b>Configuration</b> tab in Home Assistant) and is
+      paid per use. Home Assistant's <b>AI Task</b> uses whichever AI integration you've set up there, including a
+      local one such as Ollama.</p>
   </section>
 </main>
 <main id="view-data" class="view settings" hidden>

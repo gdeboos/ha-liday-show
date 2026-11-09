@@ -381,10 +381,19 @@ async def ask_home_assistant(ha: HomeAssistant, text: str, entity: str | None, i
     return parse_reply(data if isinstance(data, str) else json.dumps(data), field)
 
 
-async def status(ha: HomeAssistant) -> dict:
-    """Which way requests will go: "claude", "ha" (with its AI Task entities) or None."""
-    if claude_key():
-        return {"via": "claude", "model": CLAUDE_MODEL}
+async def status(ha: HomeAssistant, prefer: str | None = None) -> dict:
+    """Which way requests will go: "claude", "ha" (with its AI Task entities) or None. `prefer` ("claude" or
+    "ha", from Setup → AI) picks between them when both are set up; otherwise Claude, if it has a key."""
+    key = bool(claude_key())
+    if key and prefer != "ha":
+        return {"via": "claude", "model": CLAUDE_MODEL, "claude": True, "prefer": prefer, **(await _ha_tasks(ha))}
+    tasks = await _ha_tasks(ha)
+    via = "ha" if tasks["entities"] else ("claude" if key else None)
+    return {"via": via, **({"model": CLAUDE_MODEL} if via == "claude" else {}), "claude": key, "prefer": prefer, **tasks}
+
+
+async def _ha_tasks(ha: HomeAssistant) -> dict:
+    """Home Assistant's AI Task entities, and the one requests go to."""
     entities = []
     if ha.available:
         try:
@@ -393,11 +402,11 @@ async def status(ha: HomeAssistant) -> dict:
             pass
     # The entity named in the Configuration, else the only one, else Home Assistant's preferred one.
     entity = str(options().get("ai_task_entity") or os.environ.get("HALIDAY_SHOW_AI_TASK_ENTITY") or "") or (entities[0] if len(entities) == 1 else None)
-    return {"via": "ha" if entities else None, "entities": entities, "entity": entity}
+    return {"entities": entities, "entity": entity}
 
 
 async def _create(ha: HomeAssistant, request: str, context: dict, instructions: str, schema: dict,
-                  field: str) -> dict:
+                  field: str, prefer: str | None = None) -> dict:
     request = (request or "").strip()
     if not request:
         raise AIError("type what you'd like the lights to do")
@@ -406,31 +415,30 @@ async def _create(ha: HomeAssistant, request: str, context: dict, instructions: 
     text = prompt(request, context)
     if len(text) > MAX_CONTEXT:
         raise AIError("this show is too big to describe to the AI in one go")
-    key = claude_key()
-    if key:
-        return {**await ask_claude(key, text, instructions, schema, field), "via": "claude"}
-    st = await status(ha)
+    st = await status(ha, prefer)
+    if st["via"] == "claude":
+        return {**await ask_claude(claude_key(), text, instructions, schema, field), "via": "claude"}
     if not st["via"]:
         raise AIError("no AI is set up: add a Claude API key on the app's Configuration tab, "
                       "or set up an AI integration with an AI Task entity in Home Assistant")
     return {**await ask_home_assistant(ha, text, st["entity"], instructions, schema, field), "via": "ha"}
 
 
-async def create_clips(ha: HomeAssistant, request: str, context: dict) -> dict:
-    return await _create(ha, request, context, INSTRUCTIONS, SCHEMA, "clips")
+async def create_clips(ha: HomeAssistant, request: str, context: dict, prefer: str | None = None) -> dict:
+    return await _create(ha, request, context, INSTRUCTIONS, SCHEMA, "clips", prefer)
 
 
-async def create_presets(ha: HomeAssistant, request: str, context: dict) -> dict:
-    return await _create(ha, request, context, PRESET_INSTRUCTIONS, PRESET_SCHEMA, "presets")
+async def create_presets(ha: HomeAssistant, request: str, context: dict, prefer: str | None = None) -> dict:
+    return await _create(ha, request, context, PRESET_INSTRUCTIONS, PRESET_SCHEMA, "presets", prefer)
 
 
-async def create_section_notes(ha: HomeAssistant, request: str, context: dict) -> dict:
-    return await _create(ha, request, context, SECTION_INSTRUCTIONS, SECTION_SCHEMA, "sections")
+async def create_section_notes(ha: HomeAssistant, request: str, context: dict, prefer: str | None = None) -> dict:
+    return await _create(ha, request, context, SECTION_INSTRUCTIONS, SECTION_SCHEMA, "sections", prefer)
 
 
-async def rank_cuts(ha: HomeAssistant, request: str, context: dict) -> dict:
-    return await _create(ha, request, context, CUT_INSTRUCTIONS, CUT_SCHEMA, "choices")
+async def rank_cuts(ha: HomeAssistant, request: str, context: dict, prefer: str | None = None) -> dict:
+    return await _create(ha, request, context, CUT_INSTRUCTIONS, CUT_SCHEMA, "choices", prefer)
 
 
-async def create_palettes(ha: HomeAssistant, request: str, context: dict) -> dict:
-    return await _create(ha, request, context, PALETTE_INSTRUCTIONS, PALETTE_SCHEMA, "palettes")
+async def create_palettes(ha: HomeAssistant, request: str, context: dict, prefer: str | None = None) -> dict:
+    return await _create(ha, request, context, PALETTE_INSTRUCTIONS, PALETTE_SCHEMA, "palettes", prefer)

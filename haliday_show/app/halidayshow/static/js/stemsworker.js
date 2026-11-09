@@ -208,7 +208,39 @@ async function lineUp(samples) {
   return logp;
 }
 
-self.onmessage = async ({ data: { left, right, want = ["vocals"], vocals = null, listen: heard = null, align = null } }) => {
+// Setup → AI: which models this browser keeps ({kept: [names]} → {kept: {name: true|false}}), getting
+// them ready ahead of time ({fetch: [names]} → {stage: "download", done}… then {fetched: true}), and
+// letting them go ({forget: true} → {forgotten: true}).
+async function manage({ kept: ask, fetch: get, forget }) {
+  if (forget) { await (self.caches ? caches.delete(CACHE) : null)?.catch?.(() => {}); return { forgotten: true }; }
+  if (ask) {
+    const out = {};
+    for (const name of ask) out[name] = Boolean(await keptModel(name).catch(() => null));
+    return { kept: out, store: Boolean(self.caches) };
+  }
+  const todo = [];
+  for (const name of get) if (!(await keptModel(name).catch(() => null))) todo.push(name);
+  if (!todo.length) return { fetched: true };
+  const files = await prepared(todo, (done) => self.postMessage({ stage: "download", done: done / 2 }));
+  const all = todo.reduce((n, name) => n + files[name].size, 0);
+  let had = 0;
+  for (const name of todo) {
+    await model(name, files[name].size);
+    had += files[name].size;
+    self.postMessage({ stage: "download", done: 0.5 + had / all / 2 });
+  }
+  return { fetched: true };
+}
+
+self.onmessage = async ({ data }) => {
+  if (data.kept || data.fetch || data.forget) {
+    try { self.postMessage(await manage(data)); } catch (e) { self.postMessage({ error: e?.message || String(e) }); }
+    return;
+  }
+  return split(data);
+};
+
+const split = async ({ left, right, want = ["vocals"], vocals = null, listen: heard = null, align = null }) => {
   if (heard) {
     try { self.postMessage({ scores: await listen(heard) }); } catch (e) { self.postMessage({ error: e?.message || String(e) }); }
     return;

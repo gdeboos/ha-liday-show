@@ -177,7 +177,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   building up like a person would (a few lights in quiet parts, all of them in the chorus), with a
   limit on how long one effect runs; with an AI, a window shows it working and Cancel stops it
 - Describe effects in words and an AI adds them, using Claude with your API key or any AI set up in
-  Home Assistant, including local ones
+  Home Assistant, including local ones (pick which under **Setup → AI**, which also lists every AI feature,
+  where it runs, and the in-browser models to download ahead of time)
 - Effect suggestions for the selected part of the song, timed to its tempo
 - Timeline editor with the song's waveform, one track per light, beat markers and snapping, and
   smooth zoom (+/−, Ctrl+wheel or pinch) and scroll

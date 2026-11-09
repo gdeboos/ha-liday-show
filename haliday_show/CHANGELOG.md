@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.455
+
+- **A clearer AI tab.** **Setup → AI** now shows the two places AI runs (in your browser, free and private, or Claude / Home Assistant's AI for writing), then a list of every feature that uses AI, where it runs, and whether it's ready.
+- **Download the in-browser models ahead of time.** Each model (Split into parts, Sounds in a song, Line up the words, Section notes) has **Download** and shows **✓ Downloaded** once your browser has it. **Download all models** and **Remove them from this browser** do them all at once.
+- **Pick Claude or Home Assistant's AI.** With both set up, **Use** chooses which one writes for you. Before, your Claude key always won.
+
 ## 0.2.454
 
 - **Edits show ♪ Lyrics when they use their original's words.** In **Library → Songs**, an edit cut from a song with lyrics now has the **♪ Lyrics** badge too, as its shows sing the original's words through your cuts.

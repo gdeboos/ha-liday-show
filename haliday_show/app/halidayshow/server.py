@@ -3380,8 +3380,33 @@ PHOTO_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 
 # player ------------------------------------------------------------------
 # AI ---------------------------------------------------------------------------
+def _ai_prefer(request) -> str | None:
+    """Which writing AI you picked under Setup → AI, when both Claude and Home Assistant's are set up."""
+    v = request.app[STORAGE].load_settings().get("ai_with")
+    return v if v in ("claude", "ha") else None
+
+
 async def ai_status(request):
-    return web.json_response(await ai.status(request.app[HA]))
+    return web.json_response(await ai.status(request.app[HA], _ai_prefer(request)))
+
+
+async def put_ai_with(request):
+    """{with: "claude" | "ha" | null}: which writing AI to use when both are set up."""
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    choice = body.get("with") if isinstance(body, dict) else "?"
+    if choice not in ("claude", "ha", None):
+        raise web.HTTPBadRequest(text="pick claude or ha")
+    storage = request.app[STORAGE]
+    settings = storage.load_settings()
+    if choice:
+        settings["ai_with"] = choice
+    else:
+        settings.pop("ai_with", None)
+    storage.save_settings(settings)
+    return web.json_response(await ai.status(request.app[HA], choice))
 
 
 async def ai_clips(request):
@@ -3418,7 +3443,7 @@ async def _ai_request(request, create):
     if not isinstance(body, dict) or not isinstance(body.get("context"), dict):
         raise web.HTTPBadRequest(text="expected a request and its context")
     try:
-        return web.json_response(await create(request.app[HA], str(body.get("request", "")), body["context"]))
+        return web.json_response(await create(request.app[HA], str(body.get("request", "")), body["context"], _ai_prefer(request)))
     except ai.AIError as e:
         raise web.HTTPBadRequest(text=str(e)[:1].upper() + str(e)[1:])
 
@@ -3800,6 +3825,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/backup/copies/{name}/restore", restore_copy)
     r.add_post("/api/command", run_command)
     r.add_get("/api/ai", ai_status)
+    r.add_put("/api/ai/with", put_ai_with)
     r.add_post("/api/ai/clips", ai_clips)
     r.add_post("/api/ai/presets", ai_presets)
     r.add_post("/api/ai/palettes", ai_palettes)
