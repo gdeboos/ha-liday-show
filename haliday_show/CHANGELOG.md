@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.448
+
+- **A scene's palette now colours every effect you pick.** In a Basic scene with a palette, changing a light's effect gives it the palette's colours, going round the palette from light to light, instead of keeping the light's old colours. So you don't have to recolour each light after picking its effect. **WLED's own effect** picks up the palette too: its three colours come from it and the WLED palette starts on **\* Colors Only**, so the WLED draws in your colours.
+
 ## 0.2.447
 
 - **Clearer ways to place a song's words.** In **Lyrics…**, the three buttons are now cards with an icon and a line saying what each does: **Line up with the singing** (marked **AI**), **Spread them out** (instant, no AI; it was **Place automatically**) and **Tap along** (you, as the song plays).
