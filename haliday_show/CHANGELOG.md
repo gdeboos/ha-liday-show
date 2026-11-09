@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.438
+
+- **Library → Songs shows parts and lyrics at a glance.** A song's parts now show as **Parts:** with a coloured dot for each, the same as in the Music editor, and a **♪ Lyrics** badge shows which songs have their words.
+
 ## 0.2.437
 
 - **Playlists of scenes play.** A playlist made only of scene blocks (or colour, off or effect blocks), with no shows, can now be played: its **Play** button works, and its schedule starts it. Before, it said **No shows yet** and wouldn't play, even from the schedule. Its card now shows how many blocks it has and how long it takes to go round.
