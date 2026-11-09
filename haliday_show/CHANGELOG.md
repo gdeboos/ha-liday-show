@@ -2,7 +2,16 @@
 
 ## 0.2.453
 
+<<<<<<< HEAD
 - **Edits show ♪ Lyrics when they use their original's words.** In **Library → Songs**, an edit cut from a song with lyrics now has the **♪ Lyrics** badge too, as its shows sing the original's words through your cuts.
+=======
+- **Section notes written on your own computer.** Under **Setup → AI**, the new **Section notes on this
+  device** card lets you download a small AI model (1.2 GB, once) that your browser keeps. After that,
+  **Detect** and **✨ Describe sections** have it write each section's notes right there, so nothing about
+  your songs leaves the house and there's nothing to pay. It needs Chrome or Edge on a computer, and the
+  card says if yours can't run it. **Write section notes with** picks it or Claude / Home Assistant; it's
+  the default once downloaded. It writes notes only; renaming sections still needs Claude or Home Assistant.
+>>>>>>> origin/main
 
 ## 0.2.452
 

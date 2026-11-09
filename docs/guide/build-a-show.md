@@ -846,7 +846,8 @@ choir; bring everything in when the drums start; drop to a soft glow when the si
 given sections: pressing **Detect** again carries them over to the new section that covers the same
 stretch of the song. Edit anything it writes; once you do, it's yours.
 
-With an AI set up (see [Setting up the AI](editor-and-settings.md#setting-up-the-ai)), the AI then rewrites those notes,
+With an AI set up (see [Setting up the AI](editor-and-settings.md#setting-up-the-ai)), or the [notes model on this
+device](editor-and-settings.md#section-notes-on-this-device), the AI then rewrites those notes,
 usually within a minute, while you carry on. It can't hear the song, so it works from the same
 measurements (including what can be heard, the singing, drums and words) and the song's name. If it knows the song, it uses what it knows: which part is the verse
 or the chorus, where it builds. It also gives the sections Detect named itself better names, such as
