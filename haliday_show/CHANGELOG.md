@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.464
+
+- **Picking a playlist's scene, by folder.** A **Scene** block in the Playlist editor now has a **Change…** button instead of a drop-down. It opens a window with your scene folders: go into a folder (it opens in the one the current scene is in), go back with the path at the top, or type in **Find a scene** to search every folder.
+
 ## 0.2.463
 
 - **Fixed: big backups wouldn't import.** **Import…** on **Setup → Settings → Your data** stopped with "Maximum request body size 16777216 exceeded" for an export over 16 MB (lots of pictures or faces, say), because Home Assistant turns away anything bigger in one go. Big backups now go up in pieces, with how far it's got shown as it sends.

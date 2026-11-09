@@ -134,3 +134,23 @@ export function refOfKey(key) {
 }
 export const fromSongFolders = (folders) => folders.map(({ songs, ...f }) => ({ ...f, items: (songs || []).map(keyOfRef) }));
 export const toSongFolders = (folders) => folders.map(({ items, ...f }) => ({ ...f, songs: items.map(refOfKey) }));
+
+// What a pick-from-your-folders window lists: in folder `at`, its folders (with how many of `items`
+// each holds, however deep) then its items; while finding, every item whose name has the words, each
+// with the folder it's in. items: [{key, name}] in the order to show. {path, folders, items}.
+export function pickerView(folders, items, at = "", find = "") {
+  const words = find.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length) {
+    const hits = items.filter((it) => words.every((w) => it.name.toLowerCase().includes(w)));
+    return { path: [], folders: [], items: hits.map((it) => ({ ...it, where: pathText(folders, it.key) })) };
+  }
+  const known = new Set(folders.map((f) => f.id));
+  const place = known.has(at) ? at : "";
+  const keys = items.map((it) => it.key);
+  const here = new Set(itemsIn(keys, folders, place));
+  return {
+    path: pathTo(folders, place),
+    folders: childrenOf(folders, place).map((f) => ({ folder: f, count: countIn(folders, f.id, keys).items })),
+    items: items.filter((it) => here.has(it.key)),
+  };
+}

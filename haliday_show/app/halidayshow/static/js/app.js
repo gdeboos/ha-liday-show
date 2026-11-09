@@ -82,6 +82,7 @@ import { browse, folderButton, pathNav } from "./folderbrowse.js";
 import {
   addFolder, childrenOf, countIn, deleteFolder, flatTree, folderOf, fromSongFolders, moveFolder, moveItems, moveProblem,
   nameProblem, pathText, pathTo, renameFolder, toSongFolders, within,
+  pickerView,
 } from "./folders.js";
 import { LIBRARY_KINDS, renameItem } from "./libfolders.js";
 import { addedMessage, detectChoices, isAudioName, nameFromFile, nameTaken, savedName } from "./addsong.js";
@@ -6072,14 +6073,12 @@ function blockEditor(block) {
   sl.append(secs, " seconds");
   box.append(sl);
   if (block.type === "scene") {
-    const pick = document.createElement("select");
-    pick.setAttribute("aria-label", "Scene");
-    for (const s of playlistScenes) pick.add(new Option(s.name, s.id, false, s.id === block.scene));
-    if (!playlistScenes.some((s) => s.id === block.scene)) {
-      pick.add(new Option("A scene that's gone: pick another", block.scene || "", true, true));
-    }
-    pick.addEventListener("change", () => { block.scene = pick.value; changed(true); });
-    box.append(pick);
+    const chosen = playlistScenes.find((s) => s.id === block.scene);
+    box.append(pickerButton(chosen ? chosen.name : "A scene that's gone: pick another",
+      () => pickInFolders("scenes", playlistScenes.map((s) => ({ key: s.id, name: s.name })), {
+        title: "Scene for this block", current: block.scene,
+        onPick: (id) => { block.scene = id; changed(true); },
+      }), "Scene"));
   }
   if (block.type === "colour") {
     const c = document.createElement("input");
@@ -10630,6 +10629,59 @@ function moveInto(kind, what, to) {
   } else {
     saveFolders(kind, moveItems(folders, [what.key], to), `Moved ${what.name || "it"} to ${where}`);
   }
+}
+
+// Pick one of a Library list's items in a window you go into folders in, like the Library page,
+// with Find across every folder. Opens in the folder the current choice is in.
+function pickInFolders(kind, items, { title, current = "", onPick }) {
+  const lib = FOLDER_LISTS[kind], folders = foldersOf(kind);
+  let at = folderOf(folders, current);
+  const w = editWindow(title);
+  w.dlg.classList.add("folder-pick");
+  const find = Object.assign(document.createElement("input"), { type: "search", placeholder: `Find a ${lib.noun}` });
+  find.setAttribute("aria-label", `Find a ${lib.noun}`);
+  const path = Object.assign(document.createElement("nav"), { className: "folder-path" });
+  path.setAttribute("aria-label", "Where you are");
+  const list = Object.assign(document.createElement("div"), { className: "move-list pick-list" });
+  const row = (onclick, mark, name, hint, cls = "") => {
+    const b = button("", onclick, `move-choice ${cls}`.trim());
+    b.append(mark, Object.assign(document.createElement("span"), { className: "pick-text" }));
+    b.lastChild.append(Object.assign(document.createElement("b"), { textContent: name }),
+      ...(hint ? [Object.assign(document.createElement("span"), { className: "hint", textContent: hint })] : []));
+    return b;
+  };
+  const draw = () => {
+    const v = pickerView(folders, items, at, find.value);
+    const finding = !!find.value.trim();
+    path.hidden = finding;
+    path.replaceChildren(...[{ id: "", name: lib.top }, ...v.path].flatMap((f, i, all) => {
+      const last = i === all.length - 1;
+      const part = last ? Object.assign(document.createElement("b"), { textContent: f.name })
+        : button(f.name, () => { at = f.id; draw(); }, "ghost path-part");
+      return i ? [Object.assign(document.createElement("span"), { className: "hint", textContent: " › " }), part] : [part];
+    }));
+    list.replaceChildren(
+      ...v.folders.map(({ folder, count }) => row(() => { at = folder.id; draw(); list.firstElementChild?.focus(); },
+        Object.assign(document.createElement("span"), { className: "folder-mark small", ariaHidden: "true" }),
+        folder.name, `${plural(count, lib.noun, lib.many)} ›`, "pick-folder")),
+      ...v.items.map((it) => {
+        const b = row(() => { w.dlg.close(); if (it.key !== current) onPick(it.key); },
+          Object.assign(document.createElement("span"), { className: "pick-dot", ariaHidden: "true" }),
+          it.name, [finding && it.where ? `in ${it.where}` : "", it.key === current ? "chosen now" : ""].filter(Boolean).join(" · "));
+        if (it.key === current) b.classList.add("current");
+        return b;
+      }));
+    if (!list.children.length) {
+      list.append(Object.assign(document.createElement("p"), { className: "hint",
+        textContent: finding ? `No ${lib.many} match.` : items.length ? "Nothing in this folder." : `No ${lib.many} yet.` }));
+    }
+  };
+  find.addEventListener("input", draw);
+  w.body.append(find, path, list);
+  w.foot.append(Object.assign(document.createElement("span"), { className: "spacer" }), button("Cancel", () => w.dlg.close()));
+  draw();
+  w.dlg.showModal();
+  (list.querySelector(".current") || list.querySelector("button"))?.focus();
 }
 
 // Move to…: every folder in the list, indented, with where it is now marked.

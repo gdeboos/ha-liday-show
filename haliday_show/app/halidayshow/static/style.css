@@ -1397,6 +1397,18 @@ body.editing-scene :is([data-panel=song], [data-panel=beats], [data-panel=ai], #
   padding: 8px 12px; border-radius: 6px; }
 .move-choice:hover:not(:disabled) { background: var(--track); }
 .move-choice:disabled { opacity: .55; }
+/* Picking from a Library list's folders (pickInFolders). */
+.folder-pick .form-dialog-body { display: flex; flex-direction: column; gap: 10px; min-width: min(420px, 86vw); }
+.folder-pick .folder-path { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 13px; }
+.folder-pick .path-part { padding: 2px 6px; }
+.pick-list { min-height: 220px; }
+.pick-list .move-choice { min-height: 40px; }
+.pick-text { display: flex; flex-direction: column; min-width: 0; }
+.pick-text b { font-weight: 500; }
+.pick-text .hint { font-size: 12px; }
+.pick-dot { flex: none; width: 8px; height: 8px; margin: 0 5px; border-radius: 50%; background: var(--line); }
+.pick-list .current { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.pick-list .current .pick-dot { background: var(--accent); }
 .folder-where { align-self: flex-start; text-align: left; }
 @media (max-width: 720px) {
   /* A folder keeps its › and ⋯ beside its name, even on a phone. */
