@@ -5,6 +5,11 @@ export const DEMO_PREFIX = "demo-";
 export const DEMO_SHOW = "Demo show";
 export const DEMO_SONG = "static/sample-song.mp3";
 export const DEMO_SONG_NAME = "Jingle Bells (music box sample).mp3";
+// The sample song's parts, drum hits, sounds and words, made once and shipped, so the demo shows
+// everything that needs them without a long split first.
+export const DEMO_PARTS = ["vocals", "drums", "bass", "rest"];
+export const demoPartUrl = (part) => `static/demo/${part}.mp3`;
+export const DEMO_EXTRAS = "static/demo/extras.json";
 
 // Planned lights (no IP), named for the sample house places they go to (samplehouse.js).
 const govee = (id, name, segments) => ({ id: DEMO_PREFIX + id, kind: "govee", name, ip: "", sku: "",

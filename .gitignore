@@ -26,6 +26,8 @@ npm-debug.log*
 *.mp3
 # The demo's sample song ships with the add-on (tools/make_sample_song.py makes it).
 !haliday_show/app/halidayshow/static/sample-song.mp3
+# Its parts, made once by splitting it, so the demo needs no split.
+!haliday_show/app/halidayshow/static/demo/*.mp3
 *.wav
 *.ogg
 *.flac

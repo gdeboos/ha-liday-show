@@ -18,7 +18,7 @@ import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin, singerOf } from "./phones.js";
 import { lightLevel, lightsInShow, setLightLevel, setWholeLevel, wholeLevel } from "./showbright.js";
 import { SceneEditor } from "./sceneeditor.js";
-import { beforeGpuTurn, gpuBusy, gpuTurn, makeParts, prepared, progressWindow, splitVocals, splitting, stemNames, lineUpLyrics } from "./splitvocals.js";
+import { beforeGpuTurn, gpuBusy, gpuTurn, makeParts, prepared, progressWindow, savePart, splitVocals, splitting, stemNames, lineUpLyrics } from "./splitvocals.js";
 import { FITS, mashFit, rankFits } from "./mashfit.js";
 import { lookChoices, reactForm, reactOf } from "./reactui.js";
 import { canBasic, toBasic, wledSegmentPart } from "./housescenes.js";
@@ -39,7 +39,7 @@ import { forgetPicture, getPicture, keepPhoneCopy, keepPicture, makePhoneCopy, p
 import { CHARACTERS, FACE_ASPECT, RECIPE_PARTS, blinkAt, builtInName, cleanRecipe, faceColour, faceList, facesUsed, forgetFace,
   getFace, isBuiltIn, keepFace, recipeColour, recipeOf } from "./faces.js";
 import { placeOnSample } from "./samplehouse.js";
-import { DEMO_LIGHTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
+import { DEMO_EXTRAS, DEMO_LIGHTS, DEMO_PARTS, DEMO_SHOW, DEMO_SONG, DEMO_SONG_NAME, demoPartUrl, canStartDemo, hasDemo, isDemoId, withoutDemo } from "./demo.js";
 import { Layout } from "./layout.js";
 import { groupShares, groupSegments, memberChoices, membersText, nameProblem as groupNameProblem, newGroupId, rangeTakes, tidyMembers }
   from "./lightgroups.js";
@@ -6575,11 +6575,55 @@ async function tryDemo() {
       await api("api/house", { method: "PUT", json: { paths: house.paths, styles: house.styles, pins: house.pins, dim: house.dim } });
     }
     const christmas = allPalettes().find((p) => p.name === "Christmas") || currentPalette();
-    await makeShow(DEMO_SHOW, await sampleSong(), christmas.colors, christmas);
-    status("The demo is ready: press ▶ Play");
+    const song = await sampleSong();
+    status(`Adding ${song.name}…`);
+    const ref = await uploadSong(api, song);
+    const missed = await demoExtras(ref);
+    await makeShow(DEMO_SHOW, ref, christmas.colors, christmas);
+    status(missed.length ? `The demo is ready: press ▶ Play. Its song's ${missed.join(", ")} couldn't be added, so some things won't show`
+      : "The demo is ready: press ▶ Play", missed.length ? "hint" : false);
   } catch (e) {
     status(`Couldn't set up the demo: ${e.message}`, true);
   }
+}
+
+// Keeps the sample song's shipped parts, drum hits, sounds and words with it, unless it has them already.
+// Returns what couldn't be added; each piece is tried on its own, so one failing doesn't stop the rest.
+async function demoExtras(ref) {
+  const missed = [];
+  const kept = await api(songExtraUrl("parts", ref)).catch(() => null);
+  if (![...DEMO_PARTS, "music"].every((p) => kept?.[p])) {
+    status("Adding the sample song's parts…");
+    try {
+      const sum = [];
+      let rate = 0;
+      for (const part of DEMO_PARTS) {
+        const d = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(await (await fetch(demoPartUrl(part))).arrayBuffer());
+        const ch = [0, 1].map((c) => d.getChannelData(Math.min(c, d.numberOfChannels - 1)));
+        rate = d.sampleRate;
+        await savePart(api, ref, part, ch, rate);
+        // The music without the singing is everything but the vocals.
+        if (part !== "vocals") ch.forEach((x, c) => { sum[c] ||= new Float32Array(x.length); x.forEach((v, i) => { sum[c][i] += v; }); });
+      }
+      await savePart(api, ref, "music", sum, rate);
+    } catch (e) {
+      console.warn("demo parts", e);
+      missed.push("parts");
+    }
+  }
+  const extras = await (await fetch(DEMO_EXTRAS)).json().catch(() => ({}));
+  for (const what of ["drums", "sounds", "lyrics"]) {
+    try {
+      if (!(await api(songExtraUrl(what, ref)).catch(() => null))) {
+        if (!extras[what]) throw new Error(`no ${what} shipped`);
+        await api(songExtraUrl(what, ref), { method: "PUT", json: extras[what] });
+      }
+    } catch (e) {
+      console.warn("demo", what, e);
+      missed.push(what === "drums" ? "drum hits" : what === "lyrics" ? "words" : what);
+    }
+  }
+  return missed;
 }
 
 async function sampleSong() {

@@ -152,8 +152,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
   bulb by bulb
 - No photo yet? A drawn sample house stands in, and one button puts your lights on its roof, porch,
   windows and tree
-- **Try the demo**: seven planned lights on the sample house, a sample song and a show ready to play,
-  in one press, with no lights needed
+- **Try the demo**: seven planned lights on the sample house, a sample song (already split into its
+  parts, with its drums, sounds and words) and a show ready to play, in one press, with no lights needed
 - A setup guide on first run: lights, a speaker, the house, then a first show generated from a song
 - **Share** a show as a small file, and **Import** one someone shared: pick your copy of the song,
   then match their lights to yours (suggested by kind, size and where they are on the house), and
@@ -440,6 +440,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/house.js                         House photo: tracing, bulb layout, icicles, spots
     js/samplehouse.js, sample-house.svg  The sample house and its ready-made places for lights
     js/demo.js, sample-song.mp3         Try the demo: its planned lights and the music-box song
+    demo/                               The sample song's parts, drum hits, sounds and words
     js/devicetest.js                    Frames for testing a light's parts on the Devices tab
     js/labtemplates.js                  Packet lab starting points
     js/lightgroups.js                   Light groups: members, names, which lanes a selection's effect goes on

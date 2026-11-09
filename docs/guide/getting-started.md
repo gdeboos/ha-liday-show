@@ -114,6 +114,11 @@ Tree, Garage and Path) already placed on the [sample house](house.md#the-sample-
 music-box *Jingle Bells* made for HA-liday Show, free to use) to your songs, and generates **Demo show**
 in Christmas colours. Press **▶ Play** to watch it on the House panel. Nothing is sent to real lights.
 
+The sample song comes ready, as a song you add yourself would be after **Add a song**: split into its
+vocals, drums, bass and the rest, with when each drum lands, the sounds in it (bells and so on) and its
+words placed. So the demo show follows the drums and the tune, the Music editor shows its parts and
+layers, and the Words effect has words to show, all without waiting for a split.
+
 It's only offered while you have no lights, so it never mixes with your own. When you're done, press
 **Remove the demo** under **Setup → More → Demo**: the demo's lights, their places on the house and
 **Demo show** go, and your own shows are kept. The sample song stays in your songs, to use in your own
