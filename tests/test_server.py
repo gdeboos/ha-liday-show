@@ -1096,6 +1096,11 @@ async def test_draft_layers_are_kept_and_checked(client, tmp_path):
     # No layers, nothing saved for them (old drafts look the same).
     plain = (await (await client.post("/api/drafts", json={**draft, "layers": []})).json())["id"]
     assert "layers" not in await (await client.get(f"/api/drafts/{plain}")).json()
+    # The list says which are layered (a layer heard), as their files' words are then their own.
+    listed = {d["id"]: d for d in await (await client.get("/api/drafts")).json()}
+    assert listed[draft_id]["layered"] is True and listed[plain]["layered"] is False
+    hushed = (await (await client.post("/api/drafts", json={**draft, "layers": [{"name": "Bells", "muted": True, "clips": [clip]}]})).json())["id"]
+    assert next(d for d in await (await client.get("/api/drafts")).json() if d["id"] == hushed)["layered"] is False
     # Quieten the song under a layer: kept when on, left out when off.
     ducked = (await (await client.post("/api/drafts", json={**draft, "layers": [
         {"name": "Voice", "duck": True, "clips": []}, {"name": "Bells", "duck": False, "clips": []}]})).json())["id"]

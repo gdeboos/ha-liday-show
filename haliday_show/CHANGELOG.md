@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.454
+
+- **Edits show ♪ Lyrics when they use their original's words.** In **Library → Songs**, an edit cut from a song with lyrics now has the **♪ Lyrics** badge too, as its shows sing the original's words through your cuts.
+
 ## 0.2.453
 
 - **Section notes written on your own computer.** Under **Setup → AI**, the new **Section notes on this
