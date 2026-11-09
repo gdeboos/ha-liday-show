@@ -9,6 +9,7 @@
 // This folder is under the EUPL 1.2 (see LICENSE here), not the MIT licence of the rest of HA-liday Show.
 
 import { GRADIENTS } from "./palettes.js";
+import { EXTRAS } from "./defaults.js";
 
 export const FRAMETIME = 23; // 1000 / 42 fps, WLED's default frame rate
 export const NUM_COLORS = 3;
@@ -276,8 +277,11 @@ export class Segment {
     this.mode = mode;
     this.speed = speed & 0xFF;
     this.intensity = intensity & 0xFF;
-    this.custom1 = 128; this.custom2 = 128; this.custom3 = 16; // WLED's defaults: HA-liday Show sends no others
-    this.check1 = false; this.check2 = false; this.check3 = false;
+    // The effect's own extras, which the WLED loads as HA-liday Show switches it to the effect (fxdef);
+    // otherwise WLED's segment defaults.
+    const x = EXTRAS[mode] || {};
+    this.custom1 = x.c1 ?? 128; this.custom2 = x.c2 ?? 128; this.custom3 = x.c3 ?? 16;
+    this.check1 = !!x.o1; this.check2 = !!x.o2; this.check3 = !!x.o3;
     this.palette = palette;
     this.colors = colors.map((c) => c >>> 0);
     this.gcolors = this.colors; // SEGCOLOR(): WLED's are gamma-corrected; the preview keeps them as picked

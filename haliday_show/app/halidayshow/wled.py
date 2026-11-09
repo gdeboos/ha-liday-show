@@ -100,8 +100,10 @@ def own_effect_state(p: dict, segment: int | list[int] | None = None) -> dict:
                 pass
         return [0, 0, 0]
 
-    seg = {"fx": whole("fx", 0), "sx": whole("speed", 128), "ix": whole("intensity", 128), "pal": whole("palette", 0),
-           "col": [rgb(k) for k in ("color", "color2", "color3")]}
+    # fxdef: switching effect, the WLED loads the effect's own defaults (its extra sliders and options);
+    # WLED applies sx, ix and pal after that, so ours still win (json.cpp deserializeSegment).
+    seg = {"fx": whole("fx", 0), "fxdef": True, "sx": whole("speed", 128), "ix": whole("intensity", 128),
+           "pal": whole("palette", 0), "col": [rgb(k) for k in ("color", "color2", "color3")]}
     if isinstance(p.get("brightness"), (int, float)) and not isinstance(p.get("brightness"), bool):
         seg["bri"] = round(max(0, min(100, p["brightness"])) * 255 / 100)
     if segment is not None:

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.440
+
+- **WLED effects play as WLED intends.** When a scene switches a WLED to one of its own effects, the WLED now also loads that effect's own settings for its extra sliders and options, as it does when you pick the effect in WLED. Your speed, intensity, palette and colours still apply. This fixes effects such as **Palette** showing a single colour and **Scanner** pausing at each end. The preview uses the same settings.
+
 ## 0.2.439
 
 - **See WLED's own effects move in the preview.** A light on **WLED's own effect** in a scene now shows the effect as the WLED draws it, worked out with WLED's own code: **Fire 2012**, **Pacifica**, **Twinklefox**, **Rainbow**, **Colorloop**, **Candle**, **Meteor**, **Juggle**, **Fireworks Starburst**, **Plasma**, **Lightning** and about 20 more, in your chosen palette, colours and speed. Other WLED effects show a rough moving stand-in for now, and the light's row says which you're seeing. More effects will follow.

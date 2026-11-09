@@ -2147,9 +2147,10 @@ and not on the schedule) and **Remove…**.
   **Preview** shows the effect moving as the WLED draws it, worked out with WLED's own code, for most of
   the popular effects so far (such as **Fire 2012**, **Pacifica**, **Twinklefox**, **Rainbow**,
   **Colorloop**, **Candle**, **Meteor**, **Juggle** and **Fireworks Starburst**). The others show a
-  rough stand-in, their palette or colours drifting along the light, and the light's row says so. The
-  preview assumes WLED's standard settings for the effect's extra sliders and options, which HA-liday
-  Show doesn't change.
+  rough stand-in, their palette or colours drifting along the light, and the light's row says so. When it
+  switches the WLED to an effect, HA-liday Show also has the WLED load that effect's own settings for
+  its extra sliders and options (your speed, intensity, palette and colours still apply), so effects
+  such as **Palette** and **Scanner** play as WLED intends; the preview uses the same settings.
   WLED's sound-reactive effects follow the WLED's own microphone, while **React to music**, the scenes'
   brightness, and House lane or group lane effects don't reach this light. When a show starts, the
   light is taken back as usual. When the scene stops, the WLED carries on with its effect (as a WLED
