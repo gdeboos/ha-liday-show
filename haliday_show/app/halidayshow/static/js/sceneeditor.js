@@ -570,11 +570,13 @@ export class SceneEditor {
     row.append(br ? this.slider("Brightness", full, br, clip.brightness, (v) => { look.params.brightness = v; }) : none());
     if (EFFECTS[look.effect].live) { row.append(none()); return row; } // no Glitter: it's one frame a level
     if (own) {
-      // WLED's own effects have an Intensity where the others have Glitter.
+      // WLED's own effects have an Intensity where the others have Glitter (which can't reach the WLED).
+      // Its Speed and Intensity are the WLED's own sliders, so they're named on the row itself.
       const ix = EFFECTS.wled.params.find((p) => p.key === "intensity");
       const intensity = this.slider("Intensity", full, ix, clip.intensity, (v) => { look.params.intensity = v; });
       intensity.classList.add("sc-glitter");
       row.append(intensity);
+      row.classList.add("sc-row-wled");
       return row;
     }
     const glitter = this.slider("Glitter", full, { min: 0, max: 100, step: 5 }, look.params.glitter || 0,

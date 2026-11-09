@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.449
+
+- **Clearer sliders on WLED rows.** In a Basic scene, a light on **WLED's own effect** now names its sliders on its row: **Speed** and **Intensity** are the WLED's own sliders for that effect (Intensity sits where other lights have **Glitter**). Switching a light to WLED's own effect no longer keeps a Glitter setting it can't use.
+
 ## 0.2.448
 
 - **A scene's palette now colours every effect you pick.** In a Basic scene with a palette, changing a light's effect gives it the palette's colours, going round the palette from light to light, instead of keeping the light's old colours. So you don't have to recolour each light after picking its effect. **WLED's own effect** picks up the palette too: its three colours come from it and the WLED palette starts on **\* Colors Only**, so the WLED draws in your colours.
