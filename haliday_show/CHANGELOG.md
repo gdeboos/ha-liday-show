@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.444
+
+- **Adding a song gets it all ready in front of you.** After **Add song**, the window stays open with a line for each step and how far along it is: added (with its beats and sections), split into its parts, and its words. **Stop** keeps whatever's done, and **Done** closes it. It no longer splits in the background afterwards.
+- **Paste a song's words as you add it.** Step 2 of **Add a song** has an optional **Words** box. Once the song's split, its words are lined up with the singing, ready for Singing faces and the lyrics row.
+
 ## 0.2.443
 
 - **Every WLED strip effect now moves in the preview.** The last 33 of WLED's effects for a strip of lights now show as the WLED draws them, including **Aurora**, **Noise 1** to **4**, **Fill Noise**, **Noise Pal**, **Lake**, **Colortwinkles**, **Bouncing Balls**, **Popcorn**, **Drip**, **Rolling Balls**, **Fireworks 1D**, **Ripple**, **Halloween Eyes**, **Fairy**, **Sunrise**, **Dancing Shadows** and **TV Simulator**. Only WLED's 2D, sound-reactive and particle (**PS**) effects still show the rough stand-in. Tip: on the **Default** palette, some noise effects are a single colour on the WLED itself, and the preview shows that too; pick a palette to see them move.
