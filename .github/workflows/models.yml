@@ -5,12 +5,19 @@ name: Models
 
 on:
   workflow_dispatch:
+    inputs:
+      which:
+        description: "Which model to publish"
+        type: choice
+        options: [align, notes]
+        default: align
 
 permissions:
   contents: write
 
 jobs:
   align:
+    if: inputs.which == 'align'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-python@v5
@@ -40,3 +47,43 @@ jobs:
             || gh release create models-align-1 --repo "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" \
                  --title "AI model: lyrics alignment (English)" --notes-file notes.md
           gh release upload models-align-1 align-en-int8.onnx LICENSE-MIT.txt --repo "$GITHUB_REPOSITORY" --clobber
+
+  notes:
+    # The section notes model (static/js/notesworker.js): Qwen2.5-1.5B-Instruct (Apache 2.0) as ONNX, 4-bit
+    # weights with 16-bit maths, from onnx-community at a fixed commit, published here unchanged.
+    if: inputs.which == 'notes'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the section notes model
+        run: |
+          set -euo pipefail
+          HF=https://huggingface.co/onnx-community/Qwen2.5-1.5B-Instruct/resolve/d54957e3af1be04546436e874a60fe386041b244
+          curl -sSfL -o notes-model.onnx "$HF/onnx/model_q4f16.onnx"
+          curl -sSfL -o notes-tokenizer.json "$HF/tokenizer.json"
+          curl -sSfL -o notes-tokenizer_config.json "$HF/tokenizer_config.json"
+          curl -sSfL -o notes-config.json "$HF/config.json"
+          curl -sSfL -o notes-generation_config.json "$HF/generation_config.json"
+          curl -sSfL -o LICENSE-Apache-2.0.txt \
+            https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/resolve/main/LICENSE
+          sha256sum -c <<'SUMS'
+          19dec9f63488016185ba997d5e4492b5ac5b4f7ef1abb45243a91de958838dcd  notes-model.onnx
+          a8506e7111b80c6d8635951a02eab0f4e1a8e4e5772da83846579e97b16f61bf  notes-tokenizer.json
+          6a14243f0ae04884e597b3f032c05e15de9f417318fdcac24ab4e2680e691430  notes-tokenizer_config.json
+          215eb99c4955b0c42ea9f6e0980d922c228950c5dbc09bde6dc451fbba4d21f3  notes-config.json
+          f7e7ce458658b2d40d9eb213b91b77a8bf698845ab89360976722d7ac46928a3  notes-generation_config.json
+          SUMS
+          sha256sum LICENSE-Apache-2.0.txt
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          AI model files HA-liday Show downloads (checked by size and SHA-256 in `server.py` `STEM_FILES`). Not an app release.
+
+          **notes-model.onnx** and its **notes-*.json** files: Qwen2.5-1.5B-Instruct (Apache 2.0, © Alibaba Cloud; see LICENSE-Apache-2.0.txt), as ONNX with 4-bit weights and 16-bit maths (`model_q4f16.onnx`), unchanged from onnx-community/Qwen2.5-1.5B-Instruct at commit `d54957e3af1be04546436e874a60fe386041b244`. For writing section notes on your own device (**Write section notes with: On this device**).
+          EOF
+          gh release view models-notes-1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create models-notes-1 --repo "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" \
+                 --title "AI model: section notes (Qwen2.5-1.5B-Instruct)" --notes-file notes.md
+          gh release upload models-notes-1 notes-model.onnx notes-tokenizer.json notes-tokenizer_config.json \
+            notes-config.json notes-generation_config.json LICENSE-Apache-2.0.txt --repo "$GITHUB_REPOSITORY" --clobber
