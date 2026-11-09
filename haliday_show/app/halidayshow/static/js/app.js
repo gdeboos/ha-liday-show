@@ -7006,6 +7006,85 @@ function renderPublicLook() {
   $("pub-open-page").href = visitorLink(view, location.hostname);
 }
 
+const MAX_MORE_HOURS = 6;
+
+function dayChips(box) {
+  DAYS.forEach((name, k) => {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = String(k);
+    label.append(input, name);
+    box.append(label);
+  });
+}
+
+// One more set of opening hours (later at weekends, say): opens, closes, its days and Remove.
+// savePublic reads it back with readMoreHours.
+function moreHoursRow(h, i) {
+  const row = document.createElement("div");
+  row.className = "hours-set";
+  row.setAttribute("role", "group");
+  row.setAttribute("aria-label", `More opening hours ${i + 1}`);
+  const kind = document.createElement("select");
+  kind.dataset.f = "kind";
+  kind.setAttribute("aria-label", "Opens at");
+  kind.append(new Option("at a time", "time"), new Option("at sunset", "sunset"));
+  const sunset = h.start === "sunset";
+  kind.value = sunset ? "sunset" : "time";
+  const start = Object.assign(document.createElement("input"), { type: "time", value: sunset ? "17:00" : h.start });
+  start.dataset.f = "start";
+  start.setAttribute("aria-label", "Opening time");
+  const offset = Object.assign(document.createElement("input"), { type: "number", min: -180, max: 180, step: 5, value: h.offset ?? 0 });
+  offset.dataset.f = "offset";
+  offset.setAttribute("aria-label", "Minutes after sunset");
+  const offWrap = Object.assign(document.createElement("span"), { className: "pub-inline" });
+  offWrap.append(offset, " minutes after");
+  const end = Object.assign(document.createElement("input"), { type: "time", value: h.end });
+  end.dataset.f = "end";
+  end.setAttribute("aria-label", "Closing time");
+  const showKind = () => { start.hidden = kind.value === "sunset"; offWrap.hidden = kind.value !== "sunset"; };
+  kind.addEventListener("change", showKind);
+  showKind();
+  const opens = document.createElement("div");
+  opens.className = "field";
+  const inline = Object.assign(document.createElement("div"), { className: "pub-inline" });
+  inline.append(kind, start, offWrap);
+  opens.append("Opens", inline);
+  const closes = document.createElement("label");
+  closes.className = "field";
+  closes.append("Closes ", end);
+  const grid = Object.assign(document.createElement("div"), { className: "pub-grid" });
+  grid.append(opens, closes);
+  const days = Object.assign(document.createElement("div"), { className: "day-chips" });
+  days.dataset.f = "days";
+  days.setAttribute("role", "group");
+  days.setAttribute("aria-label", "On these days");
+  dayChips(days);
+  for (const box of days.querySelectorAll("input")) box.checked = h.days.includes(Number(box.value));
+  const remove = button("✕ Remove", () => { row.remove(); savePublic(); }, "ghost hours-remove");
+  remove.setAttribute("aria-label", `Remove these opening hours`);
+  const head = Object.assign(document.createElement("div"), { className: "hours-set-head" });
+  head.append(Object.assign(document.createElement("b"), { textContent: "And also" }), remove);
+  row.append(head, grid, days);
+  return row;
+}
+
+// The extra sets as shown; one whose opening and closing are the same keeps what it had.
+function readMoreHours() {
+  const was = publicView.more_hours || [];
+  return [...$("pub-more-hours").querySelectorAll(".hours-set")].flatMap((row, i) => {
+    const f = (k) => row.querySelector(`[data-f="${k}"]`);
+    const sunset = f("kind").value === "sunset";
+    const h = { start: sunset ? "sunset" : f("start").value || "17:00", end: f("end").value || "22:00",
+      days: [...f("days").querySelectorAll("input:checked")].map((b) => Number(b.value)) };
+    if (sunset) h.offset = Math.max(-180, Math.min(180, Math.round(Number(f("offset").value) || 0)));
+    if (h.start !== h.end) return [h];
+    status("Opening and closing can't be the same time. Pick a different time for one of them.", "hint");
+    return was[i] ? [was[i]] : [];
+  });
+}
+
 function renderPublicHours() {
   const h = publicView.hours;
   const sunset = h.start === "sunset";
@@ -7019,17 +7098,11 @@ function renderPublicHours() {
   keep("pub-hours-offset", h.offset ?? 0);
   keep("pub-hours-end", h.end);
   const days = $("pub-hours-days");
-  if (!days.children.length) {
-    DAYS.forEach((name, k) => {
-      const label = document.createElement("label");
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.value = String(k);
-      label.append(box, name);
-      days.append(label);
-    });
-  }
+  if (!days.children.length) dayChips(days);
   for (const box of days.querySelectorAll("input")) box.checked = h.days.includes(Number(box.value));
+  const more = $("pub-more-hours");
+  if (!more.contains(document.activeElement)) more.replaceChildren(...(publicView.more_hours || []).map(moreHoursRow));
+  $("pub-add-hours").disabled = (publicView.more_hours || []).length >= MAX_MORE_HOURS;
   const now = publicView.hours_now || { open: true };
   const hint = !h.on ? "Open all the time." : now.open ? "✓ Open now."
     : now.next ? `Closed now. Opens ${whenNext(now.next, now.now)}.`
@@ -7410,6 +7483,7 @@ function savePublic() {
     // Start and end can't be the same time: say so, and keep the saved hours (everything else saves).
     if (hours.start !== hours.end) publicView.hours = hours;
     else status("Opening and closing can't be the same time. Pick a different time for one of them.", "hint");
+    publicView.more_hours = readMoreHours();
     const picked = document.querySelector("input[name=pub-picture]:checked");
     const shown = lookFor(publicView, pubLookFor);
     const form = {
@@ -7455,11 +7529,11 @@ function savePublic() {
   if (shownPage === "public") renderPublicItems();
   pubPending++;
   pubSaving = pubSaving.then(async () => {
-    const { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
+    const { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, more_hours, words, listen, listen_pin, admin_pin,
       repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, pick, phones } = publicView;
     try {
       const view = await api("api/public", {
-        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, words, listen, listen_pin, admin_pin,
+        method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, ...(more_hours ? { more_hours } : {}), words, listen, listen_pin, admin_pin,
           repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, phones: !!phones, ...(pick ? { pick } : {}) },
       });
       if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; layoutPreview(); }
@@ -7496,6 +7570,15 @@ function wirePublic() {
     $(id).addEventListener("change", savePublic);
   }
   $("pub-hours-card").addEventListener("change", () => savePublic());
+  $("pub-add-hours").addEventListener("click", () => {
+    const first = publicView.hours;
+    const h = { start: first.start, end: first.end === "22:00" ? "23:00" : "22:00", days: [5, 6],
+      ...(first.start === "sunset" ? { offset: first.offset ?? 0 } : {}) };
+    if (h.start === h.end) h.start = "17:00";
+    $("pub-more-hours").append(moreHoursRow(h, $("pub-more-hours").children.length));
+    savePublic();
+    $("pub-more-hours").lastElementChild?.querySelector("select")?.focus();
+  });
   $("pub-admin-pin").addEventListener("change", () => savePublic());
   $("pub-look").addEventListener("change", (e) => {
     if (e.target.id === "pub-look-for") pickPublicLook(e.target.value);

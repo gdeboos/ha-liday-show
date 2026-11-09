@@ -215,6 +215,8 @@ def clean(p) -> dict:
             "look": clean_look(p.get("look")),
             "looks": clean_looks(p.get("looks")),
             "hours": clean_hours(p.get("hours")),
+            # More sets of opening hours beside the first (later at weekends, say), each with its own days.
+            "more_hours": clean_more_hours(p.get("more_hours")),
             "words": clean_words(p.get("words")),
             # Visitors can listen on their own phone, with a PIN as well (4 to 8 digits) if one is set.
             "listen": p.get("listen") is True,
@@ -278,16 +280,49 @@ def clean_hours(h) -> dict:
     return dict(DEFAULT_HOURS)
 
 
+MAX_MORE_HOURS = 6
+
+
+def clean_more_hours(sets) -> list:
+    """The extra sets of opening hours: times and days only (a broken one is left out)."""
+    out = []
+    for h in sets if isinstance(sets, list) else []:
+        if isinstance(h, dict) and (c := playlists.clean_schedule({**h, "on": True, "from": "", "to": ""})):
+            out.append({k: v for k, v in c.items() if k not in ("on", "from", "to")})
+    return out[:MAX_MORE_HOURS]
+
+
+def hour_sets(p: dict) -> list[dict]:
+    """Every set of opening hours, as schedules; none when the page isn't kept to set times."""
+    if not p["hours"]["on"]:
+        return []
+    return [p["hours"], *({**h, "on": True, "from": "", "to": ""} for h in p.get("more_hours", []))]
+
+
+def open_window(p: dict, now: datetime, where) -> tuple[datetime, datetime] | None:
+    """The opening hours going on now, joining sets that overlap (it closes at the latest end)."""
+    ws = [w for h in hour_sets(p) if (w := schedule.window_at(h, now, where))]
+    if not ws:
+        return None
+    start, end = min(w[0] for w in ws), max(w[1] for w in ws)
+    # A set starting as another ends carries on (weekday hours, then a later weekend set, say).
+    for _ in range(MAX_MORE_HOURS + 1):
+        more = [w[1] for h in hour_sets(p) if (w := schedule.window_at(h, end, where)) and w[1] > end]
+        if not more:
+            break
+        end = max(more)
+    return start, end
+
+
 def hours_now(p: dict, where, now: datetime | None = None) -> dict:
     """Whether the page is open now, and if not, when it next opens (local time, no zone, or None)."""
-    h = p["hours"]
-    if not h["on"]:
+    if not p["hours"]["on"]:
         return {"open": True}
     now = now or datetime.now()
-    if w := schedule.window_at(h, now, where):
+    if w := open_window(p, now, where):
         # When it closes tonight, for the first-visit welcome ("The lights take requests until 10pm").
         return {"open": True, "until": w[1].isoformat(timespec="minutes")}
-    nxt = schedule.next_start(h, now, where)
+    nxt = min((n for h in hour_sets(p) if (n := schedule.next_start(h, now, where))), default=None)
     return {"open": False, "next": nxt.isoformat(timespec="minutes") if nxt else None,
             "now": now.isoformat(timespec="minutes")}
 
@@ -581,7 +616,7 @@ def closes_at(p: dict, where, now: datetime | None = None) -> datetime | None:
     """When tonight's opening hours end, if picks must finish by then (else None)."""
     if not (p["finish_by_close"] and p["hours"]["on"]):
         return None
-    w = schedule.window_at(p["hours"], now or datetime.now(), where)
+    w = open_window(p, now or datetime.now(), where)
     return w[1] if w else None
 
 

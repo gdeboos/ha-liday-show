@@ -1016,7 +1016,7 @@ a.button { text-decoration: none; }
 .pub-link { flex: 1 1 16em; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 13px; overflow-wrap: anywhere; }
 #pub-distance { width: 6em; }
-#pub-hours-offset { width: 5em; }
+#pub-hours-offset, .hours-set .pub-inline input[data-f="offset"] { width: 5em; }
 .field:has(#pub-hours-offset-wrap[hidden]) #pub-offset-hint { display: none; }
 /* Picture at the top: the three choices as one segmented control, then its button and preview. */
 .pub-picture { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
@@ -1048,6 +1048,10 @@ a.button { text-decoration: none; }
 .pub-now { flex: 1; }
 .pub-card .field > :is(input[type=number], input[type=time]) { width: 9em; font-weight: 400; }
 .pub-hours:not([hidden]) { display: flex; flex-direction: column; gap: 12px; }
+.pub-more-hours:empty { display: none; }
+.pub-more-hours { display: flex; flex-direction: column; gap: 12px; }
+.hours-set { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.hours-set-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 @media (max-width: 720px) {
   .pub-seg { display: flex; flex-direction: column; width: 100%; }
   .pub-seg label + label { border-left: 0; border-top: 1px solid var(--line); }
