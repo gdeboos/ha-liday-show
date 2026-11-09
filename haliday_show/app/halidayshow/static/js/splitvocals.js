@@ -109,7 +109,7 @@ async function cutFromOriginal(ref, api, edit, say, cancelled) {
   if (edit.pieces.some((p) => p.src !== baseKey)) return false; // other songs spliced in: split it instead
   const pieces = edit.pieces.map((p) => ({ ...p, src: "song" }));
   const opts = { crossfade: edit.crossfade || 0, fadeIn: edit.fadeIn || 0, fadeOut: edit.fadeOut || 0 };
-  say(`Cutting ${songName(ref)}'s parts from ${songName(edit.base)}…`, null);
+  say(`Cutting ${songName(ref)}'s parts from ${songName(edit.base)}…`, null, { id: "cut" });
   const [file, base] = await Promise.all([decodeAt(ref), decodeAt(edit.base)]);
   check();
   const mix = render(pieces, { song: base }, MDX.rate, opts);
@@ -169,8 +169,8 @@ async function lineUpNow(ref, api, lines, say, signal) {
       worker.onmessage = ({ data }) => {
         if (data.error) reject(new Error(data.error));
         else if (data.logp) resolve(data.logp);
-        else if (data.stage === "download") say(`Downloading the AI that hears the words (the first time only)… ${Math.round(data.done * 100)}%`, data.done);
-        else if (data.stage === "align") say(`Listening for the words… ${Math.round(data.done * 100)}%`, data.done);
+        else if (data.stage === "download") say(`Downloading the AI that hears the words (the first time only)… ${Math.round(data.done * 100)}%`, data.done, { id: "words", done: data.done, what: "downloading" });
+        else if (data.stage === "align") say(`Listening for the words… ${Math.round(data.done * 100)}%`, data.done, { id: "words", done: data.done });
       };
       worker.onerror = (e) => reject(new Error(e.message || "the AI couldn't start in this browser"));
       worker.postMessage({ align: samples }, [samples.buffer]);
@@ -188,7 +188,7 @@ async function lineUpNow(ref, api, lines, say, signal) {
 // keeps that with the song. Takes seconds. track(worker) is given the worker, so it can be stopped.
 async function listenTo(ref, api, say, track) {
   const song = songName(ref);
-  say(`Listening to ${song}…`, null);
+  say(`Listening to ${song}…`, null, { id: "listen" });
   const bytes = await fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(ref.path)}`);
   const d = await new OfflineAudioContext(1, 1, 16000).decodeAudioData(bytes);
   const samples = new Float32Array(d.length);
@@ -203,8 +203,8 @@ async function listenTo(ref, api, say, track) {
       worker.onmessage = ({ data }) => {
         if (data.error) reject(new Error(data.error));
         else if (data.scores) resolve(data.scores);
-        else if (data.stage === "download") say(`Downloading the AI that listens to songs (the first time only)… ${Math.round(data.done * 100)}%`, data.done);
-        else if (data.stage === "listen") say(`Listening to ${song}… ${Math.round(data.done * 100)}%`, data.done);
+        else if (data.stage === "download") say(`Downloading the AI that listens to songs (the first time only)… ${Math.round(data.done * 100)}%`, data.done, { id: "listen", done: data.done, what: "downloading" });
+        else if (data.stage === "listen") say(`Listening to ${song}… ${Math.round(data.done * 100)}%`, data.done, { id: "listen", done: data.done });
       };
       worker.onerror = (e) => reject(new Error(e.message || "the AI couldn't start in this browser"));
       worker.postMessage({ listen: samples }, [samples.buffer]);
@@ -220,7 +220,9 @@ async function listenTo(ref, api, say, track) {
 // finished, then when each drum lands (drumhits.js), then listens to it for what can be heard in it
 // (sounds.js). A song with all its parts that hasn't been listened to is only listened to. Parts it has already (vocals from before 0.2.403,
 // say) aren't made again, unless `again`. An edit of a song with parts (edit: see cutFromOriginal) has
-// its parts cut from the original's instead. say(text, done 0-1 or null) hears how it's going;
+// its parts cut from the original's instead. say(text, done 0-1 or null, step) hears how it's going, step
+// saying which part of the work: {id: "download" | "load" | "vocals" | "drums" | "bass" | "save" |
+// "listen" | "cut", done (0-1, for that step alone)};
 // started(stop) is given a function that stops it. One song at a time: anything else waits its turn.
 //
 // The AI in this browser takes turns on the graphics chip: splitting, lining up words and the section
@@ -275,7 +277,7 @@ async function makePartsNow(ref, api, { again, edit, listenOnly, cutOnly, say, s
     }
     if (cutOnly) return { made: false };
     const want = ["drums", "bass", "rest", ...(have.music && !again ? [] : ["music"])];
-    say(`Loading ${song}…`, null);
+    say(`Loading ${song}…`, null, { id: "load" });
     let left, right, vocals = null;
     try {
       [left, right] = await unlessCancelled(decodeAt(ref));
@@ -302,21 +304,22 @@ async function makePartsNow(ref, api, { again, edit, listenOnly, cutOnly, say, s
         if (data.error) reject(new Error(data.error));
         else if (data.done === true) resolve();
         else if (data.part && data.channels) keep(data.part, data.channels);
-        else if (data.stage === "download") say(`Downloading the AI for Split into parts (the first time only)… ${Math.round(data.done * 100)}%`, data.done);
+        else if (data.stage === "download") say(`Downloading the AI for Split into parts (the first time only)… ${Math.round(data.done * 100)}%`, data.done, { id: "download", done: data.done });
         else {
           const k = steps.indexOf(data.part), whole = (Math.max(k, 0) + data.done) / steps.length;
-          say(`Finding the ${PART_WORDS[data.part]} in ${song}… ${Math.round(data.done * 100)}% (${k + 1} of ${steps.length})${routeWords(data.via, data.gaveUp)}`, whole);
+          say(`Finding the ${PART_WORDS[data.part]} in ${song}… ${Math.round(data.done * 100)}% (${k + 1} of ${steps.length})${routeWords(data.via, data.gaveUp)}`, whole,
+            { id: data.part, done: data.done, via: data.via, gaveUp: data.gaveUp });
         }
       };
       worker.onerror = (e) => reject(new Error(e.message || "the AI couldn't start in this browser"));
       const transfer = [left.buffer, right.buffer, ...(vocals ? vocals.map((c) => c.buffer) : [])];
       worker.postMessage({ left, right, want, vocals }, transfer);
     }));
-    say(`Keeping ${song}'s parts with it…`, null);
+    say(`Keeping ${song}'s parts with it…`, null, { id: "save" });
     await saving;
     if (saveFailed) throw new Error(`couldn't keep its parts with it: ${plainError(saveFailed)}`);
     if (drums) {
-      say(`Finding when each drum lands in ${song}…`, null);
+      say(`Finding when each drum lands in ${song}…`, null, { id: "save" });
       await new Promise((r) => setTimeout(r, 0));
       await api(`api/audio/drums?${q(ref)}`, { method: "PUT", json: drumHits(drums, MDX.rate) }).catch(() => {});
     }
