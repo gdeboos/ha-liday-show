@@ -665,6 +665,15 @@ def phone_wait_left(runner: Runner, ticket: str | None, minutes: int) -> float:
     return max(0.0, max(ends) + minutes * 60 - _runner.clock()) if ends else 0.0
 
 
+def now_named(st: dict) -> dict:
+    """What's on, as the page names it: a building block goes by its playlist's name (the scenes you
+    keep on between shows, say), and only a show has a song to listen to."""
+    block, playlist = st.get("block"), st.get("playlist")
+    name = playlist["name"] if block and playlist else st["name"]
+    song = not block and not (st.get("scene") or {}).get("playing")
+    return {"name": name, "song": song}
+
+
 def now_art(storage: Storage, runner: Runner, picks: list[dict], look: dict) -> dict:
     """What's on now, for its picture in the card at the top: the pick it is (so the page can fetch its
     cover, only for a show or playlist visitors can pick) and its colours for a tile otherwise."""
@@ -726,10 +735,10 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
                          # Your admin phone can queue these early, to try them out.
                          **({"taken": taken(runner, c["kind"], c["id"])} if admin else {})}
                         for c in picks if not c["available"]), key=lambda c: (c["starts"], c["name"])),
-        "now": {"name": st["name"], "visitor": runner.public_now is not None, **now_art(storage, runner, picks, look),
-                # How far through, for the bar under its name (a scene goes round with no end: none).
+        "now": {**now_named(st), "visitor": runner.public_now is not None, **now_art(storage, runner, picks, look),
+                # How far through, for the bar under its name (a scene or block goes round with no end: none).
                 **({"position": round(st["position"], 1), "duration": round(st["duration"], 1)}
-                   if st["duration"] and not (st.get("scene") or {}).get("playing") else {})}
+                   if st["duration"] and not (st.get("scene") or {}).get("playing") and not st.get("block") else {})}
         if st["playing"] else None,
         "waiting": len(runner.requests),
         # Seconds left of a rest break, while the lights rest between visitors' picks.

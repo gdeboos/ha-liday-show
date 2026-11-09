@@ -393,8 +393,10 @@ What visitors get:
 - **If something's on**, the card at the top tells them where they are in the queue and roughly how long
   it'll be, such as "You're next, starting in about 2 minutes". Their picks are highlighted in **Up next**,
   with **Cancel** beside each.
-- **During one of your playlists**, a visitor's pick plays after the show that's on, then your
-  playlist carries on with its next show. A scheduled playlist that's due to start waits until a
+- **During one of your playlists**, a visitor's pick plays after the show that's on (and any pause after
+  it), then your playlist carries on with its next show. A building block (a scene, colour, effect or Off)
+  doesn't hold a pick back: the pick plays straight away and the playlist carries on after. While a block
+  is on, the page shows your playlist's name, with no **Listen** button since there's no song. A scheduled playlist that's due to start waits until a
   visitor's show has finished.
 - **A playlist** a visitor picks plays its shows through once, not round and round, without its
   building blocks.

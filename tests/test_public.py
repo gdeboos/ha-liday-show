@@ -1536,3 +1536,11 @@ def test_a_phones_lane_sends_a_pictures_phone_copy_instead_of_its_matrix_frames(
     lane = public.phone_lane(st, {"tracks": [{"device": "@phones", "clips": clips}]})
     assert lane["pictures"][sharp] == {"name": "Star", "phone": phone}
     assert lane["pictures"][plain]["frames"] == ["AAAAAAAAAAA="]
+
+
+def test_a_building_block_goes_by_its_playlists_name_with_nothing_to_hear():
+    block = {"name": "Warm glow", "block": {"type": "scene"}, "playlist": {"id": "e", "name": "Evening"}, "scene": None}
+    assert public.now_named(block) == {"name": "Evening", "song": False}
+    assert public.now_named({"name": "Jingle", "block": None, "playlist": {"id": "e", "name": "Evening"}, "scene": None}) \
+        == {"name": "Jingle", "song": True}
+    assert public.now_named({"name": "Glow", "block": None, "playlist": None, "scene": {"playing": True}})["song"] is False

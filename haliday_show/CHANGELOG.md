@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.467
+
+- **Fixed: visitors' picks waited behind a playlist of scenes.** While a playlist's scene, colour, effect or off block was on, a visitor's pick waited for a show that never came, so with a scenes-only playlist it never played. Now a block doesn't hold a pick back, just as a scene on its own doesn't: the pick plays straight away, then your playlist carries on with its next item. Pauses still play out in full first.
+- **The visitors' page names your playlist.** While one of your playlist's blocks is on, the page says **On now:** with the playlist's name, rather than "Scene block". It shows no progress bar and no **Listen** button, since a block has no song to hear.
+- In the editor, a playing scene block now goes by its scene's name.
+
 ## 0.2.466
 
 - **Lyrics… opens straight away.** In the Music editor, **Lyrics…** no longer downloads the whole song again before opening, so it's much quicker. Wherever it does still need to load the song, a window now opens at once saying so, with a **Cancel** button, instead of nothing seeming to happen.
