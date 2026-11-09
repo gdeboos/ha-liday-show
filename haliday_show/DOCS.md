@@ -1492,15 +1492,18 @@ You don't have to write them all yourself. **Detect** writes notes for every sec
 sections** writes them again for the sections as they are now (after you've split or moved them,
 say). It listens to each section and notes how loud it is, whether it builds up or fades, whether it's
 busy or sparse, bass-heavy or bright, any big hits or moments it goes quiet (with their times), and
-which earlier section it's like. It then suggests how to light it, for example: "Loud, busy, lots of
-hits; builds up through it; big hit at 0:42. Everything on, moving and flashing on the beat; flash
-everything on the hit." Notes you've typed or changed are never replaced, and nor are names you've
+which earlier section it's like. Once the song has been through **Split into parts** (and its words
+lined up with **Lyrics**), the notes also say what can be heard in each section (a choir, sleigh bells,
+brass), where the singing starts and stops, when the drums come in, any cymbal crashes and the line
+being sung. It then suggests how to light it, for example: "Loud; you can hear a choir; singing from
+0:26 to 0:44; drums come in at 0:24. Everything on, moving and flashing on the beat; slow washes for the
+choir; bring everything in when the drums start; drop to a soft glow when the singing stops." Notes you've typed or changed are never replaced, and nor are names you've
 given sections: pressing **Detect** again carries them over to the new section that covers the same
 stretch of the song. Edit anything it writes; once you do, it's yours.
 
 With an AI set up (see [Setting up the AI](#setting-up-the-ai)), the AI then rewrites those notes,
 usually within a minute, while you carry on. It can't hear the song, so it works from the same
-measurements and the song's name. If it knows the song, it uses what it knows: which part is the verse
+measurements (including what can be heard, the singing, drums and words) and the song's name. If it knows the song, it uses what it knows: which part is the verse
 or the chorus, where it builds. It also gives the sections Detect named itself better names, such as
 **Part B** becoming **Verse**, but never a name you gave. If you edit the sections before it's done,
 its notes aren't used, so press **✨ Describe sections** to ask again. Without an AI, or if it can't
@@ -2137,13 +2140,17 @@ and not on the schedule) and **Remove…**.
   per light, below) or **Advanced** (straight into the Show editor, further down). The palette starts on
   the season's, or the one you last used. Each light starts on a steady colour from it, one colour after
   another along your lights. Pick **None** and every light starts on a warm white instead. Either way it does something the moment you play it.
-- **Palette**, above the lights, is the scene's palette, as a show has one. A light you turn on from
-  **Off** takes its colours, and the effect window shows every effect in them. Change it and you're
-  asked whether to recolour the lights already on. A light that's on keeps its own colours when you
-  change its effect.
+- **Palette**, above the lights, is the scene's palette, as a show has one. Any effect you pick for a
+  light takes its colours, going round the palette from light to light, and the effect window shows
+  every effect in them. That includes **WLED's own effect**, which then uses the WLED palette
+  **\* Colors Only**, so the WLED draws in your colours. Change the palette and you're asked whether to
+  recolour the lights already on. You can still set a light's own colours afterwards with its colour
+  boxes or **Palette…**.
 - In the editor, each light has its own row: its **Effect**, its **Colours** (a colour box for each,
   and **Palette…** to use one of your palettes), and **Speed**, **Brightness** and **Glitter** sliders
-  (white sparkles over the effect; all the way left is none). Press the
+  (white sparkles over the effect; all the way left is none). A light on **WLED's own effect** has
+  **Speed**, **Brightness** and **Intensity** instead, named on its row: its Speed and Intensity are the
+  WLED's own sliders for that effect, and there's no Glitter, as it can't reach the WLED. Press the
   effect to change it: the same window as the Show editor's opens, with every effect moving in the
   light's own colours. Tick **Show presets** there to pick a preset; the effect then shows its name,
   such as **Three colours · Still blocks**. **Off** beside it turns the light off in this scene.

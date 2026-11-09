@@ -26,16 +26,26 @@ export const newLook = (effect = "solid") => ({
 
 // A light's look with a different effect, keeping the colours it had where the new effect has room.
 // A light that was off takes the scene's palette, when it has one.
-export function changeEffect(look, effect, palette = null) {
+export function changeEffect(look, effect, palette = null, offset = 0) {
   const next = newLook(effect);
-  if (!look) return palette?.colors?.length ? withPalette(next, palette.colors) : next;
-  const old = clipFor(look, 0, 1);
-  const colours = usedColourKeys(look.effect, old).map((k) => old[k]).filter(Boolean);
+  const colours = look ? (() => { const old = clipFor(look, 0, 1); return usedColourKeys(look.effect, old).map((k) => old[k]).filter(Boolean); })() : [];
+  if (palette?.colors?.length) {
+    // The scene's palette colours every effect picked, the light keeping its place in it (or starting
+    // `offset` colours in), so lights along the house go through the palette in turn.
+    const at = palette.colors.findIndex((c) => c.toLowerCase() === colours[0]?.toLowerCase());
+    withPalette(next, palette.colors, at >= 0 ? at : offset);
+    // A WLED's own effect draws in those colours too, on WLED's "* Colors Only" palette.
+    if (effect === "wled") Object.assign(next.params, { palette: 5, palName: "* Colors Only" });
+    if (look?.params.brightness != null) next.params.brightness = look.params.brightness;
+    if (look?.params.glitter && effect !== "wled") next.params.glitter = look.params.glitter;
+    return next;
+  }
+  if (!look) return next;
   paletteKeys(effect).forEach((k, i) => { if (i < colours.length) next.params[k] = colours[i]; });
   // A list of colours takes as many as the old look had (at least two).
   if (EFFECTS[effect]?.list && colours.length >= 2) next.params.count = String(Math.min(colours.length, paletteKeys(effect).length));
   if (look.params.brightness != null) next.params.brightness = look.params.brightness;
-  if (look.params.glitter) next.params.glitter = look.params.glitter;
+  if (look.params.glitter && effect !== "wled") next.params.glitter = look.params.glitter; // no glitter on a WLED's own effect
   return next;
 }
 
@@ -138,13 +148,22 @@ export function sceneShow(scene, lights, loop) {
 // (as a playlist's Effect block) where the lights look most like they did at the start.
 export function sceneLoop(scene, lights, fps) {
   if (scene.mode === "advanced") return scene.loop;
-  const probe = sceneShow(scene, lights, 3600);
+  // A WLED playing its own effect is sent no frames, so it doesn't count (and running WLED's effect
+  // code back and forth through the search would take ages).
+  const probe = withoutWledOwn(sceneShow(scene, lights, 3600));
   const trackOf = (id) => probe.tracks.find((tr) => tr.device === id);
   const look = (t) => lights.flatMap((l) => [...composeLight(l, trackOf, t)]);
   const first = look(0).join();
   if ([0.37, 1.1, 2.9, 7.3].every((t) => look(t).join() === first)) return 1;
   return loopLength({ type: "effect", seconds: 3600 }, fps, look);
 }
+
+const withoutWledOwn = (show) => ({ ...show, tracks: show.tracks.filter((t) => !t.clips.some((c) => EFFECTS[c.effect]?.wledOwn)) });
+
+// The scene's show for baking: lights on WLED's own effect get the quick stand-in (wled-effects/index.js),
+// as the WLED is sent none of their frames; they're only there for pictures of the house.
+export const forBaking = (show) => ({ ...show,
+  tracks: show.tracks.map((t) => ({ ...t, clips: t.clips.map((c) => (EFFECTS[c.effect]?.wledOwn ? { ...c, standIn: true } : c)) })) });
 
 // Up to three colours to show for the scene on its row in Your scenes.
 export function sceneColours(scene, lights) {

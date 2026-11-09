@@ -8,7 +8,7 @@ import { gatherPart } from "./parts.js";
 import { isPorted } from "./wled-effects/index.js";
 import {
   LIVE_EFFECTS, SCENE_EFFECTS, byParts, wledSegmentPart, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
-  sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
+  forBaking, sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
 import { setShowPalette, showPalette } from "./showpalette.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
@@ -479,6 +479,10 @@ export class SceneEditor {
     // segments), and a part that's one of its WLED segments.
     const wledOK = !!dev && dev.kind === "wled" && (!dev.parent || wledSegmentPart(dev, dev.part));
     const own = !!EFFECTS[look?.effect]?.wledOwn;
+    // Where this row is along the lights, so a palette goes round them in turn (as Recolour does).
+    const [lightId, partId] = String(devId ?? "").split("#");
+    const lightAt = this.d.lights().findIndex((d) => d.id === lightId);
+    const place = Math.max(0, lightAt) + Math.max(0, this.d.lights()[lightAt]?.parts?.findIndex((p) => p.id === partId) ?? 0);
     const eff = el("button", { type: "button", class: "sc-effect picker-button", "aria-haspopup": "dialog",
       "aria-label": `Effect for ${full}: ${fxName}. Change…`, title: `${fxName}. Pick an effect or preset, with a preview of each` },
       el("span", { class: "picker-name" }, fxName), el("span", { class: "picker-change", "aria-hidden": "true" }, "Change…"));
@@ -489,11 +493,11 @@ export class SceneEditor {
       // Each effect previews as it would be picked: this light's colours carried over.
       palette: this.palette(),
       paramsFor: (key) => {
-        const { start, end, effect, ...params } = clipFor(changeEffect(look, key, this.palette()), 0, 1);
+        const { start, end, effect, ...params } = clipFor(changeEffect(look, key, this.palette(), place), 0, 1);
         return params;
       },
       onPick: (key, picked) => {
-        const next = changeEffect(look, key, this.palette());
+        const next = changeEffect(look, key, this.palette(), place);
         if (picked) next.params = { ...next.params, ...presetParams(picked, clipFor(next, 0, 1)) };
         set(next);
         changed(true);
@@ -566,11 +570,13 @@ export class SceneEditor {
     row.append(br ? this.slider("Brightness", full, br, clip.brightness, (v) => { look.params.brightness = v; }) : none());
     if (EFFECTS[look.effect].live) { row.append(none()); return row; } // no Glitter: it's one frame a level
     if (own) {
-      // WLED's own effects have an Intensity where the others have Glitter.
+      // WLED's own effects have an Intensity where the others have Glitter (which can't reach the WLED).
+      // Its Speed and Intensity are the WLED's own sliders, so they're named on the row itself.
       const ix = EFFECTS.wled.params.find((p) => p.key === "intensity");
       const intensity = this.slider("Intensity", full, ix, clip.intensity, (v) => { look.params.intensity = v; });
       intensity.classList.add("sc-glitter");
       row.append(intensity);
+      row.classList.add("sc-row-wled");
       return row;
     }
     const glitter = this.slider("Glitter", full, { min: 0, max: 100, step: 5 }, look.params.glitter || 0,
@@ -642,7 +648,7 @@ export class SceneEditor {
     if (!lights.length) return;
     const loop = withoutLive(() => sceneLoop(scene, lights, FPS)); // live effects loop on their idle glow
     const advanced = scene.mode === "advanced";
-    const show = sceneShow(scene, lights, loop);
+    const show = forBaking(sceneShow(scene, lights, loop));
     await this.d.picturesReady?.();
     const blob = await bakeOff(show, this.d.devices(), FPS, advanced ? this.d.positions() : {},
       advanced ? this.d.groups?.() || [] : []);

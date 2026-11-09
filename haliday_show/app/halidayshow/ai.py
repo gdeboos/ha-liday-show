@@ -241,7 +241,12 @@ measurements only, and don't guess at lyrics or instruments.
 - "sections": each section in order, with its start and end in seconds, its current name and what was measured: \
 "loudness" from 0 (the quietest section) to 1 (the loudest), "shape" (builds, fades or steady), "busy" (busy, \
 sparse or steady, against the rest of the song), "tone" (bass, bright or even), and the times of any "big_hits" \
-and moments it "goes_quiet". Mention those times as m:ss.
+and moments it "goes_quiet". Mention those times as m:ss. Where the song has been listened to more closely, a \
+section also says what "can_hear" in it (Choir, Sleigh bells, Brass...) and its "mood"; whether there's "singing" \
+(all, some or none) with when it starts and stops ("singing_starts", "singing_stops"); whether there are "drums" \
+(in or none), when they "drums_come_in" and any "cymbal_crashes"; and the "lyrics" lines that start in it. These \
+were heard in the song itself, so trust them over what you remember of it, and use them: twinkles for bells, slow \
+washes for a choir, everything in when the drums start, a glow when the singing stops, a moment for a line.
 - Write notes only for sections marked "write": true, under 300 characters each. Sections with "your_notes" were \
 written by the person; leave them, but you can use them to understand the song.
 - For sections marked "rename": true, also give a better name if you can tell what it is (Intro, Verse, Chorus, \
