@@ -9691,8 +9691,8 @@ async function asSubmit(e) {
     status(`Couldn't add ${name}: ${err.message}`, true, "songs");
     return;
   }
-  let info = null, failed = null;
-  const withAI = addSong.mode === "ai" && Boolean(aiVia);
+  let info = null, failed = null, notesJob = null;
+  const withAI = addSong.mode === "ai" && (Boolean(aiVia) || deviceNotes.ready());
   if (addSong.mode !== "later") {
     asBusy(true, `Listening to ${name}…`);
     try {
@@ -9705,13 +9705,14 @@ async function asSubmit(e) {
       await api(songInfoUrl(ref), { method: "PUT", json: info });
       // The AI's names and notes follow when they come, unless the song's sections were edited meanwhile.
       const first = info;
-      if (withAI) {
-        aiSectionNotes(info.sections, r.traits, { name, duration: song.duration, tempo: info.tempo }).then(async (got) => {
-          if (!got?.used || !sameSections((await songInfo(ref))?.sections, first.sections)) return;
+      if (withAI) { // written in front of you, as the first thing in step 3
+        notesJob = async (say) => {
+          const got = await aiSectionNotes(info.sections, r.traits, { name, duration: song.duration, tempo: info.tempo }, say);
+          if (addSong.stopped || !got?.used || !sameSections((await songInfo(ref))?.sections, first.sections)) return false;
           await api(songInfoUrl(ref), { method: "PUT", json: { ...first, sections: got.sections } });
           music.reloadInfo?.(ref);
-          status(`${name}: the AI named the parts and wrote their notes`, "saved", "songs");
-        }).catch(() => {});
+          return true;
+        };
       }
     } catch (err) {
       failed = songLoadMessage(err);
@@ -9726,12 +9727,12 @@ async function asSubmit(e) {
   prefs.set("addSplit", split);
   // The rest is done here in front of you: its parts (or, left for later, just listening to it, which
   // takes seconds), then its words lined up with the singing. Stop keeps whatever's done.
-  const said = await asGetReady(ref, name, { split, words, detected: failed ? null : info });
+  const said = await asGetReady(ref, name, { split, words, detected: failed ? null : info, notes: notesJob });
   $("add-song-dialog").close();
   await refreshAudio().catch(() => {});
   renderSongsPage();
   if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
-  else status(said || addedMessage(name, info, { ai: withAI && info?.sections.length > 0 }), said ? "hint" : "saved", "songs");
+  else status(said || addedMessage(name, info, { ai: Boolean(addSong.notesWritten) && info?.sections.length > 0 }), said ? "hint" : "saved", "songs");
   // Then colours from its cover, to pick or skip (only when there's something to offer).
   await offerSongColours(ref, { justAdded: true }).catch(() => {});
   addSong.onAdded?.([...$("audio-select").options].find((o) => o.value && JSON.parse(o.value).path === ref.path)?.value || "");
@@ -9739,20 +9740,35 @@ async function asSubmit(e) {
 
 // Add a song, step 3: the song's parts and words, done in front of you, a line for each with how far
 // along. Returns a word for the status line when something was stopped or went wrong, else "".
-async function asGetReady(ref, name, { split, words, detected }) {
+async function asGetReady(ref, name, { split, words, detected, notes = null }) {
+  // A line for each step, each with how far along it is; the one in hand also has the bar and what
+  // it's doing in words.
   const tasks = [
     { id: "add", text: detected ? "Added, and its beats and sections found" : "Added" },
-    split ? { id: "parts", text: "Split into its vocals, drums, bass and the rest" } : { id: "listen", text: "Listened to for the sounds in it" },
+    ...(notes ? [{ id: "notes", text: `Section notes written ${deviceNotes.ready() ? "on this device" : aiVia === "claude" ? "by Claude" : "by Home Assistant's AI"}` }] : []),
+    ...(split ? [
+      { id: "download", text: "The AI for splitting downloaded (the first time only)", hidden: true },
+      { id: "vocals", text: "Vocals found" },
+      { id: "drums", text: "Drums found" },
+      { id: "bass", text: "Bass found, and the rest of the music is what's left" },
+      { id: "save", text: "Parts kept with the song, and when each drum lands found" },
+    ] : []),
+    { id: "listen", text: "Listened to for the sounds in it (bells, a choir…)" },
     ...(words.length ? [{ id: "words", text: "Its words kept with it" }] : []),
   ];
+  const order = tasks.map((t) => t.id);
   const list = $("as-tasks"), rows = new Map();
   list.replaceChildren(...tasks.map((t) => {
-    const li = Object.assign(document.createElement("li"), { textContent: t.text });
+    const li = document.createElement("li");
+    li.append(Object.assign(document.createElement("span"), { textContent: t.text }));
+    li.hidden = !!t.hidden;
     rows.set(t.id, li);
     return li;
   }));
   const mark = (id, how, note = "") => {
     const li = rows.get(id);
+    if (!li) return;
+    li.hidden = false;
     li.className = how;
     li.querySelector(".hint")?.remove();
     if (note) li.append(" ", Object.assign(document.createElement("span"), { className: "hint", textContent: note }));
@@ -9763,25 +9779,69 @@ async function asGetReady(ref, name, { split, words, detected }) {
     bar.hidden = !text;
     if (done == null) bar.removeAttribute("value"); else bar.value = done;
   };
+  // A step's own progress: it's the one in hand, with its %, and those before it in its group are done.
+  const at = (id, done, from = 0) => {
+    const k = order.indexOf(id);
+    for (let i = from; i < k; i++) if (rows.get(order[i]).className === "now" || !rows.get(order[i]).className) {
+      if (!rows.get(order[i]).hidden) mark(order[i], "done");
+    }
+    mark(id, "now", done == null ? "" : `${Math.round(done * 100)}%`);
+  };
+  const finish = (ids, how, note = "") => {
+    for (const id of ids) if (rows.has(id) && !["done", "failed", "skipped"].includes(rows.get(id).className) && !rows.get(id).hidden) mark(id, how, note);
+  };
   $("as-doing-title").textContent = `Step 3 of 3: getting ${name} ready`;
   asStep(3);
   asBusy(false);
   Object.assign(addSong, { stop: null, finish: null, stopped: false, busy: true });
   mark("add", "done");
-  let problem = "";
-  // Its parts, or just listening to it.
-  const step = split ? "parts" : "listen";
-  mark(step, "now");
-  if (partsLine.now || gpuBusy()) say("Waiting for the AI in this browser to finish what it's doing (one thing at a time)…");
+  let problem = "", notesWritten = false;
+  // The section notes first (on this device they use the graphics chip, which then splits the song).
+  if (notes) {
+    mark("notes", "now");
+    // Stop here leaves Detect's notes (the model finishes in the background, and what it writes is dropped).
+    const stopped = new Promise((resolve) => { addSong.stop = () => resolve("stopped"); });
+    try {
+      const wrote = await Promise.race([notes((text, done) => {
+        if (addSong.stopped) return;
+        say(text, done);
+        mark("notes", "now", done == null ? "" : `${Math.round(done * 100)}%`);
+      }), stopped]);
+      notesWritten = wrote === true;
+      mark("notes", notesWritten ? "done" : "skipped", wrote === "stopped" ? "stopped: Detect's notes kept" : notesWritten ? "" : "kept as Detect wrote them");
+    } catch { mark("notes", "skipped", "kept as Detect wrote them"); }
+    addSong.stop = null;
+    say("");
+  }
+  // Its parts (or, left for later, just listening to it), each step on its own line.
+  const partSteps = ["download", "vocals", "drums", "bass", "save", "listen"].filter((id) => rows.has(id));
+  if (partsLine.now || gpuBusy()) {
+    mark(partSteps.find((id) => !rows.get(id).hidden), "now", "waiting");
+    say("Waiting for the AI in this browser to finish another song first (one thing at a time)…");
+  }
+  const onStep = (text, done, step) => {
+    say(text, step?.done ?? done);
+    const id = step?.id === "cut" ? "vocals" : step?.id;
+    if (!rows.has(id)) return;
+    // The AI's download only gets a line when there's one to wait for (not when it's to hand already).
+    if (id === "download" && rows.get(id).hidden && (step.done ?? 0) >= 1) return;
+    at(id, step.done ?? null, order.indexOf(partSteps[0]));
+    if (step.via === "cpu" && step.gaveUp) mark(id, "now", `${Math.round((step.done || 0) * 100)}% · on the processor (the graphics chip ran out of memory)`);
+    else if (step.via) mark(id, "now", `${Math.round((step.done || 0) * 100)}% · ${step.via === "gpu" ? "on the graphics chip" : "on the processor, which is slower"}`);
+    if (step.what === "downloading") mark(id, "now", `downloading the AI (the first time only)… ${Math.round((step.done || 0) * 100)}%`);
+  };
   try {
-    await makeParts(ref, api, { listenOnly: !split, say, started: (stop) => { addSong.stop = stop; if (addSong.stopped) stop(); } });
-    mark(step, "done");
+    await makeParts(ref, api, { listenOnly: !split, say: onStep, started: (stop) => { addSong.stop = stop; if (addSong.stopped) stop(); } });
+    finish(partSteps, "done");
   } catch (e) {
+    const now = partSteps.find((id) => rows.get(id).className === "now") || partSteps.find((id) => !rows.get(id).hidden);
     if (e.cancelled) {
-      mark(step, "skipped", split ? "stopped: press Split into parts… on it, or Split all songs into parts, to finish" : "stopped");
+      mark(now, "skipped", split ? "stopped: press Split into parts… on it, or Split all songs into parts, to finish" : "stopped");
+      finish(partSteps, "skipped");
       problem = `${name} added; you stopped splitting it into parts`;
     } else {
-      mark(step, "failed", plainError(e));
+      mark(now, "failed", plainError(e));
+      finish(partSteps, "skipped");
       problem = `${name} added, but couldn't be split into parts: ${plainError(e)}`;
     }
   }
@@ -9801,7 +9861,12 @@ async function asGetReady(ref, name, { split, words, detected }) {
       if (parts?.vocals && !addSong.stopped) {
         // Stop here leaves the words placed roughly, to line up later.
         const stopped = new Promise((resolve) => { addSong.stop = () => resolve(null); });
-        lines = (await Promise.race([lineUpLyrics(ref, api, words, (t) => { if (!addSong.stopped) say(t); }), stopped]))?.lines || null;
+        lines = (await Promise.race([lineUpLyrics(ref, api, words, (t, done, step) => {
+          if (addSong.stopped) return;
+          say(t, done);
+          mark("words", "now", step?.what === "downloading" ? `downloading the AI (the first time only)… ${Math.round((done || 0) * 100)}%`
+            : done == null ? "" : `lining up with the singing… ${Math.round(done * 100)}%`);
+        }), stopped]))?.lines || null;
         addSong.stop = null;
         $("as-next").disabled = false;
       }
@@ -9832,7 +9897,7 @@ async function asGetReady(ref, name, { split, words, detected }) {
     $("as-next").classList.add("primary");
     $("as-next").focus();
   });
-  Object.assign(addSong, { finish: null, busy: false });
+  Object.assign(addSong, { finish: null, busy: false, notesWritten });
   return problem;
 }
 
@@ -12543,11 +12608,13 @@ const songTitle = (ref) => (ref?.path || "").split("/").pop().replace(/\.[^.]+$/
 // The AI's notes (and better names) for a song's sections, from what was measured in each:
 // {sections, used} (used: how many of its notes or names were kept), or null without an AI or if it
 // fails, when the notes stay as they were.
-async function aiSectionNotes(sections, traits, song) {
-  if (deviceNotes.ready()) return deviceSectionNotes(sections, traits, song);
+// say(text, done 0-1 or null): how it's going, for a window showing it (else the status line).
+async function aiSectionNotes(sections, traits, song, say = null) {
+  if (deviceNotes.ready()) return deviceSectionNotes(sections, traits, song, say);
   if (!aiVia || !sections?.length) return null;
   const { request, context } = aiRequest(sections, traits, song);
   try {
+    say?.(`Asking ${aiVia === "claude" ? "Claude" : "Home Assistant's AI"} for the section notes…`, null);
     const reply = await api("api/ai/sections", { method: "POST", json: { request, context } });
     const got = describeWithAI(sections, traits, reply);
     if (!got.used) status("The AI's reply couldn't be used, so the section notes stay as they were", "hint");
@@ -13545,15 +13612,19 @@ beforeGpuTurn((who) => { if (who !== "notes" && !deviceNotes.pending) deviceNote
 const notesProblem = (e) => (/webgpu|ortrun|compute pipeline|external instance/i.test(e?.message || "")
   ? "the graphics chip stopped it (it may have been busy). Describe sections tries again" : e?.message || String(e));
 
-async function deviceSectionNotes(sections, traits, song) {
+async function deviceSectionNotes(sections, traits, song, say = null) {
   const asks = devicePrompts(sections, traits, song);
   if (!asks.length) return null;
   try {
+    const tell = say || ((text) => status(text));
     const { written } = await gpuTurn(() => deviceNotes.ask({ write: asks.map(({ index, messages }) => ({ index, messages })), maxTokens: 160 },
-      (stage, done) => status(stage === "load" ? "Loading the notes model on this device…"
-        : `Writing section notes on this device… ${Math.round((done || 0) * 100)}%`), (2 + asks.length) * 60000), "notes");
+      (stage, done) => (stage === "load" ? tell("Loading the notes model on this device…", null)
+        : tell(`Writing section notes on this device… ${Math.round((done || 0) * 100)}%`, done || 0)), (2 + asks.length) * 60000), "notes");
     const got = describeWithAI(sections, traits, fromDevice(written));
-    if (!got.used) status("The notes model's answer couldn't be used, so the section notes stay as they were", "hint");
+    if (!got.used) {
+      console.info("HA-liday Show: the notes model wrote", written); // so its answers can be looked at
+      status("The notes model's answer couldn't be used, so the section notes stay as they were", "hint");
+    }
     return got;
   } catch (e) {
     status(`The notes model couldn't write the notes, so they stay as they were: ${notesProblem(e)}`, "hint");

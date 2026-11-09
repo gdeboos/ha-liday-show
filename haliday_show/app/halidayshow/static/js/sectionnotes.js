@@ -244,7 +244,12 @@ export function fromDevice(written) {
   const sections = [];
   for (const { index, text } of written || []) {
     const t = String(text || "");
-    let notes = (/Notes:\s*([\s\S]*)/i.exec(t)?.[1] ?? "").split(/\n\s*\n|\n\s*(?:Name|Lighting ideas?):/i)[0];
+    // "Notes: …" as asked; small models often leave the label off, so a short answer of whole sentences
+    // (no label, no lists) is taken as it is.
+    const labelled = /Notes:\s*([\s\S]*)/i.exec(t)?.[1];
+    const plain = t.trim().replace(/^[\s"'#*]+/, "");
+    const bare = labelled == null && plain.length <= 400 && /[.!]["'”]?$/.test(plain) && !/^[A-Z][a-z]+( [a-z]+)?:/.test(plain) ? plain : "";
+    let notes = (labelled ?? bare).split(/\n\s*\n|\n\s*(?:Name|Lighting ideas?):/i)[0];
     notes = notes.replace(/\*\*|__/g, "").replace(/^[\s"'<#*]+|[\s"'>*]+$/g, "").replace(/\s+/g, " ").trim();
     if (!notes || /lighting ideas?:|what was heard/i.test(notes) || (notes.match(/;/g) || []).length >= 3) continue;
     if (notes.length > 300) {

@@ -1739,6 +1739,8 @@ h2.with-layout-switch .layout-switch { margin-left: auto; font-size: 13px; font-
 .as-tasks li.skipped::before { content: "–"; }
 .as-tasks li.failed::before { content: "✕"; color: var(--danger); }
 .as-tasks li .hint { font-weight: 400; }
+.as-tasks li[hidden] { display: none; }
+.as-tasks li { flex-wrap: wrap; column-gap: 8px; }
 #as-bar { width: 100%; }
 #as-bar[hidden] { display: none; }
 #as-words { width: 100%; resize: vertical; font: inherit; }
