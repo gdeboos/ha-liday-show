@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.2.438
+## 0.2.439
 
 - **See WLED's own effects move in the preview.** A light on **WLED's own effect** in a scene now shows the effect as the WLED draws it, worked out with WLED's own code: **Fire 2012**, **Pacifica**, **Twinklefox**, **Rainbow**, **Colorloop**, **Candle**, **Meteor**, **Juggle**, **Fireworks Starburst**, **Plasma**, **Lightning** and about 20 more, in your chosen palette, colours and speed. Other WLED effects show a rough moving stand-in for now, and the light's row says which you're seeing. More effects will follow.
+
+## 0.2.438
+
+- **Library → Songs shows parts and lyrics at a glance.** A song's parts now show as **Parts:** with a coloured dot for each, the same as in the Music editor, and a **♪ Lyrics** badge shows which songs have their words.
 
 ## 0.2.437
 

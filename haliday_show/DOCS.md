@@ -875,7 +875,9 @@ M4A, AAC, OGG, Opus, WAV, FLAC or WebM; see below). Songs you add go to `/media/
 players can play them. For a lights-only show, choose **No song, lights only** and set its **Length with no song**.
 
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
-tempo and sections) or "not detected yet", and which shows use it. Type in **Find** to narrow the
+tempo and sections) or "not detected yet", and which shows use it. Under that, **♪ Lyrics** shows it has
+its words, and **Parts:** with a coloured dot for each part shows it's been split into its vocals, drums,
+bass and the rest (the same as in the Music editor). Type in **Find** to narrow the
 list by name, folder or show. **Edit** opens a song in the **Music editor**, and **Remove…** archives
 or deletes one. The song you last opened in the Music editor has a **Last edited** badge.
 **▶** beside a song, an edit or a split plays it there and then, in a bar along the bottom of the page:
@@ -968,8 +970,8 @@ puts it back and gives it back to the shows that were left without a song.
 **Split into parts…** (under a song's **⋯** in **Library → Songs**, or in the Music editor's **Song**
 panel, which shows **Parts:** with each part's colour once it has them, and **Split again…** to make them afresh) separates a song into its **vocals**, **drums**, **bass** and **the rest** of the music, and
 keeps them with the song as its **parts**, along with the **music** (everything but the vocals). They
-aren't songs of their own: the song's row lists them, such as **parts: vocals, drums, bass, rest and
-music**, and they go wherever the song goes (renamed, copied, archived or deleted with it).
+aren't songs of their own: the song's row shows them the same way, **Parts:** with each part's colour,
+and they go wherever the song goes (renamed, copied, archived or deleted with it).
 
 - **Singing faces** follow the vocals part.
 - **Drum hits:** from the drums part, HA-liday Show finds when each kick, snare, hi-hat and crash

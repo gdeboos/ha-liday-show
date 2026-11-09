@@ -45,7 +45,7 @@ import { HA_KINDS, findEntities, haKind, kindCounts } from "./hapicker.js";
 import { countLabel, countText, isHa, isPixels, showBulbs, sizeText, unitWord } from "./lightwords.js";
 import { helpPageChanged, initHelp } from "./helpui.js";
 import { STATUS, modelSummary, newLight, statusOf } from "./models.js";
-import { MusicEditor, arrange, mapHits, mapLyrics, mapVoice } from "./music.js";
+import { MusicEditor, arrange, mapHits, mapLyrics, mapVoice, partsChip } from "./music.js";
 import { ROLES, cleanRoles, guessRoles, rolesFor } from "./roles.js";
 import { SOUNDS, feelFor, soundsIn } from "./sounds.js";
 import { createVolume } from "./volume.js";
@@ -9018,6 +9018,25 @@ function splitButton(r, base = null) {
   return split;
 }
 
+// After a song's details: a Lyrics badge if it has words, and its parts in their colours, as the
+// Music editor shows them.
+function songTags(r) {
+  const chip = partsChip(r.parts);
+  if (!chip && !r.lyrics) return null;
+  const marks = document.createElement("div");
+  marks.className = "song-marks";
+  if (r.lyrics) {
+    marks.append(Object.assign(document.createElement("span"), { className: "song-badge lyrics", textContent: "♪ Lyrics",
+      title: "It has its words, for Singing faces and the timeline's lyrics row" }));
+  }
+  if (chip) {
+    chip.classList.add("small");
+    chip.title = "Its vocals, drums, bass and the rest, kept with it";
+    marks.append(chip);
+  }
+  return marks;
+}
+
 function editKid(e) {
   const r = e.row, d = e.draft;
   const details = document.createElement("div");
@@ -9025,7 +9044,7 @@ function editKid(e) {
   const len = document.createElement("span");
   len.textContent = "…";
   details.append(len, ` · ${r.found} · `, d ? `made from the draft "${d.name}"` : "made before drafts, so Edit starts a new one");
-  if (partsText(r.parts)) details.append(` · parts: ${partsText(r.parts)}`);
+  const marks = songTags(r);
   const uses = document.createElement("div");
   uses.className = "hint";
   uses.textContent = r.uses;
@@ -9045,7 +9064,7 @@ function editKid(e) {
   const rm = button("Remove…", () => openRemoveSong(r), "ghost");
   rm.setAttribute("aria-label", `Archive or delete ${r.name}`);
   rm.disabled = !r.own;
-  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, uses], [edit, ren, dup, splitButton(r, d?.base), rm].filter(Boolean), r);
+  const row = songKid("edit", "✂", e.short, "Edit · song file", [details, marks, uses].filter(Boolean), [edit, ren, dup, splitButton(r, d?.base), rm].filter(Boolean), r);
   row.title = r.file;
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
@@ -9186,11 +9205,11 @@ function songRow(r) {
   const len = document.createElement("span");
   len.textContent = "…";
   details.append(label, len, ` · ${r.found}`);
-  if (partsText(r.parts)) details.append(` · parts: ${partsText(r.parts)}`);
+  const marks = songTags(r);
   const uses = document.createElement("div");
   uses.className = "hint";
   uses.textContent = r.uses;
-  main.append(head, details, uses);
+  main.append(...[head, details, marks, uses].filter(Boolean));
   const actions = document.createElement("div");
   actions.className = "group show-actions";
   const edit = button("Edit", () => editSong(r.ref), "primary");

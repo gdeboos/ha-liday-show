@@ -128,7 +128,7 @@ light's look, `{effect: "wled", params: {fx, palette, speed, intensity, color, c
 brightness, fxName, palName}}`; in an Advanced scene, a clip with those fields covering the lane's whole
 loop. Plan: the project doc `claude/effects-plan.md`, round 2.
 
-### Previews (from 0.2.438)
+### Previews (from 0.2.439)
 
 `static/js/wled-effects/` is WLED 0.15.5's effect code translated to JavaScript, under WLED's EUPL 1.2
 (its own `LICENSE`; the rest of the repo is MIT). `engine.js` is WLED's `Segment` and the FastLED
@@ -143,7 +143,7 @@ time starts afresh; more than 20 s ahead starts 5 s before). `EFFECTS.wled.rende
 - `own_effect_state` sends no `fxdef`, so a WLED keeps the extra settings (`c1`-`c3`, `o1`-`o3`) it had;
   the preview assumes WLED's segment defaults (128, 128, 16, all off). With those, **Palette** (65) is one
   colour and **Scanner** (40) pauses about 3 s at each end, on the WLED as in the preview.
-- Batch 1 (0.2.438): 0-3, 8-13, 15-17, 20, 23, 28, 40, 52, 57, 60, 64-67, 76, 80, 81, 88, 89, 97, 101,
+- Batch 1 (0.2.439): 0-3, 8-13, 15-17, 20, 23, 28, 40, 52, 57, 60, 64-67, 76, 80, 81, 88, 89, 97, 101,
   102. The rest of the strip effects follow in batches; others show `standIn` (palette, or the colours
   when the palette is Default, drifting).
 - Updating to a newer WLED: compare `wled00/FX.cpp` for the ported modes and regenerate `palettes.js`.

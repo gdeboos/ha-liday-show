@@ -608,7 +608,9 @@ class Storage:
                         "detected": bool(info and (info.get("beats") or info.get("sections"))),
                         "tempo": (info or {}).get("tempo"),
                         "key": (info or {}).get("key"),
-                        "sections": len((info or {}).get("sections") or [])})
+                        "sections": len((info or {}).get("sections") or []),
+                        # Whether it has words (for the Lyrics badge); kept beside what Detect found.
+                        "lyrics": bool((self.load_song_extra(ref["source"], ref["path"], "lyrics") or {}).get("text", "").strip())})
         return {"songs": out, "more": len(refs) > limit}
 
     def speaker_test_path(self) -> str:
