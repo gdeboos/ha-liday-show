@@ -238,6 +238,7 @@ test("the on-device model's answers are read, tidied and checked", () => {
   assert.equal(fromDevice([{ index: 2, text: "A gentle, sparse intro. Fade the warm whites in slowly." }]).sections[0].notes,
     "A gentle, sparse intro. Fade the warm whites in slowly.");
   assert.deepEqual(fromDevice([{ index: 2, text: "Name: Chorus." }]).sections, []);
+  assert.deepEqual(fromDevice([{ index: 2, text: "Sure, here you go:" }]).sections, [], "a preamble on its own isn't notes");
   assert.deepEqual(fromDevice([{ index: 2, text: "Quiet; sparse; no singing; no drums." }]).sections, []);
   assert.equal(fromDevice([{ index: 2, text: "Notes: ** The Chorus is **loud**." }]).sections[0].notes, "The Chorus is loud.");
 });

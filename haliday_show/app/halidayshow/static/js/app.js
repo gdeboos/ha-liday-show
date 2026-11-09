@@ -9708,7 +9708,7 @@ async function asSubmit(e) {
       if (withAI) { // written in front of you, as the first thing in step 3
         notesJob = async (say) => {
           const got = await aiSectionNotes(info.sections, r.traits, { name, duration: song.duration, tempo: info.tempo }, say);
-          if (!got?.used || !sameSections((await songInfo(ref))?.sections, first.sections)) return false;
+          if (addSong.stopped || !got?.used || !sameSections((await songInfo(ref))?.sections, first.sections)) return false;
           await api(songInfoUrl(ref), { method: "PUT", json: { ...first, sections: got.sections } });
           music.reloadInfo?.(ref);
           return true;
@@ -9732,7 +9732,7 @@ async function asSubmit(e) {
   await refreshAudio().catch(() => {});
   renderSongsPage();
   if (failed) status(`${name} added, but couldn't be detected: ${failed}. Try Detect in the Music editor`, true, "songs");
-  else status(said || addedMessage(name, info, { ai: withAI && info?.sections.length > 0 }), said ? "hint" : "saved", "songs");
+  else status(said || addedMessage(name, info, { ai: Boolean(addSong.notesWritten) && info?.sections.length > 0 }), said ? "hint" : "saved", "songs");
   // Then colours from its cover, to pick or skip (only when there's something to offer).
   await offerSongColours(ref, { justAdded: true }).catch(() => {});
   addSong.onAdded?.([...$("audio-select").options].find((o) => o.value && JSON.parse(o.value).path === ref.path)?.value || "");
@@ -9795,14 +9795,22 @@ async function asGetReady(ref, name, { split, words, detected, notes = null }) {
   asBusy(false);
   Object.assign(addSong, { stop: null, finish: null, stopped: false, busy: true });
   mark("add", "done");
-  let problem = "";
+  let problem = "", notesWritten = false;
   // The section notes first (on this device they use the graphics chip, which then splits the song).
   if (notes) {
     mark("notes", "now");
+    // Stop here leaves Detect's notes (the model finishes in the background, and what it writes is dropped).
+    const stopped = new Promise((resolve) => { addSong.stop = () => resolve("stopped"); });
     try {
-      const wrote = await notes((text, done) => { say(text, done); mark("notes", "now", done == null ? "" : `${Math.round(done * 100)}%`); });
-      mark("notes", wrote ? "done" : "skipped", wrote ? "" : "kept as Detect wrote them");
+      const wrote = await Promise.race([notes((text, done) => {
+        if (addSong.stopped) return;
+        say(text, done);
+        mark("notes", "now", done == null ? "" : `${Math.round(done * 100)}%`);
+      }), stopped]);
+      notesWritten = wrote === true;
+      mark("notes", notesWritten ? "done" : "skipped", wrote === "stopped" ? "stopped: Detect's notes kept" : notesWritten ? "" : "kept as Detect wrote them");
     } catch { mark("notes", "skipped", "kept as Detect wrote them"); }
+    addSong.stop = null;
     say("");
   }
   // Its parts (or, left for later, just listening to it), each step on its own line.
@@ -9889,7 +9897,7 @@ async function asGetReady(ref, name, { split, words, detected, notes = null }) {
     $("as-next").classList.add("primary");
     $("as-next").focus();
   });
-  Object.assign(addSong, { finish: null, busy: false });
+  Object.assign(addSong, { finish: null, busy: false, notesWritten });
   return problem;
 }
 
