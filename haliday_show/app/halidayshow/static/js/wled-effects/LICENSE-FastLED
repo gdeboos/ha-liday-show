@@ -1,6 +1,7 @@
 Some helpers in engine.js are translated from the FastLED library (https://github.com/FastLED/FastLED):
 lib8tion (random8/16, scale8, beat and wave functions), colorutils (palettes, ColorFromPalette,
 fill_gradient_RGB), colorpalettes (Party, Cloud, Lava, Ocean, Forest, Rainbow) and hsv2rgb_rainbow.
+noise.js is FastLED's Perlin noise (noise.cpp), translated, and stays under FastLED's licence.
 FastLED's licence:
 
 The MIT License (MIT)
