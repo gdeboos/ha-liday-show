@@ -8,7 +8,7 @@ import { gatherPart } from "./parts.js";
 import { isPorted } from "./wled-effects/index.js";
 import {
   LIVE_EFFECTS, SCENE_EFFECTS, byParts, wledSegmentPart, changeEffect, clipFor, newScene, partKey, partLook, recolourScene, sceneColours, sceneLoop,
-  sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
+  forBaking, sceneShow, sceneSummary, setByParts, setPartLook, setSame, speedParam, toAdvanced,
 } from "./housescenes.js";
 import { setShowPalette, showPalette } from "./showpalette.js";
 import { applyPalette, paletteKeys } from "./palettes.js";
@@ -570,11 +570,13 @@ export class SceneEditor {
     row.append(br ? this.slider("Brightness", full, br, clip.brightness, (v) => { look.params.brightness = v; }) : none());
     if (EFFECTS[look.effect].live) { row.append(none()); return row; } // no Glitter: it's one frame a level
     if (own) {
-      // WLED's own effects have an Intensity where the others have Glitter.
+      // WLED's own effects have an Intensity where the others have Glitter (which can't reach the WLED).
+      // Its Speed and Intensity are the WLED's own sliders, so they're named on the row itself.
       const ix = EFFECTS.wled.params.find((p) => p.key === "intensity");
       const intensity = this.slider("Intensity", full, ix, clip.intensity, (v) => { look.params.intensity = v; });
       intensity.classList.add("sc-glitter");
       row.append(intensity);
+      row.classList.add("sc-row-wled");
       return row;
     }
     const glitter = this.slider("Glitter", full, { min: 0, max: 100, step: 5 }, look.params.glitter || 0,
@@ -646,7 +648,7 @@ export class SceneEditor {
     if (!lights.length) return;
     const loop = withoutLive(() => sceneLoop(scene, lights, FPS)); // live effects loop on their idle glow
     const advanced = scene.mode === "advanced";
-    const show = sceneShow(scene, lights, loop);
+    const show = forBaking(sceneShow(scene, lights, loop));
     await this.d.picturesReady?.();
     const blob = await bakeOff(show, this.d.devices(), FPS, advanced ? this.d.positions() : {},
       advanced ? this.d.groups?.() || [] : []);

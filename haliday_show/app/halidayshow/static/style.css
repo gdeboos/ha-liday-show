@@ -1295,6 +1295,7 @@ a.button { text-decoration: none; }
 .sc-row input[type=range] { width: 100%; accent-color: var(--accent); }
 .sc-slider { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .sc-mini { display: none; font-size: 12px; color: var(--muted); }
+.sc-row-wled .sc-slider .sc-mini { display: block; }
 .sc-row select[hidden] { display: none; }
 @media (max-width: 720px) {
   .scene-editor { padding: 12px; }

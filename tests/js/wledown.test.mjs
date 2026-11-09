@@ -46,3 +46,20 @@ test("Same for every light and Each part on its own never copy WLED's own effect
     { id: "w", parts: [{ id: "a", from: 1, to: 5 }, { id: "b", from: 6, to: 10 }] }, true);
   assert.ok(Object.values(split.lights).every((l) => l.effect === "trio"));
 });
+
+test("a scene's loop and bake don't run WLED's own effect code: the WLED is sent none of its frames", async () => {
+  const { forBaking, sceneLoop, sceneShow } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
+  const { wledFrame } = await import("../../haliday_show/app/halidayshow/static/js/wled-effects/index.js");
+  const lights = [{ id: "w", kind: "wled", segments: 300 }, { id: "g", segments: 10 }];
+  const scene = { mode: "basic", lights: { w: { effect: "wled", params: { fx: 38 } }, g: { effect: "solid", params: {} } } };
+  const t0 = performance.now();
+  assert.equal(sceneLoop(scene, lights, 25), 1); // only the steady light counts
+  assert.ok(performance.now() - t0 < 1000);
+  const baked = forBaking(sceneShow(scene, lights, 1));
+  assert.equal(baked.tracks[0].clips[0].standIn, true);
+  assert.ok(!("standIn" in scene.lights.w.params)); // the scene itself is left as it was
+  // The stand-in isn't WLED's Aurora, but it moves.
+  const p = { fx: 38, palette: 11 }, q = { ...p, standIn: true };
+  assert.notDeepEqual(Array.from(wledFrame(q, 2, 20)), Array.from(wledFrame(p, 2, 20)));
+  assert.notDeepEqual(Array.from(wledFrame(q, 2, 20)), Array.from(wledFrame(q, 5, 20)));
+});

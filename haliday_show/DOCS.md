@@ -2147,7 +2147,9 @@ and not on the schedule) and **Remove…**.
   boxes or **Palette…**.
 - In the editor, each light has its own row: its **Effect**, its **Colours** (a colour box for each,
   and **Palette…** to use one of your palettes), and **Speed**, **Brightness** and **Glitter** sliders
-  (white sparkles over the effect; all the way left is none). Press the
+  (white sparkles over the effect; all the way left is none). A light on **WLED's own effect** has
+  **Speed**, **Brightness** and **Intensity** instead, named on its row: its Speed and Intensity are the
+  WLED's own sliders for that effect, and there's no Glitter, as it can't reach the WLED. Press the
   effect to change it: the same window as the Show editor's opens, with every effect moving in the
   light's own colours. Tick **Show presets** there to pick a preset; the effect then shows its name,
   such as **Three colours · Still blocks**. **Off** beside it turns the light off in this scene.

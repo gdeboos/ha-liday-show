@@ -56,6 +56,7 @@ test("a scene light keeps its glitter when its effect changes", async () => {
   const { changeEffect, clipFor } = await import("../../haliday_show/app/halidayshow/static/js/housescenes.js");
   const look = { effect: "solid", params: { color: "#ff0000", glitter: 40 } };
   assert.equal(changeEffect(look, "twinkle").params.glitter, 40);
+  assert.ok(!("glitter" in changeEffect(look, "wled").params)); // it can't reach a WLED playing its own effect
   assert.equal(clipFor(look, 0, 1).glitter, 40); // and the bake sees it
 });
 
