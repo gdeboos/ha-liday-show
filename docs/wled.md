@@ -137,8 +137,9 @@ helpers it uses, `palettes.js` WLED's gradient palettes (generated from `wled00/
 (`FRAMETIME`, 42 fps) up to the moment asked for, keeping each light's state between calls (going back in
 time starts afresh; more than 20 s ahead starts 5 s before). `EFFECTS.wled.render` calls `wledPixel`.
 
-- Output is turned back from WLED's gamma 2.8 (`ungamma`), as WLED gamma-corrects picked colours and
-  simple palettes but HA-liday Show's previews show colours as picked.
+- No gamma: WLED gamma-corrects (2.8) picked colours and the simple palettes (2-5) but not gradient
+  palettes or the colour wheel. The preview skips it throughout, as HA-liday Show's previews show the
+  values a light is sent; picked colours look as picked, the rest exactly as WLED sends them.
 - `own_effect_state` sends no `fxdef`, so a WLED keeps the extra settings (`c1`-`c3`, `o1`-`o3`) it had;
   the preview assumes WLED's segment defaults (128, 128, 16, all off). With those, **Palette** (65) is one
   colour and **Scanner** (40) pauses about 3 s at each end, on the WLED as in the preview.

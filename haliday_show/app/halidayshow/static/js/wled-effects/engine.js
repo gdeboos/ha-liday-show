@@ -145,14 +145,14 @@ export function color_fade(c, amount, video = false) {
   return RGBW32(f(R(c)), f(G(c)), f(B(c)), f(W(c)));
 }
 
-// WLED corrects the colours you pick (and its simple palettes) with gamma 2.8 before drawing.
+// WLED corrects the colours you pick (and its simple palettes) with gamma 2.8 before drawing; its
+// gradient palettes and colour wheel aren't. The preview leaves gamma out altogether (see Segment), as
+// HA-liday Show's previews show the values a light is sent, so picked colours look as picked and the rest
+// as WLED sends them.
 const GAMMA = 2.8;
 const gammaT = Uint8Array.from({ length: 256 }, (_, i) => Math.floor(Math.pow(i / 255, GAMMA) * 255 + 0.5));
 export const gamma8 = (v) => gammaT[v & 0xFF];
 export const gamma32 = (c) => RGBW32(gammaT[R(c)], gammaT[G(c)], gammaT[B(c)], gammaT[W(c)]);
-// The other way, for showing on screen: HA-liday Show's previews show colours as picked, so a WLED's
-// output is turned back into that space (a solid colour then looks the same in both).
-export const ungamma = Uint8Array.from({ length: 256 }, (_, i) => Math.round(255 * Math.pow(i / 255, 1 / GAMMA)));
 
 // CRGB as [r, g, b].
 export const crgb = (c) => [R(c), G(c), B(c)];
@@ -280,7 +280,7 @@ export class Segment {
     this.check1 = false; this.check2 = false; this.check3 = false;
     this.palette = palette;
     this.colors = colors.map((c) => c >>> 0);
-    this.gcolors = this.colors.map(gamma32); // SEGCOLOR()
+    this.gcolors = this.colors; // SEGCOLOR(): WLED's are gamma-corrected; the preview keeps them as picked
     this.pal = this.loadPalette(palette);
     // SEGENV
     this.call = 0; this.step = 0; this.aux0 = 0; this.aux1 = 0; this.data = null; this.state = null;
@@ -291,7 +291,7 @@ export class Segment {
   loadPalette(pal) {
     if (pal > PALETTE_COUNT - 1) pal = 0;
     if (pal === 0) pal = DEFAULT_PALETTE[this.mode] ?? 0;
-    const g = this.colors.map((c) => crgb(gamma32(c)));
+    const g = this.colors.map((c) => crgb(c)); // as picked (WLED gamma-corrects these)
     switch (pal) {
       case 0: case 6: return P.party;
       case 1: { // WLED makes a new random palette every so often; a fixed one from the same recipe stands in

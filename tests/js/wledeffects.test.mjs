@@ -34,10 +34,13 @@ test("palettes come out as FastLED builds them", () => {
   assert.deepEqual(ColorFromPalette([[255, 0, 0], ...Array(15).fill([0, 0, 255])], 0), [255, 0, 0]);
 });
 
-test("a solid colour previews as the colour picked", () => {
-  // WLED gamma-corrects the picked colour; the preview turns it back.
+test("a solid colour previews as the colour picked, and gradient palettes as WLED sends them", () => {
   assert.deepEqual(Array.from(wledFrame(look(0, { color: "#ff8000" }), 1, 3)), [255, 128, 0, 255, 128, 0, 255, 128, 0]);
-  assert.notEqual(gamma32(0xFF8000), 0xFF8000);
+  assert.notEqual(gamma32(0xFF8000), 0xFF8000); // what the WLED itself would send for that colour
+  // Rainbow on WLED's "Fire" palette at speed 0: the palette's own values, not brightened.
+  const fire = gradientPalette(GRADIENTS[35 - 13]);
+  const f = Array.from(wledFrame(look(9, { palette: 35, speed: 0 }), 0, 16));
+  assert.deepEqual(f.slice(0, 3), ColorFromPalette(fire, 0, 255, true));
 });
 
 test("every ported effect runs, moves and stays in range", () => {

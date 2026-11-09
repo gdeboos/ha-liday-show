@@ -6,7 +6,7 @@
 // Copyright (c) 2016-present Christian Schwinne and individual WLED contributors
 // This folder is under the EUPL 1.2 (see LICENSE here), not the MIT licence of the rest of HA-liday Show.
 
-import { FRAMETIME, B, G, R, Segment, getSeed, setSeed, strip, ungamma } from "./engine.js";
+import { FRAMETIME, B, G, R, Segment, getSeed, setSeed, strip } from "./engine.js";
 import { MODES } from "./effects.js";
 
 export const isPorted = (fx) => Object.hasOwn(MODES, Number(fx));
@@ -30,7 +30,7 @@ function settings(p) {
   };
 }
 
-const MAX_SIMS = 64;
+const MAX_SIMS = 256;
 const CATCH_UP_MS = 20000; // further ahead than this, start afresh a little before (scrubbing a long scene)
 const sims = new Map();
 
@@ -48,10 +48,12 @@ export function wledFrame(p, t, n) {
   const key = `${n}|${set.fx}|${set.speed}|${set.intensity}|${set.palette}|${set.colors.join(",")}`;
   const target = Math.max(0, Math.floor(t * 1000));
   let sim = sims.get(key);
+  if (sim) { sims.delete(key); sims.set(key, sim); } // most recently used last, so a big bake keeps its lights
   if (sim && sim.at === target) return sim.out;
   if (!sim || target < sim.at || target - sim.next > CATCH_UP_MS) {
     const from = target > CATCH_UP_MS ? Math.floor((target - 5000) / FRAMETIME) * FRAMETIME : 0;
     sim = freshSim(n, set, from);
+    sims.delete(key);
     if (sims.size >= MAX_SIMS) sims.delete(sims.keys().next().value);
     sims.set(key, sim);
   }
@@ -69,9 +71,9 @@ export function wledFrame(p, t, n) {
   const out = sim.out;
   for (let i = 0; i < n; i++) {
     const c = seg.px[i];
-    out[i * 3] = ungamma[R(c)];
-    out[i * 3 + 1] = ungamma[G(c)];
-    out[i * 3 + 2] = ungamma[B(c)];
+    out[i * 3] = R(c);
+    out[i * 3 + 1] = G(c);
+    out[i * 3 + 2] = B(c);
   }
   sim.at = target;
   return out;
