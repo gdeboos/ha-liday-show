@@ -2030,7 +2030,9 @@ To make a Singing face mouth the actual words, select its clip and press **Lyric
 or open the song in the Music editor and press **Lyrics…** under **Beats and sections**.
 
 The window takes you through it a step at a time (the steps show along the top), and a song that
-already has its words opens straight on the last step, **Check**.
+already has its words opens straight on the last step, **Check**. The first time you open it for a
+song, it also has to find where the singing is, which can take a while; a line at the top says so. You can
+read and type the words meanwhile, and placing them or pressing **Save** waits until it's done.
 
 1. **Words:** paste the song's words, one line of the song per line, then press **Next**.
 2. **How:** pick one of three ways to place them, each saying what it does. The one marked **AI** is the

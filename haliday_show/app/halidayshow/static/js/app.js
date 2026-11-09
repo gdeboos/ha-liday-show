@@ -11823,7 +11823,11 @@ async function openSongLyrics(ref, { start = null, song = null } = {}) {
     song ||= await audioCtx.decodeAudioData(await fetchSong(audioUrl(ref)));
     if (cancelled) return;
     note.textContent = "Getting the words ready…";
-    const [voice, kept] = await Promise.all([songVoice(ref, song), api(songExtraUrl("lyrics", ref)).catch(() => null)]);
+    // Finding where the singing is can take a while the first time (it reads the song's vocals), and
+    // only placing and saving need it, so the window opens without waiting.
+    const voice = songVoice(ref, song);
+    voice.catch(() => {});
+    const kept = await api(songExtraUrl("lyrics", ref)).catch(() => null);
     if (cancelled) return;
     cancelled = true;
     wait.dlg.close();
@@ -11839,8 +11843,9 @@ async function openSongLyrics(ref, { start = null, song = null } = {}) {
 // a time in one window: the words, how to place them, that way's own screen (the AI's progress, or tapping
 // along), then a check of every line before saving. Words already kept with the song open on the check.
 // save({text, lines}) keeps them with the song, or save(null) removes them. inMusic: opened from the Music
-// editor, where the words can then be placed one by one on its Lyrics lane. Resolves once it's closed.
-function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep, start = null }) {
+// editor, where the words can then be placed one by one on its Lyrics lane. voice: where the singing is,
+// or a promise of it; steps that need it wait for it. Resolves once it's closed.
+function openLyrics({ ref, duration, voice: voiceSoon, lyrics, inMusic = false, save: keep, start = null }) {
   const w = editWindow(`Lyrics for ${ref.path.replace(/^.*\//, "").replace(/\.[^.]+$/, "")}`);
   w.dlg.classList.add("lyrics-dialog");
   const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
@@ -11853,6 +11858,22 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep,
 
   // Which step you're on, shown at the top as in the app's other step-by-step windows.
   const steps = el("p", { className: "hint ns-step" });
+  // Where the singing is, once it's known; until then a line under the steps says it's being found.
+  let voice = null;
+  const listening = el("p", { className: "hint busy-row lyrics-listening", hidden: true }, el("span", { className: "spinner" }),
+    el("span", { textContent: "Finding where the singing is. You can carry on: placing the words waits for this." }));
+  const voiceReady = Promise.resolve(voiceSoon).then((v) => { voice = v; listening.hidden = true; }, (e) => {
+    // Placing still works without it, evenly over the whole song, so say so rather than stop.
+    listening.replaceChildren(`Couldn't find where the singing is (${plainError(e)}), so placing spreads the lines over the whole song.`);
+  });
+  if (voiceSoon instanceof Promise) listening.hidden = false;
+  // Runs fn once the singing's been found, with `b` (the button pressed) showing it's waiting meanwhile,
+  // unless the window was closed while it waited.
+  const withVoice = async (b, fn) => {
+    if (b) b.disabled = true;
+    try { await voiceReady; } finally { if (b) b.disabled = false; }
+    if (w.dlg.open) return fn();
+  };
   const screens = {};
   const screen = (name, step, label, ...kids) => (screens[name] = Object.assign(el("section", { className: "lyrics-screen", hidden: true }, ...kids), { step, label }));
 
@@ -11882,12 +11903,12 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep,
       way("ai", "Line up with the singing", "AI · a minute or two", true,
         "An AI listens to the song's vocals and puts each word where it's sung. The most accurate. Works best on English songs, and once the song's split into parts.", () => lineUp()),
       way("spread", "Spread them out", "Instant · no AI", false,
-        "Places the lines evenly over where the song sounds like singing, longer words taking longer. A rough start.", () => {
+        "Places the lines evenly over where the song sounds like singing, longer words taking longer. A rough start.", (e) => withVoice(e?.currentTarget, () => {
           place();
           show("check", `${lines.length} lines spread across the singing. Press ▶ on a line to check it, and type a better start for any that's off.`);
-        }),
+        })),
       way("tap", "Tap along", "You · as it plays", false,
-        "The song plays and you press Space (or the button) as each line starts. Good for fixing lines that are off.", () => tapAlong())),
+        "The song plays and you press Space (or the button) as each line starts. Good for fixing lines that are off.", (e) => withVoice(e?.currentTarget, tapAlong))),
     howHint);
 
   // 3a. Lining up with the singing (align.js), in this window, with Cancel.
@@ -11970,12 +11991,12 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep,
     list.replaceChildren(...lines.map((l, i) => {
       const start = el("input", { type: "number", min: 0, max: Math.floor(duration), step: 0.05, value: l.start.toFixed(2), className: "lyrics-start" });
       start.setAttribute("aria-label", `When "${l.text}" starts, in seconds`);
-      start.addEventListener("change", () => {
+      start.addEventListener("change", () => withVoice(null, () => {
         const at = lines.map((x) => x.start);
         at[i] = Math.min(Math.max(Number(start.value) || 0, 0), duration);
         lines = fromStarts(lines, at, voice, duration);
         draw();
-      });
+      }));
       const play = button("▶", () => { audio.currentTime = Math.max(0, l.start - 0.3); stopAt = l.end + 0.3; audio.play(); }, "ghost small");
       play.setAttribute("aria-label", `Play "${l.text}"`);
       return el("div", { className: "lyrics-line" }, start, play, el("span", { className: "lyrics-words", textContent: l.text }),
@@ -11985,7 +12006,7 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep,
 
   // The footer changes with the screen: Back, and Next (the words) or Save (the check).
   const back = button("Back", () => (current === "check" ? show("how") : show("words")), "ghost");
-  const next = button("Next", () => {
+  const next = button("Next", () => withVoice(next, () => {
     if (!parseLyrics(text.value).length) { wordsHint.textContent = "Paste the words first, one line of the song per line."; return; }
     // The same lines as before keep their starts (a typo fixed, say); otherwise they're placed afresh.
     const now = parseLyrics(text.value);
@@ -11994,12 +12015,12 @@ function openLyrics({ ref, duration, voice, lyrics, inMusic = false, save: keep,
       lines = fromStarts(kept, lines.map((l) => l.start), voice, duration);
     } else lines = [];
     show("how");
-  }, "primary");
-  const save = button("Save", () => finish(songLyrics(savedLyrics(text.value, lines, voice, duration))), "primary");
+  }), "primary");
+  const save = button("Save", () => withVoice(save, () => finish(songLyrics(savedLyrics(text.value, lines, voice, duration)))), "primary");
   const remove = button("Remove lyrics", () => finish(null), "ghost danger");
   remove.hidden = !lyrics;
   w.foot.append(remove, el("span", { className: "spacer" }), back, button("Cancel", () => w.dlg.close(), "ghost"), next, save);
-  w.body.append(steps, ...Object.values(screens));
+  w.body.append(steps, listening, ...Object.values(screens));
 
   let current = null;
   function show(name, message = null, howMessage = null) {
