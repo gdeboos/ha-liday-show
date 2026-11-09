@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.452
+
+- **Fixed: edits failing to split with "lost touch".** Home Assistant sometimes cuts off a big song or part as your browser downloads it (it says "Connection lost" in its log). HA-liday Show now carries on from where the download got to instead of giving up, so splitting songs, cutting an edit's parts and lining up words get through. Press **Split all songs into parts** to finish the edits that failed.
+
 ## 0.2.451
 
 - **Detect** and **✨ Describe sections** write richer section notes. As well as how loud each part is,

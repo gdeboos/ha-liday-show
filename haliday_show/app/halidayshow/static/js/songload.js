@@ -28,15 +28,44 @@ export const plainError = (err) => (lostTouch(err)
   ? "lost touch with HA-liday Show (it may have been restarting, or the connection dropped). Try again"
   : err?.message || String(err));
 
-export async function fetchSong(url, get = fetch, retry = {}) {
-  const res = await retrying(async () => {
-    const r = await get(url);
-    if ([502, 503, 504].includes(r.status)) throw Object.assign(new SongServerError(`HTTP ${r.status}`), { status: r.status });
-    return r;
-  }, retry);
-  if (res.status === 404) throw new SongMissing("not found");
-  if (!res.ok) throw new SongServerError(`HTTP ${res.status}`);
-  return res.arrayBuffer();
+// A song's bytes. Big songs and parts come through Home Assistant's ingress, which can cut a download
+// off part way ("Connection lost"): it then carries on from where it got to (a Range request), so
+// what's arrived isn't fetched again. A try that gets further doesn't use up a wait; the waits are for
+// tries that get nowhere. get(url, init) is fetch.
+export async function fetchSong(url, get = fetch, { waits = [2000, 5000, 15000, 30000], sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  const chunks = [];
+  let got = 0;
+  for (let i = 0; ;) {
+    let further = false; // whether this try got any more of it
+    try {
+      const r = await get(url, got ? { headers: { Range: `bytes=${got}-` } } : undefined);
+      if ([502, 503, 504].includes(r.status)) throw Object.assign(new SongServerError(`HTTP ${r.status}`), { status: r.status });
+      if (r.status === 404) throw new SongMissing("not found");
+      if (!r.ok) throw new SongServerError(`HTTP ${r.status}`);
+      // A whole song again (200), or a piece that doesn't start where we got to: start afresh.
+      const from = Number(/^bytes (\d+)-/.exec(r.headers?.get?.("Content-Range") || "")?.[1] ?? got);
+      if (got && (r.status !== 206 || from !== got)) { chunks.length = 0; got = 0; }
+      if (!r.body?.getReader) { const b = new Uint8Array(await r.arrayBuffer()); chunks.push(b); got += b.length; break; }
+      const reader = r.body.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        got += value.length;
+        further = true;
+      }
+      break;
+    } catch (e) {
+      if (!lostTouch(e)) throw e;
+      if (further) continue;
+      if (i >= waits.length) throw e;
+      await sleep(waits[i++]);
+    }
+  }
+  const out = new Uint8Array(got);
+  let at = 0;
+  for (const c of chunks) { out.set(c, at); at += c.length; }
+  return out.buffer;
 }
 
 export function songLoadMessage(err) {

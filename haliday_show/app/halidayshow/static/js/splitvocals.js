@@ -149,7 +149,7 @@ export async function lineUpLyrics(ref, api, lines, say = () => {}, signal = nul
   say("Loading the singing…", null);
   // Cancel stops the download too (an aborted fetch isn't a dropped connection, so it isn't tried again).
   const bytes = await fetchSong(`api/audio/file?source=${encodeURIComponent(ref.source)}&path=${encodeURIComponent(path)}`,
-    (u) => fetch(u, signal ? { signal } : {})).catch((e) => { check(); throw e; });
+    (u, init) => fetch(u, { ...init, ...(signal ? { signal } : {}) })).catch((e) => { check(); throw e; });
   check();
   const d = await new OfflineAudioContext(1, 1, 16000).decodeAudioData(bytes);
   check();
