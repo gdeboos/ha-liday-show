@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.441
+
+- **More WLED effects move in the preview.** Another 54 of WLED's own effects now show as the WLED draws them, including **Sinelon**, **Pride 2015**, **Glitter**, **Dissolve**, **Heartbeat**, **Bpm**, **Blends**, **Lighthouse**, **Stream**, **Oscillate**, **Spots**, **Phased**, **Sine**, **Washing Machine**, **Traffic Light**, **ICU** and the chase, strobe, sparkle, sweep and wipe effects. Effects that keep their own pace, such as **ICU**'s pauses and **Chase Flash**'s flashes, keep it in the preview too. The noise effects and the rest still show the rough stand-in for now.
+
 ## 0.2.440
 
 - **WLED effects play as WLED intends.** When a scene switches a WLED to one of its own effects, the WLED now also loads that effect's own settings for its extra sliders and options, as it does when you pick the effect in WLED. Your speed, intensity, palette and colours still apply. This fixes effects such as **Palette** showing a single colour and **Scanner** pausing at each end. The preview uses the same settings.

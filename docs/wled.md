@@ -148,8 +148,16 @@ time starts afresh; more than 20 s ahead starts 5 s before). `EFFECTS.wled.rende
   kept whatever extras it had, so **Palette** (65) showed one colour and **Scanner** (40) paused about
   3 s at each end.
 - Batch 1 (0.2.439): 0-3, 8-13, 15-17, 20, 23, 28, 40, 52, 57, 60, 64-67, 76, 80, 81, 88, 89, 97, 101,
-  102. The rest of the strip effects follow in batches; others show `standIn` (palette, or the colours
-  when the palette is Default, drifting).
+  102. Batch 2 (0.2.441): 4-7, 14, 18, 19, 21, 22, 24-27, 29-37, 39, 41, 45-47, 50, 54-56, 58, 59,
+  61-63, 68, 83-87, 92-94, 98, 100, 103, 105, 106, 108, 113, 115, 117. Still to come: the noise effects
+  (need FastLED's `inoise8/16`), the rest of the 1D list, and the particle-system (PS) ones; they show
+  `standIn` (palette, or the colours when the palette is Default, drifting).
+- Pace: an effect returns the delay before WLED should call it again (most return `FRAMETIME`).
+  `WS2812FX::service` only runs every `FRAMETIME`, calls an effect once `now >= next_time` and then sets
+  `next_time = now + delay`, so `index.js` calls it on the first 23 ms tick at or after that. Android,
+  Chase Flash (Rnd) and ICU pace themselves this way; ICU's 1-3 s gaze needs it.
+- WLED's `gradient_base` has `int brd = 1 + loading ? a : b`, which is always `a` (intensity / 2);
+  ported as WLED behaves.
 - Updating to a newer WLED: compare `wled00/FX.cpp` for the ported modes and regenerate `palettes.js`.
 
 - The editor reads the light's own lists from `POST /api/wled/info`. `wled.fetch` now returns
