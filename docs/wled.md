@@ -61,6 +61,15 @@ During a show the add-on writes every LED directly, so WLED's segment effects, m
 don't apply. WLED's **Use main segment only** (Config → Sync Interfaces) limits realtime data to the
 main segment, so it should be off. WLED's master brightness still scales the frames.
 
+## WLED's own Sync
+
+Gavin, 10 Nov 2026: with a Basic scene giving several WLEDs different WLED-own effects, they overrode one
+another. WLED's Sync (Config → Sync Interfaces, **Send notifications** / **Receive**: effects) passes each
+change on to its sync group, so the last one set won on all of them. Since 0.2.473 each look we send
+(`own_effect_state`) carries `"udpn": {"nn": true}`, WLED's "no notification for this request", so it isn't
+passed on; the WLED's own Sync settings are untouched and still sync changes made in the WLED app. Not
+yet confirmed on his WLEDs. Realtime frames (DDP) aren't synced by WLED either way.
+
 ## Live music: listening to sound sync
 
 `livemusic.py` listens on UDP 11988 (joined to multicast 239.0.0.1) for WLED's AudioReactive sound

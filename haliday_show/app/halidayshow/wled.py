@@ -108,7 +108,10 @@ def own_effect_state(p: dict, segment: int | list[int] | None = None) -> dict:
         seg["bri"] = round(max(0, min(100, p["brightness"])) * 255 / 100)
     if segment is not None:
         seg = [{"id": i, **seg} for i in segment] if isinstance(segment, list) else {"id": segment, **seg}
-    return {"on": True, "live": False, "seg": seg}
+    # udpn.nn: don't pass this look on to the WLEDs it syncs with. With Sync on (Config → Sync
+    # Interfaces), each WLED would otherwise send its effect to the others, and the last one set would
+    # win on all of them. Only this request; the WLED's own Sync settings stay as they are.
+    return {"on": True, "live": False, "seg": seg, "udpn": {"nn": True}}
 
 
 # A WLED's small web server drops requests that arrive together, which matters now several lights can

@@ -92,7 +92,9 @@ and not on the schedule) and **Remove…**.
   palette your WLED has as a strip of its colours, and pick one. **Default** shows the colours the effect
   uses when no palette is picked. Its colours,
   **Speed**, **Brightness** and **Intensity** go to the WLED too. When the scene starts, HA-liday Show
-  tells the WLED to play that effect and sends it nothing else; your other lights play as usual. The
+  tells the WLED to play that effect and sends it nothing else; your other lights play as usual. Each WLED
+  keeps its own look even if your WLEDs sync with each other (WLED's **Sync Interfaces**): HA-liday Show
+  asks it not to pass the look on. The
   **Preview** shows the effect moving as the WLED draws it, worked out with WLED's own code, for all of
   WLED's effects for a strip of lights (such as **Fire 2012**, **Pacifica**, **Twinklefox**, **Aurora**,
   **Noise 1** to **4**, **Bouncing Balls**, **Halloween Eyes** and **TV Simulator**). The 2D, sound-reactive

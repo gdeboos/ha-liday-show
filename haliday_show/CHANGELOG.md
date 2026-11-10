@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.473
+
+- **Fixed: WLEDs set to sync took each other's effects.** In a scene where several WLEDs each play a different **WLED's own effect**, WLED's own Sync passed each one on to the others, so they all ended up on whichever was set last. Now HA-liday Show tells each WLED not to pass its look on. Your Sync settings in WLED stay as they are, so changes you make in the WLED app still sync.
+
 ## 0.2.472
 
 - **A playlist carries on after a restart.** If HA-liday Show restarts while a playlist is playing (after an update, a Home Assistant or computer restart, or a crash), it picks up again from the show or block it was on, whether you put it on yourself, from Home Assistant or from the **Schedule**. A scene that was on comes back too. Anything you'd stopped stays off, and a scheduled one whose end time passed while it was restarting stays off.
