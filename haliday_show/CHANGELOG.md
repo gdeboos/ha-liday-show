@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.478
+
+- **New show and New scene: palettes in folders.** The colours step of **+ New show** and **+ New scene** now shows your palettes in your folders from **Library → Palettes**, then the built-in ones. If the palette picked is in another folder, a line under the list says which.
+
 ## 0.2.477
 
 - **Palettes in folders.** The window that opens from **Palette → Change…** (on a clip, in **Show settings**, **Generate**, playlist blocks and the Scene editor) now shows **Your palettes** in your folders from **Library → Palettes**. Press a folder to go into it, and the heading to come back out. It opens in the folder of the palette you're using.

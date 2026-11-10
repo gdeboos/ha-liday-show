@@ -3082,8 +3082,8 @@ const sceneEd = new SceneEditor({
     ? scheduleLine(scheduleState.entries, "scene", id, scheduleState) : ""),
   chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }), wledPicker, chooseWledEffect,
   palettePicker: (name, onPick, opts) => palettePicker(name, onPick, { none: PALETTE_NONE, ...opts }),
-  paletteRows: () => [{ value: "", label: "None", detail: "Each light starts on a warm white" },
-    ...allPalettes().map((p) => ({ value: p.name, label: p.name, detail: `${p.colors.length} colours`, picture: paletteBar(p.colors) }))],
+  paletteStep: (ui, st, name, onPick) => drawPaletteStep(ui, st, name, "Each light starts on a warm white", onPick),
+  paletteHome: (name) => paletteHome(name),
   radioRows: (...a) => nsRadioRows(...a),
   firstPalette: () => (seasonalPalette() || allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0]).name,
   placeNew: (id) => placeNew("scenes", id), placeBeside: (from, id) => placeBeside("scenes", from, id),
@@ -13432,13 +13432,56 @@ function nsSongPicked() {
   });
 }
 
-function nsPalettes() {
-  const own = newShow.songPalette, all = allPalettes();
+// A colours step (New show, New scene): None and the song's own colours first, then your palettes in
+// your folders from Library → Palettes (go into a folder; the path comes back out), then the built-in
+// ones. ui: {path, folders, list, picked} elements; st: {palette, palAt, own?}, where palette and palAt
+// change as you go; name: the radios' name; none: what None does; onPick() after a pick or a move.
+function drawPaletteStep(ui, st, name, none, onPick) {
+  const own = st.own, folders = foldersOf("palettes");
   const row = (p) => ({ value: p.name, label: p.name, picture: paletteBar(p.colors),
     detail: p.name === own ? `This song's colours · ${p.colors.length} colours` : `${p.colors.length} colours` });
-  const rows = [{ value: "", label: "None", detail: "Each effect keeps its own colours" },
-    ...all.filter((p) => p.name === own).map(row), ...all.filter((p) => p.name !== own).map(row)];
-  nsRadioRows($("ns-palettes"), "ns-palette", rows, newShow.palette, (v) => { newShow.palette = v; newShow.paletteChosen = true; nsPalettes(); });
+  const mine = app.palettes.filter((p) => p.name !== own);
+  const view = pickerView(folders, mine.map((p) => ({ key: p.name, name: p.name })), st.palAt || "");
+  st.palAt = view.path.at(-1)?.id || "";
+  const inFolder = !!st.palAt;
+  const rows = inFolder ? view.items.map((it) => row(mine.find((p) => p.name === it.key)))
+    : [{ value: "", label: "None", detail: none },
+      ...allPalettes().filter((p) => p.name === own).slice(0, 1).map(row),
+      ...view.items.map((it) => row(mine.find((p) => p.name === it.key))),
+      ...PRESET_PALETTES.filter((p) => p.name !== own).map((p) => ({ ...row(p), detail: `Built in · ${p.colors.length} colours` }))];
+  const go = (id) => { st.palAt = id; onPick(); (ui.folders.querySelector("button") || ui.list.querySelector("input"))?.focus(); };
+  ui.path.hidden = !inFolder;
+  ui.path.replaceChildren(...(inFolder ? [{ id: "", name: "Palettes" }, ...view.path] : []).flatMap((f, i, all) => {
+    const part = i === all.length - 1 ? Object.assign(document.createElement("b"), { textContent: f.name })
+      : Object.assign(button(f.name, () => go(f.id), "link-button"), { type: "button" });
+    return i ? [Object.assign(document.createElement("span"), { className: "hint", textContent: "›" }), part] : [part];
+  }));
+  ui.folders.replaceChildren(...view.folders.map(({ folder, count }) => {
+    const b = Object.assign(button("", () => go(folder.id), "song-row ns-folder"), { type: "button" });
+    b.append(Object.assign(document.createElement("span"), { className: "folder-mark small" }),
+      Object.assign(document.createElement("span"), { className: "folder-text" }),
+      Object.assign(document.createElement("span"), { className: "folder-chev", textContent: "›" }));
+    b.children[1].append(Object.assign(document.createElement("b"), { textContent: folder.name }),
+      Object.assign(document.createElement("span"), { className: "hint", textContent: plural(count, "palette") }));
+    return b;
+  }));
+  ui.folders.hidden = !view.folders.length;
+  // The pick may be in another folder, so say what it is.
+  const shown = rows.some((r) => r.value === (st.palette || ""));
+  const where = pathText(folders, st.palette || "");
+  ui.picked.textContent = shown ? "" : `Picked: ${st.palette || "None"}${where ? ` (in ${where})` : ""}`;
+  ui.picked.hidden = shown;
+  if (!rows.length) {
+    ui.list.replaceChildren(Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in this folder." }));
+  } else nsRadioRows(ui.list, name, rows, st.palette, (v) => { st.palette = v; onPick(true); });
+}
+// The folder holding a palette of yours, so a colours step opens where the pick shows.
+const paletteHome = (name) => (app.palettes.some((p) => p.name === name) ? folderOf(foldersOf("palettes"), name) : "");
+
+function nsPalettes() {
+  newShow.own = newShow.songPalette;
+  drawPaletteStep({ path: $("ns-pal-path"), folders: $("ns-pal-folders"), list: $("ns-palettes"), picked: $("ns-pal-picked") },
+    newShow, "ns-palette", "Each effect keeps its own colours", (picked) => { if (picked) newShow.paletteChosen = true; nsPalettes(); });
 }
 
 function nsStarts() {
@@ -13466,7 +13509,12 @@ function nsStep(step) {
   $("ns-next").textContent = step < steps.length ? "Next →" : "Create show";
   if (name === "song") ($("ns-songs").querySelector("input:checked") || $("ns-find")).focus();
   if (name === "name") { $("ns-name").focus(); $("ns-name").select(); }
-  if (name === "colour") { nsPalettes(); $("ns-palettes").querySelector("input:checked")?.focus(); }
+  if (name === "colour") {
+    // Open on the folder of the palette picked now, so it shows.
+    newShow.palAt = paletteHome(newShow.palette);
+    nsPalettes();
+    ($("ns-palettes").querySelector("input:checked") || $("ns-palettes").querySelector("input"))?.focus();
+  }
   if (name === "start") { nsStarts(); $("ns-starts").querySelector("input:checked")?.focus(); }
 }
 

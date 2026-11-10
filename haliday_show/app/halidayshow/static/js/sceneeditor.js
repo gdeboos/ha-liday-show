@@ -44,8 +44,9 @@ export class SceneEditor {
   // chooseEffect(options) (the Show editor's effect window, with its moving previews),
   // wledPicker(kind, dev, params, onChange) (a WLED's own effects or palettes, read from it),
   // chooseWledEffect({dev, params, onPick}) (the WLED effect window),
-  // palettePicker(name, onPick, options) (a button to pick a palette by eye), paletteRows() (the
-  // palettes as rows for radioRows(box, name, rows, picked, onPick)), firstPalette() (the one New
+  // palettePicker(name, onPick, options) (a button to pick a palette by eye), paletteStep(ui, state,
+  // name, redraw) and paletteHome(name) (New scene's colours step, in your palette folders),
+  // radioRows(box, name, rows, picked, onPick), firstPalette() (the one New
   // scene starts on), askYes(text, options)
   constructor(deps) {
     this.d = deps;
@@ -162,21 +163,24 @@ export class SceneEditor {
     const input = el("input", { id: "nsc-name", value: guess, maxLength: 80 });
     const note = el("span", { class: "hint", id: "nsc-note" }, "You can rename it later.");
     const palettes = el("div", { class: "song-list", role: "radiogroup", "aria-label": "Palette" });
+    const palPath = el("nav", { class: "folder-path", "aria-label": "Palette folder", hidden: true });
+    const palFolders = el("div", { class: "song-list ns-folders", role: "list", "aria-label": "Palette folders", hidden: true });
+    const palPicked = el("p", { class: "hint", hidden: true });
     const modes = el("div", { class: "song-list", role: "radiogroup", "aria-label": "Basic or Advanced" });
     const steps = [
       el("div", { class: "form-dialog-body" }, el("p", { class: "hint ns-step" }, "Step 1 of 3: name"),
         el("label", { class: "field" }, "Name", input), note),
       el("div", { class: "form-dialog-body", hidden: true }, el("p", { class: "hint ns-step" }, "Step 2 of 3: colours"),
         el("p", { class: "hint" }, "The lights start in these colours, a colour each, and effects you add take them. You can change it later in the Scene editor."),
-        palettes),
+        palPath, palFolders, palettes, palPicked),
       el("div", { class: "form-dialog-body", hidden: true }, el("p", { class: "hint ns-step" }, "Step 3 of 3: how should it work?"),
         modes),
     ];
     const err = el("p", { class: "hint error", hidden: true, role: "alert" });
     const back = el("button", { type: "button", class: "ghost", hidden: true }, "← Back");
     const next = el("button", { type: "submit", class: "primary" }, "Next →");
-    const drawPalettes = () => this.d.radioRows(palettes, "nsc-palette", this.d.paletteRows(), pick.palette,
-      (v) => { pick.palette = v; drawPalettes(); });
+    const drawPalettes = () => this.d.paletteStep({ path: palPath, folders: palFolders, list: palettes, picked: palPicked },
+      pick, "nsc-palette", drawPalettes);
     const drawModes = () => this.d.radioRows(modes, "nsc-mode", [
       { value: "basic", label: "Basic", detail: "An effect for each light, going all the time" },
       { value: "advanced", label: "Advanced", detail: "Effects that change as it goes round, made in the Show editor" },
@@ -188,7 +192,11 @@ export class SceneEditor {
       next.textContent = step < 3 ? "Next →" : "Create scene";
       err.hidden = true;
       if (step === 1) input.focus();
-      if (step === 2) { drawPalettes(); palettes.querySelector("input:checked")?.focus(); }
+      if (step === 2) {
+        pick.palAt = this.d.paletteHome?.(pick.palette) || "";
+        drawPalettes();
+        (palettes.querySelector("input:checked") || palettes.querySelector("input"))?.focus();
+      }
       if (step === 3) { drawModes(); modes.querySelector("input:checked")?.focus(); }
     };
     back.addEventListener("click", () => go(pick.step - 1));
