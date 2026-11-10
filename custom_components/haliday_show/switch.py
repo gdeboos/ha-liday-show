@@ -10,7 +10,28 @@ from .entity import HalidayEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
+    async_add_entities([PageSwitch(entry)])
     follow_list(hass, entry, async_add_entities, "seasons", SeasonSwitch)
+
+
+class PageSwitch(HalidayEntity, SwitchEntity):
+    """The visitors' page on or off, as the switch on Public page → Access."""
+
+    _attr_name = "Visitors' page"
+    _attr_icon = "mdi:web"
+
+    def __init__(self, entry) -> None:
+        super().__init__(entry, "page")
+
+    @property
+    def is_on(self) -> bool:
+        return bool((self.state_data.get("page") or {}).get("on"))
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self.send("page", on=True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self.send("page", on=False)
 
 
 class SeasonSwitch(HalidayEntity, SwitchEntity):

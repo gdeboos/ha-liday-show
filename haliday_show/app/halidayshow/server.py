@@ -218,6 +218,15 @@ async def integration_schedule(request):
     return web.json_response({"days": week["days"], "slots": slots})
 
 
+async def integration_qr(request):
+    """The QR code for your visitors' link, for the Visitors and checks card."""
+    p = public.load(request.app[STORAGE]) or public.clean(None)
+    svg = public.qr_svg(public.link(p), p["code"]) if public.link(p) else None
+    if svg is None:
+        raise web.HTTPNotFound(text="set the Public address on Public page → Access first")
+    return web.Response(text=svg, content_type="image/svg+xml", headers={"Cache-Control": "no-cache"})
+
+
 async def integration_image(request):
     """A show's picture, else its song's cover art, for the Browse and Player cards."""
     storage = request.app[STORAGE]
@@ -274,6 +283,18 @@ async def integration_command(request):
     except ValueError:
         raise web.HTTPBadRequest(text="expected JSON")
     cmd = _clean_integration_command(body)
+    if cmd["action"] == "page":
+        # The visitors' page on or off, as the switch on Public page → Access does.
+        if not isinstance(cmd.get("on"), bool):
+            raise web.HTTPBadRequest(text="say whether the visitors' page is on: on true or false")
+        storage = request.app[STORAGE]
+        settings = storage.load_settings()
+        stored = public.load(storage) or public.clean(None)
+        settings["public"] = {**public.clean({**stored, "on": cmd["on"]}), "code": stored["code"]}
+        storage.save_settings(settings)
+        await request.app[PUBLIC].apply()
+        request.app[HUB].refresh()
+        return web.json_response({"ok": True, "done": "page on" if cmd["on"] else "page off"})
     try:
         done = await integration.command(request.app[RUNNER], cmd, request.app[MQTT].refresh)
     except (ValueError, RunnerError) as e:
@@ -315,7 +336,9 @@ def _integration_extras(app, now=None) -> dict:
                   [f"{c['name']} ({c['count']})" for c in runner.vote_counts()][:20]},
         "listening": public.tonight(runner)["listening"],
         "preshow": {**last, "at": _with_zone(last.get("at"))} if last else None,
-        "page": {"on": bool(p["on"]), "open": bool(p["on"] and public.hours_now(p, app[SCHEDULER].where()[0], now)["open"])},
+        "page": {"on": bool(p["on"]), "open": bool(p["on"] and public.hours_now(p, app[SCHEDULER].where()[0], now)["open"]),
+                 # The link visitors open (with the code), once the Public address is set, for the QR code.
+                 "link": public.link(p) or None},
     }
 
 
@@ -3939,6 +3962,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/integration/image/{id}", integration_image)
     r.add_get("/api/integration/schedule", integration_schedule)
     r.add_post("/api/integration/preshow", integration_preshow)
+    r.add_get("/api/integration/qr.svg", integration_qr)
     r.add_post("/api/integration/command", integration_command)
     r.add_post("/api/integration/claim", integration_claim)
     r.add_post("/api/video", video_start)

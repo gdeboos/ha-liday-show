@@ -23,4 +23,5 @@ class PageOpen(HalidayEntity, BinarySensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        return {"switched_on": bool((self.state_data.get("page") or {}).get("on"))}
+        page = self.state_data.get("page") or {}
+        return {"switched_on": bool(page.get("on")), "link": page.get("link")}

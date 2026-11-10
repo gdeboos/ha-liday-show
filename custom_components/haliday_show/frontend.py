@@ -46,6 +46,7 @@ async def async_setup_frontend(hass: HomeAssistant, version: str) -> None:
     websocket_api.async_register_command(hass, ws_house_frames)
     hass.http.register_view(ImageView())
     hass.http.register_view(HousePhotoView())
+    hass.http.register_view(QrView())
     hass.http.register_view(DrawingCodeView())
 
 
@@ -194,6 +195,21 @@ async def _frames(hass: HomeAssistant, feed: dict) -> None:
                 connection.send_message(websocket_api.event_message(msg_id, now))
         await asyncio.sleep(FRAME_EVERY if (now or {}).get("playing") else 1)
     feed["last"] = None
+
+
+class QrView(HomeAssistantView):
+    """Your visitors' QR code, for the Visitors and checks card (loaded with a signed link)."""
+
+    url = "/api/haliday_show/qr"
+    name = "api:haliday_show:qr"
+    requires_auth = True
+
+    async def get(self, request: web.Request) -> web.Response:
+        client = _client(request.app["hass"])
+        got = await client.raw("/api/integration/qr.svg") if client else None
+        if not got:
+            raise web.HTTPNotFound
+        return web.Response(body=got[0], content_type="image/svg+xml", headers={"Cache-Control": "no-cache"})
 
 
 class HousePhotoView(HomeAssistantView):

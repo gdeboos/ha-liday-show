@@ -580,7 +580,20 @@ class HalidayVisitorsCard extends HalidayCard {
   }
 
   watched() {
-    return ["page_open", "queue", "listening", "preshow", "player"];
+    return ["page_open", "page", "queue", "listening", "preshow", "player"];
+  }
+
+  async _showQr() {
+    this._qr = "loading";
+    this.render();
+    try {
+      const r = await this._hass.callWS({ type: "auth/sign_path", path: "/api/haliday_show/qr", expires: 300 });
+      this._qr = r.path;
+    } catch (e) {
+      this._qr = null;
+      this._error = "Couldn't make the QR code.";
+    }
+    this.render();
   }
 
   // The pre-show check from the dashboard: asks every light, so it takes a little while.
@@ -645,6 +658,10 @@ class HalidayVisitorsCard extends HalidayCard {
         .check > div { flex: 1 1 150px; min-width: 0; }
         .check .run { order: 2; margin-left: auto; }
         .found { margin-top: 10px; display: grid; gap: 8px; }
+        .pagectl { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .qr { margin-top: 10px; text-align: center; }
+        .qr img { width: min(220px, 100%); aspect-ratio: 1; background: #fff; border-radius: 8px; display: block; margin: 0 auto 6px; }
+        .qr .small { word-break: break-all; }
         .fline { display: flex; gap: 10px; align-items: flex-start; }
         .fline ha-icon { --mdc-icon-size: 20px; flex: none; }
         .link { color: var(--primary-color); padding: 4px 0; }
@@ -653,6 +670,14 @@ class HalidayVisitorsCard extends HalidayCard {
         ${this.heading("mdi:account-group", title)}
         <div class="fill">
         ${stats ? `<div class="stats">${stats}</div>` : ""}
+        ${this.hides("hide_page") || this.hides("hide_page_controls") || !this.state("page") ? "" : `<div class="pagectl">
+          <button class="btn" data-page="${this.state("page").state === "on" ? "off" : "on"}">
+            <ha-icon icon="mdi:${this.state("page").state === "on" ? "web-off" : "web"}"></ha-icon>${this.state("page").state === "on"
+            ? "Turn the page off" : "Turn the page on"}</button>
+          ${page.attributes.link ? `<button class="btn" data-qr><ha-icon icon="mdi:qrcode"></ha-icon>${this._qr ? "Hide QR code" : "QR code"}</button>` : ""}
+        </div>
+        ${this._qr ? `<div class="qr">${this._qr === "loading" ? '<div class="muted small">Loading…</div>'
+          : `<img src="${h(this._qr)}" alt="QR code for the visitors' page"><div class="muted small">${h(page.attributes.link)}</div>`}</div>` : ""}`}
         ${picks.length && !this.hides("hide_picks") ? `<ol class="small">${picks.slice(0, 5).map((p) => `<li>${h(p)}</li>`).join("")}</ol>
           ${picks.length > 5 ? `<div class="note">and ${picks.length - 5} more</div>` : ""}` : ""}
         ${!this.hides("hide_skip") && player && player.state === "playing" && player.attributes.visitor_pick ? `<div style="margin-top:10px">
@@ -676,6 +701,11 @@ class HalidayVisitorsCard extends HalidayCard {
     this.shadowRoot.querySelector("[data-skip]")?.addEventListener("click", () =>
       this.call("haliday_show", "skip", {}));
     this.shadowRoot.querySelector("[data-run]")?.addEventListener("click", () => this._runCheck());
+    this.shadowRoot.querySelector("[data-page]")?.addEventListener("click", (e) =>
+      this.call("switch", e.currentTarget.dataset.page === "on" ? "turn_on" : "turn_off", { entity_id: this._ents.page }));
+    this.shadowRoot.querySelector("[data-qr]")?.addEventListener("click", () => {
+      if (this._qr) { this._qr = null; this.render(); } else this._showQr();
+    });
     this.shadowRoot.querySelector("[data-hidefound]")?.addEventListener("click", () => { this._found = null; this.render(); });
   }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.496
+
+- **Turn the visitors' page on and off from Home Assistant.** The **HA-liday Show: Visitors and checks** card has a button to turn the page on or off, and a **QR code** button that shows the code visitors scan, handy for holding your phone up at the gate. There's also a **Visitors' page** switch on the **HA-liday Show** device, so an automation can open the page at dusk and close it at bedtime. You can hide the new buttons in the card's options.
+
 ## 0.2.495
 
 - **Run the pre-show check from Home Assistant.** The **HA-liday Show: Visitors and checks** card has a **Run check** button that lists anything to fix or look at, so you can check from your phone while you're out by the lights. There's also a **Run pre-show check** button on the **HA-liday Show** device and a **HA-liday Show: Run pre-show check** action, so an automation can run the check every evening and tell you if something's wrong (there's an example in the guide). It does everything the check in HA-liday Show does by itself; watching each light blink still needs HA-liday Show.

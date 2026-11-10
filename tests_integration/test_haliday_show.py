@@ -326,3 +326,19 @@ async def test_run_preshow_check(hass: HomeAssistant, app, hass_ws_client) -> No
     await ws.send_json({"id": 1, "type": "haliday_show/preshow/run"})
     res = (await ws.receive_json())["result"]
     assert res["level"] == got[0]["level"] and isinstance(res["lines"], list)
+
+
+async def test_visitors_page_switch_and_qr(hass: HomeAssistant, app, hass_client) -> None:
+    from homeassistant.setup import async_setup_component
+    assert await async_setup_component(hass, "http", {})
+    await _set_up(hass, app)
+    assert hass.states.get("switch.ha_liday_show_visitors_page").state == "off"
+    await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.ha_liday_show_visitors_page"}, blocking=True)
+    await _settle(hass, lambda: hass.states.get("switch.ha_liday_show_visitors_page").state == "on")
+    client = await hass_client()
+    assert (await client.get("/api/haliday_show/qr")).status == 404  # no Public address yet
+    settings = app.storage.load_settings()
+    settings["public"] = {**settings["public"], "address": "https://lights.example.com"}
+    app.storage.save_settings(settings)
+    qr = await client.get("/api/haliday_show/qr")
+    assert qr.status == 200 and "<svg" in await qr.text()
