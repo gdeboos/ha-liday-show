@@ -14,13 +14,7 @@ const STYLE = `
   :host { display: block; height: 100%; container-type: inline-size; }
   ha-card { padding: 16px; overflow: hidden; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; }
   /* The part that takes any spare height, and scrolls when the card is made shorter than it. */
-  .fill { flex: 1 1 auto; min-height: 0; overflow: auto; }
-  @container (max-width: 260px) {
-    ha-card { padding: 12px; }
-    .head { font-size: 1rem; margin-bottom: 8px; }
-    .btn { padding: 0 10px; }
-    .head .btn .label { display: none; }  /* just the icon (Off) beside a narrow card's title */
-  }
+  .fill { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 3px; margin: -3px; }  /* room for focus rings */
   .head { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 500; margin-bottom: 12px; flex: none; }
   .head .grow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .head ha-icon { color: var(--state-icon-color, var(--primary-color)); }
@@ -39,6 +33,12 @@ const STYLE = `
     border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; min-height: 40px; box-sizing: border-box; }
   .error { color: var(--error-color); font-size: 0.875rem; margin-top: 8px; }
   .note { font-size: 0.875rem; margin-top: 8px; color: var(--secondary-text-color); }
+  @container (max-width: 260px) {
+    ha-card { padding: 12px; }
+    .head { font-size: 1rem; margin-bottom: 8px; }
+    .btn { padding: 0 10px; }
+    .head .btn .label { display: none; }  /* just the icon (Off) beside a narrow card's title */
+  }
 `;
 
 // What every card shares: Home Assistant, our entities by what they are, and a tidy way to call actions.
@@ -504,10 +504,10 @@ class HalidayScenesCard extends HalidayCard {
         .scene { justify-content: flex-start; border-radius: 12px; min-height: 48px; text-align: left; }
         .scene[aria-pressed="true"] { background: var(--primary-color); color: var(--text-primary-color, #fff); }
         .level { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex: none; }
-        @container (max-width: 260px) { .level > span { display: none; } .level output { min-width: 0; } }
         .level input { flex: 1; min-width: 0; padding: 0; min-height: 0; border: none; background: none; accent-color: var(--primary-color); }
         .level output { min-width: 3.5em; text-align: right; flex: none; }
         .note { flex: none; }
+        @container (max-width: 260px) { .level > span { display: none; } .level output { min-width: 0; } }
       </style>
       <ha-card>
         ${this.heading("mdi:creation", title, this.hides("hide_off") ? ""
@@ -591,9 +591,9 @@ class HalidayVisitorsCard extends HalidayCard {
     }
     this.shadowRoot.innerHTML = `<style>${STYLE}
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-        @container (max-width: 260px) { .stats { grid-template-columns: 1fr; gap: 8px; } .stat { padding: 8px; } }
         .stat { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 12px; background: var(--secondary-background-color); }
         .stat ha-icon { color: var(--secondary-text-color); flex: none; }
+        @container (max-width: 260px) { .stats { grid-template-columns: 1fr; gap: 8px; } .stat { padding: 8px; } }
         .big { font-size: 1.25rem; font-weight: 500; line-height: 1.2; }
         ol { margin: 10px 0 0; padding-left: 22px; }
         li { padding: 2px 0; }
