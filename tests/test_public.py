@@ -86,6 +86,7 @@ async def test_the_public_port_has_nothing_of_the_editor(client):
         assert status == 404, path
     status, html, headers = await _visitor(client, "/")
     assert status == 200 and "Light show" in html and "frame-ancestors 'none'" in headers["Content-Security-Policy"]
+    assert "media-src 'self' blob:" in headers["Content-Security-Policy"]  # songs loaded ahead on the phone
     status, _, _ = await _visitor(client, "/public.js")
     assert status == 200
 
@@ -868,6 +869,75 @@ async def test_a_listening_phone_gets_the_playing_song_and_where_it_is(client, s
     assert status == 404
     status, silence, headers = await _visitor(client, "/listen/silence.wav", code=False)
     assert status == 200 and silence[:4] == b"RIFF"
+
+
+async def test_a_visitors_show_waits_for_listening_phones_to_load_its_song(client, song_show, monkeypatch):
+    await client.put("/api/public", json={"on": True, "listen": True})
+    _, ok, _ = await _visitor(client, "/api/listen", {})
+    now_url = f"/api/listen/now?token={ok['token']}"
+    _, now, _ = await _visitor(client, now_url)  # this phone is listening
+    runner = client.app[server.RUNNER]
+    runner.add_request({"id": "r1", "ticket": "t", "kind": "show", "ref": "party", "name": "Party", "shows": ["party"], "gap": 0})
+    for _ in range(25):  # the song copy is made meanwhile
+        _, now, _ = await _visitor(client, now_url)
+        if now.get("next"):
+            break
+        await asyncio.sleep(0.1)
+    assert now["coming"] and not now["playing"] and now["next"]["src"].startswith("listen/song?")
+    assert not runner.player.playing  # held back for the phone
+    _, now, _ = await _visitor(client, now_url + "&have=" + now["next"]["key"] + ",nothex!")
+    for _ in range(20):
+        if runner.player.playing:
+            break
+        await asyncio.sleep(0.05)
+    assert runner.player.playing and runner.player.show_id == "party" and runner.coming is None
+    _, now, _ = await _visitor(client, now_url)
+    assert now["playing"] and now["key"] and "coming" not in now
+    await runner.stop()
+
+
+async def test_a_phone_that_never_loads_the_song_holds_the_show_up_only_briefly(client, song_show, monkeypatch):
+    monkeypatch.setattr(public._runner, "PREPARE_S", 0.3)
+    await client.put("/api/public", json={"on": True, "listen": True})
+    _, ok, _ = await _visitor(client, "/api/listen", {})
+    await _visitor(client, f"/api/listen/now?token={ok['token']}")
+    runner = client.app[server.RUNNER]
+    runner.add_request({"id": "r1", "ticket": "t", "kind": "show", "ref": "party", "name": "Party", "shows": ["party"], "gap": 0})
+    for _ in range(30):
+        if runner.player.playing:
+            break
+        await asyncio.sleep(0.05)
+    assert runner.player.playing
+    await runner.stop()
+
+
+async def test_with_nobody_listening_a_visitors_show_starts_at_once(client, song_show):
+    runner = client.app[server.RUNNER]
+    runner.add_request({"id": "r1", "ticket": "t", "kind": "show", "ref": "party", "name": "Party", "shows": ["party"], "gap": 0})
+    for _ in range(10):
+        if runner.player.playing:
+            break
+        await asyncio.sleep(0.02)
+    assert runner.player.playing and runner.coming is None
+    await runner.stop()
+
+
+def test_the_next_show_for_phones_to_load():
+    from halidayshow.runner import Runner
+
+    class P:
+        show_id, playing = "a", True
+    r = Runner.__new__(Runner)
+    r.player, r.requests, r.votes, r.coming = P(), [], {}, None
+    r.public_now = {"shows": ["a", "b"]}
+    assert r.next_show() == "b"
+    r.public_now = {"shows": ["a"]}
+    r.requests = [{"shows": ["c", "d"]}]
+    assert r.next_show() == "c"
+    r.coming = {"show": "z", "ready": set()}
+    assert r.next_show() == "z"
+    r.coming, r.requests, r.public_now = None, [], None
+    assert r.next_show() is None
 
 
 async def test_the_timing_test_beeps_on_phones_and_every_phone_gets_the_timing(client, monkeypatch):

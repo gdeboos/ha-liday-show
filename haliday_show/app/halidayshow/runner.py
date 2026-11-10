@@ -38,6 +38,10 @@ def clock() -> float:
     return time.monotonic()
 
 START_TIMEOUT_S = 20
+# Before a visitor's show, phones listening get this long at most to load its song, so they start with the
+# lights rather than catching up; a phone counts as listening if it asked where the song is this recently.
+PREPARE_S = 3.0
+LISTENER_FRESH_S = 5.0
 SCENE_BACK_S = 2.0  # how long the lights rest after a show before the scene comes back
 FOLLOW_EVERY_S = 1.0
 RESYNC_S = 1.0  # media players report position coarsely; only correct big jumps
@@ -106,6 +110,8 @@ class Runner:
         self._last_public_end = 0.0
         self.resting_until = 0.0
         self.public_listeners: dict[str, float] = {}
+        # The visitor's show about to start while listening phones load its song: {show, ready: {pass}}.
+        self.coming: dict | None = None
         # Each speaker's volume before it was turned down for the night, put back by the next daytime show.
         self._day_volumes: dict[str, float] = {}
         self._public: asyncio.Task | None = None
@@ -865,6 +871,9 @@ class Runner:
                     await asyncio.sleep(max(float(request.get("gap", 0)), 0.1))
                 if self._yours != yours:  # you played or stopped something meanwhile
                     return
+                await self._ready_phones(show_id)
+                if self._yours != yours:
+                    return
                 try:
                     async with self._lock:
                         await self._play(show_id, use_show_speaker=True)
@@ -886,6 +895,39 @@ class Runner:
                 self.public_played = [p for p in self.public_played if now - p["at"] < 7200]
                 self.public_played.append({"kind": request["kind"], "ref": request["ref"],
                                            "ticket": request["ticket"], "at": now})
+
+    def listeners(self) -> set[str]:
+        """The phones listening now (their passes)."""
+        now = clock()
+        return {t for t, at in self.public_listeners.items() if now - at < LISTENER_FRESH_S}
+
+    async def _ready_phones(self, show_id: str):
+        """Phones listening load the song first, so everyone hears it from the start, in time with the
+        lights: the show starts once each says it has the song (public.py), or after PREPARE_S."""
+        if not self.listeners():
+            return
+        self.coming = {"show": show_id, "ready": set()}
+        end = clock() + PREPARE_S
+        try:
+            while clock() < end and not self.listeners() <= self.coming["ready"]:
+                await asyncio.sleep(0.05)
+        finally:
+            self.coming = None
+
+    def next_show(self) -> str | None:
+        """The show likely to play next, for listening phones to load its song early: the one about to
+        start, the next in the visitor's pick that's on, else the first in the queue (or the vote's lead)."""
+        if self.coming:
+            return self.coming["show"]
+        req = self.public_now
+        if req and self.player.show_id in req["shows"]:
+            k = req["shows"].index(self.player.show_id)
+            if k + 1 < len(req["shows"]):
+                return req["shows"][k + 1]
+        if self.requests and self.requests[0].get("shows"):
+            return self.requests[0]["shows"][0]
+        counts = self.vote_counts() if self.votes else []
+        return (counts[0]["pick"].get("shows") or [None])[0] if counts else None
 
     def show_duration(self, show_id: str) -> float:
         """How long a saved show lasts, in seconds (0 if it can't be read)."""
