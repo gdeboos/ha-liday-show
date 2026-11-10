@@ -3,6 +3,7 @@
 // this draws the list, keeps the order, and saves the whole list as you go.
 
 import { askYes } from "./ask.js";
+import { folderOf, pathText, pickerView } from "./folders.js";
 import { KIND_NAMES, PICK_TABS, describeSchedule, newEntry, pickList, whenNext } from "./schedule.js";
 import { weekLayout } from "./weekview.js";
 
@@ -107,36 +108,63 @@ export class SchedulePage {
     if (picked) this.add(picked.type, picked.id);
   }
 
-  // A window to pick a playlist, show or scene: a tab for each, and a box to find one by name.
-  // Resolves with {type, id}, or null when closed.
+  // A window to pick a playlist, show or scene: a tab for each, opening on the folders of Library →
+  // Playlists, Shows or Scenes, and a box to find one by name in any of them. Resolves with
+  // {type, id}, or null when closed.
   choose(current, title = "What it plays") {
     return new Promise((resolve) => {
       const targets = this.d.targets();
+      const foldersFor = (type) => this.d.folders?.(type) || [];
       let tab = current?.type || PICK_TABS.find(([k]) => targets[k]?.length)?.[0] || "playlist";
+      // The folder open on each tab, starting where the current choice is.
+      const at = Object.fromEntries(PICK_TABS.map(([k]) => [k, current?.type === k ? folderOf(foldersFor(k), current.id) : ""]));
       let result = null;
       const dlg = el("dialog", { class: "effect-dialog form-dialog sched-pick", "aria-label": title });
       const find = el("input", { type: "search", placeholder: "Find by name", autocomplete: "off", "aria-label": "Find by name" });
       const tabs = el("div", { class: "sched-tabs", role: "tablist", "aria-label": "Playlists, shows or scenes" });
       const list = el("div", { class: "song-list sched-pick-list", role: "listbox", "aria-label": title });
+      const path = el("nav", { class: "folder-path", "aria-label": "Where you are", hidden: true });
       const pick = (x) => { result = { type: x.type, id: x.id }; dlg.close(); };
       const draw = () => {
         const words = find.value.trim();
         tabs.replaceChildren(...PICK_TABS.map(([k, label]) => el("button", { type: "button", role: "tab",
           class: "sched-tab", "aria-selected": String(!words && k === tab), disabled: !targets[k]?.length,
           onclick: () => { tab = k; find.value = ""; draw(); } }, `${label} (${targets[k]?.length || 0})`)));
-        const items = pickList(targets, tab, words);
-        list.replaceChildren(...(items.length ? items.map((x) => {
+        const folders = foldersFor(tab);
+        const view = words ? null : pickerView(folders, (targets[tab] || []).map((x) => ({ key: x.id, name: x.name })), at[tab]);
+        const items = words ? pickList(targets, tab, words)
+          : view.items.map((it) => ({ type: tab, id: it.key, name: it.name }));
+        // Where you are: Playlists › Christmas › Carols, each part a way back up.
+        path.hidden = !!words || !view.path.length;
+        path.replaceChildren(...(words ? [] : [{ id: "", name: PICK_TABS.find(([k]) => k === tab)[1] }, ...view.path]).flatMap((f, i, all) => {
+          const part = i === all.length - 1 ? el("b", {}, f.name)
+            : el("button", { type: "button", class: "ghost path-part", onclick: () => { at[tab] = f.id; draw(); } }, f.name);
+          return i ? [el("span", { class: "hint" }, " › "), part] : [part];
+        }));
+        const folderRows = (view?.folders || []).map(({ folder, count }) => el("button", { type: "button",
+          class: "song-row sched-folder", onclick: () => { at[tab] = folder.id; draw(); list.querySelector("button")?.focus(); } },
+        el("span", { class: "folder-mark small", "aria-hidden": "true" }),
+        el("span", {}, el("b", {}, folder.name), el("span", { class: "hint" }, `${count} ${KIND_NAMES[tab]}${count === 1 ? "" : "s"} ›`))));
+        const where = (x) => {
+          const f = pathText(foldersFor(x.type), x.id);
+          return [KIND_NAMES[x.type], f ? `in ${f}` : ""].filter(Boolean).join(" · ");
+        };
+        const rows = items.map((x) => {
           const on = current && x.type === current.type && x.id === current.id;
           return el("button", { type: "button", role: "option", "aria-selected": String(!!on),
             class: `song-row${on ? " picked" : ""}`, onclick: () => pick(x) },
-          el("span", {}, el("b", {}, x.name), words ? el("span", { class: "hint" }, KIND_NAMES[x.type]) : null));
-        }) : [el("p", { class: "hint" }, words ? `Nothing called ${words}.` : "None yet.")]));
+          el("span", {}, el("b", {}, x.name), words ? el("span", { class: "hint" }, where(x)) : null));
+        });
+        list.replaceChildren(...folderRows, ...rows);
+        if (!list.children.length) {
+          list.append(el("p", { class: "hint" }, words ? `Nothing called ${words}.` : targets[tab]?.length ? "Nothing in this folder." : "None yet."));
+        }
       };
       find.addEventListener("input", draw);
       dlg.append(
         el("div", { class: "effect-dialog-head" }, el("h3", {}, title),
           el("button", { type: "button", class: "ghost", "aria-label": "Close", onclick: () => dlg.close() }, "✕")),
-        el("div", { class: "form-dialog-body" }, tabs, el("div", { class: "ns-find" }, find), list));
+        el("div", { class: "form-dialog-body" }, tabs, el("div", { class: "ns-find" }, find), path, list));
       dlg.addEventListener("close", () => { dlg.remove(); resolve(result); });
       document.body.append(dlg);
       draw();

@@ -5348,6 +5348,7 @@ const schedPage = new SchedulePage({
     show: playlistShows.map((x) => ({ id: x.id, name: x.name })),
     scene: playlistScenes.map((x) => ({ id: x.id, name: x.name })),
   }),
+  folders: (type) => foldersOf({ playlist: "playlists", show: "shows", scene: "scenes" }[type]),
   stateChanged: (st) => { scheduleState = st; renderSunPlace(); updateScheduleLinks(); },
 });
 
