@@ -101,6 +101,7 @@ async def test_scenes_come_and_go(hass: HomeAssistant, app) -> None:
     app.web_app[app_server.HUB].refresh()
     await _settle(hass, lambda: hass.states.get("scene.ha_liday_show_candy_cane") is not None)
     assert hass.states.get("light.ha_liday_show").attributes["effect_list"] == ["Candy cane"]
+    assert hass.states.get("scene.ha_liday_show_candy_cane").attributes["scene_name"] == "Candy cane"
     app.storage.delete_scene("candy")
     app.web_app[app_server.HUB].refresh()
     await _settle(hass, lambda: hass.states.get("scene.ha_liday_show_candy_cane") is None)

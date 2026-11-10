@@ -64,6 +64,11 @@ for **HA-liday Show**:
   Press a folder to go in, and the path at the top to come back out. **Find in every folder** searches
   them all. Press a show or playlist to play it. A show's tile has its picture, else its song's cover
   art, else its palette's colours.
+- **HA-liday Show: Scenes**: a button for each of your scenes. Press one to put it on; the one that's
+  on is highlighted. **Brightness** dims the scene that's on, and **Off** turns scenes off.
+- **HA-liday Show: Visitors and checks**: whether the visitors' page is open, how many picks are
+  waiting (or votes, in **Vote** mode) with the next few, how many phones are listening, and how the last
+  pre-show check went. **Skip this pick** ends the visitor's pick that's playing.
 
 The cards work for everyone who uses your Home Assistant, on phones too, away from home: they go through
 Home Assistant rather than to HA-liday Show itself. In the card's YAML, `title:` changes the heading, and
