@@ -476,8 +476,8 @@ it. Pick each part from its list and give it a colour:
   colour.
 
 The preview sings "ah", "oo", "ee" and "mm" and blinks while you work, big and as a phone shows it. Press
-**Add face** (or **Save**) to keep it. Then pick it as a Singing face clip's **Character**, under **Your
-faces**.
+**Add face** (or **Save**) to keep it. Then pick it as a Singing face clip's **Character**: press
+**Change…** for a window with your faces in their folders and the built-in ones marked **Built in**.
 
 **Edit…** on one of yours opens it again. Changing a face changes it in every show that uses it, and those
 shows are made ready again in the background. **Delete…** (under **⋯**) removes it; Singing faces that used
