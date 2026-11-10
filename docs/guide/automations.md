@@ -91,6 +91,12 @@ card has a **Title** (leave it empty for the usual one) and **Hide the title**. 
 Every option is off unless you switch it on, so a card you added before the editor came along shows
 everything, as it did.
 
+On a sections dashboard you can make the cards any size in the card editor's **Layout** tab. They start
+half the width (Player, Scenes, Visitors and checks) or the full width (Browse, House), and fit their
+content's height. Make one narrower and it tidies itself up (the cover art gets smaller, **Off** becomes
+just its icon). Give one a set height and what doesn't fit scrolls inside it; the **House** card's
+picture grows or shrinks to fill the space.
+
 #### Actions
 
 The integration adds four actions for automations and scripts:
