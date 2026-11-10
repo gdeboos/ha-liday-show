@@ -228,12 +228,12 @@ def _integration_extras(app, now=None) -> dict:
     storage, runner = app[STORAGE], app[RUNNER]
     settings = storage.load_settings()
     p = public.load(storage) or public.clean(None)
-    where = app[SCHEDULER].where()[0]
     cache = app[HUB].__dict__.setdefault("_next_cache", {"at": 0.0, "value": None})
     if time.monotonic() - cache["at"] > 30:
+        cache["at"] = time.monotonic()  # first, so a failure isn't retried (and logged) every second
         cache["value"] = _next_on_schedule(app)
-        cache["at"] = time.monotonic()
     voting = p.get("pick") == "vote"
+    last = settings.get("preshow") if isinstance(settings.get("preshow"), dict) else None
     return {
         "next": cache["value"],
         "queue": {"mode": "vote" if voting else "queue",
@@ -241,27 +241,33 @@ def _integration_extras(app, now=None) -> dict:
                   "names": [r["name"] for r in runner.requests][:20] if not voting else
                   [f"{c['name']} ({c['count']})" for c in runner.vote_counts()][:20]},
         "listening": public.tonight(runner)["listening"],
-        "preshow": settings.get("preshow") if isinstance(settings.get("preshow"), dict) else None,
-        "page": {"on": bool(p["on"]), "open": bool(p["on"] and public.hours_now(p, where, now)["open"])},
+        "preshow": {**last, "at": _with_zone(last.get("at"))} if last else None,
+        "page": {"on": bool(p["on"]), "open": bool(p["on"] and public.hours_now(p, app[SCHEDULER].where()[0], now)["open"])},
     }
 
 
+def _with_zone(text):
+    """Local times are saved without a zone; say which, for Home Assistant on another computer."""
+    try:
+        return datetime.datetime.fromisoformat(text).astimezone().isoformat(timespec="minutes")
+    except (TypeError, ValueError):
+        return None
+
+
 def _next_on_schedule(app) -> dict | None:
-    """The schedule's next start: {at, name, kind}, or None."""
-    storage = app[STORAGE]
+    """The schedule's next start: {at, name, kind}, or None. Names come from the hub's lists, so no
+    show is read from disk."""
+    storage, hub = app[STORAGE], app[HUB]
+    listed = hub.snapshot_lists()
+    names = {"playlist": {x["id"]: x["name"] for x in listed["playlists"]},
+             "scene": {x["id"]: x["name"] for x in listed["scenes"]},
+             "show": {x["id"]: x["name"] for x in listed["shows"]}}
     state = app[SCHEDULER].state()
     entries = {e["id"]: e for e in schedule.load_entries(storage)}
-    soonest = sorted((at, i) for i, at in state["next"].items() if i in entries)
-    for at, i in soonest:
+    for at, i in sorted((at, i) for i, at in state["next"].items() if i in entries):
         kind, ref = entries[i]["play"]["type"], entries[i]["play"]["id"]
-        if kind == "playlist":
-            name = next((x["name"] for x in playlists.load(storage) if x["id"] == ref), None)
-        elif kind == "scene":
-            name = (storage.load_scene(ref) or {}).get("name")
-        else:
-            name = (storage.load_show(ref) or {}).get("name")
-        if name:
-            return {"at": at, "name": name, "kind": kind}
+        if name := names.get(kind, {}).get(ref):
+            return {"at": _with_zone(at), "name": name, "kind": kind}
     return None
 
 

@@ -14,7 +14,7 @@ import json
 import logging
 import time
 
-from . import __version__, playlists, seasons, timingtest
+from . import __version__, playlists, seasons, songtags, timingtest
 from .commands import find_show, handle
 from .mqtt import scene_options, show_options
 from .runner import Runner, RunnerError
@@ -55,11 +55,15 @@ def playing(runner: Runner, st: dict) -> dict | None:
     if not st["playing"] or scene_on:
         return None
     song = st.get("song")
+    cover = False
+    if song:
+        path = runner.storage.audio_path(song["source"], song["path"])
+        cover = bool(path is not None and songtags.cached_cover(path))  # read once per song file
     return {"show": st["show"], "name": st.get("name") or st["show"] or "",
             "playlist": (st.get("playlist") or {}).get("name"),
             "position": st["position"], "duration": st["duration"], "started": st.get("started"),
             "song": {"source": song["source"], "path": song["path"],
-                     "title": song["path"].rsplit("/", 1)[-1].rsplit(".", 1)[0]} if song else None,
+                     "title": song["path"].rsplit("/", 1)[-1].rsplit(".", 1)[0], "cover": cover} if song else None,
             "speaker": st.get("media_player"), "visitor": bool(getattr(runner, "public_now", None))}
 
 
@@ -193,6 +197,7 @@ class Hub:
 
     def refresh(self):
         self._lists = None
+        self.__dict__.pop("_next_cache", None)  # a renamed or deleted show changes what's next
         self._changed.set()
 
     def emit(self, name: str, data: dict):
@@ -228,10 +233,13 @@ class Hub:
                                   "visitor": bool(getattr(self.runner, "public_now", None))}
             self.emit("show_started", self._playing_data)
 
-    def snapshot(self) -> dict:
+    def snapshot_lists(self) -> dict:
         if self._lists is None:
             self._lists = lists(self.runner.storage)
-        out = snapshot(self.runner, self._lists)
+        return self._lists
+
+    def snapshot(self) -> dict:
+        out = snapshot(self.runner, self.snapshot_lists())
         if self.extras:
             try:
                 out.update(self.extras())

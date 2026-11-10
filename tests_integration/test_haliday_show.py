@@ -208,6 +208,10 @@ async def test_media_player_and_sensors(hass: HomeAssistant, app) -> None:
     await _settle(hass, lambda: hass.states.get("media_player.ha_liday_show_player").state == "playing")
     st = hass.states.get("media_player.ha_liday_show_player")
     assert st.attributes["media_title"] == "Party" and st.attributes["media_duration"] == 10
+    assert "entity_picture" not in st.attributes  # no song, so no cover art
+    await asyncio.sleep(2.2)  # two pushes later the player hasn't rewritten its state
+    await hass.async_block_till_done()
+    assert hass.states.get("media_player.ha_liday_show_player").last_updated == st.last_updated
     await hass.services.async_call("media_player", "media_stop", {"entity_id": "media_player.ha_liday_show_player"},
                                    blocking=True)
     await _settle(hass, lambda: hass.states.get("media_player.ha_liday_show_player").state == "idle")
@@ -216,3 +220,13 @@ async def test_media_player_and_sensors(hass: HomeAssistant, app) -> None:
         await s.put(f"http://127.0.0.1:{app.port}/api/preshow/last", json={"level": "fail", "problems": 1, "warnings": 0})
     await _settle(hass, lambda: hass.states.get("sensor.ha_liday_show_last_pre_show_check").state == "fail")
     assert hass.states.get("sensor.ha_liday_show_last_pre_show_check").attributes["problems"] == 1
+
+
+async def test_next_on_the_schedule(hass: HomeAssistant, app) -> None:
+    settings = app.storage.load_settings()
+    settings["schedule"] = [{"id": "r1", "play": {"type": "show", "id": "party"}, "on": True, "start": "23:58",
+                             "end": "23:59", "days": [0, 1, 2, 3, 4, 5, 6]}]
+    app.storage.save_settings(settings)
+    await _set_up(hass, app)
+    st = hass.states.get("sensor.ha_liday_show_next_on_the_schedule")
+    assert st.state not in ("unknown", "unavailable") and st.attributes["name"] == "Party"
