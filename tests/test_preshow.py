@@ -165,3 +165,11 @@ def test_blink_and_chase():
     lap = chase_lap(80)
     assert lit(chase_frame(80, lap * 0.999))[-1] == 79  # reaches the last segment
     assert len(lit(chase_frame(80, lap / 2))) == 2  # a short bar, 80 // 40 wide
+
+
+def test_tally_matches_the_editor():
+    groups = [{"items": [preshow.line("fail", "a"), preshow.line("ok", "b")]},
+              {"summary": preshow.line("warn", "nothing starts shows"), "items": []},
+              {"summary": preshow.line("ok", "fine"), "items": [preshow.line("warn", "c")]}]
+    assert preshow.tally(groups) == {"level": "fail", "problems": 1, "warnings": 2}
+    assert preshow.tally([]) == {"level": "ok", "problems": 0, "warnings": 0}

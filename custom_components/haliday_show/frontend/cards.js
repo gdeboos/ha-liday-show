@@ -583,6 +583,21 @@ class HalidayVisitorsCard extends HalidayCard {
     return ["page_open", "queue", "listening", "preshow", "player"];
   }
 
+  // The pre-show check from the dashboard: asks every light, so it takes a little while.
+  async _runCheck() {
+    this._running = true;
+    this._error = "";
+    this.render();
+    try {
+      const got = await this._hass.callWS({ type: "haliday_show/preshow/run" });
+      this._found = got.lines || [];
+    } catch (e) {
+      this._error = e && e.message ? e.message : "The check couldn't run.";
+    }
+    this._running = false;
+    this.render();
+  }
+
   render() {
     const title = h(this._config?.title || "Visitors and checks");
     const page = this.state("page_open"), queue = this.state("queue"), listening = this.state("listening");
@@ -625,8 +640,14 @@ class HalidayVisitorsCard extends HalidayCard {
         .big { font-size: 1.25rem; font-weight: 500; line-height: 1.2; }
         ol { margin: 10px 0 0; padding-left: 22px; }
         li { padding: 2px 0; }
-        .check { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+        .check { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
         .check ha-icon { flex: none; }
+        .check > div { flex: 1 1 150px; min-width: 0; }
+        .check .run { order: 2; margin-left: auto; }
+        .found { margin-top: 10px; display: grid; gap: 8px; }
+        .fline { display: flex; gap: 10px; align-items: flex-start; }
+        .fline ha-icon { --mdc-icon-size: 20px; flex: none; }
+        .link { color: var(--primary-color); padding: 4px 0; }
       </style>
       <ha-card>
         ${this.heading("mdi:account-group", title)}
@@ -636,17 +657,26 @@ class HalidayVisitorsCard extends HalidayCard {
           ${picks.length > 5 ? `<div class="note">and ${picks.length - 5} more</div>` : ""}` : ""}
         ${!this.hides("hide_skip") && player && player.state === "playing" && player.attributes.visitor_pick ? `<div style="margin-top:10px">
           <button class="btn" data-skip><ha-icon icon="mdi:skip-next"></ha-icon>Skip this pick</button></div>` : ""}
-        ${this.hides("hide_check") ? "" : `<div class="check">
+        ${this.hides("hide_check") ? "" : `<div class="check">${this.hides("hide_run") ? "" : `<button class="btn run" data-run
+            ${this._running ? "disabled" : ""}><ha-icon icon="mdi:${this._running ? "timer-sand" : "play"}"></ha-icon>${this._running ? "Checking…" : "Run check"}</button>`}
           ${level ? `<ha-icon icon="${level[0]}" style="color:${level[2]}"></ha-icon>
             <div><div>Pre-show check: ${level[1]}${counts ? ` (${h(counts)})` : ""}</div><div class="muted small">${h(ago ? `Last run ${ago}` : "")}</div></div>`
           : `<ha-icon icon="mdi:clipboard-check-outline"></ha-icon><div class="muted small">${check && check.state === "unavailable"
-            ? "The last pre-show check isn't available." : "No pre-show check yet. Run one from HA-liday Show's Setup → Devices."}</div>`}
-        </div>`}
+            ? "The last pre-show check isn't available." : "No pre-show check yet."}</div>`}
+        </div>
+        ${this._found ? `<div class="found">${this._found.length ? this._found.map((l) => `<div class="fline ${l.level}">
+            <ha-icon icon="${CHECK[l.level][0]}" style="color:${CHECK[l.level][2]}"></ha-icon>
+            <div><div class="small">${h(l.text)}</div>${l.fix ? `<div class="muted small">${h(l.fix)}</div>` : ""}</div></div>`).join("")
+          : `<div class="muted small">Nothing to fix or look at.</div>`}
+          <div class="small"><button class="link" data-hidefound>Hide</button>
+          · The step where you watch each light blink is in HA-liday Show itself.</div></div>` : ""}`}
         </div>
         ${this._error ? `<div class="error">${h(this._error)}</div>` : ""}
       </ha-card>`;
     this.shadowRoot.querySelector("[data-skip]")?.addEventListener("click", () =>
       this.call("haliday_show", "skip", {}));
+    this.shadowRoot.querySelector("[data-run]")?.addEventListener("click", () => this._runCheck());
+    this.shadowRoot.querySelector("[data-hidefound]")?.addEventListener("click", () => { this._found = null; this.render(); });
   }
 
   getCardSize() {

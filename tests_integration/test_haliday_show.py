@@ -312,3 +312,17 @@ async def test_house_card_plumbing(hass: HomeAssistant, app, hass_ws_client, has
     assert svg.status == 200 and svg.content_type == "image/svg+xml"
     assert (await open_client.get("/api/haliday_show/house_photo")).status == 401
     assert (await (await hass_client()).get("/api/haliday_show/house_photo")).status == 404  # no photo yet
+
+
+async def test_run_preshow_check(hass: HomeAssistant, app, hass_ws_client) -> None:
+    await _set_up(hass, app)
+    assert hass.states.get("button.ha_liday_show_run_pre_show_check")
+    got = []
+    hass.bus.async_listen(f"{DOMAIN}_preshow_check", lambda e: got.append(e.data))
+    await hass.services.async_call(DOMAIN, "run_preshow_check", {}, blocking=True)
+    await _settle(hass, lambda: got)
+    assert hass.states.get("sensor.ha_liday_show_last_pre_show_check").state == got[0]["level"]
+    ws = await hass_ws_client(hass)
+    await ws.send_json({"id": 1, "type": "haliday_show/preshow/run"})
+    res = (await ws.receive_json())["result"]
+    assert res["level"] == got[0]["level"] and isinstance(res["lines"], list)

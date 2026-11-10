@@ -3117,7 +3117,8 @@ for **HA-liday Show**:
   along its bottom. Press one to put it on; the one that's on is highlighted. **Brightness** dims the scene that's on, and **Off** turns scenes off.
 - **HA-liday Show: Visitors and checks**: whether the visitors' page is open, how many picks are
   waiting (or votes, in **Vote** mode) with the next few, how many phones are listening, and how the last
-  pre-show check went. **Skip this pick** ends the visitor's pick that's playing.
+  pre-show check went. **Skip this pick** ends the visitor's pick that's playing. **Run check** runs the
+  pre-show check there and then, and lists anything to fix or look at.
 
 The cards work for everyone who uses your Home Assistant, on phones too, away from home: they go through
 Home Assistant rather than to HA-liday Show itself.
@@ -3130,7 +3131,7 @@ card has a **Title** (leave it empty for the usual one) and **Hide the title**. 
 | **Player** | **Hide the cover art**, **Hide how far through it is**, **Hide the show picker and Play** (for a card that only shows what's on), **Hide what's next on the schedule** |
 | **Browse** | **Show**: shows and playlists, shows only or playlists only; **Open on**: Shows or Playlists; **Tile size**: small, medium or large; **Hide Find in every folder**, **Hide season tags** |
 | **Scenes** | **Only these scenes**: pick the scenes the card shows, in the order you pick them (leave it empty for all of them); **Columns**: how many buttons across (leave it empty to fit); **Hide each scene's colours**, **Hide Brightness**, **Hide Off** |
-| **Visitors and checks** | Hide any of: the visitors' page, picks waiting, phones listening, the list of picks, the pre-show check, **Skip this pick** |
+| **Visitors and checks** | Hide any of: the visitors' page, picks waiting, phones listening, the list of picks, the pre-show check, **Run check**, **Skip this pick** |
 | **Schedule** | **Days to show** (1 is just today, 7 the week ahead); **Layout**: a timeline that turns into a list when the card is narrow, always a timeline, or always a list; **Hide scenes** |
 | **House** | **Tallest it can be** (420 pixels unless you change it), **Hide the line under the picture** |
 
@@ -3158,6 +3159,8 @@ The integration adds four actions for automations and scripts:
 - **HA-liday Show: Skip** (`haliday_show.skip`): ends the visitor's pick that's playing, so the next one
   waiting starts.
 - **HA-liday Show: Season props** (`haliday_show.season`): puts a season's props out, or packs them away.
+- **HA-liday Show: Run pre-show check** (`haliday_show.run_preshow_check`): runs the pre-show check (see
+  below). The **HA-liday Show** device also has a **Run pre-show check** button that does the same.
 
 For example, to play a show on the garden speaker from 30 seconds in:
 
@@ -3171,6 +3174,29 @@ actions:
 ```
 
 If something's wrong (no show by that name, say), the action stops with a message saying what.
+
+The pre-show check run from Home Assistant (the button, the action or the card) does everything the
+**✓ Pre-show check** in **Setup → Devices** does by itself: it asks every light whether it's there and
+checks how tonight's shows will start and be heard. It leaves out the steps where you watch each light
+blink and the timing test, which need you there with HA-liday Show open. Its result is saved as the last
+check, as if you'd run it in HA-liday Show. For example, to check every evening before the lights come on
+and get a notification if anything's wrong:
+
+```yaml
+triggers:
+  - trigger: time
+    at: "16:00:00"
+actions:
+  - action: haliday_show.run_preshow_check
+  - if:
+      - condition: state
+        entity_id: sensor.ha_liday_show_last_pre_show_check
+        state: fail
+    then:
+      - action: notify.mobile_app_my_phone
+        data:
+          message: "The pre-show check found a problem. Open HA-liday Show to see what."
+```
 
 #### Events
 

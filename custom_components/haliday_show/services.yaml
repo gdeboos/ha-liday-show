@@ -24,6 +24,7 @@ play:
           unit_of_measurement: s
 stop:
 skip:
+run_preshow_check:
 season:
   fields:
     season:

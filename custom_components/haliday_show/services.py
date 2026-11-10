@@ -62,6 +62,10 @@ def async_setup_services(hass: HomeAssistant) -> None:
     async def skip(call: ServiceCall) -> None:
         await _send(hass, "skip")
 
+    async def run_preshow_check(call: ServiceCall) -> None:
+        from .button import run_preshow
+        await run_preshow(_client(hass))
+
     async def season(call: ServiceCall) -> None:
         await _send(hass, "season", season=call.data["season"], out=call.data["out"])
 
@@ -69,3 +73,4 @@ def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, "stop", stop)
     hass.services.async_register(DOMAIN, "skip", skip)
     hass.services.async_register(DOMAIN, "season", season, schema=SEASON_SCHEMA)
+    hass.services.async_register(DOMAIN, "run_preshow_check", run_preshow_check)

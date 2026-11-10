@@ -28,6 +28,13 @@ def worst(lines: list[dict]) -> str:
     return max((x["level"] for x in lines), key=LEVELS.index, default="ok")
 
 
+def tally(groups: list[dict]) -> dict:
+    """The check's result, as the editor's preshow.js tally() works it out: {level, problems, warnings}."""
+    lines = [x for g in groups for x in ([g["summary"]] if g.get("summary") and not g.get("items") else g.get("items") or [])]
+    return {"level": worst(lines), "problems": sum(x["level"] == "fail" for x in lines),
+            "warnings": sum(x["level"] == "warn" for x in lines)}
+
+
 def names(ds: list[dict]) -> str:
     """"Porch", "Porch and Tree", "Porch, Tree and Fence"."""
     n = [d["name"] for d in ds]
