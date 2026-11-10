@@ -38,6 +38,61 @@ For Docker and pipx installs, add the integration by hand and give the address o
 HA-liday Show runs on, its port (8099 unless you changed `HALIDAY_SHOW_PORT`) and the password you set
 with `HALIDAY_SHOW_PASSWORD`.
 
+#### Actions
+
+The integration adds four actions for automations and scripts:
+
+- **HA-liday Show: Play** (`haliday_show.play`): give a **Show**, a **Playlist** or a **Scene** by name.
+  For a show you can also pick a **Speaker** (instead of the show's own) and **Start at** a number of
+  seconds in.
+- **HA-liday Show: Stop** (`haliday_show.stop`): stops whatever's playing.
+- **HA-liday Show: Skip** (`haliday_show.skip`): ends the visitor's pick that's playing, so the next one
+  waiting starts.
+- **HA-liday Show: Season props** (`haliday_show.season`): puts a season's props out, or packs them away.
+
+For example, to play a show on the garden speaker from 30 seconds in:
+
+```yaml
+actions:
+  - action: haliday_show.play
+    data:
+      show: Halloween
+      media_player: media_player.garden
+      start_at: 30
+```
+
+If something's wrong (no show by that name, say), the action stops with a message saying what.
+
+#### Events
+
+The **HA-liday Show** device has four event entities, so what happens shows in the logbook, and you can
+start an automation from any of them in the automation editor:
+
+| Entity | Fires when |
+| --- | --- |
+| **Show** | a show **starts** or **ends** (with its name, and its playlist if it's part of one) |
+| **Visitors** | a visitor **picks** a show on the public page, or **votes** for one |
+| **Pre-show check** | a pre-show check **finishes** (with how it went: `ok`, `warn` or `fail`) |
+| **Lights** | a pre-show check finds a light that's **not answering** (with the light's name) |
+
+Events are only sent while Home Assistant is connected. If a show ends while Home Assistant is
+restarting, its **ended** event arrives when it's back.
+
+The same events are also on Home Assistant's event bus, as `haliday_show_show_started`,
+`haliday_show_show_ended`, `haliday_show_visitor_pick`, `haliday_show_visitor_vote`,
+`haliday_show_preshow_check` and `haliday_show_light_not_answering`. For example, a phone notification
+when a light doesn't answer:
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: haliday_show_light_not_answering
+actions:
+  - action: notify.mobile_app_my_phone
+    data:
+      message: "{{ trigger.event.data.light }} didn't answer the pre-show check."
+```
+
 ### With MQTT
 
 With the Mosquitto broker app and MQTT integration set up, HA-liday Show creates an **HA-liday

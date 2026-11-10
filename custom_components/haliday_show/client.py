@@ -62,9 +62,10 @@ class HalidayClient:
     async def claim(self, on: bool) -> None:
         await self._request("POST", "/api/integration/claim", {"on": on})
 
-    def listen(self, on_state: Callable[[dict], None], on_lost: Callable[[], None]) -> None:
-        """Follow the app's state until stop(); reconnects with growing waits."""
-        self._task = asyncio.create_task(self._listen(on_state, on_lost))
+    def listen(self, on_state: Callable[[dict], None], on_lost: Callable[[], None],
+               on_event: Callable[[str, dict], None] | None = None) -> None:
+        """Follow the app's state (and events) until stop(); reconnects with growing waits."""
+        self._task = asyncio.create_task(self._listen(on_state, on_lost, on_event))
 
     async def stop(self) -> None:
         if self._task:
@@ -75,7 +76,7 @@ class HalidayClient:
                 pass
             self._task = None
 
-    async def _listen(self, on_state, on_lost) -> None:
+    async def _listen(self, on_state, on_lost, on_event) -> None:
         delay = 1
         while True:
             try:
@@ -88,6 +89,8 @@ class HalidayClient:
                         data = msg.json()
                         if data.get("type") == "state":
                             on_state(data["state"])
+                        elif data.get("type") == "event" and on_event:
+                            on_event(str(data.get("event")), data.get("data") or {})
             except asyncio.CancelledError:
                 raise
             except Exception as err:  # noqa: BLE001 - any failure means "try again shortly"

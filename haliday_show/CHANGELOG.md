@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.484
+
+- **Actions in Home Assistant.** With the HA-liday Show integration, automations and scripts get **HA-liday Show: Play** (a show, playlist or scene, and for a show a speaker of your choice and a start point), **Stop**, **Skip** (ends a visitor's pick) and **Season props**. If something's wrong, such as a show name that doesn't exist, the action says so.
+- **Events in Home Assistant.** The **HA-liday Show** device now has **Show**, **Visitors**, **Pre-show check** and **Lights** event entities. They show in the logbook and can start automations: when a show starts or ends, a visitor picks or votes, a pre-show check finishes, or a light doesn't answer it. See **Actions** and **Events** under **Home Assistant integration** in the guide.
+
 ## 0.2.483
 
 - **New: the HA-liday Show integration for Home Assistant.** Install it from **Settings → Marketplace** with **Add from link** (`https://github.com/gdeboos/ha-liday-show`), and Home Assistant gets your shows, playlists, scenes and season switches without needing MQTT. After a restart, it's waiting under **Settings → Devices & services → Discovered**. The entities keep the names they had with MQTT, so your automations keep working. See **Home Assistant integration** in the guide.

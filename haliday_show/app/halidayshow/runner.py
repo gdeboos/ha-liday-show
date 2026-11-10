@@ -121,6 +121,7 @@ class Runner:
         self.scene: dict | None = None  # the scene on, or waiting to come back after a show: {id, name}
         self.live = None  # livemusic.LiveMusic, set by the server, for scenes with React to music
         self.seasons_changed = None  # set by the server: tells MQTT a season was switched by a command
+        self.on_event = None  # set by the server: integration.Hub.emit, for Home Assistant's events
         self.scene_playing = False  # its frames are what the lights are showing now
         self._wled_tasks: set = set()  # WLEDs being told to play their own effect
         self._idle_since: float | None = None
@@ -726,9 +727,19 @@ class Runner:
     def _playlist_running(self) -> bool:
         return bool(self._playlist and not self._playlist.done())
 
+    def _event(self, name: str, data: dict):
+        """Tell Home Assistant's integration (integration.Hub) something happened."""
+        if self.on_event:
+            try:
+                self.on_event(name, data)
+            except Exception:  # never let telling Home Assistant hold up a visitor's pick
+                log.exception("couldn't send the %s event", name)
+
     def add_request(self, request: dict):
         """Queue a visitor's request: {id, ticket, kind, ref, name, shows: [show ids], gap}."""
         self.requests.append(request)
+        self._event("visitor_pick", {"name": request.get("name"), "kind": request.get("kind"),
+                                     "waiting": len(self.requests)})
         if not self._public or self._public.done():
             self._public = asyncio.create_task(self._run_requests())
 
@@ -748,6 +759,7 @@ class Runner:
         if old and (old["kind"], old["ref"]) == (pick["kind"], pick["ref"]):
             return
         self.votes[ticket] = {**pick, "at": clock()}
+        self._event("visitor_vote", {"name": pick.get("name"), "kind": pick.get("kind"), "votes": len(self.votes)})
         if not self._public or self._public.done():
             self._public = asyncio.create_task(self._run_requests())
 

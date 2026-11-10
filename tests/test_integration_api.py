@@ -113,3 +113,22 @@ def test_integration_speaks_the_same_api():
     assert f"API = {integration.API}" in (root / "const.py").read_text()
     from halidayshow import __version__
     assert json.loads((root / "manifest.json").read_text())["version"] == __version__
+
+
+async def test_play_options_and_skip_are_checked(client):
+    await _show(client, "Party")
+    bad = await client.post("/api/integration/command", json={"action": "play", "show": "Party",
+                                                                  "media_player": "light.porch"})
+    assert bad.status == 400
+    r = await client.post("/api/integration/command", json={"action": "skip"})
+    assert r.status == 400 and "nothing to skip" in await r.text()
+    assert server._clean_integration_command({"action": "play", "position": -5})["position"] == 0.0
+    assert "position" not in server._clean_integration_command({"action": "play", "position": float("nan")})
+
+
+async def test_hub_events_reach_the_integration(client):
+    async with client.ws_connect("/api/integration/ws") as ws:
+        await ws.receive(timeout=2)
+        await client.put("/api/preshow/last", json={"level": "ok", "problems": 0, "warnings": 0})
+        msg = json.loads((await ws.receive(timeout=2)).data)
+        assert msg == {"type": "event", "event": "preshow_check", "data": {"level": "ok", "problems": 0, "warnings": 0}}

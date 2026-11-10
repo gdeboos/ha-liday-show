@@ -184,6 +184,11 @@ def _clean_integration_command(body) -> dict:
     for key in ("on", "out"):
         if isinstance(body.get(key), bool):
             out[key] = body[key]
+    pos = body.get("position")
+    if isinstance(pos, (int, float)) and not isinstance(pos, bool) and math.isfinite(pos):
+        out["position"] = max(0.0, min(float(pos), 24 * 3600.0))
+    if "media_player" in out and not re.fullmatch(r"media_player\.[a-z0-9_]+", out["media_player"]):
+        raise web.HTTPBadRequest(text="media_player must be a speaker's entity id, like media_player.garden")
     level = body.get("brightness")
     if isinstance(level, (int, float)) and not isinstance(level, bool) and math.isfinite(level):
         out["brightness"] = max(1, min(100, round(level)))
@@ -2732,6 +2737,9 @@ async def preshow_run(request):
     devices = storage.load_devices()
     away = seasons.away(devices, seasons.load(settings))
     light_lines, look = await preshow.lights(devices, away, app[HA])
+    for ln in light_lines:
+        if ln["level"] == "fail":
+            app[HUB].emit("light_not_answering", {"light": ln.get("light"), "message": ln["text"]})
     where = app[SCHEDULER].where()[0]
     today = datetime.date.today()
     p = public.load(storage) or public.clean(None)
@@ -2825,6 +2833,7 @@ async def put_preshow_last(request):
     settings = storage.load_settings()
     settings["preshow"] = last
     storage.save_settings(settings)
+    request.app[HUB].emit("preshow_check", {k: last[k] for k in ("level", "problems", "warnings")})
     return web.json_response(last)
 
 
@@ -3727,6 +3736,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[HUB] = integration.Hub(app[RUNNER])
         app[MQTT].on_refresh.append(app[HUB].refresh)
         app[HUB].released = app[MQTT].refresh
+        app[RUNNER].on_event = app[HUB].emit
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
         app[LIVE] = LiveMusic(lambda: {d["ip"]: d.get("name") for d in app[STORAGE].load_devices() if d.get("ip")})
         await app[LIVE].start()

@@ -122,10 +122,11 @@ async def lights(devices: list[dict], away: set[str], ha=None, *, scan=discovery
             answered.append(d)
             look.append(d["id"])
         elif k == "ha":
-            out.append(line("fail", f"{d['name']} is unavailable in Home Assistant.",
-                            "Check it's plugged in, or look at it under Settings → Devices in Home Assistant."))
+            out.append({**line("fail", f"{d['name']} is unavailable in Home Assistant.",
+                                "Check it's plugged in, or look at it under Settings → Devices in Home Assistant."),
+                        "light": d["name"]})
         else:
-            out.append(line("fail", f"{d['name']} didn't answer.", NO_ANSWER_FIX[k]))
+            out.append({**line("fail", f"{d['name']} didn't answer.", NO_ANSWER_FIX[k]), "light": d["name"]})
     if quiet:
         out.insert(0, line("info", f"{names(quiet)} can't be asked over the network, so "
                            f"{'watch it' if len(quiet) == 1 else 'watch them'} in the next step."))
