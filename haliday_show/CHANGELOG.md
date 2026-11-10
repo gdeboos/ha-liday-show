@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.476
+
+- **Schedule uses your folders.** **+ Add to schedule** (and pressing a row's name to change what it plays) now shows your folders from the Library on the **Playlists**, **Shows** and **Scenes** tabs. **Find by name** still looks everywhere, and says which folder each one is in.
+
 ## 0.2.475
 
 - **Phones are in time from the first beat.** When a show starts and phones are listening, each phone now loads the song first. The lights start once every listening phone has it, waiting no more than 3 seconds so one slow phone can't hold things up, and the page says "Getting the music ready…" meanwhile. Before, the phone started a second or two behind and took about 5 seconds to catch up.
