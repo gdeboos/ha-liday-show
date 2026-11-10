@@ -730,7 +730,10 @@ class Runner:
     def _event(self, name: str, data: dict):
         """Tell Home Assistant's integration (integration.Hub) something happened."""
         if self.on_event:
-            self.on_event(name, data)
+            try:
+                self.on_event(name, data)
+            except Exception:  # never let telling Home Assistant hold up a visitor's pick
+                log.exception("couldn't send the %s event", name)
 
     def add_request(self, request: dict):
         """Queue a visitor's request: {id, ticket, kind, ref, name, shows: [show ids], gap}."""

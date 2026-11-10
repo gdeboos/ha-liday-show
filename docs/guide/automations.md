@@ -34,6 +34,10 @@ delete it.
 Update the integration whenever you update the app: the Marketplace offers the update alongside it.
 If they get out of step, the integration says so.
 
+For Docker and pipx installs, add the integration by hand and give the address of the computer
+HA-liday Show runs on, its port (8099 unless you changed `HALIDAY_SHOW_PORT`) and the password you set
+with `HALIDAY_SHOW_PASSWORD`.
+
 #### Actions
 
 The integration adds four actions for automations and scripts:
@@ -71,6 +75,9 @@ start an automation from any of them in the automation editor:
 | **Pre-show check** | a pre-show check **finishes** (with how it went: `ok`, `warn` or `fail`) |
 | **Lights** | a pre-show check finds a light that's **not answering** (with the light's name) |
 
+Events are only sent while Home Assistant is connected. If a show ends while Home Assistant is
+restarting, its **ended** event arrives when it's back.
+
 The same events are also on Home Assistant's event bus, as `haliday_show_show_started`,
 `haliday_show_show_ended`, `haliday_show_visitor_pick`, `haliday_show_visitor_vote`,
 `haliday_show_preshow_check` and `haliday_show_light_not_answering`. For example, a phone notification
@@ -85,10 +92,6 @@ actions:
     data:
       message: "{{ trigger.event.data.light }} didn't answer the pre-show check."
 ```
-
-For Docker and pipx installs, add the integration by hand and give the address of the computer
-HA-liday Show runs on, its port (8099 unless you changed `HALIDAY_SHOW_PORT`) and the password you set
-with `HALIDAY_SHOW_PASSWORD`.
 
 ### With MQTT
 

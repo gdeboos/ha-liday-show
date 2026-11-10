@@ -14,7 +14,7 @@ import json
 import logging
 import time
 
-from . import __version__, playlists, seasons
+from . import __version__, playlists, seasons, timingtest
 from .commands import find_show, handle
 from .mqtt import scene_options, show_options
 from .runner import Runner, RunnerError
@@ -172,6 +172,7 @@ class Hub:
         self.seen = time.monotonic()  # last time an integration was connected (or the app started)
         self._playing = None
         self._playing_data = {}
+        self._sending: set = set()
         self.released = None  # called after handing the entities back
 
     def refresh(self):
@@ -184,7 +185,9 @@ class Hub:
             return
         text = json.dumps({"type": "event", "event": name, "data": data})
         for ws in list(self.clients):
-            asyncio.get_running_loop().create_task(self._send(ws, text))
+            task = asyncio.get_running_loop().create_task(self._send(ws, text))
+            self._sending.add(task)  # kept until sent, so it isn't dropped half-way
+            task.add_done_callback(self._sending.discard)
 
     async def _send(self, ws, text: str):
         try:
@@ -196,7 +199,8 @@ class Hub:
         """Show started and ended events, from what's playing (scenes are left out: the light shows them)."""
         st = self.runner.status()
         scene_on = bool(st.get("scene") and st["scene"].get("playing"))
-        now = (st["show"], st["started"]) if st["playing"] and st["show"] and not scene_on else None
+        now = (st["show"], st["started"]) if st["playing"] and st["show"] and not scene_on \
+            and st["show"] != timingtest.TIMING_ID else None
         if now == self._playing:
             return
         if self._playing:

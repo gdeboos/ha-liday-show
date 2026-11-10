@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import voluptuous as vol
 
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
@@ -16,7 +17,7 @@ PLAY_SCHEMA = vol.All(
         vol.Exclusive("playlist", "what"): cv.string,
         vol.Exclusive("scene", "what"): cv.string,
         vol.Optional("media_player"): cv.entity_id,
-        vol.Optional("start_at"): vol.All(vol.Coerce(float), vol.Range(min=0)),
+        vol.Optional("start_at"): vol.All(vol.Coerce(float), vol.Range(min=0, max=24 * 3600)),
     }),
     cv.has_at_least_one_key("show", "playlist", "scene"),
 )
@@ -24,7 +25,7 @@ SEASON_SCHEMA = vol.Schema({vol.Required("season"): cv.string, vol.Required("out
 
 
 def _client(hass: HomeAssistant):
-    entries = [e for e in hass.config_entries.async_loaded_entries(DOMAIN)]
+    entries = [e for e in hass.config_entries.async_entries(DOMAIN) if e.state is ConfigEntryState.LOADED]
     if not entries:
         raise ServiceValidationError("HA-liday Show isn't set up, or isn't answering")
     return entries[0].runtime_data.client
