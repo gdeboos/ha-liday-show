@@ -784,6 +784,14 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+.ai-colours-waiting .busy-row { display: flex; align-items: center; gap: 12px; }
+.ai-colours-waiting .spinner { flex: none; width: 1.4em; height: 1.4em; border-width: 3px; color: var(--accent); }
+/* A song's palette on its row in Library → Songs. */
+.song-badge.song-pal { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; padding: 1px 9px 1px 4px;
+  min-height: 0; color: var(--text); background: var(--panel); border: 1px solid var(--line); cursor: pointer; }
+.song-badge.song-pal:hover { border-color: var(--accent); }
+.song-pal-strip { display: inline-flex; height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.song-pal-strip i { width: 10px; }
 /* A button whose job is still going (Play getting the lights ready, Open fetching the song). */
 button.busy { cursor: progress; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }

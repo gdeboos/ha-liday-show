@@ -2283,6 +2283,15 @@ async def test_a_video_download_has_a_safe_file_name(client, tmp_path):
     assert r.status == 200 and 'filename="No_l Snow day.mp4"' in cd and "filename*=UTF-8''No%C3%ABl%20Snow%20day.mp4" in cd, cd
 
 
+async def test_library_songs_lists_a_songs_palette(client, tmp_path):
+    (tmp_path / "media" / "carol.wav").write_bytes(b"RIFF....WAVEfmt " + b"\0" * 100)
+    row = lambda songs: {x["path"]: x for x in songs["songs"]}["carol.wav"]  # noqa: E731
+    assert "palette" not in row(await (await client.get("/api/songs")).json())
+    pal = {"name": "Carol", "colors": ["#ff0000", "#00ff00"], "from": "ai"}
+    assert (await client.put("/api/audio/palette", params={"source": "media", "path": "carol.wav"}, json=pal)).status == 200
+    assert row(await (await client.get("/api/songs")).json())["palette"] == {"name": "Carol", "colors": ["#ff0000", "#00ff00"]}
+
+
 async def test_a_song_keeps_its_lyrics_and_singer(client, tmp_path):
     song = tmp_path / "media" / "carol.wav"
     song.write_bytes(b"RIFF....WAVEfmt " + b"\0" * 100)

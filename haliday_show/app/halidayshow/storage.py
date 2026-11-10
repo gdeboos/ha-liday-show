@@ -614,7 +614,10 @@ class Storage:
                         "key": (info or {}).get("key"),
                         "sections": len((info or {}).get("sections") or []),
                         # Whether it has words (for the Lyrics badge); kept beside what Detect found.
-                        "lyrics": bool((self.load_song_extra(ref["source"], ref["path"], "lyrics") or {}).get("text", "").strip())})
+                        "lyrics": bool((self.load_song_extra(ref["source"], ref["path"], "lyrics") or {}).get("text", "").strip()),
+                        # The palette kept with it (Colours from this song), for its row.
+                        **({"palette": {"name": pal.get("name", ""), "colors": pal["colors"]}}
+                           if (pal := self.load_song_palette(ref["source"], ref["path"])) and pal.get("colors") else {})})
         return {"songs": out, "more": len(refs) > limit}
 
     def speaker_test_path(self) -> str:
