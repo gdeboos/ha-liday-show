@@ -122,29 +122,44 @@ async def ws_house(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
 
 
 @websocket_api.websocket_command({vol.Required("type"): "haliday_show/house/frames"})
-@websocket_api.async_response
-async def ws_house_frames(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
-    """What's on the lights, a few times a second, for as long as the House card is open."""
-    client = _client(hass)
-    if client is None:
-        connection.send_error(msg["id"], "not_ready", "HA-liday Show isn't set up, or isn't answering")
-        return
+@callback
+def ws_house_frames(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+    """What's on the lights, a few times a second, for as long as a House card is on screen. One feed is
+    shared by every open card, and it stops when the last one goes."""
+    feed = hass.data.setdefault(f"{DOMAIN}_frames", {"subs": {}, "task": None, "last": None})
+    key = (id(connection), msg["id"])
+    feed["subs"][key] = (connection, msg["id"])
 
-    async def feed() -> None:
-        last = None
-        while True:
-            try:
-                now = await client.get("/api/player/frame")
-            except (CannotConnect, CommandFailed):
-                now = None
-            if now is not None and now != last:
-                connection.send_message(websocket_api.event_message(msg["id"], now))
-                last = now
-            await asyncio.sleep(FRAME_EVERY if (now or {}).get("playing") else 1)
+    @callback
+    def unsubscribe() -> None:
+        feed["subs"].pop(key, None)
+        if not feed["subs"] and feed["task"]:
+            feed["task"].cancel()
+            feed["task"] = None
 
-    task = hass.async_create_background_task(feed(), "haliday_show house frames")
-    connection.subscriptions[msg["id"]] = task.cancel
+    connection.subscriptions[msg["id"]] = unsubscribe
     connection.send_result(msg["id"])
+    if feed["last"] is not None:
+        connection.send_message(websocket_api.event_message(msg["id"], feed["last"]))
+    if feed["task"] is None:
+        feed["task"] = hass.async_create_background_task(_frames(hass, feed), "haliday_show house frames")
+
+
+async def _frames(hass: HomeAssistant, feed: dict) -> None:
+    feed["last"] = None
+    while feed["subs"]:
+        client = _client(hass)  # again each time: the integration may have been reloaded
+        try:
+            now = await client.get("/api/player/frame") if client else None
+        except Exception as err:  # noqa: BLE001 - a bad moment (app restarting, password changed): try again
+            _LOGGER.debug("no frame from HA-liday Show: %s", err)
+            now = None
+        if now is not None and now != feed["last"]:
+            feed["last"] = now
+            for connection, msg_id in list(feed["subs"].values()):
+                connection.send_message(websocket_api.event_message(msg_id, now))
+        await asyncio.sleep(FRAME_EVERY if (now or {}).get("playing") else 1)
+    feed["last"] = None
 
 
 class HousePhotoView(HomeAssistantView):
@@ -170,13 +185,24 @@ class DrawingCodeView(HomeAssistantView):
     name = "api:haliday_show:js"
     requires_auth = False
 
+    def __init__(self) -> None:
+        self.cache: dict[tuple[str, str], bytes] = {}  # (name, app version) -> file, so anyone asking can't load the app
+
     async def get(self, request: web.Request, name: str) -> web.Response:
         if name not in DRAWING_CODE and name != SAMPLE_HOUSE:
             raise web.HTTPNotFound
-        client = _client(request.app["hass"])
-        path = f"/static/{name}" if name == SAMPLE_HOUSE else f"/static/js/{name}"
-        got = await client.raw(path) if client else None
-        if not got:
+        hass = request.app["hass"]
+        client = _client(hass)
+        if client is None:
             raise web.HTTPNotFound
-        return web.Response(body=got[0], content_type="image/svg+xml" if name == SAMPLE_HOUSE else "text/javascript",
-                            headers={"Cache-Control": "public, max-age=3600"})
+        entry = next(e for e in hass.config_entries.async_entries(DOMAIN) if e.state is ConfigEntryState.LOADED)
+        key = (name, str((entry.runtime_data.coordinator.data or {}).get("version")))
+        if key not in self.cache:
+            got = await client.raw(f"/static/{name}" if name == SAMPLE_HOUSE else f"/static/js/{name}")
+            if not got:
+                raise web.HTTPNotFound
+            self.cache = {k: v for k, v in self.cache.items() if k[1] == key[1]}  # drop an older app's files
+            self.cache[key] = got[0]
+        # no-cache: after an update the browser checks again, so it never mixes old and new files.
+        return web.Response(body=self.cache[key], content_type="image/svg+xml" if name == SAMPLE_HOUSE else "text/javascript",
+                            headers={"Cache-Control": "no-cache"})

@@ -288,7 +288,13 @@ async def test_house_card_plumbing(hass: HomeAssistant, app, hass_ws_client, has
         if msg["event"]["playing"]:
             break
     assert msg["event"]["tracks"] == [{"device": "a", "segments": 2}]
+    feed = hass.data[f"{DOMAIN}_frames"]
+    assert feed["task"] is not None and len(feed["subs"]) == 1
     await ws.send_json({"id": 3, "type": "unsubscribe_events", "subscription": 2})
+    for _ in range(10):  # replies may still carry frames sent just before
+        if (await ws.receive_json()).get("id") == 3:
+            break
+    assert feed["task"] is None and not feed["subs"]  # nothing fetched with no card open
     await hass.services.async_call(DOMAIN, "stop", {}, blocking=True)
 
     open_client = await hass_client_no_auth()

@@ -569,10 +569,15 @@ class HalidayHouseCard extends HalidayCard {
   }
 
   async ready() {
+    clearTimeout(this._retry);
+    this._retry = null;
+    this._tries = (this._tries || 0) + 1;
     try {
       const base = "/api/haliday_show/js/";
+      // A try number too, as a browser can remember a module that failed to load.
+      const q = `?v=${encodeURIComponent(VERSION)}&r=${this._tries}`;
       const [{ House }, matrix, parts] = await Promise.all([
-        import(`${base}house.js?v=${VERSION}`), import(`${base}matrix.js`), import(`${base}parts.js`)]);
+        import(`${base}house.js${q}`), import(`${base}matrix.js`), import(`${base}parts.js`)]);
       this._m = { gridOf: matrix.gridOf, fromWire: matrix.fromWire, partSize: parts.partSize, partGrid: parts.partGrid,
         gatherPart: parts.gatherPart };
       const layout = await this._hass.callWS({ type: "haliday_show/house" });
@@ -588,12 +593,9 @@ class HalidayHouseCard extends HalidayCard {
         return img;
       };
       if (layout.house.photo) {
-        try {
-          const signed = await this._hass.callWS({ type: "auth/sign_path", path: "/api/haliday_show/house_photo", expires: 86400 });
-          view.photo = await load(signed.path);
-        } catch { /* the sample instead */ }
-      }
-      if (!view.photo) {
+        const signed = await this._hass.callWS({ type: "auth/sign_path", path: "/api/haliday_show/house_photo", expires: 86400 });
+        view.photo = await load(signed.path);  // if this fails, try again later rather than draw the sample
+      } else {
         view.photo = await load(`${base}sample-house.svg`);
         view.sample = true;
       }
@@ -604,15 +606,19 @@ class HalidayHouseCard extends HalidayCard {
       this._message = "";
       this._subscribe();
     } catch (e) {
-      this._message = e && e.message ? `Couldn't draw your house: ${e.message}` : "Couldn't draw your house.";
+      // HA-liday Show may be starting or updating: try again, so a wall tablet comes back by itself.
+      this._message = "Waiting for HA-liday Show…";
+      if (this.isConnected) this._retry = setTimeout(() => this.ready(), RETRY_MS);
     }
     this.render();
   }
 
   async _subscribe() {
-    if (this._unsub || !this._houseView || !this.isConnected) return;
+    if (this._unsub || this._subscribing || !this._houseView || !this.isConnected || document.hidden) return;
+    this._subscribing = true;
+    let unsub = null;
     try {
-      this._unsub = await this._hass.connection.subscribeMessage((frame) => {
+      unsub = await this._hass.connection.subscribeMessage((frame) => {
         this._frames = framesByLight(frame, this._lights, this._m);
         this._paint();
       }, { type: "haliday_show/house/frames" });
@@ -620,17 +626,31 @@ class HalidayHouseCard extends HalidayCard {
       this._message = "Couldn't follow your lights.";
       this.render();
     }
+    this._subscribing = false;
+    // Taken off the screen (or hidden) while that was on its way: stop it again straight away.
+    if (unsub && (!this.isConnected || document.hidden)) unsub();
+    else this._unsub = unsub;
+  }
+
+  _stop() {
+    if (this._unsub) { this._unsub(); this._unsub = null; }
   }
 
   connectedCallback() {
+    this._visible = () => (document.hidden ? this._stop() : this._subscribe());
+    document.addEventListener("visibilitychange", this._visible);
     this._subscribe();
+    if (this._ents && !this._houseView && !this._retry) this.ready();
     this._resize = new ResizeObserver(() => this._paint());
     this._resize.observe(this);
   }
 
   disconnectedCallback() {
-    // Nothing is fetched while no House card is on screen.
-    if (this._unsub) { this._unsub(); this._unsub = null; }
+    // Nothing is fetched while no House card is on screen (or the screen is off).
+    this._stop();
+    clearTimeout(this._retry);
+    this._retry = null;
+    document.removeEventListener("visibilitychange", this._visible);
     this._resize?.disconnect();
   }
 
