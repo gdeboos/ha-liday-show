@@ -222,6 +222,49 @@ async def integration_claim(request):
     return web.json_response({"ok": True, "claimed": body["on"]})
 
 
+def _integration_extras(app, now=None) -> dict:
+    """What the integration's sensors show beyond the basics; cheap enough for once a second, except
+    the schedule's next start, which is worked out at most every 30 seconds."""
+    storage, runner = app[STORAGE], app[RUNNER]
+    settings = storage.load_settings()
+    p = public.load(storage) or public.clean(None)
+    where = app[SCHEDULER].where()[0]
+    cache = app[HUB].__dict__.setdefault("_next_cache", {"at": 0.0, "value": None})
+    if time.monotonic() - cache["at"] > 30:
+        cache["value"] = _next_on_schedule(app)
+        cache["at"] = time.monotonic()
+    voting = p.get("pick") == "vote"
+    return {
+        "next": cache["value"],
+        "queue": {"mode": "vote" if voting else "queue",
+                  "waiting": len(runner.votes) if voting else len(runner.requests),
+                  "names": [r["name"] for r in runner.requests][:20] if not voting else
+                  [f"{c['name']} ({c['count']})" for c in runner.vote_counts()][:20]},
+        "listening": public.tonight(runner)["listening"],
+        "preshow": settings.get("preshow") if isinstance(settings.get("preshow"), dict) else None,
+        "page": {"on": bool(p["on"]), "open": bool(p["on"] and public.hours_now(p, where, now)["open"])},
+    }
+
+
+def _next_on_schedule(app) -> dict | None:
+    """The schedule's next start: {at, name, kind}, or None."""
+    storage = app[STORAGE]
+    state = app[SCHEDULER].state()
+    entries = {e["id"]: e for e in schedule.load_entries(storage)}
+    soonest = sorted((at, i) for i, at in state["next"].items() if i in entries)
+    for at, i in soonest:
+        kind, ref = entries[i]["play"]["type"], entries[i]["play"]["id"]
+        if kind == "playlist":
+            name = next((x["name"] for x in playlists.load(storage) if x["id"] == ref), None)
+        elif kind == "scene":
+            name = (storage.load_scene(ref) or {}).get("name")
+        else:
+            name = (storage.load_show(ref) or {}).get("name")
+        if name:
+            return {"at": at, "name": name, "kind": kind}
+    return None
+
+
 # Export video (video.py) ------------------------------------------------------------------------
 _VIDEO_ID = re.compile(r"^[a-z0-9]{12}$")
 
@@ -3737,6 +3780,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[MQTT].on_refresh.append(app[HUB].refresh)
         app[HUB].released = app[MQTT].refresh
         app[RUNNER].on_event = app[HUB].emit
+        app[HUB].extras = lambda: _integration_extras(app)
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
         app[LIVE] = LiveMusic(lambda: {d["ip"]: d.get("name") for d in app[STORAGE].load_devices() if d.get("ip")})
         await app[LIVE].start()

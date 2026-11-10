@@ -49,6 +49,20 @@ def lists(storage) -> dict:
     }
 
 
+def playing(runner: Runner, st: dict) -> dict | None:
+    """What's on, for the media player: None when nothing is (a scene shows on the light instead)."""
+    scene_on = bool(st.get("scene") and st["scene"].get("playing"))
+    if not st["playing"] or scene_on:
+        return None
+    song = st.get("song")
+    return {"show": st["show"], "name": st.get("name") or st["show"] or "",
+            "playlist": (st.get("playlist") or {}).get("name"),
+            "position": st["position"], "duration": st["duration"], "started": st.get("started"),
+            "song": {"source": song["source"], "path": song["path"],
+                     "title": song["path"].rsplit("/", 1)[-1].rsplit(".", 1)[0]} if song else None,
+            "speaker": st.get("media_player"), "visitor": bool(getattr(runner, "public_now", None))}
+
+
 def snapshot(runner: Runner, listed: dict | None = None) -> dict:
     storage = runner.storage
     settings = storage.load_settings()
@@ -61,6 +75,7 @@ def snapshot(runner: Runner, listed: dict | None = None) -> dict:
         "selected_show": settings.get("selected_show"),
         "selected_playlist": settings.get("selected_playlist"),
         "status": (st["name"] or st["show"]) if st["playing"] else "idle",
+        "playing": playing(runner, st),
         "light": {"on": bool(scene), "brightness": runner.scene_level(), "scene": scene["id"] if scene else None},
     }
 
@@ -174,6 +189,7 @@ class Hub:
         self._playing_data = {}
         self._sending: set = set()
         self.released = None  # called after handing the entities back
+        self.extras = None  # set by the server: schedule, visitors and pre-show details (server._integration_extras)
 
     def refresh(self):
         self._lists = None
@@ -215,7 +231,13 @@ class Hub:
     def snapshot(self) -> dict:
         if self._lists is None:
             self._lists = lists(self.runner.storage)
-        return snapshot(self.runner, self._lists)
+        out = snapshot(self.runner, self._lists)
+        if self.extras:
+            try:
+                out.update(self.extras())
+            except Exception:
+                log.exception("couldn't gather the extra details for Home Assistant")
+        return out
 
     def _release_if_gone(self):
         """The integration was removed while the app was off (or unreachable), so it couldn't say so."""

@@ -189,3 +189,30 @@ async def test_visitor_and_check_events(hass: HomeAssistant, app) -> None:
     assert ("check", {"level": "warn", "problems": 0, "warnings": 2}) in got
     assert got[0][0] == "pick" and got[0][1]["name"] == "Party"
     assert hass.states.get("event.ha_liday_show_visitors").attributes["event_type"] == "pick"
+
+
+async def test_media_player_and_sensors(hass: HomeAssistant, app) -> None:
+    from halidayshow import baked
+    await _set_up(hass, app)
+    assert hass.states.get("media_player.ha_liday_show_player").state == "idle"
+    assert hass.states.get("sensor.ha_liday_show_visitors_waiting").state == "0"
+    assert hass.states.get("sensor.ha_liday_show_phones_listening").state == "0"
+    assert hass.states.get("sensor.ha_liday_show_next_on_the_schedule").state == "unknown"
+    assert hass.states.get("binary_sensor.ha_liday_show_visitors_page_open").state == "off"
+    app.storage.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * 400))
+    await hass.services.async_call("media_player", "select_source",
+                                   {"entity_id": "media_player.ha_liday_show_player", "source": "Party"}, blocking=True)
+    await _settle(hass, lambda: hass.states.get("media_player.ha_liday_show_player").attributes.get("source") == "Party")
+    await hass.services.async_call("media_player", "media_play", {"entity_id": "media_player.ha_liday_show_player"},
+                                   blocking=True)
+    await _settle(hass, lambda: hass.states.get("media_player.ha_liday_show_player").state == "playing")
+    st = hass.states.get("media_player.ha_liday_show_player")
+    assert st.attributes["media_title"] == "Party" and st.attributes["media_duration"] == 10
+    await hass.services.async_call("media_player", "media_stop", {"entity_id": "media_player.ha_liday_show_player"},
+                                   blocking=True)
+    await _settle(hass, lambda: hass.states.get("media_player.ha_liday_show_player").state == "idle")
+
+    async with __import__("aiohttp").ClientSession() as s:
+        await s.put(f"http://127.0.0.1:{app.port}/api/preshow/last", json={"level": "fail", "problems": 1, "warnings": 0})
+    await _settle(hass, lambda: hass.states.get("sensor.ha_liday_show_last_pre_show_check").state == "fail")
+    assert hass.states.get("sensor.ha_liday_show_last_pre_show_check").attributes["problems"] == 1
