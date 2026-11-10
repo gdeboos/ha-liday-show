@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.490
+
+- **The HA-liday Show cards resize properly.** On a sections dashboard, the card editor's **Layout** tab no longer warns that they don't support resizing. Each card starts at a sensible size, tidies itself up when you make it narrow, and scrolls inside itself when you give it a set height. The **House** card's picture grows or shrinks to fill the space you give it.
+
 ## 0.2.489
 
 - **The HA-liday Show cards have a visual editor.** Press a card while editing your dashboard to set its options, no YAML needed. Every card has a **Title** and **Hide the title**. You can also hide parts of each card (the cover art, what's next, Brightness, the pre-show check and so on), pick which scenes the **Scenes** card shows and in what order, set its **Columns**, make **Browse** show only shows or only playlists with smaller or bigger tiles, and set how tall the **House** card can be. Cards you've already added look the same as before. See **Dashboard cards** in the guide.

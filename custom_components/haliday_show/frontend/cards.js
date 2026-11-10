@@ -10,9 +10,13 @@ const RETRY_MS = 10000;
 const RESIGN_MS = 20 * 3600 * 1000;  // picture links are signed for 24 hours
 
 const STYLE = `
-  :host { display: block; }
-  ha-card { padding: 16px; overflow: hidden; }
-  .head { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 500; margin-bottom: 12px; }
+  /* The card fills the space a dashboard gives it, and adapts to its own width (container queries). */
+  :host { display: block; height: 100%; container-type: inline-size; }
+  ha-card { padding: 16px; overflow: hidden; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; }
+  /* The part that takes any spare height, and scrolls when the card is made shorter than it. */
+  .fill { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 3px; margin: -3px; }  /* room for focus rings */
+  .head { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 500; margin-bottom: 12px; flex: none; }
+  .head .grow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .head ha-icon { color: var(--state-icon-color, var(--primary-color)); }
   .muted { color: var(--secondary-text-color); }
   .small { font-size: 0.875rem; }
@@ -29,6 +33,12 @@ const STYLE = `
     border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; min-height: 40px; box-sizing: border-box; }
   .error { color: var(--error-color); font-size: 0.875rem; margin-top: 8px; }
   .note { font-size: 0.875rem; margin-top: 8px; color: var(--secondary-text-color); }
+  @container (max-width: 260px) {
+    ha-card { padding: 12px; }
+    .head { font-size: 1rem; margin-bottom: 8px; }
+    .btn { padding: 0 10px; }
+    .head .btn .label { display: none; }  /* just the icon (Off) beside a narrow card's title */
+  }
 `;
 
 // What every card shares: Home Assistant, our entities by what they are, and a tidy way to call actions.
@@ -135,6 +145,16 @@ class HalidayCard extends HTMLElement {
   getCardSize() {
     return 3;
   }
+
+  // Sizes for Home Assistant's sections dashboards (12 columns across). Each card says what suits it.
+  getGridOptions() {
+    return { columns: 6, rows: "auto", min_columns: 3, min_rows: 2 };
+  }
+
+  // Whether you've set the card's height in Layout (rather than letting it fit its content).
+  fixedHeight() {
+    return typeof this._config?.grid_options?.rows === "number";
+  }
 }
 
 // ---- Player: now and next, progress, Play / Stop / Skip -------------------------------------------
@@ -205,6 +225,11 @@ class HalidayPlayerCard extends HalidayCard {
         .times { display: flex; justify-content: space-between; }
         .controls { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         .controls select { flex: 1; min-width: 140px; }
+        @container (max-width: 300px) {
+          .art { width: 48px; height: 48px; border-radius: 10px; }
+          .controls select { min-width: 0; flex-basis: 100%; }
+          .controls .btn { flex: 1; }
+        }
         .note ha-icon { --mdc-icon-size: 16px; vertical-align: -3px; }
       </style>
       <ha-card>
@@ -404,8 +429,8 @@ class HalidayBrowseCard extends HalidayCard {
         </div>` : ""}
         ${this.hides("hide_search") ? "" : `<input type="search" placeholder="Find in every folder" value="${h(this._find)}" aria-label="Find">`}
         ${crumbs}
-        <div class="grid">${view.folders.map(folderTile).join("")}${view.items.map(tile).join("")}</div>
-        ${empty}
+        <div class="fill"><div class="grid">${view.folders.map(folderTile).join("")}${view.items.map(tile).join("")}</div>
+        ${empty}</div>
         ${this._started ? `<div class="note">${h(this._started)}</div>` : ""}
         ${this._error ? `<div class="error">${h(this._error)}</div>` : ""}
       </ha-card>`;
@@ -433,6 +458,10 @@ class HalidayBrowseCard extends HalidayCard {
 
   getCardSize() {
     return 6;
+  }
+
+  getGridOptions() {
+    return { columns: 12, rows: "auto", min_columns: 4, min_rows: 3 };
   }
 }
 
@@ -474,15 +503,17 @@ class HalidayScenesCard extends HalidayCard {
           : "repeat(auto-fill, minmax(130px, 1fr))"}; gap: 8px; }
         .scene { justify-content: flex-start; border-radius: 12px; min-height: 48px; text-align: left; }
         .scene[aria-pressed="true"] { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-        .level { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
-        .level input { flex: 1; padding: 0; min-height: 0; border: none; background: none; accent-color: var(--primary-color); }
-        .level output { min-width: 3.5em; text-align: right; }
+        .level { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex: none; }
+        .level input { flex: 1; min-width: 0; padding: 0; min-height: 0; border: none; background: none; accent-color: var(--primary-color); }
+        .level output { min-width: 3.5em; text-align: right; flex: none; }
+        .note { flex: none; }
+        @container (max-width: 260px) { .level > span { display: none; } .level output { min-width: 0; } }
       </style>
       <ha-card>
         ${this.heading("mdi:creation", title, this.hides("hide_off") ? ""
-          : `<button class="btn" data-off ${on ? "" : "disabled"}><ha-icon icon="mdi:power"></ha-icon>Off</button>`)}
-        ${scenes.length ? `<div class="grid">${scenes.map((sc) =>
-          `<button class="btn scene" data-scene="${h(sc.id)}" aria-pressed="${sc.name === current}" ${gone ? "disabled" : ""}><span class="clip">${h(sc.name)}</span></button>`).join("")}</div>`
+          : `<button class="btn" data-off aria-label="Turn scenes off" ${on ? "" : "disabled"}><ha-icon icon="mdi:power"></ha-icon><span class="label">Off</span></button>`)}
+        ${scenes.length ? `<div class="fill"><div class="grid">${scenes.map((sc) =>
+          `<button class="btn scene" data-scene="${h(sc.id)}" aria-pressed="${sc.name === current}" ${gone ? "disabled" : ""}><span class="clip">${h(sc.name)}</span></button>`).join("")}</div></div>`
           : `<div class="muted small">${all.length ? "None of the scenes picked for this card are there any more: pick again in its options."
             : "No scenes yet: make one in HA-liday Show's Scene editor."}</div>`}
         ${this.hides("hide_brightness") ? "" : `<label class="level small"><span class="muted">Brightness</span>
@@ -562,6 +593,7 @@ class HalidayVisitorsCard extends HalidayCard {
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
         .stat { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 12px; background: var(--secondary-background-color); }
         .stat ha-icon { color: var(--secondary-text-color); flex: none; }
+        @container (max-width: 260px) { .stats { grid-template-columns: 1fr; gap: 8px; } .stat { padding: 8px; } }
         .big { font-size: 1.25rem; font-weight: 500; line-height: 1.2; }
         ol { margin: 10px 0 0; padding-left: 22px; }
         li { padding: 2px 0; }
@@ -570,6 +602,7 @@ class HalidayVisitorsCard extends HalidayCard {
       </style>
       <ha-card>
         ${this.heading("mdi:account-group", title)}
+        <div class="fill">
         ${stats ? `<div class="stats">${stats}</div>` : ""}
         ${picks.length && !this.hides("hide_picks") ? `<ol class="small">${picks.slice(0, 5).map((p) => `<li>${h(p)}</li>`).join("")}</ol>
           ${picks.length > 5 ? `<div class="note">and ${picks.length - 5} more</div>` : ""}` : ""}
@@ -581,6 +614,7 @@ class HalidayVisitorsCard extends HalidayCard {
           : `<ha-icon icon="mdi:clipboard-check-outline"></ha-icon><div class="muted small">${check && check.state === "unavailable"
             ? "The last pre-show check isn't available." : "No pre-show check yet. Run one from HA-liday Show's Setup → Devices."}</div>`}
         </div>`}
+        </div>
         ${this._error ? `<div class="error">${h(this._error)}</div>` : ""}
       </ha-card>`;
     this.shadowRoot.querySelector("[data-skip]")?.addEventListener("click", () =>
@@ -706,7 +740,10 @@ class HalidayHouseCard extends HalidayCard {
     const canvas = this.shadowRoot.querySelector("canvas");
     const view = this._houseView;
     if (!canvas || !view || !view.photo || !canvas.parentElement.clientWidth) return;
-    const maxH = Math.min(2000, Math.max(150, Number(this._config?.max_height) || 420));
+    // With a height set in Layout, the picture fits the space; otherwise it's no taller than max_height.
+    const frame = canvas.parentElement;
+    const maxH = this.fixedHeight() && frame.clientHeight > 40 ? frame.clientHeight
+      : Math.min(2000, Math.max(150, Number(this._config?.max_height) || 420));
     view.paint(canvas, maxH, (dev) => {
       const full = this._frames.get(dev.parent || dev.id);
       if (!full) return new Uint8Array((dev.segments || 1) * 3);
@@ -724,13 +761,15 @@ class HalidayHouseCard extends HalidayCard {
       : playing ? `On now: ${status.state}` : "Nothing is on your lights now.";
     this.shadowRoot.innerHTML = `<style>${STYLE}
         ha-card { padding: 0; }
+        ha-card.fixed .frame { flex: 1 1 0; min-height: 0; overflow: hidden; align-items: center; }
         .head { padding: 16px 16px 0; }
         ha-card > .frame:first-child { border-radius: 12px 12px 0 0; overflow: hidden; }
-        .frame { display: flex; justify-content: center; background: #000; }
+        .frame { display: flex; justify-content: center; background: #000; flex: none; }
+        .line { flex: none; }
         canvas { display: block; max-width: 100%; }
         .line { padding: 10px 16px 14px; }
       </style>
-      <ha-card>
+      <ha-card class="${this.fixedHeight() ? "fixed" : ""}">
         ${this.heading("mdi:home-lightbulb-outline", title)}
         ${this._houseView ? '<div class="frame"><canvas role="img" aria-label="Your house with its lights"></canvas></div>' : ""}
         ${this._houseView && this._placed && this.hides("hide_caption") ? "" : `<div class="line muted small">${h(line)}</div>`}
@@ -741,6 +780,10 @@ class HalidayHouseCard extends HalidayCard {
 
   getCardSize() {
     return 6;
+  }
+
+  getGridOptions() {
+    return { columns: 12, rows: "auto", min_columns: 4, min_rows: 3 };
   }
 }
 
