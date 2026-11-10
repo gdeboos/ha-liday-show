@@ -13,10 +13,12 @@ from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.loader import async_get_integration
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .client import BadPassword, CannotConnect, CommandFailed, HalidayClient, TooOld
 from .const import DEVICE_ID, DOMAIN, EVENT_SIGNAL
+from .frontend import async_setup_frontend
 from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,6 +31,8 @@ PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.EVENT, Platform.L
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_setup_services(hass)
+    integration = await async_get_integration(hass, DOMAIN)
+    await async_setup_frontend(hass, str(integration.version))
     return True
 
 

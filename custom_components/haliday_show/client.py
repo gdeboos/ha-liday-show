@@ -70,6 +70,19 @@ class HalidayClient:
         except (aiohttp.ClientError, asyncio.TimeoutError):
             return None
 
+    async def library(self) -> dict:
+        return await self._request("GET", "/api/integration/library")
+
+    async def image(self, show_id: str) -> tuple[bytes, str] | None:
+        try:
+            async with self.session.get(f"{self.base}/api/integration/image/{show_id}", auth=self.auth,
+                                        timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                if resp.status != 200:
+                    return None
+                return await resp.read(), resp.content_type
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            return None
+
     async def claim(self, on: bool) -> None:
         await self._request("POST", "/api/integration/claim", {"on": on})
 

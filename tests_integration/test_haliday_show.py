@@ -230,3 +230,31 @@ async def test_next_on_the_schedule(hass: HomeAssistant, app) -> None:
     await _set_up(hass, app)
     st = hass.states.get("sensor.ha_liday_show_next_on_the_schedule")
     assert st.state not in ("unknown", "unavailable") and st.attributes["name"] == "Party"
+
+
+async def test_cards_are_served_with_their_data(hass: HomeAssistant, app, hass_ws_client, hass_client) -> None:
+    from homeassistant.setup import async_setup_component
+    assert await async_setup_component(hass, "http", {})
+    settings = app.storage.load_settings()
+    settings["library_folders"] = {"shows": [{"id": "f1", "name": "Christmas", "items": ["party"]}]}
+    app.storage.save_settings(settings)
+    await _set_up(hass, app)
+    ws = await hass_ws_client(hass)
+    await ws.send_json({"id": 1, "type": "haliday_show/entities"})
+    ents = (await ws.receive_json())["result"]
+    assert ents["player"] == "media_player.ha_liday_show_player" and ents["show"] == "select.ha_liday_show_show"
+    assert "switch.ha_liday_show_halloween_props_out" in ents["seasons"]
+    await ws.send_json({"id": 2, "type": "haliday_show/library"})
+    lib = (await ws.receive_json())["result"]
+    assert [s["name"] for s in lib["shows"]] == ["Party"]
+    assert lib["folders"]["shows"][0]["items"] == ["party"]
+
+    client = await hass_client()
+    js = await client.get("/haliday_show_cards/cards.js")
+    assert js.status == 200 and "haliday-show-player-card" in await js.text()
+    assert (await client.get("/haliday_show_cards/cardlib.js")).status == 200
+    assert (await client.get("/api/haliday_show/image/party")).status == 404  # no picture or cover
+    (app.storage.shows_dir / "party.jpg").write_bytes(b"\xff\xd8\xff\xe0fakejpeg")
+    pic = await client.get("/api/haliday_show/image/party")
+    assert pic.status == 200 and await pic.read() == b"\xff\xd8\xff\xe0fakejpeg"
+    assert (await client.get("/api/haliday_show/image/..%2Fsettings")).status in (400, 404)

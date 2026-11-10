@@ -52,6 +52,23 @@ As well as the entities it shares with MQTT, the integration adds these to the *
 - **Last pre-show check**: `ok`, `warn` or `fail`, with how many problems and warnings it found, and when.
 - **Visitors' page open**: on while the public page is switched on and within its opening hours.
 
+#### Dashboard cards
+
+The integration comes with cards for your dashboards. Edit a dashboard, press **+ Add card**, and search
+for **HA-liday Show**:
+
+- **HA-liday Show: Player**: what's playing, its cover art and how far through it is, and what's next on
+  the schedule. When nothing's on, pick a show and press **Play**. While a show plays, **Stop** stops it
+  and **Skip** ends a visitor's pick.
+- **HA-liday Show: Browse**: your shows and playlists as tiles, in the same folders as in **Library**.
+  Press a folder to go in, and the path at the top to come back out. **Find in every folder** searches
+  them all. Press a show or playlist to play it. A show's tile has its picture, else its song's cover
+  art, else its palette's colours.
+
+The cards work for everyone who uses your Home Assistant, on phones too, away from home: they go through
+Home Assistant rather than to HA-liday Show itself. In the card's YAML, `title:` changes the heading, and
+for the Browse card `start: playlists` opens on **Playlists**.
+
 #### Actions
 
 The integration adds four actions for automations and scripts:

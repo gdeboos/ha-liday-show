@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.486
+
+- **HA-liday Show cards for your Home Assistant dashboards.** With the HA-liday Show integration, **+ Add card** now offers **HA-liday Show: Player** (what's playing and what's next, with **Play**, **Stop** and **Skip**) and **HA-liday Show: Browse** (your shows and playlists as tiles in your folders: press one to play it). They work on phones and away from home, for everyone in your household. See **Dashboard cards** in the guide.
+
 ## 0.2.485
 
 - **A player in Home Assistant.** With the HA-liday Show integration, the **HA-liday Show** device now has a **Player**: the show that's on, its song and cover art, its playlist and how far through it is. Pick a show as its **Source**, then **Play**, **Stop**, or **Next** to skip a visitor's pick. It works with Home Assistant's media control card.
