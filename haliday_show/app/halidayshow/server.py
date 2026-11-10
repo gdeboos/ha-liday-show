@@ -160,6 +160,40 @@ async def integration_state(request):
     return web.json_response(request.app[HUB].snapshot())
 
 
+async def integration_library(request):
+    """Your shows and playlists with their folders, for the Browse card. Read only when a card asks."""
+    storage = request.app[STORAGE]
+    shows, settings, plays = await asyncio.to_thread(lambda: (storage.list_shows(), storage.load_settings(),
+                                                              playlists.load(storage)))
+    saved = settings.get("library_folders")
+    saved = saved if isinstance(saved, dict) else {}
+    folders = lambda kind: [{k: f[k] for k in ("id", "name", "items", "parent") if k in f}
+                            for f in saved.get(kind, []) if isinstance(f, dict)]
+    return web.json_response({
+        # picture: its version number (0 for none), so a card fetches a new one when it changes
+        "shows": [{"id": s["id"], "name": s["name"], "duration": s["duration"], "picture": s["picture"],
+                   "cover": s["cover"], "colours": s["colours"][:4] if isinstance(s.get("colours"), list) else [],
+                   "season": s["season"]} for s in shows if not s["in_progress"]],
+        "playlists": [{"id": p["id"], "name": p["name"], "items": len(p.get("items") or [])} for p in plays],
+        "folders": {"shows": folders("shows"), "playlists": folders("playlists")},
+    })
+
+
+async def integration_image(request):
+    """A show's picture, else its song's cover art, for the Browse and Player cards."""
+    storage = request.app[STORAGE]
+    show_id = _show_id(request)
+    pic, show = await asyncio.to_thread(lambda: (storage.show_picture(show_id), storage.load_show(show_id) or {}))
+    if pic is not None:
+        return web.FileResponse(pic, headers={"Cache-Control": "private, max-age=300"})
+    audio = show.get("audio") if isinstance(show.get("audio"), dict) else {}
+    p = storage.audio_path(audio.get("source", ""), audio.get("path", "")) if audio else None
+    found = await asyncio.to_thread(songtags.cached_cover, p) if p is not None else None
+    if found is None:
+        raise web.HTTPNotFound(text="no picture for that show")
+    return web.Response(body=found[1], content_type=found[0], headers={"Cache-Control": "private, max-age=300"})
+
+
 async def integration_ws(request):
     ws = web.WebSocketResponse(heartbeat=30)
     await ws.prepare(request)
@@ -3835,6 +3869,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/report", get_report)
     r.add_get("/api/integration", integration_state)
     r.add_get("/api/integration/ws", integration_ws)
+    r.add_get("/api/integration/library", integration_library)
+    r.add_get("/api/integration/image/{id}", integration_image)
     r.add_post("/api/integration/command", integration_command)
     r.add_post("/api/integration/claim", integration_claim)
     r.add_post("/api/video", video_start)

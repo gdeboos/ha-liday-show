@@ -142,3 +142,13 @@ async def test_snapshot_has_the_sensor_details(client):
     await client.put("/api/preshow/last", json={"level": "warn", "problems": 0, "warnings": 1})
     state = await (await client.get("/api/integration")).json()
     assert state["preshow"]["level"] == "warn"
+
+
+async def test_library_and_images_for_the_cards(client):
+    await _show(client, "Party")
+    await client.put("/api/library-folders", json={"kind": "shows", "folders": [{"id": "f1", "name": "Fun", "items": ["party"]}]})
+    lib = await (await client.get("/api/integration/library")).json()
+    assert [s["name"] for s in lib["shows"]] == ["Party"] and lib["shows"][0]["picture"] == 0
+    assert lib["folders"]["shows"][0]["items"] == ["party"] and lib["playlists"] == []
+    assert (await client.get("/api/integration/image/party")).status == 404
+    assert (await client.get("/api/integration/image/..%2Fsettings")).status in (400, 404)
