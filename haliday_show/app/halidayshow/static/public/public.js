@@ -329,7 +329,11 @@ export function nudgeWord(nudge) {
   return { key: nudge > 0 ? "nudge_earlier_by" : "nudge_later_by", seconds };
 }
 const POLL_MS = 1000;
+const FAST_POLL_MS = 500; // for the first seconds of a song, so it settles in time quickly
+const READY_POLL_MS = 250; // while a visitor's show waits for phones to load its song
+const FAST_S = 5;
 const STEER_MS = 250;
+const KEEP_SONGS = 3; // songs kept loaded on the phone (this one, the next, the last)
 const RENEW_EARLY_S = 120; // ask for a new pass this long before it runs out
 
 // Listening on the phone: plays the song that's on now, kept in time with the lights (listensync.js).
@@ -348,6 +352,9 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
   const ahead = () => nudge + house;
   try { nudge = clampNudge(localStorage.getItem(NUDGE_KEY)); } catch { /* private browsing */ }
   let pollTimer = null, steerTimer = null, polling = false, gen = 0;
+  // Songs loaded ahead, so the next one starts at once: key -> a link to it on the phone.
+  const loaded = new Map();
+  let loading = null, fastUntil = 0, coming = false, landing = null;
   const passKey = `${PASS_KEY}.${code}`;
   const keptPass = () => { try { return localStorage.getItem(passKey) || ""; } catch { return ""; } };
   const keepPass = (v) => { try { v ? localStorage.setItem(passKey, v) : localStorage.removeItem(passKey); } catch { /* this visit only */ } };
@@ -413,6 +420,11 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
     audio.removeAttribute("src");
     audio.load();
     src = ""; song = null; samples = [];
+    clearTimeout(landing?.timer);
+    landing = null;
+    audio.muted = false;
+    for (const u of loaded.values()) URL.revokeObjectURL(u);
+    loaded.clear();
     set("off", message);
   }
 
@@ -422,7 +434,8 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
     try {
       if (me.until - Date.now() < RENEW_EARLY_S * 1000) await getPass();
       const sent = performance.now();
-      const res = await fetch(`api/listen/now?${new URLSearchParams({ code, token: me.token })}`, { cache: "no-store", headers: headers() });
+      const q = { code, token: me.token, ...(loaded.size ? { have: [...loaded.keys()].join(",") } : {}) };
+      const res = await fetch(`api/listen/now?${new URLSearchParams(q)}`, { cache: "no-store", headers: headers() });
       const recv = performance.now();
       if (mine !== gen) return;
       if (res.status === 403 && res.headers.get("X-Listen") === "renew") {
@@ -444,26 +457,50 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
     } finally {
       polling = false;
     }
-    if (mine === gen) pollTimer = setTimeout(() => poll(mine), POLL_MS);
+    if (mine === gen) {
+      const wait = coming ? READY_POLL_MS : performance.now() < fastUntil ? FAST_POLL_MS : POLL_MS;
+      pollTimer = setTimeout(() => poll(mine), wait);
+    }
+  }
+
+  // Loads a song whole onto the phone, one at a time, keeping the last few.
+  async function preload(next) {
+    if (!next?.key || !next.src || loaded.has(next.key) || loading) return;
+    loading = next.key;
+    try {
+      const res = await fetch(next.src, { headers: headers() });
+      if (!res.ok) return;
+      const url = URL.createObjectURL(await res.blob());
+      loaded.set(next.key, url);
+      for (const [k, u] of loaded) {
+        if (loaded.size <= KEEP_SONGS) break;
+        if (k === song || k === next.key) continue;
+        URL.revokeObjectURL(u);
+        loaded.delete(k);
+      }
+    } catch { /* it streams instead */ } finally {
+      loading = null;
+    }
   }
 
   function heard(now, sent, recv) {
+    coming = !!now.coming;
+    preload(now.next);
     if (!now.playing) {
       if (song) { audio.pause(); song = null; src = ""; samples = []; }
-      set("idle");
+      set(coming ? "loading" : "idle");
       return;
     }
     me.name = now.name || "";
     const was = house;
     house = Math.max(-2, Math.min(2, Number(now.offset) || 0));
     if (house !== was) errs = []; // a new timing: steer to it afresh
-    if (song !== now.key) { song = now.key; samples = []; errs = []; }
+    if (song !== now.key) { song = now.key; samples = []; errs = []; fastUntil = performance.now() + FAST_S * 1000; }
     samples = addSample(samples, { sent, recv, position: now.position });
     if (!now.ready) { set("loading"); return; }
     if (src !== now.src) {
       src = now.src;
-      audio.src = src;
-      seekTo();
+      land(loaded.get(now.key) || src);
       return;
     }
     if (audio.paused && me.state !== "tap") play();
@@ -473,6 +510,30 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
     audio.play().then(() => { if (me.state !== "playing") set("playing"); }).catch((e) => {
       if (e?.name === "NotAllowedError") set("tap");
     });
+  }
+
+  // A new song: start it silently so the phone loads it, then jump to where the lights are once it can
+  // play (a jump before then lands late by however long loading took) and turn the sound up.
+  function land(url) {
+    if (url.startsWith("blob:")) {
+      // If the phone won't play what it loaded, stream it as before.
+      audio.addEventListener("error", () => { if (landing?.url === url && src) land(src); }, { once: true });
+    }
+    audio.src = url;
+    audio.muted = true;
+    clearTimeout(landing?.timer);
+    const go = () => {
+      if (landing?.url !== url) return;
+      clearTimeout(landing.timer);
+      landing = null;
+      const loud = () => { audio.muted = false; };
+      audio.addEventListener("seeked", loud, { once: true });
+      setTimeout(loud, 1500); // a phone that doesn't say it has jumped
+      seekTo();
+    };
+    landing = { url, timer: setTimeout(go, 4000) };
+    audio.addEventListener("canplay", go, { once: true });
+    play();
   }
 
   function seekTo() {
@@ -491,9 +552,10 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
     const now = performance.now();
     const t = target(samples, now);
     if (t === null) return;
-    if (now - seekedAt < 1000) return; // let a jump settle first
+    const fast = now < fastUntil; // a song just starting: put it right sooner
+    if (landing || now - seekedAt < (fast ? 400 : 1000)) return; // let a jump settle first
     errs = [...errs, audio.currentTime - (t + ahead())].slice(-8);
-    if (errs.length < 4) return;
+    if (errs.length < (fast ? 2 : 4)) return;
     const err = median(errs);
     if (learning) { lead = learnLead(lead, err); learning = false; }
     const move = steer(err);

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.475
+
+- **Phones are in time from the first beat.** When a show starts and phones are listening, each phone now loads the song first. The lights start once every listening phone has it, waiting no more than 3 seconds so one slow phone can't hold things up, and the page says "Getting the music ready…" meanwhile. Before, the phone started a second or two behind and took about 5 seconds to catch up.
+- **The next song loads while the current one plays.** Phones load the next show in the queue during this one, so it starts in time too.
+- If a phone does start out of time, it now puts itself right within about a second, not 5.
+
 ## 0.2.474
 
 - **Every slider shows its exact number.** Every slider in the editors now has a small box beside it with its exact setting, such as **Speed** and **Intensity** for **WLED's own effect** in the Scene editor, so you can set several lights to exactly the same. Type a number into the box, or use the **↑** and **↓** keys there (hold **Shift** for bigger steps). The **←** and **→** keys still nudge a slider you've clicked on.

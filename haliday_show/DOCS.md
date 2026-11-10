@@ -2773,6 +2773,11 @@ How it works:
 - The phone plays whatever show is on, however it was started: from the page, a playlist, the schedule,
   an automation or the editor. It starts at the right point, and visitors who arrive part-way through
   join in where the song is. Between shows it waits, and carries on with the next one by itself.
+- **In time from the first beat.** Phones load the next song in the queue while the current show plays. When
+  a visitor's show is about to start and phones are listening, the lights wait for every listening phone to
+  load its song, then the lights and the music start together. They never wait more than 3 seconds, so one
+  slow phone can't hold the show up; meanwhile the page says **Getting the music ready…**. With nobody
+  listening, shows start at once as before.
 - With **Nearby only** on, phones have to be nearby to listen, as for starting a show. A PIN is asked
   for as well, not instead.
 - A phone asks for the PIN once, then remembers it until you change it. Change or clear the PIN and

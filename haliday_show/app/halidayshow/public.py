@@ -836,7 +836,8 @@ async def safe_headers(request, handler):
     resp = await handler(request)
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["Referrer-Policy"] = "no-referrer"
-    resp.headers["Content-Security-Policy"] = ("default-src 'self'; img-src 'self' data:; "
+    # media-src blob:: a listening phone plays the songs it loaded ahead from its own memory.
+    resp.headers["Content-Security-Policy"] = ("default-src 'self'; img-src 'self' data:; media-src 'self' blob:; "
                                                "frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
     return resp
 
@@ -1329,34 +1330,90 @@ def _pass_ok(request, p: dict, token):
         raise web.HTTPForbidden(text=words(p)["listen_again"], headers={"X-Listen": "renew"})
 
 
+_HAVE = re.compile(r"^[0-9a-f]{8,64}$")
+_NEXT_SONG: dict = {}  # (config folder, show id) -> (show file's mtime, its song file or None)
+
+
+def _show_song(storage: Storage, show_id: str | None) -> Path | None:
+    """A saved show's song file, read once per change of the show (phones ask about the next one often)."""
+    if not show_id or not valid_id(show_id):
+        return None
+    try:
+        mtime = (storage.shows_dir / f"{show_id}.json").stat().st_mtime_ns
+    except OSError:
+        return None
+    k = (storage.config_dir, show_id)
+    known = _NEXT_SONG.get(k)
+    if not known or known[0] != mtime:
+        if len(_NEXT_SONG) > 50:
+            _NEXT_SONG.clear()
+        known = _NEXT_SONG[k] = (mtime, _song_file(storage, storage.load_show(show_id)))
+    path = known[1]
+    return path if path is not None and path.is_file() else None
+
+
+def _song_link(request, p: dict, key: str) -> str:
+    # Its own signature rather than the pass, so a phone still loading the song when its pass is
+    # renewed carries on.
+    admin = is_admin(request, p)
+    return "listen/song?" + urlencode({"code": p["code"], "key": key,
+                                       "sig": song_sig(request.app[STORAGE], p, key, admin),
+                                       **({"a": "1"} if admin else {})})
+
+
+def _key(path: Path | None) -> str | None:
+    try:
+        return songcopy.key_of(path) if path is not None else None
+    except OSError:
+        return None
+
+
+def _get_ready(request, p: dict, token: str) -> dict:
+    """The song coming next, for the phone to load before it starts ({next: {key, src}}), and whether
+    a visitor's show is waiting for phones to load it ({coming: true}). The phone says which songs it
+    has loaded (?have=key,key); one that has the song coming counts as ready for it."""
+    runner, copies = request.app[RUNNER], request.app[COPIES]
+    out = {}
+    path = _show_song(request.app[STORAGE], runner.next_show())
+    key = _key(path)
+    if key:
+        copies.want(path)
+        if copies.ready(path) is not None:
+            out["next"] = {"key": key, "src": _song_link(request, p, key)}
+    if (coming := runner.coming) is not None:
+        out["coming"] = True
+        have = {h for h in str(request.query.get("have", "")).split(",")[:4] if _HAVE.match(h)}
+        want = _key(_show_song(request.app[STORAGE], coming["show"]))
+        if not want or want in have:  # a show with no song: nothing to wait for
+            coming["ready"].add(token)
+    return out
+
+
 async def get_listen_now(request):
-    """Where the song playing now is: the phone sets its own song to match. Asked about once a second."""
+    """Where the song playing now is: the phone sets its own song to match. Asked about once a second
+    (more often while a song starts)."""
     _limit_client(request, "listen", MAX_LISTEN_PER_CLIENT_MIN)
     p = _listening(request, request.query.get("code"))
-    _pass_ok(request, p, request.query.get("token"))
+    token = request.query.get("token", "")
+    _pass_ok(request, p, token)
     seen = request.app[RUNNER].public_listeners
     if len(seen) > MAX_CLIENTS:
         seen.clear()
-    seen[request.query.get("token", "")] = _runner.clock()
+    seen[token] = _runner.clock()
+    ahead = _get_ready(request, p, token)
     st, path = _now_playing(request)
     if path is None:
-        return _no_store(web.json_response({"playing": False}))
+        return _no_store(web.json_response({"playing": False, **ahead}))
     copies = request.app[COPIES]
     copies.want(path)
-    try:
-        key = songcopy.key_of(path)
-    except OSError:
-        return _no_store(web.json_response({"playing": False}))
+    key = _key(path)
+    if key is None:
+        return _no_store(web.json_response({"playing": False, **ahead}))
     ready = copies.ready(path) is not None
     out = {"playing": True, "key": key, "ready": ready, "name": st.get("name"), "duration": st.get("duration"),
-           "offset": p["listen_offset"]}
+           "offset": p["listen_offset"], **ahead}
     if ready:
-        # Its own signature rather than the pass, so a phone still loading the song when its pass is
-        # renewed carries on.
-        admin = is_admin(request, p)
-        out["src"] = "listen/song?" + urlencode({"code": p["code"], "key": key,
-                                                 "sig": song_sig(request.app[STORAGE], p, key, admin),
-                                                 **({"a": "1"} if admin else {})})
+        out["src"] = _song_link(request, p, key)
     # Read last, so it's as close as can be to the moment the answer leaves.
     out["position"] = round(request.app[RUNNER].player.position(), 4)
     return _no_store(web.json_response(out))
