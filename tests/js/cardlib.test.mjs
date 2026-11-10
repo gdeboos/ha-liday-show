@@ -135,3 +135,12 @@ test("schedule wording", () => {
   assert.deepEqual(["2026-11-10", "2026-11-11", "2026-11-12"].map((d) => dayText(d, now)), ["Today", "Tomorrow", "Thu 12"]);
   assert.equal(spanText(new Date(2026, 10, 10, 17).toISOString(), new Date(2026, 10, 10, 22, 30).toISOString()), "5pm to 10:30pm");
 });
+
+import { wallMinutes } from "../../custom_components/haliday_show/frontend/cardlib.js";
+
+test("schedule: clock time, even across a clock change", () => {
+  // Built from local clock fields, so this holds in any time zone the test runs in (see the TZ runs below).
+  assert.equal(wallMinutes(new Date(2026, 2, 29, 17, 0), "2026-03-29"), 17 * 60);  // UK clocks go forward that morning
+  assert.equal(wallMinutes(new Date(2026, 9, 25, 17, 0), "2026-10-25"), 17 * 60);  // and back
+  assert.equal(wallMinutes(new Date(2026, 9, 26, 1, 30), "2026-10-25"), 25 * 60 + 30);
+});

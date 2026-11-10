@@ -218,15 +218,14 @@ export function pickScenes(all, picked) {
 // to the latest end, to the hour) so the days line up, and each bar as a left and width in %.
 export function scheduleLayout(week, { days = 7, scenes = true, now = new Date() } = {}) {
   const want = (week?.days || []).slice(0, Math.max(1, Math.min(7, days)));
-  const slots = (week?.slots || []).filter((s) => want.includes(s.day) && s.plays && (scenes || s.lane !== "scene"));
-  const t = (iso) => new Date(iso).getTime();
-  // Minutes from the start of the slot's own day, so a stretch past midnight runs on past 24:00.
-  const dayStart = (day) => { const [y, m, d] = day.split("-").map(Number); return new Date(y, m - 1, d).getTime(); };
-  const mins = (iso, day) => (t(iso) - dayStart(day)) / 60000;
+  // Everything on the viewer's own wall clock: a stretch goes on the day it starts there, and is placed
+  // by its clock time (so a clock change, or a phone in another time zone, can't shift it).
+  const slots = (week?.slots || []).filter((s) => s.plays && (scenes || s.lane !== "scene"))
+    .map((s) => ({ ...s, row: localDay(s.plays[0]) })).filter((s) => want.includes(s.row));
   let from = Infinity, to = -Infinity;
   for (const s of slots) {
-    from = Math.min(from, mins(s.plays[0], s.day));
-    to = Math.max(to, mins(s.plays[1], s.day));
+    from = Math.min(from, wallMinutes(s.plays[0], s.row));
+    to = Math.max(to, wallMinutes(s.plays[1], s.row));
   }
   if (!slots.length) { from = 16 * 60; to = 23 * 60; }
   from = Math.floor(from / 60) * 60;
@@ -234,19 +233,34 @@ export function scheduleLayout(week, { days = 7, scenes = true, now = new Date()
   const span = to - from;
   const pos = (m) => Math.max(0, Math.min(100, ((m - from) / span) * 100));
   const rows = want.map((day) => {
-    const bars = slots.filter((s) => s.day === day).map((s) => {
-      const a = mins(s.plays[0], day), b = mins(s.plays[1], day);
+    const bars = slots.filter((s) => s.row === day).map((s) => {
+      const a = wallMinutes(s.plays[0], day), b = wallMinutes(s.plays[1], day);
       return { name: s.name, kind: s.kind, lane: s.lane, onNow: !!s.on_now, start: s.plays[0], end: s.plays[1],
-        past: t(s.plays[1]) <= now.getTime(),
+        past: new Date(s.plays[1]).getTime() <= now.getTime(),
         left: pos(a), width: Math.max(0.5, pos(b) - pos(a)) };
     }).sort((x, y) => x.left - y.left);
-    const nowMin = (now.getTime() - dayStart(day)) / 60000;
+    const nowMin = wallMinutes(now, day);
     return { day, bars, now: nowMin >= from && nowMin <= to ? pos(nowMin) : null };
   });
   const ticks = [];
   const step = span > 12 * 60 ? 180 : span > 6 * 60 ? 120 : 60;
   for (let m = from; m <= to; m += step) ticks.push({ at: pos(m), label: hourText(m) });
   return { rows, ticks, empty: !slots.length };
+}
+
+// The viewer's local date of a moment, as YYYY-MM-DD.
+export function localDay(when) {
+  const t = new Date(when);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+}
+
+// A moment's clock time in minutes from the start of `day` (YYYY-MM-DD) on the viewer's clock: 17:00
+// the next day is 2460. Counted from the clock's own hours and minutes, so a clock change doesn't move it.
+export function wallMinutes(when, day) {
+  const t = new Date(when);
+  const [y, m, d] = day.split("-").map(Number);
+  const days = Math.round((Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) - Date.UTC(y, m - 1, d)) / 86400000);
+  return days * 1440 + t.getHours() * 60 + t.getMinutes();
 }
 
 // 5pm, midnight, 1am (minutes from the start of the day, maybe past 24 hours).

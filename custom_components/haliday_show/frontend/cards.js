@@ -862,16 +862,20 @@ class HalidayScheduleCard extends HalidayCard {
   }
 
   connectedCallback() {
-    // The day rolls on and the "now" line moves: look again every five minutes while on screen.
+    // The day rolls on and the "now" line moves: look again every five minutes while on screen, and
+    // whenever the page comes back into view.
     this._timer = setInterval(() => { if (!document.hidden && this._ents) this._load(); }, 300000);
+    this._visible = () => { if (!document.hidden && this._ents) this._load(); };
+    document.addEventListener("visibilitychange", this._visible);
   }
 
   disconnectedCallback() {
     clearInterval(this._timer);
+    document.removeEventListener("visibilitychange", this._visible);
   }
 
   async _load() {
-    if (this._loading) return;
+    if (this._loading) { this._again = true; return; }  // a change mid-load: load once more after
     this._loading = true;
     try {
       this._week = await this._hass.callWS({ type: "haliday_show/schedule" });
@@ -880,6 +884,7 @@ class HalidayScheduleCard extends HalidayCard {
       this._error = e && e.message ? e.message : "Couldn't load the schedule.";
     }
     this._loading = false;
+    if (this._again) { this._again = false; this._load(); }
     this.render();
   }
 
@@ -891,10 +896,10 @@ class HalidayScheduleCard extends HalidayCard {
       return;
     }
     const lay = scheduleLayout(this._week, { days: Number(this._config?.days) || 7, scenes: !this.hides("hide_scenes") });
-    const layout = this._config?.layout || "auto";
+    const layout = ["auto", "timeline", "list"].includes(this._config?.layout) ? this._config.layout : "auto";
     const icon = (b) => (b.kind === "scene" ? "mdi:creation" : b.kind === "playlist" ? "mdi:playlist-play" : "mdi:play-circle-outline");
     const bar = (b, i, day) => `<button class="bar ${b.lane === "scene" ? "scene" : ""} ${b.onNow ? "now-on" : ""} ${b.past ? "past" : ""}"
-        style="left:${b.left}%;width:${b.width}%" data-pick="${day}:${i}" title="${h(`${b.name}, ${spanText(b.start, b.end)}`)}">
+        style="left:${b.left}%;width:${b.width}%" data-pick="${h(day)}:${i}" title="${h(`${b.name}, ${spanText(b.start, b.end)}`)}">
         <span class="clip">${h(b.name)}</span></button>`;
     const timeline = `<div class="timeline">
         <div class="ticks">${lay.ticks.map((t) => `<span style="left:${t.at}%">${h(t.label)}</span>`).join("")}</div>

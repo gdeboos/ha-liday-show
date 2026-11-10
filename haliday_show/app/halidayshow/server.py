@@ -197,12 +197,13 @@ async def integration_schedule(request):
                  "show": {s["id"]: s["name"] for s in storage.list_shows()}}
         return entries, names
 
-    entries, names = await asyncio.to_thread(gather)
+    entries, names, where = await asyncio.to_thread(lambda: (*gather(), sched.where()[0]))
     alive = {e["id"] for e in entries if e["play"]["id"] in names[e["play"]["type"]]}
-    week = schedule.week(entries, start, sched.where()[0], alive)
+    week = schedule.week(entries, start, where, alive)
     by_id = {e["id"]: e for e in entries}
-    state = sched.state()
-    on_now = {state.get("scheduled"), state.get("scene_scheduled")} - {None}
+    # Just which rows are on now (state() works out every row's next start, which isn't needed here).
+    on_now = {x[0] for x in (sched.running, sched.scene_running) if x}
+    now = datetime.datetime.now()
     slots = []
     for slot in week["slots"]:
         e = by_id[slot["entry"]]
@@ -211,7 +212,8 @@ async def integration_schedule(request):
                       "day": slot["day"], "start": _with_zone(slot["start"]), "end": _with_zone(slot["end"]),
                       "plays": [_with_zone(t) for t in slot["plays"]] if slot["plays"] else None,
                       "on_now": slot["entry"] in on_now and bool(slot["plays"])
-                      and slot["plays"][0] <= datetime.datetime.now().isoformat() < slot["plays"][1]})
+                      and datetime.datetime.fromisoformat(slot["plays"][0]) <= now
+                      < datetime.datetime.fromisoformat(slot["plays"][1])})
     return web.json_response({"days": week["days"], "slots": slots})
 
 
