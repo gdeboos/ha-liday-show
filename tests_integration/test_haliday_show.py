@@ -260,3 +260,42 @@ async def test_cards_are_served_with_their_data(hass: HomeAssistant, app, hass_w
     pic = await client.get("/api/haliday_show/image/party")
     assert pic.status == 200 and await pic.read() == b"\xff\xd8\xff\xe0fakejpeg"
     assert (await client.get("/api/haliday_show/image/..%2Fsettings")).status in (400, 404)
+
+
+async def test_house_card_plumbing(hass: HomeAssistant, app, hass_ws_client, hass_client, hass_client_no_auth) -> None:
+    from homeassistant.setup import async_setup_component
+    from halidayshow import baked
+    assert await async_setup_component(hass, "http", {})
+    app.storage.save_devices([{"id": "a", "name": "Porch", "ip": "10.0.0.9", "segments": 2}])
+    settings = app.storage.load_settings()
+    settings["house"] = {"paths": {"a": [[0.1, 0.5], [0.9, 0.5]]}, "styles": {}, "pins": {}, "dim": 0.4}
+    app.storage.save_settings(settings)
+    await _set_up(hass, app)
+    ws = await hass_ws_client(hass)
+    await ws.send_json({"id": 1, "type": "haliday_show/house"})
+    got = (await ws.receive_json())["result"]
+    assert got["house"]["paths"] == {"a": [[0.1, 0.5], [0.9, 0.5]]} and got["house"]["photo"] is False
+    assert got["devices"] == [{"id": "a", "name": "Porch", "segments": 2}]  # no address
+
+    app.storage.save_baked("party", baked.encode(40, [{"device": "a", "segments": 2}], [b"\x00\xff\x00" * 2] * 400))
+    await ws.send_json({"id": 2, "type": "haliday_show/house/frames"})
+    assert (await ws.receive_json())["success"]
+    first = await ws.receive_json()
+    assert first["event"]["playing"] is False
+    await hass.services.async_call(DOMAIN, "play", {"show": "Party"}, blocking=True)
+    for _ in range(20):
+        msg = await ws.receive_json()
+        if msg["event"]["playing"]:
+            break
+    assert msg["event"]["tracks"] == [{"device": "a", "segments": 2}]
+    await ws.send_json({"id": 3, "type": "unsubscribe_events", "subscription": 2})
+    await hass.services.async_call(DOMAIN, "stop", {}, blocking=True)
+
+    open_client = await hass_client_no_auth()
+    js = await open_client.get("/api/haliday_show/js/house.js")
+    assert js.status == 200 and "export class House" in await js.text()
+    assert (await open_client.get("/api/haliday_show/js/app.js")).status == 404  # only the drawing code
+    svg = await open_client.get("/api/haliday_show/js/sample-house.svg")
+    assert svg.status == 200 and svg.content_type == "image/svg+xml"
+    assert (await open_client.get("/api/haliday_show/house_photo")).status == 401
+    assert (await (await hass_client()).get("/api/haliday_show/house_photo")).status == 404  # no photo yet

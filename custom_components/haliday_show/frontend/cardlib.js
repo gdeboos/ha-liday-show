@@ -76,3 +76,46 @@ export function swatch(colours) {
 export function escapeHtml(text) {
   return String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
+
+// The lights the house view draws, as the editor's House tab does (app.js houseLights / partDevice): a
+// split strip whose trace was split too is drawn part by part; anything else is drawn whole. `m` is the
+// editor's matrix.js and parts.js ({gridOf, partSize, partGrid}).
+export function houseDevices(lights, paths, m) {
+  const out = [];
+  for (const d of lights) {
+    const parts = Array.isArray(d.parts) ? d.parts : [];
+    if (parts.length && !m.gridOf(d) && !(paths[d.id] || []).length) {
+      for (const p of parts) {
+        const segments = m.partSize(p);
+        const grid = m.partGrid(p);
+        out.push({ ...d, id: `${d.id}#${p.id}`, name: `${d.name} · ${p.name}`, parent: d.id, part: p,
+          from: p.from, to: p.to, segments, parts: undefined,
+          ...(grid ? { matrix: { ...grid, start: "top left", order: "rows", zigzag: false } } : {}),
+          bulbs: d.bulbs ? Math.max(1, Math.round((d.bulbs * segments) / d.segments)) : null });
+      }
+    } else {
+      out.push(d);
+    }
+  }
+  return out;
+}
+
+// Each light's colours from a live frame ({tracks: [{device, segments}], rgb: base64}), in grid order
+// for matrices. `m` is {gridOf, fromWire}.
+export function framesByLight(frame, lights, m) {
+  const out = new Map();
+  if (!frame || !frame.rgb) return out;
+  const bin = atob(frame.rgb);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const byId = new Map(lights.map((l) => [l.id, l]));
+  let at = 0;
+  for (const t of frame.tracks || []) {
+    let rgb = bytes.subarray(at, at + t.segments * 3);
+    at += t.segments * 3;
+    const light = byId.get(t.device);
+    if (light && m.gridOf(light)) rgb = m.fromWire(rgb, light.matrix);
+    out.set(t.device, rgb);
+  }
+  return out;
+}

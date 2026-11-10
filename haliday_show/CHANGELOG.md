@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.488
+
+- **Your house on your dashboard.** With the HA-liday Show integration, **+ Add card** now offers **HA-liday Show: House**: your house photo with the lights moving on it as they are right now, drawn just like the editor's **House** tab. It's handy on a wall tablet, or to check the show from your phone when you're away. See **Dashboard cards** in the guide.
+- That completes the Home Assistant integration: entities without MQTT, actions, events, sensors, a player, and five dashboard cards.
+
 ## 0.2.487
 
 - **Two more dashboard cards.** With the HA-liday Show integration, **+ Add card** now also offers **HA-liday Show: Scenes** (a button per scene, with **Brightness** and **Off**) and **HA-liday Show: Visitors and checks** (the visitors' page, the queue or votes, phones listening, the last pre-show check, and **Skip this pick**). See **Dashboard cards** in the guide.
