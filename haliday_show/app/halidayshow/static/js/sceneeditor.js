@@ -548,7 +548,7 @@ export class SceneEditor {
       const colours = el("button", { type: "button", class: "ghost small sc-palette", "aria-label": `Colours for ${full} from a palette`,
         title: "Use one of your palettes" }, "Palette…");
       colours.addEventListener("click", async () => {
-        const name = await pickPalette({ title: `Colours for ${full}`, groups: [["Palettes", this.d.palettes()]] });
+        const name = await pickPalette({ title: `Colours for ${full}`, ...(this.d.paletteChoices?.() || { groups: [["Palettes", this.d.palettes()]] }) });
         const p = this.d.palettes().find((q) => q.name === name);
         if (!p) return;
         const c = { effect: look.effect, ...look.params };

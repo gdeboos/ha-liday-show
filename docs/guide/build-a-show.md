@@ -1192,7 +1192,8 @@ move. **Ctrl+X** also cuts a single selected clip.
 ### Colour palettes
 
 An effect's settings show the **Palette** in use, with its colours: press **Change…** to pick
-another from a window of colour bars (built-in ones first, then yours). Click a colour to put it in
+another from a window of colour bars (built-in ones first, then yours, in your folders from
+**Library → Palettes**: press a folder to go into it, and the heading to come back out). Click a colour to put it in
 the colour field you last clicked, or press **Apply palette** to fill them all in order. Click a
 light's name to **Recolour this light** or **Recolour all lights**: each light steps through the
 palette effect by effect, so the lights stay matched (backgrounds are left alone). **Library →

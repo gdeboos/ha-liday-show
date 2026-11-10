@@ -1,6 +1,8 @@
 // Picking a palette by eye: a window of colour bars, grouped (built in, yours), instead of a list of
-// names. pickPalette() resolves with the chosen palette's name, "" for None (when offered), or null
+// names. A group given its Library folders shows them, to go into, as the Palettes page does. pickPalette() resolves with the chosen palette's name, "" for None (when offered), or null
 // if the window was closed without a choice. paletteButton() is the button that opens it.
+
+import { folderOf, pickerView } from "./folders.js";
 
 const el = (tag, attrs = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -21,9 +23,9 @@ export function colourBar(colors, cls = "palette-bar") {
   }));
 }
 
-// groups: [[heading, [{name, colors}]]]. current: the name picked now ("" for None). none: the label
-// for a None choice, or null for no such choice. note(p): an optional word after a name, such as
-// "in season".
+// groups: [[heading, [{name, colors}], folders?]], where folders are Library → Palettes' (keyed by
+// name). current: the name picked now ("" for None). none: the label for a None choice, or null for no
+// such choice. note(p): an optional word after a name, such as "in season".
 export function pickPalette({ title = "Pick a palette", groups, current = "", none = null, note = () => "" }) {
   return new Promise((resolve) => {
     let chosen = null;
@@ -35,12 +37,39 @@ export function pickPalette({ title = "Pick a palette", groups, current = "", no
     }, colors ? colourBar(colors) : el("span", { class: "palette-bar palette-none", "aria-hidden": "true" }),
     el("span", { class: "palette-choice-name" }, label, extra ? el("small", {}, ` ${extra}`) : null));
     const body = el("div", { class: "effect-dialog-body" });
-    if (none) body.append(el("div", { class: "palette-grid" }, choice("", none, null)));
-    for (const [heading, list] of groups) {
-      if (!list.length) continue;
-      body.append(el("div", { class: "section-label effect-dialog-section" }, heading),
-        el("div", { class: "palette-grid" }, ...list.map((p) => choice(p.name, p.name, p.colors, note(p)))));
-    }
+    // The folder open in each group with folders, starting where the current palette is.
+    const at = groups.map(([, list, folders]) => (folders?.length && list.some((p) => p.name === current) ? folderOf(folders, current) : ""));
+    const draw = () => {
+      body.replaceChildren();
+      if (none) body.append(el("div", { class: "palette-grid" }, choice("", none, null)));
+      groups.forEach(([heading, list, folders], g) => {
+        if (!list.length) return;
+        if (!folders?.length) {
+          body.append(el("div", { class: "section-label effect-dialog-section" }, heading),
+            el("div", { class: "palette-grid" }, ...list.map((p) => choice(p.name, p.name, p.colors, note(p)))));
+          return;
+        }
+        const byName = new Map(list.map((p) => [p.name, p]));
+        const view = pickerView(folders, list.map((p) => ({ key: p.name, name: p.name })), at[g]);
+        const go = (id) => { at[g] = id; draw(); body.querySelector(`[data-group="${g}"] button`)?.focus(); };
+        // The heading is the way back up: Your palettes › Christmas.
+        const head = el("div", { class: "section-label effect-dialog-section palette-path", "data-group": g },
+          ...[{ id: "", name: heading }, ...view.path].flatMap((f, i, all) => {
+            const part = i === all.length - 1 ? el("span", {}, f.name)
+              : el("button", { type: "button", class: "link-button", onclick: () => go(f.id) }, f.name);
+            return i ? [el("span", { "aria-hidden": "true" }, " › "), part] : [part];
+          }));
+        const tiles = [
+          ...view.folders.map(({ folder, count }) => el("button", { type: "button", class: "palette-choice palette-folder",
+            onclick: () => go(folder.id) }, el("span", { class: "folder-mark small", "aria-hidden": "true" }),
+          el("span", { class: "palette-choice-name" }, folder.name, el("small", {}, ` ${count} ›`)))),
+          ...view.items.map((it) => { const p = byName.get(it.key); return choice(p.name, p.name, p.colors, note(p)); }),
+        ];
+        body.append(head, el("div", { class: "palette-grid", "data-group": g },
+          ...(tiles.length ? tiles : [el("p", { class: "hint" }, "Nothing in this folder.")])));
+      });
+    };
+    draw();
     dlg.append(el("div", { class: "effect-dialog-head" }, el("h3", {}, title),
       el("button", { type: "button", class: "ghost", "aria-label": "Close", title: "Close (Esc)", onclick: () => dlg.close() }, "✕")), body);
     dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); }); // the backdrop

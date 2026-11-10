@@ -3075,7 +3075,7 @@ house.hiddenLights = new Set(prefs.get("house.hiddenLights", []));
 const sceneEd = new SceneEditor({
   api, status, house, asShown, prefs,
   lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
-  palettes: () => allPalettes(), askYes, presetsFor: (effect) => presetsFor(effect), afterList: (box) => foldLibraryList("scenes", box),
+  palettes: () => allPalettes(), paletteChoices: () => paletteChoices(), askYes, presetsFor: (effect) => presetsFor(effect), afterList: (box) => foldLibraryList("scenes", box),
   positions: () => housePositionsAll(), groups: () => app.groups, editAdvanced: (id) => openSceneInEditor(id),
   picturesReady: () => picturesReady,
   scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => (entriesFor(scheduleState.entries || [], "scene", id).length
@@ -12910,7 +12910,7 @@ let generateSeed = 0;
 // What the palette window offers: the built-in palettes and yours, the one in season marked.
 const PALETTE_NONE = "None: each effect's own colours";
 const paletteChoices = () => ({
-  groups: [["Built in", PRESET_PALETTES], ["Your palettes", app.palettes]],
+  groups: [["Built in", PRESET_PALETTES], ["Your palettes", app.palettes, foldersOf("palettes")]],
   note: (p) => (p === seasonalPalette() ? "in season" : ""),
 });
 // A button for picking a palette by eye (with None, when `none` is given). `name` is the current one.

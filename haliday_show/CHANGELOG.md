@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.477
+
+- **Palettes in folders.** The window that opens from **Palette → Change…** (on a clip, in **Show settings**, **Generate**, playlist blocks and the Scene editor) now shows **Your palettes** in your folders from **Library → Palettes**. Press a folder to go into it, and the heading to come back out. It opens in the folder of the palette you're using.
+
 ## 0.2.476
 
 - **Schedule uses your folders.** **+ Add to schedule** (and pressing a row's name to change what it plays) now shows your folders from the Library on the **Playlists**, **Shows** and **Scenes** tabs. **Find by name** still looks everywhere, and says which folder each one is in.
