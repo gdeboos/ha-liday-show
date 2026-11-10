@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.481
+
+- **Preset folders in the effect window.** With **Show presets** on, your folders from **Library → Presets** show under the filters. Press one to see only your presets in it, still grouped under their effects, and **All presets** to see everything again.
+
 ## 0.2.480
 
 - **Mashups and Remove song use your folders.** In **New mashup**, **The singing from** and **The music from** now open the song window with your folders (press **Change…**). So does **Another song** when you remove a song that shows use, which used to list file names.

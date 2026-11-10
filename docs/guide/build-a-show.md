@@ -1143,7 +1143,9 @@ Get a clip looking right, then press **Save as preset…** under its settings.
 Name it and choose whether to **Include colours** (on by default; turn it off to save just the
 movement and other settings, so the preset takes on whatever colours a clip already has). Your
 presets appear in the effect chooser after the built-in ones, marked with a ★, and **★ My presets
-only** narrows the chooser to them.
+only** narrows the chooser to them. If you've put your presets in folders under **Library → Presets**,
+the folders show under the filters while presets are showing: press one to see only your presets in it
+(still under their effects), and **All presets** to see everything again.
 
 ### The Presets tab
 
