@@ -81,6 +81,10 @@
           "description": "On: the props are out. Off: packed away."
         }
       }
+    },
+    "run_preshow_check": {
+      "name": "Run pre-show check",
+      "description": "Asks every light whether it's there and checks how tonight's shows will start and be heard, as the pre-show check in HA-liday Show does (without the step where you look at each light). The result arrives as the Last pre-show check sensor and a Pre-show check event."
     }
   },
   "entity": {

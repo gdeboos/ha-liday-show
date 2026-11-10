@@ -141,8 +141,8 @@ export const FORMS = {
     { name: "scenes", selector: { entity: { multiple: true, filter: { domain: "scene", integration: "haliday_show" } } } },
     { name: "columns", selector: { number: { min: 1, max: 6, mode: "box" } } },
     toggles("hide_title", "hide_colours", "hide_brightness", "hide_off", "hide_open")],
-  visitors: [...TITLE, toggles("hide_title", "hide_page", "hide_queue", "hide_phones", "hide_picks", "hide_check", "hide_skip",
-    "hide_open")],
+  visitors: [...TITLE, toggles("hide_title", "hide_page", "hide_queue", "hide_phones", "hide_picks", "hide_check", "hide_run",
+    "hide_skip", "hide_open")],
   schedule: [...TITLE,
     { name: "days", selector: { number: { min: 1, max: 7, mode: "slider" } } },
     { name: "layout", selector: { select: { mode: "dropdown", options: [
@@ -174,6 +174,7 @@ export const LABELS = {
   hide_phones: "Hide phones listening",
   hide_picks: "Hide the list of picks",
   hide_check: "Hide the pre-show check",
+  hide_run: "Hide Run check",
   hide_skip: "Hide Skip this pick",
   max_height: "Tallest it can be",
   hide_caption: "Hide the line under the picture",

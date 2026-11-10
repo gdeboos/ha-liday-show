@@ -36,10 +36,10 @@ class HalidayClient:
         self.auth = aiohttp.BasicAuth("ha", password) if password else None
         self._task: asyncio.Task | None = None
 
-    async def _request(self, method: str, path: str, json: Any = None) -> Any:
+    async def _request(self, method: str, path: str, json: Any = None, timeout: float = 15) -> Any:
         try:
             async with self.session.request(method, self.base + path, json=json, auth=self.auth,
-                                            timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                                            timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
                 if resp.status == 401:
                     raise BadPassword
                 if resp.status == 400:
@@ -69,6 +69,10 @@ class HalidayClient:
                 return await resp.read(), resp.content_type
         except (aiohttp.ClientError, asyncio.TimeoutError):
             return None
+
+    async def preshow(self) -> dict:
+        """Run the pre-show check (it asks every light, so it can take a while)."""
+        return await self._request("POST", "/api/integration/preshow", timeout=120)
 
     async def library(self) -> dict:
         return await self._request("GET", "/api/integration/library")

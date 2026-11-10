@@ -176,3 +176,22 @@ async def test_schedule_for_the_card(client):
     assert first["name"] == "Party" and first["kind"] == "show" and first["lane"] == "show"
     assert first["plays"][0].endswith(("+00:00", "Z")) or "+" in first["plays"][0] or "-" in first["plays"][0][19:]
     assert (await client.get("/api/integration/schedule?start=nope")).status == 400
+
+
+async def test_preshow_check_from_home_assistant(client):
+    async with client.ws_connect("/api/integration/ws") as ws:
+        await ws.receive(timeout=2)
+        r = await client.post("/api/integration/preshow")
+        assert r.status == 200
+        got = await r.json()
+        assert got["level"] in ("ok", "info", "warn", "fail") and isinstance(got["lines"], list)
+        last = await (await client.get("/api/preshow/last")).json()
+        assert last["level"] == got["level"] and last["at"]
+        seen = []
+        for _ in range(10):
+            msg = json.loads((await ws.receive(timeout=3)).data)
+            if msg["type"] == "event":
+                seen.append(msg["event"])
+                if msg["event"] == "preshow_check":
+                    break
+        assert seen[-1] == "preshow_check"

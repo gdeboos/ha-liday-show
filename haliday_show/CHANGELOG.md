@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.495
+
+- **Run the pre-show check from Home Assistant.** The **HA-liday Show: Visitors and checks** card has a **Run check** button that lists anything to fix or look at, so you can check from your phone while you're out by the lights. There's also a **Run pre-show check** button on the **HA-liday Show** device and a **HA-liday Show: Run pre-show check** action, so an automation can run the check every evening and tell you if something's wrong (there's an example in the guide). It does everything the check in HA-liday Show does by itself; watching each light blink still needs HA-liday Show.
+
 ## 0.2.494
 
 - **A Schedule card for your dashboard.** **HA-liday Show: Schedule** shows what plays when, today and the days ahead, as a timeline with a day on each row and a line for now. Shows and playlists are the tall bars and scenes the thin ones; what's already finished today is faded. Press a bar for its times. On a narrow card, or if you choose **List** in its options, it's a list instead. You can also choose how many days it shows and leave scenes out. See **Dashboard cards** in the guide.

@@ -77,6 +77,7 @@ LISTENING = web.AppKey("listening", dict)
 LAB = web.AppKey("lab", Lab)
 PUBLIC = web.AppKey("public", public.PublicSite)
 HUB = web.AppKey("hub", integration.Hub)
+PRESHOW_RUNNING = web.AppKey("preshow_running", asyncio.Lock)
 
 
 @web.middleware
@@ -2853,7 +2854,10 @@ def _schedule_view(app) -> dict:
 # pre-show check (preshow.py) --------------------------------------------------------------------
 async def preshow_run(request):
     """The checks that need nobody looking: lights, how tonight's shows start, and the sound."""
-    app = request.app
+    return web.json_response(await _preshow_report(request.app))
+
+
+async def _preshow_report(app) -> dict:
     storage, settings = app[STORAGE], app[STORAGE].load_settings()
     devices = storage.load_devices()
     away = seasons.away(devices, seasons.load(settings))
@@ -2904,13 +2908,36 @@ async def preshow_run(request):
                       and shows[c["shows"][0]].get("audio") and public._song_file(storage, shows[c["shows"][0]]) is None})
     sound = preshow.sound_lines(page_on=p["on"], listen=p["listen"], picks=picks, missing_songs=missing,
                                 speakers=speakers, can_shrink=songcopy.converter() is not None)
-    return web.json_response({
+    return {
         "groups": [{"key": "lights", "title": "Lights", "items": light_lines},
                    {"key": "start", "title": "How shows start tonight", "summary": summary, "items": start_lines},
                    {"key": "sound", "title": "Sound", "items": sound}],
         "look": look,
         # The shows that could play tonight, for the editor to check (showhealth.js).
-        "shows": sorted(sid for sid, sh in shows.items() if sh)})
+        "shows": sorted(sid for sid, sh in shows.items() if sh)}
+
+
+async def integration_preshow(request):
+    """The pre-show check from Home Assistant (its button, action or card): the checks that need nobody
+    looking, saved as the last result as the editor does. The lights' blink-and-look step needs the editor."""
+    app = request.app
+    if app[PRESHOW_RUNNING].locked():
+        raise web.HTTPBadRequest(text="a pre-show check is already running")
+    async with app[PRESHOW_RUNNING]:
+        report = await _preshow_report(app)
+    groups = report["groups"]
+    last = {**preshow.tally(groups), "at": datetime.datetime.now().isoformat(timespec="minutes")}
+    storage = app[STORAGE]
+    settings = storage.load_settings()
+    settings["preshow"] = last
+    storage.save_settings(settings)
+    app[HUB].emit("preshow_check", {k: last[k] for k in ("level", "problems", "warnings")})
+    app[HUB].refresh()
+    # Only what's worth reading: problems and things to look at, worst first.
+    lines = [x for g in groups for x in ([g["summary"]] if g.get("summary") and not g["items"] else g["items"])
+             if x["level"] in ("fail", "warn")]
+    lines.sort(key=lambda x: -preshow.LEVELS.index(x["level"]))
+    return web.json_response({**last, "lines": [{k: x[k] for k in ("level", "text", "fix") if k in x} for x in lines[:20]]})
 
 
 async def preshow_timing(request):
@@ -3844,6 +3871,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     app[PREVIEWS] = {}
     app[LISTENING] = {"listener": None, "options": {}}
     app[LAB] = Lab()
+    app[PRESHOW_RUNNING] = asyncio.Lock()
 
     async def lifecycle(app):
         app[OUTPUT] = Output()
@@ -3910,6 +3938,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/integration/library", integration_library)
     r.add_get("/api/integration/image/{id}", integration_image)
     r.add_get("/api/integration/schedule", integration_schedule)
+    r.add_post("/api/integration/preshow", integration_preshow)
     r.add_post("/api/integration/command", integration_command)
     r.add_post("/api/integration/claim", integration_claim)
     r.add_post("/api/video", video_start)
