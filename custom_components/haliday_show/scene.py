@@ -30,7 +30,8 @@ class HalidayScene(HalidayEntity, Scene):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         # The scene's own name, as the light's effect list has it, so cards can show which is on.
-        return {"scene_name": self._attr_name}
+        item = next((x for x in self.state_data.get("scenes", []) if x["id"] == self.item_id), {})
+        return {"scene_name": self._attr_name, "colours": item.get("colours", [])}
 
     async def async_activate(self, **kwargs: Any) -> None:
         await self.send("scene", scene=self.item_id)

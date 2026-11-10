@@ -127,7 +127,7 @@ const toggles = (...names) => ({ name: "", type: "grid", schema: names.map((name
 const TITLE = [{ name: "title", selector: { text: {} } }];
 
 export const FORMS = {
-  player: [...TITLE, toggles("hide_title", "hide_art", "hide_progress", "hide_picker", "hide_next")],
+  player: [...TITLE, toggles("hide_title", "hide_art", "hide_progress", "hide_picker", "hide_next", "hide_open")],
   browse: [...TITLE,
     { name: "kinds", selector: { select: { mode: "dropdown", options: [
       { value: "both", label: "Shows and playlists" }, { value: "shows", label: "Shows only" },
@@ -136,15 +136,16 @@ export const FORMS = {
       { value: "shows", label: "Shows" }, { value: "playlists", label: "Playlists" }] } } },
     { name: "tile_size", selector: { select: { mode: "dropdown", options: [
       { value: "small", label: "Small" }, { value: "medium", label: "Medium" }, { value: "large", label: "Large" }] } } },
-    toggles("hide_title", "hide_search")],
+    toggles("hide_title", "hide_search", "hide_seasons", "hide_open")],
   scenes: [...TITLE,
     { name: "scenes", selector: { entity: { multiple: true, filter: { domain: "scene", integration: "haliday_show" } } } },
     { name: "columns", selector: { number: { min: 1, max: 6, mode: "box" } } },
-    toggles("hide_title", "hide_brightness", "hide_off")],
-  visitors: [...TITLE, toggles("hide_title", "hide_page", "hide_queue", "hide_phones", "hide_picks", "hide_check", "hide_skip")],
+    toggles("hide_title", "hide_colours", "hide_brightness", "hide_off", "hide_open")],
+  visitors: [...TITLE, toggles("hide_title", "hide_page", "hide_queue", "hide_phones", "hide_picks", "hide_check", "hide_skip",
+    "hide_open")],
   house: [...TITLE,
     { name: "max_height", selector: { number: { min: 150, max: 1200, step: 10, mode: "box", unit_of_measurement: "px" } } },
-    toggles("hide_title", "hide_caption")],
+    toggles("hide_title", "hide_caption", "hide_open")],
 };
 
 export const LABELS = {
@@ -170,6 +171,9 @@ export const LABELS = {
   hide_skip: "Hide Skip this pick",
   max_height: "Tallest it can be",
   hide_caption: "Hide the line under the picture",
+  hide_open: "Hide the link to HA-liday Show",
+  hide_seasons: "Hide season tags",
+  hide_colours: "Hide each scene's colours",
 };
 
 export const HELPERS = {

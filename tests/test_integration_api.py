@@ -152,3 +152,13 @@ async def test_library_and_images_for_the_cards(client):
     assert lib["folders"]["shows"][0]["items"] == ["party"] and lib["playlists"] == []
     assert (await client.get("/api/integration/image/party")).status == 404
     assert (await client.get("/api/integration/image/..%2Fsettings")).status in (400, 404)
+
+
+def test_scene_colours_for_the_buttons():
+    looks = {"lights": {"a": {"effect": "twinkle", "params": {"color": "#FF0000", "color2": "#00ff00", "color3": "#0000ff",
+                                                              "count": 2}},
+                        "b": {"params": {"color": "#ff0000", "color2": "#ffffff", "speed": 5}}}}
+    assert integration.scene_colours(looks) == ["#ff0000", "#00ff00", "#ffffff"]  # count respected, no repeats
+    assert integration.scene_colours({"tracks": [{"clips": [{"params": {"color": "#123456"}}]}]}) == ["#123456"]
+    assert integration.scene_colours({"lights": "junk", "tracks": [None, {"clips": [None]}]}) == []
+    assert integration.scene_colours({"tracks": 5}) == [] and integration.scene_colours({"tracks": [{"clips": 5}]}) == []

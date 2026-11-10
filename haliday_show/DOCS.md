@@ -3102,13 +3102,13 @@ for **HA-liday Show**:
 - **HA-liday Show: Browse**: your shows and playlists as tiles, in the same folders as in **Library**.
   Press a folder to go in, and the path at the top to come back out. **Find in every folder** searches
   them all. Press a show or playlist to play it. A show's tile has its picture, else its song's cover
-  art, else its palette's colours.
+  art, else its palette's colours, and a tag with its season if it has one.
 - **HA-liday Show: House**: your house photo with your lights on it, as they are right now, a few
   times a second, just like the editor's **House** tab. Lights you haven't placed on the photo under
-  **Setup → House** don't show. In the card's YAML, `max_height:` sets how tall it can get (420 pixels
+  **Setup → House** don't show. Tap a light to see which it is. In the card's YAML, `max_height:` sets how tall it can get (420 pixels
   unless you change it). It only fetches the lights while it's on screen.
-- **HA-liday Show: Scenes**: a button for each of your scenes. Press one to put it on; the one that's
-  on is highlighted. **Brightness** dims the scene that's on, and **Off** turns scenes off.
+- **HA-liday Show: Scenes**: a button for each of your scenes, with a strip of that scene's colours
+  along its bottom. Press one to put it on; the one that's on is highlighted. **Brightness** dims the scene that's on, and **Off** turns scenes off.
 - **HA-liday Show: Visitors and checks**: whether the visitors' page is open, how many picks are
   waiting (or votes, in **Vote** mode) with the next few, how many phones are listening, and how the last
   pre-show check went. **Skip this pick** ends the visitor's pick that's playing.
@@ -3122,10 +3122,14 @@ card has a **Title** (leave it empty for the usual one) and **Hide the title**. 
 | Card | Options |
 | --- | --- |
 | **Player** | **Hide the cover art**, **Hide how far through it is**, **Hide the show picker and Play** (for a card that only shows what's on), **Hide what's next on the schedule** |
-| **Browse** | **Show**: shows and playlists, shows only or playlists only; **Open on**: Shows or Playlists; **Tile size**: small, medium or large; **Hide Find in every folder** |
-| **Scenes** | **Only these scenes**: pick the scenes the card shows, in the order you pick them (leave it empty for all of them); **Columns**: how many buttons across (leave it empty to fit); **Hide Brightness**, **Hide Off** |
+| **Browse** | **Show**: shows and playlists, shows only or playlists only; **Open on**: Shows or Playlists; **Tile size**: small, medium or large; **Hide Find in every folder**, **Hide season tags** |
+| **Scenes** | **Only these scenes**: pick the scenes the card shows, in the order you pick them (leave it empty for all of them); **Columns**: how many buttons across (leave it empty to fit); **Hide each scene's colours**, **Hide Brightness**, **Hide Off** |
 | **Visitors and checks** | Hide any of: the visitors' page, picks waiting, phones listening, the list of picks, the pre-show check, **Skip this pick** |
 | **House** | **Tallest it can be** (420 pixels unless you change it), **Hide the line under the picture** |
+
+If HA-liday Show is in your Home Assistant sidebar, each card has a small **↗** in its top corner that
+opens it (**Hide the link to HA-liday Show** in the options takes it away). People without it in their
+sidebar don't see it.
 
 Every option is off unless you switch it on, so a card you added before the editor came along shows
 everything, as it did.

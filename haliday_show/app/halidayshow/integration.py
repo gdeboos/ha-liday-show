@@ -12,6 +12,7 @@ releases them and MQTT comes back.
 import asyncio
 import json
 import logging
+import re
 import time
 
 from . import __version__, playlists, seasons, songtags, timingtest
@@ -39,13 +40,46 @@ def set_claimed(storage, on: bool):
     storage.save_settings(settings)
 
 
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+_COLOUR_KEYS = ["color"] + [f"color{n}" for n in range(2, 9)]
+
+
+def _params_colours(params) -> list[str]:
+    """An effect's colours, in order: color, color2... (as many as its colour list uses)."""
+    if not isinstance(params, dict):
+        return []
+    count = params.get("count")
+    keys = _COLOUR_KEYS[:count] if isinstance(count, int) and 1 <= count <= 8 else _COLOUR_KEYS
+    return [params[k].lower() for k in keys if isinstance(params.get(k), str) and _HEX.match(params[k])]
+
+
+def scene_colours(scene: dict, most: int = 4) -> list[str]:
+    """Up to four of a scene's colours, for its button: from its lights' looks (Basic) or clips (Advanced)."""
+    found: list[str] = []
+    looks = [v.get("params") for v in (scene.get("lights") or {}).values() if isinstance(v, dict)] \
+        if isinstance(scene.get("lights"), dict) else []
+    tracks = scene.get("tracks")
+    for t in tracks if isinstance(tracks, list) else []:
+        clips = t.get("clips") if isinstance(t, dict) else None
+        looks += [c.get("params") for c in clips if isinstance(c, dict)] if isinstance(clips, list) else []
+    for params in looks:
+        for c in _params_colours(params):
+            if c not in found:
+                found.append(c)
+            if len(found) >= most:
+                return found
+    return found
+
+
 def lists(storage) -> dict:
     """The slow part (reads every show): only remade when something changes (MqttBridge.refresh)."""
+    scenes = storage.list_scenes()
+    colours = {s["id"]: scene_colours(s) for s in scenes}
     # Option labels as the MQTT selects had them, so automations choosing by name keep working.
     return {
         "shows": [{"id": i, "name": label} for label, i in show_options(storage.list_shows()).items()],
         "playlists": [{"id": i, "name": label} for label, i in show_options(playlists.load(storage)).items()],
-        "scenes": [{"id": i, "name": label} for label, i in scene_options(storage.list_scenes()).items()],
+        "scenes": [{"id": i, "name": label, "colours": colours.get(i, [])} for label, i in scene_options(scenes).items()],
     }
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.492
+
+- **Scene buttons show their colours.** On the **HA-liday Show: Scenes** card, each button has a strip of that scene's colours along its bottom, so you can spot the one you want.
+- **Tap a light on the House card** to see which light it is (and which part and bulb).
+- **Season tags on Browse.** A show with a season has a small tag on its tile, such as **Halloween**.
+- **Open HA-liday Show from any card.** If HA-liday Show is in your Home Assistant sidebar, each card has a small **↗** in its corner that opens it. Each of these can be switched off in the card's options.
+
 ## 0.2.491
 
 - **Fixed: Govee lights that work in shows failing the pre-show check.** The check found Govee lights only by a scan across your network, which some routers don't pass on and some lights answer in a way it didn't hear. Now any light the scan misses is asked directly at its address, as shows talk to it, before the check says it didn't answer. **Find lights** on **Setup → Devices** also hears lights that answer that way.
