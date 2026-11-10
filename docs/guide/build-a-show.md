@@ -139,7 +139,9 @@ colours.
 #### The show's palette
 
 Each show can have its own palette, picked in the **New show** window and changed in **⚙ Show
-settings…**. Effects you add take its colours, and the effect chooser previews every effect in them.
+settings…**. In the **New show** window (and **+ New scene**'s colours step), your palettes are in your
+folders from **Library → Palettes**, with the built-in ones after them; if the one picked is in
+another folder, a line under the list says which. Effects you add take its colours, and the effect chooser previews every effect in them.
 The palette picker under a clip's colours starts on it too; picking another palette there is just for
 colouring that clip. Change the show's palette later and you're asked whether to recolour the effects
 already in the show; say no and only new effects use it. **None** keeps each effect's own colours, as
