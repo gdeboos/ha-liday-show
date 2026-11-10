@@ -9363,9 +9363,20 @@ function splitButton(r, base = null) {
 // its cuts).
 function songTags(r, inherited = false) {
   const chip = partsChip(r.parts);
-  if (!chip && !r.lyrics && !inherited) return null;
+  const pal = r.palette ? songPaletteNow(r.palette, allPalettes()) : null;
+  if (!chip && !r.lyrics && !inherited && !pal) return null;
   const marks = document.createElement("div");
   marks.className = "song-marks";
+  if (pal) {
+    // Its palette, as a small strip of its colours with its name; pressing it picks again.
+    const b = button("", () => offerSongColours(r.ref), "song-badge song-pal");
+    const strip = Object.assign(document.createElement("span"), { className: "song-pal-strip", ariaHidden: "true" });
+    for (const c of pal.colors.slice(0, 8)) strip.append(Object.assign(document.createElement("i"), { style: `background:${c}` }));
+    b.append(strip, pal.name || "Palette");
+    b.setAttribute("aria-label", `Palette: ${pal.name}. Change ${r.name}'s colours`);
+    b.title = "The colours kept with this song: a new show of it starts in these. Press to pick again";
+    marks.append(b);
+  }
   if (r.lyrics || inherited) {
     marks.append(Object.assign(document.createElement("span"), { className: "song-badge lyrics", textContent: "♪ Lyrics",
       title: r.lyrics ? "It has its words, for Singing faces and the timeline's lyrics row"
@@ -10097,6 +10108,7 @@ async function keepSongPalette(ref, colors, from) {
   renderPalettes();
   await api(songPaletteUrl(ref), { method: "PUT", json: { name: mine.name, colors: mine.colors, from } });
   status(`Kept ${mine.name}'s colours with the song and in your palettes`, "saved", "songs");
+  if ($("songs-page-list")?.offsetParent) renderSongsPage();
 }
 
 // justAdded: straight after adding the song, where it says nothing if there's nothing to offer.
@@ -10132,18 +10144,36 @@ async function offerSongColours(ref, { justAdded = false } = {}) {
     };
     for (const o of options) body.append(option(o));
     if (withAI) {
-      const waiting = el("p", { className: "hint", textContent: "Asking the AI for colours that suit the song…" });
-      waiting.setAttribute("aria-live", "polite");
+      // A spinner and the time so far, as the AI can take half a minute or more.
+      const waiting = el("div", { className: "ai-preset-idea ai-colours-waiting" });
+      const spin = el("span", { className: "spinner" });
+      spin.setAttribute("aria-hidden", "true");
+      const words = el("span", { textContent: "Asking the AI for colours that suit the song…" });
+      const took = el("span", { className: "hint" });
+      waiting.append(el("div", { className: "busy-row" }, spin, el("div", {}, words, el("br"), took)));
+      words.setAttribute("aria-live", "polite");
       body.append(waiting);
+      const began = Date.now();
+      const tick = setInterval(() => {
+        if (!waiting.isConnected && !dlg.open) { clearInterval(tick); return; }
+        const sec = Math.round((Date.now() - began) / 1000);
+        took.textContent = sec < 5 ? "" : `${sec} seconds so far. It can take up to a minute${cover ? "; you can use the cover's colours meanwhile" : ""}.`;
+      }, 1000);
+      const done = (text) => {
+        clearInterval(tick);
+        waiting.replaceChildren(el("p", { className: "hint", textContent: text }));
+      };
+      dlg.addEventListener("close", () => clearInterval(tick));
       api("api/ai/palettes", { method: "POST", json: { request: songColourRequest(songLabel(ref), cover),
         context: { palettes: allPalettes().map((p) => ({ name: p.name, colors: p.colors })) } } })
         .then((reply) => {
           const ideas = checkPalettes(reply).palettes.slice(0, 2);
-          if (!ideas.length) { waiting.textContent = "The AI had no colours to suggest this time."; return; }
+          if (!ideas.length) { done("The AI had no colours to suggest this time."); return; }
+          clearInterval(tick);
           waiting.replaceWith(...ideas.map((p) => option({ label: `From the song: ${p.name}`, colors: p.colors, from: "ai" })));
           if (!cover && dlg.open) body.querySelector("button.primary")?.focus();
         })
-        .catch((err) => { waiting.textContent = `The AI couldn't suggest colours: ${err.message}`; });
+        .catch((err) => { done(`The AI couldn't suggest colours: ${err.message}`); });
     }
     const head = el("div", { className: "effect-dialog-head" }, el("h3", { textContent: "Colours from this song" }));
     const foot = el("div", { className: "form-dialog-foot" }, el("span", { className: "spacer" }), close);

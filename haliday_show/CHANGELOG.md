@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.471
+
+- **You can see the AI working on a song's colours.** In the **Colours from this song** window, the AI's turn now has a spinner and, after a few seconds, how long it's taken so far. It can take up to a minute.
+- **A song's palette shows in Library → Songs.** A song with colours kept with it has a small strip of them, with the palette's name, beside its **♪ Lyrics** and **Parts** pills. Press it to pick again. The row updates as soon as you press **Use these**.
+
 ## 0.2.470
 
 - **Choose a song uses your folders.** In the Show editor, **Change…** beside the song now shows your folders from **Library → Songs** instead of one long list. It opens on the folder the show's song is in, and **Find a song in any folder** searches them all.

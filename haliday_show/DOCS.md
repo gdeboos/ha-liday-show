@@ -886,7 +886,8 @@ M4A, AAC, OGG, Opus, WAV, FLAC or WebM; see below). Songs you add go to `/media/
 players can play them. For a lights-only show, choose **No song, lights only** and set its **Length with no song**.
 
 **Library → Songs** lists every song in your media folder: its length, what **Detect** found (its
-tempo and sections) or "not detected yet", and which shows use it. Under that, a pink **♪ Lyrics** pill shows it has
+tempo and sections) or "not detected yet", and which shows use it. Under that, a strip of colours with a palette's name shows the colours kept with it (press it to pick
+again; see [A song's colours](#a-songs-colours)), a pink **♪ Lyrics** pill shows it has
 its words. An edit cut from a song with words shows it too, as its shows use the song's words
 (a mashup only shows it if it has words of its own), and **Parts:** with a coloured dot for each part shows it's been split into its vocals, drums,
 bass and the rest (the same as in the Music editor). Type in **Find** to narrow the
@@ -940,7 +941,8 @@ Library list (see [Folders](#folders)). A song's edits and drafts go with it.
 Then a **Colours from this song** window follows, if there's something to offer: a palette made from
 the cover's main colours, made bright for lights (black, greys and whites are left out, as they look
 like "off" or dull on lights), and, with an AI set up, up to two palettes from the AI that suit the song
-(listed under **From the song** when they arrive, a few seconds later). Press **Use these** on the one you
+(listed under **From the song** when they arrive; a spinner shows while the AI works, and after a few
+seconds how long it's taken, as it can take up to a minute). Press **Use these** on the one you
 want, or **Skip**. See [A song's colours](#a-songs-colours).
 
 The same window opens from **+ Add a song…** in the **New show** window and in a show's **Choose a
