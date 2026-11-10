@@ -95,6 +95,7 @@ import { piecesIn, placeStretch, rowsBy } from "./stretch.js";
 import { finalGroups, headline, lastText, nextOffset, tally, timingText } from "./preshow.js";
 import { healthLines, showProblems } from "./showhealth.js";
 import { browserText, issueUrl, reportText } from "./report.js";
+import { watchSliders } from "./slidervalue.js";
 import { BRAND, FPS as VIDEO_FPS, LINK, SHAPES, TAIL_S, barParts, fileName, ivfFrame, ivfHeader, titleAlpha, videoLayout } from "./video.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
@@ -15018,4 +15019,5 @@ async function init() {
   requestAnimationFrame(frame);
 }
 
+watchSliders();
 init();

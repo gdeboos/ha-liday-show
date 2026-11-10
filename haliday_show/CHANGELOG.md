@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.474
+
+- **Every slider shows its exact number.** Every slider in the editors now has a small box beside it with its exact setting, such as **Speed** and **Intensity** for **WLED's own effect** in the Scene editor, so you can set several lights to exactly the same. Type a number into the box, or use the **↑** and **↓** keys there (hold **Shift** for bigger steps). The **←** and **→** keys still nudge a slider you've clicked on.
+
 ## 0.2.473
 
 - **Fixed: WLEDs set to sync took each other's effects.** In a scene where several WLEDs each play a different **WLED's own effect**, WLED's own Sync passed each one on to the others, so they all ended up on whichever was set last. Now HA-liday Show tells each WLED not to pass its look on. Your Sync settings in WLED stay as they are, so changes you make in the WLED app still sync.
