@@ -4041,7 +4041,12 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
   }, "link-button");
   find.addEventListener("input", () => render());
   filters.append(find, chips, clear);
-  head.append(filters); // in the header, so they stay put as you scroll
+  // With presets showing, your folders from Library → Presets: going into one shows only your presets
+  // in it (and its subfolders), still under their effects.
+  const presetBar = Object.assign(document.createElement("nav"), { className: "preset-folders", hidden: true });
+  presetBar.setAttribute("aria-label", "Your preset folders");
+  let presetAt = "";
+  head.append(filters, presetBar); // in the header, so they stay put as you scroll
   dlg.append(head, body);
   const shows = (key, fx) => matches(key, fx, [...picked], find.value);
   const len = Math.min(Math.max(length, 1), 6);
@@ -4078,7 +4083,25 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     body.replaceChildren();
     note.hidden = true;
     ml.hidden = !toggle.checked;
-    const onlyMine = toggle.checked && mineOnly.checked;
+    const pfolders = foldersOf("presets");
+    if (!pfolders.some((f) => f.id === presetAt)) presetAt = "";
+    const inFolder = toggle.checked && !!presetAt;
+    const onlyMine = toggle.checked && (mineOnly.checked || inFolder);
+    const here = inFolder ? within(pfolders, presetAt) : null;
+    const filed = (p) => !here || (p.mine && here.has(folderOf(pfolders, `${p.effect}:${p.name}`)));
+    presetBar.hidden = !toggle.checked || !pfolders.length;
+    const go = (id) => { presetAt = id; render(); };
+    const chip = (label, id, cls = "") => Object.assign(button(label, () => go(id), `ghost ${cls}`.trim()), { type: "button" });
+    presetBar.replaceChildren(
+      ...[{ id: "", name: "All presets" }, ...pathTo(pfolders, presetAt)].flatMap((f, i, all) => {
+        const part = i === all.length - 1 ? Object.assign(document.createElement("b"), { textContent: f.name }) : chip(f.name, f.id, "link-button");
+        return i ? [Object.assign(document.createElement("span"), { className: "hint", textContent: "›" }), part] : [part];
+      }),
+      ...childrenOf(pfolders, presetAt).map((f) => {
+        const b = chip("", f.id, "preset-folder-chip");
+        b.append(Object.assign(document.createElement("span"), { className: "folder-mark small", ariaHidden: "true" }), ` ${f.name}`);
+        return b;
+      }));
     if (suggested?.looks.length) {
       const sh = document.createElement("div");
       sh.className = "section-label effect-dialog-section";
@@ -4141,7 +4164,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         const grid = document.createElement("div");
         grid.className = "preset-groups";
         for (const [key, fx] of effects) {
-          const presets = presetsFor(key).filter((p) => !onlyMine || p.mine);
+          const presets = presetsFor(key).filter((p) => (!onlyMine || p.mine) && filed(p));
           if (onlyMine && !presets.length) continue;
           const g = document.createElement("fieldset");
           g.className = `preset-group${key === current ? " current" : ""}`;
@@ -4169,7 +4192,9 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     // Only offered when something here won't work on this light (a Govee light's limits, say).
     // On lights where every effect works, such as WLED, it doesn't show.
     al.hidden = !fit || (!allow.checked && !body.querySelector(".unfit"));
-    if (toggle.checked && onlyMine && !body.querySelector(".preset-group")) {
+    if (inFolder && !body.querySelector(".preset-group")) {
+      body.insertAdjacentHTML("beforeend", `<p class="hint">None of your presets in this folder are for these effects.</p>`);
+    } else if (toggle.checked && onlyMine && !body.querySelector(".preset-group")) {
       body.insertAdjacentHTML("beforeend", `<p class="hint">No presets of your own yet. Select a clip and press <b>Save as preset</b>.</p>`);
     }
   };
