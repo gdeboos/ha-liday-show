@@ -75,8 +75,21 @@ for **HA-liday Show**:
   pre-show check went. **Skip this pick** ends the visitor's pick that's playing.
 
 The cards work for everyone who uses your Home Assistant, on phones too, away from home: they go through
-Home Assistant rather than to HA-liday Show itself. In the card's YAML, `title:` changes the heading, and
-for the Browse card `start: playlists` opens on **Playlists**.
+Home Assistant rather than to HA-liday Show itself.
+
+Each card has its own options in the card editor (press the card while editing the dashboard). Every
+card has a **Title** (leave it empty for the usual one) and **Hide the title**. The rest:
+
+| Card | Options |
+| --- | --- |
+| **Player** | **Hide the cover art**, **Hide how far through it is**, **Hide the show picker and Play** (for a card that only shows what's on), **Hide what's next on the schedule** |
+| **Browse** | **Show**: shows and playlists, shows only or playlists only; **Open on**: Shows or Playlists; **Tile size**: small, medium or large; **Hide Find in every folder** |
+| **Scenes** | **Only these scenes**: pick the scenes the card shows, in the order you pick them (leave it empty for all of them); **Columns**: how many buttons across (leave it empty to fit); **Hide Brightness**, **Hide Off** |
+| **Visitors and checks** | Hide any of: the visitors' page, picks waiting, phones listening, the list of picks, the pre-show check, **Skip this pick** |
+| **House** | **Tallest it can be** (420 pixels unless you change it), **Hide the line under the picture** |
+
+Every option is off unless you switch it on, so a card you added before the editor came along shows
+everything, as it did.
 
 #### Actions
 

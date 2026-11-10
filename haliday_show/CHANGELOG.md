@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.489
+
+- **The HA-liday Show cards have a visual editor.** Press a card while editing your dashboard to set its options, no YAML needed. Every card has a **Title** and **Hide the title**. You can also hide parts of each card (the cover art, what's next, Brightness, the pre-show check and so on), pick which scenes the **Scenes** card shows and in what order, set its **Columns**, make **Browse** show only shows or only playlists with smaller or bigger tiles, and set how tall the **House** card can be. Cards you've already added look the same as before. See **Dashboard cards** in the guide.
+
 ## 0.2.488
 
 - **Your house on your dashboard.** With the HA-liday Show integration, **+ Add card** now offers **HA-liday Show: House**: your house photo with the lights moving on it as they are right now, drawn just like the editor's **House** tab. It's handy on a wall tablet, or to check the show from your phone when you're away. See **Dashboard cards** in the guide.

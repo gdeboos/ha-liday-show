@@ -77,3 +77,25 @@ test("house view: a live frame split by light, matrices back in grid order", () 
   assert.deepEqual([...got.get("g")].filter((_, i) => i % 3 === 0), [10, 20, 40, 30]);  // the zig-zag row turned back
   assert.equal(framesByLight({ rgb: "" }, [], {}).size, 0);
 });
+
+import { configForm, FORMS, LABELS, pickScenes } from "../../custom_components/haliday_show/frontend/cardlib.js";
+
+test("card editors: every option has a label, and every switch hides something (off by default)", () => {
+  const names = (schema) => schema.flatMap((s) => (s.type === "grid" ? names(s.schema) : [s.name]));
+  for (const [card, schema] of Object.entries(FORMS)) {
+    for (const name of names(schema)) {
+      assert.ok(LABELS[name], `${card}: ${name} has a label`);
+      const field = JSON.stringify(schema).includes(`"name":"${name}","selector":{"boolean"`);
+      if (field) assert.match(name, /^hide_/, `${card}: ${name} is a hide_ switch`);
+    }
+    const form = configForm(card);
+    assert.equal(form.computeLabel({ name: "title" }), "Title");
+  }
+  assert.deepEqual(Object.keys(FORMS).sort(), ["browse", "house", "player", "scenes", "visitors"]);
+});
+
+test("Scenes card: picked scenes in their order, else all by name", () => {
+  const all = [{ id: "s.b", name: "Bravo" }, { id: "s.a", name: "Alpha" }, { id: "s.c", name: "Charlie" }];
+  assert.deepEqual(pickScenes(all, []).map((s) => s.name), ["Alpha", "Bravo", "Charlie"]);
+  assert.deepEqual(pickScenes(all, ["s.c", "s.gone", "s.a"]).map((s) => s.name), ["Charlie", "Alpha"]);
+});

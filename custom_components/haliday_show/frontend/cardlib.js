@@ -119,3 +119,82 @@ export function framesByLight(frame, lights, m) {
   }
   return out;
 }
+
+// ---- The visual editors (Home Assistant's getConfigForm) -------------------------------------------
+// Every option is off by default and named after what it hides, so a card with no options set (as all
+// cards made before the editors were) shows everything, and the editor's switches start where the card is.
+const toggles = (...names) => ({ name: "", type: "grid", schema: names.map((name) => ({ name, selector: { boolean: {} } })) });
+const TITLE = [{ name: "title", selector: { text: {} } }];
+
+export const FORMS = {
+  player: [...TITLE, toggles("hide_title", "hide_art", "hide_progress", "hide_picker", "hide_next")],
+  browse: [...TITLE,
+    { name: "kinds", selector: { select: { mode: "dropdown", options: [
+      { value: "both", label: "Shows and playlists" }, { value: "shows", label: "Shows only" },
+      { value: "playlists", label: "Playlists only" }] } } },
+    { name: "start", selector: { select: { mode: "dropdown", options: [
+      { value: "shows", label: "Shows" }, { value: "playlists", label: "Playlists" }] } } },
+    { name: "tile_size", selector: { select: { mode: "dropdown", options: [
+      { value: "small", label: "Small" }, { value: "medium", label: "Medium" }, { value: "large", label: "Large" }] } } },
+    toggles("hide_title", "hide_search")],
+  scenes: [...TITLE,
+    { name: "scenes", selector: { entity: { multiple: true, filter: { domain: "scene", integration: "haliday_show" } } } },
+    { name: "columns", selector: { number: { min: 1, max: 6, mode: "box" } } },
+    toggles("hide_title", "hide_brightness", "hide_off")],
+  visitors: [...TITLE, toggles("hide_title", "hide_page", "hide_queue", "hide_phones", "hide_picks", "hide_check", "hide_skip")],
+  house: [...TITLE,
+    { name: "max_height", selector: { number: { min: 150, max: 1200, step: 10, mode: "box", unit_of_measurement: "px" } } },
+    toggles("hide_title", "hide_caption")],
+};
+
+export const LABELS = {
+  title: "Title",
+  hide_title: "Hide the title",
+  hide_art: "Hide the cover art",
+  hide_progress: "Hide how far through it is",
+  hide_picker: "Hide the show picker and Play",
+  hide_next: "Hide what's next on the schedule",
+  kinds: "Show",
+  start: "Open on",
+  tile_size: "Tile size",
+  hide_search: "Hide Find in every folder",
+  scenes: "Only these scenes",
+  columns: "Columns",
+  hide_brightness: "Hide Brightness",
+  hide_off: "Hide Off",
+  hide_page: "Hide the visitors' page",
+  hide_queue: "Hide picks waiting",
+  hide_phones: "Hide phones listening",
+  hide_picks: "Hide the list of picks",
+  hide_check: "Hide the pre-show check",
+  hide_skip: "Hide Skip this pick",
+  max_height: "Tallest it can be",
+  hide_caption: "Hide the line under the picture",
+};
+
+export const HELPERS = {
+  title: "Leave empty for the usual title.",
+  scenes: "Leave empty for all your scenes, in name order. Otherwise these, in this order.",
+  columns: "Leave empty to fit as many as there's room for.",
+  max_height: "420 px unless you change it.",
+  start: "Which tab the card opens on.",
+};
+
+// The form for one card, as Home Assistant's card editor takes it.
+export function configForm(card) {
+  return {
+    schema: FORMS[card],
+    computeLabel: (s) => LABELS[s.name] ?? s.name,
+    computeHelper: (s) => HELPERS[s.name],
+  };
+}
+
+// The Browse card's tile width in pixels.
+export const TILE_SIZES = { small: 84, medium: 104, large: 148 };
+
+// Which scenes the Scenes card shows: the ones picked, in that order, else all of them by name.
+export function pickScenes(all, picked) {
+  if (!Array.isArray(picked) || !picked.length) return [...all].sort((a, b) => a.name.localeCompare(b.name));
+  const byId = new Map(all.map((s) => [s.id, s]));
+  return picked.map((id) => byId.get(id)).filter(Boolean);
+}
