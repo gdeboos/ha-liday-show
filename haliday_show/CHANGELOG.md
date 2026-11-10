@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.472
+
+- **A playlist carries on after a restart.** If HA-liday Show restarts while a playlist is playing (after an update, a Home Assistant or computer restart, or a crash), it picks up again from the show or block it was on, whether you put it on yourself, from Home Assistant or from the **Schedule**. A scene that was on comes back too. Anything you'd stopped stays off, and a scheduled one whose end time passed while it was restarting stays off.
+
 ## 0.2.471
 
 - **You can see the AI working on a song's colours.** In the **Colours from this song** window, the AI's turn now has a spinner and, after a few seconds, how long it's taken so far. It can take up to a minute.

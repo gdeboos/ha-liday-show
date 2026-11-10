@@ -300,6 +300,59 @@ class Scheduler:
             await self.tick_playlists(now, [e for e in entries if e["play"]["type"] != "scene"])
         finally:  # scenes keep to their times whatever a playlist ran into
             await self.tick_scenes(now, [e for e in entries if e["play"]["type"] == "scene"])
+            self.runner.scheduled = self.running[0] if self.running else None
+            self.runner.scene_scheduled = self.scene_running[0] if self.scene_running else None
+
+    async def resume(self, now: datetime | None = None):
+        """After a restart, carry on with the playlist and scene that were on: the playlist from the item
+        it was on. One the schedule put on comes back only while that entry's time is still going."""
+        was = self.runner.recall()
+        if not was:
+            return
+        now = now or datetime.now()
+        await self.refresh_ha_location()
+        entries = {e["id"]: e for e in load_entries(self.storage)}
+
+        def still_on(eid) -> tuple[str, date] | None:
+            """(entry, its run's day) if it was scheduled and its time is still going; ("", day) if not scheduled."""
+            if not eid:
+                return "", now.date()
+            w = window_at(entries[eid], now, self.where()[0]) if eid in entries else None
+            return (eid, w[0].date()) if w else None
+
+        scene = was.get("scene")
+        if isinstance(scene, dict) and isinstance(scene.get("id"), str) and (on := still_on(was.get("scene_scheduled"))):
+            if self.storage.load_scene_baked(scene["id"]) is not None:
+                # It comes back once the lights are free, as after a show (Runner.watch_scene).
+                self.runner.scene = {"id": scene["id"], "name": str(scene.get("name") or scene["id"])}
+                self.runner.scene_playing = False
+                if on[0]:
+                    self.scene_running = (on[0], on[1], scene["id"])
+                    self.scene_handled[on[0]] = on[1]
+                log.info("picking up scene %s after a restart", scene["id"])
+        pl = was.get("playlist")
+        if not isinstance(pl, dict) or not isinstance(pl.get("id"), str) or not (on := still_on(was.get("scheduled"))):
+            return
+        # A saved playlist as it is now (it may have been edited); a schedule's single show as noted.
+        if pl["id"].startswith("show-"):
+            show = pl["id"][len("show-"):]
+            playlist = show_playlist(show, str(pl.get("name") or show)) if self.storage.load_show(show) else None
+        else:
+            playlist = next((p for p in playlists.load(self.storage) if p["id"] == pl["id"]), None)
+        if playlist is None:
+            log.info("not picking up playlist %s after a restart: it's gone", pl.get("name"))
+            return
+        item = was.get("item") if isinstance(was.get("item"), int) and was.get("item") >= 0 else 0
+        try:
+            await self.runner.play_playlist(playlist, start=item)
+        except RunnerError as err:
+            log.warning("couldn't pick up %s after a restart: %s", playlist.get("name"), err)
+            return
+        if on[0]:
+            self.running = (on[0], on[1], playlist["id"])
+            self.handled[on[0]] = on[1]
+        self.runner.scheduled = on[0] or None
+        log.info("picked up playlist %s after a restart, at item %d", playlist.get("name"), item + 1)
 
     async def tick_scenes(self, now: datetime, entries: list[dict]):
         windows = self._windows(entries, now)

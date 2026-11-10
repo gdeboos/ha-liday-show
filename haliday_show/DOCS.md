@@ -2336,7 +2336,9 @@ song so you can see it move. If **React to music** is on too, its brightness and
 
 ### Playlists
 
-To play several shows back to back, open **Library → Playlists**. Each playlist says how many shows it has, how
+To play several shows back to back, open **Library → Playlists**. A playlist plays round and round until
+you stop it; if HA-liday Show restarts meanwhile (after an update, say), it picks up from the show or block
+it was on, and a scene that was on comes back too. Each playlist says how many shows it has, how
 long it takes to play through once and when it plays, with **Edit**, **▶ Play**, and under **⋯**, **Rename…**, **Duplicate** (a copy called "… copy", not on the
 schedule) and **Delete…**. Press
 **+ New playlist**, or **Edit** one:
@@ -2436,7 +2438,8 @@ is playing. At the end time the show that's on finishes, then it stops (a buildi
 stops straight away), unless another row for the same thing carries straight on. If you press
 **■ Stop**, pause the song on the speaker or play something else in between, it stays off until its
 next start time. If HA-liday Show restarts during the scheduled time (after an update, say), it
-starts again, and so does a row you turn on during its time. Changing the times while it plays
+picks up from the show or block it was on, and a row you turn on during its time starts too. One whose
+end time passed while it was restarting stays off. Changing the times while it plays
 just moves when it stops.
 
 A scene row puts the scene on at its start and off at its end. If a show or playlist is playing,

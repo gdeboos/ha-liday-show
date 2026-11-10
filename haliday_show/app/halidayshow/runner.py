@@ -15,6 +15,7 @@ the playlist carries on afterwards. Stopping from the editor, an automation or t
 the queue.
 """
 import asyncio
+import json
 import logging
 import math
 import time
@@ -67,6 +68,12 @@ class Runner:
         self._follow: asyncio.Task | None = None
         self._playlist: asyncio.Task | None = None
         self.playlist: dict | None = None  # the playlist playing, if any
+        self.item = 0  # which of its items is on, so a restart picks up there
+        # The schedule entries that put the playlist and the scene on (set by the Scheduler), so a
+        # restart doesn't bring back one whose time has ended meanwhile.
+        self.scheduled: str | None = None
+        self.scene_scheduled: str | None = None
+        self._remembered = ""
         self.speaker_stopped = False  # the speaker stopped the lights (paused or stopped in HA)
         self.finishing = False  # the playlist stops once the show that's on ends
         # The song of a show started with no speaker (by a playlist, the schedule or an automation),
@@ -483,6 +490,7 @@ class Runner:
         loop = asyncio.get_running_loop()
         while True:
             await asyncio.sleep(0.5)
+            self.remember()
             if self.scene_playing and not self.player.playing:
                 self.scene_playing = False
             if not self.scene or self.scene_playing or not self._idle():
@@ -499,8 +507,40 @@ class Runner:
                 log.warning("couldn't bring back scene %s: %s", scene_id, e)
                 self.scene = None
 
-    async def play_playlist(self, playlist: dict):
-        """Play a playlist (see playlists.py: its items, in order) until it's stopped."""
+    @property
+    def _now_file(self):
+        # Not one of the saved files backups carry (backup.py), as it only says what's on.
+        return self.storage.config_dir / ".playing.json"
+
+    def remember(self):
+        """Note the playlist and scene that are on, so they carry on after a restart. Stopping them
+        notes that nothing is (a playlist finishing at its scheduled end isn't noted)."""
+        now = {}
+        if self._playlist_running() and self.playlist and not self.finishing:
+            now.update(playlist=self.playlist, item=self.item, scheduled=self.scheduled)
+        if self.scene:
+            now.update(scene=self.scene, scene_scheduled=self.scene_scheduled)
+        text = json.dumps(now, sort_keys=True)
+        if text == self._remembered:
+            return
+        try:
+            self._now_file.write_text(text)
+            self._remembered = text
+        except OSError as e:
+            log.warning("couldn't note what's playing: %s", e)
+
+    def recall(self) -> dict:
+        """What was on when HA-liday Show last stopped ({} if nothing, or it can't be read)."""
+        try:
+            now = json.loads(self._now_file.read_text())
+        except (OSError, ValueError):
+            return {}
+        self._remembered = json.dumps(now, sort_keys=True) if isinstance(now, dict) else ""
+        return now if isinstance(now, dict) else {}
+
+    async def play_playlist(self, playlist: dict, start: int = 0):
+        """Play a playlist (see playlists.py: its items, in order) until it's stopped. start: the item
+        to begin at (picking up after a restart)."""
         if not self._playable(playlist):
             raise RunnerError("this playlist has nothing to play yet: add a saved show, a scene or a block")
         self._yours += 1
@@ -509,7 +549,8 @@ class Runner:
             async with self._lock:
                 await self._stop()
             self.playlist = playlist
-            self._playlist = asyncio.create_task(self._run_playlist(playlist))
+            self.item = start
+            self._playlist = asyncio.create_task(self._run_playlist(playlist, start))
 
     def _playable(self, playlist: dict) -> bool:
         """Whether a playlist has anything with frames: a saved show, or a scene, colour, off or effect
@@ -589,8 +630,9 @@ class Runner:
             await asyncio.sleep(max(float(playlist.get("gap", 0)), 0.1))
         return False
 
-    async def _run_playlist(self, playlist: dict):
+    async def _run_playlist(self, playlist: dict, start: int = 0):
         items = playlist.get("items") or playlists.from_shows(playlist.get("shows", []), float(playlist.get("gap", 0)))
+        skip = start % len(items) if items else 0
         # Visitors' requests slot in after a show, or after the pause that follows it (as they did
         # before blocks, when every show had its pause); the playlist then carries on.
         visitors_due = False
@@ -598,6 +640,10 @@ class Runner:
             while True:
                 played = False
                 for k, item in enumerate(items):
+                    if skip:  # picking up after a restart: the first time round, from where it was
+                        skip -= 1
+                        continue
+                    self.item = k
                     if item["type"] != "show":
                         played = await self._play_block(item) or played
                         # Visitors' picks waiting play after any block (a playlist of scenes has no
