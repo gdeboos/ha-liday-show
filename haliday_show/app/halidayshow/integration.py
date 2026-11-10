@@ -99,6 +99,17 @@ async def command(runner: Runner, cmd: dict, refresh) -> str:
         raise ValueError(f"no show called '{cmd['show']}'")
     if action == "light":
         return await light(runner, cmd)
+    if action == "skip":
+        if not await runner.skip_request():
+            raise ValueError("nothing to skip: only a visitor's pick can be skipped")
+        return "skipped"
+    if action == "play" and cmd.get("show") and ("position" in cmd or "media_player" in cmd):
+        # From the haliday_show.play action: a speaker of your choice, or part-way in.
+        show_id = find_show(storage, cmd["show"])
+        task = asyncio.create_task(runner.play(show_id, media_player=cmd.get("media_player"), use_show_speaker=True,
+                                               position=cmd.get("position", 0.0)))
+        task.add_done_callback(_log_failure)
+        return "starting"
     if action in ("play", "play_playlist", "stop", "scene", "season"):
         # Starting a speaker can take seconds; answer straight away and let it start.
         if cmd.get("action") == "play" or cmd.get("playlist"):
@@ -159,11 +170,43 @@ class Hub:
         self._last = None
         self._lists = None
         self.seen = time.monotonic()  # last time an integration was connected (or the app started)
+        self._playing = None
+        self._playing_data = {}
         self.released = None  # called after handing the entities back
 
     def refresh(self):
         self._lists = None
         self._changed.set()
+
+    def emit(self, name: str, data: dict):
+        """An event for Home Assistant (haliday_show_<name> on its event bus)."""
+        if not self.clients:
+            return
+        text = json.dumps({"type": "event", "event": name, "data": data})
+        for ws in list(self.clients):
+            asyncio.get_running_loop().create_task(self._send(ws, text))
+
+    async def _send(self, ws, text: str):
+        try:
+            await ws.send_str(text)
+        except (ConnectionError, RuntimeError):
+            self.clients.discard(ws)
+
+    def _watch_playing(self):
+        """Show started and ended events, from what's playing (scenes are left out: the light shows them)."""
+        st = self.runner.status()
+        scene_on = bool(st.get("scene") and st["scene"].get("playing"))
+        now = (st["show"], st["started"]) if st["playing"] and st["show"] and not scene_on else None
+        if now == self._playing:
+            return
+        if self._playing:
+            self.emit("show_ended", self._playing_data)
+        self._playing = now
+        if now:
+            self._playing_data = {"show": st["show"], "name": st.get("name") or st["show"],
+                                  "playlist": (st.get("playlist") or {}).get("name"),
+                                  "visitor": bool(getattr(self.runner, "public_now", None))}
+            self.emit("show_started", self._playing_data)
 
     def snapshot(self) -> dict:
         if self._lists is None:
@@ -190,6 +233,10 @@ class Hub:
                 self._release_if_gone()
                 continue
             self.seen = time.monotonic()
+            try:
+                self._watch_playing()
+            except Exception:
+                log.exception("couldn't follow what's playing for Home Assistant")
             try:
                 text = json.dumps({"type": "state", "state": self.snapshot()})
             except Exception:

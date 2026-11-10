@@ -145,3 +145,47 @@ async def test_a_deleted_show_is_reported(hass: HomeAssistant, app) -> None:
     app.storage.delete_show("party") if hasattr(app.storage, "delete_show") else (app.storage.config_dir / "shows" / "party.json").unlink()
     with pytest.raises(HomeAssistantError, match="no show"):
         await hass.services.async_call("button", "press", {"entity_id": "button.ha_liday_show_play"}, blocking=True)
+
+
+async def test_actions(hass: HomeAssistant, app) -> None:
+    from homeassistant.exceptions import ServiceValidationError
+    from halidayshow import baked
+    await _set_up(hass, app)
+    app.storage.save_baked("party", baked.encode(40, [{"device": "a", "segments": 1}], [b"\x00\xff\x00"] * 400))
+    await hass.services.async_call(DOMAIN, "season", {"season": "Christmas", "out": False}, blocking=True)
+    await _settle(hass, lambda: hass.states.get("switch.ha_liday_show_christmas_props_out").state == "off")
+    with pytest.raises(ServiceValidationError, match="nothing to skip"):
+        await hass.services.async_call(DOMAIN, "skip", {}, blocking=True)
+    with pytest.raises(ServiceValidationError, match="no show"):
+        await hass.services.async_call(DOMAIN, "play", {"show": "Nope"}, blocking=True)
+    with pytest.raises(ServiceValidationError, match="scene has no speaker"):
+        await hass.services.async_call(DOMAIN, "play", {"scene": "x", "start_at": 3}, blocking=True)
+
+    started, ended = [], []
+    hass.bus.async_listen(f"{DOMAIN}_show_started", lambda e: started.append(e.data))
+    hass.bus.async_listen(f"{DOMAIN}_show_ended", lambda e: ended.append(e.data))
+    await hass.services.async_call(DOMAIN, "play", {"show": "Party", "start_at": 2}, blocking=True)
+    await _settle(hass, lambda: hass.states.get("sensor.ha_liday_show_status").state == "Party")
+    runner = app.web_app[app_server.RUNNER]
+    assert runner.status()["position"] >= 2
+    await _settle(hass, lambda: started)
+    assert started[0]["name"] == "Party"
+    assert hass.states.get("event.ha_liday_show_show").attributes["event_type"] == "started"
+    await hass.services.async_call(DOMAIN, "stop", {}, blocking=True)
+    await _settle(hass, lambda: ended)
+
+
+async def test_visitor_and_check_events(hass: HomeAssistant, app) -> None:
+    await _set_up(hass, app)
+    got = []
+    hass.bus.async_listen(f"{DOMAIN}_visitor_pick", lambda e: got.append(("pick", e.data)))
+    hass.bus.async_listen(f"{DOMAIN}_preshow_check", lambda e: got.append(("check", e.data)))
+    runner = app.web_app[app_server.RUNNER]
+    runner.add_request({"id": "r1", "ticket": "t", "kind": "show", "ref": "party", "name": "Party", "shows": [], "gap": 0})
+    import aiohttp
+    async with aiohttp.ClientSession() as s:
+        await s.put(f"http://127.0.0.1:{app.port}/api/preshow/last", json={"level": "warn", "problems": 0, "warnings": 2})
+    await _settle(hass, lambda: len(got) == 2)
+    assert ("check", {"level": "warn", "problems": 0, "warnings": 2}) in got
+    assert got[0][0] == "pick" and got[0][1]["name"] == "Party"
+    assert hass.states.get("event.ha_liday_show_visitors").attributes["event_type"] == "pick"

@@ -37,7 +37,7 @@ async def test_every_kind_of_light_is_asked_its_own_way():
     assert [x["level"] for x in lines] == ["fail", "fail", "ok", "info", "info", "info"]  # problems first
     assert {"level": "ok", "text": "Light 1, Light 3 and Light 5 answered."} in lines
     assert "Light 4 can't be asked over the network, so watch it in the next step." in text
-    assert {"level": "fail", "text": "Light 2 didn't answer.", "fix": preshow.NO_ANSWER_FIX["govee"]} in lines
+    assert {"level": "fail", "text": "Light 2 didn't answer.", "fix": preshow.NO_ANSWER_FIX["govee"], "light": "Light 2"} in lines
     assert any(x["level"] == "fail" and x["text"].startswith("Light 6 is unavailable") for x in lines)
     assert "Light 7 is planned, not linked to a real light yet, so it's left out." in text
     assert "Light 8 is packed away, so it's left out." in text

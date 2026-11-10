@@ -1,0 +1,37 @@
+play:
+  fields:
+    show:
+      example: Halloween
+      selector:
+        text:
+    playlist:
+      example: Halloween night
+      selector:
+        text:
+    scene:
+      example: Candy cane
+      selector:
+        text:
+    media_player:
+      selector:
+        entity:
+          domain: media_player
+    start_at:
+      selector:
+        number:
+          min: 0
+          max: 3600
+          unit_of_measurement: s
+stop:
+skip:
+season:
+  fields:
+    season:
+      required: true
+      example: Halloween
+      selector:
+        text:
+    out:
+      required: true
+      selector:
+        boolean:

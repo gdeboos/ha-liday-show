@@ -11,14 +11,23 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .client import BadPassword, CannotConnect, CommandFailed, HalidayClient, TooOld
-from .const import DEVICE_ID, DOMAIN
+from .const import DEVICE_ID, DOMAIN, EVENT_SIGNAL
+from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.BUTTON, Platform.LIGHT, Platform.SCENE, Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
+PLATFORMS = [Platform.BUTTON, Platform.EVENT, Platform.LIGHT, Platform.SCENE, Platform.SELECT, Platform.SENSOR,
+             Platform.SWITCH]
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    async_setup_services(hass)
+    return True
 
 
 @dataclass
@@ -67,7 +76,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: HalidayConfigEntry) -> b
         if state.get("claimed") is False and not any(not t.done() for t in claiming):
             claiming[:] = [entry.async_create_background_task(hass, _claim_again(hass, client, entry), "haliday_show claim")]
 
-    client.listen(pushed, lost)
+    def event(name: str, data: dict) -> None:
+        # On Home Assistant's event bus (haliday_show_show_started and so on), and to the event entities.
+        hass.bus.async_fire(f"{DOMAIN}_{name}", data)
+        async_dispatcher_send(hass, EVENT_SIGNAL, name, data)
+
+    client.listen(pushed, lost, event)
     entry.async_on_unload(client.stop)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

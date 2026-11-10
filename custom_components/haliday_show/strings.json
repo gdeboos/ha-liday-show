@@ -4,7 +4,11 @@
       "user": {
         "title": "HA-liday Show",
         "description": "Where HA-liday Show runs. On the Home Assistant app, keep 127.0.0.1 and 8099. For Docker or pipx, give that computer's address and port, and the password you set with HALIDAY_SHOW_PASSWORD (if any).",
-        "data": {"host": "Address", "port": "Port", "password": "Password"}
+        "data": {
+          "host": "Address",
+          "port": "Port",
+          "password": "Password"
+        }
       },
       "hassio_confirm": {
         "title": "HA-liday Show",
@@ -13,7 +17,9 @@
       "reauth_confirm": {
         "title": "HA-liday Show password",
         "description": "HA-liday Show's password has changed. Enter the new one.",
-        "data": {"password": "Password"}
+        "data": {
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -25,6 +31,98 @@
       "already_configured": "HA-liday Show is already set up.",
       "single_instance_allowed": "HA-liday Show is already set up.",
       "reauth_successful": "Password updated."
+    }
+  },
+  "services": {
+    "play": {
+      "name": "Play",
+      "description": "Plays a show, a playlist or a scene on HA-liday Show.",
+      "fields": {
+        "show": {
+          "name": "Show",
+          "description": "The show's name. Give a show, a playlist or a scene."
+        },
+        "playlist": {
+          "name": "Playlist",
+          "description": "The playlist's name."
+        },
+        "scene": {
+          "name": "Scene",
+          "description": "The scene's name."
+        },
+        "media_player": {
+          "name": "Speaker",
+          "description": "A show only: play its song on this speaker instead of its own."
+        },
+        "start_at": {
+          "name": "Start at",
+          "description": "A show only: start this many seconds in."
+        }
+      }
+    },
+    "stop": {
+      "name": "Stop",
+      "description": "Stops what's playing (a show, a playlist or a scene)."
+    },
+    "skip": {
+      "name": "Skip",
+      "description": "Ends the visitor's pick that's playing; the next one waiting starts."
+    },
+    "season": {
+      "name": "Season props",
+      "description": "Puts a season's props out, or packs them away.",
+      "fields": {
+        "season": {
+          "name": "Season",
+          "description": "The season's name, such as Halloween."
+        },
+        "out": {
+          "name": "Out",
+          "description": "On: the props are out. Off: packed away."
+        }
+      }
+    }
+  },
+  "entity": {
+    "event": {
+      "show_event": {
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "started": "Started",
+              "ended": "Ended"
+            }
+          }
+        }
+      },
+      "visitor_event": {
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "pick": "Pick",
+              "vote": "Vote"
+            }
+          }
+        }
+      },
+      "preshow_event": {
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "finished": "Finished"
+            }
+          }
+        }
+      },
+      "light_event": {
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "not_answering": "Not answering"
+            }
+          }
+        }
+      }
     }
   }
 }
