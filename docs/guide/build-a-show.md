@@ -214,7 +214,9 @@ You can swap shows with friends, or post one on a forum, without either of you c
 
 The Song panel shows the show's song with its length, tempo and sections, and, once HA-liday Show has
 listened to it, what can be heard in it (see [Split into parts](#split-into-parts)). Press
-**Change…** to pick another from your Home Assistant **media** folder, or **+ Add a song…** (MP3,
+**Change…** to pick another from your Home Assistant **media** folder: the window shows your folders from
+**Library → Songs**, opening on the one the show's song is in, and **Find a song in any folder** searches
+them all. Or press **+ Add a song…** (MP3,
 M4A, AAC, OGG, Opus, WAV, FLAC or WebM; see below). Songs you add go to `/media/haliday_show/` so media
 players can play them. For a lights-only show, choose **No song, lights only** and set its **Length with no song**.
 

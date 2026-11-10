@@ -12267,37 +12267,27 @@ async function showSongSounds(ref) {
   box.hidden = !box.textContent;
 }
 
-// Choose a song: a row per song (the hidden select stays the source of truth), applied on Use.
+// Choose a song: Library → Songs' folders, or a search across them (the hidden select stays the source of
+// truth), applied on Use. It opens in the folder of the show's song, or where you last were.
+const songDlg = { at: "", folders: [], homeOf: new Map(), song: "" };
 let songPick = "";
 function renderSongList() {
-  const box = $("song-list");
-  box.replaceChildren(...[...$("audio-select").options].map((o) => {
-    const ref = o.value ? JSON.parse(o.value) : null;
-    const row = document.createElement("label");
-    row.className = `song-row${o.value === songPick ? " picked" : ""}`;
-    const radio = document.createElement("input");
-    radio.type = "radio";
-    radio.name = "song-pick";
-    radio.checked = o.value === songPick;
-    radio.addEventListener("change", () => { songPick = o.value; renderSongList(); });
-    const text = document.createElement("span");
-    const name = document.createElement("b");
-    name.textContent = ref ? songLabel(ref) : "No song, lights only";
-    const where = document.createElement("span");
-    where.className = "hint";
-    where.textContent = ref ? `${ref.source === "media" ? "Media" : "Uploaded"}: ${ref.path}` : "Set how long the show runs";
-    text.append(name, where);
-    row.append(radio, text);
-    return row;
-  }));
+  songDlg.song = songPick;
+  drawSongFolders({ find: $("song-find"), path: $("song-path"), folders: $("song-folders"), songs: $("song-list") },
+    songDlg, (v) => { songPick = v; renderSongList(); }, renderSongList);
   $("duration-wrap").hidden = songPick !== "";
 }
 
-function openSongDialog() {
+async function openSongDialog() {
   songPick = $("audio-select").value;
+  Object.assign(songDlg, await songFolderInfo());
+  const ref = songPick ? JSON.parse(songPick) : null;
+  songDlg.at = ref ? folderOf(songDlg.folders, songDlg.homeOf.get(songKey(ref)) || songKey(ref)) : folderAt("songs");
+  $("song-find").value = "";
   renderSongList();
   $("song-dialog").returnValue = ""; // Escape keeps the last value, so a cancel must not look like Use
   $("song-dialog").showModal();
+  ($("song-list").querySelector("input:checked") || $("song-find")).focus();
 }
 
 function computePeaks(buffer, rate = 100) {
@@ -13326,10 +13316,13 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
 const PART_ORDER = ["vocals", "drums", "bass", "rest", "music"];
 const PART_WORDS = { vocals: "Just the vocals", drums: "Just the drums", bass: "Just the bass", rest: "The rest (no vocals, drums or bass)", music: "The music (no vocals)" };
 
-function nsSongs() {
-  const folders = newShow.folders, find = $("ns-find").value.trim().toLowerCase();
-  const at = folders.some((f) => f.id === newShow.at) ? newShow.at : "";
-  const where = (ref) => folderOf(folders, newShow.homeOf.get(songKey(ref)) || songKey(ref));
+// The songs in a folder of Library → Songs, its subfolders and the path to it, or the songs a search
+// finds in any folder: shared by New show and Choose a song. ui: {find, path, folders, songs} elements;
+// st: {at, folders, homeOf, song}, where at and song change as you go; onPick(value) for a song row.
+function drawSongFolders(ui, st, onPick, redraw) {
+  const folders = st.folders, find = ui.find.value.trim().toLowerCase();
+  const at = folders.some((f) => f.id === st.at) ? st.at : "";
+  const where = (ref) => folderOf(folders, st.homeOf.get(songKey(ref)) || songKey(ref));
   const refs = [...$("audio-select").options].filter((o) => o.value).map((o) => JSON.parse(o.value));
   const row = (ref) => {
     const id = where(ref);
@@ -13345,11 +13338,12 @@ function nsSongs() {
     if (!at) rows.unshift({ value: "", label: "No song, lights only", detail: "Set how long the show runs" });
   }
   // The path, and the folders in this one.
-  const path = $("ns-song-path");
+  const path = ui.path;
   path.hidden = !!find || !at;
   path.replaceChildren();
   if (at && !find) {
-    const step = (label, id) => button(label, () => { newShow.at = id; nsSongs(); }, "link-button");
+    // type=button, as these windows are forms that a plain button would submit (and close).
+    const step = (label, id) => Object.assign(button(label, () => { st.at = id; redraw(); }, "link-button"), { type: "button" });
     path.append(step("Songs", ""));
     const trail = pathTo(folders, at);
     trail.forEach((f, k) => {
@@ -13357,10 +13351,11 @@ function nsSongs() {
       path.append(k === trail.length - 1 ? Object.assign(document.createElement("b"), { textContent: f.name }) : step(f.name, f.id));
     });
   }
-  const keys = refs.map((r) => newShow.homeOf.get(songKey(r)) || songKey(r));
-  $("ns-folders").replaceChildren(...(find ? [] : childrenOf(folders, at)).map((f) => {
+  const keys = refs.map((r) => st.homeOf.get(songKey(r)) || songKey(r));
+  ui.folders.replaceChildren(...(find ? [] : childrenOf(folders, at)).map((f) => {
     const { items, folders: subs } = countIn(folders, f.id, [...new Set(keys)]);
-    const b = button("", () => { newShow.at = f.id; nsSongs(); $("ns-folders").querySelector("button")?.focus(); }, "song-row ns-folder");
+    const b = button("", () => { st.at = f.id; redraw(); ui.folders.querySelector("button")?.focus(); }, "song-row ns-folder");
+    b.type = "button";
     b.append(Object.assign(document.createElement("span"), { className: "folder-mark small" }),
       Object.assign(document.createElement("span"), { className: "folder-text" }),
       Object.assign(document.createElement("span"), { className: "folder-chev", textContent: "›" }));
@@ -13369,11 +13364,16 @@ function nsSongs() {
         textContent: [items ? plural(items, "song") : "", subs ? plural(subs, "folder") : ""].filter(Boolean).join(" · ") || "Empty" }));
     return b;
   }));
-  $("ns-folders").hidden = !$("ns-folders").children.length;
+  ui.folders.hidden = !ui.folders.children.length;
   if (!rows.length) {
-    $("ns-songs").replaceChildren(Object.assign(document.createElement("p"), { className: "hint",
+    ui.songs.replaceChildren(Object.assign(document.createElement("p"), { className: "hint",
       textContent: find ? "No songs match that." : "No songs in this folder." }));
-  } else nsRadioRows($("ns-songs"), "ns-song", rows, newShow.song, (v) => { newShow.song = v; nsSongPicked(); });
+  } else nsRadioRows(ui.songs, ui.songs.id, rows, st.song, onPick);
+}
+
+function nsSongs() {
+  drawSongFolders({ find: $("ns-find"), path: $("ns-song-path"), folders: $("ns-folders"), songs: $("ns-songs") },
+    newShow, (v) => { newShow.song = v; nsSongPicked(); }, nsSongs);
   $("ns-length-wrap").hidden = newShow.song !== "";
   $("ns-picked").textContent = newShow.song ? `Picked: ${songLabel(JSON.parse(newShow.song))}` : "Picked: no song, lights only";
 }
@@ -14462,6 +14462,8 @@ function wire() {
   $("ns-form").addEventListener("submit", nsSubmit);
   $("ns-back").addEventListener("click", () => nsStep(Math.max(1, newShow.step - 1)));
   $("ns-find").addEventListener("input", () => nsSongs());
+  $("song-find").addEventListener("input", () => renderSongList());
+  $("song-find").addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
   $("ns-find").addEventListener("keydown", (e) => { if (e.key === "Enter") e.preventDefault(); });
   $("ns-name").addEventListener("input", () => { newShow.named = true; $("ns-name-note").textContent = ""; });
   for (const b of document.querySelectorAll("[data-ns=cancel]")) b.addEventListener("click", () => $("new-show-dialog").close());

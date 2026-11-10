@@ -345,6 +345,9 @@
         <button class="ghost" value="close" aria-label="Close">✕</button></div>
       <div class="form-dialog-body">
         <select id="audio-select" title="Song" hidden></select>
+        <div class="ns-find"><input id="song-find" type="search" placeholder="Find a song in any folder" autocomplete="off" aria-label="Find a song"></div>
+        <nav id="song-path" class="folder-path" aria-label="Song folder" hidden></nav>
+        <div id="song-folders" class="song-list ns-folders" role="list" aria-label="Song folders"></div>
         <div id="song-list" class="song-list" role="radiogroup" aria-label="Songs"></div>
         <label id="duration-wrap" title="Show length when there is no song">Length with no song
           <input id="duration" type="number" min="1" step="1" value="60"> s</label>
