@@ -181,6 +181,40 @@ async def integration_library(request):
     })
 
 
+async def integration_schedule(request):
+    """The week ahead for the Schedule card: each stretch that plays, with its name and times (with their
+    zone), and which row is on now. ?start=YYYY-MM-DD, today if left out."""
+    try:
+        start = datetime.date.fromisoformat(request.query["start"]) if request.query.get("start") else datetime.date.today()
+    except ValueError:
+        raise web.HTTPBadRequest(text="start must be a date, like 2026-11-02")
+    storage, sched = request.app[STORAGE], request.app[SCHEDULER]
+
+    def gather():
+        entries = schedule.load_entries(storage)
+        names = {"playlist": {p["id"]: p["name"] for p in playlists.load(storage)},
+                 "scene": {s["id"]: s["name"] for s in storage.list_scenes()},
+                 "show": {s["id"]: s["name"] for s in storage.list_shows()}}
+        return entries, names
+
+    entries, names = await asyncio.to_thread(gather)
+    alive = {e["id"] for e in entries if e["play"]["id"] in names[e["play"]["type"]]}
+    week = schedule.week(entries, start, sched.where()[0], alive)
+    by_id = {e["id"]: e for e in entries}
+    state = sched.state()
+    on_now = {state.get("scheduled"), state.get("scene_scheduled")} - {None}
+    slots = []
+    for slot in week["slots"]:
+        e = by_id[slot["entry"]]
+        kind, ref = e["play"]["type"], e["play"]["id"]
+        slots.append({"entry": slot["entry"], "name": names[kind][ref], "kind": kind, "lane": slot["lane"],
+                      "day": slot["day"], "start": _with_zone(slot["start"]), "end": _with_zone(slot["end"]),
+                      "plays": [_with_zone(t) for t in slot["plays"]] if slot["plays"] else None,
+                      "on_now": slot["entry"] in on_now and bool(slot["plays"])
+                      and slot["plays"][0] <= datetime.datetime.now().isoformat() < slot["plays"][1]})
+    return web.json_response({"days": week["days"], "slots": slots})
+
+
 async def integration_image(request):
     """A show's picture, else its song's cover art, for the Browse and Player cards."""
     storage = request.app[STORAGE]
@@ -3873,6 +3907,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/integration/ws", integration_ws)
     r.add_get("/api/integration/library", integration_library)
     r.add_get("/api/integration/image/{id}", integration_image)
+    r.add_get("/api/integration/schedule", integration_schedule)
     r.add_post("/api/integration/command", integration_command)
     r.add_post("/api/integration/claim", integration_claim)
     r.add_post("/api/video", video_start)

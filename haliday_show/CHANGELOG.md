@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.493
+
+- **A Schedule card for your dashboard.** **HA-liday Show: Schedule** shows what plays when, today and the days ahead, as a timeline with a day on each row and a line for now. Shows and playlists are the tall bars and scenes the thin ones; what's already finished today is faded. Press a bar for its times. On a narrow card, or if you choose **List** in its options, it's a list instead. You can also choose how many days it shows and leave scenes out. See **Dashboard cards** in the guide.
+
 ## 0.2.492
 
 - **Scene buttons show their colours.** On the **HA-liday Show: Scenes** card, each button has a strip of that scene's colours along its bottom, so you can spot the one you want.

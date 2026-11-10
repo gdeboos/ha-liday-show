@@ -41,6 +41,7 @@ async def async_setup_frontend(hass: HomeAssistant, version: str) -> None:
     websocket_api.async_register_command(hass, ws_entities)
     websocket_api.async_register_command(hass, ws_library)
     websocket_api.async_register_command(hass, ws_house)
+    websocket_api.async_register_command(hass, ws_schedule)
     websocket_api.async_register_command(hass, ws_house_frames)
     hass.http.register_view(ImageView())
     hass.http.register_view(HousePhotoView())
@@ -98,6 +99,22 @@ class ImageView(HomeAssistantView):
         if not got:
             raise web.HTTPNotFound
         return web.Response(body=got[0], content_type=got[1], headers={"Cache-Control": "private, max-age=300"})
+
+
+@websocket_api.websocket_command({vol.Required("type"): "haliday_show/schedule",
+                                  vol.Optional("start"): vol.Match(r"^\d{4}-\d{2}-\d{2}$")})
+@websocket_api.async_response
+async def ws_schedule(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+    """The week ahead, for the Schedule card."""
+    client = _client(hass)
+    if client is None:
+        connection.send_error(msg["id"], "not_ready", "HA-liday Show isn't set up, or isn't answering")
+        return
+    try:
+        path = "/api/integration/schedule" + (f"?start={msg['start']}" if msg.get("start") else "")
+        connection.send_result(msg["id"], await client.get(path))
+    except (CannotConnect, CommandFailed) as err:
+        connection.send_error(msg["id"], "not_ready", f"HA-liday Show isn't answering: {err}")
 
 
 @websocket_api.websocket_command({vol.Required("type"): "haliday_show/house"})
