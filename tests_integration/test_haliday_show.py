@@ -210,6 +210,7 @@ async def test_media_player_and_sensors(hass: HomeAssistant, app) -> None:
     st = hass.states.get("media_player.ha_liday_show_player")
     assert st.attributes["media_title"] == "Party" and st.attributes["media_duration"] == 10
     assert "entity_picture" not in st.attributes  # no song, so no cover art
+    assert st.attributes["visitor_pick"] is False  # your own show: Skip isn't offered
     await asyncio.sleep(2.2)  # two pushes later the player hasn't rewritten its state
     await hass.async_block_till_done()
     assert hass.states.get("media_player.ha_liday_show_player").last_updated == st.last_updated

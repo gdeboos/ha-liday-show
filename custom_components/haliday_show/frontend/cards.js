@@ -51,12 +51,13 @@ class HalidayCard extends HTMLElement {
   // Rebuild, unless you're using a box or list in the card: then wait until you've left it.
   paint() {
     const active = this.shadowRoot.activeElement;
-    if (active && active.tagName === "SELECT") {
+    if (active && (active.tagName === "SELECT" || active.type === "range")) {
       this._waiting = true;
       active.addEventListener("blur", () => { if (this._waiting) { this._waiting = false; this.paint(); } }, { once: true });
       return;
     }
-    const typing = active && active.tagName === "INPUT" ? [active.selectionStart, active.selectionEnd] : null;
+    const typing = active && active.tagName === "INPUT" && typeof active.selectionStart === "number"
+      ? [active.selectionStart, active.selectionEnd] : null;
     this.render();
     if (typing) {
       const input = this.shadowRoot.querySelector("input");
@@ -203,7 +204,7 @@ class HalidayPlayerCard extends HalidayCard {
           </select>`}
           ${playing
             ? `<button class="btn" data-act="stop"><ha-icon icon="mdi:stop"></ha-icon>Stop</button>
-               <button class="btn" data-act="skip" title="Ends a visitor's pick"><ha-icon icon="mdi:skip-next"></ha-icon>Skip</button>`
+               ${a.visitor_pick ? `<button class="btn" data-act="skip" title="Ends this visitor's pick"><ha-icon icon="mdi:skip-next"></ha-icon>Skip</button>` : ""}`
             : `<button class="btn primary" data-act="play" ${unavailable || !shows.length ? "disabled" : ""}><ha-icon icon="mdi:play"></ha-icon>Play</button>`}
         </div>
         ${nextLine}
@@ -425,6 +426,10 @@ class HalidayScenesCard extends HalidayCard {
     const scenes = (this._ents.scenes || []).map((id) => this._hass.states[id]).filter(Boolean)
       .map((st) => ({ id: st.entity_id, name: st.attributes.scene_name || st.attributes.friendly_name || st.entity_id }))
       .sort((a, b) => a.name.localeCompare(b.name));
+    // A scene added since the card looked: look again (it finds the new scene's entity).
+    const listed = (light.attributes.effect_list || []).length;
+    if (listed !== scenes.length && !this._finding && Date.now() - (this._tried || 0) > RETRY_MS) this._findEntities();
+    const gone = light.state === "unavailable";
     const on = light.state === "on";
     const current = on ? light.attributes.effect : null;
     const level = Math.round(((light.attributes.brightness ?? 255) * 100) / 255) || 100;
@@ -440,11 +445,11 @@ class HalidayScenesCard extends HalidayCard {
         <div class="head"><ha-icon icon="mdi:creation"></ha-icon><span class="grow">${title}</span>
           <button class="btn" data-off ${on ? "" : "disabled"}><ha-icon icon="mdi:power"></ha-icon>Off</button></div>
         ${scenes.length ? `<div class="grid">${scenes.map((sc) =>
-          `<button class="btn scene" data-scene="${h(sc.id)}" aria-pressed="${sc.name === current}"><span class="clip">${h(sc.name)}</span></button>`).join("")}</div>`
+          `<button class="btn scene" data-scene="${h(sc.id)}" aria-pressed="${sc.name === current}" ${gone ? "disabled" : ""}><span class="clip">${h(sc.name)}</span></button>`).join("")}</div>`
           : `<div class="muted small">No scenes yet: make one in HA-liday Show's Scene editor.</div>`}
         <label class="level small"><span class="muted">Brightness</span>
           <input type="range" min="1" max="100" value="${level}" aria-label="Scene brightness" ${on ? "" : "disabled"}><output>${level}%</output></label>
-        ${on || !scenes.length ? "" : '<div class="note">Scenes are off. Press one to put it on.</div>'}
+        ${gone ? `<div class="note">HA-liday Show isn't answering.</div>` : on || !scenes.length ? "" : '<div class="note">Scenes are off. Press one to put it on.</div>'}
         ${this._error ? `<div class="error">${h(this._error)}</div>` : ""}
       </ha-card>`;
     const root = this.shadowRoot;
@@ -454,8 +459,11 @@ class HalidayScenesCard extends HalidayCard {
     const slider = root.querySelector("input[type=range]");
     const out = root.querySelector("output");
     slider.addEventListener("input", () => { out.textContent = `${slider.value}%`; });
-    slider.addEventListener("change", () => this.call("light", "turn_on",
-      { entity_id: light.entity_id, brightness_pct: Number(slider.value) }));
+    slider.addEventListener("change", () => {
+      // Only while a scene is on: turning the light on would start one.
+      if (this._hass.states[light.entity_id]?.state !== "on") return;
+      this.call("light", "turn_on", { entity_id: light.entity_id, brightness_pct: Number(slider.value) });
+    });
   }
 }
 
@@ -483,11 +491,13 @@ class HalidayVisitorsCard extends HalidayCard {
         <div class="muted small">${h(this._error || (this._ents ? "Update the HA-liday Show integration." : "Loading…"))}</div></ha-card>`;
       return;
     }
+    const known = (st) => st && !["unavailable", "unknown"].includes(st.state);
+    const pageKnown = known(page);
     const open = page.state === "on";
     const voting = queue?.attributes.mode === "vote";
-    const waiting = Number(queue?.state) || 0;
+    const waiting = known(queue) ? Number(queue.state) || 0 : "–";
     const picks = queue?.attributes.picks || [];
-    const phones = Number(listening?.state) || 0;
+    const phones = known(listening) ? Number(listening.state) || 0 : "–";
     const level = check && CHECK[check.state];
     const checkedAt = check?.attributes.checked ? new Date(check.attributes.checked) : null;
     const ago = checkedAt && !Number.isNaN(checkedAt.getTime())
@@ -509,7 +519,8 @@ class HalidayVisitorsCard extends HalidayCard {
       <ha-card>
         <div class="head"><ha-icon icon="mdi:account-group"></ha-icon>${title}</div>
         <div class="stats">
-          ${tile(open ? "mdi:web-check" : "mdi:web-off", open ? "Open" : page.attributes.switched_on ? "Closed" : "Off",
+          ${!pageKnown ? tile("mdi:web", "–", "Not answering")
+            : tile(open ? "mdi:web-check" : "mdi:web-off", open ? "Open" : page.attributes.switched_on ? "Closed" : "Off",
             open ? "Visitors' page" : page.attributes.switched_on ? "Outside opening hours" : "Visitors' page is switched off",
             open ? "var(--success-color, #43a047)" : "")}
           ${tile(voting ? "mdi:vote" : "mdi:human-queue", waiting, voting ? (waiting === 1 ? "vote" : "votes") : "waiting")}
@@ -517,12 +528,13 @@ class HalidayVisitorsCard extends HalidayCard {
         </div>
         ${picks.length ? `<ol class="small">${picks.slice(0, 5).map((p) => `<li>${h(p)}</li>`).join("")}</ol>
           ${picks.length > 5 ? `<div class="note">and ${picks.length - 5} more</div>` : ""}` : ""}
-        ${player && player.state === "playing" && waiting ? `<div style="margin-top:10px">
+        ${player && player.state === "playing" && player.attributes.visitor_pick ? `<div style="margin-top:10px">
           <button class="btn" data-skip><ha-icon icon="mdi:skip-next"></ha-icon>Skip this pick</button></div>` : ""}
         <div class="check">
           ${level ? `<ha-icon icon="${level[0]}" style="color:${level[2]}"></ha-icon>
             <div><div>Pre-show check: ${level[1]}${counts ? ` (${h(counts)})` : ""}</div><div class="muted small">${h(ago ? `Last run ${ago}` : "")}</div></div>`
-          : `<ha-icon icon="mdi:clipboard-check-outline"></ha-icon><div class="muted small">No pre-show check yet. Run one from HA-liday Show's Setup → Devices.</div>`}
+          : `<ha-icon icon="mdi:clipboard-check-outline"></ha-icon><div class="muted small">${check && check.state === "unavailable"
+            ? "The last pre-show check isn't available." : "No pre-show check yet. Run one from HA-liday Show's Setup → Devices."}</div>`}
         </div>
         ${this._error ? `<div class="error">${h(this._error)}</div>` : ""}
       </ha-card>`;
