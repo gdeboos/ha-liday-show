@@ -1,6 +1,7 @@
 """The HA-liday Show integration: Home Assistant's entities for the HA-liday Show app, without MQTT."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 
@@ -12,7 +13,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .client import BadPassword, CannotConnect, HalidayClient, TooOld
+from .client import BadPassword, CannotConnect, CommandFailed, HalidayClient, TooOld
 from .const import DEVICE_ID, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,16 +49,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: HalidayConfigEntry) -> b
 
     try:
         await client.claim(True)
-    except (CannotConnect, BadPassword) as err:
+    except (CannotConnect, BadPassword, CommandFailed) as err:
         raise ConfigEntryNotReady(str(err)) from err
-    _take_over_mqtt(hass)
+    await _take_over_mqtt(hass, entry)
 
     entry.runtime_data = HalidayData(client, coordinator)
 
     def lost() -> None:
         coordinator.async_set_update_error(UpdateFailed("lost touch with HA-liday Show"))
 
-    client.listen(coordinator.async_set_updated_data, lost)
+    claiming: list[asyncio.Task] = []
+
+    def pushed(state: dict) -> None:
+        coordinator.async_set_updated_data(state)
+        # The app forgot (a restored backup, a reinstall, or a week without us): claim again before
+        # MQTT brings back a second set of entities.
+        if state.get("claimed") is False and not any(not t.done() for t in claiming):
+            claiming[:] = [entry.async_create_background_task(hass, _claim_again(hass, client, entry), "haliday_show claim")]
+
+    client.listen(pushed, lost)
     entry.async_on_unload(client.stop)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -74,19 +84,46 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
                            entry.data.get(CONF_PASSWORD))
     try:
         await client.claim(False)
-    except Exception as err:  # noqa: BLE001 - the app may be gone too; MQTT comes back when it next says so
-        _LOGGER.warning("couldn't tell HA-liday Show to bring its MQTT entities back: %s", err)
+    except Exception as err:  # noqa: BLE001 - the app may be off; it brings MQTT back after a week without us
+        _LOGGER.warning("couldn't tell HA-liday Show to bring its MQTT entities back: %s. "
+                        "Restart the app with Home Assistant running, or they come back by themselves after a week", err)
 
 
-def _take_over_mqtt(hass: HomeAssistant) -> None:
-    """Free the MQTT entities' ids (select.ha_liday_show_show and the rest) so ours take them.
+async def _claim_again(hass: HomeAssistant, client: HalidayClient, entry: ConfigEntry) -> None:
+    try:
+        await client.claim(True)
+    except (CannotConnect, BadPassword, CommandFailed) as err:
+        _LOGGER.warning("couldn't take over HA-liday Show's MQTT entities: %s", err)
+        return
+    await _take_over_mqtt(hass, entry)
 
-    The app has already withdrawn their MQTT discovery entries; this clears what's left in the registries,
-    for example while the broker is down."""
+
+async def _take_over_mqtt(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Move the MQTT entities (select.ha_liday_show_show and the rest) across to this integration.
+
+    The app has already withdrawn their MQTT discovery entries. Our entities have the same unique ids, so
+    each is registered here with the MQTT one's entity id, and any name, icon or area you gave it."""
     ent_reg = er.async_get(hass)
-    for entry in list(ent_reg.entities.values()):
-        if entry.platform == "mqtt" and entry.unique_id.startswith("haliday_show_"):
-            ent_reg.async_remove(entry.entity_id)
+    old = [e for e in list(ent_reg.entities.values())
+           if e.platform == "mqtt" and e.unique_id.startswith("haliday_show_")]
+    for e in old:
+        ent_reg.async_remove(e.entity_id)
+    # A loaded MQTT entity goes from the state machine a moment later; its id can't be reused until then.
+    for _ in range(50):
+        if not any(hass.states.get(e.entity_id) for e in old):
+            break
+        await asyncio.sleep(0.1)
+    for e in old:
+        if hass.states.get(e.entity_id) or ent_reg.async_get(e.entity_id):
+            continue
+        new = ent_reg.async_get_or_create(e.domain, DOMAIN, e.unique_id, config_entry=entry,
+                                          suggested_object_id=e.entity_id.split(".", 1)[1])
+        changes = {k: v for k, v in (("name", e.name), ("icon", e.icon), ("area_id", e.area_id),
+                                     ("labels", e.labels), ("aliases", e.aliases)) if v}
+        if new.entity_id != e.entity_id:
+            changes["new_entity_id"] = e.entity_id
+        if changes:
+            ent_reg.async_update_entity(new.entity_id, **changes)
     dev_reg = dr.async_get(hass)
     if device := dev_reg.async_get_device(identifiers={("mqtt", DEVICE_ID)}):
         dev_reg.async_remove_device(device.id)

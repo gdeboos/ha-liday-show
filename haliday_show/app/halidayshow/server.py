@@ -157,14 +157,14 @@ async def info(request):
 
 # The Home Assistant integration (integration.py) ------------------------------------------------
 async def integration_state(request):
-    return web.json_response(integration.snapshot(request.app[RUNNER]))
+    return web.json_response(request.app[HUB].snapshot())
 
 
 async def integration_ws(request):
     ws = web.WebSocketResponse(heartbeat=30)
     await ws.prepare(request)
     hub = request.app[HUB]
-    await ws.send_str(json.dumps({"type": "state", "state": integration.snapshot(request.app[RUNNER])}))
+    await ws.send_str(json.dumps({"type": "state", "state": hub.snapshot()}))
     hub.clients.add(ws)
     try:
         async for _ in ws:  # nothing is expected from the integration over this; commands are POSTs
@@ -945,6 +945,8 @@ async def put_show(request):
     if mark:
         show["in_progress"] = True
     st.save_show(_show_id(request), show)
+    if before is None or before.get("name") != show.get("name"):
+        request.app[HUB].refresh()  # Home Assistant's show list (MQTT follows once it's baked)
     return web.json_response({"ok": True})
 
 
@@ -3724,6 +3726,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[RUNNER].seasons_changed = app[MQTT].refresh
         app[HUB] = integration.Hub(app[RUNNER])
         app[MQTT].on_refresh.append(app[HUB].refresh)
+        app[HUB].released = app[MQTT].refresh
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
         app[LIVE] = LiveMusic(lambda: {d["ip"]: d.get("name") for d in app[STORAGE].load_devices() if d.get("ip")})
         await app[LIVE].start()

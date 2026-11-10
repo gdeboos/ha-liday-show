@@ -12,9 +12,10 @@ releases them and MQTT comes back.
 import asyncio
 import json
 import logging
+import time
 
 from . import __version__, playlists, seasons
-from .commands import handle
+from .commands import find_show, handle
 from .mqtt import scene_options, show_options
 from .runner import Runner, RunnerError
 
@@ -38,20 +39,24 @@ def set_claimed(storage, on: bool):
     storage.save_settings(settings)
 
 
-def snapshot(runner: Runner) -> dict:
+def lists(storage) -> dict:
+    """The slow part (reads every show): only remade when something changes (MqttBridge.refresh)."""
+    # Option labels as the MQTT selects had them, so automations choosing by name keep working.
+    return {
+        "shows": [{"id": i, "name": label} for label, i in show_options(storage.list_shows()).items()],
+        "playlists": [{"id": i, "name": label} for label, i in show_options(playlists.load(storage)).items()],
+        "scenes": [{"id": i, "name": label} for label, i in scene_options(storage.list_scenes()).items()],
+    }
+
+
+def snapshot(runner: Runner, listed: dict | None = None) -> dict:
     storage = runner.storage
     settings = storage.load_settings()
-    shows = storage.list_shows()
-    plays = playlists.load(storage)
-    scenes = storage.list_scenes()
     st = runner.status()
     scene = runner.scene
     return {
         "api": API, "version": __version__, "claimed": settings.get(CLAIMED) is True,
-        # Option labels as the MQTT selects had them, so automations choosing by name keep working.
-        "shows": [{"id": i, "name": label} for label, i in show_options(shows).items()],
-        "playlists": [{"id": i, "name": label} for label, i in show_options(plays).items()],
-        "scenes": [{"id": i, "name": label} for label, i in scene_options(scenes).items()],
+        **(listed if listed is not None else lists(storage)),
         "seasons": [{"id": s["id"], "name": s["name"], "out": s["out"]} for s in seasons.load(settings)],
         "selected_show": settings.get("selected_show"),
         "selected_playlist": settings.get("selected_playlist"),
@@ -87,6 +92,11 @@ async def command(runner: Runner, cmd: dict, refresh) -> str:
         if not ref:
             raise ValueError("no playlist selected")
         cmd = {"action": "play", "playlist": ref}
+    # Check what's asked for is there before answering, since starting carries on in the background.
+    if action in ("play", "play_playlist") and cmd.get("playlist") and not playlists.find(storage, cmd["playlist"]):
+        raise ValueError(f"no playlist called '{cmd['playlist']}'")
+    if action == "play" and cmd.get("show") and not find_show(storage, cmd["show"]):
+        raise ValueError(f"no show called '{cmd['show']}'")
     if action == "light":
         return await light(runner, cmd)
     if action in ("play", "play_playlist", "stop", "scene", "season"):
@@ -133,17 +143,40 @@ async def light(runner: Runner, cmd: dict) -> str:
     return "ok"
 
 
+RELEASE_AFTER = 7 * 24 * 3600  # no integration for a week: hand the entities back to MQTT
+
+
 class Hub:
-    """Pushes a snapshot to each connected integration when anything in it changes."""
+    """Pushes a snapshot to each connected integration when anything in it changes.
+
+    The lists (every show read from disk) are only remade after refresh(); the once-a-second check
+    looks at what's playing, which is cheap, so playback isn't held up."""
 
     def __init__(self, runner: Runner):
         self.runner = runner
         self.clients: set = set()
         self._changed = asyncio.Event()
         self._last = None
+        self._lists = None
+        self.seen = time.monotonic()  # last time an integration was connected (or the app started)
+        self.released = None  # called after handing the entities back
 
     def refresh(self):
+        self._lists = None
         self._changed.set()
+
+    def snapshot(self) -> dict:
+        if self._lists is None:
+            self._lists = lists(self.runner.storage)
+        return snapshot(self.runner, self._lists)
+
+    def _release_if_gone(self):
+        """The integration was removed while the app was off (or unreachable), so it couldn't say so."""
+        if time.monotonic() - self.seen > RELEASE_AFTER and claimed(self.runner.storage):
+            log.warning("no Home Assistant integration for a week: bringing back the MQTT entities")
+            set_claimed(self.runner.storage, False)
+            if self.released:
+                self.released()
 
     async def run(self):
         while True:
@@ -154,9 +187,11 @@ class Hub:
             self._changed.clear()
             if not self.clients:
                 self._last = None
+                self._release_if_gone()
                 continue
+            self.seen = time.monotonic()
             try:
-                text = json.dumps({"type": "state", "state": snapshot(self.runner)})
+                text = json.dumps({"type": "state", "state": self.snapshot()})
             except Exception:
                 log.exception("couldn't make the Home Assistant snapshot")
                 continue

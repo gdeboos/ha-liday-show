@@ -112,3 +112,36 @@ async def test_removing_hands_back_to_mqtt(hass: HomeAssistant, app) -> None:
     await hass.async_block_till_done()
     assert app.storage.load_settings().get("ha_integration") is None
     assert not dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "haliday_show")})
+
+
+async def test_renamed_mqtt_entities_keep_their_id_and_area(hass: HomeAssistant, app) -> None:
+    ent_reg = er.async_get(hass)
+    old = MockConfigEntry(domain="mqtt")
+    old.add_to_hass(hass)
+    made = ent_reg.async_get_or_create("button", "mqtt", "haliday_show_play", suggested_object_id="garden_show_go",
+                                       config_entry=old)
+    ent_reg.async_update_entity(made.entity_id, area_id="garden", name="Go!")
+    await _set_up(hass, app)
+    moved = ent_reg.async_get("button.garden_show_go")
+    assert moved and moved.platform == DOMAIN and moved.area_id == "garden" and moved.name == "Go!"
+    assert hass.states.get("button.garden_show_go")
+    assert not hass.states.get("button.ha_liday_show_play")
+
+
+async def test_claims_again_when_the_app_forgets(hass: HomeAssistant, app) -> None:
+    await _set_up(hass, app)
+    settings = app.storage.load_settings()
+    settings.pop("ha_integration")
+    app.storage.save_settings(settings)
+    app.web_app[app_server.HUB].refresh()
+    await _settle(hass, lambda: app.storage.load_settings().get("ha_integration") is True)
+
+
+async def test_a_deleted_show_is_reported(hass: HomeAssistant, app) -> None:
+    from homeassistant.exceptions import HomeAssistantError
+    await _set_up(hass, app)
+    await hass.services.async_call("select", "select_option",
+                                   {"entity_id": "select.ha_liday_show_show", "option": "Party"}, blocking=True)
+    app.storage.delete_show("party") if hasattr(app.storage, "delete_show") else (app.storage.config_dir / "shows" / "party.json").unlink()
+    with pytest.raises(HomeAssistantError, match="no show"):
+        await hass.services.async_call("button", "press", {"entity_id": "button.ha_liday_show_play"}, blocking=True)

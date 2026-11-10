@@ -3058,7 +3058,12 @@ To install it:
 
 Once it's added, the MQTT entities move across to the integration: Home Assistant shows them on an
 **HA-liday Show** device under the integration instead of under MQTT, with the same names. Publishing
-to the MQTT topics below still works. If you remove the integration, the MQTT entities come back.
+to the MQTT topics below still works. Any name, icon or area you'd given an entity comes with it.
+
+If you **delete** the integration, the MQTT entities come back. Delete it while the app is running: if
+the app is off at the time, they come back on their own after a week without the integration. If you
+only **disable** it, its entities go away but the MQTT ones stay away too, until you enable it again or
+delete it.
 
 Update the integration whenever you update the app: the Marketplace offers the update alongside it.
 If they get out of step, the integration says so.

@@ -110,6 +110,7 @@ class MqttBridge:
         self._light = None
         self._refresh = asyncio.Event()
         self.on_refresh = []  # the integration's hub follows the same changes
+        self._withdrawn = False
 
     def refresh(self):
         """Call after shows or playlists change so the selects' options follow."""
@@ -147,6 +148,7 @@ class MqttBridge:
                         identifier="haliday_show",
                         will=aiomqtt.Will(f"{BASE}/availability", "offline", retain=True)) as client:
                     self.client = client
+                    self._withdrawn = False
                     delay = 5
                     log.info("connected to MQTT at %s", config["host"])
                     await client.subscribe(f"{BASE}/#")
@@ -199,11 +201,14 @@ class MqttBridge:
         scenes = self.storage.list_scenes()
         self.scene_options = scene_options(scenes)
         if self.storage.load_settings().get("ha_integration") is True:
-            await self._withdraw(self.storage.load_settings())
+            if not self._withdrawn:  # once per claim, or after Home Assistant restarts
+                await self._withdraw(self.storage.load_settings())
+                self._withdrawn = True
             self._status = None
             self._light = None
             await self._publish_status()
             return
+        self._withdrawn = False
         for topic, cfg in discovery_configs(list(self.options), list(self.playlist_options)).items():
             await self.client.publish(topic, json.dumps(cfg), retain=True)
         for topic, cfg in scene_configs(scenes).items():
@@ -313,6 +318,7 @@ class MqttBridge:
         text = payload.decode(errors="replace").strip()
         try:
             if topic == f"{DISCOVERY}/status" and text == "online":
+                self._withdrawn = False
                 await self._publish_all()  # Home Assistant restarted
             elif topic == f"{BASE}/show/set":
                 show_id = self.options.get(text) or find_show(self.storage, text)

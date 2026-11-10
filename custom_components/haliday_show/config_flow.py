@@ -10,7 +10,7 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.hassio import HassioServiceInfo
 
-from .client import BadPassword, CannotConnect, HalidayClient, TooOld
+from .client import BadPassword, CannotConnect, CommandFailed, HalidayClient, TooOld
 from .const import DEFAULT_HOST, DEFAULT_PORT, DOMAIN
 
 
@@ -29,7 +29,7 @@ class HalidayConfigFlow(ConfigFlow, domain=DOMAIN):
             return "invalid_auth"
         except TooOld:
             return "too_old"
-        except CannotConnect:
+        except (CannotConnect, CommandFailed):
             return "cannot_connect"
         return None
 
