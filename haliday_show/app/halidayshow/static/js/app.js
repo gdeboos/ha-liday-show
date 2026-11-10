@@ -12273,18 +12273,24 @@ const songDlg = { at: "", folders: [], homeOf: new Map(), song: "" };
 let songPick = "";
 function renderSongList() {
   songDlg.song = songPick;
-  drawSongFolders({ find: $("song-find"), path: $("song-path"), folders: $("song-folders"), songs: $("song-list") },
+  drawSongFolders({ find: $("song-find"), path: $("song-path"), folders: $("song-folders"), songs: $("song-list"), name: "song-pick" },
     songDlg, (v) => { songPick = v; renderSongList(); }, renderSongList);
   $("duration-wrap").hidden = songPick !== "";
 }
 
-async function openSongDialog() {
-  songPick = $("audio-select").value;
+// Shows the folder the picked song is in (the top, where "No song, lights only" is, for none), with the
+// folders read afresh, as Add a song… may have just filed one.
+async function songDialogAtPick() {
   Object.assign(songDlg, await songFolderInfo());
   const ref = songPick ? JSON.parse(songPick) : null;
-  songDlg.at = ref ? folderOf(songDlg.folders, songDlg.homeOf.get(songKey(ref)) || songKey(ref)) : folderAt("songs");
+  songDlg.at = ref ? folderOf(songDlg.folders, songDlg.homeOf.get(songKey(ref)) || songKey(ref)) || "" : "";
   $("song-find").value = "";
   renderSongList();
+}
+
+async function openSongDialog() {
+  songPick = $("audio-select").value;
+  await songDialogAtPick();
   $("song-dialog").returnValue = ""; // Escape keeps the last value, so a cancel must not look like Use
   $("song-dialog").showModal();
   ($("song-list").querySelector("input:checked") || $("song-find")).focus();
@@ -13317,7 +13323,8 @@ const PART_ORDER = ["vocals", "drums", "bass", "rest", "music"];
 const PART_WORDS = { vocals: "Just the vocals", drums: "Just the drums", bass: "Just the bass", rest: "The rest (no vocals, drums or bass)", music: "The music (no vocals)" };
 
 // The songs in a folder of Library → Songs, its subfolders and the path to it, or the songs a search
-// finds in any folder: shared by New show and Choose a song. ui: {find, path, folders, songs} elements;
+// finds in any folder: shared by New show and Choose a song. ui: {find, path, folders, songs} elements
+// and the radios' name;
 // st: {at, folders, homeOf, song}, where at and song change as you go; onPick(value) for a song row.
 function drawSongFolders(ui, st, onPick, redraw) {
   const folders = st.folders, find = ui.find.value.trim().toLowerCase();
@@ -13368,11 +13375,11 @@ function drawSongFolders(ui, st, onPick, redraw) {
   if (!rows.length) {
     ui.songs.replaceChildren(Object.assign(document.createElement("p"), { className: "hint",
       textContent: find ? "No songs match that." : "No songs in this folder." }));
-  } else nsRadioRows(ui.songs, ui.songs.id, rows, st.song, onPick);
+  } else nsRadioRows(ui.songs, ui.name, rows, st.song, onPick);
 }
 
 function nsSongs() {
-  drawSongFolders({ find: $("ns-find"), path: $("ns-song-path"), folders: $("ns-folders"), songs: $("ns-songs") },
+  drawSongFolders({ find: $("ns-find"), path: $("ns-song-path"), folders: $("ns-folders"), songs: $("ns-songs"), name: "ns-song" },
     newShow, (v) => { newShow.song = v; nsSongPicked(); }, nsSongs);
   $("ns-length-wrap").hidden = newShow.song !== "";
   $("ns-picked").textContent = newShow.song ? `Picked: ${songLabel(JSON.parse(newShow.song))}` : "Picked: no song, lights only";
@@ -14569,7 +14576,7 @@ function wire() {
     await importSongInfo();
   });
   // A song added from Choose a song comes back picked, ready for Use this song.
-  $("btn-song-add").addEventListener("click", () => openAddSong({ onAdded: (v) => { if (v) songPick = v; renderSongList(); } }));
+  $("btn-song-add").addEventListener("click", () => openAddSong({ onAdded: (v) => { if (v) songPick = v; songDialogAtPick(); } }));
   $("duration").addEventListener("change", (e) => {
     app.show.duration = Math.max(1, Number(e.target.value) || 60);
     app.changed();
