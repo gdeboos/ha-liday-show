@@ -1,7 +1,11 @@
 // HA-liday Show's dashboard cards. The integration loads this file on every dashboard (frontend.py), so
 // the cards are in the card picker with no Resources step. They use only Home Assistant: the integration's
 // entities, its actions, and two websocket commands (haliday_show/entities and haliday_show/library).
-import { clock, escapeHtml as h, findItems, folderView, positionNow, swatch, whenText } from "./cardlib.js";
+// cardlib.js with this file's own ?v=, so an update never pairs a new card with an old cached helper.
+const { clock, escapeHtml: h, findItems, folderView, positionNow, swatch, whenText } =
+  await import(`./cardlib.js${new URL(import.meta.url).search}`);
+const RETRY_MS = 10000;
+const RESIGN_MS = 20 * 3600 * 1000;  // picture links are signed for 24 hours
 
 const STYLE = `
   :host { display: block; }
@@ -39,10 +43,25 @@ class HalidayCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const first = !this._hass;
     this._hass = hass;
-    if (first) this._findEntities();
-    if (this.changed(hass)) this.render();
+    if (!this._ents && !this._finding && Date.now() - (this._tried || 0) > RETRY_MS) this._findEntities();
+    if (this.changed(hass)) this.paint();
+  }
+
+  // Rebuild, unless you're using a box or list in the card: then wait until you've left it.
+  paint() {
+    const active = this.shadowRoot.activeElement;
+    if (active && active.tagName === "SELECT") {
+      this._waiting = true;
+      active.addEventListener("blur", () => { if (this._waiting) { this._waiting = false; this.paint(); } }, { once: true });
+      return;
+    }
+    const typing = active && active.tagName === "INPUT" ? [active.selectionStart, active.selectionEnd] : null;
+    this.render();
+    if (typing) {
+      const input = this.shadowRoot.querySelector("input");
+      if (input) { input.focus(); input.setSelectionRange(...typing); }
+    }
   }
 
   get hass() {
@@ -51,11 +70,15 @@ class HalidayCard extends HTMLElement {
 
   // Our entities by what they are: {player, next, status, queue, ..., scenes: [...], seasons: [...]}.
   async _findEntities() {
+    this._finding = true;
+    this._tried = Date.now();
     try {
       this._ents = await this._hass.callWS({ type: "haliday_show/entities" });
+      this._error = "";
     } catch (e) {
-      this._error = "The HA-liday Show integration isn't set up yet.";
+      this._error = "The HA-liday Show integration isn't set up yet, or Home Assistant is starting.";
     }
+    this._finding = false;
     this._last = null;
     if (this._ents) this.ready();
     this.render();
@@ -71,7 +94,7 @@ class HalidayCard extends HTMLElement {
 
   // Re-render only when one of the card's own entities changed, not on every change in the house.
   changed(hass) {
-    if (!this._ents) return true;
+    if (!this._ents) return false;  // _findEntities draws the card when it's done
     const now = this.watched().map((key) => hass.states[this._ents[key]]);
     const same = this._last && now.length === this._last.length && now.every((s, i) => s === this._last[i]);
     this._last = now;
@@ -234,9 +257,11 @@ class HalidayBrowseCard extends HalidayCard {
   changed(hass) {
     const before = this._last;
     const changed = super.changed(hass);
-    if (changed && this._ents) {
+    if (this._ents && !this._lib && !this._loading && Date.now() - (this._libTried || 0) > RETRY_MS) {
+      this._loadLibrary();  // the first try failed (Home Assistant or HA-liday Show was starting)
+    } else if (changed && this._ents && this._lib) {
       const lists = (states) => (states || []).slice(0, 2).map((s) => JSON.stringify(s?.attributes?.options || []));
-      if (this._lib && JSON.stringify(lists(before)) !== JSON.stringify(lists(this._last))) this._loadLibrary();
+      if (JSON.stringify(lists(before)) !== JSON.stringify(lists(this._last))) this._loadLibrary();
     }
     return changed;
   }
@@ -244,6 +269,7 @@ class HalidayBrowseCard extends HalidayCard {
   async _loadLibrary() {
     if (this._loading) return;
     this._loading = true;
+    this._libTried = Date.now();
     try {
       this._lib = await this._hass.callWS({ type: "haliday_show/library" });
       this._error = "";
@@ -255,19 +281,29 @@ class HalidayBrowseCard extends HalidayCard {
   }
 
   // Pictures need a signed link, as an <img> can't send Home Assistant's sign-in.
-  async _sign(ids) {
-    const want = ids.filter((id) => !this._signed.has(id));
+  // Keyed by show and its picture's version, so a new picture is fetched; signed again before it runs out.
+  async _sign(shows) {
+    const now = Date.now();
+    const want = shows.filter((s) => {
+      const got = this._signed.get(this._picKey(s));
+      return !got || (got.path && now - got.at > RESIGN_MS);
+    });
     if (!want.length) return;
-    want.forEach((id) => this._signed.set(id, ""));
-    await Promise.all(want.map(async (id) => {
+    want.forEach((s) => this._signed.set(this._picKey(s), { path: "", at: now }));
+    await Promise.all(want.map(async (s) => {
       try {
-        const r = await this._hass.callWS({ type: "auth/sign_path", path: `/api/haliday_show/image/${id}`, expires: 86400 });
-        this._signed.set(id, r.path);
+        const r = await this._hass.callWS({ type: "auth/sign_path", path: `/api/haliday_show/image/${encodeURIComponent(s.id)}`,
+          expires: 86400 });
+        this._signed.set(this._picKey(s), { path: r.path, at: Date.now() });
       } catch (e) {
         /* no picture then: the tile shows its colours */
       }
     }));
-    this.render();
+    this.paint();
+  }
+
+  _picKey(show) {
+    return `${show.id}:${show.picture}:${show.cover}`;
   }
 
   _play(kind, item) {
@@ -290,14 +326,15 @@ class HalidayBrowseCard extends HalidayCard {
     const finding = this._find.trim() !== "";
     const view = finding ? { path: [], folders: [], items: findItems(items, this._find) }
       : folderView(items, lib.folders?.[kind], this._folder[kind]);
-    if (kind === "shows") this._sign(view.items.filter((s) => s.picture || s.cover).map((s) => s.id));
+    if (kind === "shows") this._sign(view.items.filter((s) => s.picture || s.cover));
     const now = this.state("status")?.state;
     const tile = (i) => {
-      const img = kind === "shows" && this._signed.get(i.id);
-      const bg = img ? `background-image: url('${h(img)}')` : `background: ${kind === "shows" ? swatch(i.colours) : "var(--secondary-background-color)"}`;
+      const img = kind === "shows" && (i.picture || i.cover) && this._signed.get(this._picKey(i))?.path;
+      // The picture's address is set after drawing (below), never written into the style by hand.
+      const bg = img ? "" : `background: ${kind === "shows" ? swatch(i.colours) : "var(--secondary-background-color)"}`;
       const sub = kind === "shows" ? clock(i.duration) : `${i.items} item${i.items === 1 ? "" : "s"}`;
       return `<button class="tile" data-item="${h(i.id)}" aria-label="Play ${h(i.name)}">
-        <div class="pic" style="${bg}">${!img && kind === "playlists" ? '<ha-icon icon="mdi:playlist-play"></ha-icon>' : ""}
+        <div class="pic" style="${bg}" ${img ? `data-img="${h(img)}"` : ""}>${!img && kind === "playlists" ? '<ha-icon icon="mdi:playlist-play"></ha-icon>' : ""}
           ${now === i.name ? '<span class="on">Playing</span>' : ""}</div>
         <div class="name clip">${h(i.name)}</div><div class="muted small">${sub}</div></button>`;
     };
@@ -340,6 +377,7 @@ class HalidayBrowseCard extends HalidayCard {
         ${this._error ? `<div class="error">${h(this._error)}</div>` : ""}
       </ha-card>`;
     const root = this.shadowRoot;
+    root.querySelectorAll("[data-img]").forEach((el) => { el.style.backgroundImage = `url(${JSON.stringify(el.dataset.img)})`; });
     root.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
       this._tab = b.dataset.tab;
       this.render();
@@ -347,11 +385,7 @@ class HalidayBrowseCard extends HalidayCard {
     const input = root.querySelector("input");
     input.addEventListener("input", () => {
       this._find = input.value;
-      const at = input.selectionStart;
-      this.render();
-      const again = this.shadowRoot.querySelector("input");
-      again.focus();
-      again.setSelectionRange(at, at);
+      this.paint();
     });
     root.querySelectorAll("[data-folder]").forEach((b) => b.addEventListener("click", () => {
       this._folder[kind] = b.dataset.folder || null;
