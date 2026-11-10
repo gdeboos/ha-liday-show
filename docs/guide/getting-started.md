@@ -17,7 +17,8 @@ you've turned it on. HA-liday Show opens on **Library**:
 | **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](public-page.md#the-public-page)). |
 
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
-page you last had open. Below, "the House tab" and so on mean that page.
+page you last had open. Every slider has a box beside it with its exact number: type one in, or press **↑** or **↓**
+there (with **Shift** for bigger steps). A slider you've clicked on moves a step at a time with **←** and **→**. Below, "the House tab" and so on mean that page.
 
 Whenever something is on your lights, a green bar under the tabs says what (**Show on now:**,
 **Playlist on now:**, **Scene on now:**), however it started: the schedule, an automation, a visitor,

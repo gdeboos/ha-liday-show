@@ -593,6 +593,7 @@ export class SceneEditor {
   slider(what, light, p, value, set) {
     const input = el("input", { type: "range", min: p.min ?? 0, max: p.max ?? 100, step: p.step ?? 1, value,
       "aria-label": `${what} for ${light}` });
+    if (/brightness|glitter/i.test(what)) input.dataset.unit = "%";
     input.addEventListener("input", () => { set(Number(input.value)); this.changed({ live: true }); });
     input.addEventListener("change", () => { set(Number(input.value)); this.changed(); });
     return el("span", { class: "sc-slider" }, el("span", { class: "sc-mini", "aria-hidden": "true" }, what), input);

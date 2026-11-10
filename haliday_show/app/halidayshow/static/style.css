@@ -374,6 +374,13 @@ table.devices { border-collapse: collapse; background: var(--panel); border-radi
 table.devices th, table.devices td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; }
 table.devices td input[type="number"] { width: 5em; }
 .range-value { display: inline-block; min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+/* The exact number beside every slider (slidervalue.js). */
+.slider-value-wrap { display: inline-flex; align-items: baseline; gap: 2px; flex: none; white-space: nowrap; }
+.slider-value-wrap[hidden] { display: none; }
+input.slider-value { width: 3.6em; min-width: 0; padding: 2px 4px; text-align: right; font-size: 12px;
+  font-variant-numeric: tabular-nums; min-height: 0; }
+.slider-unit { font-size: 12px; color: var(--muted); }
+.slider-unit:empty { display: none; }
 .finder-dialog { width: min(480px, calc(100vw - 32px)); }
 .finder-dialog .form-dialog-body p { margin: 0; }
 #finder-question { font-size: 15px; }
@@ -1314,7 +1321,9 @@ a.button { text-decoration: none; }
 .sc-swatches input[type=color] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 3px;
   background: none; }
 .sc-row input[type=range] { width: 100%; accent-color: var(--accent); }
-.sc-slider { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sc-slider { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 6px; row-gap: 2px;
+  min-width: 0; }
+.sc-slider .sc-mini { grid-column: 1 / -1; }
 .sc-mini { display: none; font-size: 12px; color: var(--muted); }
 .sc-row-wled .sc-slider .sc-mini { display: block; }
 .sc-row select[hidden] { display: none; }
