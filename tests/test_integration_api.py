@@ -138,7 +138,7 @@ async def test_snapshot_has_the_sensor_details(client):
     state = await (await client.get("/api/integration")).json()
     assert state["playing"] is None and state["next"] is None and state["listening"] == 0
     assert state["queue"] == {"mode": "queue", "waiting": 0, "names": []}
-    assert state["page"] == {"on": False, "open": False}
+    assert state["page"] == {"on": False, "open": False, "link": None}
     await client.put("/api/preshow/last", json={"level": "warn", "problems": 0, "warnings": 1})
     state = await (await client.get("/api/integration")).json()
     assert state["preshow"]["level"] == "warn"
@@ -195,3 +195,19 @@ async def test_preshow_check_from_home_assistant(client):
                 if msg["event"] == "preshow_check":
                     break
         assert seen[-1] == "preshow_check"
+
+
+async def test_visitors_page_on_off_and_qr(client):
+    assert (await client.post("/api/integration/command", json={"action": "page"})).status == 400
+    assert (await client.get("/api/integration/qr.svg")).status == 404  # no Public address yet
+    r = await client.post("/api/integration/command", json={"action": "page", "on": True})
+    assert r.status == 200
+    state = await (await client.get("/api/integration")).json()
+    assert state["page"]["on"] is True and state["page"]["link"] is None
+    await client.put("/api/public", json={"address": "https://lights.example.com"})
+    state = await (await client.get("/api/integration")).json()
+    assert state["page"]["link"].startswith("https://lights.example.com/?c=")
+    qr = await client.get("/api/integration/qr.svg")
+    assert qr.status == 200 and "<svg" in await qr.text()
+    await client.post("/api/integration/command", json={"action": "page", "on": False})
+    assert (await (await client.get("/api/integration")).json())["page"]["on"] is False

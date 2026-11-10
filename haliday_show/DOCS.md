@@ -3092,6 +3092,8 @@ As well as the entities it shares with MQTT, the integration adds these to the *
 - **Phones listening**: how many visitors are listening on their phones now.
 - **Last pre-show check**: `ok`, `warn` or `fail`, with how many problems and warnings it found, and when.
 - **Visitors' page open**: on while the public page is switched on and within its opening hours.
+- **Visitors' page** (`switch.ha_liday_show_visitors_page`): turns the public page on or off, like ticking or
+  unticking **Let visitors start shows** on the **Public page** tab.
 
 #### Dashboard cards
 
@@ -3118,7 +3120,9 @@ for **HA-liday Show**:
 - **HA-liday Show: Visitors and checks**: whether the visitors' page is open, how many picks are
   waiting (or votes, in **Vote** mode) with the next few, how many phones are listening, and how the last
   pre-show check went. **Skip this pick** ends the visitor's pick that's playing. **Run check** runs the
-  pre-show check there and then, and lists anything to fix or look at.
+  pre-show check there and then, and lists anything to fix or look at. **Turn the page on** (or **off**)
+  switches the visitors' page, and **QR code** shows the code visitors scan, so you can hold your phone
+  up to someone at the gate. The QR code needs your **Public address** set under **Public page → Access**.
 
 The cards work for everyone who uses your Home Assistant, on phones too, away from home: they go through
 Home Assistant rather than to HA-liday Show itself.
@@ -3131,7 +3135,7 @@ card has a **Title** (leave it empty for the usual one) and **Hide the title**. 
 | **Player** | **Hide the cover art**, **Hide how far through it is**, **Hide the show picker and Play** (for a card that only shows what's on), **Hide what's next on the schedule** |
 | **Browse** | **Show**: shows and playlists, shows only or playlists only; **Open on**: Shows or Playlists; **Tile size**: small, medium or large; **Hide Find in every folder**, **Hide season tags** |
 | **Scenes** | **Only these scenes**: pick the scenes the card shows, in the order you pick them (leave it empty for all of them); **Columns**: how many buttons across (leave it empty to fit); **Hide each scene's colours**, **Hide Brightness**, **Hide Off** |
-| **Visitors and checks** | Hide any of: the visitors' page, picks waiting, phones listening, the list of picks, the pre-show check, **Run check**, **Skip this pick** |
+| **Visitors and checks** | Hide any of: the visitors' page, picks waiting, phones listening, the list of picks, the pre-show check, **Run check**, **Skip this pick**, the page's on/off and QR code |
 | **Schedule** | **Days to show** (1 is just today, 7 the week ahead); **Layout**: a timeline that turns into a list when the card is narrow, always a timeline, or always a list; **Hide scenes** |
 | **House** | **Tallest it can be** (420 pixels unless you change it), **Hide the line under the picture** |
 
