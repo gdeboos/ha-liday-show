@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.493
+
+- **A Govee light that doesn't answer the pre-show check is now amber, not red.** Some networks, such as lights on their own VLAN, let commands reach a Govee light but not its answers back, so it plays shows fine but can't answer the check. It's now flashed in the **Looking** step like the others for you to confirm by eye, and it no longer sends Home Assistant a **not answering** event.
+
 ## 0.2.492
 
 - **Scene buttons show their colours.** On the **HA-liday Show: Scenes** card, each button has a strip of that scene's colours along its bottom, so you can spot the one you want.
