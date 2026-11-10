@@ -977,7 +977,7 @@ edited from another browser that still has it open until you restore it.
 **Songs.** Only songs in HA-liday Show's own folder (`haliday_show` in your media folder, where uploads
 and the Music editor's saves go) can be archived or deleted here, as the rest of your media folder
 may belong to other apps; **Remove…** is greyed out for the others. If shows use the song, choose what
-they play instead: **Another song**, or **No song for now** (they keep their effects and beats, and
+they play instead: **Another song** (press **Change…** to pick it from your folders), or **No song for now** (they keep their effects and beats, and
 play the lights only). An archived song moves to an **Archived** folder inside HA-liday Show's
 folder, where it's out of HA-liday Show's song lists but still in Home Assistant's Media. Restoring it
 puts it back and gives it back to the shows that were left without a song.
@@ -1321,8 +1321,9 @@ sample saved with **Save as sample…** includes the layers unless you pick one 
 **✨ New mashup…** in **Library → Songs** puts one song's singing over another's music. Both need to be
 [split into parts](#split-into-parts).
 
-1. Pick **The singing from** (its vocals are used) and **The music from** (everything but its vocals).
-   Each shows its tempo and key once it's been detected.
+1. Pick **The singing from** (its vocals are used) and **The music from** (everything but its vocals):
+   press **Change…** on either to pick from your folders. Each shows its tempo and key once it's been
+   detected.
 2. A box says how well they fit and what will change, such as "A good fit. The singing is sped up 3% to
    121 BPM, and moved up 2 semitones into A minor". **Great fit** and **Good fit** need little change; a
    **Big change** (more than about 10% faster or slower, or a key far away) can start to sound odd.
