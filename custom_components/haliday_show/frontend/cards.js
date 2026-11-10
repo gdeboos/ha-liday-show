@@ -17,6 +17,10 @@ const STYLE = `
   .fill { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 3px; margin: -3px; }  /* room for focus rings */
   .head { display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 500; margin-bottom: 12px; flex: none; }
   .head .grow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .head .open { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 16px; flex: none;
+    color: var(--secondary-text-color); }
+  .head .open ha-icon { --mdc-icon-size: 18px; }
+  .head .open:hover, .head .open:focus-visible { background: var(--secondary-background-color); }
   .head ha-icon { color: var(--state-icon-color, var(--primary-color)); }
   .muted { color: var(--secondary-text-color); }
   .small { font-size: 0.875rem; }
@@ -63,8 +67,17 @@ class HalidayCard extends HTMLElement {
 
   // The card's heading: its icon and title, plus anything to its right; nothing if the title is hidden.
   heading(icon, title, extra = "") {
+    extra += this.openLink();
     if (this.hides("hide_title")) return extra ? `<div class="head"><span class="grow"></span>${extra}</div>` : "";
     return `<div class="head"><ha-icon icon="${icon}"></ha-icon><span class="grow">${title}</span>${extra}</div>`;
+  }
+
+  // A way into HA-liday Show itself, for anyone who has it in their sidebar (it's admin only).
+  openLink() {
+    if (this.hides("hide_open")) return "";
+    const panel = Object.values(this._hass?.panels || {}).find((p) => p.title === "HA-liday Show");
+    return panel ? `<a class="open" href="/${encodeURI(panel.url_path)}" title="Open HA-liday Show" aria-label="Open HA-liday Show">
+      <ha-icon icon="mdi:open-in-new"></ha-icon></a>` : "";
   }
 
   set hass(hass) {
@@ -393,7 +406,8 @@ class HalidayBrowseCard extends HalidayCard {
       const sub = kind === "shows" ? clock(i.duration) : `${i.items} item${i.items === 1 ? "" : "s"}`;
       return `<button class="tile" data-item="${h(i.id)}" aria-label="Play ${h(i.name)}">
         <div class="pic" style="${bg}" ${img ? `data-img="${h(img)}"` : ""}>${!img && kind === "playlists" ? '<ha-icon icon="mdi:playlist-play"></ha-icon>' : ""}
-          ${now === i.name ? '<span class="on">Playing</span>' : ""}</div>
+          ${now === i.name ? '<span class="on">Playing</span>' : ""}
+          ${i.season_name && !this.hides("hide_seasons") ? `<span class="season">${h(i.season_name)}</span>` : ""}</div>
         <div class="name clip">${h(i.name)}</div><div class="muted small">${sub}</div></button>`;
     };
     const folderTile = (f) => `<button class="tile" data-folder="${h(f.id)}" aria-label="Open ${h(f.name)}">
@@ -420,6 +434,8 @@ class HalidayBrowseCard extends HalidayCard {
         .on { position: absolute; left: 6px; bottom: 6px; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px;
           background: var(--primary-color); color: var(--text-primary-color, #fff); }
         .name { font-weight: 500; }
+        .season { position: absolute; right: 6px; top: 6px; font-size: 0.7rem; padding: 1px 7px; border-radius: 10px;
+          background: rgba(0, 0, 0, 0.55); color: #fff; max-width: calc(100% - 12px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       </style>
       <ha-card>
         ${this.heading("mdi:folder-music", title)}
@@ -488,7 +504,8 @@ class HalidayScenesCard extends HalidayCard {
       return;
     }
     const all = (this._ents.scenes || []).map((id) => this._hass.states[id]).filter(Boolean)
-      .map((st) => ({ id: st.entity_id, name: st.attributes.scene_name || st.attributes.friendly_name || st.entity_id }));
+      .map((st) => ({ id: st.entity_id, name: st.attributes.scene_name || st.attributes.friendly_name || st.entity_id,
+        colours: st.attributes.colours || [] }));
     const scenes = pickScenes(all, this._config?.scenes);
     const cols = Number(this._config?.columns);
     // A scene added since the card looked: look again (it finds the new scene's entity).
@@ -503,6 +520,8 @@ class HalidayScenesCard extends HalidayCard {
           : "repeat(auto-fill, minmax(130px, 1fr))"}; gap: 8px; }
         .scene { justify-content: flex-start; border-radius: 12px; min-height: 48px; text-align: left; }
         .scene[aria-pressed="true"] { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+        .scene { position: relative; overflow: hidden; }
+        .strip { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; }
         .level { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex: none; }
         .level input { flex: 1; min-width: 0; padding: 0; min-height: 0; border: none; background: none; accent-color: var(--primary-color); }
         .level output { min-width: 3.5em; text-align: right; flex: none; }
@@ -513,7 +532,8 @@ class HalidayScenesCard extends HalidayCard {
         ${this.heading("mdi:creation", title, this.hides("hide_off") ? ""
           : `<button class="btn" data-off aria-label="Turn scenes off" ${on ? "" : "disabled"}><ha-icon icon="mdi:power"></ha-icon><span class="label">Off</span></button>`)}
         ${scenes.length ? `<div class="fill"><div class="grid">${scenes.map((sc) =>
-          `<button class="btn scene" data-scene="${h(sc.id)}" aria-pressed="${sc.name === current}" ${gone ? "disabled" : ""}><span class="clip">${h(sc.name)}</span></button>`).join("")}</div></div>`
+          `<button class="btn scene" data-scene="${h(sc.id)}" aria-pressed="${sc.name === current}" ${gone ? "disabled" : ""}><span class="clip">${h(sc.name)}</span>${
+            sc.colours.length && !this.hides("hide_colours") ? `<span class="strip" style="background:${swatch(sc.colours).replace("135deg", "90deg")}"></span>` : ""}</button>`).join("")}</div></div>`
           : `<div class="muted small">${all.length ? "None of the scenes picked for this card are there any more: pick again in its options."
             : "No scenes yet: make one in HA-liday Show's Scene editor."}</div>`}
         ${this.hides("hide_brightness") ? "" : `<label class="level small"><span class="muted">Brightness</span>
@@ -764,17 +784,32 @@ class HalidayHouseCard extends HalidayCard {
         ha-card.fixed .frame { flex: 1 1 0; min-height: 0; overflow: hidden; align-items: center; }
         .head { padding: 16px 16px 0; }
         ha-card > .frame:first-child { border-radius: 12px 12px 0 0; overflow: hidden; }
-        .frame { display: flex; justify-content: center; background: #000; flex: none; }
+        .frame { display: flex; justify-content: center; background: #000; flex: none; position: relative; }
+        .tapped { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); max-width: calc(100% - 20px);
+          padding: 4px 10px; border-radius: 12px; background: rgba(0, 0, 0, 0.7); color: #fff; font-size: 0.85rem;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
         .line { flex: none; }
         canvas { display: block; max-width: 100%; }
         .line { padding: 10px 16px 14px; }
       </style>
       <ha-card class="${this.fixedHeight() ? "fixed" : ""}">
         ${this.heading("mdi:home-lightbulb-outline", title)}
-        ${this._houseView ? '<div class="frame"><canvas role="img" aria-label="Your house with its lights"></canvas></div>' : ""}
+        ${this._houseView ? `<div class="frame"><canvas role="img" aria-label="Your house with its lights"></canvas>
+          ${this._tapped ? `<div class="tapped">${h(this._tapped)}</div>` : ""}</div>` : ""}
         ${this._houseView && this._placed && this.hides("hide_caption") ? "" : `<div class="line muted small">${h(line)}</div>`}
         ${this._error ? `<div class="error" style="padding:0 16px 12px">${h(this._error)}</div>` : ""}
       </ha-card>`;
+    // Tap a light to see which it is (and which bulb).
+    this.shadowRoot.querySelector("canvas")?.addEventListener("click", (e) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      const view = this._houseView;
+      view.size = { w: r.width, h: r.height };
+      const hit = view.bulbAt([(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]);
+      this._tapped = hit ? hit.text : "";
+      clearTimeout(this._tapTimer);
+      this._tapTimer = setTimeout(() => { this._tapped = ""; this.render(); }, 3000);
+      this.render();
+    });
     this._paint();
   }
 

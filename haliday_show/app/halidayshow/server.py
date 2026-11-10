@@ -167,13 +167,15 @@ async def integration_library(request):
                                                               playlists.load(storage)))
     saved = settings.get("library_folders")
     saved = saved if isinstance(saved, dict) else {}
+    season_names = {x["id"]: x["name"] for x in seasons.load(settings)}
     folders = lambda kind: [{k: f[k] for k in ("id", "name", "items", "parent") if k in f}
                             for f in saved.get(kind, []) if isinstance(f, dict)]
     return web.json_response({
         # picture: its version number (0 for none), so a card fetches a new one when it changes
         "shows": [{"id": s["id"], "name": s["name"], "duration": s["duration"], "picture": s["picture"],
                    "cover": s["cover"], "colours": s["colours"][:4] if isinstance(s.get("colours"), list) else [],
-                   "season": s["season"]} for s in shows if not s["in_progress"]],
+                   "season": s["season"], "season_name": season_names.get(s["season"])}
+                  for s in shows if not s["in_progress"]],
         "playlists": [{"id": p["id"], "name": p["name"], "items": len(p.get("items") or [])} for p in plays],
         "folders": {"shows": folders("shows"), "playlists": folders("playlists")},
     })
