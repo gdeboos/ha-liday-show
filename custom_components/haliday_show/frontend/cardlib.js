@@ -177,7 +177,7 @@ export const HELPERS = {
   scenes: "Leave empty for all your scenes, in name order. Otherwise these, in this order.",
   columns: "Leave empty to fit as many as there's room for.",
   max_height: "420 px unless you change it.",
-  start: "Which tab the card opens on.",
+  start: "Which tab the card opens on, when it shows both.",
 };
 
 // The form for one card, as Home Assistant's card editor takes it.

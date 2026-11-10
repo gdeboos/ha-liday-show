@@ -213,7 +213,7 @@ class HalidayPlayerCard extends HalidayCard {
           ${pic}
           <div class="grow">
             <div class="title clip">${h(playing ? a.media_title : unavailable ? "Not answering" : "Nothing playing")}</div>
-            <div class="muted small clip">${h(playing ? [a.media_artist, a.media_album_name].filter(Boolean).join(" · ") : unavailable ? "HA-liday Show isn't answering." : "Pick a show and press Play.")}</div>
+            <div class="muted small clip">${h(playing ? [a.media_artist, a.media_album_name].filter(Boolean).join(" · ") : unavailable ? "HA-liday Show isn't answering." : this.hides("hide_picker") ? "" : "Pick a show and press Play.")}</div>
           </div>
         </div>
         ${playing && !this.hides("hide_progress") ? `<div class="bar"><div></div></div><div class="times muted small"><span class="at">${clock(pos)}</span><span>${clock(dur)}</span></div>` : ""}
@@ -483,7 +483,8 @@ class HalidayScenesCard extends HalidayCard {
           : `<button class="btn" data-off ${on ? "" : "disabled"}><ha-icon icon="mdi:power"></ha-icon>Off</button>`)}
         ${scenes.length ? `<div class="grid">${scenes.map((sc) =>
           `<button class="btn scene" data-scene="${h(sc.id)}" aria-pressed="${sc.name === current}" ${gone ? "disabled" : ""}><span class="clip">${h(sc.name)}</span></button>`).join("")}</div>`
-          : `<div class="muted small">No scenes yet: make one in HA-liday Show's Scene editor.</div>`}
+          : `<div class="muted small">${all.length ? "None of the scenes picked for this card are there any more: pick again in its options."
+            : "No scenes yet: make one in HA-liday Show's Scene editor."}</div>`}
         ${this.hides("hide_brightness") ? "" : `<label class="level small"><span class="muted">Brightness</span>
           <input type="range" min="1" max="100" value="${level}" aria-label="Scene brightness" ${on ? "" : "disabled"}><output>${level}%</output></label>`}
         ${gone ? `<div class="note">HA-liday Show isn't answering.</div>` : on || !scenes.length ? "" : '<div class="note">Scenes are off. Press one to put it on.</div>'}
@@ -705,7 +706,7 @@ class HalidayHouseCard extends HalidayCard {
     const canvas = this.shadowRoot.querySelector("canvas");
     const view = this._houseView;
     if (!canvas || !view || !view.photo || !canvas.parentElement.clientWidth) return;
-    const maxH = Number(this._config?.max_height) || 420;
+    const maxH = Math.min(2000, Math.max(150, Number(this._config?.max_height) || 420));
     view.paint(canvas, maxH, (dev) => {
       const full = this._frames.get(dev.parent || dev.id);
       if (!full) return new Uint8Array((dev.segments || 1) * 3);
