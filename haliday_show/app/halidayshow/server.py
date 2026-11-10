@@ -222,6 +222,55 @@ async def integration_claim(request):
     return web.json_response({"ok": True, "claimed": body["on"]})
 
 
+def _integration_extras(app, now=None) -> dict:
+    """What the integration's sensors show beyond the basics; cheap enough for once a second, except
+    the schedule's next start, which is worked out at most every 30 seconds."""
+    storage, runner = app[STORAGE], app[RUNNER]
+    settings = storage.load_settings()
+    p = public.load(storage) or public.clean(None)
+    cache = app[HUB].__dict__.setdefault("_next_cache", {"at": 0.0, "value": None})
+    if time.monotonic() - cache["at"] > 30:
+        cache["at"] = time.monotonic()  # first, so a failure isn't retried (and logged) every second
+        cache["value"] = _next_on_schedule(app)
+    voting = p.get("pick") == "vote"
+    last = settings.get("preshow") if isinstance(settings.get("preshow"), dict) else None
+    return {
+        "next": cache["value"],
+        "queue": {"mode": "vote" if voting else "queue",
+                  "waiting": len(runner.votes) if voting else len(runner.requests),
+                  "names": [r["name"] for r in runner.requests][:20] if not voting else
+                  [f"{c['name']} ({c['count']})" for c in runner.vote_counts()][:20]},
+        "listening": public.tonight(runner)["listening"],
+        "preshow": {**last, "at": _with_zone(last.get("at"))} if last else None,
+        "page": {"on": bool(p["on"]), "open": bool(p["on"] and public.hours_now(p, app[SCHEDULER].where()[0], now)["open"])},
+    }
+
+
+def _with_zone(text):
+    """Local times are saved without a zone; say which, for Home Assistant on another computer."""
+    try:
+        return datetime.datetime.fromisoformat(text).astimezone().isoformat(timespec="minutes")
+    except (TypeError, ValueError):
+        return None
+
+
+def _next_on_schedule(app) -> dict | None:
+    """The schedule's next start: {at, name, kind}, or None. Names come from the hub's lists, so no
+    show is read from disk."""
+    storage, hub = app[STORAGE], app[HUB]
+    listed = hub.snapshot_lists()
+    names = {"playlist": {x["id"]: x["name"] for x in listed["playlists"]},
+             "scene": {x["id"]: x["name"] for x in listed["scenes"]},
+             "show": {x["id"]: x["name"] for x in listed["shows"]}}
+    state = app[SCHEDULER].state()
+    entries = {e["id"]: e for e in schedule.load_entries(storage)}
+    for at, i in sorted((at, i) for i, at in state["next"].items() if i in entries):
+        kind, ref = entries[i]["play"]["type"], entries[i]["play"]["id"]
+        if name := names.get(kind, {}).get(ref):
+            return {"at": _with_zone(at), "name": name, "kind": kind}
+    return None
+
+
 # Export video (video.py) ------------------------------------------------------------------------
 _VIDEO_ID = re.compile(r"^[a-z0-9]{12}$")
 
@@ -3737,6 +3786,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[MQTT].on_refresh.append(app[HUB].refresh)
         app[HUB].released = app[MQTT].refresh
         app[RUNNER].on_event = app[HUB].emit
+        app[HUB].extras = lambda: _integration_extras(app)
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
         app[LIVE] = LiveMusic(lambda: {d["ip"]: d.get("name") for d in app[STORAGE].load_devices() if d.get("ip")})
         await app[LIVE].start()

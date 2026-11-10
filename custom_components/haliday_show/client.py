@@ -59,6 +59,17 @@ class HalidayClient:
     async def command(self, action: str, **data: Any) -> dict:
         return await self._request("POST", "/api/integration/command", {"action": action, **data})
 
+    async def cover(self, source: str, path: str) -> tuple[bytes, str] | None:
+        """A song's cover art, if it has any."""
+        try:
+            async with self.session.get(self.base + "/api/audio/cover", params={"source": source, "path": path},
+                                        auth=self.auth, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                if resp.status != 200:
+                    return None
+                return await resp.read(), resp.content_type
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            return None
+
     async def claim(self, on: bool) -> None:
         await self._request("POST", "/api/integration/claim", {"on": on})
 

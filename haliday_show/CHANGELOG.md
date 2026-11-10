@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.485
+
+- **A player in Home Assistant.** With the HA-liday Show integration, the **HA-liday Show** device now has a **Player**: the show that's on, its song and cover art, its playlist and how far through it is. Pick a show as its **Source**, then **Play**, **Stop**, or **Next** to skip a visitor's pick. It works with Home Assistant's media control card.
+- **More sensors in Home Assistant:** **Next on the schedule**, **Visitors waiting**, **Phones listening**, **Last pre-show check** and **Visitors' page open**. See **Sensors and the player** in the guide.
+
 ## 0.2.484
 
 - **Actions in Home Assistant.** With the HA-liday Show integration, automations and scripts get **HA-liday Show: Play** (a show, playlist or scene, and for a show a speaker of your choice and a start point), **Stop**, **Skip** (ends a visitor's pick) and **Season props**. If something's wrong, such as a show name that doesn't exist, the action says so.

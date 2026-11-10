@@ -38,6 +38,20 @@ For Docker and pipx installs, add the integration by hand and give the address o
 HA-liday Show runs on, its port (8099 unless you changed `HALIDAY_SHOW_PORT`) and the password you set
 with `HALIDAY_SHOW_PASSWORD`.
 
+#### Sensors and the player
+
+As well as the entities it shares with MQTT, the integration adds these to the **HA-liday Show** device:
+
+- **Player** (`media_player.ha_liday_show_player`): what's playing, with the song, its cover art, the
+  playlist it's part of and how far through it is. Its **Source** is the show to play, **Play** plays
+  it, **Stop** stops, and **Next** skips a visitor's pick. It shows on a dashboard's media control card
+  like any speaker. A scene shows on the light, not here.
+- **Next on the schedule**: when the next row on your **Schedule** starts, with its name.
+- **Visitors waiting**: how many picks are in the queue, or votes cast in **Vote** mode, with the names.
+- **Phones listening**: how many visitors are listening on their phones now.
+- **Last pre-show check**: `ok`, `warn` or `fail`, with how many problems and warnings it found, and when.
+- **Visitors' page open**: on while the public page is switched on and within its opening hours.
+
 #### Actions
 
 The integration adds four actions for automations and scripts:

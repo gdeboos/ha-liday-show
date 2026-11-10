@@ -132,3 +132,13 @@ async def test_hub_events_reach_the_integration(client):
         await client.put("/api/preshow/last", json={"level": "ok", "problems": 0, "warnings": 0})
         msg = json.loads((await ws.receive(timeout=2)).data)
         assert msg == {"type": "event", "event": "preshow_check", "data": {"level": "ok", "problems": 0, "warnings": 0}}
+
+
+async def test_snapshot_has_the_sensor_details(client):
+    state = await (await client.get("/api/integration")).json()
+    assert state["playing"] is None and state["next"] is None and state["listening"] == 0
+    assert state["queue"] == {"mode": "queue", "waiting": 0, "names": []}
+    assert state["page"] == {"on": False, "open": False}
+    await client.put("/api/preshow/last", json={"level": "warn", "problems": 0, "warnings": 1})
+    state = await (await client.get("/api/integration")).json()
+    assert state["preshow"]["level"] == "warn"
