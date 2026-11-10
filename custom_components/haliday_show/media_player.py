@@ -79,6 +79,11 @@ class ShowPlayer(HalidayEntity, MediaPlayerEntity):
         return self._position_at
 
     @property
+    def extra_state_attributes(self) -> dict:
+        # Whether a visitor's pick is on, so Skip (which only ends a visitor's pick) shows only then.
+        return {"visitor_pick": bool((self._now or {}).get("visitor"))}
+
+    @property
     def source_list(self) -> list[str]:
         return [s["name"] for s in self.state_data.get("shows", [])]
 

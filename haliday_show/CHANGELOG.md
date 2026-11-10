@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.487
+
+- **Two more dashboard cards.** With the HA-liday Show integration, **+ Add card** now also offers **HA-liday Show: Scenes** (a button per scene, with **Brightness** and **Off**) and **HA-liday Show: Visitors and checks** (the visitors' page, the queue or votes, phones listening, the last pre-show check, and **Skip this pick**). See **Dashboard cards** in the guide.
+
 ## 0.2.486
 
 - **HA-liday Show cards for your Home Assistant dashboards.** With the HA-liday Show integration, **+ Add card** now offers **HA-liday Show: Player** (what's playing and what's next, with **Play**, **Stop** and **Skip**) and **HA-liday Show: Browse** (your shows and playlists as tiles in your folders: press one to play it). They work on phones and away from home, for everyone in your household. See **Dashboard cards** in the guide.
