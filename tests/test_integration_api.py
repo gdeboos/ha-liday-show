@@ -161,3 +161,4 @@ def test_scene_colours_for_the_buttons():
     assert integration.scene_colours(looks) == ["#ff0000", "#00ff00", "#ffffff"]  # count respected, no repeats
     assert integration.scene_colours({"tracks": [{"clips": [{"params": {"color": "#123456"}}]}]}) == ["#123456"]
     assert integration.scene_colours({"lights": "junk", "tracks": [None, {"clips": [None]}]}) == []
+    assert integration.scene_colours({"tracks": 5}) == [] and integration.scene_colours({"tracks": [{"clips": 5}]}) == []

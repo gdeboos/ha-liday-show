@@ -58,9 +58,10 @@ def scene_colours(scene: dict, most: int = 4) -> list[str]:
     found: list[str] = []
     looks = [v.get("params") for v in (scene.get("lights") or {}).values() if isinstance(v, dict)] \
         if isinstance(scene.get("lights"), dict) else []
-    for t in scene.get("tracks") or []:
-        if isinstance(t, dict):
-            looks += [c.get("params") for c in t.get("clips") or [] if isinstance(c, dict)]
+    tracks = scene.get("tracks")
+    for t in tracks if isinstance(tracks, list) else []:
+        clips = t.get("clips") if isinstance(t, dict) else None
+        looks += [c.get("params") for c in clips if isinstance(c, dict)] if isinstance(clips, list) else []
     for params in looks:
         for c in _params_colours(params):
             if c not in found:

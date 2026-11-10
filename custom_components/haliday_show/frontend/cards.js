@@ -50,6 +50,14 @@ class HalidayCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    // The ↗ link opens HA-liday Show inside Home Assistant, as its own links do, rather than reloading the page.
+    this.shadowRoot.addEventListener("click", (e) => {
+      const a = e.target.closest?.("a.open");
+      if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;  // a new tab is fine as it is
+      e.preventDefault();
+      history.pushState(null, "", a.getAttribute("href"));
+      window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+    });
     this._ents = null;
     this._error = "";
   }
