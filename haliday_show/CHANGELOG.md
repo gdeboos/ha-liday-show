@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.470
+
+- **Choose a song uses your folders.** In the Show editor, **Change…** beside the song now shows your folders from **Library → Songs** instead of one long list. It opens on the folder the show's song is in, and **Find a song in any folder** searches them all.
+
 ## 0.2.469
 
 - **Lyrics… no longer keeps you waiting.** The window opens straight away instead of sitting on "Getting the words ready…". The first time you open it for a song, it still has to find where the singing is, which can take a while; a line at the top says so, and you can read or type the words meanwhile. Only placing the words and **Save** wait for it.
