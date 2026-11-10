@@ -179,8 +179,8 @@ Before your lights go on for the night, press **✓ Pre-show check** at the top 
 takes a few minutes, in up to four steps:
 
 1. **Checking.** Without you doing anything, it:
-   - asks every light whether it's there: Govee lights by a network scan, WLED and Twinkly lights
-     directly, and Home Assistant lights by whether Home Assistant says they're available. Pixel
+   - asks every light whether it's there: Govee lights by a network scan (then directly at its address,
+     if the scan didn't hear it), WLED and Twinkly lights directly, and Home Assistant lights by whether Home Assistant says they're available. Pixel
      controllers (DDP and E1.31) can't be asked, so you watch them in the next step. Planned lights and
      props whose season is packed away are left out.
    - checks **How shows start tonight**, as far as you've set it up. With the visitors' page switched on,
