@@ -1822,3 +1822,5 @@ table.ai-uses td:last-child button { margin: 2px 4px 2px 0; }
 .lyrics-wait { width: 100%; height: 8px; accent-color: var(--accent); }
 .lyrics-listening { display: flex; gap: 8px; align-items: center; }
 .lyrics-listening[hidden] { display: none; }
+.palette-folder .folder-mark.small { width: 28px; height: 20px; margin: 2px 0 0; }
+.palette-path .link-button { font: inherit; letter-spacing: inherit; text-transform: inherit; padding: 0; }
