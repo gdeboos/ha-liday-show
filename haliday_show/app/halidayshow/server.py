@@ -3659,12 +3659,16 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[MQTT] = MqttBridge(app[RUNNER])
         app[RUNNER].seasons_changed = app[MQTT].refresh
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
-        app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run()), asyncio.create_task(app[RUNNER].watch_scene())]
         app[LIVE] = LiveMusic(lambda: {d["ip"]: d.get("name") for d in app[STORAGE].load_devices() if d.get("ip")})
         await app[LIVE].start()
         app[RUNNER].live = app[LIVE]  # for scenes with React to music
         app[PUBLIC] = public.PublicSite(app[STORAGE], app[RUNNER], lambda: app[SCHEDULER].where()[0])
         await app[PUBLIC].apply()
+        try:  # what was on before a restart carries on
+            await app[SCHEDULER].resume()
+        except Exception:
+            log.exception("couldn't pick up what was playing before the restart")
+        app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run()), asyncio.create_task(app[RUNNER].watch_scene())]
         if read_stdin:
             app[BACKGROUND].append(asyncio.create_task(commands.read_stdin(app[RUNNER])))
         if (broker := await app[HA].mqtt_service()):

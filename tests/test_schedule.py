@@ -565,3 +565,60 @@ def test_the_week_counts_last_nights_late_run_into_the_first_morning():
     monday = next(s for s in w["slots"] if s["entry"] == "first" and s["day"] == "2026-11-02")
     # Sunday's late show is still on at 00:30 on Monday, so the first row waits until it ends at 01:00.
     assert monday["plays"] == ["2026-11-02T01:00", "2026-11-02T02:00"]
+
+
+async def _restart(storage, old_runner):
+    """What's on is noted (as the running app does every half second), the app stops, and a new one starts."""
+    old_runner.remember()
+    await old_runner.close()
+    runner = Runner(storage, old_runner.player, None)
+    sched = Scheduler(storage, runner)
+    return runner, sched
+
+
+async def test_a_playlist_put_on_by_hand_picks_up_where_it_was_after_a_restart(setup):
+    storage, runner, _ = setup
+    save(storage, pl("night", {}, shows=("one", "two")))
+    await runner.play_playlist(playlists.find(storage, "night"), start=1)
+    await started(runner)
+    assert runner.item == 1 and runner.player.show_id == "two"
+    runner, sched = await _restart(storage, runner)
+    await sched.resume(at(19))
+    await started(runner)
+    assert runner.status()["playlist"]["id"] == "night" and runner.player.show_id == "two"  # the same item
+    # Stopped by hand: nothing comes back next time.
+    await runner.stop()
+    runner, sched = await _restart(storage, runner)
+    await sched.resume(at(19))
+    assert runner.status()["playlist"] is None
+    await runner.stop()
+
+
+async def test_a_scheduled_playlist_comes_back_only_while_its_time_is_on(setup):
+    storage, runner, sched = setup
+    save(storage, pl("night", EVENINGS))
+    await sched.tick(at(17))
+    assert runner.scheduled == "playlist-night"
+    runner2, sched2 = await _restart(storage, runner)
+    await sched2.resume(at(23))  # restarted after its end time: stays off
+    assert runner2.status()["playlist"] is None
+    await sched2.resume(at(20))
+    assert runner2.status()["playlist"]["id"] == "night" and sched2.state(at(20))["scheduled"] == "playlist-night"
+    await runner2.stop()
+
+
+async def test_a_scene_that_was_on_comes_back_after_a_restart(setup):
+    storage, runner, _ = setup
+    scene(storage, "glow", {**EVENINGS, "on": False})
+    await runner.play_scene("glow")
+    runner, sched = await _restart(storage, runner)
+    await sched.resume(at(12))
+    assert runner.scene == {"id": "glow", "name": "Glow"} and not runner.scene_playing  # back once the lights are free
+    await runner.stop()
+
+
+def test_whats_playing_isnt_in_backups(tmp_path):
+    from halidayshow import backup
+    (tmp_path / ".playing.json").write_text("{}")
+    (tmp_path / "settings.json").write_text("{}")
+    assert backup._files(tmp_path) == ["settings.json"]
