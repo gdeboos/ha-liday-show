@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.494
+
+- **A Schedule card for your dashboard.** **HA-liday Show: Schedule** shows what plays when, today and the days ahead, as a timeline with a day on each row and a line for now. Shows and playlists are the tall bars and scenes the thin ones; what's already finished today is faded. Press a bar for its times. On a narrow card, or if you choose **List** in its options, it's a list instead. You can also choose how many days it shows and leave scenes out. See **Dashboard cards** in the guide.
+
 ## 0.2.493
 
 - **A Govee light that doesn't answer the pre-show check is now amber, not red.** Some networks, such as lights on their own VLAN, let commands reach a Govee light but not its answers back, so it plays shows fine but can't answer the check. It's now flashed in the **Looking** step like the others for you to confirm by eye, and it no longer sends Home Assistant a **not answering** event.

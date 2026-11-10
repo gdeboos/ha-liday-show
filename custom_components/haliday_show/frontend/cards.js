@@ -2,8 +2,8 @@
 // the cards are in the card picker with no Resources step. They use only Home Assistant: the integration's
 // entities, its actions, and two websocket commands (haliday_show/entities and haliday_show/library).
 // cardlib.js with this file's own ?v=, so an update never pairs a new card with an old cached helper.
-const { TILE_SIZES, clock, configForm, escapeHtml: h, findItems, folderView, framesByLight, houseDevices, pickScenes,
-  positionNow, swatch, whenText } =
+const { TILE_SIZES, clock, configForm, dayText, escapeHtml: h, findItems, folderView, framesByLight, houseDevices,
+  pickScenes, positionNow, scheduleLayout, spanText, swatch, whenText } =
   await import(`./cardlib.js${new URL(import.meta.url).search}`);
 const VERSION = new URL(import.meta.url).searchParams.get("v") || "";
 const RETRY_MS = 10000;
@@ -830,10 +830,148 @@ class HalidayHouseCard extends HalidayCard {
   }
 }
 
+// ---- Schedule: the week ahead on a timeline, or as a list when the card is narrow ----------------------
+class HalidayScheduleCard extends HalidayCard {
+  static getStubConfig() {
+    return {};
+  }
+
+  static getConfigForm() {
+    return configForm("schedule");
+  }
+
+  constructor() {
+    super();
+    this._week = null;
+    this._picked = "";
+  }
+
+  // What's next changes when the schedule does, and the status when something starts or stops.
+  watched() {
+    return ["next", "status"];
+  }
+
+  ready() {
+    this._load();
+  }
+
+  changed(hass) {
+    const changed = super.changed(hass);
+    if (changed && this._ents && this._week) this._load();
+    return changed;
+  }
+
+  connectedCallback() {
+    // The day rolls on and the "now" line moves: look again every five minutes while on screen, and
+    // whenever the page comes back into view.
+    this._timer = setInterval(() => { if (!document.hidden && this._ents) this._load(); }, 300000);
+    this._visible = () => { if (!document.hidden && this._ents) this._load(); };
+    document.addEventListener("visibilitychange", this._visible);
+  }
+
+  disconnectedCallback() {
+    clearInterval(this._timer);
+    document.removeEventListener("visibilitychange", this._visible);
+  }
+
+  async _load() {
+    if (this._loading) { this._again = true; return; }  // a change mid-load: load once more after
+    this._loading = true;
+    try {
+      this._week = await this._hass.callWS({ type: "haliday_show/schedule" });
+      this._error = "";
+    } catch (e) {
+      this._error = e && e.message ? e.message : "Couldn't load the schedule.";
+    }
+    this._loading = false;
+    if (this._again) { this._again = false; this._load(); }
+    this.render();
+  }
+
+  render() {
+    const title = h(this._config?.title || "Schedule");
+    if (!this._week) {
+      this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card>${this.heading("mdi:calendar-clock", title)}
+        <div class="muted small">${h(this._error || "Loading…")}</div></ha-card>`;
+      return;
+    }
+    const lay = scheduleLayout(this._week, { days: Number(this._config?.days) || 7, scenes: !this.hides("hide_scenes") });
+    const layout = ["auto", "timeline", "list"].includes(this._config?.layout) ? this._config.layout : "auto";
+    const icon = (b) => (b.kind === "scene" ? "mdi:creation" : b.kind === "playlist" ? "mdi:playlist-play" : "mdi:play-circle-outline");
+    const bar = (b, i, day) => `<button class="bar ${b.lane === "scene" ? "scene" : ""} ${b.onNow ? "now-on" : ""} ${b.past ? "past" : ""}"
+        style="left:${b.left}%;width:${b.width}%" data-pick="${h(day)}:${i}" title="${h(`${b.name}, ${spanText(b.start, b.end)}`)}">
+        <span class="clip">${h(b.name)}</span></button>`;
+    const timeline = `<div class="timeline">
+        <div class="ticks">${lay.ticks.map((t) => `<span style="left:${t.at}%">${h(t.label)}</span>`).join("")}</div>
+        ${lay.rows.map((r) => `<div class="day"><div class="label small">${h(dayText(r.day))}</div>
+          <div class="track">${r.bars.map((b, i) => bar(b, i, r.day)).join("")}
+            ${r.now != null ? `<span class="nowline" style="left:${r.now}%"></span>` : ""}</div></div>`).join("")}
+      </div>`;
+    const list = `<div class="list">${lay.rows.filter((r) => r.bars.length).map((r) => `<div class="lday">
+        <div class="label small">${h(dayText(r.day))}</div>
+        ${r.bars.map((b) => `<div class="item ${b.onNow ? "now-on" : ""} ${b.past ? "past" : ""}"><ha-icon icon="${icon(b)}"></ha-icon>
+          <span class="grow clip">${h(b.name)}</span><span class="muted small">${h(spanText(b.start, b.end))}</span></div>`).join("")}
+      </div>`).join("")}</div>`;
+    const [pd, pi] = this._picked.split(":");
+    const picked = lay.rows.find((r) => r.day === pd)?.bars[Number(pi)];
+    this.shadowRoot.innerHTML = `<style>${STYLE}
+        .timeline { position: relative; padding-top: 18px; }
+        .ticks { position: relative; height: 0; margin-left: 76px; }
+        .ticks span { position: absolute; top: -18px; transform: translateX(-50%); font-size: 0.7rem; color: var(--secondary-text-color); white-space: nowrap; }
+        .ticks span:first-child { transform: none; }
+        .ticks span:last-child { transform: translateX(-100%); }
+        .day { display: flex; align-items: center; gap: 8px; min-height: 34px; border-top: 1px solid var(--divider-color); }
+        .day .label { width: 68px; flex: none; color: var(--secondary-text-color); }
+        .track { position: relative; flex: 1; height: 26px; }
+        .bar { position: absolute; top: 2px; height: 22px; border-radius: 6px; padding: 0 6px; box-sizing: border-box; min-width: 4px;
+          background: var(--primary-color); color: var(--text-primary-color, #fff); font-size: 0.75rem; text-align: left; overflow: hidden; }
+        .bar.scene { top: 16px; height: 8px; padding: 0; opacity: 0.55; }
+        .bar.scene .clip { display: none; }
+        .bar.now-on { box-shadow: 0 0 0 2px var(--card-background-color), 0 0 0 4px var(--primary-color); }
+        .bar.past, .item.past { opacity: 0.4; }
+        .nowline { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--error-color, #db4437); pointer-events: none; }
+        .list .lday { margin-bottom: 10px; }
+        .list .label { color: var(--secondary-text-color); margin-bottom: 4px; }
+        .item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; }
+        .item ha-icon { --mdc-icon-size: 18px; color: var(--secondary-text-color); flex: none; }
+        .item.now-on { background: var(--secondary-background-color); font-weight: 500; }
+        .list { display: none; }
+        .layout-list .timeline { display: none; }
+        .layout-list .list { display: block; }
+        @container (max-width: 360px) {
+          .layout-auto .timeline { display: none; }
+          .layout-auto .list { display: block; }
+        }
+      </style>
+      <ha-card>
+        ${this.heading("mdi:calendar-clock", title)}
+        <div class="fill layout-${h(layout)}">
+          ${lay.empty ? `<div class="muted small">Nothing on the schedule ${lay.rows.length === 1 ? "today" : "this week"}.</div>`
+            : `${timeline}${list}`}
+        </div>
+        ${picked ? `<div class="note">${h(picked.name)}: ${h(spanText(picked.start, picked.end))}${picked.onNow ? " (on now)" : ""}</div>` : ""}
+        ${this._error ? `<div class="error">${h(this._error)}</div>` : ""}
+      </ha-card>`;
+    this.shadowRoot.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () => {
+      this._picked = this._picked === b.dataset.pick ? "" : b.dataset.pick;
+      this.render();
+    }));
+  }
+
+  getCardSize() {
+    return 5;
+  }
+
+  getGridOptions() {
+    return { columns: 12, rows: "auto", min_columns: 4, min_rows: 2 };
+  }
+}
+
 const CARDS = [
   ["haliday-show-player-card", HalidayPlayerCard, "HA-liday Show: Player", "What's playing and what's next, with Play, Stop and Skip."],
   ["haliday-show-browse-card", HalidayBrowseCard, "HA-liday Show: Browse", "Your shows and playlists in their folders: tap one to play it."],
   ["haliday-show-scenes-card", HalidayScenesCard, "HA-liday Show: Scenes", "A button for each of your scenes, with brightness and Off."],
+  ["haliday-show-schedule-card", HalidayScheduleCard, "HA-liday Show: Schedule", "What plays when, today and the days ahead."],
   ["haliday-show-house-card", HalidayHouseCard, "HA-liday Show: House", "Your house photo with the lights as they are right now."],
   ["haliday-show-visitors-card", HalidayVisitorsCard, "HA-liday Show: Visitors and checks", "The visitors' page, the queue or votes, phones listening and the last pre-show check."],
 ];
@@ -845,4 +983,4 @@ for (const [tag, cls, name, description] of CARDS) {
       documentationURL: "https://github.com/gdeboos/ha-liday-show/blob/main/haliday_show/DOCS.md#dashboard-cards" });
   }
 }
-export { HalidayBrowseCard, HalidayCard, HalidayHouseCard, HalidayPlayerCard, HalidayScenesCard, HalidayVisitorsCard, STYLE };
+export { HalidayBrowseCard, HalidayCard, HalidayHouseCard, HalidayPlayerCard, HalidayScheduleCard, HalidayScenesCard, HalidayVisitorsCard, STYLE };

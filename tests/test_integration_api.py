@@ -162,3 +162,17 @@ def test_scene_colours_for_the_buttons():
     assert integration.scene_colours({"tracks": [{"clips": [{"params": {"color": "#123456"}}]}]}) == ["#123456"]
     assert integration.scene_colours({"lights": "junk", "tracks": [None, {"clips": [None]}]}) == []
     assert integration.scene_colours({"tracks": 5}) == [] and integration.scene_colours({"tracks": [{"clips": 5}]}) == []
+
+
+async def test_schedule_for_the_card(client):
+    import datetime
+    show_id = await _show(client, "Party")
+    rows = [{"id": "r1", "play": {"type": "show", "id": show_id}, "on": True, "start": "17:00", "end": "22:00",
+             "days": [0, 1, 2, 3, 4, 5, 6]}]
+    assert (await client.put("/api/schedule", json=rows)).status == 200
+    got = await (await client.get("/api/integration/schedule")).json()
+    assert len(got["days"]) == 7 and got["days"][0] == datetime.date.today().isoformat()
+    first = got["slots"][0]
+    assert first["name"] == "Party" and first["kind"] == "show" and first["lane"] == "show"
+    assert first["plays"][0].endswith(("+00:00", "Z")) or "+" in first["plays"][0] or "-" in first["plays"][0][19:]
+    assert (await client.get("/api/integration/schedule?start=nope")).status == 400

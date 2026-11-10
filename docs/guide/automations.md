@@ -64,6 +64,10 @@ for **HA-liday Show**:
   Press a folder to go in, and the path at the top to come back out. **Find in every folder** searches
   them all. Press a show or playlist to play it. A show's tile has its picture, else its song's cover
   art, else its palette's colours, and a tag with its season if it has one.
+- **HA-liday Show: Schedule**: what plays when, from today through the days ahead, as a timeline
+  with a day on each row, just as your **Schedule** rows will play them (a row that won't get its turn
+  isn't drawn). Shows and playlists are the tall bars, scenes the thin ones underneath, and a red line
+  marks now. Press a bar to see its times. On a narrow card it's a list instead.
 - **HA-liday Show: House**: your house photo with your lights on it, as they are right now, a few
   times a second, just like the editor's **House** tab. Lights you haven't placed on the photo under
   **Setup → House** don't show. Tap a light to see which it is. In the card's YAML, `max_height:` sets how tall it can get (420 pixels
@@ -86,6 +90,7 @@ card has a **Title** (leave it empty for the usual one) and **Hide the title**. 
 | **Browse** | **Show**: shows and playlists, shows only or playlists only; **Open on**: Shows or Playlists; **Tile size**: small, medium or large; **Hide Find in every folder**, **Hide season tags** |
 | **Scenes** | **Only these scenes**: pick the scenes the card shows, in the order you pick them (leave it empty for all of them); **Columns**: how many buttons across (leave it empty to fit); **Hide each scene's colours**, **Hide Brightness**, **Hide Off** |
 | **Visitors and checks** | Hide any of: the visitors' page, picks waiting, phones listening, the list of picks, the pre-show check, **Skip this pick** |
+| **Schedule** | **Days to show** (1 is just today, 7 the week ahead); **Layout**: a timeline that turns into a list when the card is narrow, always a timeline, or always a list; **Hide scenes** |
 | **House** | **Tallest it can be** (420 pixels unless you change it), **Hide the line under the picture** |
 
 If HA-liday Show is in your Home Assistant sidebar, each card has a small **↗** in its top corner that
@@ -96,7 +101,7 @@ Every option is off unless you switch it on, so a card you added before the edit
 everything, as it did.
 
 On a sections dashboard you can make the cards any size in the card editor's **Layout** tab. They start
-half the width (Player, Scenes, Visitors and checks) or the full width (Browse, House), and fit their
+half the width (Player, Scenes, Visitors and checks) or the full width (Browse, Schedule, House), and fit their
 content's height. Make one narrower and it tidies itself up (the cover art gets smaller, **Off** becomes
 just its icon). Give one a set height and what doesn't fit scrolls inside it; the **House** card's
 picture grows or shrinks to fill the space.

@@ -91,11 +91,56 @@ test("card editors: every option has a label, and every switch hides something (
     const form = configForm(card);
     assert.equal(form.computeLabel({ name: "title" }), "Title");
   }
-  assert.deepEqual(Object.keys(FORMS).sort(), ["browse", "house", "player", "scenes", "visitors"]);
+  assert.deepEqual(Object.keys(FORMS).sort(), ["browse", "house", "player", "scenes", "schedule", "visitors"]);
 });
 
 test("Scenes card: picked scenes in their order, else all by name", () => {
   const all = [{ id: "s.b", name: "Bravo" }, { id: "s.a", name: "Alpha" }, { id: "s.c", name: "Charlie" }];
   assert.deepEqual(pickScenes(all, []).map((s) => s.name), ["Alpha", "Bravo", "Charlie"]);
   assert.deepEqual(pickScenes(all, ["s.c", "s.gone", "s.a"]).map((s) => s.name), ["Charlie", "Alpha"]);
+});
+
+import { dayText, hourText, scheduleLayout, spanText } from "../../custom_components/haliday_show/frontend/cardlib.js";
+
+test("schedule: one time range for every day, bars placed on it, past midnight too", () => {
+  const iso = (d, h, m = 0) => new Date(2026, 10, d, h, m).toISOString();
+  const week = { days: ["2026-11-10", "2026-11-11", "2026-11-12"], slots: [
+    { day: "2026-11-10", name: "Christmas night", kind: "playlist", lane: "show", plays: [iso(10, 17), iso(10, 22)], on_now: true },
+    { day: "2026-11-11", name: "Late", kind: "show", lane: "show", plays: [iso(11, 23), iso(12, 1)] },
+    { day: "2026-11-11", name: "Warm", kind: "scene", lane: "scene", plays: [iso(11, 16, 30), iso(11, 17)] },
+    { day: "2026-11-12", name: "Skipped", kind: "show", lane: "show", plays: null },
+  ] };
+  const now = new Date(2026, 10, 10, 19, 0);
+  const lay = scheduleLayout(week, { now });
+  assert.equal(lay.rows.length, 3);
+  const [today, tomorrow, third] = lay.rows;
+  // 4pm to 1am: 9 hours
+  assert.equal(today.bars[0].left, (60 / 540) * 100);
+  assert.ok(Math.abs(today.now - (180 / 540) * 100) < 1e-9);
+  assert.equal(tomorrow.bars.map((b) => b.name).join(), "Warm,Late");
+  assert.ok(Math.abs(tomorrow.bars[1].left + tomorrow.bars[1].width - 100) < 1e-9);  // runs to 1am, the end
+  assert.equal(third.bars.length, 0);  // a stretch that doesn't get a turn isn't drawn
+  assert.equal(today.bars[0].past, false);
+  assert.equal(scheduleLayout(week, { now: new Date(2026, 10, 10, 23) }).rows[0].bars[0].past, true);
+  assert.equal(tomorrow.now, null);
+  assert.equal(scheduleLayout(week, { now, scenes: false }).rows[1].bars.length, 1);
+  assert.equal(scheduleLayout(week, { now, days: 1 }).rows.length, 1);
+  assert.equal(scheduleLayout({ days: ["2026-11-10"], slots: [] }, { now }).empty, true);
+  assert.equal(lay.ticks[0].label, "4pm");
+});
+
+test("schedule wording", () => {
+  assert.deepEqual([0, 12 * 60, 17 * 60, 25 * 60].map(hourText), ["midnight", "noon", "5pm", "1am"]);
+  const now = new Date(2026, 10, 10, 12);
+  assert.deepEqual(["2026-11-10", "2026-11-11", "2026-11-12"].map((d) => dayText(d, now)), ["Today", "Tomorrow", "Thu 12"]);
+  assert.equal(spanText(new Date(2026, 10, 10, 17).toISOString(), new Date(2026, 10, 10, 22, 30).toISOString()), "5pm to 10:30pm");
+});
+
+import { wallMinutes } from "../../custom_components/haliday_show/frontend/cardlib.js";
+
+test("schedule: clock time, even across a clock change", () => {
+  // Built from local clock fields, so this holds in any time zone the test runs in (see the TZ runs below).
+  assert.equal(wallMinutes(new Date(2026, 2, 29, 17, 0), "2026-03-29"), 17 * 60);  // UK clocks go forward that morning
+  assert.equal(wallMinutes(new Date(2026, 9, 25, 17, 0), "2026-10-25"), 17 * 60);  // and back
+  assert.equal(wallMinutes(new Date(2026, 9, 26, 1, 30), "2026-10-25"), 25 * 60 + 30);
 });

@@ -143,6 +143,12 @@ export const FORMS = {
     toggles("hide_title", "hide_colours", "hide_brightness", "hide_off", "hide_open")],
   visitors: [...TITLE, toggles("hide_title", "hide_page", "hide_queue", "hide_phones", "hide_picks", "hide_check", "hide_skip",
     "hide_open")],
+  schedule: [...TITLE,
+    { name: "days", selector: { number: { min: 1, max: 7, mode: "slider" } } },
+    { name: "layout", selector: { select: { mode: "dropdown", options: [
+      { value: "auto", label: "Timeline, or a list when narrow" }, { value: "timeline", label: "Timeline" },
+      { value: "list", label: "List" }] } } },
+    toggles("hide_title", "hide_scenes", "hide_open")],
   house: [...TITLE,
     { name: "max_height", selector: { number: { min: 150, max: 1200, step: 10, mode: "box", unit_of_measurement: "px" } } },
     toggles("hide_title", "hide_caption", "hide_open")],
@@ -172,6 +178,9 @@ export const LABELS = {
   max_height: "Tallest it can be",
   hide_caption: "Hide the line under the picture",
   hide_open: "Hide the link to HA-liday Show",
+  days: "Days to show",
+  layout: "Layout",
+  hide_scenes: "Hide scenes (shows and playlists only)",
   hide_seasons: "Hide season tags",
   hide_colours: "Hide each scene's colours",
 };
@@ -182,6 +191,7 @@ export const HELPERS = {
   columns: "Leave empty to fit as many as there's room for.",
   max_height: "420 px unless you change it.",
   start: "Which tab the card opens on, when it shows both.",
+  days: "From today: 1 is just today, 7 is the week.",
 };
 
 // The form for one card, as Home Assistant's card editor takes it.
@@ -201,4 +211,81 @@ export function pickScenes(all, picked) {
   if (!Array.isArray(picked) || !picked.length) return [...all].sort((a, b) => a.name.localeCompare(b.name));
   const byId = new Map(all.map((s) => [s.id, s]));
   return picked.map((id) => byId.get(id)).filter(Boolean);
+}
+
+// ---- The Schedule card -----------------------------------------------------------------------------
+// The days to draw and where each stretch goes on them: one shared time range (from the earliest start
+// to the latest end, to the hour) so the days line up, and each bar as a left and width in %.
+export function scheduleLayout(week, { days = 7, scenes = true, now = new Date() } = {}) {
+  const want = (week?.days || []).slice(0, Math.max(1, Math.min(7, days)));
+  // Everything on the viewer's own wall clock: a stretch goes on the day it starts there, and is placed
+  // by its clock time (so a clock change, or a phone in another time zone, can't shift it).
+  const slots = (week?.slots || []).filter((s) => s.plays && (scenes || s.lane !== "scene"))
+    .map((s) => ({ ...s, row: localDay(s.plays[0]) })).filter((s) => want.includes(s.row));
+  let from = Infinity, to = -Infinity;
+  for (const s of slots) {
+    from = Math.min(from, wallMinutes(s.plays[0], s.row));
+    to = Math.max(to, wallMinutes(s.plays[1], s.row));
+  }
+  if (!slots.length) { from = 16 * 60; to = 23 * 60; }
+  from = Math.floor(from / 60) * 60;
+  to = Math.max(from + 60, Math.ceil(to / 60) * 60);
+  const span = to - from;
+  const pos = (m) => Math.max(0, Math.min(100, ((m - from) / span) * 100));
+  const rows = want.map((day) => {
+    const bars = slots.filter((s) => s.row === day).map((s) => {
+      const a = wallMinutes(s.plays[0], day), b = wallMinutes(s.plays[1], day);
+      return { name: s.name, kind: s.kind, lane: s.lane, onNow: !!s.on_now, start: s.plays[0], end: s.plays[1],
+        past: new Date(s.plays[1]).getTime() <= now.getTime(),
+        left: pos(a), width: Math.max(0.5, pos(b) - pos(a)) };
+    }).sort((x, y) => x.left - y.left);
+    const nowMin = wallMinutes(now, day);
+    return { day, bars, now: nowMin >= from && nowMin <= to ? pos(nowMin) : null };
+  });
+  const ticks = [];
+  const step = span > 12 * 60 ? 180 : span > 6 * 60 ? 120 : 60;
+  for (let m = from; m <= to; m += step) ticks.push({ at: pos(m), label: hourText(m) });
+  return { rows, ticks, empty: !slots.length };
+}
+
+// The viewer's local date of a moment, as YYYY-MM-DD.
+export function localDay(when) {
+  const t = new Date(when);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+}
+
+// A moment's clock time in minutes from the start of `day` (YYYY-MM-DD) on the viewer's clock: 17:00
+// the next day is 2460. Counted from the clock's own hours and minutes, so a clock change doesn't move it.
+export function wallMinutes(when, day) {
+  const t = new Date(when);
+  const [y, m, d] = day.split("-").map(Number);
+  const days = Math.round((Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) - Date.UTC(y, m - 1, d)) / 86400000);
+  return days * 1440 + t.getHours() * 60 + t.getMinutes();
+}
+
+// 5pm, midnight, 1am (minutes from the start of the day, maybe past 24 hours).
+export function hourText(minutes) {
+  const h = Math.floor(minutes / 60) % 24;
+  if (h === 0) return "midnight";
+  if (h === 12) return "noon";
+  return `${h % 12}${h < 12 ? "am" : "pm"}`;
+}
+
+// "Today", "Tomorrow", "Thu 12".
+export function dayText(day, now = new Date()) {
+  const [y, m, d] = day.split("-").map(Number);
+  const that = new Date(y, m - 1, d), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((that - today) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][that.getDay()]} ${d}`;
+}
+
+// 5pm to 10:30pm
+export function spanText(startIso, endIso) {
+  const f = (iso) => {
+    const t = new Date(iso), h = t.getHours() % 12 || 12, m = t.getMinutes();
+    return `${h}${m ? `:${String(m).padStart(2, "0")}` : ""}${t.getHours() < 12 ? "am" : "pm"}`;
+  };
+  return `${f(startIso)} to ${f(endIso)}`;
 }

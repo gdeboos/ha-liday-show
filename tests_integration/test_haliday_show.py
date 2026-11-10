@@ -252,6 +252,11 @@ async def test_cards_are_served_with_their_data(hass: HomeAssistant, app, hass_w
     lib = (await ws.receive_json())["result"]
     assert [s["name"] for s in lib["shows"]] == ["Party"]
     assert lib["folders"]["shows"][0]["items"] == ["party"]
+    await ws.send_json({"id": 3, "type": "haliday_show/schedule"})
+    week = (await ws.receive_json())["result"]
+    assert len(week["days"]) == 7 and week["slots"] == []
+    await ws.send_json({"id": 4, "type": "haliday_show/schedule", "start": "not a date"})
+    assert (await ws.receive_json())["success"] is False
 
     client = await hass_client()
     js = await client.get("/haliday_show_cards/cards.js")
