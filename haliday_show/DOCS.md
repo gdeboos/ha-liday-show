@@ -805,7 +805,9 @@ colours.
 #### The show's palette
 
 Each show can have its own palette, picked in the **New show** window and changed in **⚙ Show
-settings…**. Effects you add take its colours, and the effect chooser previews every effect in them.
+settings…**. In the **New show** window (and **+ New scene**'s colours step), your palettes are in your
+folders from **Library → Palettes**, with the built-in ones after them; if the one picked is in
+another folder, a line under the list says which. Effects you add take its colours, and the effect chooser previews every effect in them.
 The palette picker under a clip's colours starts on it too; picking another palette there is just for
 colouring that clip. Change the show's palette later and you're asked whether to recolour the effects
 already in the show; say no and only new effects use it. **None** keeps each effect's own colours, as
@@ -975,7 +977,7 @@ edited from another browser that still has it open until you restore it.
 **Songs.** Only songs in HA-liday Show's own folder (`haliday_show` in your media folder, where uploads
 and the Music editor's saves go) can be archived or deleted here, as the rest of your media folder
 may belong to other apps; **Remove…** is greyed out for the others. If shows use the song, choose what
-they play instead: **Another song**, or **No song for now** (they keep their effects and beats, and
+they play instead: **Another song** (press **Change…** to pick it from your folders), or **No song for now** (they keep their effects and beats, and
 play the lights only). An archived song moves to an **Archived** folder inside HA-liday Show's
 folder, where it's out of HA-liday Show's song lists but still in Home Assistant's Media. Restoring it
 puts it back and gives it back to the shows that were left without a song.
@@ -1140,8 +1142,8 @@ it. Pick each part from its list and give it a colour:
   colour.
 
 The preview sings "ah", "oo", "ee" and "mm" and blinks while you work, big and as a phone shows it. Press
-**Add face** (or **Save**) to keep it. Then pick it as a Singing face clip's **Character**, under **Your
-faces**.
+**Add face** (or **Save**) to keep it. Then pick it as a Singing face clip's **Character**: press
+**Change…** for a window with your faces in their folders and the built-in ones marked **Built in**.
 
 **Edit…** on one of yours opens it again. Changing a face changes it in every show that uses it, and those
 shows are made ready again in the background. **Delete…** (under **⋯**) removes it; Singing faces that used
@@ -1319,8 +1321,9 @@ sample saved with **Save as sample…** includes the layers unless you pick one 
 **✨ New mashup…** in **Library → Songs** puts one song's singing over another's music. Both need to be
 [split into parts](#split-into-parts).
 
-1. Pick **The singing from** (its vocals are used) and **The music from** (everything but its vocals).
-   Each shows its tempo and key once it's been detected.
+1. Pick **The singing from** (its vocals are used) and **The music from** (everything but its vocals):
+   press **Change…** on either to pick from your folders. Each shows its tempo and key once it's been
+   detected.
 2. A box says how well they fit and what will change, such as "A good fit. The singing is sped up 3% to
    121 BPM, and moved up 2 semitones into A minor". **Great fit** and **Good fit** need little change; a
    **Big change** (more than about 10% faster or slower, or a key far away) can start to sound odd.
@@ -1806,7 +1809,9 @@ Get a clip looking right, then press **Save as preset…** under its settings.
 Name it and choose whether to **Include colours** (on by default; turn it off to save just the
 movement and other settings, so the preset takes on whatever colours a clip already has). Your
 presets appear in the effect chooser after the built-in ones, marked with a ★, and **★ My presets
-only** narrows the chooser to them.
+only** narrows the chooser to them. If you've put your presets in folders under **Library → Presets**,
+the folders show under the filters while presets are showing: press one to see only your presets in it
+(still under their effects), and **All presets** to see everything again.
 
 ### The Presets tab
 
@@ -2024,7 +2029,7 @@ them; an Advanced scene can.
 | Effect | What it does |
 | --- | --- |
 | Scrolling text | Your **Text** in 5 × 7 letters, as tall as the matrix allows (or **small**), scrolling in from one side or held **still** in the middle. **Letters** can be one colour or a rainbow, one colour per letter. Up to 200 letters. Accented letters lose their accents; £, ♥, ★ and ° work too, and anything else shows as ?. Still text too wide for the matrix starts at its left edge |
-| Picture | One of your pictures or GIFs (see *Pictures*). **Fit** keeps its shape inside the matrix, **fill** fills it (cutting off the edges) and **stretch** fills it out of shape. **Move** holds it **still** or scrolls it in from one side; a GIF plays at **Animation speed** |
+| Picture | One of your pictures or GIFs (see *Pictures*), picked with **Change…** from a window with your folders from **Library → Pictures**. **Fit** keeps its shape inside the matrix, **fill** fills it (cutting off the edges) and **stretch** fills it out of shape. **Move** holds it **still** or scrolls it in from one side; a GIF plays at **Animation speed** |
 | Fire | Flames rising from the bottom of the matrix, each column flickering to its own height. Up to 8 colours from the base to the tips, a **Speed** and a **Flame height** |
 | Snowfall | Flakes falling down each column at their own pace, gliding from LED to LED. **Style: rain** falls straight, with a streak above each drop. Set **How many** and **Speed** |
 | Music bars | A bar per column rising from the bottom with the song's loudness, each a different height, green to red. Like **Music level**, it needs the show's song, and isn't offered in scenes |

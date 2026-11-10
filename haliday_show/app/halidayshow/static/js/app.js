@@ -3082,8 +3082,8 @@ const sceneEd = new SceneEditor({
     ? scheduleLine(scheduleState.entries, "scene", id, scheduleState) : ""),
   chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }), wledPicker, chooseWledEffect,
   palettePicker: (name, onPick, opts) => palettePicker(name, onPick, { none: PALETTE_NONE, ...opts }),
-  paletteRows: () => [{ value: "", label: "None", detail: "Each light starts on a warm white" },
-    ...allPalettes().map((p) => ({ value: p.name, label: p.name, detail: `${p.colors.length} colours`, picture: paletteBar(p.colors) }))],
+  paletteStep: (ui, st, name, onPick) => drawPaletteStep(ui, st, name, "Each light starts on a warm white", onPick),
+  paletteHome: (name) => paletteHome(name),
   radioRows: (...a) => nsRadioRows(...a),
   firstPalette: () => (seasonalPalette() || allPalettes().find((p) => p.name === app.colourPalette) || PRESET_PALETTES[0]).name,
   placeNew: (id) => placeNew("scenes", id), placeBeside: (from, id) => placeBeside("scenes", from, id),
@@ -4041,7 +4041,12 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
   }, "link-button");
   find.addEventListener("input", () => render());
   filters.append(find, chips, clear);
-  head.append(filters); // in the header, so they stay put as you scroll
+  // With presets showing, your folders from Library → Presets: going into one shows only your presets
+  // in it (and its subfolders), still under their effects.
+  const presetBar = Object.assign(document.createElement("nav"), { className: "preset-folders", hidden: true });
+  presetBar.setAttribute("aria-label", "Your preset folders");
+  let presetAt = "";
+  head.append(filters, presetBar); // in the header, so they stay put as you scroll
   dlg.append(head, body);
   const shows = (key, fx) => matches(key, fx, [...picked], find.value);
   const len = Math.min(Math.max(length, 1), 6);
@@ -4078,7 +4083,25 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     body.replaceChildren();
     note.hidden = true;
     ml.hidden = !toggle.checked;
-    const onlyMine = toggle.checked && mineOnly.checked;
+    const pfolders = foldersOf("presets");
+    if (!pfolders.some((f) => f.id === presetAt)) presetAt = "";
+    const inFolder = toggle.checked && !!presetAt;
+    const onlyMine = toggle.checked && (mineOnly.checked || inFolder);
+    const here = inFolder ? within(pfolders, presetAt) : null;
+    const filed = (p) => !here || (p.mine && here.has(folderOf(pfolders, `${p.effect}:${p.name}`)));
+    presetBar.hidden = !toggle.checked || !pfolders.length;
+    const go = (id) => { presetAt = id; render(); presetBar.querySelector("button")?.focus(); };
+    const chip = (label, id, cls = "") => Object.assign(button(label, () => go(id), `ghost ${cls}`.trim()), { type: "button" });
+    presetBar.replaceChildren(
+      ...[{ id: "", name: "All presets" }, ...pathTo(pfolders, presetAt)].flatMap((f, i, all) => {
+        const part = i === all.length - 1 ? Object.assign(document.createElement("b"), { textContent: f.name }) : chip(f.name, f.id, "link-button");
+        return i ? [Object.assign(document.createElement("span"), { className: "hint", textContent: "›" }), part] : [part];
+      }),
+      ...childrenOf(pfolders, presetAt).map((f) => {
+        const b = chip("", f.id, "preset-folder-chip");
+        b.append(Object.assign(document.createElement("span"), { className: "folder-mark small", ariaHidden: "true" }), ` ${f.name}`);
+        return b;
+      }));
     if (suggested?.looks.length) {
       const sh = document.createElement("div");
       sh.className = "section-label effect-dialog-section";
@@ -4141,7 +4164,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         const grid = document.createElement("div");
         grid.className = "preset-groups";
         for (const [key, fx] of effects) {
-          const presets = presetsFor(key).filter((p) => !onlyMine || p.mine);
+          const presets = presetsFor(key).filter((p) => (!onlyMine || p.mine) && filed(p));
           if (onlyMine && !presets.length) continue;
           const g = document.createElement("fieldset");
           g.className = `preset-group${key === current ? " current" : ""}`;
@@ -4169,7 +4192,9 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     // Only offered when something here won't work on this light (a Govee light's limits, say).
     // On lights where every effect works, such as WLED, it doesn't show.
     al.hidden = !fit || (!allow.checked && !body.querySelector(".unfit"));
-    if (toggle.checked && onlyMine && !body.querySelector(".preset-group")) {
+    if (inFolder && !body.querySelector(".preset-group")) {
+      body.insertAdjacentHTML("beforeend", `<p class="hint">None of your presets in this folder are for these effects.</p>`);
+    } else if (toggle.checked && onlyMine && !body.querySelector(".preset-group")) {
       body.insertAdjacentHTML("beforeend", `<p class="hint">No presets of your own yet. Select a clip and press <b>Save as preset</b>.</p>`);
     }
   };
@@ -9686,6 +9711,22 @@ function wireSongPlayer() {
 // New mashup: one song's singing over another's music. Picks both (songs split into parts), says how
 // well they fit and what will change, then makes a draft of the music song in the Music editor with its
 // own vocals muted and the other's on a layer, matched and lined up (music.js makeMashup).
+// A button standing in for a <select> of songs: it shows the song picked and opens the Choose a song
+// window (Library → Songs' folders) on press; onPick(ref) runs with a new choice.
+function songButton(refs, current, { title, what, yes = "Choose" }, onPick) {
+  const b = Object.assign(pickerButton(songLabel(current), null, what), { type: "button" });
+  b.addEventListener("click", async () => {
+    const r = await pickSong({ title, yes, refs, current });
+    if (!r || songKey(r) === songKey(current)) return;
+    current = refs.find((x) => songKey(x) === songKey(r)) || r;
+    const fresh = pickerButton(songLabel(current), null, what);
+    b.replaceChildren(...fresh.childNodes);
+    b.setAttribute("aria-label", fresh.getAttribute("aria-label"));
+    onPick(current);
+  });
+  return b;
+}
+
 async function newMashup() {
   await refreshAudio().catch(() => {});
   const songs = (app.songs || []).filter((s) => prepared(s.parts));
@@ -9696,14 +9737,14 @@ async function newMashup() {
   const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
   const infos = new Map();
   const infoOf = async (s) => { const k = `${s.source}:${s.path}`; if (!infos.has(k)) infos.set(k, await songInfo(s).catch(() => null)); return infos.get(k); };
-  const pick = (label, hint) => {
-    const sel = el("select");
-    songs.forEach((s, i) => sel.add(new Option(songLabel(s), String(i))));
+  // Each song is picked in the Choose a song window, from your folders; sel.value is its place in `songs`.
+  const pick = (label, hint, i) => {
+    const sel = { value: String(i) };
     const h = el("span", { className: "hint", textContent: "" });
-    return { sel, h, box: el("label", { className: "field" }, el("b", { textContent: label }), sel, h), hint };
+    const b = songButton(songs, songs[i], { title: label, what: label }, (r) => { sel.value = String(songs.indexOf(r)); refresh(); });
+    return { sel, h, box: el("div", { className: "field" }, el("b", { textContent: label }), b, h), hint };
   };
-  const sing = pick("The singing from", "Its vocals part"), mus = pick("The music from", "Everything but its vocals");
-  mus.sel.value = "1";
+  const sing = pick("The singing from", "Its vocals part", 0), mus = pick("The music from", "Everything but its vocals", 1);
   const fit = el("div", { className: "mash-fit" });
   const at = el("select"), from = el("select");
   const toggle = (text, on = true) => { const c = el("input", { type: "checkbox", checked: on }); return { c, box: el("label", {}, c, ` ${text}`) }; };
@@ -9736,7 +9777,6 @@ async function newMashup() {
     note.textContent = same ? "" : `Makes a draft in the Music editor: ${songLabel(b)} with its own vocals muted, and ${songLabel(a)}'s vocals as a layer, `
       + "matched and lined up. Neither song is changed. Fine-tune it there, then Make song file.";
   };
-  for (const c of [sing.sel, mus.sel]) c.addEventListener("change", refresh);
   for (const t of [mt, mk]) t.c.addEventListener("change", refresh);
   const form = el("form", { method: "dialog" },
     el("div", { className: "effect-dialog-head" }, el("h3", { textContent: "New mashup" })),
@@ -10238,12 +10278,33 @@ async function loadPictures() {
 
 // The Picture effect's picture: a list of yours, with a note when there are none yet.
 function picturePicker(value) {
-  const el = document.createElement("select");
   const list = pictureList();
-  el.add(new Option(list.length ? "Pick a picture" : "None yet: add one under Library → Pictures", "", false, !value));
-  for (const p of list) el.add(new Option(p.name, p.id, false, p.id === value));
-  if (value && !getPicture(value)) el.add(new Option(picturesLoaded ? "A picture that's been deleted" : "Loading pictures…", value, false, true));
-  return el;
+  const name = (id) => (!id ? (list.length ? "Pick a picture" : "None yet: add one under Library → Pictures")
+    : getPicture(id)?.name || (picturesLoaded ? "A picture that's been deleted" : "Loading pictures…"));
+  return folderChoice("pictures", () => pictureList().map((p) => ({ key: p.id, name: p.name })), value, name,
+    { title: "Pick a picture", what: "Picture" });
+}
+
+// A button standing in for a <select> of a Library list's items: it shows the choice, opens
+// pickInFolders, and like a select has a value and fires input and change when it changes.
+function folderChoice(kind, items, value, nameOf, { title, what }) {
+  let b;
+  const show = () => {
+    const fresh = pickerButton(nameOf(b.value), open, what);
+    b.replaceChildren(...fresh.childNodes);
+    b.setAttribute("aria-label", fresh.getAttribute("aria-label"));
+  };
+  const open = () => pickInFolders(kind, items(), { title, current: b.value, onPick: (key) => {
+    b.value = key;
+    show();
+    b.dispatchEvent(new Event("input"));
+    b.dispatchEvent(new Event("change"));
+  } });
+  b = pickerButton("", open, what);
+  b.type = "button";
+  b.value = value || "";
+  show();
+  return b;
 }
 
 // A picture's first frame, drawn big enough to see, dot for dot.
@@ -10369,17 +10430,12 @@ async function loadFaces() {
 const faceName = (c) => (isBuiltIn(c) ? builtInName(c) : getFace(c)?.name || (facesLoaded ? "A face that's been deleted" : "Loading faces…"));
 
 // The Singing face's Character: the built-in faces, then yours.
+// Your faces in your folders from Library → Faces, and the built-in ones (in no folder) with them.
 function facePicker(value) {
-  const el = document.createElement("select");
-  const group = (label) => Object.assign(document.createElement("optgroup"), { label });
-  const built = group("Built in"), yours = group("Your faces");
-  for (const c of CHARACTERS) built.append(new Option(builtInName(c), c, false, c === value));
-  const mine = faceList();
-  for (const f of mine) yours.append(new Option(f.name, f.id, false, f.id === value));
-  if (value && !isBuiltIn(value) && !getFace(value)) yours.append(new Option(faceName(value), value, false, true));
-  if (!yours.children.length) yours.append(Object.assign(new Option("None yet: make one under Library → Faces", ""), { disabled: true }));
-  el.append(built, yours);
-  return el;
+  const name = (id) => (isBuiltIn(id) ? builtInName(id) : getFace(id)?.name || faceName(id));
+  return folderChoice("faces", () => [...faceList().map((f) => ({ key: f.id, name: f.name })),
+    ...CHARACTERS.map((c) => ({ key: c, name: builtInName(c), hint: "Built in" }))], value, name,
+  { title: "Pick a face", what: "Character" });
 }
 
 // A face drawn into a canvas, dot for dot, on black: a character, or a recipe (the face maker's).
@@ -10747,7 +10803,8 @@ function moveInto(kind, what, to) {
 }
 
 // Pick one of a Library list's items in a window you go into folders in, like the Library page,
-// with Find across every folder. Opens in the folder the current choice is in.
+// with Find across every folder. Opens in the folder the current choice is in. An item's own `hint`
+// (such as "Built in") shows under its name.
 function pickInFolders(kind, items, { title, current = "", onPick }) {
   const lib = FOLDER_LISTS[kind], folders = foldersOf(kind);
   let at = folderOf(folders, current);
@@ -10782,7 +10839,7 @@ function pickInFolders(kind, items, { title, current = "", onPick }) {
       ...v.items.map((it) => {
         const b = row(() => { w.dlg.close(); if (it.key !== current) onPick(it.key); },
           Object.assign(document.createElement("span"), { className: "pick-dot", ariaHidden: "true" }),
-          it.name, [finding && it.where ? `in ${it.where}` : "", it.key === current ? "chosen now" : ""].filter(Boolean).join(" · "));
+          it.name, [it.hint || "", finding && it.where ? `in ${it.where}` : "", it.key === current ? "chosen now" : ""].filter(Boolean).join(" · "));
         if (it.key === current) b.classList.add("current");
         return b;
       }));
@@ -11131,12 +11188,17 @@ async function openRemoveSong(r) {
   $("rm-title").textContent = `Remove ${r.name}`;
   notice($("rm-what"), users.length ? "warn" : "ok", users.length ? `Used by ${listOf(users.map((s) => s.name))}.` : "No show uses it.");
   $("rm-shows").hidden = !users.length;
-  const sel = $("rm-replacement");
-  sel.replaceChildren(...(app.songs || []).filter((x) => x.source === "media" && x.path !== r.ref.path)
-    .map((x) => new Option(x.path, JSON.stringify(x))));
-  const radio = document.querySelector("input[name=rm-instead][value=song]");
-  radio.disabled = sel.disabled = !sel.options.length;
-  (sel.options.length ? radio : document.querySelector("input[name=rm-instead][value=none]")).checked = true;
+  // The song instead: picked in the Choose a song window, from your folders, kept in the hidden field.
+  const others = (app.songs || []).filter((x) => x.source === "media" && x.path !== r.ref.path);
+  const sel = $("rm-replacement"), radio = document.querySelector("input[name=rm-instead][value=song]");
+  sel.value = others.length ? JSON.stringify({ source: others[0].source, path: others[0].path }) : "";
+  $("rm-replacement-pick").replaceChildren(...(others.length ? [songButton(others, others[0],
+    { title: "The song to use instead", what: "The song to use instead", yes: "Use this song" }, (x) => {
+      sel.value = JSON.stringify({ source: x.source, path: x.path });
+      radio.checked = true;
+    })] : []));
+  radio.disabled = !others.length;
+  (others.length ? radio : document.querySelector("input[name=rm-instead][value=none]")).checked = true;
   $("rm-archive-note").innerHTML = `<b>Archive</b> moves it to the <b>Archived</b> folder in HA-liday Show's songs folder,
     out of its song lists. <b>Restore</b>, under <b>Archived songs</b>, puts it back${users.length
     ? " and gives it back to any of these shows left without a song" : ""}.`;
@@ -13159,8 +13221,9 @@ async function nsLoadFolders() {
 // A window for picking one song (or sample) by going into Library → Songs' (or Samples') folders, or
 // finding it by name. Edits of a song sit with it, as in the Library. With parts, a song that's been
 // split offers its parts too (Vocals, Drums…), so you take the whole song or just a part of it.
-// Resolves to the ref picked (a part's own ref when a part is picked), or null if you close it.
-async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds = ["songs"], parts = false, fitTo = null, sections = false } = {}) {
+// Resolves to the ref picked (a part's own ref when a part is picked), or null if you close it. current:
+// the song picked now, whose folder it opens in.
+async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds = ["songs"], parts = false, fitTo = null, sections = false, current = null } = {}) {
   // fitTo ({tempo, key}): songs can be sorted by how well they'd fit over that (mashfit.js), each saying
   // how. sections: a song's sections can be picked, so only that stretch of it is used. Then the result
   // also carries {from, to} (seconds in it, or none for all of it) and lineUp (its bars on the song's).
@@ -13187,7 +13250,9 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
       if (!family.has(k)) family.set(k, []);
       family.get(k).push(r);
     }
-    shelves.songs = { label: "Songs", one: "song", folders, family, at: folderAt("songs") };
+    // Opens where the song picked now is (current), else where you last were in Library → Songs.
+    const home = current ? folderOf(folders, homeOf.get(songKey(current)) || songKey(current)) : null;
+    shelves.songs = { label: "Songs", one: "song", folders, family, at: home ?? folderAt("songs") };
   }
   const tabs = Object.keys(shelves);
   const st = { tab: tabs.includes("songs") && !shelves.samples?.family.size ? "songs" : tabs[0], picked: null, part: "",
@@ -13432,13 +13497,56 @@ function nsSongPicked() {
   });
 }
 
-function nsPalettes() {
-  const own = newShow.songPalette, all = allPalettes();
+// A colours step (New show, New scene): None and the song's own colours first, then your palettes in
+// your folders from Library → Palettes (go into a folder; the path comes back out), then the built-in
+// ones. ui: {path, folders, list, picked} elements; st: {palette, palAt, own?}, where palette and palAt
+// change as you go; name: the radios' name; none: what None does; onPick() after a pick or a move.
+function drawPaletteStep(ui, st, name, none, onPick) {
+  const own = st.own, folders = foldersOf("palettes");
   const row = (p) => ({ value: p.name, label: p.name, picture: paletteBar(p.colors),
     detail: p.name === own ? `This song's colours · ${p.colors.length} colours` : `${p.colors.length} colours` });
-  const rows = [{ value: "", label: "None", detail: "Each effect keeps its own colours" },
-    ...all.filter((p) => p.name === own).map(row), ...all.filter((p) => p.name !== own).map(row)];
-  nsRadioRows($("ns-palettes"), "ns-palette", rows, newShow.palette, (v) => { newShow.palette = v; newShow.paletteChosen = true; nsPalettes(); });
+  const mine = app.palettes.filter((p) => p.name !== own);
+  const view = pickerView(folders, mine.map((p) => ({ key: p.name, name: p.name })), st.palAt || "");
+  st.palAt = view.path.at(-1)?.id || "";
+  const inFolder = !!st.palAt;
+  const rows = inFolder ? view.items.map((it) => row(mine.find((p) => p.name === it.key)))
+    : [{ value: "", label: "None", detail: none },
+      ...allPalettes().filter((p) => p.name === own).slice(0, 1).map(row),
+      ...view.items.map((it) => row(mine.find((p) => p.name === it.key))),
+      ...PRESET_PALETTES.filter((p) => p.name !== own).map((p) => ({ ...row(p), detail: `Built in · ${p.colors.length} colours` }))];
+  const go = (id) => { st.palAt = id; onPick(); (ui.folders.querySelector("button") || ui.list.querySelector("input"))?.focus(); };
+  ui.path.hidden = !inFolder;
+  ui.path.replaceChildren(...(inFolder ? [{ id: "", name: "Palettes" }, ...view.path] : []).flatMap((f, i, all) => {
+    const part = i === all.length - 1 ? Object.assign(document.createElement("b"), { textContent: f.name })
+      : Object.assign(button(f.name, () => go(f.id), "link-button"), { type: "button" });
+    return i ? [Object.assign(document.createElement("span"), { className: "hint", textContent: "›" }), part] : [part];
+  }));
+  ui.folders.replaceChildren(...view.folders.map(({ folder, count }) => {
+    const b = Object.assign(button("", () => go(folder.id), "song-row ns-folder"), { type: "button" });
+    b.append(Object.assign(document.createElement("span"), { className: "folder-mark small" }),
+      Object.assign(document.createElement("span"), { className: "folder-text" }),
+      Object.assign(document.createElement("span"), { className: "folder-chev", textContent: "›" }));
+    b.children[1].append(Object.assign(document.createElement("b"), { textContent: folder.name }),
+      Object.assign(document.createElement("span"), { className: "hint", textContent: plural(count, "palette") }));
+    return b;
+  }));
+  ui.folders.hidden = !view.folders.length;
+  // The pick may be in another folder, so say what it is.
+  const shown = rows.some((r) => r.value === (st.palette || ""));
+  const where = pathText(folders, st.palette || "");
+  ui.picked.textContent = shown ? "" : `Picked: ${st.palette || "None"}${where ? ` (in ${where})` : ""}`;
+  ui.picked.hidden = shown;
+  if (!rows.length) {
+    ui.list.replaceChildren(Object.assign(document.createElement("p"), { className: "hint", textContent: "Nothing in this folder." }));
+  } else nsRadioRows(ui.list, name, rows, st.palette, (v) => { st.palette = v; onPick(true); });
+}
+// The folder holding a palette of yours, so a colours step opens where the pick shows.
+const paletteHome = (name) => (app.palettes.some((p) => p.name === name) ? folderOf(foldersOf("palettes"), name) : "");
+
+function nsPalettes() {
+  newShow.own = newShow.songPalette;
+  drawPaletteStep({ path: $("ns-pal-path"), folders: $("ns-pal-folders"), list: $("ns-palettes"), picked: $("ns-pal-picked") },
+    newShow, "ns-palette", "Each effect keeps its own colours", (picked) => { if (picked) newShow.paletteChosen = true; nsPalettes(); });
 }
 
 function nsStarts() {
@@ -13466,7 +13574,12 @@ function nsStep(step) {
   $("ns-next").textContent = step < steps.length ? "Next →" : "Create show";
   if (name === "song") ($("ns-songs").querySelector("input:checked") || $("ns-find")).focus();
   if (name === "name") { $("ns-name").focus(); $("ns-name").select(); }
-  if (name === "colour") { nsPalettes(); $("ns-palettes").querySelector("input:checked")?.focus(); }
+  if (name === "colour") {
+    // Open on the folder of the palette picked now, so it shows.
+    newShow.palAt = paletteHome(newShow.palette);
+    nsPalettes();
+    ($("ns-palettes").querySelector("input:checked") || $("ns-palettes").querySelector("input"))?.focus();
+  }
   if (name === "start") { nsStarts(); $("ns-starts").querySelector("input:checked")?.focus(); }
 }
 
@@ -14517,7 +14630,6 @@ function wire() {
   for (const b of document.querySelectorAll("[data-rm=close]")) b.addEventListener("click", () => $("remove-dialog").close());
   $("rm-archive").addEventListener("click", () => doRemove(false));
   $("rm-delete").addEventListener("click", () => doRemove(true));
-  $("rm-replacement").addEventListener("change", () => { document.querySelector("input[name=rm-instead][value=song]").checked = true; });
   $("btn-show-settings").addEventListener("click", () => {
     $("btn-delete").disabled = !app.showId;
     $("show-in-progress").checked = !app.showId || app.show.in_progress === true;
@@ -14774,7 +14886,8 @@ function wire() {
 
   document.addEventListener("keydown", (e) => {
     if (music.active) { music.key(e); return; }
-    const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName);
+    // A picker button (Character, Picture, Effect…) stands in for a list, so its keys are its own too.
+    const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || !!e.target.closest?.(".picker-button");
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === "s") { e.preventDefault(); if (!$("view-editor").hidden) saveClicked(); return; }
     // The effect chooser handles its own keys (Escape closes it).

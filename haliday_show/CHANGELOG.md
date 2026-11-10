@@ -1,9 +1,29 @@
 # Changelog
 
-## 0.2.478
+## 0.2.483
 
 - **New: the HA-liday Show integration for Home Assistant.** Install it from **Settings → Marketplace** with **Add from link** (`https://github.com/gdeboos/ha-liday-show`), and Home Assistant gets your shows, playlists, scenes and season switches without needing MQTT. After a restart, it's waiting under **Settings → Devices & services → Discovered**. The entities keep the names they had with MQTT, so your automations keep working. See **Home Assistant integration** in the guide.
 - This is the first step: more sensors, a media player, actions, events and dashboard cards follow in the next updates.
+
+## 0.2.482
+
+- **Small fixes to the new folder windows.** The song window now opens in the folder of the song picked now, in **New mashup** and **Remove song**. Shortcut keys like Space and Delete no longer act on the show while a **Change…** button has focus. Pressing a preset folder in the effect window keeps your place for the keyboard.
+
+## 0.2.481
+
+- **Preset folders in the effect window.** With **Show presets** on, your folders from **Library → Presets** show under the filters. Press one to see only your presets in it, still grouped under their effects, and **All presets** to see everything again.
+
+## 0.2.480
+
+- **Mashups and Remove song use your folders.** In **New mashup**, **The singing from** and **The music from** now open the song window with your folders (press **Change…**). So does **Another song** when you remove a song that shows use, which used to list file names.
+
+## 0.2.479
+
+- **Faces and pictures from your folders.** A Singing face's **Character** and a Picture effect's picture are no longer drop-down lists: press **Change…** for a window with your folders from **Library → Faces** or **Library → Pictures**, and **Find** to look in all of them. The built-in faces are there too, marked **Built in**.
+
+## 0.2.478
+
+- **New show and New scene: palettes in folders.** The colours step of **+ New show** and **+ New scene** now shows your palettes in your folders from **Library → Palettes**, then the built-in ones. If the palette picked is in another folder, a line under the list says which.
 
 ## 0.2.477
 

@@ -325,8 +325,8 @@
       <p id="rm-what" class="notice"></p>
       <fieldset id="rm-shows" class="rm-shows" hidden>
         <legend>What should those shows play instead?</legend>
-        <label><input type="radio" name="rm-instead" value="song" checked> Another song:
-          <select id="rm-replacement" aria-label="The song to use instead"></select></label>
+        <div class="rm-another"><label><input type="radio" name="rm-instead" value="song" checked> Another song:</label>
+          <span id="rm-replacement-pick"></span><input type="hidden" id="rm-replacement"></div>
         <label><input type="radio" name="rm-instead" value="none"> No song for now (lights only)</label>
       </fieldset>
       <p id="rm-archive-note" class="hint"></p>
@@ -385,7 +385,10 @@
       <div class="form-dialog-body" id="ns-step-colour" hidden>
         <p class="hint ns-step" id="ns-step-colour-label">Step 3 of 4: colours</p>
         <p class="hint">Effects you add take these colours, and the effect chooser shows them. You can change it later in <b>Show settings</b>.</p>
+        <nav id="ns-pal-path" class="folder-path" aria-label="Palette folder" hidden></nav>
+        <div id="ns-pal-folders" class="song-list ns-folders" role="list" aria-label="Palette folders" hidden></div>
         <div id="ns-palettes" class="song-list" role="radiogroup" aria-label="Palette"></div>
+        <p id="ns-pal-picked" class="hint" hidden></p>
       </div>
       <div class="form-dialog-body" id="ns-step-2" hidden>
         <p class="hint ns-step">Step 4 of 4: how should it start?</p>
