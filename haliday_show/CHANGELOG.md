@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.480
+
+- **Mashups and Remove song use your folders.** In **New mashup**, **The singing from** and **The music from** now open the song window with your folders (press **Change…**). So does **Another song** when you remove a song that shows use, which used to list file names.
+
 ## 0.2.479
 
 - **Faces and pictures from your folders.** A Singing face's **Character** and a Picture effect's picture are no longer drop-down lists: press **Change…** for a window with your folders from **Library → Faces** or **Library → Pictures**, and **Find** to look in all of them. The built-in faces are there too, marked **Built in**.

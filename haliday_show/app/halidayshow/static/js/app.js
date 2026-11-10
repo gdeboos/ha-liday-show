@@ -9686,6 +9686,22 @@ function wireSongPlayer() {
 // New mashup: one song's singing over another's music. Picks both (songs split into parts), says how
 // well they fit and what will change, then makes a draft of the music song in the Music editor with its
 // own vocals muted and the other's on a layer, matched and lined up (music.js makeMashup).
+// A button standing in for a <select> of songs: it shows the song picked and opens the Choose a song
+// window (Library → Songs' folders) on press; onPick(ref) runs with a new choice.
+function songButton(refs, current, { title, what, yes = "Choose" }, onPick) {
+  const b = Object.assign(pickerButton(songLabel(current), null, what), { type: "button" });
+  b.addEventListener("click", async () => {
+    const r = await pickSong({ title, yes, refs });
+    if (!r || songKey(r) === songKey(current)) return;
+    current = refs.find((x) => songKey(x) === songKey(r)) || r;
+    const fresh = pickerButton(songLabel(current), null, what);
+    b.replaceChildren(...fresh.childNodes);
+    b.setAttribute("aria-label", fresh.getAttribute("aria-label"));
+    onPick(current);
+  });
+  return b;
+}
+
 async function newMashup() {
   await refreshAudio().catch(() => {});
   const songs = (app.songs || []).filter((s) => prepared(s.parts));
@@ -9696,14 +9712,14 @@ async function newMashup() {
   const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
   const infos = new Map();
   const infoOf = async (s) => { const k = `${s.source}:${s.path}`; if (!infos.has(k)) infos.set(k, await songInfo(s).catch(() => null)); return infos.get(k); };
-  const pick = (label, hint) => {
-    const sel = el("select");
-    songs.forEach((s, i) => sel.add(new Option(songLabel(s), String(i))));
+  // Each song is picked in the Choose a song window, from your folders; sel.value is its place in `songs`.
+  const pick = (label, hint, i) => {
+    const sel = { value: String(i) };
     const h = el("span", { className: "hint", textContent: "" });
-    return { sel, h, box: el("label", { className: "field" }, el("b", { textContent: label }), sel, h), hint };
+    const b = songButton(songs, songs[i], { title: label, what: label }, (r) => { sel.value = String(songs.indexOf(r)); refresh(); });
+    return { sel, h, box: el("div", { className: "field" }, el("b", { textContent: label }), b, h), hint };
   };
-  const sing = pick("The singing from", "Its vocals part"), mus = pick("The music from", "Everything but its vocals");
-  mus.sel.value = "1";
+  const sing = pick("The singing from", "Its vocals part", 0), mus = pick("The music from", "Everything but its vocals", 1);
   const fit = el("div", { className: "mash-fit" });
   const at = el("select"), from = el("select");
   const toggle = (text, on = true) => { const c = el("input", { type: "checkbox", checked: on }); return { c, box: el("label", {}, c, ` ${text}`) }; };
@@ -9736,7 +9752,6 @@ async function newMashup() {
     note.textContent = same ? "" : `Makes a draft in the Music editor: ${songLabel(b)} with its own vocals muted, and ${songLabel(a)}'s vocals as a layer, `
       + "matched and lined up. Neither song is changed. Fine-tune it there, then Make song file.";
   };
-  for (const c of [sing.sel, mus.sel]) c.addEventListener("change", refresh);
   for (const t of [mt, mk]) t.c.addEventListener("change", refresh);
   const form = el("form", { method: "dialog" },
     el("div", { className: "effect-dialog-head" }, el("h3", { textContent: "New mashup" })),
@@ -11148,12 +11163,17 @@ async function openRemoveSong(r) {
   $("rm-title").textContent = `Remove ${r.name}`;
   notice($("rm-what"), users.length ? "warn" : "ok", users.length ? `Used by ${listOf(users.map((s) => s.name))}.` : "No show uses it.");
   $("rm-shows").hidden = !users.length;
-  const sel = $("rm-replacement");
-  sel.replaceChildren(...(app.songs || []).filter((x) => x.source === "media" && x.path !== r.ref.path)
-    .map((x) => new Option(x.path, JSON.stringify(x))));
-  const radio = document.querySelector("input[name=rm-instead][value=song]");
-  radio.disabled = sel.disabled = !sel.options.length;
-  (sel.options.length ? radio : document.querySelector("input[name=rm-instead][value=none]")).checked = true;
+  // The song instead: picked in the Choose a song window, from your folders, kept in the hidden field.
+  const others = (app.songs || []).filter((x) => x.source === "media" && x.path !== r.ref.path);
+  const sel = $("rm-replacement"), radio = document.querySelector("input[name=rm-instead][value=song]");
+  sel.value = others.length ? JSON.stringify({ source: others[0].source, path: others[0].path }) : "";
+  $("rm-replacement-pick").replaceChildren(...(others.length ? [songButton(others, others[0],
+    { title: "The song to use instead", what: "The song to use instead", yes: "Use this song" }, (x) => {
+      sel.value = JSON.stringify({ source: x.source, path: x.path });
+      radio.checked = true;
+    })] : []));
+  radio.disabled = !others.length;
+  (others.length ? radio : document.querySelector("input[name=rm-instead][value=none]")).checked = true;
   $("rm-archive-note").innerHTML = `<b>Archive</b> moves it to the <b>Archived</b> folder in HA-liday Show's songs folder,
     out of its song lists. <b>Restore</b>, under <b>Archived songs</b>, puts it back${users.length
     ? " and gives it back to any of these shows left without a song" : ""}.`;
@@ -14582,7 +14602,6 @@ function wire() {
   for (const b of document.querySelectorAll("[data-rm=close]")) b.addEventListener("click", () => $("remove-dialog").close());
   $("rm-archive").addEventListener("click", () => doRemove(false));
   $("rm-delete").addEventListener("click", () => doRemove(true));
-  $("rm-replacement").addEventListener("change", () => { document.querySelector("input[name=rm-instead][value=song]").checked = true; });
   $("btn-show-settings").addEventListener("click", () => {
     $("btn-delete").disabled = !app.showId;
     $("show-in-progress").checked = !app.showId || app.show.in_progress === true;

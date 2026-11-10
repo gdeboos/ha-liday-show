@@ -325,8 +325,8 @@
       <p id="rm-what" class="notice"></p>
       <fieldset id="rm-shows" class="rm-shows" hidden>
         <legend>What should those shows play instead?</legend>
-        <label><input type="radio" name="rm-instead" value="song" checked> Another song:
-          <select id="rm-replacement" aria-label="The song to use instead"></select></label>
+        <div class="rm-another"><label><input type="radio" name="rm-instead" value="song" checked> Another song:</label>
+          <span id="rm-replacement-pick"></span><input type="hidden" id="rm-replacement"></div>
         <label><input type="radio" name="rm-instead" value="none"> No song for now (lights only)</label>
       </fieldset>
       <p id="rm-archive-note" class="hint"></p>
