@@ -73,6 +73,23 @@ async def test_all_answering_says_so_in_a_line():
     assert preshow.worst(lines) == "fail"
 
 
+async def test_a_govee_light_the_scan_misses_is_asked_at_its_address():
+    # Multicast scans don't reach every light (or the reply goes elsewhere), but a show talks to its
+    # address, so the check asks there too before calling it missing.
+    async def scan():
+        return [{"ip": "192.168.1.1"}]
+    asked = []
+
+    async def ask(ips):
+        asked.append(ips)
+        return {"192.168.1.2"}
+
+    lines, look = await preshow.lights([light(1), light(2), light(3)], set(), scan=scan, ask_govee=ask)
+    assert asked == [["192.168.1.2", "192.168.1.3"]]
+    assert look == ["l1", "l2"]
+    assert {"level": "fail", "text": "Light 3 didn't answer.", "fix": preshow.NO_ANSWER_FIX["govee"], "light": "Light 3"} in lines
+
+
 async def test_without_home_assistant_its_lights_are_watched_instead():
     class Off:
         available = False

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.490
+
+- **Fixed: Govee lights that work in shows failing the pre-show check.** The check found Govee lights only by a scan across your network, which some routers don't pass on and some lights answer in a way it didn't hear. Now any light the scan misses is asked directly at its address, as shows talk to it, before the check says it didn't answer. **Find lights** on **Setup → Devices** also hears lights that answer that way.
+
 ## 0.2.489
 
 - **The HA-liday Show cards have a visual editor.** Press a card while editing your dashboard to set its options, no YAML needed. Every card has a **Title** and **Hide the title**. You can also hide parts of each card (the cover art, what's next, Brightness, the pre-show check and so on), pick which scenes the **Scenes** card shows and in what order, set its **Columns**, make **Browse** show only shows or only playlists with smaller or bigger tiles, and set how tall the **House** card can be. Cards you've already added look the same as before. See **Dashboard cards** in the guide.

@@ -69,8 +69,13 @@ async def _ask_ha(ha, entity: str) -> str:
     return "gone" if st.get("state") in ("unavailable", "unknown", None) else "ok"
 
 
-async def lights(devices: list[dict], away: set[str], ha=None, *, scan=discovery.scan, ask_wled=_ask_wled,
-                 ask_twinkly=_ask_twinkly) -> tuple[list[dict], list[str]]:
+async def _scan_govee() -> list[dict]:
+    found, heard = await discovery.scan_heard()
+    return [*found, *({"ip": ip} for ip in heard)]
+
+
+async def lights(devices: list[dict], away: set[str], ha=None, *, scan=_scan_govee, ask_wled=_ask_wled,
+                 ask_twinkly=_ask_twinkly, ask_govee=discovery.ask) -> tuple[list[dict], list[str]]:
     """Asks each light whether it's there. Returns the lines, and the ids of the lights to flash next
     (those that answered, and those that can't be asked, such as pixel controllers)."""
     out, look, answered = [], [], []
@@ -91,6 +96,13 @@ async def lights(devices: list[dict], away: set[str], ha=None, *, scan=discovery
             found = {r["ip"] for r in await scan()}
         except Exception as e:
             log.warning("pre-show check: scan failed: %s", e)
+        # A light the scan didn't hear from is asked straight at its address, as shows talk to it:
+        # some Wi-Fi doesn't pass the scan's multicast on, and some lights answer elsewhere.
+        if missing := sorted({d["ip"] for d in govee} - found):
+            try:
+                found |= await ask_govee(missing)
+            except Exception as e:
+                log.warning("pre-show check: asking lights failed: %s", e)
     # One question per controller: several lights can share a WLED (a light per segment), and its
     # small web server drops requests that arrive together, so asking per light made all but one
     # look unreachable.
