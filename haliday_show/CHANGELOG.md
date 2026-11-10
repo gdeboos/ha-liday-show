@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.2.490
+## 0.2.491
 
 - **Fixed: Govee lights that work in shows failing the pre-show check.** The check found Govee lights only by a scan across your network, which some routers don't pass on and some lights answer in a way it didn't hear. Now any light the scan misses is asked directly at its address, as shows talk to it, before the check says it didn't answer. **Find lights** on **Setup → Devices** also hears lights that answer that way.
+
+## 0.2.490
+
+- **The HA-liday Show cards resize properly.** On a sections dashboard, the card editor's **Layout** tab no longer warns that they don't support resizing. Each card starts at a sensible size, tidies itself up when you make it narrow, and scrolls inside itself when you give it a set height. The **House** card's picture grows or shrinks to fill the space you give it.
 
 ## 0.2.489
 

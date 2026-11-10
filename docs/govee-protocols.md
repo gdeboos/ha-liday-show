@@ -228,7 +228,7 @@ All under Setup → Labs (tick **Show the Labs tab** under Setup → More → Ex
 
 - Finding lights (Nov 2026): Gavin's Permanent Outdoor Lights Pro (H706A/B/C) always failed the pre-show
   check while playing shows fine. The check only used the multicast scan (239.255.255.250:4001, replies
-  heard on 4002). Since 0.2.490 the scan and the check also hear replies sent back to the sending socket, and
+  heard on 4002). Since 0.2.491 the scan and the check also hear replies sent back to the sending socket, and
   a light the scan misses is asked by unicast (scan to :4001 and devStatus to :4003). Not yet known which
   part was the cause (multicast not passed on by his Wi-Fi, or the light answering the sender); to confirm
   with him.
