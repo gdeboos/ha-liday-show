@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HA-liday Show",
+        "description": "Where HA-liday Show runs. On the Home Assistant app, keep 127.0.0.1 and 8099. For Docker or pipx, give that computer's address and port, and the password you set with HALIDAY_SHOW_PASSWORD (if any).",
+        "data": {"host": "Address", "port": "Port", "password": "Password"}
+      },
+      "hassio_confirm": {
+        "title": "HA-liday Show",
+        "description": "Add HA-liday Show to Home Assistant? Its show, playlist, scene and season entities move across from MQTT, keeping their names, so your automations keep working."
+      },
+      "reauth_confirm": {
+        "title": "HA-liday Show password",
+        "description": "HA-liday Show's password has changed. Enter the new one.",
+        "data": {"password": "Password"}
+      }
+    },
+    "error": {
+      "cannot_connect": "HA-liday Show isn't answering at that address. Check it's running, and the address and port.",
+      "invalid_auth": "That password didn't work.",
+      "too_old": "Update the HA-liday Show app first: this integration needs a newer version."
+    },
+    "abort": {
+      "already_configured": "HA-liday Show is already set up.",
+      "single_instance_allowed": "HA-liday Show is already set up.",
+      "reauth_successful": "Password updated."
+    }
+  }
+}

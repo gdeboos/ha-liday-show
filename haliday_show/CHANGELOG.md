@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.483
+
+- **New: the HA-liday Show integration for Home Assistant.** Install it from **Settings → Marketplace** with **Add from link** (`https://github.com/gdeboos/ha-liday-show`), and Home Assistant gets your shows, playlists, scenes and season switches without needing MQTT. After a restart, it's waiting under **Settings → Devices & services → Discovered**. The entities keep the names they had with MQTT, so your automations keep working. See **Home Assistant integration** in the guide.
+- This is the first step: more sensors, a media player, actions, events and dashboard cards follow in the next updates.
+
 ## 0.2.482
 
 - **Small fixes to the new folder windows.** The song window now opens in the folder of the song picked now, in **New mashup** and **Remove song**. Shortcut keys like Space and Delete no longer act on the show while a **Change…** button has focus. Pressing a preset folder in the effect window keeps your place for the keyboard.
