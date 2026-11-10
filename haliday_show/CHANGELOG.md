@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.479
+
+- **Faces and pictures from your folders.** A Singing face's **Character** and a Picture effect's picture are no longer drop-down lists: press **Change…** for a window with your folders from **Library → Faces** or **Library → Pictures**, and **Find** to look in all of them. The built-in faces are there too, marked **Built in**.
+
 ## 0.2.478
 
 - **New show and New scene: palettes in folders.** The colours step of **+ New show** and **+ New scene** now shows your palettes in your folders from **Library → Palettes**, then the built-in ones. If the palette picked is in another folder, a line under the list says which.

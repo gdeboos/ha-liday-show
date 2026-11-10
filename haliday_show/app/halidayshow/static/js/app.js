@@ -10238,12 +10238,33 @@ async function loadPictures() {
 
 // The Picture effect's picture: a list of yours, with a note when there are none yet.
 function picturePicker(value) {
-  const el = document.createElement("select");
   const list = pictureList();
-  el.add(new Option(list.length ? "Pick a picture" : "None yet: add one under Library → Pictures", "", false, !value));
-  for (const p of list) el.add(new Option(p.name, p.id, false, p.id === value));
-  if (value && !getPicture(value)) el.add(new Option(picturesLoaded ? "A picture that's been deleted" : "Loading pictures…", value, false, true));
-  return el;
+  const name = (id) => (!id ? (list.length ? "Pick a picture" : "None yet: add one under Library → Pictures")
+    : getPicture(id)?.name || (picturesLoaded ? "A picture that's been deleted" : "Loading pictures…"));
+  return folderChoice("pictures", () => pictureList().map((p) => ({ key: p.id, name: p.name })), value, name,
+    { title: "Pick a picture", what: "Picture" });
+}
+
+// A button standing in for a <select> of a Library list's items: it shows the choice, opens
+// pickInFolders, and like a select has a value and fires input and change when it changes.
+function folderChoice(kind, items, value, nameOf, { title, what }) {
+  let b;
+  const show = () => {
+    const fresh = pickerButton(nameOf(b.value), open, what);
+    b.replaceChildren(...fresh.childNodes);
+    b.setAttribute("aria-label", fresh.getAttribute("aria-label"));
+  };
+  const open = () => pickInFolders(kind, items(), { title, current: b.value, onPick: (key) => {
+    b.value = key;
+    show();
+    b.dispatchEvent(new Event("input"));
+    b.dispatchEvent(new Event("change"));
+  } });
+  b = pickerButton("", open, what);
+  b.type = "button";
+  b.value = value || "";
+  show();
+  return b;
 }
 
 // A picture's first frame, drawn big enough to see, dot for dot.
@@ -10369,17 +10390,12 @@ async function loadFaces() {
 const faceName = (c) => (isBuiltIn(c) ? builtInName(c) : getFace(c)?.name || (facesLoaded ? "A face that's been deleted" : "Loading faces…"));
 
 // The Singing face's Character: the built-in faces, then yours.
+// Your faces in your folders from Library → Faces, and the built-in ones (in no folder) with them.
 function facePicker(value) {
-  const el = document.createElement("select");
-  const group = (label) => Object.assign(document.createElement("optgroup"), { label });
-  const built = group("Built in"), yours = group("Your faces");
-  for (const c of CHARACTERS) built.append(new Option(builtInName(c), c, false, c === value));
-  const mine = faceList();
-  for (const f of mine) yours.append(new Option(f.name, f.id, false, f.id === value));
-  if (value && !isBuiltIn(value) && !getFace(value)) yours.append(new Option(faceName(value), value, false, true));
-  if (!yours.children.length) yours.append(Object.assign(new Option("None yet: make one under Library → Faces", ""), { disabled: true }));
-  el.append(built, yours);
-  return el;
+  const name = (id) => (isBuiltIn(id) ? builtInName(id) : getFace(id)?.name || faceName(id));
+  return folderChoice("faces", () => [...faceList().map((f) => ({ key: f.id, name: f.name })),
+    ...CHARACTERS.map((c) => ({ key: c, name: builtInName(c), hint: "Built in" }))], value, name,
+  { title: "Pick a face", what: "Character" });
 }
 
 // A face drawn into a canvas, dot for dot, on black: a character, or a recipe (the face maker's).
@@ -10747,7 +10763,8 @@ function moveInto(kind, what, to) {
 }
 
 // Pick one of a Library list's items in a window you go into folders in, like the Library page,
-// with Find across every folder. Opens in the folder the current choice is in.
+// with Find across every folder. Opens in the folder the current choice is in. An item's own `hint`
+// (such as "Built in") shows under its name.
 function pickInFolders(kind, items, { title, current = "", onPick }) {
   const lib = FOLDER_LISTS[kind], folders = foldersOf(kind);
   let at = folderOf(folders, current);
@@ -10782,7 +10799,7 @@ function pickInFolders(kind, items, { title, current = "", onPick }) {
       ...v.items.map((it) => {
         const b = row(() => { w.dlg.close(); if (it.key !== current) onPick(it.key); },
           Object.assign(document.createElement("span"), { className: "pick-dot", ariaHidden: "true" }),
-          it.name, [finding && it.where ? `in ${it.where}` : "", it.key === current ? "chosen now" : ""].filter(Boolean).join(" · "));
+          it.name, [it.hint || "", finding && it.where ? `in ${it.where}` : "", it.key === current ? "chosen now" : ""].filter(Boolean).join(" · "));
         if (it.key === current) b.classList.add("current");
         return b;
       }));
