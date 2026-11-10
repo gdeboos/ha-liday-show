@@ -83,6 +83,19 @@ class HalidayClient:
         except (aiohttp.ClientError, asyncio.TimeoutError):
             return None
 
+    async def raw(self, path: str) -> tuple[bytes, str] | None:
+        """A file from the app (the editor's drawing modules, the house photo), or None."""
+        try:
+            async with self.session.get(self.base + path, auth=self.auth, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                if resp.status != 200:
+                    return None
+                return await resp.read(), resp.content_type
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            return None
+
+    async def get(self, path: str) -> Any:
+        return await self._request("GET", path)
+
     async def claim(self, on: bool) -> None:
         await self._request("POST", "/api/integration/claim", {"on": on})
 

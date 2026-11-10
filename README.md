@@ -262,7 +262,7 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - Save and load shows, with auto save; each show is baked into precomputed frames for reliable playback
 - Play the song on any Home Assistant media player (with a per-speaker delay), or in the browser
 - Schedule or trigger shows from automations: the HA-liday Show integration (from Home Assistant's
-  Marketplace, with dashboard cards for playing and browsing shows, scenes, and visitors and checks) or MQTT entities (show and playlist selects,
+  Marketplace, with dashboard cards for playing and browsing shows, scenes, visitors and checks, and your house live) or MQTT entities (show and playlist selects,
   play/stop buttons, status), or the `hassio.app_stdin` action
 - Playlists play by themselves at set times or from sunset, carrying on with the page closed
 - A **public page** for people passing by, on its own port, with its own **Public page** tab:

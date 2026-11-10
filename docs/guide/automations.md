@@ -64,6 +64,10 @@ for **HA-liday Show**:
   Press a folder to go in, and the path at the top to come back out. **Find in every folder** searches
   them all. Press a show or playlist to play it. A show's tile has its picture, else its song's cover
   art, else its palette's colours.
+- **HA-liday Show: House**: your house photo with your lights on it, as they are right now, a few
+  times a second, just like the editor's **House** tab. Lights you haven't placed on the photo under
+  **Setup → House** don't show. In the card's YAML, `max_height:` sets how tall it can get (420 pixels
+  unless you change it). It only fetches the lights while it's on screen.
 - **HA-liday Show: Scenes**: a button for each of your scenes. Press one to put it on; the one that's
   on is highlighted. **Brightness** dims the scene that's on, and **Off** turns scenes off.
 - **HA-liday Show: Visitors and checks**: whether the visitors' page is open, how many picks are

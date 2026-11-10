@@ -2,8 +2,9 @@
 // the cards are in the card picker with no Resources step. They use only Home Assistant: the integration's
 // entities, its actions, and two websocket commands (haliday_show/entities and haliday_show/library).
 // cardlib.js with this file's own ?v=, so an update never pairs a new card with an old cached helper.
-const { clock, escapeHtml: h, findItems, folderView, positionNow, swatch, whenText } =
+const { clock, escapeHtml: h, findItems, folderView, framesByLight, houseDevices, positionNow, swatch, whenText } =
   await import(`./cardlib.js${new URL(import.meta.url).search}`);
+const VERSION = new URL(import.meta.url).searchParams.get("v") || "";
 const RETRY_MS = 10000;
 const RESIGN_MS = 20 * 3600 * 1000;  // picture links are signed for 24 hours
 
@@ -547,10 +548,158 @@ class HalidayVisitorsCard extends HalidayCard {
   }
 }
 
+// ---- House: your house photo with the lights as they are right now ----------------------------------
+// It draws with the editor's own house.js (fetched from HA-liday Show through the integration), so the
+// house looks exactly as on the editor's House tab.
+class HalidayHouseCard extends HalidayCard {
+  static getStubConfig() {
+    return {};
+  }
+
+  constructor() {
+    super();
+    this._houseView = null;
+    this._frames = new Map();
+    this._unsub = null;
+    this._message = "Loading…";
+  }
+
+  watched() {
+    return ["status"];
+  }
+
+  async ready() {
+    clearTimeout(this._retry);
+    this._retry = null;
+    this._tries = (this._tries || 0) + 1;
+    try {
+      const base = "/api/haliday_show/js/";
+      // A try number too, as a browser can remember a module that failed to load.
+      const q = `?v=${encodeURIComponent(VERSION)}&r=${this._tries}`;
+      const [{ House }, matrix, parts] = await Promise.all([
+        import(`${base}house.js${q}`), import(`${base}matrix.js`), import(`${base}parts.js`)]);
+      this._m = { gridOf: matrix.gridOf, fromWire: matrix.fromWire, partSize: parts.partSize, partGrid: parts.partGrid,
+        gatherPart: parts.gatherPart };
+      const layout = await this._hass.callWS({ type: "haliday_show/house" });
+      const view = new House({ api: async () => ({}), status: () => {}, frameFor: null });
+      Object.assign(view, { paths: layout.house.paths || {}, styles: layout.house.styles || {},
+        pins: layout.house.pins || {}, dim: layout.house.dim ?? 0.5 });
+      // Your photo, else the sample house (fetched through the integration: the editor's own path to it
+      // is relative to the editor's page).
+      const load = async (src) => {
+        const img = new Image();
+        img.src = src;
+        await img.decode();
+        return img;
+      };
+      if (layout.house.photo) {
+        const signed = await this._hass.callWS({ type: "auth/sign_path", path: "/api/haliday_show/house_photo", expires: 86400 });
+        view.photo = await load(signed.path);  // if this fails, try again later rather than draw the sample
+      } else {
+        view.photo = await load(`${base}sample-house.svg`);
+        view.sample = true;
+      }
+      this._lights = layout.devices || [];
+      view.devices = houseDevices(this._lights, view.paths, this._m);
+      this._houseView = view;
+      this._placed = view.devices.some((d) => (view.paths[d.id] || []).length);
+      this._message = "";
+      this._subscribe();
+    } catch (e) {
+      // HA-liday Show may be starting or updating: try again, so a wall tablet comes back by itself.
+      this._message = "Waiting for HA-liday Show…";
+      if (this.isConnected) this._retry = setTimeout(() => this.ready(), RETRY_MS);
+    }
+    this.render();
+  }
+
+  async _subscribe() {
+    if (this._unsub || this._subscribing || !this._houseView || !this.isConnected || document.hidden) return;
+    this._subscribing = true;
+    let unsub = null;
+    try {
+      unsub = await this._hass.connection.subscribeMessage((frame) => {
+        this._frames = framesByLight(frame, this._lights, this._m);
+        this._paint();
+      }, { type: "haliday_show/house/frames" });
+    } catch (e) {
+      this._message = "Couldn't follow your lights.";
+      this.render();
+    }
+    this._subscribing = false;
+    // Taken off the screen (or hidden) while that was on its way: stop it again straight away.
+    if (unsub && (!this.isConnected || document.hidden)) unsub();
+    else this._unsub = unsub;
+  }
+
+  _stop() {
+    if (this._unsub) { this._unsub(); this._unsub = null; }
+  }
+
+  connectedCallback() {
+    this._visible = () => (document.hidden ? this._stop() : this._subscribe());
+    document.addEventListener("visibilitychange", this._visible);
+    this._subscribe();
+    if (this._ents && !this._houseView && !this._retry) this.ready();
+    this._resize = new ResizeObserver(() => this._paint());
+    this._resize.observe(this);
+  }
+
+  disconnectedCallback() {
+    // Nothing is fetched while no House card is on screen (or the screen is off).
+    this._stop();
+    clearTimeout(this._retry);
+    this._retry = null;
+    document.removeEventListener("visibilitychange", this._visible);
+    this._resize?.disconnect();
+  }
+
+  _paint() {
+    const canvas = this.shadowRoot.querySelector("canvas");
+    const view = this._houseView;
+    if (!canvas || !view || !view.photo || !canvas.parentElement.clientWidth) return;
+    const maxH = Number(this._config?.max_height) || 420;
+    view.paint(canvas, maxH, (dev) => {
+      const full = this._frames.get(dev.parent || dev.id);
+      if (!full) return new Uint8Array((dev.segments || 1) * 3);
+      const light = dev.parent ? this._lights.find((l) => l.id === dev.parent) : null;
+      return dev.parent && light ? this._m.gatherPart(full, light, dev.part) : full;
+    });
+  }
+
+  render() {
+    const title = h(this._config?.title || "Your house");
+    const status = this.state("status");
+    const playing = status && !["idle", "unknown", "unavailable"].includes(status.state);
+    const line = !this._houseView ? this._message
+      : !this._placed ? "Your lights show here once they're on the photo under Setup → House in HA-liday Show."
+      : playing ? `On now: ${status.state}` : "Nothing is on your lights now.";
+    this.shadowRoot.innerHTML = `<style>${STYLE}
+        ha-card { padding: 0; }
+        .head { padding: 16px 16px 0; }
+        .frame { display: flex; justify-content: center; background: #000; }
+        canvas { display: block; max-width: 100%; }
+        .line { padding: 10px 16px 14px; }
+      </style>
+      <ha-card>
+        <div class="head"><ha-icon icon="mdi:home-lightbulb-outline"></ha-icon>${title}</div>
+        ${this._houseView ? '<div class="frame"><canvas role="img" aria-label="Your house with its lights"></canvas></div>' : ""}
+        <div class="line muted small">${h(line)}</div>
+        ${this._error ? `<div class="error" style="padding:0 16px 12px">${h(this._error)}</div>` : ""}
+      </ha-card>`;
+    this._paint();
+  }
+
+  getCardSize() {
+    return 6;
+  }
+}
+
 const CARDS = [
   ["haliday-show-player-card", HalidayPlayerCard, "HA-liday Show: Player", "What's playing and what's next, with Play, Stop and Skip."],
   ["haliday-show-browse-card", HalidayBrowseCard, "HA-liday Show: Browse", "Your shows and playlists in their folders: tap one to play it."],
   ["haliday-show-scenes-card", HalidayScenesCard, "HA-liday Show: Scenes", "A button for each of your scenes, with brightness and Off."],
+  ["haliday-show-house-card", HalidayHouseCard, "HA-liday Show: House", "Your house photo with the lights as they are right now."],
   ["haliday-show-visitors-card", HalidayVisitorsCard, "HA-liday Show: Visitors and checks", "The visitors' page, the queue or votes, phones listening and the last pre-show check."],
 ];
 window.customCards = window.customCards || [];
@@ -561,4 +710,4 @@ for (const [tag, cls, name, description] of CARDS) {
       documentationURL: "https://github.com/gdeboos/ha-liday-show/blob/main/haliday_show/DOCS.md#dashboard-cards" });
   }
 }
-export { HalidayBrowseCard, HalidayCard, HalidayPlayerCard, HalidayScenesCard, HalidayVisitorsCard, STYLE };
+export { HalidayBrowseCard, HalidayCard, HalidayHouseCard, HalidayPlayerCard, HalidayScenesCard, HalidayVisitorsCard, STYLE };

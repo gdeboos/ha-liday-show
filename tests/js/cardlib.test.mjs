@@ -53,3 +53,27 @@ test("when the next row starts", () => {
   assert.equal(whenText(new Date(2026, 10, 14, 16, 0).toISOString(), now), "Sat 14 Nov at 4pm");
   assert.equal(whenText(null, now), "");
 });
+
+import { framesByLight, houseDevices } from "../../custom_components/haliday_show/frontend/cardlib.js";
+import { fromWire, gridOf } from "../../haliday_show/app/halidayshow/static/js/matrix.js";
+import { partGrid, partSize } from "../../haliday_show/app/halidayshow/static/js/parts.js";
+
+test("house view: parts drawn apart only when the trace is split", () => {
+  const pillars = { id: "p", name: "Pillars", segments: 300, bulbs: 600,
+    parts: [{ id: "l", name: "Left", from: 1, to: 100 }, { id: "r", name: "Right", from: 101, to: 300 }] };
+  const m = { gridOf, partSize, partGrid };
+  const split = houseDevices([pillars], {}, m);
+  assert.deepEqual(split.map((d) => [d.id, d.segments, d.bulbs, d.parent]), [["p#l", 100, 200, "p"], ["p#r", 200, 400, "p"]]);
+  assert.deepEqual(houseDevices([pillars], { p: [[0, 0], [1, 1]] }, m).map((d) => d.id), ["p"]);  // traced whole
+});
+
+test("house view: a live frame split by light, matrices back in grid order", () => {
+  const strip = { id: "s", segments: 2 };
+  const grid = { id: "g", segments: 4, matrix: { w: 2, h: 2, start: "top left", order: "rows", zigzag: true } };
+  const rgb = Uint8Array.from([1, 1, 1, 2, 2, 2, 10, 0, 0, 20, 0, 0, 30, 0, 0, 40, 0, 0]);
+  const frame = { tracks: [{ device: "s", segments: 2 }, { device: "g", segments: 4 }], rgb: Buffer.from(rgb).toString("base64") };
+  const got = framesByLight(frame, [strip, grid], { gridOf, fromWire });
+  assert.deepEqual([...got.get("s")], [1, 1, 1, 2, 2, 2]);
+  assert.deepEqual([...got.get("g")].filter((_, i) => i % 3 === 0), [10, 20, 40, 30]);  // the zig-zag row turned back
+  assert.equal(framesByLight({ rgb: "" }, [], {}).size, 0);
+});
