@@ -261,7 +261,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 
 - Save and load shows, with auto save; each show is baked into precomputed frames for reliable playback
 - Play the song on any Home Assistant media player (with a per-speaker delay), or in the browser
-- Schedule or trigger shows from automations: MQTT entities (show and playlist selects,
+- Schedule or trigger shows from automations: the HA-liday Show integration (from Home Assistant's
+  Marketplace) or MQTT entities (show and playlist selects,
   play/stop buttons, status), or the `hassio.app_stdin` action
 - Playlists play by themselves at set times or from sunset, carrying on with the page closed
 - A **public page** for people passing by, on its own port, with its own **Public page** tab:
@@ -413,6 +414,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
   app/halidayshow/ha.py                   Home Assistant API (media players, lights and switches, MQTT details)
   app/halidayshow/commands.py             Automation commands over app stdin
   app/halidayshow/mqtt.py                 MQTT discovery entities
+  app/halidayshow/integration.py          what the Home Assistant integration talks to (state, websocket, commands)
   app/halidayshow/server.py               HTTP API for the editor; who may connect (ingress or password)
   app/halidayshow/migrate.py              One-time copy of saved data from the old Govee Light Show add-on
   app/halidayshow/ai.py                   Describe it, AI presets, palettes, section notes and the pick of suggested cuts: asks Claude or HA's AI Task
@@ -525,7 +527,9 @@ docs/e131.md                            E1.31 (sACN) controllers: universes, sha
 docs/ha-lights.md                       Home Assistant lights and switches: pace, switching, putting back
 docs/twinkly.md                         Twinkly (experimental): login, realtime packets, putting back
 docs/public-page-security.md            Security review of the public page: what faces the internet, what was fixed
+custom_components/haliday_show/         The Home Assistant integration (from the Marketplace; hacs.json at the root)
 tests/                                  pytest and node tests (tests/js)
+tests_integration/                      The integration's tests, with Home Assistant's test kit
 ```
 
 </details>

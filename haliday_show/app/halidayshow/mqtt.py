@@ -109,10 +109,13 @@ class MqttBridge:
         self._status = None
         self._light = None
         self._refresh = asyncio.Event()
+        self.on_refresh = []  # the integration's hub follows the same changes
 
     def refresh(self):
         """Call after shows or playlists change so the selects' options follow."""
         self._refresh.set()
+        for cb in self.on_refresh:
+            cb()
 
     @property
     def selected(self) -> str | None:
@@ -177,14 +180,32 @@ class MqttBridge:
         done.touch()
         log.info("removed the old Govee Light Show entities")
 
+    async def _withdraw(self, settings: dict):
+        """The integration owns Home Assistant's entities: take ours away so its ids are free.
+
+        The topics still work for automations that publish to them."""
+        topics = list(discovery_configs([], []))
+        topics += list(scene_configs([]))
+        topics += [f"{DISCOVERY}/scene/haliday_show/{i}/config" for i in settings.get("mqtt_scenes", [])]
+        topics += [f"{DISCOVERY}/switch/haliday_show/season_{i}/config" for i in settings.get("mqtt_seasons", [])]
+        topics += list(season_configs(seasons.load(settings)))
+        for topic in dict.fromkeys(topics):
+            await self.client.publish(topic, b"", retain=True)
+
     async def _publish_all(self):
         await self._clear_old_entities()
         self.options = show_options(self.storage.list_shows())
         self.playlist_options = show_options(playlists.load(self.storage))
-        for topic, cfg in discovery_configs(list(self.options), list(self.playlist_options)).items():
-            await self.client.publish(topic, json.dumps(cfg), retain=True)
         scenes = self.storage.list_scenes()
         self.scene_options = scene_options(scenes)
+        if self.storage.load_settings().get("ha_integration") is True:
+            await self._withdraw(self.storage.load_settings())
+            self._status = None
+            self._light = None
+            await self._publish_status()
+            return
+        for topic, cfg in discovery_configs(list(self.options), list(self.playlist_options)).items():
+            await self.client.publish(topic, json.dumps(cfg), retain=True)
         for topic, cfg in scene_configs(scenes).items():
             await self.client.publish(topic, json.dumps(cfg), retain=True)
         # Scenes deleted since last time lose their entity in Home Assistant.

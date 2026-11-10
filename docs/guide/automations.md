@@ -6,6 +6,33 @@
 
 ## 6. Automations
 
+### Home Assistant integration
+
+The **HA-liday Show** integration gives Home Assistant your shows, playlists, scenes and season
+switches without needing MQTT. It's the same set of entities as with MQTT below, with the same names,
+so automations and dashboards you've already made keep working.
+
+To install it:
+
+1. In Home Assistant, go to **Settings → Marketplace**, press **Add from link** and paste
+   `https://github.com/gdeboos/ha-liday-show`. The first time, Home Assistant asks you to connect
+   GitHub; approve it on GitHub's page.
+2. Pick **HA-liday Show** in the list, press **Download**, then restart Home Assistant.
+3. Go to **Settings → Devices & services**. **HA-liday Show** should be waiting under
+   **Discovered**: press **Add**. If it isn't there, press **+ Add integration**, search for
+   **HA-liday Show** and keep the address **127.0.0.1** and port **8099**.
+
+Once it's added, the MQTT entities move across to the integration: Home Assistant shows them on an
+**HA-liday Show** device under the integration instead of under MQTT, with the same names. Publishing
+to the MQTT topics below still works. If you remove the integration, the MQTT entities come back.
+
+Update the integration whenever you update the app: the Marketplace offers the update alongside it.
+If they get out of step, the integration says so.
+
+For Docker and pipx installs, add the integration by hand and give the address of the computer
+HA-liday Show runs on, its port (8099 unless you changed `HALIDAY_SHOW_PORT`) and the password you set
+with `HALIDAY_SHOW_PASSWORD`.
+
 ### With MQTT
 
 With the Mosquitto broker app and MQTT integration set up, HA-liday Show creates an **HA-liday

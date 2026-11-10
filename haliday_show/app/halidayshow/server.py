@@ -35,6 +35,7 @@ from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as
 from .listen import Listener
 from .livemusic import LiveMusic
 from .mqtt import MqttBridge
+from . import integration
 from .output import PROBE_MAX, LivePreview, Output, address, blink_frame, chase_frame, linked, run_frames, run_hold, run_probe, run_test_pattern
 from .player import Player
 from .protocol import LONG_PROTOCOLS, PROTOCOLS
@@ -75,6 +76,7 @@ PASSWORD = web.AppKey("password", str)
 LISTENING = web.AppKey("listening", dict)
 LAB = web.AppKey("lab", Lab)
 PUBLIC = web.AppKey("public", public.PublicSite)
+HUB = web.AppKey("hub", integration.Hub)
 
 
 @web.middleware
@@ -151,6 +153,68 @@ async def info(request):
                               "mqtt": request.app[MQTT].client is not None,
                               # what 0.2.207's Govee clear-out changed, for the editor to say once
                               "retired": migrate.retired(request.app[STORAGE].config_dir)})
+
+
+# The Home Assistant integration (integration.py) ------------------------------------------------
+async def integration_state(request):
+    return web.json_response(integration.snapshot(request.app[RUNNER]))
+
+
+async def integration_ws(request):
+    ws = web.WebSocketResponse(heartbeat=30)
+    await ws.prepare(request)
+    hub = request.app[HUB]
+    await ws.send_str(json.dumps({"type": "state", "state": integration.snapshot(request.app[RUNNER])}))
+    hub.clients.add(ws)
+    try:
+        async for _ in ws:  # nothing is expected from the integration over this; commands are POSTs
+            pass
+    finally:
+        hub.clients.discard(ws)
+    return ws
+
+
+def _clean_integration_command(body) -> dict:
+    if not isinstance(body, dict) or not isinstance(body.get("action"), str):
+        raise web.HTTPBadRequest(text="expected {action: ...}")
+    out = {"action": body["action"][:40]}
+    for key in ("show", "playlist", "scene", "season", "media_player"):
+        if isinstance(body.get(key), str) and body[key].strip():
+            out[key] = body[key][:200]
+    for key in ("on", "out"):
+        if isinstance(body.get(key), bool):
+            out[key] = body[key]
+    level = body.get("brightness")
+    if isinstance(level, (int, float)) and not isinstance(level, bool) and math.isfinite(level):
+        out["brightness"] = max(1, min(100, round(level)))
+    return out
+
+
+async def integration_command(request):
+    try:
+        body = await request.json()
+    except ValueError:
+        raise web.HTTPBadRequest(text="expected JSON")
+    cmd = _clean_integration_command(body)
+    try:
+        done = await integration.command(request.app[RUNNER], cmd, request.app[MQTT].refresh)
+    except (ValueError, RunnerError) as e:
+        raise web.HTTPBadRequest(text=str(e))
+    request.app[HUB].refresh()
+    return web.json_response({"ok": True, "done": done})
+
+
+async def integration_claim(request):
+    """The integration takes over Home Assistant's entities (on: true) or hands them back."""
+    try:
+        body = await request.json()
+    except ValueError:
+        body = None
+    if not isinstance(body, dict) or not isinstance(body.get("on"), bool):
+        raise web.HTTPBadRequest(text="expected {on: true|false}")
+    integration.set_claimed(request.app[STORAGE], body["on"])
+    request.app[MQTT].refresh()
+    return web.json_response({"ok": True, "claimed": body["on"]})
 
 
 # Export video (video.py) ------------------------------------------------------------------------
@@ -3658,6 +3722,8 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         app[RUNNER] = Runner(app[STORAGE], app[PLAYER], app[HA])
         app[MQTT] = MqttBridge(app[RUNNER])
         app[RUNNER].seasons_changed = app[MQTT].refresh
+        app[HUB] = integration.Hub(app[RUNNER])
+        app[MQTT].on_refresh.append(app[HUB].refresh)
         app[SCHEDULER] = schedule.Scheduler(app[STORAGE], app[RUNNER])
         app[LIVE] = LiveMusic(lambda: {d["ip"]: d.get("name") for d in app[STORAGE].load_devices() if d.get("ip")})
         await app[LIVE].start()
@@ -3668,7 +3734,9 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
             await app[SCHEDULER].resume()
         except Exception:
             log.exception("couldn't pick up what was playing before the restart")
-        app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run()), asyncio.create_task(app[RUNNER].watch_scene())]
+        app[BACKGROUND] = [asyncio.create_task(app[SCHEDULER].run()), asyncio.create_task(app[RUNNER].watch_scene()),
+                           asyncio.create_task(app[HUB].run())]
+        app[BACKGROUND].append(asyncio.create_task(integration.announce(app[HA], int(os.environ.get("HALIDAY_SHOW_PORT", "8099")))))
         if read_stdin:
             app[BACKGROUND].append(asyncio.create_task(commands.read_stdin(app[RUNNER])))
         if (broker := await app[HA].mqtt_service()):
@@ -3689,12 +3757,23 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
         await app[HA].close()
 
     app.cleanup_ctx.append(lifecycle)
+
+    async def close_integrations(app):
+        """Home Assistant's open connection would otherwise hold up stopping; it reconnects by itself."""
+        for ws in list(app[HUB].clients) if HUB in app else ():
+            await ws.close(code=1001, message=b"restarting")
+
+    app.on_shutdown.append(close_integrations)
     r = app.router
     r.add_get("/", index)
     r.add_get("/player", show_player_page)
     r.add_static("/static/", STATIC)
     r.add_get("/api/info", info)
     r.add_get("/api/report", get_report)
+    r.add_get("/api/integration", integration_state)
+    r.add_get("/api/integration/ws", integration_ws)
+    r.add_post("/api/integration/command", integration_command)
+    r.add_post("/api/integration/claim", integration_claim)
     r.add_post("/api/video", video_start)
     r.add_post("/api/video/{id}/part", video_part)
     r.add_post("/api/video/{id}/finish", video_finish)

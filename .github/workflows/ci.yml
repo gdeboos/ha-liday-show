@@ -35,8 +35,24 @@ jobs:
           v_py=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
           v_addon=$(sed -n 's/^version: "\(.*\)"/\1/p' haliday_show/config.yaml)
           v_pkg=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' haliday_show/app/halidayshow/__init__.py)
-          echo "pyproject=$v_py config.yaml=$v_addon package=$v_pkg"
-          [ "$v_py" = "$v_addon" ] && [ "$v_py" = "$v_pkg" ]
+          v_int=$(python -c "import json; print(json.load(open('custom_components/haliday_show/manifest.json'))['version'])")
+          echo "pyproject=$v_py config.yaml=$v_addon package=$v_pkg integration=$v_int"
+          [ "$v_py" = "$v_addon" ] && [ "$v_py" = "$v_pkg" ] && [ "$v_py" = "$v_int" ]
+
+  integration:
+    # The Home Assistant integration (custom_components/haliday_show), in a real Home Assistant, against the app.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # Home Assistant pins its own aiohttp; the app's other packages go alongside it.
+      - run: |
+          pip install pytest-homeassistant-custom-component==0.13.316
+          grep -v '^aiohttp' haliday_show/requirements.txt > /tmp/app-requirements.txt
+          pip install -r /tmp/app-requirements.txt
+      - run: python -m pytest -q -p no:cacheprovider tests_integration
 
   image:
     # Build the add-on the way the Supervisor does, so a bad base image fails here, not in HA.

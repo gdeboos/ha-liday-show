@@ -1,0 +1,14 @@
+{
+  "domain": "haliday_show",
+  "name": "HA-liday Show",
+  "codeowners": ["@gdeboos"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/gdeboos/ha-liday-show/blob/main/haliday_show/DOCS.md#home-assistant-integration",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/gdeboos/ha-liday-show/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.2.478"
+}

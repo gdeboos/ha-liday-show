@@ -1,5 +1,5 @@
 name: HA-liday Show
-version: "0.2.477"
+version: "0.2.478"
 slug: haliday_show
 description: Music-synchronised light shows for WLED, pixel controllers, Govee, Twinkly and Home Assistant lights (formerly Govee Light Show).
 url: https://github.com/gdeboos/ha-liday-show
@@ -23,6 +23,9 @@ stdin: true
 # Show entities (select, play/stop buttons, status) via MQTT discovery when a broker exists.
 services:
   - mqtt:want
+# Tells Home Assistant HA-liday Show is here, so it offers the HA-liday Show integration (custom_components).
+discovery:
+  - haliday_show
 # Optional AI: a Claude API key, or else Home Assistant's AI Task (pick an entity if there are several).
 # The public page (Setup → Settings → Public page) has its own port, separate from the editor's, so
 # only that page can be reached through it. It opens once the public page has been set up.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.478
+
+- **New: the HA-liday Show integration for Home Assistant.** Install it from **Settings → Marketplace** with **Add from link** (`https://github.com/gdeboos/ha-liday-show`), and Home Assistant gets your shows, playlists, scenes and season switches without needing MQTT. After a restart, it's waiting under **Settings → Devices & services → Discovered**. The entities keep the names they had with MQTT, so your automations keep working. See **Home Assistant integration** in the guide.
+- This is the first step: more sensors, a media player, actions, events and dashboard cards follow in the next updates.
+
 ## 0.2.477
 
 - **Palettes in folders.** The window that opens from **Palette → Change…** (on a clip, in **Show settings**, **Generate**, playlist blocks and the Scene editor) now shows **Your palettes** in your folders from **Library → Palettes**. Press a folder to go into it, and the heading to come back out. It opens in the folder of the palette you're using.

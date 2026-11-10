@@ -32,6 +32,12 @@ HALIDAY_SHOW_CONFIG=/tmp/gs/config HALIDAY_SHOW_MEDIA=/tmp/gs/media python -m ha
 pipx install . && HALIDAY_SHOW_PASSWORD=pw haliday-show   # data in ~/haliday-show/
 ```
 
+The Home Assistant integration (`custom_components/haliday_show/`, installed from Home Assistant's
+Marketplace) talks to the app through `integration.py`'s API; its tests (`tests_integration/`) need Home
+Assistant's test kit: `pip install pytest-homeassistant-custom-component==0.13.316`, then
+`python -m pytest -q tests_integration`. A change to that API that the integration can't follow bumps
+`API` in both `integration.py` and the integration's `const.py`.
+
 There is no linter. CI (`.github/workflows/ci.yml`) runs both test suites, checks the three
 version numbers match, builds the Docker image and checks it serves `/api/info`, runs that image
 standalone on the host network with a password, and installs with `pipx`. `publish.yml` pushes the
@@ -53,8 +59,9 @@ look for. Check which lights the owner actually has before asking.
 Home Assistant only offers an update when the version goes up, so each PR that changes what the
 user gets (code or docs) carries its own release:
 
-1. Bump the patch version in all three, identically: `pyproject.toml`, `haliday_show/config.yaml`,
-   `haliday_show/app/halidayshow/__init__.py`.
+1. Bump the patch version in all four, identically: `pyproject.toml`, `haliday_show/config.yaml`,
+   `haliday_show/app/halidayshow/__init__.py` and `custom_components/haliday_show/manifest.json` (the
+   Home Assistant integration ships with every release, so the two stay in step).
 2. Add a section at the top of `haliday_show/CHANGELOG.md`: `## 0.2.N`, then bullets written for the
    user (what they'll notice and where), not for developers.
 3. Update `haliday_show/DOCS.md` (the user guide, shown on the app's Documentation tab and linked

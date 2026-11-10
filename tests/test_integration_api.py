@@ -1,0 +1,115 @@
+"""The API the Home Assistant integration (custom_components/haliday_show) talks to."""
+import asyncio
+import json
+
+import pytest
+
+from halidayshow import integration, mqtt, server
+from test_runner import FakeClient, runner  # noqa: F401  (runner is a fixture)
+
+
+async def _show(client, name):
+    show_id = (await (await client.post("/api/shows", json={"name": name})).json())["id"]
+    await client.put(f"/api/shows/{show_id}", json={"name": name, "fps": 40, "duration": 1, "tracks": []})
+    return show_id
+
+
+@pytest.fixture
+async def client(aiohttp_client, tmp_path):
+    media = tmp_path / "media"
+    (media / "songs").mkdir(parents=True)
+    app = server.make_app(tmp_path / "config", media, allow_all=True)
+    return await aiohttp_client(app)
+
+
+async def test_snapshot_lists_shows_scenes_and_seasons(client):
+    await _show(client, "Party")
+    await client.post("/api/house-scenes", json={"name": "Candy cane"})
+    state = await (await client.get("/api/integration")).json()
+    assert state["api"] == integration.API and state["claimed"] is False
+    assert [s["name"] for s in state["shows"]] == ["Party"]
+    assert [s["name"] for s in state["scenes"]] == ["Candy cane"]
+    assert {s["name"] for s in state["seasons"]} == {"Halloween", "Christmas"}
+    assert state["status"] == "idle" and state["light"]["on"] is False
+
+
+async def test_commands_select_and_check_input(client):
+    show_id = await _show(client, "Party")
+    r = await client.post("/api/integration/command", json={"action": "select_show", "show": "Party"})
+    assert r.status == 200
+    assert (await (await client.get("/api/integration")).json())["selected_show"] == show_id
+    assert (await client.post("/api/integration/command", json={"action": "select_show", "show": "Nope"})).status == 400
+    assert (await client.post("/api/integration/command", json={"action": "fly"})).status == 400
+    assert (await client.post("/api/integration/command", json=["x"])).status == 400
+    r = await client.post("/api/integration/command", json={"action": "season", "season": "Halloween", "out": False})
+    assert r.status == 200
+    state = await (await client.get("/api/integration")).json()
+    assert next(s for s in state["seasons"] if s["name"] == "Halloween")["out"] is False
+    assert (await client.post("/api/integration/command", json={"action": "light", "on": True})).status == 400  # no scenes
+
+
+async def test_claim_and_release(client):
+    assert (await client.post("/api/integration/claim", json={"on": "yes"})).status == 400
+    assert (await (await client.post("/api/integration/claim", json={"on": True})).json())["claimed"] is True
+    assert (await (await client.get("/api/integration")).json())["claimed"] is True
+    await client.post("/api/integration/claim", json={"on": False})
+    assert (await (await client.get("/api/integration")).json())["claimed"] is False
+
+
+async def test_websocket_sends_state_and_changes(client):
+    async with client.ws_connect("/api/integration/ws") as ws:
+        first = json.loads((await ws.receive(timeout=2)).data)
+        assert first["type"] == "state" and first["state"]["shows"] == []
+        await _show(client, "Party")
+        msg = json.loads((await ws.receive(timeout=3)).data)
+        assert [s["name"] for s in msg["state"]["shows"]] == ["Party"]
+
+
+async def test_mqtt_withdraws_its_entities_while_claimed(runner):
+    bridge = mqtt.MqttBridge(runner)
+    bridge.client = FakeClient()
+    await bridge._publish_all()
+    assert bridge.client.published["homeassistant/select/haliday_show/show/config"] != b""
+    integration.set_claimed(runner.storage, True)
+    await bridge._publish_all()
+    assert bridge.client.published["homeassistant/select/haliday_show/show/config"] == b""
+    assert bridge.client.published["homeassistant/light/haliday_show/scenes/config"] == b""
+    assert bridge.client.published["homeassistant/switch/haliday_show/season_halloween/config"] == b""
+    assert bridge.client.published["haliday_show/status"] == "idle"  # topics still answer
+    integration.set_claimed(runner.storage, False)
+    await bridge._publish_all()
+    assert bridge.client.published["homeassistant/select/haliday_show/show/config"] != b""
+
+
+def test_hub_refresh_follows_mqtt_refresh(runner):
+    bridge = mqtt.MqttBridge(runner)
+    hub = integration.Hub(runner)
+    bridge.on_refresh.append(hub.refresh)
+    bridge.refresh()
+    assert hub._changed.is_set()
+
+
+async def test_announces_itself_to_the_supervisor():
+    sent = []
+
+    class FakeHA:
+        supervisor = "http://supervisor"
+
+        async def _request(self, method, url, json=None):
+            sent.append((method, url, json))
+
+    await integration.announce(FakeHA(), 8099)
+    assert sent == [("POST", "http://supervisor/discovery",
+                     {"service": "haliday_show", "config": {"host": "127.0.0.1", "port": 8099}})]
+    FakeHA.supervisor = None  # Docker and pipx: nothing to tell
+    await integration.announce(FakeHA(), 8099)
+    assert len(sent) == 1
+
+
+def test_integration_speaks_the_same_api():
+    import json
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[1] / "custom_components" / "haliday_show"
+    assert f"API = {integration.API}" in (root / "const.py").read_text()
+    from halidayshow import __version__
+    assert json.loads((root / "manifest.json").read_text())["version"] == __version__
