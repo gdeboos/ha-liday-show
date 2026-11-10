@@ -141,7 +141,7 @@ start an automation from any of them in the automation editor:
 | **Show** | a show **starts** or **ends** (with its name, and its playlist if it's part of one) |
 | **Visitors** | a visitor **picks** a show on the public page, or **votes** for one |
 | **Pre-show check** | a pre-show check **finishes** (with how it went: `ok`, `warn` or `fail`) |
-| **Lights** | a pre-show check finds a light that's **not answering** (with the light's name) |
+| **Lights** | a pre-show check finds a light that's **not answering** (with the light's name; not a Govee light, which may just not be able to answer) |
 
 Events are only sent while Home Assistant is connected. If a show ends while Home Assistant is
 restarting, its **ended** event arrives when it's back.

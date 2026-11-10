@@ -34,15 +34,17 @@ async def test_every_kind_of_light_is_asked_its_own_way():
     lines, look = await preshow.lights(devices, {"l8"}, FakeHA({"light.porch": "on", "switch.reindeer": "unavailable"}),
                                        scan=scan, ask_wled=wled_ok)
     text = [x["text"] for x in lines]
-    assert [x["level"] for x in lines] == ["fail", "fail", "ok", "info", "info", "info"]  # problems first
+    assert [x["level"] for x in lines] == ["fail", "warn", "ok", "info", "info", "info"]  # problems first
     assert {"level": "ok", "text": "Light 1, Light 3 and Light 5 answered."} in lines
     assert "Light 4 can't be asked over the network, so watch it in the next step." in text
-    assert {"level": "fail", "text": "Light 2 didn't answer.", "fix": preshow.NO_ANSWER_FIX["govee"], "light": "Light 2"} in lines
+    # A Govee light that doesn't answer may still take commands (its answers blocked): watched, not failed.
+    assert {"level": "warn", "text": "Light 2 didn't answer, so watch it in the next step.",
+            "fix": preshow.GOVEE_QUIET_FIX, "light": "Light 2"} in lines
     assert any(x["level"] == "fail" and x["text"].startswith("Light 6 is unavailable") for x in lines)
     assert "Light 7 is planned, not linked to a real light yet, so it's left out." in text
     assert "Light 8 is packed away, so it's left out." in text
     # Flashed next: those that answered and those that can't be asked, never the gone or left out.
-    assert look == ["l1", "l3", "l4", "l5"]
+    assert look == ["l1", "l2", "l3", "l4", "l5"]
 
 
 async def test_lights_sharing_a_wled_ask_it_once():
@@ -86,8 +88,8 @@ async def test_a_govee_light_the_scan_misses_is_asked_at_its_address():
 
     lines, look = await preshow.lights([light(1), light(2), light(3)], set(), scan=scan, ask_govee=ask)
     assert asked == [["192.168.1.2", "192.168.1.3"]]
-    assert look == ["l1", "l2"]
-    assert {"level": "fail", "text": "Light 3 didn't answer.", "fix": preshow.NO_ANSWER_FIX["govee"], "light": "Light 3"} in lines
+    assert look == ["l1", "l2", "l3"]
+    assert any(x["level"] == "warn" and x["text"].startswith("Light 3 didn't answer") for x in lines)
 
 
 async def test_without_home_assistant_its_lights_are_watched_instead():

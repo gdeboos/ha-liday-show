@@ -42,6 +42,11 @@ NO_ANSWER_FIX = {
 }
 
 
+GOVEE_QUIET_FIX = ("If it lights up in the next step, all's well: some networks (such as lights on their own "
+                   "VLAN) let commands reach a Govee light but not its answers back. If it doesn't, check it's "
+                   "plugged in and switched on, and that LAN Control is on for it in the Govee Home app.")
+
+
 async def _ask_wled(ip: str) -> bool:
     try:
         await wled.fetch(ip, timeout=ASK_TIMEOUT_S)
@@ -137,6 +142,12 @@ async def lights(devices: list[dict], away: set[str], ha=None, *, scan=_scan_gov
             out.append({**line("fail", f"{d['name']} is unavailable in Home Assistant.",
                                 "Check it's plugged in, or look at it under Settings → Devices in Home Assistant."),
                         "light": d["name"]})
+        elif k == "govee":
+            # Govee lights take commands without answering when their replies can't get back (a light on
+            # its own VLAN, say), so shows still work: watch it rather than call it missing.
+            out.append({**line("warn", f"{d['name']} didn't answer, so watch it in the next step.", GOVEE_QUIET_FIX),
+                        "light": d["name"]})
+            look.append(d["id"])
         else:
             out.append({**line("fail", f"{d['name']} didn't answer.", NO_ANSWER_FIX[k]), "light": d["name"]})
     if quiet:

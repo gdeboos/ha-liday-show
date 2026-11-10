@@ -181,7 +181,9 @@ takes a few minutes, in up to four steps:
 1. **Checking.** Without you doing anything, it:
    - asks every light whether it's there: Govee lights by a network scan (then directly at its address,
      if the scan didn't hear it), WLED and Twinkly lights directly, and Home Assistant lights by whether Home Assistant says they're available. Pixel
-     controllers (DDP and E1.31) can't be asked, so you watch them in the next step. Planned lights and
+     controllers (DDP and E1.31) can't be asked, so you watch them in the next step. A Govee light that
+     doesn't answer is amber, not red, and you watch it in the next step too: some networks (such as
+     lights on their own VLAN) let commands reach it but not its answers back, so shows still work. Planned lights and
      props whose season is packed away are left out.
    - checks **How shows start tonight**, as far as you've set it up. With the visitors' page switched on,
      it checks the page is running and answering, can be reached at its **Public address**, is open
@@ -3180,7 +3182,7 @@ start an automation from any of them in the automation editor:
 | **Show** | a show **starts** or **ends** (with its name, and its playlist if it's part of one) |
 | **Visitors** | a visitor **picks** a show on the public page, or **votes** for one |
 | **Pre-show check** | a pre-show check **finishes** (with how it went: `ok`, `warn` or `fail`) |
-| **Lights** | a pre-show check finds a light that's **not answering** (with the light's name) |
+| **Lights** | a pre-show check finds a light that's **not answering** (with the light's name; not a Govee light, which may just not be able to answer) |
 
 Events are only sent while Home Assistant is connected. If a show ends while Home Assistant is
 restarting, its **ended** event arrives when it's back.

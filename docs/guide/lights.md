@@ -45,7 +45,9 @@ takes a few minutes, in up to four steps:
 1. **Checking.** Without you doing anything, it:
    - asks every light whether it's there: Govee lights by a network scan (then directly at its address,
      if the scan didn't hear it), WLED and Twinkly lights directly, and Home Assistant lights by whether Home Assistant says they're available. Pixel
-     controllers (DDP and E1.31) can't be asked, so you watch them in the next step. Planned lights and
+     controllers (DDP and E1.31) can't be asked, so you watch them in the next step. A Govee light that
+     doesn't answer is amber, not red, and you watch it in the next step too: some networks (such as
+     lights on their own VLAN) let commands reach it but not its answers back, so shows still work. Planned lights and
      props whose season is packed away are left out.
    - checks **How shows start tonight**, as far as you've set it up. With the visitors' page switched on,
      it checks the page is running and answering, can be reached at its **Public address**, is open

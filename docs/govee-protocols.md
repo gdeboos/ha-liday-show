@@ -232,6 +232,10 @@ All under Setup → Labs (tick **Show the Labs tab** under Setup → More → Ex
   a light the scan misses is asked by unicast (scan to :4001 and devStatus to :4003). Not yet known which
   part was the cause (multicast not passed on by his Wi-Fi, or the light answering the sender); to confirm
   with him.
+  **Result (10 Nov 2026, 0.2.493):** no change for his Roof Eaves (192.168.2.122, his only Govee light; the
+  rest are WLED). A unicast devStatus from the packet lab got no reply at all. He has it on a separate
+  VLAN (UniFi): commands reach it, nothing comes back, and multicast doesn't cross. So a Govee light
+  that doesn't answer is now a warning and is flashed in the pre-show check's Looking step, not a failure.
 
 - What does a DreamView sync box, or a Scene Stage sync centre, send to make the H70C5 show live colour
   along the whole string? (Needs one of those devices; see "Where this stands".)
