@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.482
+
+- **Small fixes to the new folder windows.** The song window now opens in the folder of the song picked now, in **New mashup** and **Remove song**. Shortcut keys like Space and Delete no longer act on the show while a **Change…** button has focus. Pressing a preset folder in the effect window keeps your place for the keyboard.
+
 ## 0.2.481
 
 - **Preset folders in the effect window.** With **Show presets** on, your folders from **Library → Presets** show under the filters. Press one to see only your presets in it, still grouped under their effects, and **All presets** to see everything again.

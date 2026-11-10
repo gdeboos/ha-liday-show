@@ -4090,7 +4090,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
     const here = inFolder ? within(pfolders, presetAt) : null;
     const filed = (p) => !here || (p.mine && here.has(folderOf(pfolders, `${p.effect}:${p.name}`)));
     presetBar.hidden = !toggle.checked || !pfolders.length;
-    const go = (id) => { presetAt = id; render(); };
+    const go = (id) => { presetAt = id; render(); presetBar.querySelector("button")?.focus(); };
     const chip = (label, id, cls = "") => Object.assign(button(label, () => go(id), `ghost ${cls}`.trim()), { type: "button" });
     presetBar.replaceChildren(
       ...[{ id: "", name: "All presets" }, ...pathTo(pfolders, presetAt)].flatMap((f, i, all) => {
@@ -9716,7 +9716,7 @@ function wireSongPlayer() {
 function songButton(refs, current, { title, what, yes = "Choose" }, onPick) {
   const b = Object.assign(pickerButton(songLabel(current), null, what), { type: "button" });
   b.addEventListener("click", async () => {
-    const r = await pickSong({ title, yes, refs });
+    const r = await pickSong({ title, yes, refs, current });
     if (!r || songKey(r) === songKey(current)) return;
     current = refs.find((x) => songKey(x) === songKey(r)) || r;
     const fresh = pickerButton(songLabel(current), null, what);
@@ -13221,8 +13221,9 @@ async function nsLoadFolders() {
 // A window for picking one song (or sample) by going into Library → Songs' (or Samples') folders, or
 // finding it by name. Edits of a song sit with it, as in the Library. With parts, a song that's been
 // split offers its parts too (Vocals, Drums…), so you take the whole song or just a part of it.
-// Resolves to the ref picked (a part's own ref when a part is picked), or null if you close it.
-async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds = ["songs"], parts = false, fitTo = null, sections = false } = {}) {
+// Resolves to the ref picked (a part's own ref when a part is picked), or null if you close it. current:
+// the song picked now, whose folder it opens in.
+async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds = ["songs"], parts = false, fitTo = null, sections = false, current = null } = {}) {
   // fitTo ({tempo, key}): songs can be sorted by how well they'd fit over that (mashfit.js), each saying
   // how. sections: a song's sections can be picked, so only that stretch of it is used. Then the result
   // also carries {from, to} (seconds in it, or none for all of it) and lineUp (its bars on the song's).
@@ -13249,7 +13250,9 @@ async function pickSong({ title = "Choose a song", yes = "Choose", refs, kinds =
       if (!family.has(k)) family.set(k, []);
       family.get(k).push(r);
     }
-    shelves.songs = { label: "Songs", one: "song", folders, family, at: folderAt("songs") };
+    // Opens where the song picked now is (current), else where you last were in Library → Songs.
+    const home = current ? folderOf(folders, homeOf.get(songKey(current)) || songKey(current)) : null;
+    shelves.songs = { label: "Songs", one: "song", folders, family, at: home ?? folderAt("songs") };
   }
   const tabs = Object.keys(shelves);
   const st = { tab: tabs.includes("songs") && !shelves.samples?.family.size ? "songs" : tabs[0], picked: null, part: "",
@@ -14883,7 +14886,8 @@ function wire() {
 
   document.addEventListener("keydown", (e) => {
     if (music.active) { music.key(e); return; }
-    const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName);
+    // A picker button (Character, Picture, Effect…) stands in for a list, so its keys are its own too.
+    const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || !!e.target.closest?.(".picker-button");
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === "s") { e.preventDefault(); if (!$("view-editor").hidden) saveClicked(); return; }
     // The effect chooser handles its own keys (Escape closes it).
