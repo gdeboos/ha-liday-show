@@ -39,6 +39,13 @@ straight away. To swap the effect, press **Change…** beside **Effect**: it ope
 chooser used to add one, playing on that light for the clip's length, with the current effect
 outlined. Changing effect keeps the clip's colours, brightness and transitions.
 
+On a shaped prop (a star, wreath or spinner), the clip's preview is the shape, and **Runs** picks how a
+strip effect plays over it: **Along the wire** (the default, LED 1 first), **Round the shape** (a chase
+goes round, and a wreath's rings go round together), **Out from the middle** (a spinner's arms light out
+together), **Along each arm** (each star point or spinner arm from the middle to its tip), **Left to
+right** or **Top to bottom**. Effects made for matrices, such as **Fire** and **Snowfall**, and House
+patterns are drawn across the shape, each LED taking the colour of its spot.
+
 On a matrix, the clip's preview is the grid itself, and so are the moving previews in the effect window
 and the clips on the timeline (a row of little grids along each clip, each a moment of it). **Runs** picks
 how a strip effect plays on it:

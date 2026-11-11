@@ -52,6 +52,35 @@ export function panelBulbs([tl, tr, br, bl], w, h) {
   return out;
 }
 
+// A shaped prop on the photo: each LED (wiring order) at its spot in the shape, spread between the four
+// corners as a panel's are. An LED the shape doesn't show is null.
+// (Worked out here from the cells rather than with shapes.js, as Home Assistant's House card loads this
+// file with only a few others.)
+export function shapeBulbs(corners, shape, n) {
+  const [tl, tr, br, bl] = corners, sx = new Float64Array(n), sy = new Float64Array(n), k = new Float64Array(n);
+  shape.cells.forEach((led, c) => {
+    if (led < 0 || led >= n) return;
+    sx[led] += c % shape.w; sy[led] += Math.floor(c / shape.w); k[led]++;
+  });
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    if (!k[i]) { out.push(null); continue; }
+    const u = shape.w > 1 ? sx[i] / k[i] / (shape.w - 1) : 0.5, v = shape.h > 1 ? sy[i] / k[i] / (shape.h - 1) : 0.5;
+    out.push([0, 1].map((j) => (1 - v) * ((1 - u) * tl[j] + u * tr[j]) + v * ((1 - u) * bl[j] + u * br[j])));
+  }
+  return out;
+}
+const cellsKeys = new WeakMap();
+const cellsKey = (shape) => {
+  if (!cellsKeys.has(shape)) cellsKeys.set(shape, `${shape.w}:${shape.cells.join(",")}`);
+  return cellsKeys.get(shape);
+};
+// A light's shape when it fits its LED count (as shapes.js shapeOf).
+const shapeHere = (dev) => {
+  const s = dev?.shape;
+  return s && s.w >= 1 && s.h >= 1 && s.cells?.length === s.w * s.h && Math.max(-1, ...s.cells) + 1 === dev.segments ? s : null;
+};
+
 // Where a new panel goes: the middle of a photo `aspect` times as wide as it is tall, the shape of its
 // grid, about a third of the photo across.
 export function defaultPanel({ w, h }, aspect = 1.6) {
@@ -93,7 +122,7 @@ export function defaultTree(aspect = 1.6) {
 }
 
 // How many points a matrix's shape on the photo has.
-export const SHAPE_POINTS = { panel: 4, tree: 3 };
+export const SHAPE_POINTS = { panel: 4, tree: 3, shape: 4 };
 
 // Where each of a light's `count` bulbs is, in order from the plug: [x, y], or null for a bulb
 // out of view. A point [x, y, n] marks the stretch leading to it as out of view (round the back
@@ -448,10 +477,14 @@ export class House {
     const count = Math.min(dev.bulbs || dev.segments * BULBS_PER_SEGMENT, MAX_BULBS);
     const style = this.styles[dev.id];
     const pins = this.pins[dev.id];
-    const key = `${count}:${dev.segments}:${dev.reverse}:${JSON.stringify(gridOf(dev) && dev.matrix)}:${JSON.stringify(style)}:${JSON.stringify(points)}:${JSON.stringify(pins)}`;
+    const key = `${count}:${dev.segments}:${dev.reverse}:${JSON.stringify(gridOf(dev) && dev.matrix)}:${shapeHere(dev) ? cellsKey(dev.shape) : ""}:${JSON.stringify(style)}:${JSON.stringify(points)}:${JSON.stringify(pins)}`;
     let c = this.cache.get(dev.id);
     if (c?.key !== key) {
       const shape = style?.style, grid = points.length === SHAPE_POINTS[shape] ? gridOf(dev) : null;
+      if (shape === "shape" && points.length === 4 && shapeHere(dev)) {
+        this.cache.set(dev.id, c = { key, bulbs: shapeBulbs(points, dev.shape, dev.segments) });
+        return c.bulbs;
+      }
       if (grid) {
         const bulbs = shape === "tree" ? treeBulbs(points, grid.w, grid.h, roundTree(style)) : panelBulbs(points, grid.w, grid.h);
         this.cache.set(dev.id, c = { key, bulbs });
@@ -939,7 +972,7 @@ export class House {
       const { w, h } = this.size || { w: 1, h: 1 };
       let best = null, bestD = HIT_PX;
       for (const [id, pts] of Object.entries(this.paths)) {
-        if (["spots", "panel", "tree"].includes(this.styles[id]?.style) || !this.shown(id)) continue; // spots and matrices have no stretches
+        if (["spots", "panel", "tree", "shape"].includes(this.styles[id]?.style) || !this.shown(id)) continue; // spots and matrices have no stretches
         for (let i = 1; i < pts.length; i++) {
           const [ax, ay, bx, by] = [pts[i - 1][0] * w, pts[i - 1][1] * h, pts[i][0] * w, pts[i][1] * h];
           const [px, py] = [p[0] * w, p[1] * h];

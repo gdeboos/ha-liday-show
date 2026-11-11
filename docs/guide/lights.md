@@ -122,6 +122,38 @@ your shows.
 For a mega-tree, set the matrix up with one column per string: **across** is how many strings it has,
 and **down** how many LEDs each string has. The top row is the top of the tree.
 
+## Shaped props (stars, wreaths, spinners)
+
+A WLED light, pixel controller or E1.31 controller can be a **shaped prop**: a star, a wreath, a
+spinner, a candy cane, a window frame, or a vendor's coroplast prop such as a snowflake. Effects then
+know where each LED sits in the shape, rather than treating it as a line. A shaped prop can have up to
+4,096 LEDs.
+
+Open the light (**Setup → Devices**, press it) and pick its **Shape**:
+
+- **Star**: how many **Points**, and **LEDs per point** (the LEDs run round the outline from the top
+  point, clockwise).
+- **Circle or wreath**: how many **Rings**, and **LEDs per ring** (outer ring first, each from the top,
+  clockwise).
+- **Spinner**: how many **Arms**, and **LEDs per arm** (each arm from the middle outwards, the first
+  pointing up).
+- **Candy cane**: how many **LEDs** (up the stick from the bottom, then round the hook).
+- **Window frame**: **LEDs across** the top and bottom, and **LEDs down each side** (from the top left,
+  clockwise).
+- **xLights model (.xmodel)…**: pick the prop's model file, as vendors publish them for xLights. HA-liday
+  Show reads its pixel map and keeps its submodels as the prop's **bits** (listed under the picture).
+  Only xLights *custom* models have a pixel map; for a star or wreath model, pick the built-in shape
+  instead. **Import another…** swaps it for a different file.
+
+Its **LEDs** follow the shape. The picture shows each LED where it sits: LED 1 is white and the colours
+run red, yellow, green, blue along the wire from there. Press **Test wiring** to light the real prop the
+same way. If LED 1 or the order doesn't match the picture, change the numbers (or the shape) until it
+does.
+
+Put it on the house photo with the **Its shape** style (see [Your house](house.md)), and pick how each
+effect plays on it with **Runs** (see [The Show editor](show-editor.md)). Choose **None: a line of
+lights** to turn it back into a plain strip; its clips stay in your shows.
+
 ## Moving a Govee light to WLED
 
 Rewired a Govee light to run from a WLED controller? You don't need to add it again. Open

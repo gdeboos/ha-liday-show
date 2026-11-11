@@ -847,7 +847,7 @@ PAGE_FILES = {"index.html": "text/html", "public.js": "text/javascript", "public
 # The editor's own effect code, which phones that join a show with a Phones lane draw it with (they load
 # it only then). effects.js and what it imports, nothing else of the editor.
 FX = PAGE.parent / "js"
-FX_FILES = ("effects.js", "matrix.js", "font.js", "pictures.js", "parts.js", "phones.js", "faces.js")
+FX_FILES = ("effects.js", "matrix.js", "shapes.js", "font.js", "pictures.js", "parts.js", "phones.js", "faces.js")
 # The page's own files ask for each other with ?v= and a stamp of what's in them, so a phone (or a
 # tunnel's cache, such as Cloudflare's) never mixes an old script with a new page after an update.
 _STAMP = hashlib.sha1(b"".join([(PAGE / n).read_bytes() for n in sorted(PAGE_FILES)]

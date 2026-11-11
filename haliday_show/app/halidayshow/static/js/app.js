@@ -12,7 +12,7 @@ import { FEELS, FEEL_KEYS, STYLES, applyGenerated, applyGeneratedPart, clearPart
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
-  renderTrack, showDuration, phoneColourAt, phoneScreen, phoneView, drawPhoneView, laneUsesHouse, newClip, setVoiceLevels, withVoiceLevels,
+  renderTrack, gridFor, showDuration, phoneColourAt, phoneScreen, phoneView, drawPhoneView, laneUsesHouse, newClip, setVoiceLevels, withVoiceLevels,
 } from "./effects.js";
 import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin, singerOf } from "./phones.js";
@@ -32,6 +32,7 @@ import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb }
 import { startLivePreview, stopLivePreview } from "./livepreview.js";
 import { addRectPart, gatherPart, isRectPart, joinParts, partAt, partGrid, partSize, pickPart, rectText, scatterPart, spreadParts,
   wholeSegments } from "./parts.js";
+import { BUILT_IN_SHAPES, MAX_SHAPE_LEDS, SHAPE_RUNS, builtInShape, parseXmodel, shapeLeds, shapeOf, shapeTestFrame } from "./shapes.js";
 import { MAX_MATRIX, ON_A_MATRIX, RUNS, clipForLane, gridOf, laneTakes, matrixTestFrame, runsDownTree, fromWire, toWire } from "./matrix.js";
 import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
@@ -701,7 +702,8 @@ async function saveDevices() {
 const deviceTests = {}; // id -> {what: "rainbow" | "parts" | a part's id, until, sent}
 
 // A still test frame: a matrix's wiring check, or a light's parts in their colours.
-const testFrame = (d, what) => (what === "matrix" ? toWire(matrixTestFrame(gridOf(d)), d.matrix)
+const testFrame = (d, what) => (what === "shape" ? shapeTestFrame(d.segments)
+  : what === "matrix" ? toWire(matrixTestFrame(gridOf(d)), d.matrix)
   : gridOf(d) ? toWire(partsFrame(d, what === "parts" ? undefined : what), d.matrix) // a matrix's parts, in its wiring order
   : partsFrame(d, what === "parts" ? undefined : what));
 
@@ -725,7 +727,7 @@ async function testLight(d, what = "rainbow") {
 function retestLight(d) {
   const t = deviceTests[d.id];
   if (!t) return;
-  const gone = t.what === "matrix" ? !gridOf(d) : !["rainbow", "parts"].includes(t.what) && !(d.parts || []).some((p) => p.id === t.what);
+  const gone = t.what === "shape" ? !shapeOf(d) : t.what === "matrix" ? !gridOf(d) : !["rainbow", "parts"].includes(t.what) && !(d.parts || []).some((p) => p.id === t.what);
   if (t.until < Date.now() || !linked(d) || (d.protocol === "whole" && t.what !== "rainbow") || gone) {
     delete deviceTests[d.id];
     return;
@@ -1258,6 +1260,92 @@ function matrixControls(d) {
   return box;
 }
 
+// Asks for a file and hands it to `then` (nothing if none was picked).
+function pickFile(accept, then) {
+  const el = Object.assign(document.createElement("input"), { type: "file", accept, hidden: true });
+  el.addEventListener("change", () => { const f = el.files?.[0]; el.remove(); if (f) then(f); });
+  document.body.append(el);
+  el.click();
+}
+
+// A WLED light or pixel controller made into a shaped prop (shapes.js): a built-in shape from a few
+// numbers, or an xLights model's pixel map. Its LED count follows the shape.
+function shapeControls(d) {
+  const box = document.createElement("div");
+  box.className = "matrix-fields shape-fields";
+  const shape = shapeOf(d);
+  const sel = document.createElement("select");
+  sel.title = "The shape its LEDs sit in";
+  sel.add(new Option("None: a line of lights", ""));
+  for (const [k, def] of Object.entries(BUILT_IN_SHAPES)) sel.add(new Option(def.label, k));
+  sel.add(new Option("xLights model (.xmodel)…", "xmodel"));
+  sel.value = shape?.source || "";
+  const row = (...kids) => { const r = document.createElement("div"); r.className = "row"; r.append(...kids); return r; };
+  const apply = (next, bits = []) => {
+    const n = shapeLeds(next);
+    if (!(n >= 1) || n > MAX_SHAPE_LEDS) { status(`A shaped prop has up to ${MAX_SHAPE_LEDS} LEDs`, "hint"); return; }
+    d.shape = next;
+    d.segments = d.bulbs = n;
+    d.reverse = false;
+    if (bits.length) d.bits = bits; else delete d.bits;
+    saveDevices();
+  };
+  const importModel = () => pickFile(".xmodel,.xml", async (file) => {
+    try {
+      const m = parseXmodel(await file.text());
+      apply(m.shape, m.bits);
+      status(`${d.name} is now ${m.name ? `“${m.name}”` : "the imported model"}: ${m.leds} LEDs${m.bits.length ? `, ${m.bits.length} bits` : ""}. Press Test wiring to check it.`);
+    } catch (e) { status(e.message, "hint"); sel.value = shapeOf(d)?.source || ""; }
+  });
+  sel.addEventListener("change", async () => {
+    if (!sel.value) {
+      delete d.shape; delete d.bits;
+      if (house.styles[d.id]?.style === "shape") house.setStyle(d.id, null);
+      saveDevices();
+      return;
+    }
+    if (d.parts?.length) {
+      status(`Remove ${d.name}'s parts first: a shaped prop's bits come from its shape`, "hint");
+      sel.value = shapeOf(d)?.source || "";
+      return;
+    }
+    if (sel.value === "xmodel") { importModel(); return; }
+    apply(builtInShape(sel.value, shape?.source === sel.value ? shape.params : {}));
+  });
+  box.append(row(sel));
+  if (!shape) return box;
+  const def = BUILT_IN_SHAPES[shape.source];
+  if (def) {
+    const nums = row();
+    for (const q of def.params) {
+      const el = Object.assign(document.createElement("input"), { type: "number", min: q.min, max: q.max,
+        value: shape.params?.[q.key] ?? q.default, className: "seg-num", title: q.label });
+      el.addEventListener("change", () => apply(builtInShape(shape.source, { ...shape.params, [q.key]: el.value })));
+      nums.append(q.label, " ", el, " ");
+    }
+    box.append(nums);
+  } else {
+    box.append(row(`${d.segments} LEDs from an xLights model `, button("Import another…", importModel, "ghost small")));
+  }
+  // The shape itself, LED 1 white and the rest through the rainbow in wiring order (as Test wiring).
+  const pic = document.createElement("canvas");
+  pic.className = "shape-pic";
+  pic.title = "LED 1 is white; the colours follow the wire from there";
+  box.append(pic);
+  requestAnimationFrame(() => drawShape(pic, shapeTestFrame(d.segments), shape));
+  if (d.bits?.length) {
+    box.append(Object.assign(document.createElement("div"), { className: "hint",
+      textContent: `Bits: ${d.bits.map((b) => `${b.name} (${b.leds.length})`).join(", ")}` }));
+  }
+  const test = button("Test wiring", async () => {
+    if (await testLight(d, "shape")) status(`${d.name}: LED 1 should be white, then the colours run red, yellow, green, blue as in the picture`);
+  }, "ghost small");
+  test.title = linked(d) ? "Light it as in the picture, to check where the wire starts and which way it runs" : plannedTip(d);
+  test.disabled = !linked(d);
+  box.append(row(test));
+  return box;
+}
+
 async function readWledMatrix(d) {
   try {
     const w = await wledInfo(d.ip);
@@ -1356,10 +1444,14 @@ function lightFields(d) {
     }
     segs.append(count);
     if (!wled) segs.append(" ", find);
-    const grid = gridOf(d);
+    const grid = gridOf(d), shaped = !!shapeOf(d);
     if (grid) Object.assign(count, { disabled: true, title: "Width times height, set under Matrix" });
-    if (!isHa(d)) cell(segs, countLabel(d), grid ? "Width times height." : isPixels(d) ? "How many LEDs it has." : "Press <b>Find</b> to work it out with a few yes or no questions, or use <b>Test</b>.");
-    if (MATRIX_KINDS.includes(d.kind) && !isSegmentLight(d)) cell(matrixControls(d), "Matrix", !grid
+    if (shaped) Object.assign(count, { disabled: true, title: "Set by its shape" });
+    if (!isHa(d)) cell(segs, countLabel(d), grid ? "Width times height." : shaped ? "Set by its shape." : isPixels(d) ? "How many LEDs it has." : "Press <b>Find</b> to work it out with a few yes or no questions, or use <b>Test</b>.");
+    if (MATRIX_KINDS.includes(d.kind) && !isSegmentLight(d) && !grid) cell(shapeControls(d), "Shape", !shaped
+      ? "For a star, wreath, spinner or other prop whose LEDs sit in a shape. Pick a shape, or import its xLights model."
+      : "Press <b>Test wiring</b>: LED 1 lights white and the colours follow the wire, as in the picture.");
+    if (MATRIX_KINDS.includes(d.kind) && !isSegmentLight(d) && !shaped) cell(matrixControls(d), "Matrix", !grid
       ? "Turn on for a panel or a mega-tree laid out as a grid."
       : isWled(d) ? "Leave it as plain rows from the top left if WLED is set up as 2D: WLED sorts out the wiring. Press <b>Test wiring</b> to check."
       : "Which corner the first LED is in, and which way the wiring runs. Press <b>Test wiring</b> to check.");
@@ -1376,7 +1468,7 @@ function lightFields(d) {
       "Brightness %", "Caps this light in every show.");
     cell(seasonControls(d), "Seasons", isAway(d) ? "Packed away just now: nothing is sent to it. Switch its season to <b>Out</b> under <b>Seasons</b> below the list."
       : "Tick the seasons it's put up for. None ticked: all year.");
-    if (!isHa(d) && !grid) cell(input("checkbox", "reverse"), "Reverse", "Turn on if Test's white dot runs the wrong way.");
+    if (!isHa(d) && !grid && !shaped) cell(input("checkbox", "reverse"), "Reverse", "Turn on if Test's white dot runs the wrong way.");
     if (!wled) cell(input("checkbox", "gradient"), "Blend", "Ask the light to blend between segments.");
     if (wled) {
       const how = document.createElement("span");
@@ -1427,7 +1519,7 @@ function renderLightEditor() {
     grid.append(row);
   }
   body.replaceChildren(grid);
-  if (!isHa(d)) {
+  if (!isHa(d) && !shapeOf(d)) {
     const parts = partsPanel(d);
     parts.classList.add("light-parts");
     body.append(parts);
@@ -3103,7 +3195,7 @@ app.groupFor = groupById; // for the timeline's lane names
 const trackKind = (i) => (isHouse(i) ? "house" : isGroup(i) ? "group" : "light");
 // House effects go on the House lane and group lanes; light effects everywhere but the House lane.
 const laneKind = (i) => (isGroup(i) ? "group" : isHouse(i) ? "house" : app.show.tracks[i]?.device === PHONES ? "phones"
-  : gridOf(playingDev(app.show.tracks[i])) ? "matrix" : "light");
+  : gridOf(playingDev(app.show.tracks[i])) || shapeOf(playingDev(app.show.tracks[i])) ? "matrix" : "light");
 // Scene-only effects (WLED's own, Live music): only in a scene, on a whole light (no parts; a WLED
 // for WLED's own), as the one clip on its lane, all the way round.
 // A whole light (no parts) for scene-only effects; WLED's own effect also takes a split WLED's own lane,
@@ -3434,22 +3526,23 @@ function houseSegmentEditor(d) {
 // for a matrix, Panel (its four corners).
 function houseStyleControls(d) {
   const style = house.styles[d.id];
-  const grid = gridOf(app.lights[d.id] || d);
+  const grid = gridOf(app.lights[d.id] || d), shape = shapeOf(app.lights[d.id] || d);
   const sel = document.createElement("select");
   sel.title = "How the light looks on the photo";
   sel.innerHTML = `<option value="line">Line</option><option value="icicle">Icicle</option>
-    <option value="arches">Arches</option><option value="spots">Spots</option>${grid ? `<option value="panel">Panel</option><option value="tree">Mega-tree</option>` : ""}`;
+    <option value="arches">Arches</option><option value="spots">Spots</option>${grid ? `<option value="panel">Panel</option><option value="tree">Mega-tree</option>` : ""}${shape ? `<option value="shape">Its shape</option>` : ""}`;
   sel.value = style?.style || "line";
   sel.addEventListener("change", () => {
     const need = SHAPE_POINTS[sel.value];
     if (need && house.paths[d.id]?.length !== need) {
       const photo = house.photo, aspect = photo?.naturalWidth && photo.naturalHeight ? photo.naturalWidth / photo.naturalHeight : 1.6;
-      house.paths[d.id] = sel.value === "tree" ? defaultTree(aspect) : defaultPanel(grid, aspect);
+      house.paths[d.id] = sel.value === "tree" ? defaultTree(aspect) : defaultPanel(grid || shape, aspect);
       delete house.pins[d.id];
     }
     house.setStyle(d.id, {
       panel: { style: "panel" },
       tree: { style: "tree" },
+      shape: { style: "shape" },
       icicle: { style: "icicle", drops: defaultDrops(d), length: 0.06 },
       arches: { style: "arches", arches: 4, height: 0.08, down: false },
       spots: { style: "spots", beam: 0.5, aims: [] },
@@ -3461,6 +3554,10 @@ function houseStyleControls(d) {
   l0.className = "row";
   l0.append("Style ", sel);
   if (!style) return [l0];
+  if (style.style === "shape") {
+    return shape ? [l0, hint("Drag its four corners to the prop's box on the photo.")]
+      : [l0, hint("This only fits a shaped prop. Pick its shape for this light under Setup → Devices.")];
+  }
   if (style.style === "panel" || style.style === "tree") {
     if (!grid) return [l0, hint("This only fits a matrix. Turn on Matrix for this light under Setup → Devices.")];
     if (style.style === "tree") {
@@ -3792,7 +3889,7 @@ function clipPreviewRow(clip, dev) {
   row.className = "clip-preview";
   const canvas = document.createElement("canvas");
   canvas.title = "This clip on its own, looping";
-  if (gridOf(dev)) canvas.classList.add("grid");
+  if (gridOf(dev) || shapeOf(dev)) canvas.classList.add("grid");
   if (clipPreview.clip !== clip) Object.assign(clipPreview, { clip, started: performance.now() });
   clipPreview.canvas = canvas;
   row.append(canvas);
@@ -3833,9 +3930,10 @@ function drawClipPreview() {
   }
   const dev = track && app.devices[track.device];
   if (!dev) { if (clipPreview.dev) stopLightPreview(); return; }
-  const grid = gridOf(dev);
-  const rgb = asShown(dev, t, (tt) => renderTrack([clip], Math.max(tt, clip.start), dev.segments, undefined, false, grid));
+  const grid = gridOf(dev), shape = shapeOf(dev);
+  const rgb = asShown(dev, t, (tt) => renderTrack([clip], Math.max(tt, clip.start), dev.segments, undefined, false, gridFor(dev)));
   if (grid) drawGrid(c, rgb, grid, (dev.brightness ?? 100) / 100);
+  else if (shape) drawShape(c, rgb, shape, (dev.brightness ?? 100) / 100);
   else drawStrip(c, rgb, dev.segments, (dev.brightness ?? 100) / 100);
   const onLight = previewOnLight() && linked(dev) && !EFFECTS[clip.effect]?.experimental && !EFFECTS[clip.effect]?.sceneOnly && !app.playing && !app.starting;
   if (onLight) sendPreview(dev, rgb);
@@ -3864,6 +3962,29 @@ function drawStrip(c, rgb, n, cap = 1) {
 // lights its own slice of the light, with the rest off.
 // A matrix's colours (rows from the top left) as a grid, as big as fits, in the middle.
 const gridCanvas = document.createElement("canvas");
+// A shaped prop's frame (wiring order) as round dots at its LEDs' spots, on a dark background.
+function drawShape(c, rgb, shape, cap = 1) {
+  const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
+    c.width = Math.round(w * dpr);
+    c.height = Math.round(h * dpr);
+  }
+  const ctx = c.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#0b0d12";
+  ctx.fillRect(0, 0, w, h);
+  const cell = Math.min(w / shape.w, h / shape.h), x0 = (w - cell * shape.w) / 2, y0 = (h - cell * shape.h) / 2;
+  const r = Math.max(cell * 0.4, 0.8);
+  shape.cells.forEach((led, i) => {
+    if (led < 0) return;
+    const [R, G, B] = [rgb[led * 3], rgb[led * 3 + 1], rgb[led * 3 + 2]].map((v) => Math.round(v * cap));
+    ctx.fillStyle = R + G + B ? `rgb(${R},${G},${B})` : "#252a33";
+    ctx.beginPath();
+    ctx.arc(x0 + ((i % shape.w) + 0.5) * cell, y0 + (Math.floor(i / shape.w) + 0.5) * cell, r, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
+
 function drawGrid(c, rgb, { w: gw, h: gh }, cap = 1) {
   const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
   if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
@@ -4122,7 +4243,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         body.append(sh);
       }
       // Not when the House lane's own effects are offered too: Plasma and Spiral are listed there.
-      const matrix = !!gridOf(dev) && !groups.some(([, h]) => h);
+      const matrix = !!(gridOf(dev) || shapeOf(dev)) && !groups.some(([, h]) => h);
       // Scene-only effects: where the list asks for them (a scene's light row), or on a whole light's lane
       // in an Advanced scene.
       const sceneHere = (fx) => !!app.sceneId && house === false && sceneLight(dev, fx);
@@ -4133,7 +4254,7 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         .filter(([key, fx]) => shows(key, fx) || key === current)
         // Effects drawn on a grid only on a matrix (or with Allow effects that won't work): on a
         // strip they show one row of the picture, so Scrolling text and Picture show next to nothing.
-        .filter(([key, fx]) => !fx.grid || !dev || !!gridOf(dev) || allow.checked || key === current);
+        .filter(([key, fx]) => !fx.grid || !dev || !!(gridOf(dev) || shapeOf(dev)) || allow.checked || key === current);
       // Under small headings (Basics, Movement, ...) when there's more than one kind.
       // A WLED's own effect comes first, in a box of its own look: it's a different way of playing.
       const kinds = EFFECT_GROUPS.map(([g, label]) => [label, all.filter(([key, fx]) => shownGroup(key, fx, house, matrix) === g), g])
@@ -4226,7 +4347,7 @@ function drawPickerPreviews() {
       const n = dev?.segments || 15, grid = grids ? gridOf(dev) : null, cap = (dev?.brightness ?? 100) / 100;
       // On a matrix, each effect moves as the grid would show it. Music level moves to a made-up
       // level here: a few seconds from the song's start is often too quiet to show anything.
-      const rgb = withMusicLevels(MADE_UP, () => asShown(dev, secs % clip.end, (t) => renderTrack([clip], t, n, undefined, false, grid)));
+      const rgb = withMusicLevels(MADE_UP, () => asShown(dev, secs % clip.end, (t) => renderTrack([clip], t, n, undefined, false, grid || gridFor(dev))));
       if (grid) drawGrid(canvas, rgb, grid, cap); else drawStrip(canvas, rgb, n, cap);
     }
   }
@@ -4339,6 +4460,20 @@ function renderInspector() {
   }
   // Singing face: what its mouth follows, so it's clear why it does or doesn't sing, with Measure again.
   if (clip.effect === "singingface") field("Mouth", singerNote());
+  // On a shaped prop: how a strip effect plays over the shape.
+  if (shapeOf(app.devices[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house && !EFFECTS[clip.effect].grid) {
+    const runs = document.createElement("select");
+    const labels = { strip: "Along the wire", round: "Round the shape", out: "Out from the middle", arms: "Along each arm",
+      rows: "Left to right", columns: "Top to bottom" };
+    const now = SHAPE_RUNS.includes(clip.runs) ? clip.runs : "strip";
+    for (const r of SHAPE_RUNS) runs.add(new Option(labels[r], r, false, r === now));
+    runs.title = "How this effect plays over the prop's shape";
+    runs.addEventListener("change", () => {
+      if (runs.value === "strip") delete clip.runs; else clip.runs = runs.value;
+      app.changed();
+    });
+    field("Runs", runs);
+  }
   // On a matrix: how a strip effect plays across the grid. House patterns are drawn across it as they are.
   if (gridOf(app.devices[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house && !EFFECTS[clip.effect].grid) {
     const runs = document.createElement("select");

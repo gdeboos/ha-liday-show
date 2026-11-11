@@ -1707,6 +1707,39 @@ async def test_matrix_panels_on_the_house_photo(client):
     assert (await resp.json())["styles"] == {"tree": {"style": "tree"}}
 
 
+async def test_shaped_props(client):
+    # A 2 x 2 shape with three LEDs: the light's LED count follows the shape.
+    shape = {"w": 2, "h": 2, "cells": [0, -1, 2, 1], "source": "star", "params": {"points": 5, "perPoint": 2, "bad key!": 3}}
+    prop = {"id": "star", "kind": "wled", "ip": "192.168.1.94", "name": "Star", "segments": 99, "reverse": True,
+            "shape": shape, "bits": [{"id": "b1", "name": "Tips", "leds": [2, 0, 0]}]}
+    dev = (await (await client.put("/api/devices", json=[prop])).json())[0]
+    assert (dev["segments"], dev["reverse"]) == (3, False)
+    assert dev["shape"] == {"w": 2, "h": 2, "cells": [0, -1, 2, 1], "source": "star", "params": {"points": 5, "perPoint": 2}}
+    assert dev["bits"] == [{"id": "b1", "name": "Tips", "leds": [0, 2]}]
+    for kind in ("ddp", "e131"):
+        d = {"id": kind, "kind": kind, "ip": "192.168.1.95", "shape": shape}
+        assert (await (await client.put("/api/devices", json=[d])).json())[0]["segments"] == 3
+    for bad in ({**prop, "shape": {**shape, "cells": [0, 1, 2]}},  # one cell short
+                {**prop, "shape": {**shape, "cells": [-1, -1, -1, -1]}},
+                {**prop, "shape": {**shape, "cells": [0, 1, 2, 5000]}},
+                {**prop, "shape": {"w": 201, "h": 1, "cells": [0] * 201}},
+                {**prop, "shape": "star"},
+                {**prop, "matrix": {"w": 2, "h": 2}},
+                {**prop, "parts": [{"id": "a", "from": 1, "to": 2}]},
+                {**prop, "bits": [{"id": "b1", "leds": [3]}]},
+                {**prop, "bits": [{"id": "b1", "leds": [0]}, {"id": "b1", "leds": [1]}]},
+                {**prop, "first": 5},
+                {"ip": "192.168.1.96", "shape": shape},
+                {"kind": "twinkly", "ip": "192.168.1.97", "shape": shape}):
+        assert (await client.put("/api/devices", json=[bad])).status == 400, bad
+    # Without a shape, no shape or bits are saved.
+    plain = (await (await client.put("/api/devices", json=[{**prop, "shape": None, "segments": 10}])).json())[0]
+    assert "shape" not in plain and "bits" not in plain
+    resp = await client.put("/api/house", json={"paths": {"star": [[0.1, 0.1], [0.3, 0.1], [0.3, 0.3], [0.1, 0.3]]},
+                                                "styles": {"star": {"style": "shape"}}})
+    assert (await resp.json())["styles"] == {"star": {"style": "shape"}}
+
+
 async def test_wled_info_reads_a_matrix(client, aiohttp_server, monkeypatch):
     from aiohttp import web
 

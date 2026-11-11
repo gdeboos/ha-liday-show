@@ -22,6 +22,6 @@ export function bakeNote(what) {
 }
 
 // What a bake depends on in each light, for knowing within a visit whether a bake is still good:
-// its size, parts and a matrix's grid and wiring, but not its name or IP.
+// its size, parts, a matrix's grid and wiring and a shaped prop's shape, but not its name or IP.
 export const lightsBakeKey = (devices) =>
-  JSON.stringify((devices || []).map((d) => [d.id, d.segments, d.parts, d.whole, d.matrix || null]));
+  JSON.stringify((devices || []).map((d) => [d.id, d.segments, d.parts, d.whole, d.matrix || null, d.shape || null]));

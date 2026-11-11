@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.500
+
+- **Shaped props: stars, wreaths, spinners and more.** A WLED light or pixel controller can now be a
+  shaped prop. Open it under **Setup → Devices** and pick its **Shape**: **Star**, **Circle or wreath**,
+  **Spinner**, **Candy cane** or **Window frame** (set a few numbers, such as points and LEDs per point),
+  or **xLights model (.xmodel)…** to load a vendor's prop file, such as a coroplast snowflake. A picture
+  shows where each LED sits, and **Test wiring** lights the real prop the same way, LED 1 white, so you
+  can check where the wire starts.
+- On the house photo, give it the **Its shape** style and drag its corners round the prop.
+- In the Show editor, a clip on a shaped prop has **Runs**: **Round the shape**, **Out from the middle**,
+  **Along each arm**, **Left to right**, **Top to bottom** or **Along the wire**. Fire, snowfall and the
+  House patterns are drawn across the shape. More is coming: lanes for a prop's bits, and singing faces.
+
 ## 0.2.499
 
 - **No more warning in Home Assistant's log about the HA-liday Show integration.** Home Assistant warned that the integration looks up a device in a way that stops working in 2027.8. It now does it the new way, so nothing changes for you.
