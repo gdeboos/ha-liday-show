@@ -127,6 +127,7 @@ export class SceneEditor {
 
   // Playing --------------------------------------------------------------------------
   async play(id) {
+    if (this.d.onPlan?.()) { this.d.status("Only the live profile plays on your lights: switch back to it to play this scene", "hint"); return; }
     if (id === this.id) await this.flush();
     await this.playNow(id);
   }

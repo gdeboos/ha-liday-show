@@ -517,7 +517,7 @@ function renderProfiles() {
     const here = list.find((p) => p.id === profile.id);
     $("profile-banner-text").innerHTML = "";
     $("profile-banner-text").append("You're looking at ", Object.assign(document.createElement("b"), { textContent: here.name }),
-      ", which isn't live. Nothing here plays on your lights: shows play only in the preview.");
+      ", which isn't live. Shows and scenes you play here play only in the preview, not on your lights.");
     $("profile-banner-back").textContent = `Back to ${liveName()}`;
   }
   const box = $("profile-rows");
@@ -605,17 +605,18 @@ async function makeProfileLive(p) {
 // Back on the live profile after changes on a plan (or after making a plan live): every show whose frames
 // aren't the ones it would make now is saved again, in the background, as Check all shows → Fix does.
 async function bakeOutOfDate() {
-  if (onPlan() || !prefs.get("profile.rebake", false)) return;
+  // With more than one profile, a light changed on a plan (in any browser) changes the live frames too.
+  if (onPlan() || (!prefs.get("profile.rebake", false) && (profile.view?.profiles.length || 0) < 2)) return;
   let list;
   try { list = await api("api/shows"); } catch { return; }
   await picturesReady;
   let done = 0;
   for (const s of list) {
-    if (s.id === app.showId && app.dirty) continue;
+    if ((s.id === app.showId && app.dirty) || !s.baked) continue; // unbaked ones are keepShowsReady's
     try {
       const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
       const pos = housePositionsFor(show);
-      const saved = s.baked ? (await api(`api/shows/${encodeURIComponent(s.id)}/baked/key`).catch(() => null))?.key : null;
+      const saved = (await api(`api/shows/${encodeURIComponent(s.id)}/baked/key`).catch(() => null))?.key;
       if (saved && saved === bakeNoteFor(pos, show)) continue;
       if (!done) status("Saving your shows again for your live lights…", "info", "profile");
       await uploadBake(s.id, await bakeOff(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
@@ -4222,7 +4223,7 @@ function drawClipPreview() {
   if (grid) drawGrid(c, rgb, grid, (dev.brightness ?? 100) / 100);
   else if (shape) drawShape(c, rgb, shape, (dev.brightness ?? 100) / 100);
   else drawStrip(c, rgb, dev.segments, (dev.brightness ?? 100) / 100);
-  const onLight = previewOnLight() && linked(dev) && !EFFECTS[clip.effect]?.experimental && !EFFECTS[clip.effect]?.sceneOnly && !app.playing && !app.starting;
+  const onLight = !onPlan() && previewOnLight() && linked(dev) && !EFFECTS[clip.effect]?.experimental && !EFFECTS[clip.effect]?.sceneOnly && !app.playing && !app.starting;
   if (onLight) sendPreview(dev, rgb);
   else if (clipPreview.dev) stopLightPreview();
 }

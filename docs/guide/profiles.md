@@ -36,7 +36,7 @@ Shows are shared. Open one while you're looking at a plan, and it has lanes for 
 add effects to the new ones as usual. Lanes for lights that aren't in the plan are hidden, never
 deleted, so switching back shows them again with their effects.
 
-While you're on a plan, nothing plays on your lights. **▶ Play** plays the show in the editor's preview
+While you're on a plan, shows and scenes don't play on your lights. **▶ Play** plays the show in the editor's preview
 only, and **Video…** makes a video of the plan, handy for showing off next year's display. Shows and
 scenes you save keep playing as they were on your lights tonight; when you go back to the live profile,
 they're saved again for your real lights in the background.
@@ -62,11 +62,6 @@ lights. The **Pre-show check** and **Check all shows** look at the live profile.
 **Rename…** and **Delete…** sit beside each profile. The live profile can't be deleted. Deleting a
 profile deletes its photo, tracing, groups and roles, and any lights that were only in it; your shows
 keep their effects.
-
----
-
-← [Your house](house.md) · [Contents](README.md) · [Songs and samples](songs.md) →
-<!-- /nav -->
 
 <!-- nav: made by tools/check_guide.py -->
 

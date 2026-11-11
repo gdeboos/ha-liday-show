@@ -3679,6 +3679,7 @@ async def make_profile_live(request):
         live = {d["id"] for d in profiles.lights(settings, devices)}
         request.app[RUNNER].player.drop({d["id"] for d in devices if d["id"] not in live})
         request.app[HUB].refresh()
+        request.app[MQTT].refresh()
     return web.json_response(_profiles_view(st))
 
 
