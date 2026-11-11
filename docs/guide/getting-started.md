@@ -1,20 +1,22 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+<!-- The user guide is written here, a page per topic. tools/check_guide.py checks its links. -->
 
 # Getting started
 
-[Contents](README.md) · [Your lights →](lights.md)
+Find your way round, check what you need, and get your first show playing.
 
 ## Finding your way
 
 Three tabs run along the top, **Library**, **Schedule** and **Setup**, and a fourth, **Public page**, once
 you've turned it on. HA-liday Show opens on **Library**:
 
+![The Library, open on Shows](../images/guide/library-shows.webp)
+
 | Tab | What's there |
 | --- | --- |
 | **Library** | In two groups. **Shows**: **Shows** (all of yours), **Scenes** (one-tap looks for every light) and **Playlists** (shows back to back). **Ingredients**: **Songs** (all of yours), **Samples** (short sounds to layer over a song), **Palettes** and **Presets** (the colours and effect settings you reuse). |
-| **Schedule** | What plays by itself, and when: playlists, shows and scenes (see [Schedule](play-it.md#schedule)). |
+| **Schedule** | What plays by itself, and when: playlists, shows and scenes (see [Schedule](schedule.md)). |
 | **Setup** | **Devices**, **Speakers**, **House** and **Settings**, the things you set up once. |
-| **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](public-page.md#the-public-page)). |
+| **Public page** | What people passing by can pick on their phone, and when, and their queue (see [The public page](public-page.md)). |
 
 Library and Setup list their pages down the side (along the top on a phone), and each remembers the
 page you last had open. Every slider has a box beside it with its exact number: type one in, or press **↑** or **↓**
@@ -29,7 +31,7 @@ and music reactions included, whatever is playing. When a show is on over a scen
 comes back after. The bar stays out of the way while you play a show from its own editor.
 
 The four editors open from the Library: **Edit** on a show takes you to the **Show editor** (the timeline,
-previews and effect settings), **Edit** on a scene to the **Scene editor** (see [Scenes](play-it.md#scenes)),
+previews and effect settings), **Edit** on a scene to the **Scene editor** (see [Scenes](scenes.md)),
 **Edit** on a song to the **Music editor** (cutting, shortening, joining and detecting) and **Edit** on a
 playlist to the **Playlist editor** (dragging shows into order and setting when they play). **+ New
 show**, **+ New scene** and **+ New playlist** open the new one in its editor too. In an editor,
@@ -56,10 +58,12 @@ this guide on GitHub. Type in **Search help** to look through every page's tips 
 closes it. In the editors, each panel's **?** shows a few tips for that panel, with **More in
 Help →** for the rest.
 
+![The Help panel beside the Shows page](../images/guide/help.webp)
+
 ## Requirements
 
 - Home Assistant OS or Supervised (anything with **Settings → Apps**). Apps were called add-ons before
-  Home Assistant 2026.2. No apps? You can [run it without them](without-home-assistant.md#running-without-home-assistant), with
+  Home Assistant 2026.2. No apps? You can [run it without them](without-home-assistant.md), with
   Docker or Python.
 - Lights on the same network as Home Assistant, any of:
   - **WLED** strips: any string of pixels on an ESP32 or ESP8266 running WLED.
@@ -72,14 +76,14 @@ Help →** for the rest.
   - **Twinkly** lights (experimental).
 - Optional: a Home Assistant media player for the music. Without one, songs play in your browser
   while you edit, and shows started by a playlist or an automation play their music in the
-  [Show player](play-it.md#music-with-no-speaker-the-show-player) (or the lights only).
+  [Show player](playing.md#music-with-no-speaker-the-show-player) (or the lights only).
 - Optional: the Mosquitto broker app and MQTT integration, for show entities in automations.
 
 ## Quick start
 
 The first time you open HA-liday Show, the **setup guide** opens and walks you through these steps in one
 window: add your lights, check each one, pick a speaker, choose the sample house or your own photo, and
-make your first show from a song. **Add my own song…** there opens [Add a song](build-a-show.md#songs), so your song is
+make your first show from a song. **Add my own song…** there opens [Add a song](songs.md), so your song is
 split into its parts, its words kept if you paste them and its cover's colours offered, as when you add one
 anywhere else; the show is then made in those colours. Its last page, **What next**, points you to the
 Music editor, Singing faces, the pre-show check, the schedule and public page, and the AI. Every step can be
@@ -96,8 +100,8 @@ again any time with **Run the setup guide** under **Setup → More**. Its first 
 4. **Library → Shows**: press **+ New show** (or **Edit** one of yours), pick or upload a song, name it and pick its colours, then press **Create show** (with an AI set up, a last step
    offers **Start empty**). Drag across a light's track, press **＋ Add effect…** and pick one. Press
    Space to play.
-5. Play it by itself: on the [Schedule](play-it.md#schedule) tab press **+ Add to schedule** and pick it (or a
-   [playlist](play-it.md#playlists) it's in) and the times, or start it from an automation with the MQTT **Play**
+5. Play it by itself: on the [Schedule](schedule.md) tab press **+ Add to schedule** and pick it (or a
+   [playlist](playing.md#playlists) it's in) and the times, or start it from an automation with the MQTT **Play**
    button or the `hassio.app_stdin` action.
 
 > **Just want to see it working?** On a fresh install, press **Try the demo** under **Setup → Devices**
@@ -115,6 +119,8 @@ Tree, Garage and Path) already placed on the [sample house](house.md#the-sample-
 music-box *Jingle Bells* made for HA-liday Show, free to use) to your songs, and generates **Demo show**
 in Christmas colours. Press **▶ Play** to watch it on the House panel. Nothing is sent to real lights.
 
+![The demo show open in the Show editor](../images/guide/show-editor.webp)
+
 The sample song comes ready, as a song you add yourself would be after **Add a song**: split into its
 vocals, drums, bass and the rest, with when each drum lands, the sounds in it (bells and so on) and its
 words placed. So the demo show follows the drums and the tune, the Music editor shows its parts and
@@ -125,6 +131,9 @@ It's only offered while you have no lights, so it never mixes with your own. Whe
 **Demo show** go, and your own shows are kept. The sample song stays in your songs, to use in your own
 shows if you like.
 
+<!-- nav: made by tools/check_guide.py -->
+
 ---
 
-[Contents](README.md) · [Your lights →](lights.md)
+[Contents](README.md) · [Adding your lights](lights.md) →
+<!-- /nav -->

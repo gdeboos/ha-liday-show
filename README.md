@@ -297,8 +297,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 
 </details>
 
-The full walkthrough is in the **[user guide](docs/guide/README.md)**, a page per chapter. The same guide
-is on the app's **Documentation** tab in Home Assistant, all on [one page](haliday_show/DOCS.md).
+The full walkthrough is in the **[user guide](docs/guide/README.md)**, a page per topic with screenshots.
+The app's **Documentation** tab in Home Assistant has a short overview that links to it.
 
 ## ⚙️ How it works
 
@@ -376,10 +376,11 @@ standalone/docker-compose.yml           Running without Home Assistant, with Doc
 .github/workflows/ci.yml                Tests, versions, app image, standalone and pipx checks
 .github/workflows/publish.yml           Publishes the image to ghcr.io for Docker installs
 docs/images/                            Screenshots for the README
+docs/images/guide/                      The user guide's screenshots (made by tools/screenshots.py)
 docs/brand/                             Logo, icon and favicon (SVG originals; the app's PNGs are made from them)
 haliday_show/                             The app (config, Dockerfile, docs, changelog)
   README.md                             Intro shown on the app's Info tab
-  DOCS.md                               User guide (shown on the app's Documentation tab); the one to edit
+  DOCS.md                               Short overview on the app's Documentation tab, linking to docs/guide/
   CHANGELOG.md                          What changed in each version
   icon.png, logo.png                    Pictures shown in the App store (from docs/brand)
   app/halidayshow/__main__.py             Entry points (app and haliday-show) and environment settings
@@ -515,9 +516,10 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     models.json                         Our list of Govee lights: tested status and default settings
 tools/build_models.py                   Adds new lights from Govee's LAN Control list to models.json
 tools/make_sample_song.py               Renders the demo's music-box Jingle Bells (static/sample-song.mp3)
-tools/split_guide.py                    Makes docs/guide/ (the guide a page per chapter) from DOCS.md
+tools/check_guide.py                    Checks the user guide's links and keeps its previous/next lines
+tools/screenshots.py                    Makes the user guide's screenshots from the demo
 tools/govee_btsnoop.py                  Decrypts the Govee app's Bluetooth traffic from an Android log
-docs/guide/                             The user guide on GitHub, a page per chapter (made from DOCS.md)
+docs/guide/                             The user guide, a page per topic (the one to edit)
 docs/README.md                          Index of the notes below, one per kind of light
 docs/govee-protocols.md                 How Govee lights are driven: findings, measurements, open questions
 docs/capture-help.md                    Capturing the Govee app's traffic, for working out new commands

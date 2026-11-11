@@ -9,7 +9,7 @@ const k = (...keys) => `<kbd>${keys.join("+")}</kbd>`;
 
 export const HELP = {
   shows: {
-    title: "Your shows", guide: ["build-a-show.md", "shows"],
+    title: "Your shows", guide: ["shows.md", "shows"],
     topics: [
       { id: "list", title: "Your shows", tips: [
         "<b>Edit</b> a show to change it. Nothing in a show changes until you open it.",
@@ -19,48 +19,48 @@ export const HELP = {
         "Once shows have seasons, the buttons above the list show one season's shows (plus any-season ones) from every folder.",
         "New shows start <b>In progress</b>. Press <b>Mark as finished</b> in its <b>⋯</b> menu when it's done: only finished shows go to visitors on the public page.",
       ] },
-      { id: "sharing", title: "Sharing shows", guide: ["build-a-show.md", "sharing-shows"], tips: [
+      { id: "sharing", title: "Sharing shows", guide: ["shows.md", "sharing-shows"], tips: [
         "<b>Share</b> downloads a small <code>.halidayshow</code> file with the show's effects, but not the song, your photo or your lights' addresses.",
         "<b>Import show…</b> opens a shared show and asks which of your lights plays each of its lights. It always makes a new show.",
       ] },
     ],
   },
   editor: {
-    title: "Show editor", guide: ["build-a-show.md", "4-build-a-show"],
+    title: "Show editor", guide: ["shows.md", "your-shows"],
     topics: [
-      { id: "show", title: "Saving and the show", guide: ["play-it.md", "saving"], tips: [
+      { id: "show", title: "Saving and the show", guide: ["playing.md", "saving"], tips: [
         `<b>Save</b> (${k("Ctrl", "S")}) stores the show and bakes it for playback. With <b>Auto save</b> on it saves itself a moment after each change.`,
         "<b>⚙ Show settings…</b> has the name, the show speaker, auto save and delete.",
         `<b>✨ Generate</b> fills every light with effects that follow the song. Press it again for a different take; ${k("Ctrl", "Z")} brings back what you had.`,
         "To redo only part of the show, pick a section under <b>Fill</b>, or select a stretch on the timeline and press <b>✨ Generate here…</b>. The rest stays as it was.",
         "<b>← All shows</b> goes back to the list.",
       ] },
-      { id: "song", title: "The song", guide: ["build-a-show.md", "songs"], tips: [
+      { id: "song", title: "The song", guide: ["songs.md", "songs-and-samples"], tips: [
         "<b>Change…</b> picks another song from your media folder, uploads one, or makes a lights-only show.",
         "Cut, shorten or join a song in the <b>Music editor</b> before you place clips, because cutting afterwards won't move them.",
       ] },
-      { id: "playback", title: "Playing while you edit", guide: ["play-it.md", "while-you-edit"], tips: [
+      { id: "playback", title: "Playing while you edit", guide: ["playing.md", "while-you-edit"], tips: [
         `${k("Space")} plays or pauses and ${k("Home")} goes back to the start.`,
         "<b>Song in this browser</b> plays the song here and streams the lights in time. Pick a speaker to hear it there instead.",
         "Turn off <b>Lights</b> to preview in the browser only. If the lights lead or lag, set <b>Light offset</b> under <b>Setup → Speakers</b>.",
         "Drag along the time ruler to set a play region, and turn on <b>Loop</b> to repeat it.",
       ] },
-      { id: "beats", title: "Beats and sections", guide: ["build-a-show.md", "beats"], tips: [
+      { id: "beats", title: "Beats and sections", guide: ["music-editor.md", "beats"], tips: [
         "<b>Detect</b> finds the tempo, beats, bars and sections in your browser, in a few seconds.",
         "<b>From song</b> uses the beats and sections saved with the song in the Music editor.",
         `Press ${k("B")} or <b>Tap beat</b> in time while it plays, or type a <b>BPM</b> and press <b>Fill</b>.`,
         `Click the beat lane to add or remove a beat. With <b>Snap</b> on, clips snap to beats; hold ${k("Shift")} to place freely.`,
       ] },
-      { id: "ai", title: "Describe it", guide: ["build-a-show.md", "describe-it"], tips: [
+      { id: "ai", title: "Describe it", guide: ["generate.md", "describe-it"], tips: [
         "Type what you'd like, such as \"red and green chase on the roof in every chorus\", and press <b>✨ Create</b>.",
         `Select a stretch first to work on just that. ${k("Ctrl", "Z")} undoes the lot.`,
         "It needs an AI, set up under <b>Setup → AI</b>.",
       ] },
-      { id: "preview", title: "Preview and House", guide: ["house.md", "3-your-house"], tips: [
+      { id: "preview", title: "Preview and House", guide: ["house.md", "your-house"], tips: [
         "<b>Preview</b> shows each light's LEDs (or a Govee light's segments) as they'll look at the playhead.",
         "<b>House</b> plays the show on your house photo. Trace your lights on it under <b>Setup → House</b>.",
       ] },
-      { id: "timeline", title: "The timeline", guide: ["build-a-show.md", "the-timeline"], tips: [
+      { id: "timeline", title: "The timeline", guide: ["show-editor.md", "the-timeline"], tips: [
         "Drag across a light, or the <b>House</b> lane, to select a stretch of time. Drag up or down to cover several lights.",
         "Click a clip to edit it: drag it to move, drag its edges to resize.",
         `Zoom with <b>−</b> and <b>+</b>, the ${k("+")} and ${k("−")} keys, or ${k("Ctrl")} + wheel round the pointer.`,
@@ -70,7 +70,7 @@ export const HELP = {
         "Coloured flags on the beat lane are the song's marks, made in the Music editor. Clips snap to them.",
         "A group's lane, under <b>House</b>, plays its effects along the group's lights as one strip, or House effects across just those lights.",
       ] },
-      { id: "selection", title: "Adding and changing effects", guide: ["build-a-show.md", "adding-effects"], tips: [
+      { id: "selection", title: "Adding and changing effects", guide: ["show-editor.md", "adding-effects"], tips: [
         "Select a stretch, then press <b>＋ Add effect…</b> to pick one. Each button plays it on that light first.",
         "Click a clip to change its effect, colours and settings here. It loops on its own while it's selected.",
         "<b>Glitter</b> adds sparkles over any clip's effect. Drag <b>Amount</b> all the way left for none.",
@@ -78,7 +78,7 @@ export const HELP = {
         `${k("Delete")} clears the selected stretch or clip. Hold ${k("Alt")} to start a selection on top of a clip.`,
         "<b>⚠ Too fast for this light</b> means the real light can't keep up with that effect. Slow it down or use a fade.",
       ] },
-      { id: "keys", title: "Keyboard", guide: ["build-a-show.md", "shortcuts"], keys: [
+      { id: "keys", title: "Keyboard", guide: ["show-editor.md", "shortcuts"], keys: [
         [k("Space"), "Play or pause"], [k("Home"), "Back to the start"], [k("B"), "Add a beat at the playhead"],
         [k("Delete"), "Delete the clip, or clear the stretch"], [k("D"), "Duplicate the clip"], [k("Esc"), "Deselect"],
         [`${k("Ctrl", "C")} ${k("Ctrl", "V")}`, "Copy and paste effects"], [`${k("Ctrl", "Z")}`, "Undo"], [k("Ctrl", "S"), "Save"],
@@ -89,7 +89,7 @@ export const HELP = {
       timeline: "timeline", inspector: "selection" },
   },
   songs: {
-    title: "Your songs", guide: ["build-a-show.md", "songs"],
+    title: "Your songs", guide: ["songs.md", "songs-and-samples"],
     topics: [
       { id: "list", title: "Your songs", tips: [
         "Each song you added is one card marked <b>Original</b>. The edits made from it in the Music editor sit inside it.",
@@ -103,16 +103,16 @@ export const HELP = {
         "Press a folder to go into it; the path at the top takes you back up.",
         "<b>⋯ → Move to…</b> on a song moves it, or drag it onto a folder.",
       ] },
-      { id: "remove", title: "Archiving and deleting", guide: ["build-a-show.md", "archiving-and-deleting"], tips: [
+      { id: "remove", title: "Archiving and deleting", guide: ["songs.md", "archiving-and-deleting"], tips: [
         "<b>Remove…</b> says where a song is used, then archives it (kept, out of the way) or deletes it for good.",
         "Archived songs are folded at the foot of the list, with <b>Restore</b>.",
       ] },
     ],
   },
   music: {
-    title: "Music editor", guide: ["build-a-show.md", "editing-a-song"],
+    title: "Music editor", guide: ["music-editor.md", "editing-a-song"],
     topics: [
-      { id: "song", title: "Drafts and Make song file", guide: ["build-a-show.md", "drafts"], tips: [
+      { id: "song", title: "Drafts and Make song file", guide: ["music-editor.md", "drafts"], tips: [
         "Your first change starts a draft (name it under <b>Draft</b>), kept as you go, so you can leave and carry on later. The song you opened isn't changed.",
         `<b>Make song file</b> (${k("Ctrl", "S")}) writes the draft as a WAV in your songs folder, to pick under <b>Song</b> in a show.`,
         "The draft stays, so you can change it and make the file again.",
@@ -122,7 +122,7 @@ export const HELP = {
         `<b>⏮</b> (${k("Home")}) goes back to the start. <b>⏪</b> and <b>⏩</b> (${k(",")} and ${k(".")}) go back or on a bar, or 5 seconds before the song is detected, and keep playing if it was.`,
         "The 🔊 slider is the same level as in the Show editor.",
       ] },
-      { id: "wave", title: "The waveform and Mixer", guide: ["build-a-show.md", "layers"], tips: [
+      { id: "wave", title: "The waveform and Mixer", guide: ["music-editor.md", "layers"], tips: [
         `Drag across the waveform to select. The edges snap to bars once the song is detected; hold ${k("Shift")} to place them freely.`,
         `Click to move the playhead. The wheel zooms, and ${k("Shift")} + wheel scrolls.`,
         "<b>+ Add layer</b> plays samples or songs over this one: pick one under the layer to put a clip at the playhead.",
@@ -134,13 +134,13 @@ export const HELP = {
         "<b>+ Change here</b> in the EQ makes the faders glide to new settings from the playhead.",
         "Click a <b>✂</b> to hear that join. <b>Adjust cut</b> brings the part back, selected, to cut again; <b>Put back</b> undoes just that cut.",
       ] },
-      { id: "beats", title: "Sections and marks", guide: ["build-a-show.md", "editing-sections"], tips: [
+      { id: "beats", title: "Sections and marks", guide: ["music-editor.md", "editing-sections"], tips: [
         "<b>Detect</b> finds the beats and sections and keeps them with the song, so a show that picks it gets them straight away.",
         "Click a section to rename it, colour it or give it notes for <b>Describe it</b>. Shift-click adds the next one; drag the line between two to move it.",
         `<b>⚑ Add mark</b> (or ${k("M")}, even while it plays) flags a moment. Marks show in the Show editor too, where clips snap to them.`,
         "<b>✨ Describe sections</b> writes notes for each section from what it sounds like.",
       ] },
-      { id: "edit", title: "Cutting and shortening", guide: ["build-a-show.md", "suggest-cuts"], tips: [
+      { id: "edit", title: "Cutting and shortening", guide: ["music-editor.md", "suggest-cuts"], tips: [
         "Select a stretch and its actions are in the <b>Selection</b> panel: <b>Preview cut</b> plays the join as if it were cut, <b>Cut</b> removes it, and <b>Keep only this</b> shortens the song to it.",
         "With the song split into parts, the Mixer has faders for its vocals, drums, bass and the rest, and the <b>Selection</b> panel mutes one over a stretch. <b>Parts</b>, by the zoom buttons, shows them on rows of their own.",
         "Click a layer's name on its lane (or <b>⋯ → Edit this layer</b>) to edit it on its own: cuts there change only that layer.",
@@ -164,7 +164,7 @@ export const HELP = {
       splice: "splice", smoothing: "splice" },
   },
   samples: {
-    title: "Samples", guide: ["build-a-show.md", "samples"],
+    title: "Samples", guide: ["songs.md", "samples"],
     topics: [
       { id: "list", title: "Samples", tips: [
         "Short sounds such as sleigh bells or a \"ho ho ho\", ready to layer over a song in the Music editor.",
@@ -174,7 +174,7 @@ export const HELP = {
     ],
   },
   pictures: {
-    title: "Pictures", guide: ["build-a-show.md", "pictures"],
+    title: "Pictures", guide: ["pictures-and-faces.md", "pictures"],
     topics: [
       { id: "list", title: "Pictures", tips: [
         "<b>+ Add a picture</b> adds pictures or animated GIFs, shrunk to fit a 64 × 64 matrix.",
@@ -184,7 +184,7 @@ export const HELP = {
     ],
   },
   faces: {
-    title: "Faces", guide: ["build-a-show.md", "faces"],
+    title: "Faces", guide: ["pictures-and-faces.md", "faces"],
     topics: [
       { id: "list", title: "Faces", tips: [
         "The characters the <b>Singing face</b> effect can be, on a matrix or visitors' phones.",
@@ -195,7 +195,7 @@ export const HELP = {
     ],
   },
   palettes: {
-    title: "Palettes", guide: ["build-a-show.md", "colour-palettes"],
+    title: "Palettes", guide: ["show-editor.md", "colour-palettes"],
     topics: [
       { id: "list", title: "Palettes", tips: [
         "<b>Edit…</b> opens a palette to rename it and change its colours, up to 12.",
@@ -206,7 +206,7 @@ export const HELP = {
     ],
   },
   presets: {
-    title: "Presets", guide: ["build-a-show.md", "the-presets-tab"],
+    title: "Presets", guide: ["show-editor.md", "the-presets-tab"],
     topics: [
       { id: "list", title: "Presets", tips: [
         "Your presets, by effect, each with a live preview. <b>Edit…</b> opens one with a bigger preview.",
@@ -216,7 +216,7 @@ export const HELP = {
     ],
   },
   scenes: {
-    title: "Your scenes", guide: ["play-it.md", "scenes"],
+    title: "Your scenes", guide: ["scenes.md", "scenes"],
     topics: [
       { id: "list", title: "Your scenes", tips: [
         "A scene sets every light at once and plays until you choose something else, like a one-tap scene in the Govee app.",
@@ -226,7 +226,7 @@ export const HELP = {
     ],
   },
   scene: {
-    title: "Scene editor", guide: ["play-it.md", "scenes"],
+    title: "Scene editor", guide: ["scenes.md", "scenes"],
     topics: [
       { id: "lights", title: "Lights", tips: [
         "Each light has its own row: pick an <b>Effect</b> (or <b>Off</b>), a <b>Style</b>, <b>Colours</b>, <b>Speed</b> and <b>Brightness</b>.",
@@ -237,7 +237,7 @@ export const HELP = {
         "<b>▶ Play on lights</b> plays it round and round on your real lights. Change it while it plays and the lights follow.",
         "<b>← All scenes</b> goes back to the list.",
       ] },
-      { id: "when", title: "When it plays", guide: ["play-it.md", "schedule"], tips: [
+      { id: "when", title: "When it plays", guide: ["schedule.md", "schedule"], tips: [
         "Scenes come on by themselves from the <b>Schedule</b> tab. <b>+ Add to schedule</b> here adds this scene there.",
         "If a show or playlist is on at the start, the scene waits for it, then comes on. At the end it goes off.",
       ] },
@@ -249,7 +249,7 @@ export const HELP = {
     ],
   },
   playlists: {
-    title: "Your playlists", guide: ["play-it.md", "playlists"],
+    title: "Your playlists", guide: ["playing.md", "playlists"],
     topics: [
       { id: "list", title: "Your playlists", tips: [
         "A playlist plays your shows one after another, then starts again from the top until you press <b>Stop</b>, even with this page closed.",
@@ -258,7 +258,7 @@ export const HELP = {
     ],
   },
   playlist: {
-    title: "Playlist editor", guide: ["play-it.md", "playlists"],
+    title: "Playlist editor", guide: ["playing.md", "playlists"],
     topics: [
       { id: "playlist", title: "The playlist", tips: [
         "Type over the name to rename it. Changes save as you make them.",
@@ -275,7 +275,7 @@ export const HELP = {
         "Drag a show from <b>Your shows</b>, or press <b>+</b> to add it at the end. Press a folder to go into it. The same show can go in more than once.",
         "<b>Building blocks</b> go between shows: a <b>Pause</b>, one <b>Colour</b>, <b>Off</b>, an <b>Effect</b> or one of your <b>Scenes</b>, each with its own length.",
       ] },
-      { id: "when", title: "When it plays", guide: ["play-it.md", "schedule"], tips: [
+      { id: "when", title: "When it plays", guide: ["schedule.md", "schedule"], tips: [
         "Playlists play by themselves from the <b>Schedule</b> tab. <b>+ Add to schedule</b> here adds this playlist there.",
         "One playlist can be on the schedule more than once, such as weekdays and weekends at different times.",
         "For shows with no speaker, open the <b>Show player</b> on a computer with speakers and leave it open.",
@@ -284,7 +284,7 @@ export const HELP = {
     panels: { playlist: "playlist", blocks: "shows", shows: "shows", order: "order", when: "when" },
   },
   schedule: {
-    title: "Schedule", guide: ["play-it.md", "schedule"],
+    title: "Schedule", guide: ["schedule.md", "schedule"],
     topics: [
       { id: "entries", title: "What plays when", tips: [
         "Each row plays a playlist, a show (round and round) or a scene by itself at its times, even with this page closed.",
@@ -292,7 +292,7 @@ export const HELP = {
         "<b>Only between</b> limits a row to some dates, such as December. Untick <b>On</b> to pause a row without losing it.",
         "The same playlist can have several rows, such as weekdays 17:00 to 22:00 and weekends until 23:00.",
       ] },
-      { id: "week", title: "The week", guide: ["play-it.md", "the-week"], tips: [
+      { id: "week", title: "The week", guide: ["schedule.md", "the-week"], tips: [
         "<b>Week</b>, under the list, shows what plays when over seven days, a bar for each row.",
         "Rows take turns: a row that's started plays to its end, so one due meanwhile waits, hatched. Press a bar to find its row.",
       ] },
@@ -307,7 +307,7 @@ export const HELP = {
     ],
   },
   devices: {
-    title: "Devices", guide: ["lights.md", "1-devices"],
+    title: "Devices", guide: ["lights.md", "adding-your-lights"],
     topics: [
       { id: "add", title: "Adding lights", tips: [
         "Press <b>+ Add a light</b>, pick what you're adding, and fill in what it needs.",
@@ -325,11 +325,11 @@ export const HELP = {
         "<b>Test wiring</b> lights the top left white, the top row red and the left column green.",
         "For a mega-tree, make each string a column: <b>across</b> is how many strings, <b>down</b> how many LEDs each.",
       ] },
-      { id: "seasons", title: "Seasons", guide: ["lights.md", "seasons"], tips: [
+      { id: "seasons", title: "Seasons", guide: ["organising-lights.md", "seasons"], tips: [
         "Tick a light's <b>Seasons</b> in its window, such as <b>Halloween</b>. Lights with none are all year.",
         "Switch a season to <b>Packed away</b> when its props come down: nothing is sent to them, and shows play on the rest.",
       ] },
-      { id: "groups", title: "Groups", guide: ["lights.md", "light-groups"], tips: [
+      { id: "groups", title: "Groups", guide: ["organising-lights.md", "light-groups"], tips: [
         "<b>+ New group</b> puts lights and parts together, such as the roof's icicles, so a show can give them one effect.",
         "Each group gets a lane under <b>House</b> in the Show editor. Effects run along its lights in this tab's order.",
         "<b>↑</b> and <b>↓</b> set the order of the groups' lanes. A light can be in as many groups as you like.",
@@ -337,17 +337,17 @@ export const HELP = {
     ],
   },
   speakers: {
-    title: "Speakers", guide: ["speakers.md", "2-speakers"],
+    title: "Speakers", guide: ["speakers.md", "speakers"],
     topics: [
       { id: "add", title: "Adding a speaker", tips: [
         "Press <b>+ Add a speaker</b>, then <b>Test and add</b>. It plays a short chime the way a show starts, and the speaker is added only if that works.",
         "Some media players, like Echo devices through Alexa Media Player or Emby clients, can't play files from Home Assistant's media folder.",
       ] },
-      { id: "timing", title: "Timing", guide: ["speakers.md", "2-speakers"], tips: [
+      { id: "timing", title: "Timing", guide: ["speakers.md", "speakers"], tips: [
         "<b>Delay ms</b> is how late a speaker really starts. Raise it if the lights run ahead of the music (often 100 to 500 ms for Wi-Fi speakers).",
         "<b>Light offset</b> does the same for the song playing in your browser.",
       ] },
-      { id: "automations", title: "Automations", guide: ["automations.md", "6-automations"], tips: [
+      { id: "automations", title: "Automations", guide: ["home-assistant.md", "home-assistant"], tips: [
         "<b>Automations</b> shows the exact input to start the open show from a Home Assistant automation.",
       ] },
     ],
@@ -370,17 +370,17 @@ export const HELP = {
     ],
   },
   settings: {
-    title: "Settings", guide: ["editor-and-settings.md", "settings"],
+    title: "Settings", guide: ["settings.md", "settings"],
     topics: [
-      { id: "layout", title: "Layout", guide: ["editor-and-settings.md", "arrange-the-editor"], tips: [
+      { id: "layout", title: "Layout", guide: ["settings.md", "arrange-the-editor"], tips: [
         "Pick <b>Show</b>, <b>Music</b> or <b>Playlist</b>, then that editor's page layout and where each panel sits.",
         "Choose <b>Hidden</b> to tuck a panel away, and bring it back here.",
         "In the editors you can also drag a panel by its title, or use its <b>⋯</b> button.",
       ] },
-      { id: "ai", title: "The AI", guide: ["editor-and-settings.md", "setting-up-the-ai"], tips: [
+      { id: "ai", title: "The AI", guide: ["ai.md", "setting-up-the-ai"], tips: [
         "The ✨ features use Claude with your own API key, or an AI Task set up in Home Assistant, including a local one.",
       ] },
-      { id: "live", title: "Live music", guide: ["play-it.md", "live-music"], tips: [
+      { id: "live", title: "Live music", guide: ["live-music.md", "live-music"], tips: [
         "Shows what a WLED light with a microphone hears, once that WLED is set to send its sound.",
         "<b>Listen to</b> picks the WLED; with <b>Any WLED that sends sound</b>, the loudest one is used.",
         "<b>Counts as music from</b> sets how loud is music rather than chatter.",

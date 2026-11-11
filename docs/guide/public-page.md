@@ -1,10 +1,12 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+<!-- The user guide is written here, a page per topic. tools/check_guide.py checks its links. -->
 
 # The public page
 
-[← Play it and playlists](play-it.md) · [Contents](README.md) · [Automations →](automations.md)
+A page people passing by open on their phone to pick what plays.
 
-## The public page
+![The Public page tab, with a preview of the visitors' page](../images/guide/public-page-setup.webp)
+
+<img src="../images/guide/visitors-welcome.webp" alt="The first-visit welcome on a phone" width="300"> <img src="../images/guide/visitors-page.webp" alt="The visitors' page on a phone" width="300">
 
 The public page lets people passing by start a show from their phone, usually by scanning a QR code
 on a sign outside. They see the shows and playlists you've picked, and nothing else of HA-liday Show. What's on stays pinned to the top as they
@@ -29,18 +31,18 @@ link in a new tab.
 | --- | --- |
 | **Access** | [Who can start shows](#who-can-start-shows): the link and code, the sign and **Nearby only** (and [Installing the page as an app](#installing-the-page-as-an-app)) |
 | **Hours** | [Opening hours](#opening-hours), finishing by closing time and rest breaks |
-| **Limits** | **How visitors pick** ([queue or vote](#voting-for-whats-next)), **Requests per phone**, **Queue length**, **Same song again after** and **Same phone again after** ([Keeping it fair](#visitors-queue)) |
+| **Limits** | **How visitors pick** ([queue or vote](queue-and-voting.md#voting-for-whats-next)), **Requests per phone**, **Queue length**, **Same song again after** and **Same phone again after** ([Keeping it fair](queue-and-voting.md#visitors-queue)) |
 | **Shows** | [What visitors can pick](#what-visitors-can-pick) and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
-| **Listening** | [Listening on phones](#listening-on-phones) and [Phones join the show](#phones-join-the-show) |
+| **Listening** | [Listening on phones](visitors-phones.md#listening-on-phones) and [Phones join the show](visitors-phones.md#phones-join-the-show) |
 | **Admin** | Your [Admin PIN](#admin-pin) |
 | **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom, and [looks through the year](#looks-through-the-year) |
 | **Words** | [Every message visitors read](#words), to change to your own |
-| **Queue** | [The visitors' queue](#visitors-queue) as it is now, and **Tonight** at a glance |
+| **Queue** | [The visitors' queue](queue-and-voting.md#visitors-queue) as it is now, and **Tonight** at a glance |
 
 Beside them (below them on a narrower screen) the **Preview** shows the page as visitors with your
 code see it, and catches up as soon as you change something. Its buttons don't start anything.
 
-### Who can start shows
+## Who can start shows
 
 Visitors need the link with your code in it; the QR code on your sign holds it. Opening the page
 without the code just says "Scan the code on the sign to start a show".
@@ -75,7 +77,7 @@ without the code just says "Scan the code on the sign to start a show".
     The check stops casual use from afar, but a determined person could fake where their phone is,
     so keep **Queue length** small.
 
-### Opening hours
+## Opening hours
 
 Off to start with, so visitors can start shows at any time. Turn on **Only open at set times** to choose
 when:
@@ -111,7 +113,7 @@ buttons. Their phones aren't asked for their location until it opens. Anyone alr
 queue at closing time still gets their show. Each show's own dates (below) still apply within the
 hours.
 
-### Installing the page as an app
+## Installing the page as an app
 
 Visitors (and you) can put the page on their home screen as an app. It opens full screen with no
 address bar, with your code built in, so it keeps working however long ago it was installed.
@@ -125,7 +127,7 @@ address bar, with your code built in, so it keeps working however long ago it wa
 - It needs the page to be reached over https, as it is through a tunnel such as Cloudflare. Everything
   else (opening hours, **Nearby only**, the admin PIN) works exactly as on the web page.
 
-### Admin PIN
+## Admin PIN
 
 For trying the page out yourself, away from the house or out of hours. Type 4 to 8 numbers in **Admin
 PIN** on the **Admin** page; leave it empty for none.
@@ -159,7 +161,7 @@ admin PIN (or press **Lock this phone** in the card). Five wrong PINs from one p
 minutes. If the admin PIN is the same as the listening PIN, the editor warns you, as anyone with the
 listening PIN could then get in as admin too.
 
-### How the page looks
+## How the page looks
 
 On the **Look** tab, in four groups: **Title and welcome**, **Picture at the top**, **Colours and
 style** and **Link at the bottom**. The preview beside them shows each change as you make it.
@@ -185,7 +187,7 @@ style** and **Link at the bottom**. The preview beside them shows each change as
 
 The title, words and picture only show to people with your code.
 
-### Looks through the year
+## Looks through the year
 
 **Through the year**, at the top of the **Look** tab, gives the page a different look between two dates
 every year: orange and black with a spooky title for October, say, then snow for Christmas. Outside
@@ -204,7 +206,7 @@ those dates visitors get your everyday look.
   Each row says whether it's on now, and the line at the top says which look visitors see today.
 - **Remove** takes a dated look away (and its picture); visitors get your everyday look on those dates.
 
-### What visitors can pick
+## What visitors can pick
 
 - Visitors see the list in the order it's in here. Move a row with **↑** and **↓**, or drag it by its
   **⠿** grip.
@@ -229,7 +231,7 @@ those dates visitors get your everyday look.
   one starts: "Coming soon on 1 December".
 - **Remove** takes something off the public page; the show or playlist itself stays.
 
-### On the page
+## On the page
 
 Also on the **Shows** tab:
 
@@ -266,108 +268,7 @@ Also on the **Shows** tab:
 
   The warning's words, and the button's, are on the **Words** tab.
 
-### Listening on phones
-
-Visitors can hear the music on their own phone, in time with the lights. It's handy before you have an
-outdoor speaker, or to keep things quiet for the neighbours. Your show's speaker, if it has one, plays
-as usual.
-
-1. On the **Listening** page, turn on **Let visitors listen on their phone**.
-2. To keep it to yourself while you try it out, turn on **Needs a PIN to listen** and type a PIN of 4
-   to 8 numbers.
-3. On your phone, open the visitors' link and press **Listen** in the card at the top (type the PIN
-   if you set one). Press **Sound off** to stop the music on their phone; the show carries on, on your lights. **Listen** only shows while something's on.
-
-How it works:
-
-- The phone plays whatever show is on, however it was started: from the page, a playlist, the schedule,
-  an automation or the editor. It starts at the right point, and visitors who arrive part-way through
-  join in where the song is. Between shows it waits, and carries on with the next one by itself.
-- **In time from the first beat.** Phones load the next song in the queue while the current show plays. When
-  a visitor's show is about to start and phones are listening, the lights wait for every listening phone to
-  load its song, then the lights and the music start together. They never wait more than 3 seconds, so one
-  slow phone can't hold the show up; meanwhile the page says **Getting the music ready…**. With nobody
-  listening, shows start at once as before.
-- With **Nearby only** on, phones have to be nearby to listen, as for starting a show. A PIN is asked
-  for as well, not instead.
-- A phone asks for the PIN once, then remembers it until you change it. Change or clear the PIN and
-  phones that were listening are asked again. After five wrong PINs, a phone waits 10 minutes.
-- HA-liday Show makes a small copy of each song for phones (about 4 MB for a 3-minute song), so it
-  loads quickly over mobile data. The first phone to listen to a song may wait a few seconds while it's
-  made. The copies aren't part of your backups. (A Python install needs ffmpeg for this; see
-  [With Python](without-home-assistant.md#with-python).)
-- On your Wi-Fi the music is usually within a few hundredths of a second of the lights. Over mobile data
-  it can be a little further out. Bluetooth headphones and speakers play a little late, as they do with
-  any phone.
-- To put the music in time for everyone, use the timing step of the [pre-show check](lights.md#pre-show-check):
-  it moves every phone's music by the same amount. **Public page → Listening** says how much, with
-  **Reset** to put it back.
-- If the music and lights still aren't together on a phone, visitors can fix it on their own phone while listening: they
-  press **Music out of time?** under the button, then **Earlier** if they hear the beat after the lights flash (usual with Bluetooth), **Later** if
-  they hear it before. Each press moves the music 0.05 s, up to a second either way, on top of the timing for
-  every phone, and the phone remembers it for next time.
-- **Shows with no speaker** (no **Show speaker** of their own and no default one) say **Music on your
-  phone** on the visitors' page. A visitor who presses **Start** or **Queue** on one starts listening
-  with the same press, so the music plays on their phone when it comes on. (Phones only play sound that
-  a press starts, so it can't begin by itself for everyone.) Others can press **Listen** as usual.
-- Keep the page open. On some phones the music stops when the screen locks; press **Listen** again
-  to carry on.
-- Every word visitors see while listening is on the **Words** tab, under **Listening on a phone**.
-
-### Phones join the show
-
-Visitors' phones can become part of the show: their screen glows with your lights' colours, in time
-with the music. Point a crowd of phones at the house and the whole street lights up with it. It's off
-until you turn it on.
-
-1. On the **Listening** page, turn on **Let visitors' phones join the show**. Every show joins.
-2. To leave a show out (a slow one, say), open it, then **⚙ Show settings…** and turn off **Phones join this
-   show** under **Visitors' phones**.
-3. On your phone, open the visitors' link while a show's on and press **Join** in the bar at the top. The
-   screen goes dark with a warning that it will flash, and the colours fade in a few seconds later. **Leave**
-   at the bottom of the screen goes back to the page at any time.
-
-What phones show:
-
-- **Your house's main colour**, unless you say otherwise: the colours of every light that's on, mixed,
-  with brighter lights counting for more, and as bright as the brightest light. A dark house with one
-  bright prop shows that prop's colour, and when your lights fade, so do the phones.
-- **A show's own Phones lane**, if you'd rather design some or all of it: in **⚙ Show settings…**, press
-  **Add a Phones lane**. It appears under your lights in the timeline, with a **House colour** effect
-  across the whole show, so phones carry on showing the house's main colour. Replace or cut into it
-  wherever you want something of your own (a big chorus, say).
-  - The phone's screen is treated as a small upright [matrix](lights.md#matrices-panels-and-mega-trees) (54 × 96), so the Phones lane
-    takes matrix effects as well as light effects: **Fire**, **Plasma**, **Spiral**, **Scrolling text**
-    ("Merry Christmas!"; **Size: small** suits a phone), **Picture** for your pictures and GIFs from
-    **Library → Pictures**, and the rest. Light effects such as **Chase** run down the screen, as on a matrix.
-  - Each phone draws the lane itself, smoothly, with the same effects the editor uses. Around the
-    picture, the rest of the screen glows in its main colour.
-  - **House colour** is in the effect chooser's **Basics** on the Phones lane only. Phones show only
-    what's on the lane, and stay dark in its gaps. **Remove the Phones lane** goes back to the house's
-    main colour everywhere. ✨ **Generate** leaves the Phones lane alone.
-  - **Singing face** turns the phone into a singing character (14 to pick from, from a snowman
-    to a black cat, or one of your own [faces](build-a-show.md#faces)), whose mouth follows the singer (see the
-    [matrix effects](lights.md#matrices-panels-and-mega-trees)). On a phone the face is drawn four times finer
-    each way than the rest of the screen, so it's smooth rather than blocky.
-
-While you edit, a small phone in the top corner of the **House** panel shows the phone's screen at
-that moment, worked out just as the phones' colours are, and the **Preview** panel has a **Phones** row too. It shows while phones join the show (or it has a
-Phones lane); click it to fold it away, and again to bring it back.
-
-How it works:
-
-- Phones join whatever show is on, however it was started, and carry on from show to show. Between shows,
-  during playlist building blocks and scenes, the screen goes dark and says it's waiting for the next show.
-- The colours are worked out when you save a show. Shows saved before HA-liday Show 0.2.367 have none: they
-  show as out of date in **Check all shows** (and the pre-show check) until they're saved again; **Fix**
-  does it for you. Until then, **Join** doesn't show for them.
-- Phones don't need to be listening, or nearby: they only follow the lights. The listening timing
-  doesn't apply to screens, which light up straight away.
-- The screen stays on while joined, on phones that allow it. Phones set to reduce motion fade gently
-  between colours rather than flashing.
-- Every word visitors see while joining is on the **Words** tab, under **Joining the show**.
-
-### Words
+## Words
 
 Every message visitors read is on the **Words** tab, in groups: the top of the page, the list of
 shows, a visitor's own pick, opening hours, **Nearby only**, the flashing lights warning, the closed
@@ -384,85 +285,14 @@ on the **Look** tab.)
 - The same words are used when HA-liday Show itself turns a request down ("The queue is full…",
   "You're too far away…"), so visitors see your wording there too.
 
-### Visitors' queue
-
-What visitors get:
-
-- **A card at the top** of the page says what's on, with a bar showing how far through it is, and
-  **Listen** if listening is on. It stays in view as they scroll down the shows.
-- **Up next** under it lists everyone's waiting picks, with each show's cover art and name (never who
-  picked them) and roughly when each starts. The first three show, plus their own wherever it is, and **Show all**
-  opens the rest.
-- **If nothing's on**, each show has **Start** and their pick starts straight away. While something's
-  on (or others are waiting) the button says **Queue** instead.
-- **If something's on**, the card at the top tells them where they are in the queue and roughly how long
-  it'll be, such as "You're next, starting in about 2 minutes". Their picks are highlighted in **Up next**,
-  with **Cancel** beside each.
-- **During one of your playlists**, a visitor's pick plays after the show that's on (and any pause after
-  it), then your playlist carries on with its next show. A building block (a scene, colour, effect or Off)
-  doesn't hold a pick back: the pick plays straight away and the playlist carries on after. While a block
-  is on, the page shows your playlist's name, with no **Listen** button since there's no song. The button
-  still says **Start**, as it does over a scene. A scheduled playlist that's due to start waits until a
-  visitor's show has finished.
-- **A playlist** a visitor picks plays its shows through once, not round and round, without its
-  building blocks.
-- **The music** plays on the show's **Show speaker** (or your default one), as it does for playlists.
-  A show with no speaker plays its lights only, unless the
-  [Show player](play-it.md#music-with-no-speaker-the-show-player) is open.
-- **No repeats:** a show (or playlist) that's already waiting in the queue, or playing now, can't be
-  picked again until it's played. Its button says **Queued** or **On now** instead. This applies to
-  your own phone with the [Admin PIN](#admin-pin) too.
-- Visitors can't stop or skip anyone else's show.
-
-## Voting for what's next
-
-**How visitors pick**, at the top of the **Limits** page, is **Queue** (first come, first served, as
-above) or **Vote**. With **Vote**:
-
-- While a show plays, visitors see **Vote for what's next**, with a **Vote** button on each show and its
-  votes so far. The one ahead says **Winning**.
-- Each phone has one vote per round. Pressing another show moves it; pressing **Your vote** takes it back.
-- When the show ends, the one with the most votes plays next, and a new round starts. A tie goes to the
-  show that reached that number of votes first.
-- With nothing on, the first vote plays straight away, and the voting is for the one after.
-- When a show ends and nobody has voted, the lights rest until someone does.
-- **Same song again after**, opening hours (and finishing before closing time), **Nearby only** and rest
-  breaks work as they do for the queue. **Requests per phone**, **Queue length** and **Same phone again
-  after** don't apply, so they're hidden.
-- Your phone with the [Admin PIN](#admin-pin) still picks a show outright: it plays next, ahead of the votes.
-- The **Queue** page shows the votes so far. The words visitors read for voting are under **Words → Voting**.
-
-Keeping it fair, on the **Limits** page (with **Queue**; with **Vote**, only **Same song again after**):
-
-- **Requests per phone** is how many shows one phone can have waiting (1 to start with). Once a
-  visitor's show starts, they can pick another. It's a courtesy limit that someone determined could
-  get round; **Queue length** is the one that holds.
-- **Queue length** is how many shows can wait in all (5 to start with). When it's full, visitors are
-  asked to try again in a few minutes.
-- **Same song again after** (15 minutes to start with): once a song has played, nobody can pick that
-  song again for this long. Any other song is fine. It stops one favourite playing on a loop. Its button says
-  **Again in 12 minutes** (say) until then. Your admin phone isn't held to it. 0 turns it off.
-- **Same phone again after** (5 minutes to start with): once someone's song has played, their phone
-  waits this long before picking another. Other phones aren't affected. It stops one person keeping the
-  lights to themselves on a quiet night. Your admin phone doesn't wait. 0 turns it off.
-
-**Tonight**, under the queue on the **Queue** page, counts visitors' picks since midday, lists the most
-picked, and says how many phones are listening right now. It starts afresh when HA-liday Show restarts
-(an update, say).
-
-You stay in charge. Playing a show from the editor or an automation goes on straight away, and the
-visitors' queue carries on afterwards. **■ Stop** (or stopping the song on the speaker) stops
-everything and empties the queue, and so does **Clear the queue**. Turning off **Let visitors start
-shows** empties the queue too, and visitors see "No shows right now".
-
-### The public page's port
+## The public page's port
 
 The public page has its own port, **18099**, so nothing of the editor can be reached through it. The
 port opens the first time you turn on **Let visitors start shows**. If another app already uses 18099,
 pick another under **Public page port** on the app's **Configuration** tab in Home Assistant, then
 restart the app. With Docker or Python, set `HALIDAY_SHOW_PUBLIC_PORT` instead.
 
-### Reaching the page from outside your home
+## Reaching the page from outside your home
 
 Visitors' phones are usually on mobile data, not your Wi-Fi, so the page needs a web address the
 internet can reach. Whichever way you choose:
@@ -520,7 +350,7 @@ behind your login, so it can't show a public page.
 With Docker or Python, it's the same: point the tunnel or proxy at port 18099 on the machine
 HA-liday Show runs on.
 
-### Keeping it safe
+## Keeping it safe
 
 - **Only the visitors' page is on the public port.** Nothing there can reach the editor, your lights'
   settings or Home Assistant.
@@ -547,6 +377,9 @@ HA-liday Show runs on.
   only counts phones on your home network as at home, never a tunnel or proxy, even one running on
   the Home Assistant machine itself.
 
+<!-- nav: made by tools/check_guide.py -->
+
 ---
 
-[← Play it and playlists](play-it.md) · [Contents](README.md) · [Automations →](automations.md)
+← [Pre-show check](pre-show-check.md) · [Contents](README.md) · [Visitors' queue and voting](queue-and-voting.md) →
+<!-- /nav -->

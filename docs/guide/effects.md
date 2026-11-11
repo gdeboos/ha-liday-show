@@ -1,10 +1,8 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+<!-- The user guide is written here, a page per topic. tools/check_guide.py checks its links. -->
 
 # Effects
 
-[← Build a show](build-a-show.md) · [Contents](README.md) · [Play it and playlists →](play-it.md)
-
-## Effects
+Every effect, and how they're grouped.
 
 **Effects on a light** run along that light, from the plug end (or the other end with
 **Reverse**). In the effect chooser they're under headings: **Basics**, **Movement**, **Sparkle and
@@ -57,13 +55,13 @@ whole list from the palette and sets **Colours** to match.
 | Stacking blocks | Blocks drop from the far end and pile up until the light is full, then it fades and starts again |
 | Fill to a level | Lit up to a level that moves from **Level at the start** to **Level at the end** over the clip. The **Count down** preset empties it |
 | Morph | A band of light stretches from the start to the far end, then shrinks away into it, blending from the **Tail** colour to the **Head**. Set how many **Times in the clip** |
-| Drum hits | The light flashes on each hit of a **Drum** (**kick**, **snare**, **crash**, **hi-hat**, **kick and snare**, or **any drum**) in the song, fading over **Fade (seconds)**, each hit taking the next of two colours. **Hit** is a **flash** of the whole light, a **burst** spreading out from the middle, or a **sparkle**. It follows the drums found when the song was [split into parts](build-a-show.md#split-into-parts); without them it stays on the **Background** |
+| Drum hits | The light flashes on each hit of a **Drum** (**kick**, **snare**, **crash**, **hi-hat**, **kick and snare**, or **any drum**) in the song, fading over **Fade (seconds)**, each hit taking the next of two colours. **Hit** is a **flash** of the whole light, a **burst** spreading out from the middle, or a **sparkle**. It follows the drums found when the song was [split into parts](songs.md#split-into-parts); without them it stays on the **Background** |
 | Words | The light pulses on each word as it's sung, from the song's [lyrics](#lyrics-for-a-singing-face), staying lit while the word lasts and fading over **Fade (seconds)**, with a new colour each line. **Word** is a **flash**, a **burst** or a **sparkle**. Without lyrics it stays on the **Background** |
 | Music level | A level meter that follows the song: the light fills from green to red as the music gets louder, with a dot marking the last second's peak. **Rises from: the middle** fills outwards from the centre, and **Sensitivity** fills it further on quieter songs |
 
 **Effects on the House lane** run across all your lights at once, by where each one is on the
 house photo, like xLights' model effects. Add them the same way, by selecting a stretch of the
-House lane. They sit on top of each light's own effects, or mix with them (see [Mixing lanes with the lights](build-a-show.md#mixing-lanes-with-the-lights)).
+House lane. They sit on top of each light's own effects, or mix with them (see [Mixing lanes with the lights](show-editor.md#mixing-lanes-with-the-lights)).
 
 | Effect | What it does |
 | --- | --- |
@@ -94,7 +92,7 @@ House lane. They sit on top of each light's own effects, or mix with them (see [
   by itself, but a show started from an automation needs saving again after you retrace a light
   (any edit with Auto save on does it).
 
-#### On a matrix
+## On a matrix
 
 These are made for matrices (see *Matrices* under *1. Devices*). They're in the effect chooser under
 **On a matrix**. On a matrix they're drawn across the whole grid, so **Runs** doesn't apply; on a
@@ -111,9 +109,9 @@ them; an Advanced scene can.
 | Fire | Flames rising from the bottom of the matrix, each column flickering to its own height. Up to 8 colours from the base to the tips, a **Speed** and a **Flame height** |
 | Snowfall | Flakes falling down each column at their own pace, gliding from LED to LED. **Style: rain** falls straight, with a streak above each drop. Set **How many** and **Speed** |
 | Music bars | A bar per column rising from the bottom with the song's loudness, each a different height, green to red. Like **Music level**, it needs the show's song, and isn't offered in scenes |
-| Singing face | A cartoon **Character** (a snowman, pumpkin, gingerbread person, Santa, ghost, reindeer, elf, Christmas tree, penguin, robin, teddy bear, skull, witch or black cat) whose mouth opens and closes with the singer, on a **Background** colour, at a **Size** of the matrix. The mouth takes the shape the singing sounds like (a tall "ah", a round "oo", a wide "ee" with teeth, or shut), snaps open on each word and closes between them. **Mouth sensitivity** opens it on quieter singing (higher) or only on loud notes (lower). **Blinks, glances and bobs** makes the character blink now and then, glance about and bob with the music; turn it **off** for a still face. If you've used [Split into parts](build-a-show.md#split-into-parts) on the song, the mouth follows the vocals; otherwise it follows the voice range of the song itself, which works well when the singing stands out. HA-liday Show measures the singer the first time the show is saved with a Singing face, and again if its song changes. With the clip selected, **Mouth** says what it follows (the lyrics, the vocals or the song), and **Measure again** measures it afresh, after you've split the song into parts, say. To make your own character, see [Faces](build-a-show.md#faces). For the mouth to sing the actual words, press **Lyrics…** (see [Lyrics for a Singing face](#lyrics-for-a-singing-face)). It suits a phone's screen (see [Phones join the show](public-page.md#phones-join-the-show)) as well as your matrices |
+| Singing face | A cartoon **Character** (a snowman, pumpkin, gingerbread person, Santa, ghost, reindeer, elf, Christmas tree, penguin, robin, teddy bear, skull, witch or black cat) whose mouth opens and closes with the singer, on a **Background** colour, at a **Size** of the matrix. The mouth takes the shape the singing sounds like (a tall "ah", a round "oo", a wide "ee" with teeth, or shut), snaps open on each word and closes between them. **Mouth sensitivity** opens it on quieter singing (higher) or only on loud notes (lower). **Blinks, glances and bobs** makes the character blink now and then, glance about and bob with the music; turn it **off** for a still face. If you've used [Split into parts](songs.md#split-into-parts) on the song, the mouth follows the vocals; otherwise it follows the voice range of the song itself, which works well when the singing stands out. HA-liday Show measures the singer the first time the show is saved with a Singing face, and again if its song changes. With the clip selected, **Mouth** says what it follows (the lyrics, the vocals or the song), and **Measure again** measures it afresh, after you've split the song into parts, say. To make your own character, see [Faces](pictures-and-faces.md#faces). For the mouth to sing the actual words, press **Lyrics…** (see [Lyrics for a Singing face](#lyrics-for-a-singing-face)). It suits a phone's screen (see [Phones join the show](visitors-phones.md#phones-join-the-show)) as well as your matrices |
 
-#### Lyrics for a Singing face
+## Lyrics for a Singing face
 
 To make a Singing face mouth the actual words, select its clip and press **Lyrics…** under **Mouth**,
 or open the song in the Music editor and press **Lyrics…** under **Beats and sections**.
@@ -129,7 +127,7 @@ read and type the words meanwhile, and placing them or pressing **Save** waits u
    - **Line up with the singing** (**AI**): an AI listens to the song's vocals and places every line and
      word where it's actually sung. The window shows how far along it is, with **Cancel**. The first
      time, your browser downloads it (about 95 MB). It takes about a minute or two for a song, in your
-     browser. It works best once the song is [split into parts](build-a-show.md#split-into-parts), as it then hears the
+     browser. It works best once the song is [split into parts](songs.md#split-into-parts), as it then hears the
      singing on its own; it understands English songs. It needs the song's words, in order: a chorus
      sung three times needs pasting three times.
    - **Spread them out** (instant, no AI): places the lines across the singing, each word taking longer
@@ -172,9 +170,9 @@ Once a show's song has lyrics, the Show editor's timeline shows them along the b
 lane, each word where it's sung, so you can line effects up with the words. Click a word to move the
 playhead to it. They're only shown there: you place them in the Music editor.
 
-#### Group lanes
+## Group lanes
 
-Each [light group](lights.md#light-groups) has a lane under **House**, named after it. Press the **▸** before **House** to fold
+Each [light group](organising-lights.md#light-groups) has a lane under **House**, named after it. Press the **▸** before **House** to fold
 all the group lanes away under it, and **▾** to bring them back. Folding is remembered in your browser, and
 a stretch selected across lights leaves folded tracks out. Select a stretch of it and
 press **＋ Add effect…**, and the chooser has two kinds:
@@ -194,6 +192,9 @@ puts light effects on the lights and House effects on the House lane, as before.
 updates the saved shows that use group lanes, so automations and playlists play it straight away.
 Shared shows don't carry group lanes, because the groups are yours.
 
+<!-- nav: made by tools/check_guide.py -->
+
 ---
 
-[← Build a show](build-a-show.md) · [Contents](README.md) · [Play it and playlists →](play-it.md)
+← [The Show editor](show-editor.md) · [Contents](README.md) · [Playing shows and playlists](playing.md) →
+<!-- /nav -->

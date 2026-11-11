@@ -1,10 +1,10 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+<!-- The user guide is written here, a page per topic. tools/check_guide.py checks its links. -->
 
 # Speakers
 
-[← Your lights](lights.md) · [Contents](README.md) · [Your house →](house.md)
+Where the music plays.
 
-## 2. Speakers
+![Setup → Speakers](../images/guide/speakers.webp)
 
 The song can play on any Home Assistant media player that can play files from the media folder.
 Speakers are added on the **Speakers** tab first, and only those are offered in the editor.
@@ -17,9 +17,9 @@ Speakers are added on the **Speakers** tab first, and only those are offered in 
 - **Delay ms** is how late the speaker really starts after it reports playing. Raise it if the
   lights run ahead of the music (often 100 to 500 ms for Wi-Fi speakers).
 - **Default show speaker** is where shows play when started from an automation, unless a show picks
-  its own (see [Play it](play-it.md#5-play-it)).
+  its own (see [Play it](playing.md)).
 
-### Late at night
+## Late at night
 
 For the neighbours. Under **Late at night**, set **From** (empty means off) and **Until** (07:00 to start
 with), then what **The speaker** does in between:
@@ -31,6 +31,9 @@ with), then what **The speaker** does in between:
 
 It covers everything that plays on a speaker: visitors' picks, playlists, the schedule and automations.
 
+<!-- nav: made by tools/check_guide.py -->
+
 ---
 
-[← Your lights](lights.md) · [Contents](README.md) · [Your house →](house.md)
+← [Parts, groups, roles and seasons](organising-lights.md) · [Contents](README.md) · [Your house](house.md) →
+<!-- /nav -->

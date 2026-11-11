@@ -1,13 +1,15 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+<!-- The user guide is written here, a page per topic. tools/check_guide.py checks its links. -->
 
-# The editor, settings and your data
+# Settings and your data
 
-[← Automations](automations.md) · [Contents](README.md) · [Labs and experiments →](labs.md)
+Arrange the editor, change settings, and export or import everything.
 
 ## Arrange the editor
 
 The Show, Music and Playlist editors are all made of panels you can arrange, and each editor keeps its
 own arrangement:
+
+![Setup → Editors](../images/guide/settings.webp)
 
 | Editor | Panels | Can't be hidden |
 | --- | --- | --- |
@@ -64,10 +66,10 @@ picked speaker's delay, and the exact `hassio.app_stdin` input for the open show
 | Tab | What's there |
 | --- | --- |
 | **Editors** | Pick **Show**, **Music** or **Playlist**, then that editor's page layout, where every panel sits (including hidden ones) and its **Reset** button. |
-| **Live music** | What a WLED with a microphone hears (see [Live music](play-it.md#live-music)). |
-| **AI** | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](#setting-up-the-ai)). |
+| **Live music** | What a WLED with a microphone hears (see [Live music](live-music.md)). |
+| **AI** | Which AI the ✨ features use (**Describe it**, Generate's **AI** option and the rest), or how to set one up (see [Setting up the AI](ai.md)). |
 | **Your data** | **Export…**, **Import…** and **Start afresh…**, and the copies kept before an import or a fresh start (see [Your data](#your-data)). |
-| **More** | **Public page**: **Let visitors start shows**, which adds the **Public page** tab (see [The public page](public-page.md#the-public-page)). **Setup guide**: **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](getting-started.md#quick-start)). **Demo**: **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](getting-started.md#the-demo)). **Experimental**: **Show the Labs tab**. |
+| **More** | **Public page**: **Let visitors start shows**, which adds the **Public page** tab (see [The public page](public-page.md)). **Setup guide**: **Run the setup guide**, the step-by-step window that opens on a fresh install (see [Quick start](getting-started.md#quick-start)). **Demo**: **Try the demo** on a fresh install, or **Remove the demo** (see [The demo](getting-started.md#the-demo)). **Experimental**: **Show the Labs tab**. |
 
 **Labs** is a tab under **Setup** for working out new ways to drive Govee lights. It's hidden until you
 turn on **Show the Labs tab** under **More → Experimental**; that's saved in this browser, so each computer or
@@ -81,6 +83,8 @@ phone has its own. It holds:
 ## Your data
 
 **Setup → Your data** puts everything HA-liday Show saves in one file, and back:
+
+![Setup → Your data](../images/guide/your-data.webp)
 
 - **Export…** downloads a `.zip` of your lights (with their parts and groups), shows (archived ones
   too), scenes, palettes, presets, playlists, the schedule, settings (the public page's and your
@@ -123,64 +127,9 @@ one, so you install **HA-liday Show** alongside the old one:
 
 The copy only happens once, and only if **HA-liday Show** has no lights or shows of its own yet.
 
-## Setting up the AI
-
-HA-liday Show uses AI in two places, and **Setup → AI** shows both: what each feature uses, where it
-runs and whether it's ready. Nothing needs AI: without it, everything still works from simple rules.
-
-**In this browser.** These run on your computer, free, and your songs never leave the house:
-
-| Feature | Model |
-|---|---|
-| [Split into parts](build-a-show.md#split-into-parts) (vocals, drums, bass and the rest) | 126 MB |
-| Sounds in a song (bells, a choir, brass…) | 16 MB |
-| [Line up with the singing](effects.md#lyrics-for-a-singing-face) | 95 MB |
-| Section notes (optional, see below) | 1.2 GB |
-
-Each model is downloaded the first time it's used and kept by your browser. To have them ready ahead of
-time, press **Download** on a row, or **Download all models**; a row shows **✓ Downloaded** once your browser
-has it, and the card at the top says how many it has. **Remove them from this browser** frees the space
-(they're downloaded again when next used). A browser can only keep them when HA-liday Show is open over
-https (as it is through Home Assistant's own address). Otherwise each is downloaded when it's used, and
-the rows say so.
-
-**Claude or Home Assistant's AI.** **Describe it**, **✨ Generate my show** with the AI's ideas, section
-names, song colours, **✨ Make presets**, **✨ Make palettes** and the AI's pick of
-[suggested cuts](build-a-show.md#suggest-cuts) need one of these:
-
-- **Claude, with your own API key.** Create a key at console.anthropic.com, then in Home Assistant open
-  **Settings → Apps → HA-liday Show → Configuration**, paste it into **Claude API key** and save.
-  Each request costs a few US cents on your Anthropic account (it uses Claude Opus 5.5 at low effort).
-- **Home Assistant's AI Task**, which uses whichever AI integration you've set up there with an AI Task
-  entity: Anthropic, OpenAI, Google Gemini, or a local model through Ollama, which keeps everything on
-  your network. If you have several, set **AI Task entity** on the Configuration tab, or Home Assistant's
-  preferred one is used. Smaller local models may follow the instructions less well.
-
-With a key and no AI Task, Claude is used; with only an AI Task, Home Assistant's. With both, **Use**
-under **Claude or Home Assistant's AI** picks which (Claude, unless you change it). The AI is sent your
-lights' names and segment counts, the effect list, the song's tempo, beats and sections, your palettes,
-the selection and the effects already on the lights (for suggested cuts: the song's name, sections, notes
-and marks, and the cuts found). It's never sent the song itself.
-
-### Section notes on this device
-
-The section notes that **Detect** and **✨ Describe sections** write can come from a small AI model that
-runs in your browser instead, so nothing about your songs leaves the house and there's nothing to pay.
-Under **Setup → AI**, on the **Section notes** row, press **Download** (1.2 GB). It's a one-off download
-(HA-liday Show fetches it and checks it, then your browser keeps it), and it needs a recent browser and
-graphics chip: Chrome or Edge on a computer. The row says if yours can't run it, and **Remove** frees the
-space again.
-
-The picker on that row chooses which writes them when both are there: **This browser** (the default,
-once the model is downloaded in this browser) or **Claude or HA's AI**. The model writes the notes one
-section at a time from what was found in each; it doesn't rename sections, which only Claude or Home
-Assistant does. The first time in a session it takes a little while to load. Without the model or an AI,
-the notes are written from simple rules.
-The AI in your browser does one thing at a time on the graphics chip, so notes being written, a song
-being split and words being lined up wait for each other rather than running together.
-While it downloads, HA-liday Show keeps its own copy in its temporary folder until it next restarts, so
-the Home Assistant machine needs about 1.2 GB free for a while.
+<!-- nav: made by tools/check_guide.py -->
 
 ---
 
-[← Automations](automations.md) · [Contents](README.md) · [Labs and experiments →](labs.md)
+← [Dashboard cards](dashboard-cards.md) · [Contents](README.md) · [Setting up the AI](ai.md) →
+<!-- /nav -->

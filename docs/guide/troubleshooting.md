@@ -1,10 +1,8 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+<!-- The user guide is written here, a page per topic. tools/check_guide.py checks its links. -->
 
-# Troubleshooting and storage
+# Troubleshooting
 
-[← Labs and experiments](labs.md) · [Contents](README.md) · [Running without Home Assistant →](without-home-assistant.md)
-
-## Troubleshooting
+When something's not right, and where things are kept.
 
 Something wrong, or not as you expected? **Report a problem…** at the bottom of the **Help** panel (or
 **Report this** beside an error message in the top bar) opens a short window: say what went wrong, then
@@ -41,6 +39,9 @@ they are included in Home Assistant backups. Uploaded songs go to `/media/halida
 players can play them. The editor layout, the editing speaker, the song volume, the Show player's light offset,
 **Show the Labs tab** and a few other editor choices (such as **Snap**, zoom and **Loop**) are kept in each browser.
 
+<!-- nav: made by tools/check_guide.py -->
+
 ---
 
-[← Labs and experiments](labs.md) · [Contents](README.md) · [Running without Home Assistant →](without-home-assistant.md)
+← [Setting up the AI](ai.md) · [Contents](README.md) · [Running without Home Assistant](without-home-assistant.md) →
+<!-- /nav -->
