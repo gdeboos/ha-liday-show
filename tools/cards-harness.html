@@ -1,0 +1,135 @@
+<!doctype html>
+<!-- The dashboard cards outside Home Assistant, for tools/screenshots.py: a stand-in `hass` built from
+     the running app's own data, and simple stand-ins for Home Assistant's ha-card and ha-icon.
+     tools/screenshots.py serves this page, the cards (/cards/), the app (/app/) and the house drawing
+     code (/api/haliday_show/js/). Nothing here is used by the real integration. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --primary-color: #009ac7; --text-primary-color: #fff; --accent-color: #ff9800;
+    --primary-text-color: #141414; --secondary-text-color: #5e5e5e; --disabled-text-color: #bdbdbd;
+    --card-background-color: #fff; --secondary-background-color: #eceef0; --divider-color: #e0e0e0;
+    --success-color: #43a047; --warning-color: #ffa600; --error-color: #db4437; --state-icon-color: #44739e;
+    --ha-card-border-radius: 12px;
+    font-family: Roboto, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  body { margin: 0; padding: 24px; background: #f0f2f4; color: var(--primary-text-color); }
+  .wrap { width: var(--w, 420px); margin-bottom: 24px; }
+</style>
+</head>
+<body>
+<div id="cards"></div>
+<script type="module">
+const ICONS = await (await fetch("/icons.json")).json();
+const app = (path, init) => fetch("/app" + path, init).then((r) => r.json());
+
+customElements.define("ha-card", class extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" }).innerHTML = `<style>:host { display: block; background: var(--card-background-color);
+      border-radius: var(--ha-card-border-radius); border: 1px solid var(--divider-color); color: var(--primary-text-color); }</style><slot></slot>`;
+  }
+});
+customElements.define("ha-icon", class extends HTMLElement {
+  static get observedAttributes() { return ["icon"]; }
+  connectedCallback() { this.draw(); }
+  attributeChangedCallback() { this.draw(); }
+  draw() {
+    const size = "var(--mdc-icon-size, 24px)";
+    this.style.display = "inline-flex";
+    this.innerHTML = `<svg viewBox="0 0 24 24" style="width:${size};height:${size};fill:currentColor"><path d="${ICONS[this.getAttribute("icon")] || ""}"/></svg>`;
+  }
+});
+
+// The scene the stand-in's light is on, and what's playing: set by screenshots.py through the URL.
+const q = new URLSearchParams(location.search);
+const lib = await app("/api/integration/library");
+const scenes = await app("/api/house-scenes");
+const shows = (lib.shows || []).map((s) => s.name);
+const now = new Date();
+const tonight = new Date(now); tonight.setHours(17, 0, 0, 0);
+if (tonight < now) tonight.setDate(tonight.getDate() + 1);
+const slug = (n) => n.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+const playing = lib.shows?.[0];
+const art = playing && (await fetch(`/app/api/integration/image/${playing.id}`)).ok ? `/app/api/integration/image/${playing.id}` : null;
+
+const states = {};
+const put = (id, state, attributes = {}) => { states[id] = { entity_id: id, state, attributes, last_changed: now.toISOString() }; };
+put("media_player.ha_liday_show", playing ? "playing" : "idle", {
+  friendly_name: "HA-liday Show", media_title: playing?.song || "Sample song", media_artist: playing?.name,
+  media_duration: 128, media_position: 41, media_position_updated_at: now.toISOString(),
+  entity_picture: art, source_list: shows, source: playing?.name,
+  visitor_pick: true });
+put("sensor.ha_liday_show_next_on_the_schedule", tonight.toISOString(), { name: "Evening shows" });
+put("sensor.ha_liday_show_status", playing ? playing.name : "idle", {});
+const sceneIds = scenes.map((s) => `scene.ha_liday_show_${slug(s.name)}`);
+scenes.forEach((s, i) => put(sceneIds[i], "2026-11-10T17:00:00+00:00", {
+  scene_name: s.name, friendly_name: s.name, colours: [["#d6001c", "#ffb000", "#1f8f3a", "#f2f2f2"], ["#d6001c", "#ffffff"]][i % 2] }));
+put("light.ha_liday_show", "on", { effect: scenes[0]?.name, effect_list: scenes.map((s) => s.name), brightness: 204 });
+put("binary_sensor.ha_liday_show_visitors_page_open", "on", { switched_on: true, link: "https://lights.example.com/?c=4k7q" });
+put("switch.ha_liday_show_visitors_page", "on", { link: "https://lights.example.com/?c=4k7q" });
+put("sensor.ha_liday_show_visitors_waiting", "2", { mode: "queue", picks: shows.slice(0, 2).concat(["Jingle bell rock"]).slice(0, 2) });
+put("sensor.ha_liday_show_phones_listening", "3", {});
+put("sensor.ha_liday_show_last_pre_show_check", "ok", { checked: new Date(now - 3600e3).toISOString(), problems: 0, warnings: 0 });
+put("select.ha_liday_show_show", playing?.name || "", { options: shows });
+put("select.ha_liday_show_playlist", "", { options: (lib.playlists || []).map((p) => p.name) });
+
+const entities = {
+  player: "media_player.ha_liday_show", next: "sensor.ha_liday_show_next_on_the_schedule", status: "sensor.ha_liday_show_status",
+  light: "light.ha_liday_show", page_open: "binary_sensor.ha_liday_show_visitors_page_open", page: "switch.ha_liday_show_visitors_page",
+  queue: "sensor.ha_liday_show_visitors_waiting", listening: "sensor.ha_liday_show_phones_listening",
+  preshow: "sensor.ha_liday_show_last_pre_show_check", show: "select.ha_liday_show_show", playlist: "select.ha_liday_show_playlist",
+  scenes: sceneIds, seasons: [],
+};
+
+const signed = { "/api/haliday_show/qr": "/app/api/integration/qr.svg", "/api/haliday_show/house_photo": "/app/api/house/photo" };
+const hass = {
+  states, user: { is_admin: true }, language: "en", locale: { language: "en-GB" }, themes: { darkMode: false },
+  async callService() {},
+  async callWS(msg) {
+    switch (msg.type) {
+      case "haliday_show/entities": return entities;
+      case "haliday_show/library": return lib;
+      case "haliday_show/schedule": return app("/api/integration/schedule");
+      case "haliday_show/preshow/run": return app("/api/integration/preshow", { method: "POST" });
+      case "haliday_show/house": {
+        const [house, devices] = await Promise.all([app("/api/house"), app("/api/devices")]);
+        return { house: { paths: house.paths, styles: house.styles, pins: house.pins, dim: house.dim, photo: house.photo }, devices };
+      }
+      case "auth/sign_path": {
+        const m = msg.path.match(/^\/api\/haliday_show\/image\/(.+)$/);
+        return { path: m ? `/app/api/integration/image/${m[1]}` : signed[msg.path] };
+      }
+    }
+    throw new Error(`no stand-in for ${msg.type}`);
+  },
+  connection: {
+    async subscribeMessage(cb) {
+      const tick = async () => cb(await app("/api/player/frame"));
+      await tick();
+      const t = setInterval(tick, 150);
+      return () => clearInterval(t);
+    },
+  },
+};
+
+await import("/cards/cards.js");
+const holder = document.getElementById("cards");
+for (const tag of (q.get("cards") || "").split(",").filter(Boolean)) {
+  const [name, width] = tag.split("@");
+  const wrap = document.createElement("div");
+  wrap.className = "wrap";
+  wrap.id = name;
+  if (width) wrap.style.setProperty("--w", `${width}px`);
+  const card = document.createElement(`haliday-show-${name}-card`);
+  card.setConfig({});
+  card.hass = hass;
+  wrap.append(card);
+  holder.append(wrap);
+}
+window.ready = true;
+</script>
+</body>
+</html>

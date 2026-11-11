@@ -9,6 +9,10 @@ commit the pictures that changed.
     python tools/screenshots.py        # every picture
     python tools/screenshots.py house songs   # only these (names without .webp)
 
+The dashboard cards (card-*.webp) are drawn by tools/cards-harness.html with a stand-in Home Assistant built
+from the app's own data. Their icons come from tools/mdi-icons.json (paths from @mdi/js, Apache 2.0): a
+card given a new icon needs its path added there, or the icon is drawn blank.
+
 Each picture's name is its function's name in SHOTS below. Pages in docs/guide/ show one with
 ![What it shows](../images/guide/<name>.webp).
 """
@@ -211,9 +215,55 @@ async def visitors_page(ctx, phone):
     await shot(page, "visitors-page")
 
 
+async def dashboard_cards(ctx, phone):
+    """The Home Assistant dashboard cards, drawn by tools/cards-harness.html with a stand-in Home Assistant."""
+    shows = api("GET", "/api/shows")
+    api("PUT", "/api/schedule", [
+        {"id": "evening", "play": {"type": "show", "id": shows[0]["id"]}, "on": True, "start": "17:00", "end": "22:00",
+         "days": [0, 1, 2, 3, 4, 5, 6], "from": "", "to": ""},
+        {"id": "daytime", "play": {"type": "scene", "id": api("GET", "/api/house-scenes")[0]["id"]}, "on": True,
+         "start": "15:30", "end": "17:00", "days": [5, 6], "from": "", "to": ""}])
+    api("POST", "/api/player/play", {"show": shows[0]["id"], "position": 30})
+    frontend = ROOT / "custom_components" / "haliday_show" / "frontend"
+    drawing = ROOT / "haliday_show" / "app" / "halidayshow" / "static" / "js"
+
+    async def serve(route):
+        path = route.request.url.split("ha.test", 1)[1]
+        local = path.split("?", 1)[0]
+        if local.startswith("/app/"):
+            got = await ctx.request.fetch(BASE + path[4:], method=route.request.method)
+            await route.fulfill(status=got.status, headers=got.headers, body=await got.body())
+            return
+        file = {"/": ROOT / "tools" / "cards-harness.html", "/icons.json": ROOT / "tools" / "mdi-icons.json"}.get(local)
+        if local.startswith("/cards/"):
+            file = frontend / local[len("/cards/"):]
+        elif local.startswith("/api/haliday_show/js/"):
+            file = drawing / local[len("/api/haliday_show/js/"):]
+            if not file.exists():
+                file = drawing.parent / local[len("/api/haliday_show/js/"):]
+        if not file or not file.exists():
+            await route.fulfill(status=404, body="")
+            return
+        kind = {".js": "text/javascript", ".json": "application/json", ".svg": "image/svg+xml"}.get(file.suffix, "text/html")
+        await route.fulfill(status=200, content_type=kind, body=file.read_bytes())
+
+    await ctx.route("http://ha.test/**", serve)
+    page = await ctx.new_page()
+    try:
+        cards = ["player@420", "browse@560", "scenes@420", "schedule@560", "visitors@420", "house@560"]
+        await page.goto("http://ha.test/?cards=" + ",".join(cards))
+        await page.wait_for_function("window.ready === true", timeout=20000)
+        await page.wait_for_timeout(5000)
+        for name in cards:
+            name = name.split("@")[0]
+            await shot(page, f"card-{name}", f"#{name}")
+    finally:
+        api("POST", "/api/player/stop", {})
+
+
 SHOTS = [library_shows, library_songs, library_phone, devices, add_light, house, speakers, schedule,
          playlists, scenes, scene_editor, palettes, presets, faces, public_setup, settings, ai, your_data, live_music,
-         help_panel, pre_show_check, show_editor, music_editor, visitors_page]
+         help_panel, pre_show_check, show_editor, music_editor, visitors_page, dashboard_cards]
 CODE = ""
 
 
