@@ -166,6 +166,20 @@ prop, so **Round the shape** and **Out from the middle** work on a bit too. **Ge
 bits looks of their own, as they do parts. A shared show carries each bit's lane by name, and suggests
 your prop of the same shape when it's imported.
 
+### Singing faces on props
+
+A face prop (a singing snowman, a Santa or a pumpkin made of pixels) can sing along. Its xLights model
+usually brings the face with it: importing it sets up the mouth shapes and eyes from the model's face
+settings, each as a bit. To set one up by hand, make a bit for each mouth shape the prop has and one for
+its eyes (see *Bits* above), then open **Singing face** under the bits and pick the bit for each **Mouth**
+shape (closed, A and I, O, E and so on) and tick the **Eyes**. A prop needs only a few: a closed mouth and
+one open one will do.
+
+Then add **Prop's singing face** to the prop's own lane in the Show editor. The mouth follows the singer,
+and the words themselves once you've added the song's lyrics (see
+[Lyrics for a Singing face](effects.md#lyrics-for-a-singing-face)). Any of the prop's LEDs that aren't a
+mouth or the eyes are its outline, lit all the time.
+
 Put it on the house photo with the **Its shape** style (see [Your house](house.md)), and pick how each
 effect plays on it with **Runs** (see [The Show editor](show-editor.md)). Choose **None: a line of
 lights** to turn it back into a plain strip; its clips stay in your shows.

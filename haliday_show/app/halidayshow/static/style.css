@@ -1833,3 +1833,4 @@ table.ai-uses td:last-child button { margin: 2px 4px 2px 0; }
 .shape-fields .shape-pic.picking { cursor: crosshair; outline: 2px solid var(--accent); }
 .shape-fields .bits-list { display: flex; flex-direction: column; gap: 6px; }
 .shape-fields .bits-list > button { align-self: flex-start; }
+.shape-fields .face-map { margin-top: 4px; } .shape-fields .face-rows { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }

@@ -701,6 +701,22 @@ def _clean_bits(bits, leds: int) -> list:
     return clean
 
 
+FACE_MOUTHS = ("rest", "AI", "E", "etc", "FV", "L", "MBP", "O", "U", "WQ")
+
+
+def _clean_prop_face(face, bits: list) -> dict | None:
+    """A shaped prop's singing face (static/js/shapes.js): which of its bits is each mouth shape, and
+    which are its eyes. Bits that are gone are left out; with nothing left, there's no face."""
+    if not isinstance(face, dict):
+        return None
+    ids = {b["id"] for b in bits}
+    mouth = face.get("mouth") if isinstance(face.get("mouth"), dict) else {}
+    mouth = {k: str(mouth[k]) for k in FACE_MOUTHS if str(mouth.get(k)) in ids}
+    eyes = face.get("eyes") if isinstance(face.get("eyes"), list) else []
+    eyes = list(dict.fromkeys(str(e) for e in eyes if str(e) in ids))[:8]
+    return {"mouth": mouth, "eyes": eyes} if mouth or eyes else None
+
+
 def _clean_device(d: dict) -> dict:
     """A device with no IP is planned: it has tracks in shows but nothing to send to yet."""
     ip = str(d.get("ip") or "").strip()
@@ -769,6 +785,9 @@ def _clean_device(d: dict) -> dict:
         bits = _clean_bits(d.get("bits"), segments)
         if bits:
             extra["bits"] = bits
+        face = _clean_prop_face(d.get("face"), bits)
+        if face:
+            extra["face"] = face
         if d.get("parts"):
             raise web.HTTPBadRequest(text="a shaped prop has bits rather than parts")
     try:

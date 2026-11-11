@@ -177,3 +177,51 @@ test("share files carry a shaped prop's kind and its bits' lanes", () => {
   const other = myLights([{ ...star, id: "w", shape: builtInShape("circle", {}), segments: 50, bits: undefined }])[0];
   assert.ok(score(theirs, mine).score > score(theirs, other).score);
 });
+
+import { faceRoles, mouthShape } from "../../haliday_show/app/halidayshow/static/js/shapes.js";
+import { setVoiceLevels } from "../../haliday_show/app/halidayshow/static/js/effects.js";
+
+test("an xLights face comes in as bits and a face", () => {
+  const xml = `<custommodel name="Face" parm1="4" parm2="2" CustomModel="1,2,3,4;5,6,7,8">
+<faceInfo Name="Singing" Type="NodeRange" Mouth-AI="5-8" Mouth-rest="6-7" Mouth-O="5,8" Eyes-Open="1,4" FaceOutline="2-3" />
+</custommodel>`;
+  const m = parseXmodel(xml);
+  const byId = Object.fromEntries(m.bits.map((b) => [b.id, b]));
+  assert.deepEqual(byId[m.face.mouth.AI].leds, [4, 5, 6, 7]);
+  assert.deepEqual(byId[m.face.mouth.rest].leds, [5, 6]);
+  assert.deepEqual(byId[m.face.eyes[0]].leds, [0, 3]);
+  assert.equal(m.face.mouth.E, undefined);
+});
+
+test("the mouth shown is the nearest the prop has, shut when quiet", () => {
+  const has = new Set(["rest", "AI", "O"]);
+  assert.equal(mouthShape(has, "a", 0.8), "AI");
+  assert.equal(mouthShape(has, "o", 0.8), "O");
+  assert.equal(mouthShape(has, "e", 0.8), "AI");
+  assert.equal(mouthShape(has, "a", 0.05), "rest");
+  assert.equal(mouthShape(has, "m", 0.9), "rest");
+  assert.equal(mouthShape(new Set(["MBP", "AI"]), "m", 0.9), "MBP");
+});
+
+test("Prop's singing face opens the mouth with the singer and keeps the outline lit", () => {
+  const shape = { w: 4, h: 2, cells: [0, 1, 2, 3, 4, 5, 6, 7], source: "xmodel", params: {} };
+  const light = { id: "f", segments: 8, shape,
+    bits: [{ id: "o", name: "Open", leds: [4, 5, 6, 7] }, { id: "c", name: "Shut", leds: [5, 6] }, { id: "e", name: "Eyes", leds: [0, 3] }],
+    face: { mouth: { AI: "o", rest: "c" }, eyes: ["e"] } };
+  assert.equal(faceRoles(light).has.size, 2);
+  const clip = { ...newClip("propface", 0, 10), life: "off" };
+  const tracks = { f: { device: "f", clips: [clip] } };
+  const at = (out, i) => [...out.slice(i * 3, i * 3 + 3)];
+  // Singing loudly from 1 s, silent before.
+  setVoiceLevels({ fps: 10, values: Array.from({ length: 100 }, (_, k) => (k >= 10 ? 90 : 0)) });
+  try {
+    let out = composeLight(light, (id) => tracks[id], 0.5);
+    assert.deepEqual(at(out, 1), [255, 255, 255]); // outline
+    assert.deepEqual(at(out, 0), [0x3f, 0xa0, 0xff]); // eye
+    assert.deepEqual(at(out, 5), [255, 0x30, 0x30]); // shut mouth
+    assert.deepEqual(at(out, 4), [0, 0, 0]); // open mouth's own LEDs off
+    out = composeLight(light, (id) => tracks[id], 3);
+    assert.deepEqual(at(out, 4), [255, 0x30, 0x30]); // open
+    assert.deepEqual(at(out, 5), [255, 0x30, 0x30]); // shared with the open mouth
+  } finally { setVoiceLevels(null); }
+});

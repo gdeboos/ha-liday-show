@@ -323,23 +323,27 @@ export function parseXmodel(text) {
     const r = rasterise(order.map((i) => pos[i]));
     shape = { w: r.w, h: r.h, cells: r.cells.map((k) => (k < 0 ? -1 : order[k])) };
   }
+  // Node ranges ("1-10,15"), as 0-based LEDs.
+  const ranges = (value) => {
+    const set = new Set();
+    for (const range of value.split(",")) {
+      const [a, b] = range.trim().split("-").map((x) => parseInt(x, 10));
+      if (!(a > 0)) continue;
+      for (let k = a; k <= (b >= a ? b : a) && k <= leds; k++) set.add(k - 1);
+    }
+    return [...set].sort((a, b) => a - b);
+  };
   const bits = [];
   for (const m of doc.matchAll(/<\s*subModel\b([^>]*)\/?>/gi)) {
     if ((attr(m[1], "type") || "ranges") !== "ranges") continue;
-    const set = new Set();
-    for (const [, value] of m[1].matchAll(/\bline\d+\s*=\s*"([^"]*)"/gi)) {
-      for (const range of value.split(",")) {
-        const [a, b] = range.trim().split("-").map((s) => parseInt(s, 10));
-        if (!(a > 0)) continue;
-        for (let k = a; k <= (b >= a ? b : a) && k <= leds; k++) set.add(k - 1);
-      }
-    }
-    if (set.size && bits.length < MAX_BITS) {
+    const got = [...m[1].matchAll(/\bline\d+\s*=\s*"([^"]*)"/gi)].flatMap(([, value]) => ranges(value));
+    if (got.length && bits.length < MAX_BITS) {
       bits.push({ id: `b${bits.length + 1}`, name: (attr(m[1], "name") || `Bit ${bits.length + 1}`).slice(0, 64),
-        leds: [...set].sort((a, b) => a - b) });
+        leds: [...new Set(got)].sort((a, b) => a - b) });
     }
   }
-  return { name, shape: { ...shape, source: "xmodel", params: {} }, bits, leds };
+  const face = xmodelFace(doc, attr, ranges, bits);
+  return { name, shape: { ...shape, source: "xmodel", params: {} }, bits, leds, ...(face ? { face } : {}) };
 }
 export const MAX_BITS = 64;
 
@@ -412,4 +416,65 @@ export function newBit(bits) {
   let n = 1;
   while (bits.some((b) => b.id === `b${n}` || b.name === `Bit ${n}`)) n++;
   return { id: `b${n}`, name: `Bit ${n}`, leds: [] };
+}
+
+// Singing faces on a shaped prop: which bits are its mouth shapes (xLights' phoneme names) and its eyes.
+//   face: {mouth: {rest: bit id, AI: bit id, ...}, eyes: [bit ids]}
+// Any of the prop's LEDs in neither is its outline, lit all the time.
+export const MOUTHS = ["rest", "AI", "E", "etc", "FV", "L", "MBP", "O", "U", "WQ"];
+export const MOUTH_LABELS = { rest: "Closed", AI: "A and I", E: "E", etc: "Other sounds", FV: "F and V", L: "L",
+  MBP: "M, B and P", O: "O", U: "U", WQ: "W and Q" };
+// The mouth to show for the singer's shape (faces.js SHAPES: a, o, e, m) and how open it is (0-1),
+// from the shapes the prop has: the nearest it has, shut when quiet.
+const OPEN_ORDER = { a: ["AI", "etc", "O", "E", "U", "WQ", "L", "FV"], o: ["O", "U", "WQ", "AI", "etc", "E"],
+  e: ["E", "etc", "AI", "L", "FV", "O"], m: ["MBP", "rest"] };
+export function mouthShape(has, shape, open) {
+  if (open < 0.12 || shape === "m") return ["MBP", "rest"].find((k) => has.has(k)) || null;
+  return (OPEN_ORDER[shape] || OPEN_ORDER.a).find((k) => has.has(k)) || ["AI", "O", "E", "etc"].find((k) => has.has(k)) || null;
+}
+
+// For each of the prop's LEDs: the mouths it's in (a set of MOUTHS keys, or null) and whether it's an eye.
+const roleCache = new WeakMap();
+export function faceRoles(light) {
+  const face = light?.face;
+  if (!face || !light.bits?.length) return null;
+  const kept = roleCache.get(face);
+  if (kept?.bits === light.bits && kept.n === light.segments) return kept.out;
+  const byId = new Map(light.bits.map((b) => [b.id, b]));
+  const mouths = Array.from({ length: light.segments }, () => null), eye = new Uint8Array(light.segments);
+  const has = new Set();
+  for (const k of MOUTHS) {
+    const bit = byId.get(face.mouth?.[k]);
+    if (!bit) continue;
+    has.add(k);
+    for (const i of bit.leds) if (i < light.segments) (mouths[i] ||= new Set()).add(k);
+  }
+  for (const id of face.eyes || []) for (const i of byId.get(id)?.leds || []) if (i < light.segments) eye[i] = 1;
+  const out = has.size || eye.some(Boolean) ? { mouths, eye, has } : null;
+  roleCache.set(face, { bits: light.bits, n: light.segments, out });
+  return out;
+}
+
+// An xLights face (its faceInfo, as node ranges) as bits and a face, added to the model's own bits.
+function xmodelFace(doc, attr, ranges, bits) {
+  const info = [...doc.matchAll(/<\s*faceInfo\b([^>]*)\/?>/gi)].find((m) => /NodeRange/i.test(attr(m[1], "Type") || ""));
+  if (!info) return null;
+  const face = { mouth: {}, eyes: [] };
+  const add = (name, value) => {
+    const leds = ranges(value || "");
+    if (!leds.length || bits.length >= MAX_BITS) return null;
+    const same = bits.find((b) => b.leds.length === leds.length && b.leds.every((x, k) => x === leds[k]));
+    if (same) return same.id;
+    let n = bits.length + 1;
+    while (bits.some((b) => b.id === `b${n}`)) n++;
+    bits.push({ id: `b${n}`, name, leds });
+    return `b${n}`;
+  };
+  for (const k of MOUTHS) {
+    const id = add(`Mouth ${MOUTH_LABELS[k]}`, attr(info[1], `Mouth-${k}`));
+    if (id) face.mouth[k] = id;
+  }
+  const eyes = add("Eyes", attr(info[1], "Eyes-Open"));
+  if (eyes) face.eyes.push(eyes);
+  return Object.keys(face.mouth).length || face.eyes.length ? face : null;
 }
