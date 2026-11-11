@@ -4,7 +4,7 @@
 // so a preview frame and a baked frame at the same time are identical.
 
 import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } from "./matrix.js";
-import { bitShape, shapeLayout, shapeOf, shapeRuns, shapeRunsOf } from "./shapes.js";
+import { bitShape, faceRoles, mouthShape, shapeLayout, shapeOf, shapeRuns, shapeRunsOf } from "./shapes.js";
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture, phoneKey } from "./pictures.js";
 import { isBitPart, lanesOf, partCells, partGrid, partSize, scatterPart } from "./parts.js";
@@ -803,6 +803,34 @@ function shapeAt(time) {
   const c = s[Math.min(Math.max(Math.floor(time * (voiceLevels.shapesFps || voiceLevels.fps || 10)), 0), s.length - 1)];
   return SHAPES.includes(c) ? c : "a";
 }
+
+// A shaped prop with a face (shapes.js faceRoles): its mouth bits light one at a time with the singer
+// (lyrics if the song has them, else how loud the voice is), its eyes blink, and the rest is its outline.
+// Painted by paintShape, which knows the prop's bits; on anything else it shows its outline colour.
+let propFaceMemo = { p: null, song: NaN };
+function propFaceNow(p, t, has) {
+  const song = (Number(p.start) || 0) + t;
+  if (propFaceMemo.p === p && propFaceMemo.song === song && propFaceMemo.has === has) return propFaceMemo;
+  let best = -1, at = 0;
+  for (const [back, keep] of [[0, 1], [0.05, 0.85], [0.1, 0.7]]) {
+    const l = voiceAt(song - back) * keep;
+    if (l > best) { best = l; at = song - back; }
+  }
+  let open = mouthFor(best, p.sensitivity);
+  const shape = shapeAt(voiceLevels?.lyrics ? song : at);
+  if (voiceLevels?.lyrics) {
+    const heard = voiceLevels.from !== "vocals" || !voiceLevels.values?.length || best >= 0.15;
+    open = shape === "m" ? 0 : Math.max(open, heard ? 0.5 : 0);
+  }
+  propFaceMemo = { p, song, has, mouth: mouthShape(has, shape, open), blink: p.life !== "off" && blinkAt(song) > 0.4 };
+  return propFaceMemo;
+}
+EFFECTS.propface = {
+  label: "Prop's singing face", group: "music", music: true, faceProp: true,
+  params: [color("color", "Outline", "#ffffff"), color("eyes", "Eyes", "#3fa0ff"), color("mouth", "Mouth", "#ff3030"),
+    num("sensitivity", "Mouth sensitivity %", 50, 0, 100, 5), choice("life", "Blinks", "on", ["on", "off"])],
+  render: (p) => hexToRgb(p.color),
+};
 
 // After xLights' VU meter.
 Object.assign(EFFECTS, {
@@ -1880,7 +1908,7 @@ function paintEffect(clip, time, n, buf, grid = null) {
   const dur = clip.end - clip.start;
   const [p, t] = curvedSettings({ ...defaultParams(clip.effect), ...clip }, time - clip.start, dur);
   const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
-  if (grid?.shape) return paintShape(fx, clip, p, t, dur, level, n, buf, grid.shape);
+  if (grid?.shape) return paintShape(fx, clip, p, t, dur, level, n, buf, grid.shape, grid.face);
   if (grid && fx.grid) {
     for (let i = 0; i < n; i++) {
       const c = fx.renderXY(p, t, dur, grid.w, grid.h, i % grid.w, Math.floor(i / grid.w));
@@ -1924,7 +1952,18 @@ function paintEffect(clip, time, n, buf, grid = null) {
 // A shaped prop (shapes.js): its LEDs in wiring order, each placed by its spot in the shape. Grid effects
 // colour the cell it's in, House effects the spot across and down the shape, and strip effects run as
 // the clip's `runs` says (along the wire, round, out from the middle, along each arm, across or down).
-function paintShape(fx, clip, p, t, dur, level, n, buf, L) {
+function paintShape(fx, clip, p, t, dur, level, n, buf, L, face) {
+  if (fx.faceProp && face) {
+    const now = propFaceNow(p, t, face.has), outline = hexToRgb(p.color), eyes = hexToRgb(p.eyes), mouth = hexToRgb(p.mouth);
+    for (let i = 0; i < n; i++) {
+      const m = face.mouths[i];
+      const c = m ? (m.has(now.mouth) ? mouth : null) : face.eye[i] ? (now.blink ? null : eyes) : outline;
+      buf[i * 3] = c ? c[0] * level : 0;
+      buf[i * 3 + 1] = c ? c[1] * level : 0;
+      buf[i * 3 + 2] = c ? c[2] * level : 0;
+    }
+    return buf;
+  }
   if (fx.grid || fx.house) {
     for (let i = 0; i < n; i++) {
       let c = null, a = level;
@@ -1960,7 +1999,7 @@ export function gridFor(light) {
   const g = gridOf(light);
   if (g) return g;
   const s = shapeOf(light);
-  return s ? { w: s.w, h: s.h, shape: shapeLayout(s) } : null;
+  return s ? { w: s.w, h: s.h, shape: shapeLayout(s), face: faceRoles(light) } : null;
 }
 
 // How much a lane's clips cover each of n segments at `time` (0..1), so a lane clip fading in or out

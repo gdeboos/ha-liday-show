@@ -32,7 +32,7 @@ import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb }
 import { startLivePreview, stopLivePreview } from "./livepreview.js";
 import { addRectPart, gatherPart, isBitPart, isRectPart, joinParts, lanesOf, partAt, partGrid, partSize, pickPart, rectText, scatterPart, spreadParts,
   wholeSegments } from "./parts.js";
-import { BUILT_IN_SHAPES, MAX_SHAPE_LEDS, SHAPE_RUNS, bitShape, builtInShape, ledAt, newBit, parseXmodel, shapeLeds, shapeOf, shapeTestFrame } from "./shapes.js";
+import { BUILT_IN_SHAPES, MAX_SHAPE_LEDS, MOUTHS, MOUTH_LABELS, SHAPE_RUNS, bitShape, faceRoles, builtInShape, ledAt, newBit, parseXmodel, shapeLeds, shapeOf, shapeTestFrame } from "./shapes.js";
 import { MAX_MATRIX, ON_A_MATRIX, RUNS, clipForLane, gridOf, laneTakes, matrixTestFrame, runsDownTree, fromWire, toWire } from "./matrix.js";
 import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
@@ -1284,25 +1284,36 @@ function shapeControls(d) {
   sel.add(new Option("xLights model (.xmodel)…", "xmodel"));
   sel.value = shape?.source || "";
   const row = (...kids) => { const r = document.createElement("div"); r.className = "row"; r.append(...kids); return r; };
-  const apply = (next, bits = []) => {
+  // An import brings its own bits and face; a change of numbers keeps the bits' LEDs that still fit.
+  const apply = (next, bits = null, face = null) => {
+    if (bits === null) {
+      const n = shapeLeds(next);
+      bits = (d.bits || []).map((b) => ({ ...b, leds: b.leds.filter((i) => i < n) })).filter((b) => b.leds.length);
+      face = d.face || null;
+    }
     const n = shapeLeds(next);
     if (!(n >= 1) || n > MAX_SHAPE_LEDS) { status(`A shaped prop has up to ${MAX_SHAPE_LEDS} LEDs`, "hint"); return; }
     d.shape = next;
     d.segments = d.bulbs = n;
     d.reverse = false;
     if (bits.length) d.bits = bits; else delete d.bits;
+    if (face) {
+      const ids = new Set((d.bits || []).map((b) => b.id));
+      face = { mouth: Object.fromEntries(Object.entries(face.mouth || {}).filter(([, id]) => ids.has(id))), eyes: (face.eyes || []).filter((id) => ids.has(id)) };
+    }
+    if (face && (Object.keys(face.mouth).length || face.eyes.length)) d.face = face; else delete d.face;
     saveDevices();
   };
   const importModel = () => pickFile(".xmodel,.xml", async (file) => {
     try {
       const m = parseXmodel(await file.text());
-      apply(m.shape, m.bits);
+      apply(m.shape, m.bits, m.face);
       status(`${d.name} is now ${m.name ? `“${m.name}”` : "the imported model"}: ${m.leds} LEDs${m.bits.length ? `, ${m.bits.length} bits` : ""}. Press Test wiring to check it.`);
     } catch (e) { status(e.message, "hint"); sel.value = shapeOf(d)?.source || ""; }
   });
   sel.addEventListener("change", async () => {
     if (!sel.value) {
-      delete d.shape; delete d.bits;
+      delete d.shape; delete d.bits; delete d.face;
       if (house.styles[d.id]?.style === "shape") house.setStyle(d.id, null);
       saveDevices();
       return;
@@ -1398,12 +1409,17 @@ function bitsEditor(d) {
       if (bitPick.bit?.id === b.id) pickOff();
       d.bits = d.bits.filter((x) => x !== b);
       if (!d.bits.length) delete d.bits;
+      if (d.face) {
+        d.face = { mouth: Object.fromEntries(Object.entries(d.face.mouth || {}).filter(([, id]) => id !== b.id)), eyes: (d.face.eyes || []).filter((id) => id !== b.id) };
+        if (!Object.keys(d.face.mouth).length && !d.face.eyes.length) delete d.face;
+      }
       saveDevices();
     }, "ghost small");
     remove.title = "Remove this bit (its clips stay in your shows)";
     row.append(name, Object.assign(document.createElement("span"), { className: "hint", textContent: `${b.leds.length} LED${b.leds.length === 1 ? "" : "s"}` }), pick, remove);
     box.append(row);
   }
+  if (d.bits?.length) box.append(faceEditor(d));
   const unsaved = bitPick.light === d.id && bitPick.bit && !(d.bits || []).some((b) => b.id === bitPick.bit.id);
   if (unsaved) box.append(Object.assign(document.createElement("div"), { className: "hint",
     textContent: `${bitPick.bit.name}: press LEDs on the picture to add them.` }));
@@ -1413,6 +1429,47 @@ function bitsEditor(d) {
       renderLightEditor();
     }, "ghost small"));
   }
+  return box;
+}
+
+// A shaped prop's singing face: which bit is each mouth shape, and which are its eyes. The rest of its
+// LEDs are its outline. Played by the Prop's singing face effect.
+function faceEditor(d) {
+  const box = document.createElement("details");
+  box.className = "face-map";
+  box.open = !!d.face;
+  box.append(Object.assign(document.createElement("summary"), { textContent: "Singing face" }));
+  box.append(Object.assign(document.createElement("div"), { className: "hint",
+    textContent: "For a face prop: pick the bit for each mouth shape it has, and its eyes. Then use Prop's singing face on its lane." }));
+  const face = { mouth: { ...(d.face?.mouth || {}) }, eyes: [...(d.face?.eyes || [])] };
+  const save = () => {
+    const any = Object.keys(face.mouth).length || face.eyes.length;
+    if (any) d.face = face; else delete d.face;
+    saveDevices();
+  };
+  const grid = document.createElement("div");
+  grid.className = "face-rows";
+  for (const k of MOUTHS) {
+    const sel = document.createElement("select");
+    sel.add(new Option("None", ""));
+    for (const b of d.bits) sel.add(new Option(b.name, b.id, false, face.mouth[k] === b.id));
+    sel.addEventListener("change", () => { if (sel.value) face.mouth[k] = sel.value; else delete face.mouth[k]; save(); });
+    const l = Object.assign(document.createElement("label"), { className: "row" });
+    l.append(`Mouth ${MOUTH_LABELS[k]} `, sel);
+    grid.append(l);
+  }
+  const eyes = document.createElement("div");
+  eyes.className = "row";
+  eyes.append("Eyes: ");
+  for (const b of d.bits) {
+    const tick = Object.assign(document.createElement("input"), { type: "checkbox", checked: face.eyes.includes(b.id) });
+    tick.addEventListener("change", () => { face.eyes = d.bits.map((x) => x.id).filter((id) => (id === b.id ? tick.checked : face.eyes.includes(id))); save(); });
+    const l = Object.assign(document.createElement("label"), { className: "row" });
+    l.append(tick, ` ${b.name}`);
+    eyes.append(l);
+  }
+  grid.append(eyes);
+  box.append(grid);
   return box;
 }
 
@@ -4325,7 +4382,9 @@ function chooseEffect({ title, groups, dev = null, length = 3, from = null, curr
         .filter(([key, fx]) => shows(key, fx) || key === current)
         // Effects drawn on a grid only on a matrix (or with Allow effects that won't work): on a
         // strip they show one row of the picture, so Scrolling text and Picture show next to nothing.
-        .filter(([key, fx]) => !fx.grid || !dev || !!(gridOf(dev) || shapeOf(dev)) || allow.checked || key === current);
+        .filter(([key, fx]) => !fx.grid || !dev || !!(gridOf(dev) || shapeOf(dev)) || allow.checked || key === current)
+        // The prop's singing face only on a shaped prop with its face set up.
+        .filter(([key, fx]) => !fx.faceProp || !!faceRoles(dev) || key === current);
       // Under small headings (Basics, Movement, ...) when there's more than one kind.
       // A WLED's own effect comes first, in a box of its own look: it's a different way of playing.
       const kinds = EFFECT_GROUPS.map(([g, label]) => [label, all.filter(([key, fx]) => shownGroup(key, fx, house, matrix) === g), g])
@@ -4530,9 +4589,9 @@ function renderInspector() {
     field("Lights' own effects", mix);
   }
   // Singing face: what its mouth follows, so it's clear why it does or doesn't sing, with Measure again.
-  if (clip.effect === "singingface") field("Mouth", singerNote());
+  if (clip.effect === "singingface" || clip.effect === "propface") field("Mouth", singerNote());
   // On a shaped prop: how a strip effect plays over the shape.
-  if (shapeOf(app.devices[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house && !EFFECTS[clip.effect].grid) {
+  if (shapeOf(app.devices[app.show.tracks[sel.track]?.device]) && !EFFECTS[clip.effect].house && !EFFECTS[clip.effect].grid && !EFFECTS[clip.effect].faceProp) {
     const runs = document.createElement("select");
     const labels = { strip: "Along the wire", round: "Round the shape", out: "Out from the middle", arms: "Along each arm",
       rows: "Left to right", columns: "Top to bottom" };
@@ -11897,7 +11956,7 @@ function reportUnfit() {
 // The singer's level, for the Singing face (show.voice, like show.loudness): from the song's vocals
 // where Split vocals has made them, else the voice range of the song itself. Measured once per song
 // and kept with it (api/audio/voice), so every show on the song uses the same; a show keeps a copy.
-const usesFace = (show) => (show?.tracks || []).some((t) => t.clips?.some((c) => c.effect === "singingface"));
+const usesFace = (show) => (show?.tracks || []).some((t) => t.clips?.some((c) => c.effect === "singingface" || c.effect === "propface"));
 const songExtraUrl = (what, ref) => `api/audio/${what}?${new URLSearchParams({ source: ref.source, path: ref.path })}`;
 // The song's vocals part, if Split vocals has made it (your songs list says); before 0.2.402 they were a
 // song of their own, which start-up moves into the song's parts, but one it couldn't match stays.

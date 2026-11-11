@@ -49,7 +49,7 @@ const needsYou = (fx) => fx.params.some((p) => p.type === "text" || p.type === "
 // Every effect with its settings, as the AI sees them. Effects made for matrices are marked "matrix"
 // and go only on matrix lights (on a strip they'd only show a slice); matrix false leaves them out.
 export function effectsForAI({ matrix = true } = {}) {
-  return Object.entries(EFFECTS).filter(([, fx]) => !fx.experimental && !fx.sceneOnly && !fx.phones && !(fx.grid && (needsYou(fx) || !matrix))).map(([key, fx]) => ({
+  return Object.entries(EFFECTS).filter(([, fx]) => !fx.experimental && !fx.sceneOnly && !fx.phones && !fx.faceProp && !(fx.grid && (needsYou(fx) || !matrix))).map(([key, fx]) => ({
     key, label: fx.label, ...(EFFECT_NOTES[key] ? { looks: EFFECT_NOTES[key] } : {}), ...(fx.house ? { house: true } : {}),
     ...(fx.grid ? { matrix: true } : {}),
     settings: fx.params.map((p) => ({
@@ -166,7 +166,7 @@ export function checkClips(reply, lights, duration) {
     const light = byName.get(norm(c?.light));
     const fx = EFFECTS[c?.effect];
     if (!light) { skipped.push(`no light called "${c?.light}"`); continue; }
-    if (!fx || fx.experimental || fx.sceneOnly) { skipped.push(`no effect called "${c?.effect}"`); continue; }
+    if (!fx || fx.experimental || fx.sceneOnly || fx.faceProp) { skipped.push(`no effect called "${c?.effect}"`); continue; }
     if (fx.grid && (!light.matrix || needsYou(fx))) {
       skipped.push(light.matrix ? `${fx.label} needs your own words or pictures` : `${fx.label} only works on a matrix`);
       continue;
@@ -211,7 +211,7 @@ export function checkPresets(reply) {
   const presets = [], skipped = [];
   for (const p of Array.isArray(reply?.presets) ? reply.presets : []) {
     const fx = EFFECTS[p?.effect];
-    if (!fx || fx.experimental || fx.sceneOnly) { skipped.push(`no effect called "${p?.effect}"`); continue; }
+    if (!fx || fx.experimental || fx.sceneOnly || fx.faceProp) { skipped.push(`no effect called "${p?.effect}"`); continue; }
     const name = String(p.name || "").trim().slice(0, 60) || `AI ${fx.label.toLowerCase()}`;
     presets.push({ name, effect: p.effect, params: checkSettings(fx, p.settings) });
   }

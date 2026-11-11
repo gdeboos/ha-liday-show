@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.502
+
+- **Singing faces on shaped props.** A face prop can now sing along: its mouth shapes light one at a time
+  with the singer, its eyes blink, and the rest is its outline. Importing an xLights model brings its face
+  with it; or set one up by hand under **Singing face** in the prop's window (**Setup → Devices**), picking
+  the bit for each mouth shape and the eyes. Then add **Prop's singing face** to the prop's lane. It
+  follows the song's lyrics too, once you've added them with **Lyrics…**.
+
 ## 0.2.501
 
 - **Bits for shaped props.** A star's points, a spinner's arms or a snowflake's middle can each have

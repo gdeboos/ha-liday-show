@@ -1732,6 +1732,12 @@ async def test_shaped_props(client):
                 {"ip": "192.168.1.96", "shape": shape},
                 {"kind": "twinkly", "ip": "192.168.1.97", "shape": shape}):
         assert (await client.put("/api/devices", json=[bad])).status == 400, bad
+    # A singing face: mouth shapes and eyes by bit; ones that aren't bits (or aren't mouths) go.
+    face = {"mouth": {"AI": "b1", "O": "gone", "Teeth": "b1"}, "eyes": ["b1", "b1", "nope"]}
+    dev = (await (await client.put("/api/devices", json=[{**prop, "face": face}])).json())[0]
+    assert dev["face"] == {"mouth": {"AI": "b1"}, "eyes": ["b1"]}
+    dev = (await (await client.put("/api/devices", json=[{**prop, "face": {"mouth": {"O": "gone"}}}])).json())[0]
+    assert "face" not in dev
     # Without a shape, no shape or bits are saved.
     plain = (await (await client.put("/api/devices", json=[{**prop, "shape": None, "segments": 10}])).json())[0]
     assert "shape" not in plain and "bits" not in plain
