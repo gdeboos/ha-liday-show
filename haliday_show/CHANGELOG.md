@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.498
+
+- **Pictures of every dashboard card in the guide.** The
+  [Dashboard cards](https://github.com/gdeboos/ha-liday-show/blob/main/docs/guide/dashboard-cards.md) page now
+  has a section for each card (Player, Browse, Scenes, Schedule, Visitors and checks, House) with a
+  picture of it, so you can see what each one looks like before you add it.
+
 ## 0.2.497
 
 - **A new user guide, with screenshots.** The guide is now a page per topic on GitHub (songs, the Music
