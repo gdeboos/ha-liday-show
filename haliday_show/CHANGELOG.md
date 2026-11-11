@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.499
+
+- **No more warning in Home Assistant's log about the HA-liday Show integration.** Home Assistant warned that the integration looks up a device in a way that stops working in 2027.8. It now does it the new way, so nothing changes for you.
+
 ## 0.2.498
 
 - **Pictures of every dashboard card in the guide.** The

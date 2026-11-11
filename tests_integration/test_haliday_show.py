@@ -73,8 +73,10 @@ async def test_entities_keep_the_mqtt_names_and_work(hass: HomeAssistant, app) -
     old.add_to_hass(hass)
     ent_reg.async_get_or_create("select", "mqtt", "haliday_show_show", suggested_object_id="ha_liday_show_show",
                                 config_entry=old)
+    dr.async_get(hass).async_get_or_create(config_entry_id=old.entry_id, identifiers={("mqtt", "haliday_show")})
     await _set_up(hass, app)
     assert app.storage.load_settings().get("ha_integration") is True
+    assert not [d for d in dr.async_get(hass).devices.values() if ("mqtt", "haliday_show") in d.identifiers]
 
     show = ent_reg.async_get("select.ha_liday_show_show")
     assert show and show.platform == DOMAIN
@@ -114,7 +116,7 @@ async def test_removing_hands_back_to_mqtt(hass: HomeAssistant, app) -> None:
     await hass.config_entries.async_remove(entry.entry_id)
     await hass.async_block_till_done()
     assert app.storage.load_settings().get("ha_integration") is None
-    assert not dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "haliday_show")})
+    assert not [d for d in dr.async_get(hass).devices.values() if (DOMAIN, "haliday_show") in d.identifiers]
 
 
 async def test_renamed_mqtt_entities_keep_their_id_and_area(hass: HomeAssistant, app) -> None:

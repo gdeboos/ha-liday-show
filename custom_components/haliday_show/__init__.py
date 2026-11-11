@@ -145,5 +145,6 @@ async def _take_over_mqtt(hass: HomeAssistant, entry: ConfigEntry) -> None:
         if changes:
             ent_reg.async_update_entity(new.entity_id, **changes)
     dev_reg = dr.async_get(hass)
-    if device := dev_reg.async_get_device(identifiers={("mqtt", DEVICE_ID)}):
+    # Looked for by hand: async_get_device is deprecated, and its replacements aren't in older Home Assistants.
+    for device in [d for d in dev_reg.devices.values() if ("mqtt", DEVICE_ID) in d.identifiers]:
         dev_reg.async_remove_device(device.id)
