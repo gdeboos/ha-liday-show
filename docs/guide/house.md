@@ -1,16 +1,16 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+<!-- The user guide is written here, a page per topic. tools/check_guide.py checks its links. -->
 
 # Your house
 
-[← Speakers](speakers.md) · [Contents](README.md) · [Build a show →](build-a-show.md)
+A photo of your house to preview shows on, with your lights traced on it.
 
-## 3. Your house
+![Setup → House with the lights traced on the sample house](../images/guide/house.webp)
 
 The **House** tab puts your lights on a photo of your house. The editor's **House** panel then plays
 the show on it, so you can design without standing outside, and the **House** lane uses it for
 effects that sweep across the whole house.
 
-### The sample house
+## The sample house
 
 Until you upload a photo, the **House** tab and panel show a drawn **sample house**, so you can try
 the House view and the **House** lane straight away. Press **Put my lights on it** and each light that
@@ -21,7 +21,7 @@ places in order. There's room for eight lights. You can retrace any of them by h
 When you upload a photo of your own, you're asked whether to clear the lights you put on the sample
 house so you can trace them on your photo. **Remove photo** goes back to the sample house.
 
-### Tracing a light
+## Tracing a light
 
 1. Take a photo from where people will watch, ideally at dusk, and press **Upload photo**. It's
    scaled to 2000 pixels across and kept in the app's config folder. **Darken** dims it so the
@@ -48,7 +48,7 @@ tab) and its unused segments as faint, unlit bulbs. The picked light shows segme
 (1, every 5th, and where each part starts and ends) and each part's name. Hover over any bulb to see
 which light, segment and part it belongs to.
 
-### Light styles
+## Light styles
 
 Each light has a **Style**:
 
@@ -61,7 +61,7 @@ Each light has a **Style**:
 | Mega-tree | Matrices | Only offered for a matrix. Picking it puts a tree in the middle of the photo; drag the white point to the top of the real tree and the other two to the ends of its base. Each column is a string, fanning out from the top. Effects you add to a mega-tree on the timeline start out running **Down each column**. Tick **Goes all the way round** if the strings go right round the pole: the first half then runs left to right across the front and the rest back round behind, drawn faint, so a spin looks like it goes round. |
 | Panel | Matrices | Only offered for a matrix. Picking it puts the panel in the middle of the photo, the shape of its grid; drag its four corners onto the real panel's corners. The white corner is its top left. A panel photographed at an angle still fits, as every LED is spread between the corners. |
 
-### Photo taken at an angle
+## Photo taken at an angle
 
 Bulbs are spread evenly along the line, but on a photo taken from the
 side the far end of a light looks squashed, so the bulbs don't sit on the real ones. Pick the light,
@@ -72,14 +72,14 @@ just that segment white on the real light (**Stop** lets it go). Right-click a p
 press **Unpin**, to let it go; **Unpin all** clears a light's pins. Pins are used by the House panel
 and the House lane too, and **Retrace** or **Clear** removes them.
 
-### Lights on top of each other
+## Lights on top of each other
 
 When two traced lights overlap, press 👁 on the one in front to
 hide it on the photo, so you can click and drag the one underneath. It stays hidden (🙈) on this
 browser until you press it again. Hiding only affects the House tab's photo: the light still shows
 in the editor's House panel and plays in shows.
 
-### Parts you can't see
+## Parts you can't see
 
 If eaves carry on round the back of the house, or an extension lead runs
 from the plug to the first bulb, trace past that part anyway (a short line is fine). Then click
@@ -88,7 +88,7 @@ extension lead). It's drawn dashed on the House tab and left out of the House pa
 take their share of the segments, so the bulbs you can see show the right part of each effect, and
 the real light plays the whole show as usual.
 
-### Lights split into parts
+## Lights split into parts
 
 A light split into parts (see **Devices**) is listed as its parts, each
 under the light's name with its colour, and you trace each part on its own, starting at the end of
@@ -97,6 +97,9 @@ like a string that runs up one pillar, across and down the other. A light you tr
 splitting it keeps its one line and has a **Split trace into parts** button: it cuts the line where
 each part starts and ends, so you can then move each part's points on their own.
 
+<!-- nav: made by tools/check_guide.py -->
+
 ---
 
-[← Speakers](speakers.md) · [Contents](README.md) · [Build a show →](build-a-show.md)
+← [Speakers](speakers.md) · [Contents](README.md) · [Songs and samples](songs.md) →
+<!-- /nav -->

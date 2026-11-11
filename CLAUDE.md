@@ -64,11 +64,14 @@ user gets (code or docs) carries its own release:
    Home Assistant integration ships with every release, so the two stay in step).
 2. Add a section at the top of `haliday_show/CHANGELOG.md`: `## 0.2.N`, then bullets written for the
    user (what they'll notice and where), not for developers.
-3. Update `haliday_show/DOCS.md` (the user guide, shown on the app's Documentation tab and linked
-   for Docker and pipx installs) for any behaviour, button or setting that changed. Update README.md's feature list for new features.
-   Then run `python tools/split_guide.py`: it remakes the guide's pages on GitHub (`docs/guide/`, one
-   per chapter) from DOCS.md, and CI fails if you forget. Never edit `docs/guide/` by hand; a new
-   chapter in DOCS.md gets a line in the tool's `PAGES` list.
+3. Update the user guide for any behaviour, button or setting that changed. It's written in
+   `docs/guide/`, a page per topic (the contents and their order are in `docs/guide/README.md`); edit the
+   page for that topic, or add a page and list it there. `haliday_show/DOCS.md` (the app's Documentation
+   tab) is only a short overview linking to the guide: change it only for the quick start or a new page.
+   Update README.md's feature list for new features. Then run `python tools/check_guide.py --fix`: it
+   checks every link (including the in-app help's in `help.js`) and refreshes each page's previous/next
+   line, and CI fails if a link is broken. If the change alters how a page looks, run
+   `python tools/screenshots.py <name>` to remake its pictures in `docs/images/guide/` (see that tool).
 4. Title the PR and commit `What changed (0.2.N)`, e.g. `Collapse editor panels to their title (0.2.65)`.
 
 If `main` moved on while you worked, take the next free version number when you merge it in.
@@ -79,7 +82,7 @@ Changes that only touch tests, CI or `.claude/` don't need a release.
 Three ways to run it, one codebase: the **app** (the main one), **Docker** (the app's own image
 from ghcr.io, with `standalone/docker-compose.yml`) and **pipx** (`pyproject.toml` builds the package;
 its dependencies are read from `haliday_show/requirements.txt`; the `haliday-show` command defaults its
-data to `~/haliday-show/`). User guide: "Running without Home Assistant" in DOCS.md.
+data to `~/haliday-show/`). User guide: `docs/guide/without-home-assistant.md`.
 
 - **The app must behave exactly as before.** Anything only for standalone installs is switched on
   by an environment setting and/or only when `SUPERVISOR_TOKEN` is absent (as `HALIDAY_SHOW_PASSWORD`
@@ -89,7 +92,7 @@ data to `~/haliday-show/`). User guide: "Running without Home Assistant" in DOCS
   everyone with `HALIDAY_SHOW_ALLOW_ALL=1`, otherwise other devices only with the password (HTTP Basic,
   any user name). New routes are covered automatically; don't add ways round it.
 - Settings for standalone installs are environment variables (`HALIDAY_SHOW_*`, `HA_URL`/`HA_TOKEN`,
-  `ANTHROPIC_API_KEY`). A new app option needs an environment fallback too, listed in DOCS.md's
+  `ANTHROPIC_API_KEY`). A new app option needs an environment fallback too, listed in the user guide's
   settings table.
 - Outside Home Assistant there's no `hassio.app_stdin`, and speakers only play songs if Home
   Assistant can see the same songs folder. Features that need Home Assistant should say so rather
@@ -114,5 +117,5 @@ data to `~/haliday-show/`). User guide: "Running without Home Assistant" in DOCS
 - Home Assistant renamed add-ons to **apps** in 2026.2 (**Settings → Apps**, **App store**). Say "app"
   in anything users read, or "HA-liday Show" where Docker and pipx installs are meant too. Names in
   code and config (`addon_config`, `/addons`, the `addon` in Supervisor API paths) stay as they are.
-- Writing for users (DOCS.md, CHANGELOG.md, UI text): plain British English ("colour"), second
+- Writing for users (the guide, CHANGELOG.md, UI text): plain British English ("colour"), second
   person, bold for on-screen names (**Save**, **Setup → Devices**), no jargon.

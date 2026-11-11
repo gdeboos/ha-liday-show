@@ -22,8 +22,8 @@ read `git diff origin/main...<branch>` and `git log origin/main..<branch>`. Read
      `haliday_show/app/halidayshow/__init__.py`, and higher than on `main`.
    - A new `## 0.2.N` section at the top of `haliday_show/CHANGELOG.md`, written for the owner
      (what they'll notice and where), not for developers.
-   - `haliday_show/DOCS.md` updated for any changed behaviour, button or setting, and `docs/guide/`
-     remade from it (`python tools/split_guide.py --check` passes); README.md's
+   - the user guide (`docs/guide/`, a page per topic) updated for any changed behaviour, button or
+     setting, and `python tools/check_guide.py` passes; README.md's
      feature list for new features.
    - PR and commit titled `What changed (0.2.N)` or `<summary> (0.2.N)`.
 2. **Light protocols.** If the diff touches `protocol.py`, `output.py`, `player.py`, `wled.py`,
@@ -40,8 +40,8 @@ read `git diff origin/main...<branch>` and `git log origin/main..<branch>`. Read
 4. **Conventions.** Effects only in `static/js/effects.js` (the Python player never computes
    effects); new server input validated with `_clean_*` helpers in `server.py` with a test in
    `tests/test_server.py`; no new ways round `ingress_only`; new app options have an environment
-   fallback listed in DOCS.md.
-5. **Writing for the owner** in DOCS.md, CHANGELOG.md and UI text: plain British English
+   fallback listed in the user guide.
+5. **Writing for the owner** in the user guide, CHANGELOG.md and UI text: plain British English
    ("colour"), second person, bold for on-screen names, no jargon, "app" not "add-on".
 6. **Tests.** Run `python -m pytest -q` and `node --test tests/js/*.mjs`. Note whether the change
    adds tests for what it changes.

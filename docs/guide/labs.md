@@ -1,8 +1,8 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+<!-- The user guide is written here, a page per topic. tools/check_guide.py checks its links. -->
 
-# Labs and experiments
+# Labs
 
-[← The editor, settings and your data](editor-and-settings.md) · [Contents](README.md) · [Troubleshooting and storage →](troubleshooting.md)
+Experiments with Govee lights. You won't need these to make shows.
 
 ## Packet lab
 
@@ -59,6 +59,9 @@ Govee traffic** helps work out how, so HA-liday Show can learn to do the same:
 
 If it hears nothing, the lights are talking to each other directly, where Home Assistant can't hear.
 
+<!-- nav: made by tools/check_guide.py -->
+
 ---
 
-[← The editor, settings and your data](editor-and-settings.md) · [Contents](README.md) · [Troubleshooting and storage →](troubleshooting.md)
+← [Running without Home Assistant](without-home-assistant.md) · [Contents](README.md)
+<!-- /nav -->

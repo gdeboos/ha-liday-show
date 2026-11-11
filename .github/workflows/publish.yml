@@ -1,6 +1,6 @@
 name: publish
 # The same image the add-on builds, published for running HA-liday Show without Home Assistant
-# (see "Running without Home Assistant" in DOCS.md). Free, and lives with the repo.
+# (see "Running without Home Assistant" in the user guide (docs/guide/without-home-assistant.md)). Free, and lives with the repo.
 on:
   push:
     branches: [main]

@@ -1,10 +1,8 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
+<!-- The user guide is written here, a page per topic. tools/check_guide.py checks its links. -->
 
 # Running without Home Assistant
 
-[← Troubleshooting and storage](troubleshooting.md) · [Contents](README.md)
-
-## Running without Home Assistant
+Run HA-liday Show with Docker or Python.
 
 You don't need this if you use the app. It's for running HA-liday Show on another always-on
 machine, such as a NAS, a Raspberry Pi or a Linux PC, for example if your Home Assistant can't
@@ -19,9 +17,9 @@ It works the same as the Home Assistant app, with a few differences:
 - It must be on the same network as your lights, with full network access (for Docker, host
   networking), as the app is.
 - There's no `hassio.app_stdin` action. Use the MQTT entities in automations instead, or the
-  [Schedule](play-it.md#schedule).
+  [Schedule](schedule.md).
 - There's no Home Assistant speaker unless you connect one (below). For music with scheduled shows,
-  leave the [Show player](play-it.md#music-with-no-speaker-the-show-player) open on a computer with speakers.
+  leave the [Show player](playing.md#music-with-no-speaker-the-show-player) open on a computer with speakers.
 
 You set everything with these settings (environment variables). All are optional.
 
@@ -32,20 +30,20 @@ You set everything with these settings (environment variables). All are optional
 | `HALIDAY_SHOW_CONFIG` | The folder your shows, lights and settings are kept in. It holds the same files as the app's, so you can copy shows across. |
 | `HALIDAY_SHOW_MEDIA` | The folder your songs are kept in. |
 | `HALIDAY_SHOW_PORT` | The web port, `8099` unless you change it. |
-| `HALIDAY_SHOW_PUBLIC_PORT` | The [public page](public-page.md#the-public-page)'s port, `18099` unless you change it. It only opens once you've set up the public page. |
+| `HALIDAY_SHOW_PUBLIC_PORT` | The [public page](public-page.md)'s port, `18099` unless you change it. It only opens once you've set up the public page. |
 | `TZ` | Your time zone, such as `Europe/London`, for the schedule. Docker only; with Python it uses your computer's. |
 | `HA_URL`, `HA_TOKEN` | Your Home Assistant address (e.g. `http://homeassistant.local:8123`) and a long-lived access token (your profile in Home Assistant → **Security**). Needed for speakers, Home Assistant's AI, and Home Assistant lights and switches in shows. |
 | `ANTHROPIC_API_KEY` | A Claude API key for the AI, instead of Home Assistant's. |
 | `HALIDAY_SHOW_AI_TASK_ENTITY` | Which Home Assistant AI Task to use, if you have several. |
 | `HALIDAY_SHOW_MQTT_HOST` | Your MQTT broker, for the show entities. Also `_PORT`, `_USERNAME` and `_PASSWORD`. |
-| `HALIDAY_SHOW_STEMS_FROM` | Where [Split into parts](build-a-show.md#split-into-parts) and **Line up with the singing** get their AI files, for an install with no internet: a web address holding `model.onnx`, `drums.onnx`, `bass.onnx`, `yamnet.onnx`, `align.onnx`, `ort.webgpu.min.mjs`, `ort-wasm-simd-threaded.jsep.mjs` and `ort-wasm-simd-threaded.jsep.wasm` (and for [section notes on this device](editor-and-settings.md#section-notes-on-this-device): the `notes-*` files, `transformers.min.js`, `ort-wasm-simd-threaded.asyncify.mjs` and `ort-wasm-simd-threaded.asyncify.wasm`). Leave it unset otherwise. |
+| `HALIDAY_SHOW_STEMS_FROM` | Where [Split into parts](songs.md#split-into-parts) and **Line up with the singing** get their AI files, for an install with no internet: a web address holding `model.onnx`, `drums.onnx`, `bass.onnx`, `yamnet.onnx`, `align.onnx`, `ort.webgpu.min.mjs`, `ort-wasm-simd-threaded.jsep.mjs` and `ort-wasm-simd-threaded.jsep.wasm` (and for [section notes on this device](ai.md#section-notes-on-this-device): the `notes-*` files, `transformers.min.js`, `ort-wasm-simd-threaded.asyncify.mjs` and `ort-wasm-simd-threaded.asyncify.wasm`). Leave it unset otherwise. |
 
 > **Speakers:** Home Assistant plays songs from its own **media** folder, so a speaker can only play
 > a song if `HALIDAY_SHOW_MEDIA` is that same folder (shared over the network, for example).
 > Otherwise, play the music in your browser, and for playlists and schedules leave the
-> [Show player](play-it.md#music-with-no-speaker-the-show-player) open on a computer with speakers.
+> [Show player](playing.md#music-with-no-speaker-the-show-player) open on a computer with speakers.
 
-### With Docker
+## With Docker
 
 This works on Linux, most NAS boxes (Synology, Unraid, QNAP) and a Raspberry Pi. It doesn't work
 with Docker Desktop on a Mac or Windows PC, because that can't give it the network access the
@@ -70,7 +68,7 @@ To update, run `docker compose pull` and then `docker compose up -d` in that fol
 The image is `ghcr.io/gdeboos/ha-liday-show`. If your `docker-compose.yml` is from before
 version 0.2.113 and its `image:` line says `gavin-vbmedia`, change that to `gdeboos`, or updates stop.
 
-### With Python
+## With Python
 
 This works on a Mac, Linux and a Raspberry Pi, without Docker. Windows may work but isn't tested,
 because Windows often blocks the network traffic the lights use. It needs Python 3.12 or newer and
@@ -83,7 +81,7 @@ because Windows often blocks the network traffic the lights use. It needs Python
 3. Open `http://localhost:8099/` on that computer, or `http://<its address>:8099/` from another
    device, and type your password when your browser asks.
 
-For visitors to [listen on their phones](public-page.md#listening-on-phones), install ffmpeg too (`sudo apt install
+For visitors to [listen on their phones](visitors-phones.md#listening-on-phones), install ffmpeg too (`sudo apt install
 ffmpeg` on a Raspberry Pi or Linux, `brew install ffmpeg` on a Mac). Without it, phones get each song
 file as it is, which can take a while over mobile data for a song made in the Music editor.
 
@@ -103,6 +101,9 @@ To update, run `pipx upgrade haliday-show`.
 - As a Home Assistant app, HA-liday Show uses the host network to find WLED and Govee lights and to send to every light, but its web
   server only answers Home Assistant's ingress proxy, so the editor isn't reachable directly on your LAN.
 
+<!-- nav: made by tools/check_guide.py -->
+
 ---
 
-[← Troubleshooting and storage](troubleshooting.md) · [Contents](README.md)
+← [Troubleshooting](troubleshooting.md) · [Contents](README.md) · [Labs](labs.md) →
+<!-- /nav -->

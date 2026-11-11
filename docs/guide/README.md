@@ -1,40 +1,70 @@
-<!-- Made by tools/split_guide.py from haliday_show/DOCS.md. Edit DOCS.md, then run the tool. -->
-
 # HA-liday Show user guide
 
 Build music-synchronised light shows for your Christmas lights, preview them on a photo of your house,
-and play them from Home Assistant. It drives WLED strips, pixel controllers (DDP or E1.31), Govee
-lights, any Home Assistant light or switch, and Twinkly (experimental), in any mix. Open **HA-liday Show** from
-the Home Assistant sidebar.
+and play them from Home Assistant. HA-liday Show drives WLED strips, pixel controllers (DDP or E1.31),
+Govee lights, any Home Assistant light or switch, and Twinkly (experimental), in any mix.
 
-**Getting started:** [Finding your way](getting-started.md#finding-your-way) · [Requirements](getting-started.md#requirements) ·
-[Quick start](getting-started.md#quick-start) · [The demo](getting-started.md#the-demo)
+New here? Start with **[Getting started](getting-started.md)**, or press **Try the demo** to see it
+working before your lights are up. Inside HA-liday Show, **? Help** at the top right has tips for the
+page you're on, each with a link to the right part of this guide.
 
-**Setting up:** [1. Devices](lights.md#1-devices) · [2. Speakers](speakers.md#2-speakers) · [3. Your house](house.md#3-your-house)
+![The Show editor: a generated show playing on the house preview](../images/guide/show-editor.webp)
 
-**Making shows:** [4. Build a show](build-a-show.md#4-build-a-show) · [Effects](effects.md#effects) · [5. Play it](play-it.md#5-play-it) ·
-[Playlists](play-it.md#playlists) · [The public page](public-page.md#the-public-page) · [6. Automations](automations.md#6-automations)
+## Start here
 
-**Reference:** [Arrange the editor](editor-and-settings.md#arrange-the-editor) · [Settings](editor-and-settings.md#settings) ·
-[Your data](editor-and-settings.md#your-data) · [Moving from Govee Light Show](editor-and-settings.md#moving-from-govee-light-show) ·
-[Setting up the AI](editor-and-settings.md#setting-up-the-ai) · [Packet lab](labs.md#packet-lab) ·
-[Troubleshooting](troubleshooting.md#troubleshooting) · [Where things are stored](troubleshooting.md#where-things-are-stored) ·
-[Running without Home Assistant](without-home-assistant.md#running-without-home-assistant)
+- [Getting started](getting-started.md): finding your way, what you need, the quick start and the demo
 
-## Pages
+## Set up, once
 
-1. [Getting started](getting-started.md)
-2. [Your lights](lights.md)
-3. [Speakers](speakers.md)
-4. [Your house](house.md)
-5. [Build a show](build-a-show.md)
-6. [Effects](effects.md)
-7. [Play it and playlists](play-it.md)
-8. [The public page](public-page.md)
-9. [Automations](automations.md)
-10. [The editor, settings and your data](editor-and-settings.md)
-11. [Labs and experiments](labs.md)
-12. [Troubleshooting and storage](troubleshooting.md)
-13. [Running without Home Assistant](without-home-assistant.md)
+- [Adding your lights](lights.md): WLED, matrices, pixel controllers, Govee, Home Assistant lights, Twinkly
+- [Parts, groups, roles and seasons](organising-lights.md): split lights, group them, and put props away
+- [Speakers](speakers.md): where the music plays
+- [Your house](house.md): your photo, with each light traced on it
 
-The whole guide on one page is [haliday_show/DOCS.md](../../haliday_show/DOCS.md), the same as the app's **Documentation** tab in Home Assistant.
+## Songs
+
+- [Songs and samples](songs.md): adding songs, splitting them into their parts, short sounds to layer
+- [The Music editor](music-editor.md): cuts, layers, the mixer, mashups, marks, beats and sections
+- [Pictures and faces](pictures-and-faces.md): pictures and GIFs, and your own Singing faces
+
+## Make shows
+
+- [Your shows](shows.md): making, organising, sharing and exporting shows as videos
+- [Let it make a show for you](generate.md): Suggestions, Describe it and Generate
+- [The Show editor](show-editor.md): the timeline, effects, transitions, presets and palettes
+- [Effects](effects.md): every effect, by group
+
+## Play them
+
+- [Playing shows and playlists](playing.md): saving, playing, and shows back to back
+- [Scenes](scenes.md): one-tap looks for every light
+- [Live music](live-music.md): lights that react to music in the room
+- [Schedule](schedule.md): what plays by itself, and when
+- [Pre-show check](pre-show-check.md): check everything before the night's shows
+
+## Visitors
+
+- [The public page](public-page.md): a page passers-by open to pick what plays
+- [Visitors' queue and voting](queue-and-voting.md): first come, first served, or a vote
+- [Visitors' phones](visitors-phones.md): music on their phone, and their screen joining the show
+
+## Home Assistant
+
+- [Home Assistant](home-assistant.md): the integration, sensors, actions, events and MQTT
+- [Dashboard cards](dashboard-cards.md): Player, Browse, Scenes, Schedule, Visitors and House cards
+
+## Settings and help
+
+- [Settings and your data](settings.md): the editor's layout, settings, export and import
+- [Setting up the AI](ai.md): what uses AI and where it runs
+- [Troubleshooting](troubleshooting.md): when something's not right, and where things are kept
+- [Running without Home Assistant](without-home-assistant.md): Docker or Python
+- [Labs](labs.md): experiments with Govee lights
+
+## Writing this guide
+
+Each page is one topic, written in `docs/guide/` (this folder). The app's **Documentation** tab in Home
+Assistant shows `haliday_show/DOCS.md`, a short overview that links here. Screenshots are in
+`docs/images/guide/`, made by `tools/screenshots.py`. After changing pages, run
+`python tools/check_guide.py --fix`: it checks every link and keeps each page's previous/next line in step
+with the order above.

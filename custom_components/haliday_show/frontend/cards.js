@@ -1040,7 +1040,7 @@ for (const [tag, cls, name, description] of CARDS) {
   if (!customElements.get(tag)) customElements.define(tag, cls);
   if (!window.customCards.some((c) => c.type === tag)) {
     window.customCards.push({ type: tag, name, description, preview: false,
-      documentationURL: "https://github.com/gdeboos/ha-liday-show/blob/main/haliday_show/DOCS.md#dashboard-cards" });
+      documentationURL: "https://github.com/gdeboos/ha-liday-show/blob/main/docs/guide/dashboard-cards.md" });
   }
 }
 export { HalidayBrowseCard, HalidayCard, HalidayHouseCard, HalidayPlayerCard, HalidayScheduleCard, HalidayScenesCard, HalidayVisitorsCard, STYLE };

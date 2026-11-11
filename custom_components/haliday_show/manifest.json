@@ -12,11 +12,11 @@
     "http",
     "websocket_api"
   ],
-  "documentation": "https://github.com/gdeboos/ha-liday-show/blob/main/haliday_show/DOCS.md#home-assistant-integration",
+  "documentation": "https://github.com/gdeboos/ha-liday-show/blob/main/docs/guide/home-assistant.md#home-assistant-integration",
   "integration_type": "hub",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/gdeboos/ha-liday-show/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.2.496"
+  "version": "0.2.497"
 }

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.497
+
+- **A new user guide, with screenshots.** The guide is now a page per topic on GitHub (songs, the Music
+  editor, scenes, the public page, visitors' phones, dashboard cards and so on), grouped by what you're
+  doing, with a picture of each page and **previous** and **next** links. Open it from
+  [the guide's contents](https://github.com/gdeboos/ha-liday-show/blob/main/docs/guide/README.md).
+- The app's **Documentation** tab is now a short overview with the quick start and links to each page,
+  instead of one very long page.
+- **? Help**'s **More in the guide ↗** links, and the dashboard cards' help links, go to the new pages.
+
 ## 0.2.496
 
 - **Turn the visitors' page on and off from Home Assistant.** The **HA-liday Show: Visitors and checks** card has a button to turn the page on or off, and a **QR code** button that shows the code visitors scan, handy for holding your phone up at the gate. There's also a **Visitors' page** switch on the **HA-liday Show** device, so an automation can open the page at dusk and close it at bedtime. You can hide the new buttons in the card's options.
