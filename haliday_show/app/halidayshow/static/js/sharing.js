@@ -4,7 +4,8 @@
 // The song never travels; only its name and length.
 
 import { MAX_MATRIX, gridOf } from "./matrix.js";
-import { isRectPart } from "./parts.js";
+import { isBitPart, isRectPart, lanesOf } from "./parts.js";
+import { BUILT_IN_SHAPES, SHAPE_SOURCES } from "./shapes.js";
 import { cleanRecipe } from "./faces.js";
 
 export const SHARE_FORMAT = "halidayshow";
@@ -24,6 +25,9 @@ const GOVEE_GROUPS = [
   [/tree/i, "tree"], [/bar|lamp|bulb|wall|hexa|panel/i, "lamp"],
 ];
 export function lightType(dev, model) {
+  if (dev.shape && ["wled", "ddp", "e131"].includes(dev.kind)) {
+    return { label: BUILT_IN_SHAPES[dev.shape.source]?.label || "Shaped prop", group: "prop" };
+  }
   if (dev.kind === "wled") return { label: gridOf(dev) ? "WLED matrix" : "WLED strip", group: "strip" };
   if (dev.kind === "ddp" || dev.kind === "e131") return { label: gridOf(dev) ? "Pixel matrix" : "Pixel lights", group: "strip" };
   if (dev.kind === "twinkly") return { label: "Twinkly lights", group: "string" };
@@ -42,6 +46,8 @@ const matrixOf = (d, shapeOf) => {
   const g = gridOf(d);
   return g ? { w: g.w, h: g.h, shape: shapeOf(d.id) === "tree" ? "tree" : "panel" } : null;
 };
+// A shaped prop as a share file describes it: which shape it is (the pixel map itself stays home).
+const propOf = (d) => (d.shape && SHAPE_SOURCES.includes(d.shape.source) ? { source: d.shape.source } : null);
 const gridWords = (m) => `${m.w} × ${m.h} ${m.shape === "tree" ? "mega-tree" : "matrix"}`;
 
 // Where a light sits on the house photo, roughly: the box round its segments, 0 to 1 across and down.
@@ -67,8 +73,9 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
     if (used.has(d.id)) return used.get(d.id);
     const key = `L${used.size + 1}`;
     used.set(d.id, key);
-    const parts = (d.parts || []).map((p, i) => ({ key: `P${i + 1}`, id: p.id, name: p.name,
-      ...(isRectPart(p) ? { x: p.x, y: p.y, w: p.w, h: p.h } : { from: p.from, to: p.to }) }));
+    // A shaped prop's bits go as parts, matched by name or order on import.
+    const parts = lanesOf(d).map((p, i) => ({ key: `P${i + 1}`, id: p.id, name: p.name,
+      ...(isBitPart(p) ? { bit: true } : isRectPart(p) ? { x: p.x, y: p.y, w: p.w, h: p.h } : { from: p.from, to: p.to }) }));
     out.lights.push({ key, name: d.name, type: lightType(d, models[d.sku]), sku: d.kind === "govee" ? d.sku || "" : "",
       kind: d.kind || "govee", segments: d.segments, parts: parts.map(({ id, ...p }) => p),
       where: whereOf(positions[d.id]), _parts: parts });
@@ -79,6 +86,7 @@ export function makeShare(show, lights, { models = {}, positions = {}, app = "",
     // Older copies ignore it, so a show with matrices is still version 1 (or 2 with pictures).
     const matrix = matrixOf(d, shapeOf);
     if (matrix) out.lights.at(-1).matrix = matrix;
+    if (propOf(d)) out.lights.at(-1).prop = propOf(d);
     return key;
   };
   for (const tr of show.tracks || []) {
@@ -197,12 +205,13 @@ export function readShare(text) {
       parts: (Array.isArray(l.parts) ? l.parts : []).filter((p) => p && typeof p.key === "string")
         .map((p) => ({ key: p.key, name: text64(p.name, "Part"),
           // A matrix's part is a rectangle; a strip's a run.
-          ...(Number.isInteger(p.w) && Number.isInteger(p.h) ? { x: num(p.x), y: num(p.y), w: p.w, h: p.h } : { from: num(p.from, 1), to: num(p.to, 1) }) })),
+          ...(p.bit === true ? { bit: true } : Number.isInteger(p.w) && Number.isInteger(p.h) ? { x: num(p.x), y: num(p.y), w: p.w, h: p.h } : { from: num(p.from, 1), to: num(p.to, 1) }) })),
       where: l.where && ["x", "y", "w", "h"].every((k) => Number.isFinite(l.where[k]))
         ? { x: l.where.x, y: l.where.y, w: l.where.w, h: l.where.h } : null,
       ...(level(l.brightness) ? { brightness: level(l.brightness) } : {}),
       ...(names(l.seasons).length ? { seasons: names(l.seasons) } : {}),
       ...(sharedMatrix(l.matrix) ? { matrix: sharedMatrix(l.matrix) } : {}),
+      ...(SHAPE_SOURCES.includes(l.prop?.source) ? { prop: { source: l.prop.source } } : {}),
     }));
   const keys = new Set(lights.map((l) => l.key));
   let count = 0;
@@ -255,10 +264,11 @@ export function myLights(lights, { models = {}, positions = {}, seasons = [], sh
   const seasonName = new Map(seasons.map((x) => [x.id, x.name]));
   return lights.filter((d) => !d.light).map((d) => ({
     ...(matrixOf(d, shapeOf) ? { matrix: matrixOf(d, shapeOf) } : {}),
+    ...(propOf(d) ? { prop: propOf(d) } : {}),
     seasons: (d.seasons || []).map((id) => seasonName.get(id)).filter(Boolean),
     id: d.id, name: d.name, type: lightType(d, models[d.sku]), sku: d.kind === "govee" ? d.sku || "" : "",
-    kind: d.kind || "govee", segments: d.segments, whole: d.whole !== false || !d.parts?.length,
-    parts: (d.parts || []).map((p) => ({ id: `${d.id}#${p.id}`, name: p.name })),
+    kind: d.kind || "govee", segments: d.segments, whole: d.whole !== false || !lanesOf(d).length,
+    parts: lanesOf(d).map((p) => ({ id: `${d.id}#${p.id}`, name: p.name })),
     where: whereOf(positions[d.id]),
   }));
 }
@@ -287,6 +297,11 @@ export function score(theirs, mine, { seasonal = (theirs.seasons || []).length >
     const near = Math.max(0, 1 - Math.hypot(a[0] - b[0], a[1] - b[1]) / 0.5);
     s += 3 * near;
     if (near > 0.6) why.push("same spot on the house");
+  }
+  // Shaped props for shaped props, best the same shape (a star's show on your star).
+  if (theirs.prop && mine.prop) {
+    if (theirs.prop.source === mine.prop.source) { s += 4; why.push(`both ${(BUILT_IN_SHAPES[mine.prop.source]?.label || "shaped prop").toLowerCase()}s`); }
+    else s += 2;
   }
   if (theirs.parts.length && theirs.parts.length === mine.parts.length) {
     s += 2;

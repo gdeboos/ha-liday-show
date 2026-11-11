@@ -1830,3 +1830,6 @@ table.ai-uses td:last-child button { margin: 2px 4px 2px 0; }
 
 /* A shaped prop's picture in its light window: its LEDs as dots, LED 1 white. */
 .shape-fields .shape-pic { display: block; width: 200px; height: 200px; margin: 6px 0; border-radius: 8px; }
+.shape-fields .shape-pic.picking { cursor: crosshair; outline: 2px solid var(--accent); }
+.shape-fields .bits-list { display: flex; flex-direction: column; gap: 6px; }
+.shape-fields .bits-list > button { align-self: flex-start; }

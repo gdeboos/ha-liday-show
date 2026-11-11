@@ -275,8 +275,8 @@ export class Timeline {
       const sub = house ? "Across all lights"
         : lane ? (lane.gone ? "Not played" : `Group of ${lane.members.length}`)
         : !dev ? tr.device
-        : dev.light ? (dev.light.whole === false ? "Not played: parts only" : `${gridOf(dev.light) ? "Whole matrix" : "All parts"} · ${countText(dev)}`)
-        : dev.parent ? (isRectPart(dev.part) ? rectText(dev.part) : rangeText(dev, dev.from, dev.to))
+        : dev.light ? (dev.light.whole === false ? "Not played: parts only" : `${gridOf(dev.light) ? "Whole matrix" : dev.light.shape ? "Whole prop" : "All parts"} · ${countText(dev)}`)
+        : dev.parent ? (isRectPart(dev.part) ? rectText(dev.part) : Array.isArray(dev.part?.leds) ? `Bit · ${countText(dev)}` : rangeText(dev, dev.from, dev.to))
         : dev.phones ? "On visitors' phones"
         : `${countText(dev)}${dev.ip || dev.entity ? "" : " · planned"}`;
       const note = !house && !lane && dev && this.app.trackNote?.(dev);

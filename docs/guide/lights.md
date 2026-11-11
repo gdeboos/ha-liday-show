@@ -150,6 +150,22 @@ run red, yellow, green, blue along the wire from there. Press **Test wiring** to
 same way. If LED 1 or the order doesn't match the picture, change the numbers (or the shape) until it
 does.
 
+### Bits
+
+**Bits** are named sets of a prop's LEDs, such as a star's points, a spinner's arms or a snowflake's
+middle. Each bit gets a lane of its own under the prop in the Show editor, so you can give it its own
+effect. An xLights model's submodels come in as bits when you import it. To make one by hand, press
+**+ New bit** under the picture, then press LEDs on the picture to add them (they turn white); press one
+again to take it out. Press **Done picking** when it's right, and type a name for it. **Pick LEDs**
+changes a bit later, and **✕** removes it (its clips stay in your shows).
+
+Unlike parts, bits can share LEDs and can be scattered anywhere in the prop. Where two bits share an LED
+and both have an effect playing, the one whose clip started last shows. LEDs in no bit, and bits with
+nothing playing, follow the prop's own lane. Effects on a bit's lane are laid out as the bit sits in the
+prop, so **Round the shape** and **Out from the middle** work on a bit too. **Generate** and the AI give
+bits looks of their own, as they do parts. A shared show carries each bit's lane by name, and suggests
+your prop of the same shape when it's imported.
+
 Put it on the house photo with the **Its shape** style (see [Your house](house.md)), and pick how each
 effect plays on it with **Runs** (see [The Show editor](show-editor.md)). Choose **None: a line of
 lights** to turn it back into a plain strip; its clips stay in your shows.
