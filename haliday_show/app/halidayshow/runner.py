@@ -350,7 +350,7 @@ class Runner:
         async with self._control:
             await self._end_playlist()
             async with self._lock:
-                await self._stop()
+                await self._stop(release=False)
                 self.player.set_level(self.scene_level())  # before the first frame goes out
                 devices, own = self._scene_devices(scene)
                 await self.player.play(None, baked, devices, position=position, length=math.inf)
@@ -600,7 +600,7 @@ class Runner:
             log.warning("playlist block %s: %s", item["id"], e)
             return False
         async with self._lock:
-            await self._stop()
+            await self._stop(release=False)
             self.block = item
             devices, own = self._scene_devices(self.storage.load_scene(item["scene"])) if scene \
                 else (self.storage.devices_by_id(), {})
@@ -705,7 +705,9 @@ class Runner:
                 pass
         self.playlist = None
 
-    async def _stop(self):
+    async def _stop(self, release: bool = True):
+        """release=False when something else takes the lights straight away: the lights it shares stay
+        in realtime (player.play lets the rest go), so a Govee light doesn't flash between the two."""
         for task in list(self._wled_tasks):  # a slow WLED mustn't drop out of the next show's realtime
             task.cancel()
         self.song = None
@@ -715,7 +717,7 @@ class Runner:
         if self._follow:
             self._follow.cancel()
             self._follow = None
-        await self.player.stop()
+        await self.player.stop(release=release)
         if self.media_player:
             try:
                 await self.ha.call("media_player", "media_stop", {"entity_id": self.media_player})

@@ -20,6 +20,10 @@ log = logging.getLogger(__name__)
 RESYNC_S = 0.25
 DEADBAND_S = 0.03
 EASE = 0.2
+# A playlist's building block that has run its time holds its last picture this long before the lights
+# are let go, so the next block can carry straight on: letting a Govee light out of realtime and taking
+# it back made it flash between scenes.
+HOLD_S = 2.0
 
 
 class Player:
@@ -34,6 +38,7 @@ class Player:
         self.level = 100  # a scene's brightness, 1-100 (Home Assistant's light); shows play at 100
         self._dim: bytes | None = None
         self._task: asyncio.Task | None = None
+        self._let_go: asyncio.TimerHandle | None = None  # the lights' release after a block, if due
         # React to music (react.py): a callable giving each frame's look, level and flash, and the baked
         # loops of the scenes picked for strong bass and treble. None while nothing reacts.
         self.react = None
@@ -174,6 +179,9 @@ class Player:
         return baked.track_frame(mine, int(max(elapsed, 0) * baked.fps) % baked.frames)
 
     async def stop(self, release: bool = True):
+        if self._let_go:
+            self._let_go.cancel()
+            self._let_go = None
         if self._task:
             self._task.cancel()
             try:
@@ -230,4 +238,13 @@ class Player:
                 last = key
             await asyncio.sleep(frame_s / 4)
         log.info("%s finished", f"show {self.show_id}" if self.show_id else "block")
-        self.output.release_all()
+        if self.length is not None and math.isfinite(self.length):
+            # A block: the next one may follow straight on (play() then keeps the lights it shares).
+            self._let_go = asyncio.get_running_loop().call_later(HOLD_S, self._release_held)
+        else:
+            self.output.release_all()
+
+    def _release_held(self):
+        self._let_go = None
+        if not self.playing:
+            self.output.release_all()
