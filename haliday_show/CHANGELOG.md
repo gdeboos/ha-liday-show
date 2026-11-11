@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.505
+
+- **The effect window no longer stretches.** With your browser zoomed (110%, say), the moving previews
+  in the effect window kept getting wider until they pushed the window, or the page, out of shape. They
+  now stay the size of their buttons at any zoom.
+
 ## 0.2.504
 
 - **No more flashing between scenes in a playlist.** Going from one scene (or colour or effect block) to

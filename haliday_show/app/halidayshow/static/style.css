@@ -305,7 +305,9 @@ label { display: inline-flex; align-items: center; gap: 4px; }
 .effect-picker { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
 .effect-picker button.active { border-color: var(--accent); }
 .effect-picker button { display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding-top: 6px; }
-.fx-strip { display: block; width: 100%; min-width: 72px; height: 14px; border-radius: 3px; background: #000; }
+/* width 0 + min-width: the canvas's own pixel size (its width and height, which set its shape) mustn't size
+   its button, or at some zoom levels each redraw makes the strip a little wider, until it fills the window. */
+.fx-strip { display: block; width: 0; min-width: max(72px, 100%); height: 14px; border-radius: 3px; background: #000; }
 .fx-strip.grid { height: 44px; }
 .clip-preview { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; width: 100%; }
 .clip-preview canvas { display: block; flex: 1 1 240px; min-width: 0; height: 22px; background: #000; border-radius: 6px; }
@@ -734,7 +736,7 @@ button.frame-cell:hover { color: var(--text); border-color: var(--accent); }
 .ai-preset-ideas { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .ai-preset-ideas:empty { display: none; }
 .ai-preset-idea { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
-.ai-preset-idea .fx-strip { width: 100%; height: 24px; }
+.ai-preset-idea .fx-strip { height: 24px; }
 .ai-preset-idea-name { font-weight: 600; }
 .ai-preset-idea .insp-actions { display: flex; gap: 6px; }
 .save-preset-dialog { width: min(420px, calc(100vw - 32px)); }
