@@ -362,3 +362,54 @@ export function shapeToGrid(rgb, shape, out = new Uint8Array(shape.w * shape.h *
   });
   return out;
 }
+
+// A bit of a shaped prop as a little shape of its own: the box round its LEDs, each cell holding the
+// LED's place in the bit, so effects on the bit's lane are laid out as it sits in the prop.
+const bitShapes = new WeakMap();
+export function bitShape(shape, bit) {
+  const kept = bitShapes.get(bit);
+  if (kept?.shape === shape) return kept.out;
+  const at = new Map(bit.leds.map((led, k) => [led, k]));
+  let x0 = Infinity, x1 = -1, y0 = Infinity, y1 = -1;
+  shape.cells.forEach((led, c) => {
+    if (!at.has(led)) return;
+    const x = c % shape.w, y = Math.floor(c / shape.w);
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  });
+  let out;
+  if (x1 < 0) out = { w: bit.leds.length, h: 1, cells: bit.leds.map((_, k) => k), source: "xmodel", params: {} };
+  else {
+    const w = x1 - x0 + 1, h = y1 - y0 + 1, cells = new Array(w * h).fill(-1);
+    shape.cells.forEach((led, c) => {
+      if (at.has(led)) cells[(Math.floor(c / shape.w) - y0) * w + (c % shape.w) - x0] = at.get(led);
+    });
+    // An LED of the bit with no cell still counts, so the bit's LED count matches.
+    const last = bit.leds.length - 1;
+    if (!cells.includes(last)) { cells.push(...new Array(w).fill(-1)); cells[w * h] = last; out = { w, h: h + 1, cells, source: "xmodel", params: {} }; }
+    else out = { w, h, cells, source: "xmodel", params: {} };
+  }
+  // Arms and points carry over, so Along each arm still works on a bit made of several of them.
+  if (shape.params?.arms || shape.params?.points) out.params = { arms: shape.params.arms ?? shape.params.points };
+  bitShapes.set(bit, { shape, out });
+  return out;
+}
+
+// The LED (0-based) at a spot on a shape's picture (u, v from 0 to 1 across and down it), or -1.
+export function ledAt(shape, u, v) {
+  const x = Math.min(shape.w - 1, Math.max(0, Math.floor(u * shape.w))), y = Math.min(shape.h - 1, Math.max(0, Math.floor(v * shape.h)));
+  let best = -1, far = Infinity;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const X = x + dx, Y = y + dy;
+    if (X < 0 || Y < 0 || X >= shape.w || Y >= shape.h) continue;
+    const led = shape.cells[Y * shape.w + X], d = Math.abs(dx) + Math.abs(dy);
+    if (led >= 0 && d < far) { far = d; best = led; }
+  }
+  return best;
+}
+
+// A new bit's id and name, not taken by any of `bits`.
+export function newBit(bits) {
+  let n = 1;
+  while (bits.some((b) => b.id === `b${n}` || b.name === `Bit ${n}`)) n++;
+  return { id: `b${n}`, name: `Bit ${n}`, leds: [] };
+}

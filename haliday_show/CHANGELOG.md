@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.501
+
+- **Bits for shaped props.** A star's points, a spinner's arms or a snowflake's middle can each have
+  their own lane in the Show editor. An xLights model's submodels come in as bits when you import it,
+  or make your own in the prop's window under **Setup → Devices**: press **+ New bit**, then press LEDs on
+  the picture. Bits can share LEDs; where they do, the clip that started last shows.
+- **Generate**, the AI and shared shows use bits too, and importing a shared show suggests your prop of
+  the same shape.
+
 ## 0.2.500
 
 - **Shaped props: stars, wreaths, spinners and more.** A WLED light or pixel controller can now be a

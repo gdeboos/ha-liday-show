@@ -4,10 +4,10 @@
 // so a preview frame and a baked frame at the same time are identical.
 
 import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } from "./matrix.js";
-import { shapeLayout, shapeOf, shapeRuns, shapeRunsOf } from "./shapes.js";
+import { bitShape, shapeLayout, shapeOf, shapeRuns, shapeRunsOf } from "./shapes.js";
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture, phoneKey } from "./pictures.js";
-import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
+import { isBitPart, lanesOf, partCells, partGrid, partSize, scatterPart } from "./parts.js";
 import { CHARACTERS, FACE_ASPECT, SHAPES, blinkAt, faceDrawer, lookAt, mouthFor, quickDrawer } from "./faces.js";
 import { wledPixel } from "./wled-effects/index.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_SAMPLE, PHONE_SHARP, hasPhonesLane, singerOf, hex, mainColour, phoneCount, phoneFrame } from "./phones.js";
@@ -2020,24 +2020,31 @@ export function showDuration(show) {
 // planGroups) go over that, and the House lane over everything.
 export function composeLight(light, trackOf, time, positions = {}, houseClips = [], out = new Uint8Array(light.segments * 3), groups = []) {
   out.fill(0);
-  if (!light.parts?.length) {
+  const lanes = lanesOf(light);
+  if (!lanes.length) {
     const tr = trackOf(light.id);
     if (tr) renderTrack(tr.clips, time, light.segments, out, false, gridFor(light));
     if (groups.length) applyGroups(groups, light.id, time, positions, out);
     if (houseClips.length && positions[light.id]) applyHouse(houseClips, time, positions[light.id], out);
     return out;
   }
-  const grid = gridOf(light);
+  const grid = gridFor(light);
   if (grid) {
-    // A matrix's parts are rectangles over it: its own lane plays across the whole grid (unless
-    // it's off), and each part's lane wins in its rectangle while one of its clips is running.
+    // A matrix's parts are rectangles over it, and a shaped prop's bits any of its LEDs: its own lane
+    // plays across the whole of it (unless it's off), and each part's lane wins on its LEDs while one of
+    // its clips is running. Bits may overlap: where they do, the clip that started last wins.
     const whole = light.whole === false ? null : trackOf(light.id);
     if (whole?.clips.length) renderTrack(whole.clips, time, light.segments, out, false, grid);
-    for (const p of light.parts) {
+    const playing = [];
+    for (const p of lanes) {
       const tr = trackOf(`${light.id}#${p.id}`);
-      if (tr?.clips.some((c) => time >= c.start && time < c.end)) {
-        scatterPart(renderTrack(tr.clips, time, partSize(p), undefined, false, partGrid(p)), light, p, out);
-      }
+      const on = tr?.clips.filter((c) => time >= c.start && time < c.end);
+      if (on?.length) playing.push({ p, tr, start: Math.max(...on.map((c) => c.start)) });
+    }
+    playing.sort((a, b) => a.start - b.start);
+    for (const { p, tr } of playing) {
+      const g = isBitPart(p) ? gridFor({ segments: p.leds.length, shape: bitShape(light.shape, p) }) : partGrid(p);
+      scatterPart(renderTrack(tr.clips, time, partSize(p), undefined, false, g), light, p, out);
     }
     if (groups.length) applyGroups(groups, light.id, time, positions, out);
     if (houseClips.length && positions[light.id]) {
@@ -2045,7 +2052,7 @@ export function composeLight(light, trackOf, time, positions = {}, houseClips = 
       else {
         // Parts only: the House lane lights the parts, and the LEDs outside them stay off.
         const lit = applyHouse(houseClips, time, positions[light.id], out.slice());
-        for (const p of light.parts) for (const i of partCells(light, p)) out.set(lit.subarray(i * 3, i * 3 + 3), i * 3);
+        for (const p of lanes) for (const i of partCells(light, p)) out.set(lit.subarray(i * 3, i * 3 + 3), i * 3);
       }
     }
     return out;

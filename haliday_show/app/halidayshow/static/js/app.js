@@ -30,9 +30,9 @@ import { asShown, isSlow } from "./lightspeed.js";
 import { LAB_TEMPLATES, flagSweep, modeSweep, startSweep, sweepWindow, windowSweep } from "./labtemplates.js";
 import { House, SHAPE_POINTS, defaultDrops, defaultPanel, defaultTree, partRgb } from "./house.js";
 import { startLivePreview, stopLivePreview } from "./livepreview.js";
-import { addRectPart, gatherPart, isRectPart, joinParts, partAt, partGrid, partSize, pickPart, rectText, scatterPart, spreadParts,
+import { addRectPart, gatherPart, isBitPart, isRectPart, joinParts, lanesOf, partAt, partGrid, partSize, pickPart, rectText, scatterPart, spreadParts,
   wholeSegments } from "./parts.js";
-import { BUILT_IN_SHAPES, MAX_SHAPE_LEDS, SHAPE_RUNS, builtInShape, parseXmodel, shapeLeds, shapeOf, shapeTestFrame } from "./shapes.js";
+import { BUILT_IN_SHAPES, MAX_SHAPE_LEDS, SHAPE_RUNS, bitShape, builtInShape, ledAt, newBit, parseXmodel, shapeLeds, shapeOf, shapeTestFrame } from "./shapes.js";
 import { MAX_MATRIX, ON_A_MATRIX, RUNS, clipForLane, gridOf, laneTakes, matrixTestFrame, runsDownTree, fromWire, toWire } from "./matrix.js";
 import { awayIds, inSeason, newSeason, seasonNames } from "./seasons.js";
 import { decodeGif } from "./gif.js";
@@ -573,8 +573,10 @@ function partDevice(d, p) {
   const segments = partSize(p);
   // A matrix's part is a little matrix of its own, in plain rows, so grid effects fill it.
   const grid = partGrid(p) && { matrix: { ...partGrid(p), start: "top left", order: "rows", zigzag: false } };
-  return { ...d, id: partId(d, p), name: `${d.name} · ${p.name}`, partName: p.name, parent: d.id, part: p,
-    partIndex: d.parts.indexOf(p), from: p.from, to: p.to, segments, parts: undefined, ...grid,
+  // A shaped prop's bit is a little shape of its own, laid out as it sits in the prop.
+  const bit = isBitPart(p) && { shape: bitShape(d.shape, p), bits: undefined };
+  return { ...d, id: partId(d, p), name: `${d.name} · ${p.name}`, partName: p.name, parent: d.id, part: p, ...bit,
+    partIndex: lanesOf(d).indexOf(p), from: p.from, to: p.to, segments, parts: undefined, ...grid,
     bulbs: d.bulbs ? Math.max(1, Math.round(d.bulbs * segments / d.segments)) : null };
 }
 // What a split light's own track plays on: a strip's parts end to end, as one strip, or a matrix whole.
@@ -593,8 +595,8 @@ function indexDevices() {
   app.lights = {};
   for (const d of app.deviceList) {
     app.lights[d.id] = d;
-    app.devices[d.id] = d.parts?.length ? allPartsDevice(d) : d;
-    for (const p of d.parts || []) app.devices[partId(d, p)] = partDevice(d, p);
+    app.devices[d.id] = lanesOf(d).length ? allPartsDevice(d) : d;
+    for (const p of lanesOf(d)) app.devices[partId(d, p)] = partDevice(d, p);
   }
   app.devices[PHONES] = PHONE_LANE;
   ensureTracks();
@@ -618,7 +620,8 @@ function ensureTracks() {
   const listed = (d) => inSeason(d, app.show.season, app.seasons);
   for (const d of app.deviceList) {
     if (!listed(d)) continue;
-    if (!d.parts?.length) {
+    const lanes = lanesOf(d);
+    if (!lanes.length) {
       // Back where its parts were, if it had any.
       const at = tracks.findIndex((t) => t.device.startsWith(`${d.id}#`));
       if (!has(d.id)) tracks.splice(at < 0 ? tracks.length : at, 0, { device: d.id, clips: [] });
@@ -636,7 +639,7 @@ function ensureTracks() {
     let at = tracks.findIndex((t) => t.device === d.id || app.devices[t.device]?.parent === d.id);
     if (at < 0) at = tracks.length;
     else if (tracks[at].device === d.id) at++;
-    for (const p of d.parts) {
+    for (const p of lanes) {
       const id = partId(d, p);
       const i = tracks.findIndex((t) => t.device === id);
       if (i >= 0) { at = Math.max(at, i + 1); continue; }
@@ -665,7 +668,7 @@ function ensureTracks() {
     if (!dev) return Infinity;
     if (!dev.parent) return order.get(dev.id) * 1000;
     const light = app.lights[dev.parent];
-    return order.get(light.id) * 1000 + 1 + light.parts.findIndex((p) => partId(light, p) === t.device);
+    return order.get(light.id) * 1000 + 1 + lanesOf(light).findIndex((p) => partId(light, p) === t.device);
   };
   app.show.tracks.sort((a, b) => rank(a) - rank(b) || 0);
   if (app.show.tracks.map((t) => t.device).join() !== before) app.selected = null; // track numbers have moved
@@ -1328,21 +1331,88 @@ function shapeControls(d) {
     box.append(row(`${d.segments} LEDs from an xLights model `, button("Import another…", importModel, "ghost small")));
   }
   // The shape itself, LED 1 white and the rest through the rainbow in wiring order (as Test wiring).
+  // While a bit is being picked, its LEDs are white and the rest dim: press an LED to add or take it out.
   const pic = document.createElement("canvas");
   pic.className = "shape-pic";
-  pic.title = "LED 1 is white; the colours follow the wire from there";
+  const picking = bitPick.light === d.id ? bitPick.bit : null;
+  pic.title = picking ? `Press LEDs to add them to ${picking.name} or take them out` : "LED 1 is white; the colours follow the wire from there";
+  if (picking) pic.classList.add("picking");
+  const paint = () => {
+    if (!picking) { drawShape(pic, shapeTestFrame(d.segments), shape); return; }
+    const frame = new Uint8Array(d.segments * 3).fill(60), on = new Set(picking.leds);
+    for (const i of on) frame.set([255, 255, 255], i * 3);
+    drawShape(pic, frame, shape);
+  };
+  requestAnimationFrame(paint);
+  pic.addEventListener("click", (e) => {
+    if (!picking) return;
+    const r = pic.getBoundingClientRect(), cell = Math.min(r.width / shape.w, r.height / shape.h);
+    const u = (e.clientX - r.left - (r.width - cell * shape.w) / 2) / (cell * shape.w);
+    const v = (e.clientY - r.top - (r.height - cell * shape.h) / 2) / (cell * shape.h);
+    const led = ledAt(shape, u, v);
+    if (led < 0) return;
+    const leds = new Set(picking.leds);
+    if (leds.has(led)) leds.delete(led); else leds.add(led);
+    picking.leds = [...leds].sort((a, b) => a - b);
+    // A bit with no LEDs isn't kept; a new one is added to the light with its first LED.
+    const bits = d.bits || [], had = bits.some((b) => b.id === picking.id);
+    d.bits = !picking.leds.length ? bits.filter((b) => b.id !== picking.id)
+      : had ? bits.map((b) => (b.id === picking.id ? picking : b)) : [...bits, picking];
+    if (!d.bits.length) delete d.bits;
+    paint();
+    saveDevices();
+  });
   box.append(pic);
-  requestAnimationFrame(() => drawShape(pic, shapeTestFrame(d.segments), shape));
-  if (d.bits?.length) {
-    box.append(Object.assign(document.createElement("div"), { className: "hint",
-      textContent: `Bits: ${d.bits.map((b) => `${b.name} (${b.leds.length})`).join(", ")}` }));
-  }
+  box.append(bitsEditor(d));
   const test = button("Test wiring", async () => {
     if (await testLight(d, "shape")) status(`${d.name}: LED 1 should be white, then the colours run red, yellow, green, blue as in the picture`);
   }, "ghost small");
   test.title = linked(d) ? "Light it as in the picture, to check where the wire starts and which way it runs" : plannedTip(d);
   test.disabled = !linked(d);
   box.append(row(test));
+  return box;
+}
+
+// The bit being picked on a shaped prop's picture: {light, bit}, kept while the window is redrawn.
+const bitPick = { light: null, bit: null };
+
+// A shaped prop's bits: each gets a lane under the prop in shows. Imported with its xLights model, or
+// made here by pressing LEDs on the picture.
+function bitsEditor(d) {
+  const box = document.createElement("div");
+  box.className = "bits-list";
+  box.append(Object.assign(document.createElement("div"), { className: "hint",
+    textContent: "Bits get a lane of their own in shows, such as a star's points or a spinner's arms. They can share LEDs." }));
+  const pickOff = () => { bitPick.light = bitPick.bit = null; };
+  for (const b of d.bits || []) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const name = Object.assign(document.createElement("input"), { value: b.name, size: 14, title: "The bit's name, shown on its lane" });
+    name.addEventListener("change", () => { b.name = name.value.trim().slice(0, 64) || b.name; saveDevices(); });
+    const picking = bitPick.light === d.id && bitPick.bit?.id === b.id;
+    const pick = button(picking ? "Done picking" : "Pick LEDs", () => {
+      if (picking) pickOff(); else Object.assign(bitPick, { light: d.id, bit: { ...b, leds: [...b.leds] } });
+      renderLightEditor();
+    }, picking ? "small" : "ghost small");
+    const remove = button("✕", () => {
+      if (bitPick.bit?.id === b.id) pickOff();
+      d.bits = d.bits.filter((x) => x !== b);
+      if (!d.bits.length) delete d.bits;
+      saveDevices();
+    }, "ghost small");
+    remove.title = "Remove this bit (its clips stay in your shows)";
+    row.append(name, Object.assign(document.createElement("span"), { className: "hint", textContent: `${b.leds.length} LED${b.leds.length === 1 ? "" : "s"}` }), pick, remove);
+    box.append(row);
+  }
+  const unsaved = bitPick.light === d.id && bitPick.bit && !(d.bits || []).some((b) => b.id === bitPick.bit.id);
+  if (unsaved) box.append(Object.assign(document.createElement("div"), { className: "hint",
+    textContent: `${bitPick.bit.name}: press LEDs on the picture to add them.` }));
+  if ((d.bits || []).length < 64) {
+    box.append(button("+ New bit", () => {
+      Object.assign(bitPick, { light: d.id, bit: newBit(d.bits || []) });
+      renderLightEditor();
+    }, "ghost small"));
+  }
   return box;
 }
 
@@ -1494,6 +1564,7 @@ function lightFields(d) {
 const lightEdit = { id: null };
 
 function openLightEditor(d) {
+  bitPick.light = bitPick.bit = null;
   lightEdit.id = d.id;
   renderLightEditor();
   $("light-dialog").showModal();
