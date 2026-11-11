@@ -399,7 +399,7 @@ export class House {
 
   async loadPhoto() {
     const img = new Image();
-    img.src = `api/house/photo?v=${Date.now()}`;
+    img.src = `api/house/photo?v=${Date.now()}${this.photoQuery || ""}`; // photoQuery: the profile's (app.js)
     try { await img.decode(); this.photo = img; this.sample = false; } catch { this.photo = null; }
   }
 

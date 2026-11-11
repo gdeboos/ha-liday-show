@@ -97,6 +97,7 @@ import { finalGroups, headline, lastText, nextOffset, tally, timingText } from "
 import { healthLines, showProblems } from "./showhealth.js";
 import { browserText, issueUrl, reportText } from "./report.js";
 import { watchSliders } from "./slidervalue.js";
+import { elsewhere, isPlan, liveWarning, onlyElsewhere, pickedProfile, withProfile } from "./profiles.js";
 import { BRAND, FPS as VIDEO_FPS, LINK, SHAPES, TAIL_S, barParts, fileName, ivfFrame, ivfHeader, titleAlpha, videoLayout } from "./video.js";
 
 // Symbols on buttons are drawn as line icons rather than emoji (glyphs.js).
@@ -104,8 +105,18 @@ watchButtons();
 
 const $ = (id) => document.getElementById(id);
 
+// Profiles (profiles.js): the one this browser looks at. On a plan, the lights, house, groups and roles
+// asked for are the plan's; nothing is baked or played (only the live profile is).
+const profile = { view: null, id: null, hidden: new Set() };
+const onPlan = () => isPlan(profile.view, profile.id);
+
 // Relative URLs keep working behind Home Assistant ingress.
 async function api(path, { method = "GET", json, body, headers = {}, signal, keepalive = false } = {}) {
+  if (onPlan()) {
+    path = withProfile(path, profile.id);
+    // A show or scene saved on a plan keeps the live profile's frames, so it still plays tonight.
+    if (method === "PUT" && /^api\/(shows|house-scenes)\/[^/?]+$/.test(path)) path += "?keep_bake=1";
+  }
   if (json !== undefined) {
     body = JSON.stringify(json);
     headers["Content-Type"] = "application/json";
@@ -480,6 +491,146 @@ async function loadDevices() {
   if (showListCache.length) renderShowLists(showListCache); // the season names and buttons
 }
 
+// Profiles (profiles.js) ------------------------------------------------------------------------------
+const liveName = () => profile.view?.profiles.find((p) => p.live)?.name || "the live profile";
+
+async function loadProfiles() {
+  profile.view = await api("api/profiles").catch(() => null);
+  profile.id = pickedProfile(profile.view, prefs.get("profile", null));
+  profile.hidden = elsewhere(profile.view, profile.id);
+  app.offProfile = (device) => onlyElsewhere(device, profile.hidden, GROUP);
+  house.photoQuery = onPlan() ? `&profile=${encodeURIComponent(profile.id)}` : "";
+  renderProfiles();
+}
+
+// The picker in the top bar (with more than one profile), the banner on a plan, and Setup → Devices → Profiles.
+function renderProfiles() {
+  const v = profile.view;
+  const list = v?.profiles || [];
+  const pick = $("profile-pick");
+  $("profile-pick-wrap").hidden = list.length < 2;
+  pick.replaceChildren(...list.map((p) => new Option(p.live ? `${p.name} (live)` : p.name, p.id)));
+  pick.value = profile.id || "";
+  $("profile-banner").hidden = !onPlan();
+  document.body.classList.toggle("on-plan", onPlan());
+  if (onPlan()) {
+    const here = list.find((p) => p.id === profile.id);
+    $("profile-banner-text").innerHTML = "";
+    $("profile-banner-text").append("You're looking at ", Object.assign(document.createElement("b"), { textContent: here.name }),
+      ", which isn't live. Shows and scenes you play here play only in the preview, not on your lights.");
+    $("profile-banner-back").textContent = `Back to ${liveName()}`;
+  }
+  const box = $("profile-rows");
+  if (!box) return;
+  box.replaceChildren(...list.map((p) => {
+    const row = document.createElement("div");
+    row.className = `season-row profile-row${p.id === profile.id ? " current" : ""}`;
+    const name = Object.assign(document.createElement("span"), { className: "season-name", textContent: p.name });
+    const bits = [`${p.lights.length} light${p.lights.length === 1 ? "" : "s"}`];
+    if (p.live) bits.unshift("Live: plays on your lights");
+    if (p.id === profile.id) bits.push("you're looking at it");
+    const note = Object.assign(document.createElement("span"), { className: "hint", textContent: bits.join(" · ") });
+    const acts = document.createElement("span");
+    acts.className = "group";
+    if (p.id !== profile.id) acts.append(button("Open", () => switchProfile(p.id), "ghost small"));
+    acts.append(button("Rename…", () => renameProfile(p), "ghost small"));
+    if (!p.live) {
+      acts.append(button("Make this the live one…", () => makeProfileLive(p), "small"));
+      acts.append(button("Delete…", () => deleteProfile(p), "ghost small danger"));
+    }
+    row.append(name, note, acts);
+    return row;
+  }));
+}
+
+// Switching profile reloads the page, so every list, the house and the lanes follow it. Coming back to
+// the live profile makes ready the shows and scenes changed on a plan.
+async function switchProfile(id) {
+  if (id === profile.id) return;
+  try { if (app.dirty) await autoSave(); } catch { /* the page asks before leaving */ }
+  if (onPlan() && id === profile.view?.live) prefs.set("profile.rebake", true);
+  prefs.set("profile", id);
+  location.reload();
+}
+
+const profileNameTaken = (n, but = null) => (profile.view?.profiles || [])
+  .some((p) => p.id !== but && p.name.toLowerCase() === n.trim().toLowerCase()) ? "There's already a profile with that name" : "";
+
+async function newProfile() {
+  const here = profile.view?.profiles.find((p) => p.id === profile.id);
+  const name = await askText(`New profile: a copy of ${here?.name || "this one"}`, {
+    value: profile.view?.profiles.length === 1 ? "Next year" : "", max: 40, check: (n) => profileNameTaken(n) });
+  if (!name) return;
+  try {
+    const out = await api("api/profiles", { method: "POST", json: { name, from: profile.id } });
+    status(`${name} made: it has the same lights and house as ${here?.name || "the one you were on"}`, "saved", "lights");
+    await switchProfile(out.id);
+  } catch (e) { status(`Couldn't make the profile: ${e.message}`, true, "lights"); }
+}
+
+async function renameProfile(p) {
+  const name = await askText("Rename the profile", { value: p.name, max: 40, check: (n) => profileNameTaken(n, p.id) });
+  if (!name || name === p.name) return;
+  try {
+    profile.view = await api(`api/profiles/${encodeURIComponent(p.id)}`, { method: "PUT", json: { name } });
+    renderProfiles();
+  } catch (e) { status(`Couldn't rename the profile: ${e.message}`, true, "lights"); }
+}
+
+async function deleteProfile(p) {
+  const own = p.lights.filter((id) => !profile.view.profiles.some((o) => o !== p && o.lights.includes(id))).length;
+  if (!(await askYes(`Delete ${p.name}? Its house photo, tracing, groups and roles go${own ? `, and so ${own === 1 ? "does the light" : `do the ${own} lights`} only in it` : ""}. Your shows keep their effects.`,
+    { yes: "Delete", danger: true }))) return;
+  try {
+    profile.view = await api(`api/profiles/${encodeURIComponent(p.id)}`, { method: "DELETE" });
+    if (p.id === profile.id) { prefs.set("profile", null); location.reload(); return; }
+    profile.hidden = elsewhere(profile.view, profile.id);
+    renderProfiles();
+    timeline.layout();
+    status(`${p.name} deleted`, "saved", "lights");
+  } catch (e) { status(`Couldn't delete the profile: ${e.message}`, true, "lights"); }
+}
+
+async function makeProfileLive(p) {
+  if (!(await askYes(liveWarning(profile.view, p.id), { yes: "Make it live" }))) return;
+  try {
+    try { if (app.dirty) await autoSave(); } catch { /* saved again once it's live */ }
+    await api(`api/profiles/${encodeURIComponent(p.id)}/live`, { method: "POST" });
+    prefs.set("profile", p.id);
+    prefs.set("profile.rebake", true);
+    location.reload();
+  } catch (e) { status(`Couldn't make ${p.name} live: ${e.message}`, true, "lights"); }
+}
+
+// Back on the live profile after changes on a plan (or after making a plan live): every show whose frames
+// aren't the ones it would make now is saved again, in the background, as Check all shows → Fix does.
+async function bakeOutOfDate() {
+  // With more than one profile, a light changed on a plan (in any browser) changes the live frames too.
+  if (onPlan() || (!prefs.get("profile.rebake", false) && (profile.view?.profiles.length || 0) < 2)) return;
+  let list;
+  try { list = await api("api/shows"); } catch { return; }
+  await picturesReady;
+  let done = 0;
+  for (const s of list) {
+    if ((s.id === app.showId && app.dirty) || !s.baked) continue; // unbaked ones are keepShowsReady's
+    try {
+      const show = s.id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(s.id)}`);
+      const pos = housePositionsFor(show);
+      const saved = (await api(`api/shows/${encodeURIComponent(s.id)}/baked/key`).catch(() => null))?.key;
+      if (saved && saved === bakeNoteFor(pos, show)) continue;
+      if (!done) status("Saving your shows again for your live lights…", "info", "profile");
+      await uploadBake(s.id, await bakeOff(show, app.devices, FPS, pos, app.groups), undefined, bakeNoteFor(pos, show));
+      if (s.id === app.showId) app.bakedKey = showBakeKey(pos);
+      done++;
+    } catch { /* Check all shows finds it */ }
+  }
+  prefs.set("profile.rebake", false);
+  if (done) {
+    await refreshShows();
+    status(`${done} show${done === 1 ? "" : "s"} saved again for your live lights`, "saved", "profile");
+  }
+}
+
 // Seasons (seasons.js): which props are packed away just now. A part goes with its light.
 const isAway = (d) => !!d && awayIds(app.deviceList, app.seasons).has(d.parent || d.light?.id || d.id);
 
@@ -776,6 +927,7 @@ function fitLater(clip, dev, opts) {
 
 function trackPlaysOn(t) {
   if (t.device === HOUSE) return { kind: "house" };
+  if (onlyElsewhere(t.device, profile.hidden, GROUP)) return { kind: "elsewhere" }; // another profile's light
   if (isGroupTrack(t.device)) return { kind: "group" };
   const dev = app.devices[t.device];
   return dev ? { kind: "light", name: dev.name, dev } : { kind: "missing" };
@@ -795,7 +947,8 @@ async function checkShowHealth(ids, list = null) {
     // The open show with changes not saved yet gets its frames when it's saved, so it isn't out of date.
     const open = id === app.showId && app.dirty;
     let current = true;
-    if (row?.baked && !open) {
+    // On a plan, frames are the live profile's, so they're only checked there.
+    if (row?.baked && !open && !onPlan()) {
       const saved = (await api(`api/shows/${encodeURIComponent(id)}/baked/key`).catch(() => null))?.key;
       current = !saved || saved === bakeNoteFor(housePositionsFor(show), show);
     }
@@ -819,6 +972,7 @@ async function checkShowHealth(ids, list = null) {
 
 // Saves a show's frames again with the lights, groups and tracing as they are now (Fix).
 async function resaveShow(id) {
+  if (onPlan()) throw new Error(`switch to ${liveName()} first: only the live profile's frames are saved`);
   const show = id === app.showId ? app.show : await api(`api/shows/${encodeURIComponent(id)}`);
   await picturesReady;
   const pos = housePositionsFor(show);
@@ -2316,7 +2470,11 @@ $("light-dialog").addEventListener("click", async (e) => {
   else if (what === "test") { if (await testLight(d)) status(`Testing ${d.name} for 20 seconds`); }
   else if (what === "chase") checkSegments(d);
   else if (what === "remove") {
-    if (!(await askYes(`Remove ${d.name}? Its clips stay in your shows.`, { yes: "Remove", danger: true }))) return;
+    const others = (profile.view?.profiles || []).filter((p) => p.id !== profile.id && p.lights.includes(d.id));
+    const here = profile.view?.profiles.find((p) => p.id === profile.id);
+    const ask = others.length && here ? `Take ${d.name} out of ${here.name}? It stays in ${others.map((p) => p.name).join(" and ")}, and its clips stay in your shows.`
+      : `Remove ${d.name}? Its clips stay in your shows.`;
+    if (!(await askYes(ask, { yes: "Remove", danger: true }))) return;
     $("light-dialog").close();
     app.deviceList = app.deviceList.filter((x) => x.id !== d.id);
     saveDevices();
@@ -2607,6 +2765,7 @@ async function saveGroups(next, what, { rebake = true } = {}) {
 // at its new length straight away. The open show re-bakes when it next saves.
 async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
   let done = 0, failed = 0, open = false, list;
+  if (onPlan()) return { done, failed, open }; // the live profile's shows are made ready when you're back on it
   app.bakedKey = null;
   try { list = await api("api/shows"); } catch { return { done, failed: true, open }; }
   for (const s of list) {
@@ -2629,6 +2788,7 @@ async function rebakeShowsFor(id, uses = (show) => showUses(show, id)) {
 // in the background, so the public page, playlists, schedules and Home Assistant can play them.
 let showsReadying = null;
 function keepShowsReady() {
+  if (onPlan()) return Promise.resolve();
   showsReadying ||= (async () => {
     let list;
     try { list = await api("api/shows"); } catch { return; }
@@ -3297,7 +3457,7 @@ const sceneEd = new SceneEditor({
   lights: () => app.deviceList || [], devices: () => app.devices || {}, lightsKey: () => lightsKey(),
   palettes: () => allPalettes(), paletteChoices: () => paletteChoices(), askYes, presetsFor: (effect) => presetsFor(effect), afterList: (box) => foldLibraryList("scenes", box),
   positions: () => housePositionsAll(), groups: () => app.groups, editAdvanced: (id) => openSceneInEditor(id),
-  picturesReady: () => picturesReady,
+  picturesReady: () => picturesReady, onPlan: () => onPlan(),
   scheduleLink: (id) => scheduleLink("scene", id), scheduleLine: (id) => (entriesFor(scheduleState.entries || [], "scene", id).length
     ? scheduleLine(scheduleState.entries, "scene", id, scheduleState) : ""),
   chooseEffect: (opts) => chooseEffect({ groups: [[null, false]], ...opts }), wledPicker, chooseWledEffect,
@@ -4063,7 +4223,7 @@ function drawClipPreview() {
   if (grid) drawGrid(c, rgb, grid, (dev.brightness ?? 100) / 100);
   else if (shape) drawShape(c, rgb, shape, (dev.brightness ?? 100) / 100);
   else drawStrip(c, rgb, dev.segments, (dev.brightness ?? 100) / 100);
-  const onLight = previewOnLight() && linked(dev) && !EFFECTS[clip.effect]?.experimental && !EFFECTS[clip.effect]?.sceneOnly && !app.playing && !app.starting;
+  const onLight = !onPlan() && previewOnLight() && linked(dev) && !EFFECTS[clip.effect]?.experimental && !EFFECTS[clip.effect]?.sceneOnly && !app.playing && !app.starting;
   if (onLight) sendPreview(dev, rgb);
   else if (clipPreview.dev) stopLightPreview();
 }
@@ -6037,7 +6197,7 @@ function bakeBlocks() {
 }
 
 async function bakeBlocksOnce() {
-  if (!playlistsLoaded || !app.deviceList?.length) return;
+  if (!playlistsLoaded || !app.deviceList?.length || onPlan()) return;
   const { baked } = await api("api/blocks");
   const have = new Set(baked);
   const made = prefs.get("blockBakes", {});
@@ -12441,6 +12601,20 @@ async function save({ stage = null } = {}) {
     const now = (await api(`api/shows/${encodeURIComponent(app.showId)}/baked/key`).catch(() => null))?.key;
     if (now === app.serverBakeNote) app.bakedKey = key;
   }
+  if (onPlan()) {
+    // Looking at a plan: the show is saved, and the frames made for the live lights stay until it's
+    // saved on the live profile (switching back does that for every show changed here).
+    if (app.dirty) {
+      app.show.duration = app.duration();
+      const edits = app.edits;
+      await api(`api/shows/${app.showId}`, { method: "PUT", json: app.show });
+      if (app.edits === edits) app.dirty = false;
+      prefs.set("profile.rebake", true);
+    }
+    await refreshShows();
+    renderOutput();
+    return;
+  }
   if (app.dirty || app.bakedKey === null) {
     app.show.duration = app.duration();
     const edits = app.edits;
@@ -12477,6 +12651,7 @@ const bakeNoteFor = (pos, show = app.show) => {
 
 // note: what it was baked for (bakeNoteFor), kept with it on the server.
 async function uploadBake(showId, blob, progress = undefined, note = null) {
+  if (onPlan()) return; // a plan's frames never reach the lights
   // Frames are mostly the same colours over and over, so gzipped they're many times smaller and
   // Play starts sooner. A browser that can't gzip sends them as they are.
   const { data, gz } = await packed(blob);
@@ -12679,7 +12854,7 @@ function computePeaks(buffer, rate = 100) {
 // speakers --------------------------------------------------------------------
 // Two speakers: the one the editor plays on while you design (kept per browser), and the show
 // speaker that automations play the show on (the show's own, or the default in Settings).
-const speaker = () => prefs.get("editorSpeaker", "");
+const speaker = () => (onPlan() ? "" : prefs.get("editorSpeaker", ""));
 const speakerName = (id) => app.speakers.find((s) => s.entity_id === id)?.name || id;
 
 async function loadSpeakers() {
@@ -12856,7 +13031,7 @@ async function offsetChanged(e) {
 }
 
 // transport -------------------------------------------------------------------
-const lightsOn = () => $("lights").checked && app.show.tracks.some((t) => linked(playingDev(t)));
+const lightsOn = () => !onPlan() && $("lights").checked && app.show.tracks.some((t) => linked(playingDev(t)));
 const offset = () => (Number($("offset").value) || 0) / 1000;
 
 function currentTime() {
@@ -15129,6 +15304,9 @@ function wire() {
     try { scheduleState = await api("api/location", { method: "PUT", json: {} }); } catch (err) { status(err.message, true); }
     refreshPlaylistStatus();
   });
+  $("btn-new-profile").addEventListener("click", newProfile);
+  $("profile-pick").addEventListener("change", (e) => switchProfile(e.target.value));
+  $("profile-banner-back").addEventListener("click", () => switchProfile(profile.view.live));
   $("btn-new-season").addEventListener("click", async () => {
     const seasons = app.seasons || [];
     const name = await askText("New season", { max: 40, yes: "Add season",
@@ -15340,6 +15518,7 @@ async function init() {
   const loading = (text) => { $("app-loading-text").textContent = text; };
   try {
     loading("Loading your lights…");
+    await loadProfiles();
     await loadDevices();
     // In the background: bakes wait for these (Picture and Singing face effects read them), the page doesn't.
     picturesReady = Promise.all([loadPictures(), loadFaces()]);
@@ -15352,7 +15531,7 @@ async function init() {
     // The public page's settings are only waited for when that's the page opening (its tab shows once
     // they're in).
     const publicLoaded = loadPublic();
-    house.load().then(() => { renderHouseLights(); keepShowsReady(); });
+    house.load().then(() => { renderHouseLights(); keepShowsReady(); bakeOutOfDate(); });
     loading("Loading your shows…");
     const shows = await api("api/shows");
     await openShow(null, { chosen: false });

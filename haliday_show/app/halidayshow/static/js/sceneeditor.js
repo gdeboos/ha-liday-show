@@ -127,6 +127,7 @@ export class SceneEditor {
 
   // Playing --------------------------------------------------------------------------
   async play(id) {
+    if (this.d.onPlan?.()) { this.d.status("Only the live profile plays on your lights: switch back to it to play this scene", "hint"); return; }
     if (id === this.id) await this.flush();
     await this.playNow(id);
   }
@@ -657,7 +658,8 @@ export class SceneEditor {
 
   async bakeAndSend(id = this.id, scene = this.scene) {
     const lights = this.d.lights();
-    if (!lights.length) return;
+    // On a plan (profiles.js) the scene is saved, and its frames are made when you're back on the live profile.
+    if (!lights.length || this.d.onPlan?.()) return;
     const loop = withoutLive(() => sceneLoop(scene, lights, FPS)); // live effects loop on their idle glow
     const advanced = scene.mode === "advanced";
     const show = forBaking(sceneShow(scene, lights, loop));

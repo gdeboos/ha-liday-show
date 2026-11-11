@@ -120,6 +120,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
 - **WLED** strips, found on the network or added by IP, with their LED count and WLED segments filled
   in for you (as parts of one light, or a light per segment for a controller driving several strings);
   a Govee light rewired to WLED converts in one step, keeping its shows and parts
+- **Profiles**: keep a plan for next year (lights you mean to buy, a new photo and layout, new groups)
+  beside your real display, design shows for it, and make it live when the lights go up
 - **Seasons** for props that only go up for part of the year: a show lists only its season's props,
   a switch packs a season's props away so nothing is sent to them, and buttons on the show list show
   one season's shows

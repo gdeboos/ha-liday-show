@@ -6,7 +6,7 @@
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // One show's problems: [{level, text, fix, resave?}]. `track(t)` says what a track plays on:
-// {kind: "light" | "house" | "group" | "missing", name}. `fit(clip, t)` gives {level: "ok" | "limited" |
+// {kind: "light" | "house" | "group" | "elsewhere" | "missing", name}. `fit(clip, t)` gives {level: "ok" | "limited" |
 // "no", reasons} (a promise, as fits are worked out a few at a time). `ready` is false for a show with
 // no frames saved, `current` false for one saved before your lights, groups or tracing changed.
 export async function showProblems(show, { track, fit, ready = true, current = true }) {
@@ -21,7 +21,7 @@ export async function showProblems(show, { track, fit, ready = true, current = t
     const clips = t.clips || [];
     if (!clips.length) continue;
     const what = track(t);
-    if (what.kind === "group") continue; // a group lane fits whatever its lights are
+    if (what.kind === "group" || what.kind === "elsewhere") continue; // fits whatever its lights are; another profile's
     if (what.kind === "missing") {
       out.push({ level: "warn", text: `${plural(clips.length, "effect")} on a light you've removed, so ${clips.length === 1 ? "it doesn't" : "they don't"} play.`,
         fix: "Open the show and remove that track, or add the light back under Setup → Devices." });

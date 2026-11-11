@@ -234,5 +234,5 @@ samples in their folders.
 
 ---
 
-← [Your house](house.md) · [Contents](README.md) · [The Music editor](music-editor.md) →
+← [Profiles: plans for next year](profiles.md) · [Contents](README.md) · [The Music editor](music-editor.md) →
 <!-- /nav -->

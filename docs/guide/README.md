@@ -20,6 +20,7 @@ page you're on, each with a link to the right part of this guide.
 - [Parts, groups, roles and seasons](organising-lights.md): split lights, group them, and put props away
 - [Speakers](speakers.md): where the music plays
 - [Your house](house.md): your photo, with each light traced on it
+- [Profiles](profiles.md): a plan for next year beside your real display, live when the lights go up
 
 ## Songs
 

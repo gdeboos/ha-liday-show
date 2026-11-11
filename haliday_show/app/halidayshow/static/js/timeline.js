@@ -75,8 +75,10 @@ export class Timeline {
 
   hidden(i) {
     const tracks = this.app.show.tracks, folded = this.app.folded;
-    if (!folded?.size) return false;
     const tr = tracks[i];
+    // Lanes for another profile's lights (profiles.js) are kept but not shown.
+    if (this.app.offProfile?.(tr.device)) return true;
+    if (!folded?.size) return false;
     if (isGroupTrack(tr.device)) return folded.has("@groups");
     const parent = this.app.devices[tr.device]?.parent;
     if (!parent || !folded.has(parent)) return false;

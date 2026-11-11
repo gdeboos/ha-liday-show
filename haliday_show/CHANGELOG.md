@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.503
+
+- **Profiles: plan next year's display.** Under **Setup → Devices → Profiles**, press **+ New profile** to
+  make a copy of your house, such as **Next year**. Add the lights you mean to buy, take out ones you're
+  replacing, upload a new photo, trace it and regroup lights, all without touching tonight's lights.
+  Your shows are shared: open one in the plan and it has lanes for the plan's lights, while lanes for
+  lights that aren't in it are hidden (never deleted).
+- While you look at a plan, a banner says so and nothing plays on your lights: **▶ Play** plays in the
+  preview only. Switch with **Profile** in the top bar, or **Back to Now** on the banner.
+- When the lights go up, press **Make this the live one…**. Shows, schedules, Home Assistant and the
+  visitors' page then play on it, and your shows are saved again for the new lights in the background.
+  The old profile stays as it was, so you can switch back.
+
 ## 0.2.502
 
 - **Singing faces on shaped props.** A face prop can now sing along: its mouth shapes light one at a time
