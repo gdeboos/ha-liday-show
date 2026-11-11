@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.504
+
+- **No more flashing between scenes in a playlist.** Going from one scene (or colour or effect block) to
+  the next made Govee lights flash a few times, because they were let go and taken back in between. They
+  now carry straight on into the next block. Switching from one scene to another by hand, or on the
+  schedule, no longer flashes either.
+
 ## 0.2.503
 
 - **Profiles: plan next year's display.** Under **Setup → Devices → Profiles**, press **+ New profile** to

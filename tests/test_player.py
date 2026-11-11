@@ -215,3 +215,36 @@ async def test_spectrum_bars_are_put_together_from_each_region_s_frame():
     await p.stop()
     assert bytes([20, 20, 20, 5, 5, 5]) in out.light.sent  # low bands full (frame 20), high at a quarter (frame 5)
     assert len(out.light.sent) == len(set(out.light.sent))  # and sent again only when it changes
+
+
+class RecordingSock:
+    def __init__(self):
+        self.sent = []
+
+    def sendto(self, data, addr):
+        self.sent.append(data)
+
+
+def _block():
+    from halidayshow import baked
+    return baked.decode(baked.encode(20, [{"device": "g", "segments": 4}], [bytes([255, 0, 0] * 4)]))
+
+
+async def test_back_to_back_blocks_keep_a_govee_light_in_realtime(monkeypatch):
+    # Letting a Govee light out of realtime between two scene blocks made it flash (0.2.504).
+    import asyncio
+    from halidayshow import output, protocol
+    monkeypatch.setattr(player, "HOLD_S", 0.3)
+    out = output.Output()
+    out.sock = RecordingSock()
+    p = player.Player(out)
+    light = {"g": {"ip": "10.0.0.9", "segments": 4}}
+    off = protocol.razer_msg(protocol.razer_enable(False))
+    on = protocol.razer_msg(protocol.razer_enable(True))
+    await p.play(None, _block(), light, length=0.1)
+    await asyncio.sleep(0.15)  # the first block has run its time
+    assert not p.playing and "10.0.0.9" in out.devices
+    await p.play(None, _block(), light, length=0.1)  # the next block carries straight on
+    assert out.sock.sent.count(on) == 1 and off not in out.sock.sent
+    await asyncio.sleep(0.5)  # nothing follows: the light is let go
+    assert out.devices == {} and out.sock.sent.count(off) == 1

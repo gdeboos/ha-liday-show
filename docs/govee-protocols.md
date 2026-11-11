@@ -34,6 +34,15 @@ is (see below). Bigger payloads go as an `a3` multi-packet upload (`multi_packet
 <kind> …`, then `a3 01`, `a3 02` … with the last line numbered `ff`. Scenes are kind `02`, Finger sketch
 pictures kind `03`.
 
+### Leaving realtime and coming back makes a light flash
+
+Owner report (11 Nov 2026, H706A/B/C Permanent Outdoor Lights Pro): a playlist of Basic scenes made the
+lights flash about three times at every change, even with solid colours. Each block ended with realtime
+off (`b1 00`) and the next began with turn on, brightness 100 and realtime on, so the light briefly went
+back to its own look. Since **0.2.504** a finished block holds its last picture for 2 s
+(`player.HOLD_S`) and the next block or scene keeps any light it shares in realtime. Not yet confirmed
+on his lights.
+
 ## Realtime (razer) on newer string lights: a 44-bulb window
 
 The 30 m Christmas String Lights 2 (**H70C5**, 300 bulbs, `Pillars` on the owner's network) in razer
