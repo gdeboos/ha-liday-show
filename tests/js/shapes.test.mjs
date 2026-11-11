@@ -1,0 +1,125 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { builtInShape, parseXmodel, shapeLayout, shapeLeds, shapeOf, shapeRuns, shapeTestFrame, BUILT_IN_SHAPES, rasterise } from "../../haliday_show/app/halidayshow/static/js/shapes.js";
+
+const ledsIn = (s) => s.cells.filter((c) => c >= 0).sort((a, b) => a - b);
+
+test("every built-in shape puts each LED in its own cell", () => {
+  for (const source of Object.keys(BUILT_IN_SHAPES)) {
+    const s = builtInShape(source, {});
+    const n = shapeLeds(s);
+    assert.ok(n > 0, source);
+    assert.deepEqual(ledsIn(s), Array.from({ length: n }, (_, i) => i), source);
+    assert.equal(s.cells.length, s.w * s.h);
+    assert.equal(s.source, source);
+  }
+});
+
+test("built-in sizes follow their numbers and limits", () => {
+  assert.equal(shapeLeds(builtInShape("star", { points: 5, perPoint: 10 })), 50);
+  assert.equal(shapeLeds(builtInShape("circle", { rings: 3, perRing: 20 })), 60);
+  assert.equal(shapeLeds(builtInShape("spinner", { arms: 6, perArm: 8 })), 48);
+  assert.equal(shapeLeds(builtInShape("frame", { across: 10, down: 5 })), 30);
+  assert.equal(shapeLeds(builtInShape("star", { points: 99, perPoint: 2 })), 24); // 12 points at most
+});
+
+test("shapeOf needs the light's LED count to match", () => {
+  const shape = builtInShape("circle", { rings: 1, perRing: 30 });
+  assert.equal(shapeOf({ segments: 30, shape }), shape);
+  assert.equal(shapeOf({ segments: 31, shape }), null);
+  assert.equal(shapeOf({ segments: 30 }), null);
+});
+
+test("round: a wreath's rings chase round together", () => {
+  const L = shapeLayout(builtInShape("circle", { rings: 2, perRing: 24 }));
+  const { len, index } = shapeRuns(L, "round");
+  assert.ok(len <= 30 && len >= 20, `len ${len}`);
+  // LED 0 (outer ring, top) and LED 24 (inner ring, top) share a spot.
+  assert.equal(index[0], index[24]);
+});
+
+test("out: a spinner's arms light out together", () => {
+  const L = shapeLayout(builtInShape("spinner", { arms: 4, perArm: 10 }));
+  const { len, index } = shapeRuns(L, "out");
+  assert.equal(len, 10);
+  for (let a = 0; a < 4; a++) assert.equal(index[a * 10], 0);
+  for (let a = 0; a < 4; a++) assert.equal(index[a * 10 + 9], 9);
+});
+
+test("arms: each star point runs from the middle out", () => {
+  const L = shapeLayout(builtInShape("star", { points: 5, perPoint: 10 }));
+  const { len, index } = shapeRuns(L, "arms");
+  assert.ok(len >= 4 && len <= 7, `len ${len}`);
+  assert.equal(index[0], len - 1); // LED 1 is the top tip, the far end of its arm
+});
+
+test("strip is the wiring order", () => {
+  const L = shapeLayout(builtInShape("cane", { leds: 20 }));
+  const { len, index } = shapeRuns(L, "strip");
+  assert.equal(len, 20);
+  assert.deepEqual([...index], Array.from({ length: 20 }, (_, i) => i));
+});
+
+test("test frame starts white", () => {
+  const f = shapeTestFrame(10);
+  assert.deepEqual([...f.slice(0, 3)], [255, 255, 255]);
+  assert.deepEqual([...f.slice(3, 6)], [255, 0, 0]);
+});
+
+test("rasterise keeps a crowded shape inside the limits", () => {
+  const pts = Array.from({ length: 3000 }, (_, i) => [Math.cos(i), Math.sin(i * 1.3)]);
+  const r = rasterise(pts);
+  assert.ok(r.w * r.h <= 40000);
+  assert.equal(new Set(r.cells.filter((c) => c >= 0)).size, 3000);
+});
+
+test("parseXmodel reads a custom model, its pixels and submodels", () => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<custommodel name="Mini &amp; flake" parm1="3" parm2="3" StringType="RGB Nodes" CustomModel="1,,2;,5,;4,,3">
+<subModel name="Corners" layout="horizontal" type="ranges" line0="1-4" />
+<subModel name="Middle" type="ranges" line0="5" />
+<subModel name="Odd" type="subbuffer" subBuffer="0x0x50x50" />
+</custommodel>`;
+  const m = parseXmodel(xml);
+  assert.equal(m.name, "Mini & flake");
+  assert.equal(m.leds, 5);
+  assert.deepEqual(m.shape.cells, [0, -1, 1, -1, 4, -1, 3, -1, 2]);
+  assert.equal(m.shape.source, "xmodel");
+  assert.deepEqual(m.bits.map((b) => [b.name, b.leds]), [["Corners", [0, 1, 2, 3]], ["Middle", [4]]]);
+});
+
+test("parseXmodel reads the compressed form", () => {
+  const xml = `<custommodel name="C" parm1="2" parm2="2" CustomModel="" CustomModelCompressed="1,0,0;2,0,1;3,1,1"/>`;
+  const m = parseXmodel(xml);
+  assert.deepEqual(m.shape.cells, [0, 1, -1, 2]);
+});
+
+test("parseXmodel refuses other kinds of model", () => {
+  assert.throws(() => parseXmodel(`<starmodel name="x"/>`), /custom models/);
+  assert.throws(() => parseXmodel("hello"), /isn't an xLights/);
+});
+
+import { composeLight, gridFor, newClip, renderTrack } from "../../haliday_show/app/halidayshow/static/js/effects.js";
+
+test("a strip effect running out from the middle lights a spinner's arms alike", () => {
+  const shape = builtInShape("spinner", { arms: 4, perArm: 10 });
+  const light = { id: "s", segments: 40, shape };
+  const clip = { ...newClip("rainbow", 0, 10), runs: "out" };
+  const rgb = renderTrack([clip], 1.3, 40, undefined, false, gridFor(light));
+  for (let i = 0; i < 10; i++) {
+    const first = [...rgb.slice(i * 3, i * 3 + 3)];
+    for (let a = 1; a < 4; a++) assert.deepEqual([...rgb.slice((a * 10 + i) * 3, (a * 10 + i) * 3 + 3)], first);
+  }
+});
+
+test("a grid effect paints each LED from its cell, and composeLight uses the shape", () => {
+  const shape = builtInShape("circle", { rings: 1, perRing: 24 });
+  const light = { id: "c", segments: 24, shape };
+  const tracks = { c: { device: "c", clips: [newClip("fire2d", 0, 10)] } };
+  const out = composeLight(light, (id) => tracks[id], 2);
+  assert.equal(out.length, 72);
+  // Fire burns at the bottom: the bottom of the wreath (LED 12) is brighter than the top (LED 0).
+  const lum = (i) => out[i * 3] + out[i * 3 + 1] + out[i * 3 + 2];
+  assert.ok(lum(12) > lum(0), `${lum(12)} vs ${lum(0)}`);
+  assert.equal(gridFor({ id: "x", segments: 25, shape }), null);
+});

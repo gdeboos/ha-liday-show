@@ -4,7 +4,8 @@
 // so long songs at high zoom never hit browser canvas size limits. Up and down, the lights scroll
 // under the ruler, song and beat lane, which stay put.
 
-import { EFFECTS, HOUSE, isGroupTrack, renderTrack } from "./effects.js";
+import { EFFECTS, HOUSE, gridFor, isGroupTrack, renderTrack } from "./effects.js";
+import { shapeOf } from "./shapes.js";
 import { gridOf, gridTiles, laneTakes } from "./matrix.js";
 import { isRectPart, rectText } from "./parts.js";
 import { asShown } from "./lightspeed.js";
@@ -351,7 +352,7 @@ export class Timeline {
     else for (let x = left; x < right; x += step) {
       const t = this.t(x + step / 2);
       const rgb = asShown(dev, Math.min(Math.max(t, clip.start), clip.end - 1e-6),
-        (tt) => renderTrack([clip], Math.max(tt, clip.start), n, buf));
+        (tt) => renderTrack([clip], Math.max(tt, clip.start), n, buf, false, gridFor(dev)));
       for (let i = 0; i < n; i++) {
         ctx.fillStyle = `rgb(${rgb[i * 3]},${rgb[i * 3 + 1]},${rgb[i * 3 + 2]})`;
         ctx.fillRect(x, top + i * segH, Math.min(step, right - x), segH + 0.5);
@@ -773,7 +774,7 @@ export class Timeline {
       const kind = (k) => {
         const dv = this.app.show.tracks[k].device;
         return dv === HOUSE ? "house" : isGroupTrack(dv) ? "group" : this.app.devices[dv]?.phones ? "phones"
-          : gridOf(this.app.devices[dv]) ? "matrix" : "light";
+          : gridOf(this.app.devices[dv]) || shapeOf(this.app.devices[dv]) ? "matrix" : "light";
       };
       const fx = EFFECTS[c.effect], house = !!fx?.house;
       // WLED's own effect and live effects stay on their light's lane, and nothing joins them there.

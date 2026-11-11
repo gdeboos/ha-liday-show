@@ -4,6 +4,7 @@
 // so a preview frame and a baked frame at the same time are identical.
 
 import { expandRuns, gridOf, gridUV, runsOf, stripLength, toWire, wireOrder } from "./matrix.js";
+import { shapeLayout, shapeOf, shapeRuns, shapeRunsOf } from "./shapes.js";
 import { GLYPH_H, MAX_TEXT, textColumns } from "./font.js";
 import { frameAt, getPicture, phoneKey } from "./pictures.js";
 import { partCells, partGrid, partSize, scatterPart } from "./parts.js";
@@ -1879,6 +1880,7 @@ function paintEffect(clip, time, n, buf, grid = null) {
   const dur = clip.end - clip.start;
   const [p, t] = curvedSettings({ ...defaultParams(clip.effect), ...clip }, time - clip.start, dur);
   const level = Math.min(Math.max(Number(p.brightness ?? 100), 0), 100) / 100;
+  if (grid?.shape) return paintShape(fx, clip, p, t, dur, level, n, buf, grid.shape);
   if (grid && fx.grid) {
     for (let i = 0; i < n; i++) {
       const c = fx.renderXY(p, t, dur, grid.w, grid.h, i % grid.w, Math.floor(i / grid.w));
@@ -1917,6 +1919,48 @@ function paintEffect(clip, time, n, buf, grid = null) {
     buf[i * 3 + 2] = c[2] * level;
   }
   return buf;
+}
+
+// A shaped prop (shapes.js): its LEDs in wiring order, each placed by its spot in the shape. Grid effects
+// colour the cell it's in, House effects the spot across and down the shape, and strip effects run as
+// the clip's `runs` says (along the wire, round, out from the middle, along each arm, across or down).
+function paintShape(fx, clip, p, t, dur, level, n, buf, L) {
+  if (fx.grid || fx.house) {
+    for (let i = 0; i < n; i++) {
+      let c = null, a = level;
+      if (i < L.n && L.x[i] === L.x[i]) { // NaN: an LED the shape doesn't show
+        c = fx.grid ? fx.renderXY(p, t, dur, L.w, L.h, Math.round(L.x[i]), Math.round(L.y[i])) : fx.renderAt(p, t, dur, L.u[i], L.v[i]);
+        if (c && fx.house) a = (c.length > 3 ? c[3] : 1) * level;
+      }
+      buf[i * 3] = c ? c[0] * a : 0;
+      buf[i * 3 + 1] = c ? c[1] * a : 0;
+      buf[i * 3 + 2] = c ? c[2] * a : 0;
+    }
+    return buf;
+  }
+  const { len, index } = shapeRuns(L, shapeRunsOf(clip));
+  if (gridStrip.length < len * 3) gridStrip = new Float32Array(len * 3);
+  for (let i = 0; i < len; i++) {
+    const c = fx.render(p, t, dur, len, i);
+    gridStrip[i * 3] = c[0] * level;
+    gridStrip[i * 3 + 1] = c[1] * level;
+    gridStrip[i * 3 + 2] = c[2] * level;
+  }
+  for (let i = 0; i < n; i++) {
+    const s = i < L.n ? index[i] * 3 : -1;
+    buf[i * 3] = s >= 0 ? gridStrip[s] : 0;
+    buf[i * 3 + 1] = s >= 0 ? gridStrip[s + 1] : 0;
+    buf[i * 3 + 2] = s >= 0 ? gridStrip[s + 2] : 0;
+  }
+  return buf;
+}
+
+// What effects are drawn over on a light: a matrix's grid, a shaped prop's layout, or null for a strip.
+export function gridFor(light) {
+  const g = gridOf(light);
+  if (g) return g;
+  const s = shapeOf(light);
+  return s ? { w: s.w, h: s.h, shape: shapeLayout(s) } : null;
 }
 
 // How much a lane's clips cover each of n segments at `time` (0..1), so a lane clip fading in or out
@@ -1978,7 +2022,7 @@ export function composeLight(light, trackOf, time, positions = {}, houseClips = 
   out.fill(0);
   if (!light.parts?.length) {
     const tr = trackOf(light.id);
-    if (tr) renderTrack(tr.clips, time, light.segments, out, false, gridOf(light));
+    if (tr) renderTrack(tr.clips, time, light.segments, out, false, gridFor(light));
     if (groups.length) applyGroups(groups, light.id, time, positions, out);
     if (houseClips.length && positions[light.id]) applyHouse(houseClips, time, positions[light.id], out);
     return out;

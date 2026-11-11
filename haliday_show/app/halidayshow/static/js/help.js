@@ -325,6 +325,12 @@ export const HELP = {
         "<b>Test wiring</b> lights the top left white, the top row red and the left column green.",
         "For a mega-tree, make each string a column: <b>across</b> is how many strings, <b>down</b> how many LEDs each.",
       ] },
+      { id: "shapes", title: "Shaped props", guide: ["lights.md", "shaped-props-stars-wreaths-spinners"], tips: [
+        "A star, wreath, spinner or other prop whose LEDs sit in a shape: pick its <b>Shape</b> in its window, or import its xLights model.",
+        "<b>Test wiring</b> lights LED 1 white and the rest in colour along the wire, as in the picture.",
+        "On the house photo, pick the <b>Its shape</b> style and drag its corners round the real prop.",
+        "<b>Runs</b> on a clip plays an effect round the shape, out from the middle or along each arm.",
+      ] },
       { id: "seasons", title: "Seasons", guide: ["organising-lights.md", "seasons"], tips: [
         "Tick a light's <b>Seasons</b> in its window, such as <b>Halloween</b>. Lights with none are all year.",
         "Switch a season to <b>Packed away</b> when its props come down: nothing is sent to them, and shows play on the rest.",

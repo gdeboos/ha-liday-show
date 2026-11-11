@@ -651,6 +651,56 @@ def _clean_matrix(m) -> dict:
     return {"w": w, "h": h, "start": start, "order": order, "zigzag": bool(m.get("zigzag"))}
 
 
+SHAPE_SOURCES = ("xmodel", "star", "circle", "spinner", "cane", "frame")
+MAX_SHAPE_SIDE = 200
+MAX_SHAPE_CELLS = 40000
+MAX_BITS = 64
+
+
+def _clean_shape(s) -> dict:
+    """A shaped prop (static/js/shapes.js): a small grid where each cell holds the LED (0-based, along the
+    wire) that sits there, or -1. The light's LED count is the highest one plus one."""
+    if not isinstance(s, dict):
+        raise web.HTTPBadRequest(text="shape must have a width, height and cells")
+    try:
+        w, h = int(s.get("w")), int(s.get("h"))
+        cells = [int(c) for c in s.get("cells")]
+    except (TypeError, ValueError):
+        raise web.HTTPBadRequest(text="a shape's width, height and cells must be numbers")
+    if not (1 <= w <= MAX_SHAPE_SIDE and 1 <= h <= MAX_SHAPE_SIDE and w * h <= MAX_SHAPE_CELLS):
+        raise web.HTTPBadRequest(text=f"a shape is up to {MAX_SHAPE_SIDE} × {MAX_SHAPE_SIDE} cells")
+    if len(cells) != w * h or any(c < -1 or c >= MAX_MATRIX for c in cells) or max(cells) < 0:
+        raise web.HTTPBadRequest(text=f"a shape has a cell for each spot, each an LED from 0 to {MAX_MATRIX - 1} or -1")
+    source = s.get("source") if s.get("source") in SHAPE_SOURCES else "xmodel"
+    params = s.get("params") if isinstance(s.get("params"), dict) else {}
+    clean_params = {}
+    for k, v in list(params.items())[:8]:
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and _PART_ID.match(str(k)):
+            clean_params[str(k)] = int(v) if float(v).is_integer() else round(float(v), 4)
+    return {"w": w, "h": h, "cells": cells, "source": source, "params": clean_params}
+
+
+def _clean_bits(bits, leds: int) -> list:
+    """A shaped prop's bits (an xLights model's submodels): named sets of its LEDs, which may overlap."""
+    if not bits:
+        return []
+    if not isinstance(bits, list) or len(bits) > MAX_BITS:
+        raise web.HTTPBadRequest(text=f"bits must be a list of up to {MAX_BITS}")
+    clean = []
+    for b in bits:
+        try:
+            bid = str(b["id"])
+            got = sorted({int(i) for i in b["leds"]})
+        except (KeyError, TypeError, ValueError):
+            raise web.HTTPBadRequest(text="each bit needs an id and its LEDs")
+        if not _PART_ID.match(bid) or any(c["id"] == bid for c in clean):
+            raise web.HTTPBadRequest(text="bit ids must be short and unique")
+        if not got or got[0] < 0 or got[-1] >= leds:
+            raise web.HTTPBadRequest(text=f"a bit's LEDs must be within 0-{leds - 1}")
+        clean.append({"id": bid, "name": str(b.get("name") or f"Bit {len(clean) + 1}")[:64], "leds": got})
+    return clean
+
+
 def _clean_device(d: dict) -> dict:
     """A device with no IP is planned: it has tracks in shows but nothing to send to yet."""
     ip = str(d.get("ip") or "").strip()
@@ -682,9 +732,17 @@ def _clean_device(d: dict) -> dict:
             raise web.HTTPBadRequest(text="only WLED lights and pixel controllers can be a matrix")
         matrix = _clean_matrix(d["matrix"])
         segments = matrix["w"] * matrix["h"]
+    shape = None
+    if d.get("shape") is not None:
+        if kind not in MATRIX_KINDS:
+            raise web.HTTPBadRequest(text="only WLED lights and pixel controllers can be a shaped prop")
+        if matrix:
+            raise web.HTTPBadRequest(text="a light is a matrix or a shaped prop, not both")
+        shape = _clean_shape(d["shape"])
+        segments = max(shape["cells"]) + 1
     # Realtime messages hold the segment count in one byte; the other protocols can go further.
     most = MAX_SEGMENTS if protocol in LONG_PROTOCOLS or kind != "govee" else 255
-    if matrix:
+    if matrix or shape:
         most = MAX_MATRIX
     if not 1 <= segments <= most:
         raise web.HTTPBadRequest(text=f"segments must be 1-{most} with this protocol")
@@ -706,6 +764,13 @@ def _clean_device(d: dict) -> dict:
     extra = {"entity": entity} if kind == "ha" else {}
     if matrix:
         extra["matrix"] = matrix
+    if shape:
+        extra["shape"] = shape
+        bits = _clean_bits(d.get("bits"), segments)
+        if bits:
+            extra["bits"] = bits
+        if d.get("parts"):
+            raise web.HTTPBadRequest(text="a shaped prop has bits rather than parts")
     try:
         tags = seasons.clean_tags(d.get("seasons"))
     except ValueError as e:
@@ -726,6 +791,8 @@ def _clean_device(d: dict) -> dict:
             raise web.HTTPBadRequest(text=f"segment must be 0-{MAX_WLED_SEGMENT}")
         if matrix and (first > 1 or segment is not None):
             raise web.HTTPBadRequest(text="a matrix must be a whole WLED light")
+        if shape and kind == "wled" and (first > 1 or segment is not None):
+            raise web.HTTPBadRequest(text="a shaped prop must be a whole WLED light")
         # Old WLED lights stay as they were saved: first only when it isn't the start.
         if kind == "ddp" or first > 1 or segment is not None:
             extra["first"] = first
@@ -746,7 +813,7 @@ def _clean_device(d: dict) -> dict:
         extra.update(universe=universe, channel=channel)
     return {"id": dev_id, "name": str(d.get("name") or ip or dev_id)[:64], "kind": kind,
             "ip": ip, "sku": "" if kind == "wled" else str(d.get("sku", "")), "segments": segments,
-            "reverse": bool(d.get("reverse")) and not matrix, "gradient": kind == "govee" and bool(d.get("gradient")),
+            "reverse": bool(d.get("reverse")) and not matrix and not shape, "gradient": kind == "govee" and bool(d.get("gradient")),
             "protocol": protocol, "brightness": brightness, "bulbs": bulbs,
             "parts": _clean_parts(d.get("parts"), segments, matrix),
             # A split light's own track plays across all its parts unless this is off.
@@ -3520,6 +3587,9 @@ def _clean_style(style) -> dict | None:
         if style.get("style") == "panel":
             # A matrix as a flat panel: its path is the four corners, from the top left round.
             return {"style": "panel"}
+        if style.get("style") == "shape":
+            # A shaped prop: its path is the four corners of its box, like a panel's.
+            return {"style": "shape"}
         if style.get("style") == "tree":
             # A matrix as a mega-tree: its path is the top, then the left and right ends of the base.
             # round: its strings go all the way round, so the back half is drawn faint.
