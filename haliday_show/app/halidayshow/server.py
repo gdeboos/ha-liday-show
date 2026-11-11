@@ -27,7 +27,7 @@ from pathlib import Path
 import aiohttp
 from aiohttp import web
 
-from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, preshow, public, report, scenelib, schedule, seasons, songcopy, songtags, timingtest, twinkly, video, wled
+from . import __version__, ai, archive, backup, commands, discovery, e131, imagemeta, latespeaker, liveeffects, livemusic, migrate, playlists, preshow, profiles, public, report, scenelib, schedule, seasons, songcopy, songtags, timingtest, twinkly, video, wled
 from .baked import BakedError, decode
 from .ha import HAError, HomeAssistant
 from .lab import (KINDS as LAB_KINDS, MAX_REPEAT as LAB_MAX_REPEAT, MAX_STEPS as LAB_MAX_STEPS, Lab, LabError,
@@ -574,7 +574,19 @@ async def lab_status(request):
 
 # devices -----------------------------------------------------------------
 async def get_devices(request):
-    return web.json_response(request.app[STORAGE].load_devices())
+    """The lights of a profile (?profile=, the live one by default; profiles.py)."""
+    storage = request.app[STORAGE]
+    pid = _profile(request)
+    return web.json_response(profiles.lights(storage.load_settings(), storage.load_devices(), pid))
+
+
+def _profile(request) -> str:
+    """The profile a request is about: ?profile=, or the live one. Unknown ones are a 404."""
+    storage = request.app[STORAGE]
+    pid = profiles.resolve(storage.load_settings(), storage.load_devices(), request.query.get("profile", ""))
+    if pid is None:
+        raise web.HTTPNotFound(text="no such profile")
+    return pid
 
 
 _PART_ID = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
@@ -854,10 +866,18 @@ async def put_devices(request):
     if len({d["id"] for d in devices}) != len(devices):
         raise web.HTTPBadRequest(text="duplicate device id")
     storage = request.app[STORAGE]
-    storage.save_devices(devices)
-    # A light just ticked into a packed-away season goes dark straight away, as packing away does.
-    request.app[RUNNER].player.drop(seasons.away(devices, seasons.load(storage.load_settings())))
-    return web.json_response(devices)
+    pid = _profile(request)
+    settings, before = storage.load_settings(), storage.load_devices()
+    everything = profiles.save_lights(settings, before, pid, devices)
+    storage.save_devices(everything)
+    if "profiles" in settings:
+        storage.save_settings(settings)
+    player = request.app[RUNNER].player
+    # A light just ticked into a packed-away season goes dark straight away, as packing away does,
+    # and so does one taken out of the live profile.
+    live = {d["id"] for d in profiles.lights(settings, everything)}
+    player.drop(seasons.away(everything, seasons.load(settings)) | {d["id"] for d in before if d["id"] not in live})
+    return web.json_response(profiles.lights(settings, everything, pid))
 
 
 async def scan_devices(request):
@@ -1150,7 +1170,8 @@ def _clean_light_roles(body) -> dict:
 
 
 async def get_light_roles(request):
-    roles = request.app[STORAGE].load_settings().get("light_roles")
+    st = request.app[STORAGE]
+    roles = profiles.get(st.load_settings(), st.load_devices(), _profile(request), "light_roles")
     return web.json_response(roles if isinstance(roles, dict) else {})
 
 
@@ -1161,8 +1182,9 @@ async def put_light_roles(request):
         raise web.HTTPBadRequest(text="expected JSON")
     roles = _clean_light_roles(body)
     st = request.app[STORAGE]
+    pid = _profile(request)
     settings = st.load_settings()
-    settings["light_roles"] = roles
+    profiles.put(settings, st.load_devices(), pid, "light_roles", roles)
     st.save_settings(settings)
     return web.json_response({"ok": True})
 
@@ -1180,7 +1202,9 @@ async def put_show(request):
     show.pop("in_progress", None)
     if mark:
         show["in_progress"] = True
-    st.save_show(_show_id(request), show)
+    # Saved while looking at a plan (profiles.py): its frames are the live profile's, so the ones there
+    # keep playing until it's saved on the live one.
+    st.save_show(_show_id(request), show, keep_bake=request.query.get("keep_bake") == "1")
     if before is None or before.get("name") != show.get("name"):
         request.app[HUB].refresh()  # Home Assistant's show list (MQTT follows once it's baked)
     return web.json_response({"ok": True})
@@ -2845,15 +2869,17 @@ def _clean_light_groups(body) -> list[dict]:
 
 
 async def get_light_groups(request):
-    groups = request.app[STORAGE].load_settings().get("light_groups")
+    st = request.app[STORAGE]
+    groups = profiles.get(st.load_settings(), st.load_devices(), _profile(request), "light_groups")
     return web.json_response(groups if isinstance(groups, list) else [])
 
 
 async def put_light_groups(request):
     groups = _clean_light_groups(await request.json())
     storage = request.app[STORAGE]
+    pid = _profile(request)
     settings = storage.load_settings()
-    settings["light_groups"] = groups
+    profiles.put(settings, storage.load_devices(), pid, "light_groups", groups)
     storage.save_settings(settings)
     return web.json_response(groups)
 
@@ -2968,7 +2994,7 @@ async def preshow_run(request):
 
 async def _preshow_report(app) -> dict:
     storage, settings = app[STORAGE], app[STORAGE].load_settings()
-    devices = storage.load_devices()
+    devices = storage.live_devices()
     away = seasons.away(devices, seasons.load(settings))
     light_lines, look = await preshow.lights(devices, away, app[HA])
     for ln in light_lines:
@@ -3264,7 +3290,7 @@ async def put_scene(request):
         raise web.HTTPBadRequest(text=str(e) if isinstance(e, scenelib.SceneError) else "expected JSON")
     if _scene_name_taken(storage, scene["name"], but=scene_id):
         raise web.HTTPConflict(text=f"there's already a scene called {scene['name']}")
-    storage.save_scene(scene_id, scene)
+    storage.save_scene(scene_id, scene, keep_bake=request.query.get("keep_bake") == "1")  # as put_show
     request.app[MQTT].refresh()  # Home Assistant's scenes and the light's list follow
     return web.json_response({"ok": True})
 
@@ -3569,18 +3595,107 @@ async def put_presets(request):
     return web.json_response(presets)
 
 
+# profiles (profiles.py): the lights you have now, and plans for next year ---------------------------
+def _clean_profile_name(name, others: list[dict], pid: str | None = None) -> str:
+    name = " ".join(str(name or "").split())[:40]
+    if not name:
+        raise web.HTTPBadRequest(text="a profile needs a name")
+    if any(p["name"].lower() == name.lower() and p["id"] != pid for p in others):
+        raise web.HTTPBadRequest(text="there's already a profile with that name")
+    return name
+
+
+def _profiles_view(storage) -> dict:
+    return profiles.summary(storage.load_settings(), storage.load_devices())
+
+
+async def get_profiles(request):
+    return web.json_response(_profiles_view(request.app[STORAGE]))
+
+
+async def post_profile(request):
+    """A new profile, a copy of `from` (the live one if not given): its lights, photo, tracing,
+    groups and roles."""
+    body = await request.json()
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text="expected {name, from}")
+    st = request.app[STORAGE]
+    settings, devices = st.load_settings(), st.load_devices()
+    existing = profiles.load(settings, devices)[0]
+    if len(existing) >= profiles.MAX_PROFILES:
+        raise web.HTTPBadRequest(text=f"up to {profiles.MAX_PROFILES} profiles")
+    name = _clean_profile_name(body.get("name"), existing)
+    src = profiles.resolve(settings, devices, str(body.get("from") or ""))
+    if src is None:
+        raise web.HTTPBadRequest(text="no such profile to copy")
+    pid = profiles.add(settings, devices, name, src)
+    st.copy_house_photo(src, pid)
+    st.save_settings(settings)
+    return web.json_response({**_profiles_view(st), "id": pid})
+
+
+async def put_profile(request):
+    body = await request.json()
+    pid = request.match_info["id"]
+    st = request.app[STORAGE]
+    settings, devices = st.load_settings(), st.load_devices()
+    existing = profiles.load(settings, devices)[0]
+    name = _clean_profile_name(body.get("name") if isinstance(body, dict) else None, existing, pid)
+    if not profiles.rename(settings, devices, pid, name):
+        raise web.HTTPNotFound(text="no such profile")
+    st.save_settings(settings)
+    return web.json_response(_profiles_view(st))
+
+
+async def delete_profile(request):
+    pid = request.match_info["id"]
+    st = request.app[STORAGE]
+    settings, devices = st.load_settings(), st.load_devices()
+    if profiles.resolve(settings, devices, pid) != pid:
+        raise web.HTTPNotFound(text="no such profile")
+    try:
+        left = profiles.remove(settings, devices, pid)
+    except ValueError as e:
+        raise web.HTTPBadRequest(text=str(e)) from None
+    st.save_devices(left)
+    st.save_settings(settings)
+    st.delete_profile_photo(pid)
+    return web.json_response(_profiles_view(st))
+
+
+async def make_profile_live(request):
+    """Shows, schedules and the visitors' page play on whichever profile is live. Lights that aren't
+    in it any more are let go of straight away."""
+    pid = request.match_info["id"]
+    st = request.app[STORAGE]
+    settings, devices = st.load_settings(), st.load_devices()
+    if profiles.resolve(settings, devices, pid) != pid:
+        raise web.HTTPNotFound(text="no such profile")
+    old = profiles.load(settings, devices)[1]
+    if old != pid:
+        st.swap_house_photos(old, pid)
+        profiles.make_live(settings, devices, pid)
+        st.save_settings(settings)
+        live = {d["id"] for d in profiles.lights(settings, devices)}
+        request.app[RUNNER].player.drop({d["id"] for d in devices if d["id"] not in live})
+        request.app[HUB].refresh()
+    return web.json_response(_profiles_view(st))
+
+
 # house view --------------------------------------------------------------
 MAX_PHOTO = 20 * 1024 * 1024
 MAX_POINTS = 200
 
 
 async def get_house(request):
-    return web.json_response({**_house(request.app[STORAGE].load_settings()),
-                              "photo": request.app[STORAGE].house_photo() is not None})
+    st = request.app[STORAGE]
+    pid = _profile(request)
+    house = profiles.get(st.load_settings(), st.load_devices(), pid, "house")
+    return web.json_response({**_house({"house": house or {}}), "photo": st.house_photo(pid) is not None})
 
 
 def _house(settings: dict) -> dict:
-    house = settings.get("house", {})
+    house = settings.get("house") if isinstance(settings.get("house"), dict) else {}
     return {"paths": house.get("paths", {}), "styles": house.get("styles", {}), "pins": house.get("pins", {}),
             "dim": house.get("dim", 0.5)}
 
@@ -3681,14 +3796,16 @@ async def put_house(request):
     except (TypeError, ValueError):
         raise web.HTTPBadRequest(text="dim must be a number")
     storage = request.app[STORAGE]
+    pid = _profile(request)
     settings = storage.load_settings()
-    settings["house"] = {"paths": clean, "styles": styles, "pins": clean_pins, "dim": dim}
+    house = {"paths": clean, "styles": styles, "pins": clean_pins, "dim": dim}
+    profiles.put(settings, storage.load_devices(), pid, "house", house)
     storage.save_settings(settings)
-    return web.json_response(_house(settings))
+    return web.json_response(_house({"house": house}))
 
 
 async def get_house_photo(request):
-    p = request.app[STORAGE].house_photo()
+    p = request.app[STORAGE].house_photo(_profile(request))
     if p is None:
         raise web.HTTPNotFound()
     return web.FileResponse(p)
@@ -3705,12 +3822,12 @@ async def put_house_photo(request):
             raise web.HTTPRequestEntityTooLarge(max_size=MAX_PHOTO, actual_size=len(data))
     if not data:
         raise web.HTTPBadRequest(text="no photo")
-    request.app[STORAGE].save_house_photo(bytes(data), ext)
+    request.app[STORAGE].save_house_photo(bytes(data), ext, _profile(request))
     return web.json_response({"ok": True})
 
 
 async def delete_house_photo(request):
-    request.app[STORAGE].delete_house_photo()
+    request.app[STORAGE].delete_house_photo(_profile(request))
     return web.json_response({"ok": True})
 
 
@@ -4204,6 +4321,11 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_put("/api/location", put_location)
     r.add_get("/api/house", get_house)
     r.add_put("/api/house", put_house)
+    r.add_get("/api/profiles", get_profiles)
+    r.add_post("/api/profiles", post_profile)
+    r.add_put("/api/profiles/{id}", put_profile)
+    r.add_delete("/api/profiles/{id}", delete_profile)
+    r.add_post("/api/profiles/{id}/live", make_profile_live)
     r.add_get("/api/house/photo", get_house_photo)
     r.add_put("/api/house/photo", put_house_photo)
     r.add_delete("/api/house/photo", delete_house_photo)

@@ -15,7 +15,7 @@ import struct
 import wave
 from pathlib import Path
 
-from . import seasons, songtags
+from . import profiles, seasons, songtags
 
 PHOTO_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 SPEAKER_TEST = "haliday-show-speaker-test.wav"  # the chime that tests a speaker; not listed as a song
@@ -140,10 +140,15 @@ class Storage:
         _write_atomic(self.devices_file, json.dumps(devices, indent=2).encode())
 
     def devices_by_id(self) -> dict[str, dict]:
-        """The lights shows, scenes and blocks play on, by id: every light but packed-away props."""
-        devices = self.load_devices()
-        gone = seasons.away(devices, seasons.load(self.load_settings()))
-        return {d["id"]: d for d in devices if d["id"] not in gone}
+        """The lights shows, scenes and blocks play on, by id: the live profile's lights (profiles.py)
+        but packed-away props."""
+        devices, settings = self.load_devices(), self.load_settings()
+        gone = seasons.away(devices, seasons.load(settings))
+        return {d["id"]: d for d in profiles.lights(settings, devices) if d["id"] not in gone}
+
+    def live_devices(self) -> list[dict]:
+        """The live profile's lights (all of them while there's one profile)."""
+        return profiles.lights(self.load_settings(), self.load_devices())
 
     # settings ------------------------------------------------------------
     def load_settings(self) -> dict:
@@ -160,20 +165,51 @@ class Storage:
     # house photo ---------------------------------------------------------
     # One photo of the house for the editor's House view; where each light runs on it is a
     # setting. Kept in the config folder so it is backed up with everything else.
-    def house_photo(self) -> Path | None:
+    # Each profile has its own (profiles.py): the live one's is house.<ext>, as it always was, and the
+    # others' house-<profile id>.<ext>. `profile` None means the live one.
+    def _house_stem(self, profile: str | None) -> str:
+        if not profile or not profiles.valid_id(profile):
+            return "house"
+        live = profiles.load(self.load_settings(), self.load_devices())[1]
+        return "house" if profile == live else f"house-{profile}"
+
+    def house_photo(self, profile: str | None = None) -> Path | None:
+        stem = self._house_stem(profile)
         for ext in PHOTO_EXT:
-            p = self.config_dir / f"house{ext}"
+            p = self.config_dir / f"{stem}{ext}"
             if p.exists():
                 return p
         return None
 
-    def save_house_photo(self, data: bytes, ext: str):
-        self.delete_house_photo()
-        _write_atomic(self.config_dir / f"house{ext}", data)
+    def save_house_photo(self, data: bytes, ext: str, profile: str | None = None):
+        self.delete_house_photo(profile)
+        _write_atomic(self.config_dir / f"{self._house_stem(profile)}{ext}", data)
 
-    def delete_house_photo(self):
-        while (p := self.house_photo()):
+    def delete_house_photo(self, profile: str | None = None):
+        while (p := self.house_photo(profile)):
             p.unlink()
+
+    def copy_house_photo(self, src: str | None, dest: str):
+        """A new profile starts with a copy of the photo of the one it was copied from."""
+        p = self.house_photo(src)
+        if p is not None:
+            shutil.copyfile(p, self.config_dir / f"house-{dest}{p.suffix}")
+
+    def swap_house_photos(self, old_live: str, new_live: str):
+        """Making `new_live` the live profile: its photo becomes house.<ext>, the old one's its own."""
+        current = self.house_photo()
+        coming = [self.config_dir / f"house-{new_live}{ext}" for ext in PHOTO_EXT]
+        coming = next((p for p in coming if p.exists()), None)
+        for ext in PHOTO_EXT:
+            (self.config_dir / f"house-{old_live}{ext}").unlink(missing_ok=True)
+        if current is not None:
+            current.replace(self.config_dir / f"house-{old_live}{current.suffix}")
+        if coming is not None:
+            coming.replace(self.config_dir / f"house{coming.suffix}")
+
+    def delete_profile_photo(self, profile: str):
+        for ext in PHOTO_EXT:
+            (self.config_dir / f"house-{profile}{ext}").unlink(missing_ok=True)
 
     # the public page's own picture (Public page tab → How the page looks) ----------------
     # Dated looks (public.clean_looks) each keep their own, as public-picture-<look id>.
@@ -254,8 +290,10 @@ class Storage:
         except (FileNotFoundError, ValueError):
             return None
 
-    def save_show(self, show_id: str, show: dict):
+    def save_show(self, show_id: str, show: dict, keep_bake: bool = False):
         _write_atomic(self.shows_dir / f"{show_id}.json", json.dumps(show, indent=1).encode())
+        if keep_bake:
+            return
         # The bake is stale until the editor uploads a new one.
         (self.shows_dir / f"{show_id}.gshow").unlink(missing_ok=True)
         (self.shows_dir / f"{show_id}.bakekey").unlink(missing_ok=True)
@@ -334,9 +372,11 @@ class Storage:
         except (FileNotFoundError, ValueError):
             return None
 
-    def save_scene(self, scene_id: str, scene: dict):
+    def save_scene(self, scene_id: str, scene: dict, keep_bake: bool = False):
         self.scenes_dir.mkdir(parents=True, exist_ok=True)
         _write_atomic(self.scenes_dir / f"{scene_id}.json", json.dumps(scene, indent=1).encode())
+        if keep_bake:
+            return
         # The bake (and live set) is stale until the editor uploads a new one.
         (self.scenes_dir / f"{scene_id}.gshow").unlink(missing_ok=True)
         (self.scenes_dir / f"{scene_id}.live.gshow").unlink(missing_ok=True)

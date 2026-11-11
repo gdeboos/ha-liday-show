@@ -102,5 +102,5 @@ each part starts and ends, so you can then move each part's points on their own.
 
 ---
 
-← [Speakers](speakers.md) · [Contents](README.md) · [Songs and samples](songs.md) →
+← [Speakers](speakers.md) · [Contents](README.md) · [Profiles: plans for next year](profiles.md) →
 <!-- /nav -->

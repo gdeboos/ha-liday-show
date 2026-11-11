@@ -72,11 +72,20 @@
     <button class="tab" data-view="setup"><svg class="ico" aria-hidden="true"><use href="#i-setup"/></svg><span>Setup</span></button>
     <button class="tab" data-view="public" id="tab-public" hidden><svg class="ico" aria-hidden="true"><use href="#i-public"/></svg><span>Public page</span></button>
   </nav>
+  <label id="profile-pick-wrap" class="profile-pick" hidden title="Which profile you're looking at: the lights you have now, or a plan">
+    <span class="hint">Profile</span>
+    <select id="profile-pick" aria-label="Profile you're looking at"></select>
+  </label>
   <button type="button" id="btn-resume" class="resume-btn ghost" hidden></button>
   <span id="status" class="status"></span>
   <button type="button" id="btn-help" class="help-btn ghost" aria-expanded="false" aria-controls="help-drawer"
     title="Tips for this page, and the full guide"><span class="help-q" aria-hidden="true">?</span><span>Help</span></button>
 </header>
+<!-- Looking at a plan (profiles.js): nothing here plays on your lights. -->
+<div id="profile-banner" class="profile-banner" role="status" hidden>
+  <span id="profile-banner-text"></span>
+  <button type="button" id="profile-banner-back" class="ghost small"></button>
+</div>
 <!-- What's on your lights right now, whatever started it, with Stop and Restart (nowbar.js). -->
 <div id="now-bar" class="now-bar" role="status" aria-live="polite" hidden>
   <span class="now-dot" aria-hidden="true"></span>
@@ -1132,6 +1141,15 @@
       <thead><tr><th>Light</th><th>Reacts to</th></tr></thead>
       <tbody id="roles-rows"></tbody>
     </table></div>
+  </section>
+  <section class="light-profiles">
+    <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-house"/></svg>Profiles</h2>
+    <p class="hint">Keep a plan for next year beside your real display: lights you mean to buy, a new layout, lights
+      grouped differently. Each profile has its own lights, house photo and tracing, groups and roles; your songs,
+      shows, scenes, playlists and schedule are shared. Only the <b>Live</b> one plays on your lights. When the new
+      lights go up, press <b>Make this the live one</b>.</p>
+    <div id="profile-rows" class="season-rows"></div>
+    <p><button type="button" id="btn-new-profile">+ New profile</button></p>
   </section>
   <section class="light-seasons">
     <h2 class="with-ico"><svg class="ico" aria-hidden="true"><use href="#i-schedule"/></svg>Seasons</h2>

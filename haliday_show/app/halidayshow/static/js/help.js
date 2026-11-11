@@ -335,6 +335,11 @@ export const HELP = {
         "Tick a light's <b>Seasons</b> in its window, such as <b>Halloween</b>. Lights with none are all year.",
         "Switch a season to <b>Packed away</b> when its props come down: nothing is sent to them, and shows play on the rest.",
       ] },
+      { id: "profiles", title: "Profiles", guide: ["profiles.md", "make-a-plan"], tips: [
+        "<b>+ New profile</b> copies the profile you're on, as a plan for next year: add lights you mean to buy, a new photo and new groups.",
+        "Only the <b>Live</b> profile plays on your lights. Shows are shared: in a plan they get lanes for its lights.",
+        "When the new lights go up, press <b>Make this the live one…</b>. The old profile stays, so you can switch back.",
+      ] },
       { id: "groups", title: "Groups", guide: ["organising-lights.md", "light-groups"], tips: [
         "<b>+ New group</b> puts lights and parts together, such as the roof's icicles, so a show can give them one effect.",
         "Each group gets a lane under <b>House</b> in the Show editor. Effects run along its lights in this tab's order.",

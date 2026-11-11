@@ -657,7 +657,8 @@ export class SceneEditor {
 
   async bakeAndSend(id = this.id, scene = this.scene) {
     const lights = this.d.lights();
-    if (!lights.length) return;
+    // On a plan (profiles.js) the scene is saved, and its frames are made when you're back on the live profile.
+    if (!lights.length || this.d.onPlan?.()) return;
     const loop = withoutLive(() => sceneLoop(scene, lights, FPS)); // live effects loop on their idle glow
     const advanced = scene.mode === "advanced";
     const show = forBaking(sceneShow(scene, lights, loop));

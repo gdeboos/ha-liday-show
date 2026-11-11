@@ -1834,3 +1834,14 @@ table.ai-uses td:last-child button { margin: 2px 4px 2px 0; }
 .shape-fields .bits-list { display: flex; flex-direction: column; gap: 6px; }
 .shape-fields .bits-list > button { align-self: flex-start; }
 .shape-fields .face-map { margin-top: 4px; } .shape-fields .face-rows { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+
+/* Profiles (profiles.js): the picker in the top bar, and the banner while looking at a plan. */
+.profile-pick { display: flex; align-items: center; gap: 6px; }
+.profile-pick[hidden] { display: none; }
+.profile-pick select { max-width: 11em; }
+.profile-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 16px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel)); border-bottom: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.profile-banner[hidden] { display: none; }
+.profile-banner > span { flex: 1 1 14em; min-width: 0; }
+.profile-row.current .season-name::after { content: " ●"; color: var(--accent); }
+@media (max-width: 640px) { .profile-pick .hint { display: none; } }
