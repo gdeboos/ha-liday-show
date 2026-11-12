@@ -137,6 +137,13 @@ export function splitUsers(row, drafts) {
   return [...row.usedBy, ...drafts.filter((d) => (d.uses || []).includes(path)).map((d) => `the draft "${d.name}"`)];
 }
 
+// What's inside a song's card, for the strip that opens it: "1 edit · 2 drafts". Empty when nothing is.
+export function kidsSummary(f) {
+  const n = (k, word) => k && `${k} ${word}${k === 1 ? "" : "s"}`;
+  return [n((f.edits || []).length, "edit"), n((f.splits || []).length, "split"), n((f.drafts || []).length, "draft")]
+    .filter(Boolean).join(" · ");
+}
+
 // "3 songs · 2 edits · 1 draft"
 export function familyCount(families) {
   const n = (k, word) => `${k} ${word}${k === 1 ? "" : "s"}`;

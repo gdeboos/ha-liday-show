@@ -32,7 +32,13 @@ photo was taken, taken out). **Remove** goes back to the song's cover art. A sho
 tile in its palette's colours with its first letter. Songs are kept exactly as you added them, so their cover art,
 title and artist are never lost.
 
-Each song you added is one card, marked **Original**. Inside it, under **Edits of this song**:
+Each song you added is one card, marked **Original**, with its cover art across the top and **▶** on it
+(a song with no cover art gets a ♪). **Cards** and **List**, at the top right, switch between cards and
+the shorter rows, and remember your choice in this browser. On a card, a song's edits and drafts wait
+behind a strip at its foot that says what's inside, such as **1 edit · 2 drafts**, with a small stack of
+edges under the card. Press the strip (**Show ▾**) to open them in the card, and again (**Hide ▴**) to
+put them away. While you **Find** or pick **Edits**, **Splits** or **Drafts**, every card is open so you
+can see what matched. In the list, they always show. Under **Edits of this song**:
 
 - **✂ Edit · song file** (purple): a song file made in the Music editor from this song, with its length,
   the shows that use it and the [draft](music-editor.md#drafts) it was made from. **Edit draft** reopens that draft. Under **⋯**:

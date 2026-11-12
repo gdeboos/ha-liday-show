@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { filterRows, songKey, songRows } from "../../haliday_show/app/halidayshow/static/js/songlist.js";
+import { filterRows, kidsSummary, songKey, songRows } from "../../haliday_show/app/halidayshow/static/js/songlist.js";
 
 const songs = [
   { source: "media", path: "haliday_show/jingle-bells.mp3", detected: true, tempo: 120.1, sections: 5 },
@@ -32,4 +32,11 @@ test("filtering matches the file, its folder and the shows using it", () => {
   assert.deepEqual(filterRows(rows, "xmas").map((r) => r.name), ["jingle-bells"]);
   assert.deepEqual(filterRows(rows, "jingle MP3").map((r) => r.name), ["jingle-bells"]);
   assert.equal(filterRows(rows, "  ").length, 3);
+});
+
+test("kidsSummary says what's inside a song's card", () => {
+  assert.equal(kidsSummary({ edits: [], drafts: [] }), "");
+  assert.equal(kidsSummary({ edits: [1], drafts: [1, 2] }), "1 edit · 2 drafts");
+  assert.equal(kidsSummary({ edits: [1, 2], splits: [1], drafts: [] }), "2 edits · 1 split");
+  assert.equal(kidsSummary({ drafts: [1] }), "1 draft");
 });

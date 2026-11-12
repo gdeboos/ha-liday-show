@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.506
+
+- **Songs as cards.** **Library → Songs** now shows each song as a card with its cover art across the top
+  and **▶** on it, like **Library → Shows**. **Cards** and **List**, at the top right, switch back to the
+  rows you had before.
+- **A song's edits and drafts fold into its card.** A strip at the foot of a card says what's inside, such
+  as **1 edit · 2 drafts**. Press it to open them in the card, and again to put them away. While you
+  **Find** something or pick **Edits**, **Splits** or **Drafts**, every card is open so you can see what
+  matched.
+
 ## 0.2.505
 
 - **The effect window no longer stretches.** With your browser zoomed (110%, say), the moving previews
