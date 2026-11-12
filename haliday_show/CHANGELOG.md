@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.508
+
+- **No more warning in Home Assistant's log about the device registry.** The HA-liday Show integration
+  looked through Home Assistant's devices in a way Home Assistant now warns about (and will stop allowing
+  in 2027.9). It now does it the new way, so the warning that appeared in **Settings → System → Logs**
+  after starting Home Assistant has gone. Nothing else changes.
+
 ## 0.2.507
 
 - **Song cards match show cards.** In **Library → Songs**, cover art is now square and the cards are the
