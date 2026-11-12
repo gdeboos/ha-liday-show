@@ -17,7 +17,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .client import BadPassword, CannotConnect, CommandFailed, HalidayClient, TooOld
-from .const import DEVICE_ID, DOMAIN, EVENT_SIGNAL
+from .const import DEVICE_ID, DOMAIN, EVENT_SIGNAL, registry_entries
 from .frontend import async_setup_frontend
 from .services import async_setup_services
 
@@ -124,7 +124,7 @@ async def _take_over_mqtt(hass: HomeAssistant, entry: ConfigEntry) -> None:
     The app has already withdrawn their MQTT discovery entries. Our entities have the same unique ids, so
     each is registered here with the MQTT one's entity id, and any name, icon or area you gave it."""
     ent_reg = er.async_get(hass)
-    old = [e for e in list(ent_reg.entities.values())
+    old = [e for e in registry_entries(ent_reg.entities, ent_reg.async_get)
            if e.platform == "mqtt" and e.unique_id.startswith("haliday_show_")]
     for e in old:
         ent_reg.async_remove(e.entity_id)
@@ -146,5 +146,6 @@ async def _take_over_mqtt(hass: HomeAssistant, entry: ConfigEntry) -> None:
             ent_reg.async_update_entity(new.entity_id, **changes)
     dev_reg = dr.async_get(hass)
     # Looked for by hand: async_get_device is deprecated, and its replacements aren't in older Home Assistants.
-    for device in [d for d in dev_reg.devices.values() if ("mqtt", DEVICE_ID) in d.identifiers]:
+    for device in [d for d in registry_entries(dev_reg.devices, dev_reg.async_get)
+                   if ("mqtt", DEVICE_ID) in d.identifiers]:
         dev_reg.async_remove_device(device.id)

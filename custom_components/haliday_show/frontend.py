@@ -21,7 +21,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 
 from .client import CannotConnect, CommandFailed
-from .const import DOMAIN
+from .const import DOMAIN, registry_entries
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,7 +60,8 @@ def _client(hass: HomeAssistant):
 def ws_entities(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     """Our entities by what they are (player, next, ...), so cards find them even after you rename them."""
     out: dict = {"scenes": [], "seasons": []}
-    for e in er.async_get(hass).entities.values():
+    ent_reg = er.async_get(hass)
+    for e in registry_entries(ent_reg.entities, ent_reg.async_get):
         if e.platform != DOMAIN or not e.unique_id.startswith("haliday_show_") or e.disabled_by:
             continue
         key = e.unique_id[len("haliday_show_"):]
