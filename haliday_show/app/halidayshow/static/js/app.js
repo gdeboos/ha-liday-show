@@ -72,7 +72,7 @@ import {
   summary as playlistSummary,
 } from "./playlisteditor.js";
 import { addLayoutSwitches } from "./liblayout.js";
-import { familyCount, filterFamilies, songFamilies, songKey, partsText, songRows, splitUsers } from "./songlist.js";
+import { familyCount, filterFamilies, kidsSummary, songFamilies, songKey, partsText, songRows, splitUsers } from "./songlist.js";
 import { addToMore, moreMenu, withMore } from "./rowmenu.js";
 import { askChoice, askText, askYes } from "./ask.js";
 import { movePart } from "./partorder.js";
@@ -9518,7 +9518,7 @@ function drawSongRows() {
     return;
   }
   box.removeAttribute("role");
-  box.replaceChildren(...songFolderSections(fams));
+  box.replaceChildren(...songFolderSections(fams, !!filtered));
   folderize("songs", box, { finding: !!filtered });
   // Drafts whose song has been archived, deleted or moved, so they can still be found and deleted.
   const keys = new Set(songRowsCache.map((r) => r.key));
@@ -9704,7 +9704,7 @@ async function deleteDraft(d) {
 }
 
 // All the songs as one list, each marked by its song for folderize() to sort into folders.
-function songFolderSections(fams) {
+function songFolderSections(fams, finding = false) {
   $("btn-new-folder").disabled = !folderLoaded.songs;
   $("btn-new-folder").title = folderLoaded.songs ? "A folder to sort your songs into, inside the one you're in; the files stay where they are"
     : "Couldn't load your folders just now";
@@ -9713,18 +9713,48 @@ function songFolderSections(fams) {
   box.setAttribute("role", "list");
   box.setAttribute("aria-label", "Your songs");
   box.append(...fams.map((f) => {
-    const card = songFamilyCard(f);
+    const card = songFamilyCard(f, finding);
     card.dataset.folderKey = f.original.key;
     return card;
   }));
   return [box];
 }
 
-function songFamilyCard(f) {
+// As cards, a song's edits, splits and drafts wait behind a strip at the foot of its card ("1 edit · 2 drafts"),
+// opened in place; as a list they always show. While finding or filtering, every card is open so matches show.
+const openSongCards = new Set();
+function songFamilyCard(f, finding = false) {
   const card = document.createElement("div");
   card.className = "song-family";
   card.setAttribute("role", "listitem");
   card.append(songRow(f.original));
+  const inside = kidsSummary(f);
+  const tray = document.createElement("div");
+  tray.className = "song-kids-tray";
+  if (inside) {
+    const key = f.original.key, open = finding || openSongCards.has(key);
+    card.classList.add("has-kids");
+    card.classList.toggle("open", open);
+    tray.id = `song-kids-${Math.random().toString(36).slice(2, 10)}`;
+    const strip = Object.assign(document.createElement("button"), { type: "button", className: "song-kids-toggle" });
+    const what = Object.assign(document.createElement("span"), { className: "song-kids-what", textContent: inside });
+    const how = Object.assign(document.createElement("span"), { className: "hint" });
+    const show = (on) => {
+      card.classList.toggle("open", on);
+      strip.setAttribute("aria-expanded", String(on));
+      how.textContent = on ? "Hide ▴" : "Show ▾";
+    };
+    strip.setAttribute("aria-controls", tray.id);
+    strip.setAttribute("aria-label", `${inside} of ${f.original.name}`);
+    strip.addEventListener("click", () => {
+      const on = !card.classList.contains("open");
+      if (on) openSongCards.add(key); else openSongCards.delete(key);
+      show(on);
+    });
+    strip.append(what, how);
+    show(open);
+    card.append(strip, tray);
+  }
   if (f.edits.length || f.drafts.length) {
     const kids = document.createElement("div");
     kids.className = "song-kids";
@@ -9734,7 +9764,7 @@ function songFamilyCard(f) {
     h.className = "song-kids-head";
     h.textContent = "Edits of this song";
     kids.append(h, ...f.edits.map((e) => editKid(e, f.original)), ...f.drafts.map(draftKid));
-    card.append(kids);
+    tray.append(kids);
   }
   if (f.splits?.length) {
     const kids = document.createElement("div");
@@ -9745,7 +9775,7 @@ function songFamilyCard(f) {
     h.className = "song-kids-head";
     h.textContent = "Split vocals";
     kids.append(h, ...f.splits.map(splitKid));
-    card.append(kids);
+    tray.append(kids);
   }
   return card;
 }
@@ -9981,8 +10011,16 @@ function showThumbEl(id, thumb) {
 function songRow(r) {
   const row = document.createElement("div");
   row.className = "show-row";
-  if (r.cover) row.append(coverImg(r.ref, r.modified));
-  row.append(songPlayButton(r));
+  // Cover art and ▶ together: beside each other in a list, ▶ over the cover on a card. A song with no cover art
+  // gets a ♪ tile on a card.
+  const art = Object.assign(document.createElement("div"), { className: "song-art" });
+  if (r.cover) {
+    const img = coverImg(r.ref, r.modified);
+    img.addEventListener("error", () => art.prepend(songTile()));
+    art.append(img);
+  } else art.append(songTile());
+  art.append(songPlayButton(r));
+  row.append(art);
   const main = document.createElement("div");
   main.className = "show-main";
   const head = document.createElement("div");
@@ -10049,6 +10087,10 @@ function songRow(r) {
   row._songLength = () => songLength(r).then((text) => { len.textContent = text; });
   songSeen ? songSeen.observe(row) : row._songLength();
   return row;
+}
+
+function songTile() {
+  return Object.assign(document.createElement("span"), { className: "song-cover song-tile", textContent: "♪", ariaHidden: "true" });
 }
 
 // Listening in Library → Songs: ▶ on a song's row plays it in the bar along the bottom (#song-player),

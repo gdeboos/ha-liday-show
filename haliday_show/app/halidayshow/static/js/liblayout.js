@@ -1,8 +1,10 @@
-// Cards or a list: how Library → Shows, Scenes, Pictures, Faces, Palettes and Presets lay out their items, picked with
+// Cards or a list: how Library → Shows, Songs, Scenes, Pictures, Faces, Palettes and Presets lay out their items, picked with
 // the Cards / List switch above each and remembered for each one in this browser. Cards are the
 // default. The rows are the same either way; the "as-cards" class lays them out as cards (style.css).
 export const CARD_LIBRARIES = {
   shows: { view: "view-shows", list: "#view-shows [data-show-list]", noun: "shows" },
+  // Songs sit in one list among folder rows, so the list inside lays out as cards.
+  songs: { view: "view-songs", list: "#songs-page-list", noun: "songs", groups: true },
   scenes: { view: "view-scenes", list: "#view-scenes [data-scene-list]", noun: "scenes" },
   pictures: { view: "view-pictures", list: "#pictures-list", noun: "pictures" },
   faces: { view: "view-faces", list: "#faces-list, #faces-builtin", noun: "faces" },

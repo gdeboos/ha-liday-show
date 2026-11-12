@@ -1193,6 +1193,40 @@ a.button { text-decoration: none; }
 .song-badge.draft { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
   background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
 @media (max-width: 720px) { .song-kid { flex-wrap: wrap; } .song-kid .show-actions { width: 100%; } }
+/* As a list, the cover and ▶ sit in the row as before, and the strip that opens a card's edits isn't needed. */
+.song-art { display: contents; }
+.song-tile, .song-kids-toggle { display: none; }
+/* Library → Songs as cards (liblayout.js): cover art across the top with ▶ on it, then the details, then a strip
+   ("1 edit · 2 drafts · Show ▾") that opens the song's edits, splits and drafts inside the card. A closed card
+   with something inside has a small stack of edges under it. */
+#songs-page-list.as-cards-groups > .show-list:not(.folder-list) { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  align-items: start; gap: 18px 12px; }
+#songs-page-list.as-cards-groups .song-family.has-kids:not(.open) { margin-bottom: 10px;
+  box-shadow: 0 6px 0 -4px var(--track-alt), 0 6px 0 -3px var(--line), 0 12px 0 -8px var(--track), 0 12px 0 -7px var(--line); }
+#songs-page-list.as-cards-groups .song-family.open { border-color: var(--accent); }
+#songs-page-list.as-cards-groups .song-family > .show-row { flex-direction: column; align-items: stretch; gap: 0; padding: 0; }
+#songs-page-list.as-cards-groups .song-art { display: block; position: relative; }
+#songs-page-list.as-cards-groups .song-art > .song-cover { display: flex; width: 100%; height: auto; aspect-ratio: 16 / 10; max-height: 200px;
+  border-radius: 0; object-fit: cover; }
+#songs-page-list.as-cards-groups .song-tile { align-items: center; justify-content: center; font-size: 48px; color: var(--muted); }
+#songs-page-list.as-cards-groups .song-art > .song-play { position: absolute; right: 10px; bottom: 10px; width: 44px; height: 44px;
+  min-width: 44px; background: color-mix(in srgb, var(--panel) 82%, transparent); border-color: var(--line); }
+#songs-page-list.as-cards-groups .song-family > .show-row > .show-main { padding: 10px 12px 4px; gap: 4px; }
+#songs-page-list.as-cards-groups .song-family > .show-row > .show-actions { padding: 4px 12px 12px; justify-content: flex-end; }
+#songs-page-list.as-cards-groups .song-kids-toggle { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 12px;
+  border: 0; border-top: 1px solid var(--line); border-radius: 0; background: var(--track); color: var(--text); text-align: left; }
+#songs-page-list.as-cards-groups .song-kids-toggle:hover { background: var(--track-alt); }
+#songs-page-list.as-cards-groups .song-kids-what { flex: 1; min-width: 0; font-size: 13px; }
+#songs-page-list.as-cards-groups .song-family:not(.open) > .song-kids-tray { display: none; }
+#songs-page-list.as-cards-groups .song-kids-head { padding-left: 12px; }
+#songs-page-list.as-cards-groups .song-kid { flex-wrap: wrap; gap: 6px 10px; margin-left: 8px; padding: 8px 10px; }
+#songs-page-list.as-cards-groups .song-kid-mark { align-self: flex-start; padding-top: 2px; }
+#songs-page-list.as-cards-groups .song-kid > .show-main { flex: 1 1 140px; }
+#songs-page-list.as-cards-groups .song-kid > .show-actions { width: 100%; justify-content: flex-end; }
+@media (max-width: 720px) {
+  #songs-page-list.as-cards-groups > .show-list:not(.folder-list) { grid-template-columns: 1fr; }
+  #songs-page-list.as-cards-groups .song-art > .song-cover { max-height: 140px; }
+}
 /* All / Originals / Edits / Drafts beside Find. */
 .seg-buttons { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .seg-buttons button { border: 0; border-radius: 0; background: var(--panel); }
