@@ -1199,14 +1199,15 @@ a.button { text-decoration: none; }
 /* Library → Songs as cards (liblayout.js): cover art across the top with ▶ on it, then the details, then a strip
    ("1 edit · 2 drafts · Show ▾") that opens the song's edits, splits and drafts inside the card. A closed card
    with something inside has a small stack of edges under it. */
-#songs-page-list.as-cards-groups > .show-list:not(.folder-list) { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  align-items: start; gap: 18px 12px; }
+#view-songs:has(#songs-page-list.as-cards-groups) { max-width: none; }
+#songs-page-list.as-cards-groups > .show-list:not(.folder-list) { align-items: start; row-gap: 18px; }
 #songs-page-list.as-cards-groups .song-family.has-kids:not(.open) { margin-bottom: 10px;
   box-shadow: 0 6px 0 -4px var(--track-alt), 0 6px 0 -3px var(--line), 0 12px 0 -8px var(--track), 0 12px 0 -7px var(--line); }
 #songs-page-list.as-cards-groups .song-family.open { border-color: var(--accent); }
 #songs-page-list.as-cards-groups .song-family > .show-row { flex-direction: column; align-items: stretch; gap: 0; padding: 0; }
 #songs-page-list.as-cards-groups .song-art { display: block; position: relative; }
-#songs-page-list.as-cards-groups .song-art > .song-cover { display: flex; width: 100%; height: auto; aspect-ratio: 16 / 10; max-height: 200px;
+/* Square, as on Library → Shows' cards, so the same cover looks the same in both. */
+#songs-page-list.as-cards-groups .song-art > .song-cover { display: flex; width: 100%; height: auto; aspect-ratio: 1;
   border-radius: 0; object-fit: cover; }
 #songs-page-list.as-cards-groups .song-tile { align-items: center; justify-content: center; font-size: 48px; color: var(--muted); }
 #songs-page-list.as-cards-groups .song-art > .song-play { position: absolute; right: 10px; bottom: 10px; width: 44px; height: 44px;
@@ -1219,14 +1220,18 @@ a.button { text-decoration: none; }
 #songs-page-list.as-cards-groups .song-kids-what { flex: 1; min-width: 0; font-size: 13px; }
 #songs-page-list.as-cards-groups .song-family:not(.open) > .song-kids-tray { display: none; }
 #songs-page-list.as-cards-groups .song-kids-head { padding-left: 12px; }
-#songs-page-list.as-cards-groups .song-kid { flex-wrap: wrap; gap: 6px 10px; margin-left: 8px; padding: 8px 10px; }
-#songs-page-list.as-cards-groups .song-kid-mark { align-self: flex-start; padding-top: 2px; }
-#songs-page-list.as-cards-groups .song-kid > .show-main { flex: 1 1 140px; }
-#songs-page-list.as-cards-groups .song-kid > .show-actions { width: 100%; justify-content: flex-end; }
-@media (max-width: 720px) {
-  #songs-page-list.as-cards-groups > .show-list:not(.folder-list) { grid-template-columns: 1fr; }
-  #songs-page-list.as-cards-groups .song-art > .song-cover { max-height: 140px; }
-}
+/* An edit in a card: its mark and ▶ stacked in a narrow column, its details beside them, its buttons below. */
+#songs-page-list.as-cards-groups .song-kid { display: grid; grid-template-columns: 30px minmax(0, 1fr); grid-template-rows: auto 1fr; gap: 6px 10px;
+  margin-left: 6px; padding: 8px 10px 8px 8px; }
+#songs-page-list.as-cards-groups .song-kid-mark { grid-column: 1; justify-self: center; align-self: start; padding-top: 2px; }
+#songs-page-list.as-cards-groups .song-kid > .song-play { grid-column: 1; justify-self: center; align-self: start; }
+#songs-page-list.as-cards-groups .song-kid > .show-main { grid-column: 2; grid-row: 1 / span 2; }
+#songs-page-list.as-cards-groups .song-kid > .show-actions { grid-column: 1 / -1; justify-content: flex-end; }
+/* Chips wrap rather than run out of a narrow card: a long palette name goes onto a second line. */
+#songs-page-list.as-cards-groups .song-marks > * { max-width: 100%; min-width: 0; box-sizing: border-box; }
+#songs-page-list.as-cards-groups .song-badge.song-pal { white-space: normal; text-align: left; overflow-wrap: anywhere; }
+#songs-page-list.as-cards-groups .song-pal-strip { flex: none; }
+#songs-page-list.as-cards-groups .parts-chip { flex-wrap: wrap; row-gap: 2px; }
 /* All / Originals / Edits / Drafts beside Find. */
 .seg-buttons { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .seg-buttons button { border: 0; border-radius: 0; background: var(--panel); }

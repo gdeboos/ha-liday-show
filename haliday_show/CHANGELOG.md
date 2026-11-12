@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.507
+
+- **Song cards match show cards.** In **Library → Songs**, cover art is now square and the cards are the
+  same size as in **Library → Shows**, so a song and its shows look the same. As cards, the page uses the
+  full width, as **Shows** does.
+- **Edits fit inside their song's card.** An edit's colours, **♪ Lyrics** and **Parts** now wrap onto
+  more lines instead of running off the side of the card, and its ✂ and **▶** sit at the top.
+
 ## 0.2.506
 
 - **Songs as cards.** **Library → Songs** now shows each song as a card with its cover art across the top
