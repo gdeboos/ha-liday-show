@@ -628,3 +628,24 @@ async def test_a_scene_with_live_effects_hands_the_player_its_live_set(runner):
     runner.storage.save_scene_live("glow", None)
     await runner.play_scene("glow")
     assert runner.player.live is None
+
+
+async def test_a_playlist_carries_on_after_an_error_in_a_block_and_says_so(runner, monkeypatch, caplog):
+    runner.storage.save_scene("s1", {"name": "S1", "mode": "basic", "lights": {"a": {"effect": "solid", "params": {}}}})
+    runner.storage.save_scene_baked("s1", baked.encode(40, [{"device": "a", "segments": 1}], [b"\xff\x00\x00"] * 40))
+    real, calls = baked.Baked.track_frame, {"n": 0}
+
+    def once_broken(self, t, i):
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise ValueError("boom")
+        return real(self, t, i)
+
+    monkeypatch.setattr(baked.Baked, "track_frame", once_broken)
+    await runner.play_playlist({"id": "p", "name": "P", "gap": 0, "items": [
+        {"type": "scene", "id": "b1", "scene": "s1", "seconds": 0.5},
+        {"type": "scene", "id": "b2", "scene": "s1", "seconds": 0.5}]})
+    assert await _until(lambda: calls["n"] > 3)
+    assert await _until(lambda: runner.player.playing)
+    assert not runner._playlist.done()
+    assert "boom" in caplog.text
