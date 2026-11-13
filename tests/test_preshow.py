@@ -173,3 +173,26 @@ def test_tally_matches_the_editor():
               {"summary": preshow.line("ok", "fine"), "items": [preshow.line("warn", "c")]}]
     assert preshow.tally(groups) == {"level": "fail", "problems": 1, "warnings": 2}
     assert preshow.tally([]) == {"level": "ok", "problems": 0, "warnings": 0}
+
+
+async def test_a_wled_with_wifi_sleep_on_is_flagged_once_with_a_fix():
+    devices = [light(1, "wled"), light(2, "wled", first=61, segment=1), light(3, "wled")]
+    devices[1]["ip"] = devices[0]["ip"]  # two lights on one WLED
+
+    async def ask(ip):
+        return {"sleep": ip == "192.168.1.1"}
+
+    lines, look = await preshow.lights(devices, set(), ask_wled=ask)
+    warn = [x for x in lines if x["level"] == "warn"]
+    assert warn == [{"level": "warn", "text": "Light 1 and Light 2 have Wi-Fi sleep switched on.",
+                     "fix": preshow.SLEEP_FIX, "wled_sleep": "192.168.1.1", "light": "Light 1 and Light 2"}]
+    assert look == ["l1", "l2", "l3"]  # still answered, so still looked at
+    assert {"level": "ok", "text": "All 3 lights answered."} in lines
+
+
+async def test_a_wled_whose_sleep_setting_cant_be_read_is_just_fine():
+    async def ask(ip):
+        return {"sleep": None}
+
+    lines, _ = await preshow.lights([light(1, "wled")], set(), ask_wled=ask)
+    assert [x["level"] for x in lines] == ["ok"]

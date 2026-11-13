@@ -136,6 +136,38 @@ async def set_state(ip: str, state: dict, timeout: float = 4.0):
         raise WledError(f"no WLED light answered at {ip}") from e
 
 
+async def wifi_sleep(ip: str, timeout: float = 4.0) -> bool | None:
+    """Whether the WLED lets its Wi-Fi doze between packets (Config → WiFi Setup, **Disable WiFi sleep**
+    unticked). Dozing makes realtime frames arrive in bursts, seen as stutter. None if it can't be told."""
+    url = f"http://{ip}:{HTTP_PORT}/json/cfg"
+    try:
+        async with _one_at_a_time(ip), aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
+            async with s.get(url) as r:
+                if r.status != 200:
+                    return None
+                body = await r.json(content_type=None)
+    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
+        return None
+    sleep = (body.get("wifi") or {}).get("sleep") if isinstance(body, dict) else None
+    return sleep if isinstance(sleep, bool) else None
+
+
+async def stop_wifi_sleep(ip: str, timeout: float = 6.0):
+    """Ticks **Disable WiFi sleep** on the WLED and restarts it, which it needs before the change counts."""
+    base = f"http://{ip}:{HTTP_PORT}/json"
+    try:
+        async with _one_at_a_time(ip), aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as s:
+            async with s.post(f"{base}/cfg", json={"wifi": {"sleep": False}}) as r:
+                if r.status != 200:
+                    raise WledError(f"{ip} answered {r.status}")
+            async with s.post(f"{base}/state", json={"rb": True}) as r:
+                pass  # it may restart before answering
+    except aiohttp.ServerDisconnectedError:
+        pass
+    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+        raise WledError(f"no WLED light answered at {ip}") from e
+
+
 def _names(names) -> list[str]:
     """WLED's list of effect or palette names, each kept at its number; reserved slots ("RSVD", "-") blank."""
     if not isinstance(names, list):

@@ -16,6 +16,9 @@ takes a few minutes, in up to four steps:
      doesn't answer is amber, not red, and you watch it in the next step too: some networks (such as
      lights on their own VLAN) let commands reach it but not its answers back, so shows still work. Planned lights and
      props whose season is packed away are left out.
+   - checks each WLED's **Wi-Fi sleep**. With it on, the WLED's Wi-Fi dozes between packets and frames
+     arrive in bursts, which shows as stutter. It's amber, with a **Fix** button that ticks **Disable WiFi
+     sleep** in the WLED's own settings and restarts it (about 10 seconds). You only need to do it once.
    - checks **How shows start tonight**, as far as you've set it up. With the visitors' page switched on,
      it checks the page is running and answering, can be reached at its **Public address**, is open
      tonight, has shows to pick and has its queue ready. With rows switched on in the **Schedule**, it

@@ -1004,6 +1004,24 @@ function healthButtons(x, li, leave) {
   li.append(acts);
 }
 
+// A WLED with Wi-Fi sleep on (preshow.py): Fix ticks Disable WiFi sleep on it and restarts it.
+function sleepButton(x, li) {
+  const acts = document.createElement("span");
+  acts.className = "ps-acts";
+  const fix = button("Fix", async () => {
+    const done = busyButton(fix, "Changing…");
+    try {
+      await api("api/preshow/wled-sleep", { method: "POST", json: { ip: x.wled_sleep } });
+      li.replaceWith(preshowLine({ level: "ok", text: `${x.light}: Wi-Fi sleep switched off. It's restarting, so give it about 10 seconds.` }));
+    } catch (e) {
+      status(`Couldn't change ${x.light}: ${e.message}`, true);
+    } finally { done(); }
+  }, "ghost small");
+  fix.setAttribute("aria-label", `Turn Wi-Fi sleep off on ${x.light}`);
+  acts.append(fix);
+  li.append(acts);
+}
+
 // Library → Shows → Check all shows.
 async function openShowHealth() {
   const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
@@ -1072,6 +1090,7 @@ function preshowList(groups) {
     ul.append(...g.items.map((x) => {
       const li = preshowLine(x);
       if (x.show) healthButtons(x, li, () => $("preshow-dialog").close());
+      if (x.wled_sleep) sleepButton(x, li);
       return li;
     }));
     if (g.summary && g.items.length) ul.classList.add("ps-under");
