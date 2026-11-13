@@ -1096,7 +1096,10 @@ export class MusicEditor {
     this.partsLoading = false;
     if (!loaded) return;
     this.partsFor = null;
+    // Playing on from here, so a part muted, soloed or changed while it loaded is heard at once.
+    const was = this.playing ? this.time : null;
     this.changed();
+    if (was != null) this.play(was);
   }
 
   // The song with its parts at their levels (songparts.js): the song plus each changed part at its new

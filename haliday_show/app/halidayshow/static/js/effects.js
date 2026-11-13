@@ -764,9 +764,14 @@ export function withMusicLevels(levels, fn) {
   useMusicLevels(levels);
   try { return fn(); } finally { musicLevels = before; }
 }
-function levelAt(time) {
+// What Music level and Music bars can follow: the whole song, or one of its parts (Split into parts),
+// whose levels are kept with the show's loudness (show.loudness.parts). A part not measured follows the song.
+export const STEMS = { "the whole song": null, "vocals": "vocals", "drums": "drums", "bass": "bass", "the rest": "rest" };
+const stem = choice("stem", "Follows", "the whole song", Object.keys(STEMS));
+function levelAt(time, part = null) {
   if (musicLevels === undefined) return 0.45 + 0.3 * Math.sin(time * 5.1) * Math.sin(time * 1.3) + 0.2 * Math.max(0, Math.sin(time * 12.6));
-  const v = musicLevels?.values;
+  const own = part && musicLevels?.parts?.[part];
+  const v = Array.isArray(own) && own.length ? own : musicLevels?.values;
   if (!v?.length) return 0;
   const x = Math.max(time, 0) * (musicLevels.fps || 10), k = Math.floor(x);
   const a = v[Math.min(k, v.length - 1)] ?? 0, b = v[Math.min(k + 1, v.length - 1)] ?? a;
@@ -838,12 +843,12 @@ Object.assign(EFFECTS, {
     label: "Music level", group: "music", music: true,
     params: [color("color", "Quiet", "#00ff00"), color("color2", "Middle", "#ffff00"), color("color3", "Loud", "#ff0000"),
       color("background", "Background", "#000000"), choice("from", "Rises from", "the start", ["the start", "the middle"]),
-      num("boost", "Sensitivity %", 100, 25, 400, 5), choice("peak", "Peak marker", "on", ["on", "off"]), direction],
+      num("boost", "Sensitivity %", 100, 25, 400, 5), choice("peak", "Peak marker", "on", ["on", "off"]), direction, stem],
     render: (p, t, dur, n, i) => {
       // The light fills to the song's loudness at this moment, green to red, with the last second's
       // peak marked by a dot that falls back.
-      const song = (Number(p.start) || 0) + t, gain = p.boost / 100;
-      const level = Math.min(levelAt(song) * gain, 1);
+      const song = (Number(p.start) || 0) + t, gain = p.boost / 100, part = STEMS[p.stem] || null;
+      const level = Math.min(levelAt(song, part) * gain, 1);
       let pos = p.direction === "reverse" ? n - 1 - i : i, len = n;
       if (p.from === "the middle") { pos = Math.abs(i - (n - 1) / 2) * 2; len = n; }
       const x = (pos + 0.5) / Math.max(len, 1);
@@ -851,7 +856,7 @@ Object.assign(EFFECTS, {
       if (x <= level) return colour;
       if (p.peak === "on") {
         let peak = 0;
-        for (let j = 1; j <= 10; j++) peak = Math.max(peak, Math.min(levelAt(song - j * 0.1) * gain, 1) - j * 0.02);
+        for (let j = 1; j <= 10; j++) peak = Math.max(peak, Math.min(levelAt(song - j * 0.1, part) * gain, 1) - j * 0.02);
         if (Math.abs(x - peak) < 0.5 / Math.max(len, 1) + 0.005 && peak > level) return colour;
       }
       return hexToRgb(p.background);
@@ -1087,9 +1092,9 @@ Object.assign(EFFECTS, {
     // A bar per column rising from the bottom with the song's loudness, each its own height, green to red.
     label: "Music bars", music: true,
     params: [color("color", "Quiet", "#00ff00"), color("color2", "Middle", "#ffff00"), color("color3", "Loud", "#ff0000"),
-      color("background", "Background", "#000000"), num("boost", "Sensitivity %", 100, 25, 400, 5)],
+      color("background", "Background", "#000000"), num("boost", "Sensitivity %", 100, 25, 400, 5), stem],
     renderXY: (p, t, dur, w, h, x, y) => {
-      const song = (Number(p.start) || 0) + t, level = Math.min(levelAt(song) * (p.boost / 100), 1);
+      const song = (Number(p.start) || 0) + t, level = Math.min(levelAt(song, STEMS[p.stem] || null) * (p.boost / 100), 1);
       const bar = level * (0.55 + 0.45 * noise(x * 0.9 + song * 3, 53));
       const at = (h - y - 0.5) / h; // how far up this LED is, 0 to 1
       if (at > bar) return hexToRgb(p.background);

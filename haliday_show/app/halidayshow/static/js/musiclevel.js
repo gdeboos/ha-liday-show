@@ -97,6 +97,14 @@ export function levelsFit(show, songPath, duration) {
   return !!l && Array.isArray(l.values) && l.song === songPath && Math.abs(l.values.length / (l.fps || LEVEL_FPS) - duration) < 1;
 }
 
+// The song's parts (Split into parts: {vocals: path…}) whose levels a show's loudness doesn't have yet,
+// for Music level's Follows. Each is measured like the song (levelCurve), at its rate, into loudness.parts.
+export const LEVEL_PARTS = ["vocals", "drums", "bass", "rest"];
+export function partsToMeasure(loudness, songParts) {
+  if (!loudness || !Array.isArray(loudness.values)) return [];
+  return LEVEL_PARTS.filter((p) => songParts?.[p] && !(Array.isArray(loudness.parts?.[p]) && loudness.parts[p].length));
+}
+
 // The song's loudness is measured, not edited, so undo mustn't take it away: a show restored from
 // before it was measured (or from another song's) takes the measurement it had, when it's for the
 // same song.
@@ -105,7 +113,7 @@ export function keepLevels(before, after) {
   for (const key of ["loudness", "voice"]) {
     const l = before?.[key];
     if (!l || !after?.audio || l.song !== after.audio.path) continue;
-    if (after[key]?.song !== l.song) after[key] = l;
+    if (after[key]?.song !== l.song || (l.parts && !after[key].parts)) after[key] = l;
   }
   return after;
 }

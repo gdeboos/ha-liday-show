@@ -491,7 +491,7 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
     js/sectionnotes.js                  Notes for song sections, from what each sounds like
     js/showplayer.js                    Show player: plays songs of shows started with no speaker
     js/music.js                         Music editor: cutting, trimming and splicing songs
-    js/musiclevel.js                    The song's loudness over time, saved with a show for Music level
+    js/musiclevel.js                    The song's loudness over time, and each split part's, saved with a show for Music level
     js/cutfinder.js                     Suggest cuts: where whole bars can go without the join being heard
     js/drafts.js                        Keeps the Music editor's drafts on the server as you edit
     js/loudness.js                      How loud a song is, and evening it out (Make song file)
