@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.511
+
+- **Muting a part in the Music editor works straight away.** Muting or soloing the song's **Vocals**,
+  **Drums**, **Bass** or **Rest** while the song played sometimes didn't take effect until you pressed
+  **Play** again, because that part's audio was still loading. Now the song carries on from where it
+  was as soon as the part is ready, with your change heard.
+
 ## 0.2.510
 
 - **The pre-show check spots WLEDs whose Wi-Fi dozes.** WLED has a **Disable WiFi sleep** setting; with
