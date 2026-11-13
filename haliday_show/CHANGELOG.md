@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.513
+
+- **A playlist no longer stops without a word.** If something went wrong while one of a playlist's
+  scenes or blocks was playing, the whole playlist quietly stopped: the app and your Home Assistant cards
+  said **Nothing is on your lights now**, while lights on WLED's own effects carried on with the last
+  effect they'd been given. The playlist now moves on to its next item, and the app's log says what went
+  wrong.
+
 ## 0.2.512
 
 - **Music level and Music bars can follow one part of the song.** Their new **Follows** setting picks

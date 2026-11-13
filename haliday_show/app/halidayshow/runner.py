@@ -652,7 +652,13 @@ class Runner:
                         continue
                     self.item = k
                     if item["type"] != "show":
-                        played = await self._play_block(item) or played
+                        try:
+                            played = await self._play_block(item) or played
+                        except asyncio.CancelledError:
+                            raise
+                        except Exception:  # one bad block mustn't end the playlist without a word
+                            log.exception("playlist %s: block %s failed; carrying on", playlist.get("name"), item.get("id"))
+                            await asyncio.sleep(1)  # a block that always fails mustn't spin
                         # Visitors' picks waiting play after any block (a playlist of scenes has no
                         # shows to wait for).
                         if await self._visitors(playlist):

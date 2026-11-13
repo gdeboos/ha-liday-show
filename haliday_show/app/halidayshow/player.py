@@ -99,6 +99,13 @@ class Player:
             self.output.release(ip)
         self.start = time.monotonic() - position
         self._task = asyncio.create_task(self._run())
+        self._task.add_done_callback(self._crashed)
+
+    @staticmethod
+    def _crashed(task: asyncio.Task):
+        # Said at once, so the log shows why the lights stopped (stop() would otherwise only find out later).
+        if not task.cancelled() and task.exception() is not None:
+            log.error("the player stopped with an error", exc_info=task.exception())
 
     def frame_now(self) -> tuple[list[dict], bytes] | None:
         """What's on the lights this moment, for the editor's live preview: each track's frame as it
@@ -187,6 +194,8 @@ class Player:
             try:
                 await self._task
             except asyncio.CancelledError:
+                pass
+            except Exception:  # already logged (_crashed); whatever comes next still plays
                 pass
             self._task = None
         if release:
