@@ -251,3 +251,11 @@ All under Setup → Labs (tick **Show the Labs tab** under Setup → More → Ex
 - Does Per bulb light the whole H70D1/H70D2, and at what picture rate? Does the H70D2's realtime window
   also stop about halfway? Do other lights with Finger sketch accept it?
 - App segments after the 0.2.71 lag fix: does it keep up now?
+
+## Frame pacing (0.2.509, 13 Nov 2026)
+
+`OutputDevice.tick` capped sends at `1 / MAX_FPS` (25 ms) but the output loop only looks every 4-5 ms,
+so frames actually went out ~27 ms apart and a 40 fps show lost about 1 frame in 18 (overwritten while
+waiting). From 0.2.509 a frame may go out up to `RATE_SLACK_S` (5 ms) early, so the average stays at
+40 fps with nothing lost; two frames can occasionally be ~20 ms apart. Measured on the wire only; not
+yet watched on the H70C5 or H706A (check that they don't go off or flicker with the occasional 20 ms gap).

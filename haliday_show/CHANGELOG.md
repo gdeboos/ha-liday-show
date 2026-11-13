@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.509
+
+- **Smoother fast effects.** About one frame in 18 was being dropped on its way to your lights, which
+  showed as a small hitch a couple of times a second on fast, busy effects (chases, sparkles, anything
+  moving along a string). Every frame now goes out, at the same 40 frames a second as before. This
+  applies to WLED, Govee realtime, DDP, E1.31 and Twinkly lights; nothing else changes.
+
 ## 0.2.508
 
 - **No more warning in Home Assistant's log about the device registry.** The HA-liday Show integration
