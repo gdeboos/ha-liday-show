@@ -3,7 +3,7 @@
 import { buildContext, checkClips, checkPalettes, checkPresets, effectsForAI, placeClips } from "./aiclips.js";
 import { analyseInWorker, toMono } from "./analysis.js";
 import { fromSong, fromStarts, lineWords, parseLyrics, placeLines, savedLines, savedLyrics, songLyrics } from "./lyrics.js";
-import { VOICE_FPS, keepLevels, levelCurve, levelsFit, vocalsPlaces, voiceBand, voiceFits, voiceShapes } from "./musiclevel.js";
+import { VOICE_FPS, keepLevels, levelCurve, levelsFit, partsToMeasure, vocalsPlaces, voiceBand, voiceFits, voiceShapes } from "./musiclevel.js";
 import { refreshShowPalette, setShowPalette, showPalette } from "./showpalette.js";
 import { coverPalette, songColourRequest, songPaletteName, songPaletteNow } from "./coverpalette.js";
 import { paletteButton, pickPalette } from "./palettepicker.js";
@@ -12,7 +12,7 @@ import { FEELS, FEEL_KEYS, STYLES, applyGenerated, applyGeneratedPart, clearPart
 import { clipFit, reachNote, worst } from "./compat.js";
 import {
   EFFECTS, EFFECT_GROUPS, GLITTER_COLOUR, MIXES, TRANSITIONS, CURVE_SHAPES, clipPiece, unusedColour, setMusicLevels, useMusicLevels, withMusicLevels, MADE_UP, FPS, GROUP, HOUSE, PRESETS, applyHouse, composeLight, isGroupTrack, planGroups, defaultParams, dim, showLevel, matchesPreset, presetParams,
-  renderTrack, gridFor, showDuration, phoneColourAt, phoneScreen, phoneView, drawPhoneView, laneUsesHouse, newClip, setVoiceLevels, withVoiceLevels,
+  renderTrack, gridFor, showDuration, phoneColourAt, phoneScreen, phoneView, drawPhoneView, laneUsesHouse, newClip, setVoiceLevels, withVoiceLevels, STEMS,
 } from "./effects.js";
 import { bakeOff } from "./bakeoff.js";
 import { PHONES, PHONE_FPS, PHONE_GRID, PHONE_LANE, hasPhonesLane, mainColour, phonesJoin, singerOf } from "./phones.js";
@@ -4841,6 +4841,8 @@ function renderInspector() {
       continue;
     }
     field(p.label, el);
+    // Music level or Music bars following one of the song's parts: whether the song has it.
+    if (p.key === "stem") { const n = stemNote(clip); if (n) target.append(n); }
     if (p.type === "number" && !EFFECTS[clip.effect].wledOwn) target.append(curveRow(clip, p)); // WLED's own settings stay put
   }
   // Transitions: how the clip comes in and goes out. Back to back with another clip, it crossfades.
@@ -12770,6 +12772,43 @@ async function refreshAudio() {
   }
 }
 
+// The loudness of each of the song's parts (Split into parts), for Music level and Music bars set to
+// follow one. Kept with the show's loudness (show.loudness.parts), so each part is measured once per show.
+const songPartsOf = (ref) => (app.songs || []).find((s) => s.source === ref.source && s.path === ref.path)?.parts || {};
+const usesStem = (show) => (show?.tracks || []).some((t) => t.clips?.some((c) => EFFECTS[c.effect]?.music && STEMS[c.stem]));
+let measuringParts = null;
+async function measurePartLevels(show, ref) {
+  const paths = songPartsOf(ref), want = partsToMeasure(show.loudness, paths);
+  if (!want.length || measuringParts) return;
+  measuringParts = (async () => {
+    const parts = { ...(show.loudness.parts || {}) };
+    for (const p of want) {
+      try {
+        const d = await audioCtx.decodeAudioData(await fetchSong(audioUrl({ source: "media", path: paths[p] })));
+        const mono = toMono(Array.from({ length: d.numberOfChannels }, (_, c) => d.getChannelData(c)), d.sampleRate);
+        parts[p] = levelCurve(mono.samples, mono.rate, ref.path, show.loudness.fps).values;
+      } catch { /* that part follows the whole song */ }
+    }
+    if (app.show !== show || show.audio !== ref || !show.loudness) return;
+    show.loudness = { ...show.loudness, parts };
+    setMusicLevels(show.loudness);
+    // Saved with the show's next save, or now if a clip follows a part.
+    if (usesStem(show)) app.changed(); else renderInspector();
+  })().finally(() => { measuringParts = null; });
+}
+
+// What Music level or Music bars follows, in words, when it's set to a part the song doesn't have.
+function stemNote(clip) {
+  const part = STEMS[clip.stem];
+  if (!part) return null;
+  const note = Object.assign(document.createElement("p"), { className: "hint" });
+  const ref = app.show.audio, have = app.show.loudness?.parts?.[part]?.length;
+  note.textContent = have ? `It follows the song's ${clip.stem}, from Split into parts.`
+    : ref && songPartsOf(ref)[part] ? `The ${clip.stem} are measured once the song has loaded. Until then it follows the whole song.`
+    : `This song hasn't been split into parts, so it follows the whole song. Use Split into parts on it in Library → Songs for its ${clip.stem}.`;
+  return note;
+}
+
 let audioCtx;
 let songBuffer = null; // the decoded song, for Detect
 async function loadAudio(ref) {
@@ -12808,7 +12847,7 @@ async function loadAudio(ref) {
       // A show already using Music level (its song changed) needs saving and baking again.
       if (app.show.tracks?.some((t) => t.clips.some((c) => EFFECTS[c.effect]?.music))) app.changed();
     }
-    if (app.show?.audio === ref) { setMusicLevels(app.show.loudness); setVoiceLevels(singerOf(app.show)); ensureVoice(); }
+    if (app.show?.audio === ref) { setMusicLevels(app.show.loudness); setVoiceLevels(singerOf(app.show)); ensureVoice(); measurePartLevels(app.show, ref); }
     status("", "info", "song");
   } catch (e) {
     status(songLoadMessage(e), true, "song");

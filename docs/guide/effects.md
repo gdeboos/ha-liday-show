@@ -15,6 +15,13 @@ song. In the Preview and House panels and in **▶ Preview** it follows the show
 window and the preset previews it moves to a made-up level, since a few seconds from a song's start are
 often too quiet to show anything.
 
+**Music level** and **Music bars** can follow just one part of the song: set **Follows** to
+**vocals**, **drums**, **bass** or **the rest** (it starts on **the whole song**). The song needs
+splitting first (**Split into parts…** on its row in **Library → Songs**); each part is then measured
+the next time you open the show. Until then, or for a song that isn't split, it follows the whole
+song, and a note under **Follows** says so. When the show listens through a microphone, it can only
+hear the whole song.
+
 Fairy lights, Ocean waves, Aurora, Flowing colours, Juggle, Ripple, Bouncing balls and Stacking blocks take a list of up to 8 colours. Set
 **Colours** to how many to use, and only that many colour boxes show. **Apply palette** fills the
 whole list from the palette and sets **Colours** to match.

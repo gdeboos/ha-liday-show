@@ -68,3 +68,25 @@ test("previews with no song behind them show a made-up level, then the open show
     assert.equal(lit(renderTrack([clip], 1, 20)), 0); // put back
   } finally { setMusicLevels(null); }
 });
+
+test("Music level can follow one of the song's parts, and falls back to the whole song without it", async () => {
+  const { partsToMeasure, keepLevels } = await import("../../haliday_show/app/halidayshow/static/js/musiclevel.js");
+  const lit = (buf) => Array.from({ length: buf.length / 3 }, (_, i) => buf[i * 3] + buf[i * 3 + 1] > 0).filter(Boolean).length;
+  setMusicLevels({ fps: 10, values: [100, 100, 100], parts: { bass: [0, 0, 0], drums: [50, 50, 50] } });
+  try {
+    const clip = { ...newClip("vumeter", 0, 1), peak: "off" };
+    assert.equal(clip.stem, "the whole song");
+    assert.equal(lit(renderTrack([clip], 0.05, 10)), 10);
+    assert.equal(lit(renderTrack([{ ...clip, stem: "bass" }], 0.05, 10)), 0);
+    assert.equal(lit(renderTrack([{ ...clip, stem: "drums" }], 0.05, 10)), 5);
+    // Not measured: the whole song.
+    assert.equal(lit(renderTrack([{ ...clip, stem: "vocals" }], 0.05, 10)), 10);
+  } finally { setMusicLevels(null); }
+  const loud = { fps: 10, values: [1], song: "s.mp3", parts: { vocals: [1] } };
+  assert.deepEqual(partsToMeasure(loud, { vocals: "v.mp3", drums: "d.mp3" }), ["drums"]);
+  assert.deepEqual(partsToMeasure(loud, {}), []);
+  assert.deepEqual(partsToMeasure(null, { drums: "d.mp3" }), []);
+  // Undo keeps measured parts.
+  const after = keepLevels({ loudness: loud }, { audio: { path: "s.mp3" }, loudness: { fps: 10, values: [1], song: "s.mp3" } });
+  assert.deepEqual(after.loudness.parts, { vocals: [1] });
+});

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.512
+
+- **Music level and Music bars can follow one part of the song.** Their new **Follows** setting picks
+  **vocals**, **drums**, **bass** or **the rest** instead of **the whole song**, so a strip can pump with
+  just the bass line, say. The song needs **Split into parts…** first. Each part is measured the next
+  time you open the show, and kept with it. A song that isn't split carries on following the whole song.
+
 ## 0.2.510
 
 - **The pre-show check spots WLEDs whose Wi-Fi dozes.** WLED has a **Disable WiFi sleep** setting; with
