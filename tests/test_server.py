@@ -2382,3 +2382,20 @@ async def test_light_roles_are_kept_for_the_house(client):
     assert await (await client.get("/api/light-roles")).json() == roles
     for bad in ({"roof": "dance"}, ["roof"], {"": "kick"}):
         assert (await client.put("/api/light-roles", json=bad)).status == 400
+
+
+async def test_the_preshow_wifi_sleep_fix_only_goes_to_your_own_wleds(client, monkeypatch):
+    from halidayshow import wled
+    fixed = []
+
+    async def stop(ip, timeout=6.0):
+        fixed.append(ip)
+
+    monkeypatch.setattr(wled, "stop_wifi_sleep", stop)
+    await client.put("/api/devices", json=[{"id": "eaves", "name": "Eaves", "kind": "wled", "ip": "192.168.2.62",
+                                            "segments": 60},
+                                           {"id": "porch", "name": "Porch", "ip": "192.168.2.155", "segments": 10}])
+    assert (await client.post("/api/preshow/wled-sleep", json={"ip": "192.168.2.62"})).status == 200
+    assert (await client.post("/api/preshow/wled-sleep", json={"ip": "192.168.2.155"})).status == 400  # a Govee light
+    assert (await client.post("/api/preshow/wled-sleep", json={"ip": "10.0.0.1"})).status == 400
+    assert fixed == ["192.168.2.62"]

@@ -196,3 +196,36 @@ async def test_a_wled_is_asked_one_thing_at_a_time(aiohttp_server, monkeypatch):
     await asyncio.gather(wled.fetch("127.0.0.1"), wled.fetch("127.0.0.1"),
                          wled.set_state("127.0.0.1", {"on": True}))
     assert most == 1
+
+
+async def test_wifi_sleep_is_read_and_switched_off_with_a_restart(aiohttp_server, monkeypatch):
+    from aiohttp import web
+
+    cfg = {"wifi": {"sleep": True, "phy": False}}
+    posted = []
+
+    async def get_cfg(request):
+        return web.json_response(cfg)
+
+    async def post_cfg(request):
+        body = await request.json()
+        posted.append(("cfg", body))
+        cfg["wifi"].update(body["wifi"])
+        return web.json_response({"success": True})
+
+    async def state(request):
+        posted.append(("state", await request.json()))
+        return web.json_response({"success": True})
+
+    app = web.Application()
+    app.router.add_get("/json/cfg", get_cfg)
+    app.router.add_post("/json/cfg", post_cfg)
+    app.router.add_post("/json/state", state)
+    fake = await aiohttp_server(app, host="127.0.0.1")
+    monkeypatch.setattr(wled, "HTTP_PORT", fake.port)
+    assert await wled.wifi_sleep("127.0.0.1") is True
+    await wled.stop_wifi_sleep("127.0.0.1")
+    assert posted == [("cfg", {"wifi": {"sleep": False}}), ("state", {"rb": True})]
+    assert await wled.wifi_sleep("127.0.0.1") is False
+    monkeypatch.setattr(wled, "HTTP_PORT", 1)  # nothing listening: can't tell
+    assert await wled.wifi_sleep("127.0.0.1", timeout=1) is None

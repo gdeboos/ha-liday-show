@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.510
+
+- **The pre-show check spots WLEDs whose Wi-Fi dozes.** WLED has a **Disable WiFi sleep** setting; with
+  it unticked, the WLED's Wi-Fi naps between packets and shows can stutter. **Setup → Devices → ✓ Pre-show
+  check** now reads it from each WLED and, if it's on, shows an amber line with a **Fix** button. **Fix**
+  changes it on the WLED and restarts it, which takes about 10 seconds. You only need to do it once.
+
 ## 0.2.509
 
 - **Smoother fast effects.** About one frame in 18 was being dropped on its way to your lights, which

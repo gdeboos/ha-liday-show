@@ -54,12 +54,17 @@ GOVEE_QUIET_FIX = ("If it lights up in the next step, all's well: some networks 
                    "plugged in and switched on, and that LAN Control is on for it in the Govee Home app.")
 
 
-async def _ask_wled(ip: str) -> bool:
+async def _ask_wled(ip: str) -> bool | dict:
+    """False if it didn't answer; else {"sleep": True | False | None}, its Wi-Fi sleep setting."""
     try:
         await wled.fetch(ip, timeout=ASK_TIMEOUT_S)
-        return True
     except Exception:
         return False
+    return {"sleep": await wled.wifi_sleep(ip, timeout=ASK_TIMEOUT_S)}
+
+
+SLEEP_FIX = ("Its Wi-Fi dozes between packets, which can make shows stutter. Press Fix to turn that off "
+             "(Disable WiFi sleep in its own settings); it restarts, which takes about 10 seconds.")
 
 
 async def _ask_twinkly(ip: str) -> bool:
@@ -131,7 +136,10 @@ async def lights(devices: list[dict], away: set[str], ha=None, *, scan=_scan_gov
 
     results = await asyncio.gather(*[ask(d) for d in real])
     quiet = []  # pixel controllers: nothing to ask
+    sleepy: dict[str, list[dict]] = {}  # WLEDs with Wi-Fi sleep on, by IP, with their lights
     for d, got in zip(real, results):
+        if kind(d) == "wled" and isinstance(got, dict) and got.get("sleep") is True:
+            sleepy.setdefault(d["ip"], []).append(d)
         k = kind(d)
         if k == "govee":
             got = d["ip"] in found
@@ -142,7 +150,7 @@ async def lights(devices: list[dict], away: set[str], ha=None, *, scan=_scan_gov
             out.append(line("warn", f"Couldn't ask Home Assistant about {d['name']}, so watch it in the next step.",
                             "Check Home Assistant is running."))
             look.append(d["id"])
-        elif got is True or got == "ok":
+        elif got is True or got == "ok" or isinstance(got, dict):
             answered.append(d)
             look.append(d["id"])
         elif k == "ha":
@@ -157,6 +165,9 @@ async def lights(devices: list[dict], away: set[str], ha=None, *, scan=_scan_gov
             look.append(d["id"])
         else:
             out.append({**line("fail", f"{d['name']} didn't answer.", NO_ANSWER_FIX[k]), "light": d["name"]})
+    for ip, ds in sleepy.items():
+        out.append({**line("warn", f"{names(ds)} {'has' if len(ds) == 1 else 'have'} Wi-Fi sleep switched on.",
+                           SLEEP_FIX), "wled_sleep": ip, "light": names(ds)})
     if quiet:
         out.insert(0, line("info", f"{names(quiet)} can't be asked over the network, so "
                            f"{'watch it' if len(quiet) == 1 else 'watch them'} in the next step."))

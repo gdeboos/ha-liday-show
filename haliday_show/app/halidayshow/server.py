@@ -3090,6 +3090,21 @@ async def preshow_timing(request):
     return web.json_response({"ok": True, "seconds": timingtest.SECONDS})
 
 
+async def preshow_wled_sleep(request):
+    """The pre-show check's Fix for a WLED with Wi-Fi sleep on: {"ip"}, which must be a saved WLED's."""
+    body = await request.json() if request.can_read_body else {}
+    ip = body.get("ip") if isinstance(body, dict) else None
+    known = {d.get("ip") for d in request.app[STORAGE].live_devices() if d.get("kind") == "wled" and d.get("ip")}
+    if not isinstance(ip, str) or ip not in known:
+        raise web.HTTPBadRequest(text="That isn't one of your WLED lights.")
+    try:
+        await wled.stop_wifi_sleep(ip)
+    except wled.WledError as e:
+        raise web.HTTPBadGateway(text=f"Couldn't change it: {e}.")
+    log.info("pre-show check: turned Wi-Fi sleep off on the WLED at %s, restarting it", ip)
+    return web.json_response({"ok": True})
+
+
 def _clean_preshow_last(body) -> dict:
     """What the last pre-show check found, for Setup to show: {level, problems, warnings}."""
     if not isinstance(body, dict) or body.get("level") not in preshow.LEVELS:
@@ -4301,6 +4316,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_post("/api/blocks/{id}/baked/part", put_block_part)
     r.add_post("/api/preshow/run", preshow_run)
     r.add_post("/api/preshow/timing", preshow_timing)
+    r.add_post("/api/preshow/wled-sleep", preshow_wled_sleep)
     r.add_get("/api/preshow/last", get_preshow_last)
     r.add_put("/api/preshow/last", put_preshow_last)
     r.add_get("/api/schedule", get_schedule)

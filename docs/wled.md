@@ -73,6 +73,15 @@ change on to its sync group, so the last one set won on all of them. Since 0.2.4
 passed on; the WLED's own Sync settings are untouched and still sync changes made in the WLED app. Not
 yet confirmed on his WLEDs. Realtime frames (DDP) aren't synced by WLED either way.
 
+## Wi-Fi sleep (0.2.510)
+
+WLED's **Disable WiFi sleep** (Config → WiFi Setup) is `wifi.sleep` in `/json/cfg` (true = sleep allowed).
+With sleep allowed, realtime packets arrive in bursts as the ESP dozes, a common cause of stutter. The
+pre-show check reads it (`wled.wifi_sleep`) and offers **Fix** (`wled.stop_wifi_sleep`: POST
+`/json/cfg {"wifi": {"sleep": false}}`, then `/json/state {"rb": true}`, since it only applies after a
+restart). Recent WLED has it off by default. Checked against a fake WLED only; on Gavin's three WLEDs,
+see whether any were flagged.
+
 ## Live music: listening to sound sync
 
 `livemusic.py` listens on UDP 11988 (joined to multicast 239.0.0.1) for WLED's AudioReactive sound
