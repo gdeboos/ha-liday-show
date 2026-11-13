@@ -163,3 +163,28 @@ def test_whole_light_lights_can_have_more_than_255_segments():
     dev.update(b"\xff\x00\x00" * 300)
     assert len(dev.pending) == 900
 
+
+
+def test_40fps_frames_all_go_out_when_ticks_are_coarse():
+    """The output loop looks every 4-5 ms. A new frame every 25 ms (a show's 40 fps) must all go out,
+    not one in ~18 be overwritten while waiting for the next look (seen as a hitch on fast effects)."""
+    class Sock:
+        def __init__(self):
+            self.sent = []
+
+        def sendto(self, payload, addr):
+            self.sent.append(payload)
+
+    sock = Sock()
+    dev = output.DdpDevice("10.0.0.5", 1, sock)
+    dev.enable()
+    tick, frames, sent = 0.0045, 400, []
+    now, k = 0.0, 0
+    while k < frames or now < frames * 0.025 + 0.1:
+        while k < frames and k * 0.025 <= now:
+            dev.update(bytes([k % 256, k // 256, 1]))
+            k += 1
+        dev.tick(now)
+        now += tick
+    seen = [(p[10], p[11]) for p in sock.sent]
+    assert len(dict.fromkeys(seen)) == frames

@@ -29,6 +29,11 @@ STARTUP_S = 5
 STARTUP_REENABLE_S = 0.5
 MAX_FPS = 40
 WHOLE_FPS = 10  # colorwc fades each change, so faster than this just blurs
+# The output loop only looks every 4-5 ms, so a frame due 25 ms after the last one went out ~27 ms
+# after it. At 40 fps (the shows' own rate) that couldn't keep up, and about one frame in 18 was
+# overwritten before it went out: a hitch twice a second on fast effects. Sending up to this much
+# early keeps the average at the cap with no frames lost.
+RATE_SLACK_S = 0.005
 
 
 class OutputDevice:
@@ -97,7 +102,7 @@ class OutputDevice:
             self.last_enable = now
             self.last_sent = 0.0  # repaint straight after, in case realtime-on reset the light
         frame = self.pending if self.pending is not None else self.last_frame
-        if frame is None or now - self.last_sent < self.min_interval:
+        if frame is None or now - self.last_sent < self.min_interval - RATE_SLACK_S:
             return  # rate limited; latest pending frame wins
         if frame != self.last_frame or now - self.last_sent > self.keepalive:
             self._send(self.packet(frame, self.last_frame if frame != self.last_frame else None))
@@ -161,7 +166,7 @@ class DdpDevice(OutputDevice):
         if not self.enabled:
             return
         frame = self.pending if self.pending is not None else self.last_frame
-        if frame is None or now - self.last_sent < self.min_interval:
+        if frame is None or now - self.last_sent < self.min_interval - RATE_SLACK_S:
             return  # rate limited; latest pending frame wins
         if frame != self.last_frame or now - self.last_sent > self.keepalive:
             self.sequence = self.sequence % 15 + 1
@@ -225,7 +230,7 @@ class E131Device(DdpDevice):
         if not self.enabled:
             return
         frame = self.pending if self.pending is not None else self.last_frame
-        if frame is None or now - self.last_sent < self.min_interval:
+        if frame is None or now - self.last_sent < self.min_interval - RATE_SLACK_S:
             return  # rate limited; latest pending frame wins
         if frame != self.last_frame or now - self.last_sent > self.keepalive:
             touched = self.universes.write(self.channel, frame)
@@ -473,7 +478,7 @@ class TwinklyDevice(Calls, DdpDevice):
             self._run(self._login)
             return
         frame = self.pending if self.pending is not None else self.last_frame
-        if frame is None or now - self.last_sent < self.min_interval:
+        if frame is None or now - self.last_sent < self.min_interval - RATE_SLACK_S:
             return
         if frame != self.last_frame or now - self.last_sent > self.keepalive:
             for p in twinkly.rt_packets(self.client.token, frame, rgbw=self.rgbw, v3=self.v3):

@@ -16,7 +16,10 @@ blending, and can have up to `MAX_SEGMENTS` (1000) segments, one per LED.
 - 10-byte header: flags `0x40` (version 1), `| 0x01` (push) on a frame's last packet; sequence 1–15;
   data type `0x0B` (8-bit RGB); destination `0x01`; data offset in bytes (4, big-endian); data length (2).
 - At most 480 LEDs (1440 bytes) a packet, so any frame fits normal network packets.
-- Up to 40 frames a second (the same cap as Govee realtime). An unchanged frame is repeated every
+- Up to 40 frames a second (the same cap as Govee realtime). The output loop looks every 4-5 ms, so
+  from 0.2.509 a frame may go out up to 5 ms early (`output.RATE_SLACK_S`); before, the cap worked out
+  at ~37 fps and about 1 frame in 18 of a 40 fps show was dropped (measured on the wire at 127.0.0.1:
+  400 frames, 378 sent before, 400 after). An unchanged frame is repeated every
   second: WLED's realtime timeout is 2.5 s by default, after which it goes back to its own effect.
 - Nothing is sent to start or stop: WLED switches to realtime on the first packet and back when they
   stop.
