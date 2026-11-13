@@ -6,6 +6,12 @@
   **vocals**, **drums**, **bass** or **the rest** instead of **the whole song**, so a strip can pump with
   just the bass line, say. The song needs **Split into parts…** first. Each part is measured the next
   time you open the show, and kept with it. A song that isn't split carries on following the whole song.
+## 0.2.511
+
+- **Muting a part in the Music editor works straight away.** Muting or soloing the song's **Vocals**,
+  **Drums**, **Bass** or **Rest** while the song played sometimes didn't take effect until you pressed
+  **Play** again, because that part's audio was still loading. Now the song carries on from where it
+  was as soon as the part is ready, with your change heard.
 
 ## 0.2.510
 
