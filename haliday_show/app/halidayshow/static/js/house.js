@@ -177,6 +177,21 @@ export function icicleDrops(points, drops, bulbs) {
   });
 }
 
+// An icicle light's bulbs one by one: each drop's bulbs hanging evenly from the line to its tip
+// (`length` of the photo's height for the longest drop), in order along the light. A drop with one
+// bulb hangs it at the tip. Every bulb gets its own spot, so on a light with a segment per LED
+// (WLED) each LED gets its own colour, not just the first on each drop. A drop out of view gives
+// nulls for its bulbs.
+export function dropBulbs(drops, length) {
+  const out = [];
+  for (const d of drops) {
+    if (!d) { out.push(null); continue; }
+    const drop = length * d.f;
+    for (let k = 0; k < d.n; k++) out.push([d.top[0], d.top[1] + (d.n > 1 ? (drop * k) / (d.n - 1) : drop)]);
+  }
+  return out;
+}
+
 // An arches light's path: the traced line, with `arches` arches standing on it (or hanging from it,
 // `down`), each rising `height` of the photo's height at its middle. Bulbs are then spread along it
 // like any line, so they follow the curves. A stretch out of view stays as it was.
@@ -512,6 +527,7 @@ export class House {
       const pts = this.paths[dev.id];
       if (!pts?.length) continue;
       if (this.styles[dev.id]?.style === "spots") lights.push({ dev, spots: pts });
+      else if (this.styles[dev.id]?.style === "icicle") lights.push({ dev, bulbs: dropBulbs(this.bulbs(dev), this.styles[dev.id].length ?? 0.06) });
       else lights.push({ dev, bulbs: this.bulbs(dev) });
     }
     return segmentPositions(lights);
@@ -578,19 +594,22 @@ export class House {
         return [rgb[s * 3], rgb[s * 3 + 1], rgb[s * 3 + 2]].map((v) => Math.round(v * cap));
       };
       const icicle = this.styles[dev.id];
+      if (icicle?.style === "icicle") {
+        // Each drop's bulbs, a little smaller, each in its own segment's colour.
+        const each = dropBulbs(bulbs, icicle.length ?? 0.06);
+        each.forEach((b, j) => {
+          if (!b) return;
+          const s = bulbSegment(j, each.length, n, dev.reverse);
+          dot(b[0] * w, b[1] * h, [rgb[s * 3], rgb[s * 3 + 1], rgb[s * 3 + 2]].map((v) => Math.round(v * cap)), 0.7);
+        });
+        continue;
+      }
       bulbs.forEach((b, j) => {
         if (!b) return;
-        if (b.top) {
-          // A drop: its bulbs hang evenly from the line to the drop's tip, a little smaller. A drop
-          // with one bulb hangs it at the tip, so the drops still show below the line.
-          const c = colour(j), drop = icicle.length * h * b.f;
-          for (let k = 0; k < b.n; k++) dot(b.top[0] * w, b.top[1] * h + (b.n > 1 ? (drop * k) / (b.n - 1) : drop), c, 0.7);
-        } else {
-          // A round tree's strings at the back: faint, and a little smaller, as they're further away.
-          const c = colour(j);
-          if (b[2] != null) dot(b[0] * w, b[1] * h, c.map((v) => Math.round(v * b[2])), 0.8);
-          else dot(b[0] * w, b[1] * h, c);
-        }
+        // A round tree's strings at the back: faint, and a little smaller, as they're further away.
+        const c = colour(j);
+        if (b[2] != null) dot(b[0] * w, b[1] * h, c.map((v) => Math.round(v * b[2])), 0.8);
+        else dot(b[0] * w, b[1] * h, c);
       });
     }
     ctx.globalCompositeOperation = "source-over";

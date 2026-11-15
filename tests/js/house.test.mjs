@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { House, arcNearest, archPoints, bulbLayout, panelBulbs, defaultPanel, treeBulbs, defaultTree, bulbPositions, bulbSegment, defaultDrops, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
+import { House, arcNearest, archPoints, bulbLayout, panelBulbs, defaultPanel, treeBulbs, defaultTree, bulbPositions, bulbSegment, defaultDrops, dropBulbs, icicleDrops, pinBulbs, segmentBulb, segmentPositions, spotColour }
   from "../../haliday_show/app/halidayshow/static/js/house.js";
 
 const close = (a, b) => a.every((p, i) => Math.abs(p[0] - b[i][0]) < 1e-9 && Math.abs(p[1] - b[i][1]) < 1e-9);
@@ -53,6 +53,21 @@ test("never more drops than bulbs, and a new icicle light gets about five bulbs 
   assert.equal(defaultDrops({ segments: 201, bulbs: 201 }), 40);
   assert.equal(defaultDrops({ segments: 15 }), 12); // 4 bulbs a segment when the count isn't set
   assert.equal(defaultDrops({ segments: 1, bulbs: 2 }), 1);
+});
+
+test("every LED on an icicle light gets a spot on the house, down its drops", () => {
+  // A WLED icicle light: 200 LEDs, a segment each, on the default 40 drops. Every segment needs a
+  // position, or House and group effects leave most LEDs dark.
+  const drops = icicleDrops([[0, 0], [1, 0]], 40, 200);
+  const each = dropBulbs(drops, 0.1);
+  assert.equal(each.length, drops.reduce((t, d) => t + d.n, 0));
+  const pos = segmentPositions([{ dev: { id: "i", segments: 200 }, bulbs: each }]).i;
+  assert.equal(pos.filter(Boolean).length, 200);
+  // The first drop's bulbs hang from the line down to its tip.
+  assert.deepEqual(each[0], [0, 0]);
+  assert.ok(Math.abs(each[drops[0].n - 1][1] - 0.1 * drops[0].f) < 1e-9);
+  // A drop out of view stays out of view.
+  assert.deepEqual(dropBulbs([null, { top: [0.5, 0], f: 1, n: 1 }], 0.1), [null, [0.5, 0.1]]);
 });
 
 test("each spot shows its share of the segments, blended", () => {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.514
+
+- **House and group effects now light every bulb on your icicles.** On an icicle light with a segment
+  for each LED (a WLED light, say), effects on the **House** lane, and House effects on a group, only
+  coloured the first bulb or so on each drop, so they looked thin. Every bulb now gets its own place on
+  the house, down its drop, so the effect fills the whole light. The **House** view shows it the same
+  way: each bulb on a drop in its own colour.
+
 ## 0.2.513
 
 - **A playlist no longer stops without a word.** If something went wrong while one of a playlist's
