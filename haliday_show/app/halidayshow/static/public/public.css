@@ -285,11 +285,28 @@ body.pp-tour-open { overflow: hidden; }
 .pp-tour-warning { border: 2px solid var(--warn); padding: 14px; margin: 4px 0 0; }
 .pp-tour-warning p { margin: 0; font-weight: 600; }
 .pp-tour-warning .pp-tour-phone { margin-top: 8px; font-weight: 400; }
-.pp-tour-example { flex-wrap: nowrap; gap: 10px; padding: 10px; }
-.pp-tour-example .pp-cover { width: 44px; height: 44px; border-radius: 6px; }
-.pp-tour-example .pp-tile { font-size: 20px; }
-.pp-tour-fake { flex: none; padding: 8px 12px; border-radius: calc(var(--r) * .8); font-weight: 600;
-  background: var(--accent); color: var(--accent-text, #fff); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--warn); }
+/* How it works on the welcome: a drawing of a phone and numbered steps, plainly a picture. */
+.pp-tour-how { margin: 4px 0 0; padding: 14px 12px; border-radius: calc(var(--r) * 1.2);
+  background: color-mix(in srgb, var(--text) 6%, var(--bg)); display: flex; flex-direction: column; gap: 10px; }
+.pp-tour-how figcaption { font-size: .6875em; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.pp-tour-how-row { display: flex; gap: 14px; align-items: center; }
+.pp-tour-phone-pic { flex: none; display: block; transform: rotate(-5deg); }
+.pp-tour-phone-pic svg { display: block; }
+.pp-tour-phone-pic .ph-body { fill: var(--bg); stroke: var(--muted); stroke-width: 2.5; }
+.pp-tour-phone-pic .ph-line { fill: var(--line); }
+.pp-tour-phone-pic .ph-head { fill: var(--head, var(--accent)); opacity: .85; }
+.pp-tour-phone-pic .ph-row { fill: var(--panel); stroke: var(--line); }
+.pp-tour-phone-pic .ph-text { fill: var(--muted); }
+.pp-tour-phone-pic .ph-t0 { fill: #43a047; } .pp-tour-phone-pic .ph-t1 { fill: #c62828; } .pp-tour-phone-pic .ph-t2 { fill: #1e88e5; }
+.pp-tour-phone-pic .ph-btn { fill: var(--accent); }
+.pp-tour-phone-pic .ph-tap { fill: none; stroke: var(--warn); stroke-width: 2; }
+.pp-tour-phone-pic .ph-tap2 { stroke-width: 1.2; opacity: .5; }
+.pp-tour-phone-pic .ph-hand { fill: #f2c9a5; stroke: #1c1f24; stroke-width: 1.5; stroke-linejoin: round; }
+.pp-tour-steps { margin: 0; padding: 0; list-style: none; counter-reset: step; display: flex; flex-direction: column; gap: 12px; }
+.pp-tour-steps li { counter-increment: step; display: flex; gap: 8px; align-items: flex-start; }
+.pp-tour-steps li::before { content: counter(step); flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid;
+  place-items: center; font-size: .75em; font-weight: 700; background: color-mix(in srgb, var(--head, var(--accent)) 20%, var(--bg));
+  color: var(--text); }
 .pp-tour-rules { margin: 0; padding-left: 1.2em; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
 .pp-tour-card { padding: 14px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .pp-tour-card h2 { margin: 0; font-size: 1.05em; }
