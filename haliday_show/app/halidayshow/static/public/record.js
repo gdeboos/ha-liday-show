@@ -103,11 +103,19 @@ export function makeRecorder({ canvas, cam, song, onChange }) {
     try { await camera(); } catch { facing = facing === "environment" ? "user" : "environment"; }
   }
 
-  // The song as this phone plays it, routed through Web Audio so it can go into the video too (and still
-  // out of the speaker). An element can only be routed once, so the route is kept for the visit.
+  // The song as this phone plays it, for the video. Where the browser can copy an element's sound
+  // (captureStream: Chrome, Android, Edge) that's used, as it leaves what you hear alone. Elsewhere
+  // (Safari, Firefox) the song is routed through Web Audio, to the speaker and to the video; an element
+  // can only be routed once, so that route is kept for the visit.
   function songTrack() {
     const el = song?.();
     if (!el || el.paused) return null;
+    if (typeof el.captureStream === "function") {
+      try {
+        const track = el.captureStream().getAudioTracks()[0];
+        if (track) return track;
+      } catch { /* fall back to Web Audio */ }
+    }
     try {
       audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
       if (!songSource) {
@@ -116,7 +124,7 @@ export function makeRecorder({ canvas, cam, song, onChange }) {
         songOut = audioCtx.createMediaStreamDestination();
         songSource.connect(songOut);
       }
-      audioCtx.resume?.();
+      if (audioCtx.state !== "running") audioCtx.resume?.().catch(() => {});
       return songOut.stream.getAudioTracks()[0] || null;
     } catch {
       return null;

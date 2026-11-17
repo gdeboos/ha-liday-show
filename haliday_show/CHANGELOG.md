@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.522
+
+- **Fixed: recording a video no longer silences the music on your phone.** On Android (and Chrome or
+  Edge anywhere) the song is now copied onto the video, so you keep hearing it while you film. If a
+  video is recorded while the song changes, the video carries on but may go quiet for the next song.
+
 ## 0.2.521
 
 - **Record is now a small camera button** at the end of the row, so **Listen** and **Join** keep their
