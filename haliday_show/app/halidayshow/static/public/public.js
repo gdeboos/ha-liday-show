@@ -160,6 +160,19 @@ export function tourPlan(st, w) {
 }
 
 // The icon for each show button's word.
+// The welcome's drawing of a phone showing the list, a finger pressing one song's button. Coloured by the
+// page's own look (public.css .pp-tour-phone-pic).
+const PHONE_PICTURE = `<svg viewBox="0 0 112 190" width="104" height="176">
+<rect class="ph-body" x="4" y="2" width="104" height="186" rx="16"/><rect class="ph-line" x="42" y="9" width="28" height="4" rx="2"/>
+<rect class="ph-head" x="14" y="24" width="56" height="7" rx="3"/>
+${[40, 72, 104].map((y, k) => `<rect class="ph-row" x="14" y="${y}" width="84" height="26" rx="5"/>
+<rect class="ph-tile ph-t${k}" x="18" y="${y + 4}" width="18" height="18" rx="3"/>
+<rect class="ph-text" x="40" y="${y + 7}" width="${[30, 36, 26][k]}" height="5" rx="2"/><rect class="ph-line" x="40" y="${y + 16}" width="20" height="4" rx="2"/>
+<rect class="ph-btn" x="74" y="${y + 6}" width="20" height="14" rx="4"/>`).join("")}
+<circle class="ph-tap" cx="84" cy="85" r="13"/><circle class="ph-tap ph-tap2" cx="84" cy="85" r="19"/>
+<path class="ph-hand" d="M88 92c4 0 7 3 7 7v18c0 8-6 14-14 14h-6c-5 0-9-3-11-7l-7-14c-1-3 2-5 4-3l6 6V86c0-3 2-5 4-5s4 2 4 5v8c1-2 3-2 4-2s3 1 4 3c1-2 2-3 4-3 2 0 3 2 3 3z"/>
+</svg>`;
+
 export const BUTTON_ICON = { start: "play", queue_btn: "plus", queued_btn: "check", playing_btn: "music",
   recent_btn: "clock", late_btn: "clock", vote_btn: "plus", voted_btn: "check" };
 
@@ -1258,18 +1271,19 @@ export function start() {
       head.textContent = say_(w, "tour_pick_head");
       const word = say_(w, plan.word);
       box.append(head, el("p", "pp-tour-text", say_(w, plan.text, { button: bare(word) })));
-      // One of your own shows, with the button visitors will see.
-      const c = st.choices[0];
-      const eg = el("div", "pp-row pp-tour-example");
-      const art = coverOf(c, st);
-      if (art) eg.append(art);
-      const t = el("div", "pp-text");
-      t.append(el("div", "pp-name", c.name));
-      eg.append(t);
-      const fake = iconLabel(el("span", "pp-tour-fake primary"), BUTTON_ICON[plan.word], word);
-      fake.setAttribute("aria-hidden", "true");
-      eg.append(fake);
-      box.append(eg);
+      // How it works: a drawing of a phone with a finger on a song's button, beside numbered steps, so it
+      // can't be mistaken for the real list (a copy of a real row looked pressable).
+      const how = el("figure", "pp-tour-how");
+      how.append(el("figcaption", "", say_(w, "tour_how")));
+      const pair = el("div", "pp-tour-how-row");
+      const pic = el("span", "pp-tour-phone-pic");
+      pic.setAttribute("aria-hidden", "true");
+      pic.innerHTML = PHONE_PICTURE;
+      const steps = el("ol", "pp-tour-steps");
+      steps.append(el("li", "", say_(w, "tour_how_find")), el("li", "", say_(w, "tour_how_press", { button: bare(word) })));
+      pair.append(pic, steps);
+      how.append(pair);
+      box.append(how);
       if (plan.rules.length) {
         const ul = el("ul", "pp-tour-rules");
         for (const r of plan.rules) ul.append(el("li", "", r));

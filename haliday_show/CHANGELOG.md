@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.516
+
+- **The welcome's "Pick a song" step no longer looks like a real button.** The copy of one of your
+  shows with a **Start** button is replaced by a **How it works** drawing: a phone showing the list of
+  songs, with a finger pressing one, beside two numbered steps (**Find a song in the list**, **Press its
+  Start**). Change the wording under **Words → Welcome**.
+
 ## 0.2.515
 
 - **Pick the next song without leaving the show.** While a visitor's phone has joined the show, the

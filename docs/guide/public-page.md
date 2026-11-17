@@ -247,8 +247,9 @@ Also on the **Shows** tab:
   1. **Welcome**: your picture and title, what the page is for, and the flashing lights warning with
      **I understand, next** (when you show the warning). When visitors can join the show, it adds that their
      phone's screen will flash too, so joining afterwards goes straight to the colours.
-  2. **Pick a song**: with one of your shows and the button visitors will press (**Start**, **Queue** or
-     **Vote**, whichever applies right then), plus when the lights stop taking requests and how many picks
+  2. **Pick a song**: a **How it works** drawing of a phone with a finger on a song's button, beside two
+     steps that name the button visitors will press (**Start**, **Queue** or **Vote**, whichever applies
+     right then). It's plainly a picture, so nobody tries to press it. Then when the lights stop taking requests and how many picks
      each phone can have.
   3. **Join in from your phone**: **Listen** and **Join the show**, each with a line on what it does and a
      button that starts it there and then. Only what you've switched on appears; with neither, there's no
