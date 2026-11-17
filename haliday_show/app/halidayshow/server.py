@@ -4330,7 +4330,7 @@ def make_app(config_dir: Path, media_dir: Path, *, allow_all: bool = False, pass
     r.add_get("/api/public/qr.svg", public_qr)
     r.add_get("/sign", sign_page)
     r.add_get("/public-preview/", public_preview_page)
-    r.add_get("/public-preview/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js|icons\\.js)}", public_preview_page)
+    r.add_get("/public-preview/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js|icons\\.js|record\\.js)}", public_preview_page)
     r.add_get("/public-preview/api/state", public_preview_state)
     r.add_get("/public-preview/picture", public_preview_picture)
     r.add_get("/public-preview/cover", public_preview_cover)

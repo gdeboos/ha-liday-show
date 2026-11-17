@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.519
+
+- **Visitors can record a video of your lights.** Tick **Let visitors record a video of the lights**
+  under **Public page → Listening**, and visitors get a **Record** button. It opens the camera full
+  screen, with **Flip** to swap between the back and front cameras, even mid-video. If they're
+  listening, the song goes on the video in time with the lights (never their microphone), with a small
+  "Made with HA-liday Show" in the corner. Then they can **Share** or **Save** it. Videos stay on their
+  phone. The camera needs the page reached over https, such as through your tunnel.
+
 ## 0.2.518
 
 - **The welcome's last step gets drawings too.** **Hear the music** shows a phone with headphones and

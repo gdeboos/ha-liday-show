@@ -1,6 +1,7 @@
 import { bestOn } from "./colours.js";
 import { bare, label as iconLabel } from "./icons.js";
 import { NUDGE_STEP, addSample, clampNudge, learnLead, median, steer, target } from "./listensync.js";
+import { MAX_SECONDS, canRecord, fileName, makeRecorder, recClock } from "./record.js";
 
 // The public page: people passing by pick a show and queue it up, and (if you allow it) listen to
 // the music on their phone. It only talks to the public port's own calls, never to the editor.
@@ -613,6 +614,8 @@ export function makeListener({ code, say, pos, onChange, headers = () => ({}) })
 
   return {
     get state() { return me; },
+    // The <audio> the song plays from, for a video's soundtrack (record.js).
+    get audio() { return audio; },
     begin,
     stop,
     // Pressing Listen again after the phone wouldn't play by itself.
@@ -879,6 +882,84 @@ export function start() {
   // The card under the bar shows only while something in it does.
   function drawMore() {
     $("pp-more").hidden = ["pp-listen", "pp-admin-ctl"].every((id) => $(id).hidden);
+  }
+
+  // Record a video of the lights (record.js), when you've switched it on and the phone can.
+  const recorder = makeRecorder({ canvas: $("pp-rec-canvas"), cam: $("pp-rec-cam"), song: () => listener.audio,
+                                  onChange: drawRec });
+  let videoUrl = "";
+  function drawRecBtn() {
+    const st = last;
+    const btn = $("pp-rec-btn");
+    btn.hidden = !(st && st.open && st.record && !st.locked && canRecord(window));
+    iconLabel(btn, "video", say_(w, "rec_btn"));
+  }
+  function openRec() {
+    if (preview) {
+      say("This is a preview. On visitors' phones, this opens the camera.", true);
+      return;
+    }
+    $("pp-rec").hidden = false;
+    document.body.classList.add("pp-rec-open");
+    recorder.open();
+    $("pp-rec-go").focus();
+  }
+  function closeRec() {
+    recorder.close();
+    $("pp-rec").hidden = true;
+    document.body.classList.remove("pp-rec-open");
+    $("pp-rec-btn").focus();
+  }
+  function drawRec(me = recorder.state) {
+    $("pp-rec-title").textContent = say_(w, "rec_title");
+    const done = !!me.blob;
+    $("pp-rec-canvas").hidden = done;
+    $("pp-rec-bar").hidden = done || !!me.error;
+    $("pp-rec-done").hidden = !done;
+    const go = $("pp-rec-go");
+    go.setAttribute("aria-pressed", String(me.recording));
+    go.setAttribute("aria-label", say_(w, me.recording ? "rec_stop" : "rec_start"));
+    $("pp-rec-flip").hidden = false;
+    iconLabel($("pp-rec-flip"), "flip", say_(w, "rec_flip"));
+    iconLabel($("pp-rec-close"), "x", say_(w, "rec_close"));
+    $("pp-rec-close").hidden = me.recording;
+    $("pp-rec-time").hidden = !me.recording;
+    $("pp-rec-time").textContent = recClock(me.seconds);
+    const listening = !listener.audio.paused;
+    $("pp-rec-hint").textContent = me.error ? say_(w, "rec_no_camera")
+      : me.recording ? (me.seconds > MAX_SECONDS - 30 ? say_(w, "rec_long") : "")
+        : done ? "" : say_(w, listening ? "rec_with_song" : "rec_no_song");
+    const pv = $("pp-rec-preview");
+    if (done && !videoUrl) {
+      videoUrl = URL.createObjectURL(me.blob);
+      pv.src = videoUrl;
+      const save = $("pp-rec-save");
+      save.href = videoUrl;
+      save.download = fileName($("pp-title").textContent, new Date(), me.mime);
+      iconLabel(save, "install", say_(w, "rec_save"));
+      iconLabel($("pp-rec-again"), "again", say_(w, "rec_again"));
+      const file = new File([me.blob], save.download, { type: me.mime });
+      $("pp-rec-share").hidden = !navigator.canShare?.({ files: [file] });
+      iconLabel($("pp-rec-share"), "share", say_(w, "rec_share"));
+    } else if (!done && videoUrl) {
+      pv.removeAttribute("src");
+      pv.load();
+      URL.revokeObjectURL(videoUrl);
+      videoUrl = "";
+    }
+    pv.hidden = !done;
+    if (!me.open && !$("pp-rec").hidden) {
+      $("pp-rec").hidden = true;
+      document.body.classList.remove("pp-rec-open");
+    }
+  }
+  async function shareVideo() {
+    const me = recorder.state;
+    if (!me.blob) return;
+    const file = new File([me.blob], $("pp-rec-save").download, { type: me.mime });
+    try {
+      await navigator.share({ files: [file], text: say_(w, "rec_share_text") });
+    } catch { /* closed the share sheet */ }
   }
 
   function drawJoin() {
@@ -1448,8 +1529,9 @@ export function start() {
     $("pp-block").hidden = !view.block;
     $("pp-coming").textContent = view.coming;
     $("pp-coming").hidden = !view.coming;
+    drawRecBtn();
     $("pp-bar").hidden = (!!view.coming || !!closed) && !st.now && !view.mine.length && $("pp-listen-btn").hidden
-      && $("pp-join-btn").hidden;
+      && $("pp-join-btn").hidden && $("pp-rec-btn").hidden;
     $("pp-pick").hidden = !view.choices.length;
     $("pp-none").hidden = view.choices.length > 0 || view.soon.length > 0;
     $("pp-soon-head").hidden = !view.soon.length;
@@ -1627,6 +1709,13 @@ export function start() {
   $("pp-admin-out").addEventListener("click", () => { keepAdmin(""); adminOpen = null; drawAdmin(); refresh(); });
   $("pp-listen-btn").addEventListener("click", pressListen);
   $("pp-join-btn").addEventListener("click", pressJoin);
+  $("pp-rec-btn").addEventListener("click", openRec);
+  $("pp-rec-close").addEventListener("click", closeRec);
+  $("pp-rec-go").addEventListener("click", () => (recorder.state.recording ? recorder.stop() : recorder.start()));
+  $("pp-rec-flip").addEventListener("click", () => recorder.flip());
+  $("pp-rec-again").addEventListener("click", () => recorder.again());
+  $("pp-rec-share").addEventListener("click", shareVideo);
+  $("pp-rec").addEventListener("keydown", (e) => { if (e.key === "Escape" && !recorder.state.recording) closeRec(); });
   $("pp-join-leave").addEventListener("click", () => leaveShow());
   $("pp-join-pick").addEventListener("click", () => pickNext(true));
   $("pp-join-back").addEventListener("click", () => pickNext(false));

@@ -33,7 +33,7 @@ link in a new tab.
 | **Hours** | [Opening hours](#opening-hours), finishing by closing time and rest breaks |
 | **Limits** | **How visitors pick** ([queue or vote](queue-and-voting.md#voting-for-whats-next)), **Requests per phone**, **Queue length**, **Same song again after** and **Same phone again after** ([Keeping it fair](queue-and-voting.md#visitors-queue)) |
 | **Shows** | [What visitors can pick](#what-visitors-can-pick) and [On the page](#on-the-page): how long each lasts and the flashing lights warning |
-| **Listening** | [Listening on phones](visitors-phones.md#listening-on-phones) and [Phones join the show](visitors-phones.md#phones-join-the-show) |
+| **Listening** | [Listening on phones](visitors-phones.md#listening-on-phones) and [Phones join the show](visitors-phones.md#phones-join-the-show) and [Visitors record a video](visitors-phones.md#visitors-record-a-video) |
 | **Admin** | Your [Admin PIN](#admin-pin) |
 | **Look** | [How the page looks](#how-the-page-looks): title, welcome, picture, colours, style and the link at the bottom, and [looks through the year](#looks-through-the-year) |
 | **Words** | [Every message visitors read](#words), to change to your own |

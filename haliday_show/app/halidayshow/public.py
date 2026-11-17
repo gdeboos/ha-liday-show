@@ -226,6 +226,8 @@ def clean(p) -> dict:
             "listen_offset": clean_offset(p.get("listen_offset")),
             # Visitors' phones can join the show: their screens glow with it (static/js/phones.js).
             "phones": p.get("phones") is True,
+            # Visitors can film the display and share the video (static/public/record.js).
+            "record": p.get("record") is True,
             # Yours, to get past every check but the code (see the top of this file).
             "admin_pin": apin if _PIN.match(apin := str(p.get("admin_pin") or "").strip()) else ""}
 
@@ -765,6 +767,7 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "listen": {"pin": bool(p["listen_pin"]) and not admin} if p["listen"] else None,
         # Phones join the show: on, and whether the one playing now has colours for them.
         "phones": {"now": joining_now(storage, runner) is not None} if p["phones"] else None,
+        "record": p["record"],
         "hours": {"open": True} if admin else hours_now(p, where, now),
         "look": {**{k: look[k] for k in ("title", "welcome", "theme", "mode", "snow", "link", "link_text", "spacing",
                                          "corners", "size", "borders", "colours", "show_length", "warning",
@@ -845,7 +848,8 @@ async def safe_headers(request, handler):
 
 
 PAGE_FILES = {"index.html": "text/html", "public.js": "text/javascript", "public.css": "text/css",
-              "colours.js": "text/javascript", "listensync.js": "text/javascript", "icons.js": "text/javascript"}
+              "colours.js": "text/javascript", "listensync.js": "text/javascript", "icons.js": "text/javascript",
+              "record.js": "text/javascript"}
 # The editor's own effect code, which phones that join a show with a Phones lane draw it with (they load
 # it only then). effects.js and what it imports, nothing else of the editor.
 FX = PAGE.parent / "js"
@@ -859,6 +863,7 @@ _STAMPED = {"index.html": (('href="public.css"', f'href="public.css?v={_STAMP}"'
             "public.js": (('"./colours.js"', f'"./colours.js?v={_STAMP}"'),
                           ('"./listensync.js"', f'"./listensync.js?v={_STAMP}"'),
                           ('"./icons.js"', f'"./icons.js?v={_STAMP}"'),
+                          ('"./record.js"', f'"./record.js?v={_STAMP}"'),
                           ('"./fx/effects.js"', f'"./fx/effects.js?v={_STAMP}"'),
                           ('"./fx/pictures.js"', f'"./fx/pictures.js?v={_STAMP}"'),
                           ('"./fx/faces.js"', f'"./fx/faces.js?v={_STAMP}"'))}
@@ -1670,7 +1675,7 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
     app[COPIES] = copies or songcopy.SongCopies()
     r = app.router
     r.add_get("/", page)
-    r.add_get("/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js|icons\\.js)}", page)
+    r.add_get("/{name:(public\\.js|public\\.css|colours\\.js|listensync\\.js|icons\\.js|record\\.js)}", page)
     r.add_get("/fx/{name}", fx_file)
     r.add_get("/api/state", get_state)
     r.add_get("/manifest.webmanifest", get_manifest)

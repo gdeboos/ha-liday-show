@@ -109,6 +109,25 @@ How it works:
   between colours rather than flashing.
 - Every word visitors see while joining is on the **Words** tab, under **Joining the show**.
 
+## Visitors record a video
+
+Visitors can film your lights with their phone's camera and share the video. It's off until you tick
+**Let visitors record a video of the lights** under **Public page → Listening**.
+
+- Visitors press **Record** at the top of the page. The camera opens full screen, starting with the back
+  camera; **Flip** switches to the front camera and back, even while recording, and it stays one video.
+- If they're listening (**Listen**), the song goes on the video in time with the lights. The phone's
+  microphone is never used, so passing cars and chatter stay out. Not listening, the video has no sound,
+  and the camera screen says so.
+- A small "Made with HA-liday Show" sits in the corner of every video.
+- When they stop, they can watch it back, **Share** it (the phone's own share sheet, where the phone
+  offers one) or **Save** it. Videos stop by themselves at 5 minutes.
+- Videos stay on the visitor's phone: nothing is sent to HA-liday Show.
+- Phones only allow the camera on pages reached over https, such as through your
+  [tunnel](public-page.md). On plain http (your home Wi-Fi by its address), **Record** doesn't appear.
+- iPhones and newer Android phones make MP4 videos; other phones make WebM, which some apps won't take.
+- You can change every word visitors see under **Words → Recording a video**.
+
 <!-- nav: made by tools/check_guide.py -->
 
 ---

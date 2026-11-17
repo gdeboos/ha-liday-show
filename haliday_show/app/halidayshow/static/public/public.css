@@ -330,3 +330,34 @@ body.pp-tour-open { overflow: hidden; }
 .pp-testing { border: 2px dashed var(--warn); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .pp-testing[hidden] { display: none; }
 .pp-testing p { margin: 0; flex: 1 1 14em; font-weight: 600; }
+
+/* Record a video: the camera full screen, with the controls over it. */
+body.pp-rec-open { overflow: hidden; }
+.pp-rec { position: fixed; inset: 0; z-index: 70; background: #000; color: #fff; }
+.pp-rec[hidden] { display: none; }
+.pp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.pp-rec-cam { position: absolute; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
+.pp-rec-view { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.pp-rec-view[hidden] { display: none; }
+.pp-rec-top { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 12px; right: 12px;
+  display: flex; justify-content: space-between; align-items: center; }
+.pp-rec-pill { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.55); color: #fff; font: inherit; font-weight: 600; display: inline-flex;
+  align-items: center; justify-content: center; gap: 6px; text-decoration: none; margin: 0; }
+.pp-rec-time { font-variant-numeric: tabular-nums; }
+.pp-rec-time::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #e53935; }
+.pp-rec-hint { position: absolute; left: 16px; right: 16px; bottom: calc(118px + env(safe-area-inset-bottom));
+  margin: 0; text-align: center; font-size: .875em; text-shadow: 0 1px 3px #000; }
+.pp-rec-hint:empty { display: none; }
+.pp-rec-bar { position: absolute; left: 16px; right: 16px; bottom: calc(24px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pp-rec-bar[hidden] { display: none; }
+.pp-rec-side { min-width: 88px; }
+.pp-rec-go { width: 76px; height: 76px; border-radius: 50%; border: 4px solid #fff; background: transparent;
+  padding: 0; display: grid; place-items: center; flex: none; }
+.pp-rec-go span { width: 58px; height: 58px; border-radius: 50%; background: #e53935; transition: all .15s; }
+.pp-rec-go[aria-pressed="true"] span { width: 28px; height: 28px; border-radius: 6px; }
+.pp-rec-done .primary { min-height: 48px; padding: 0 22px; border-radius: 999px; font-weight: 700; }
+/* The finished video sits between the top and the buttons, so its own controls stay clear of them. */
+#pp-rec-preview { top: calc(68px + env(safe-area-inset-top));
+  height: calc(100% - 168px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
