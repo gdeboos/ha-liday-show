@@ -21,6 +21,11 @@
     </div>
     <button id="pp-install" type="button" class="pp-install" hidden></button>
   </header>
+  <!-- Test mode (your admin phone): picks play on phones only. Everyone sees why the house is still. -->
+  <div id="pp-testing" class="pp-card pp-testing" role="status" hidden>
+    <p id="pp-testing-text"></p>
+    <button id="pp-testing-end" type="button" hidden>End test mode</button>
+  </div>
   <section id="pp-admin" class="pp-card pp-admin" hidden>
     <p id="pp-admin-text" class="pp-hint" role="status" aria-live="polite"></p>
     <div id="pp-admin-pin" class="pp-pin" hidden>
@@ -31,6 +36,7 @@
       </div>
     </div>
     <div class="pp-pin-row">
+      <button id="pp-admin-test" type="button" hidden>Test mode</button>
       <button id="pp-admin-out" type="button" hidden>Lock this phone</button>
       <button id="pp-admin-close" type="button">Close</button>
     </div>

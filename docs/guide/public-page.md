@@ -156,6 +156,14 @@ While a show is on, your admin phone also gets, in the card under what's on:
 - The page works even with **Let visitors start shows** off, so you can check everything before you
   open. Other people still see it as closed.
 
+**Test mode** tries the page out without disturbing anyone. Tap the title five times on your unlocked
+admin phone and press **Test mode**. While it's on, picks behave exactly as usual on phones (the queue,
+timings, **Listen** and **Join**), but nothing goes to the lights or the speaker. Everyone on the page
+sees a note that you're testing (change its wording under **Words**). It ends when you press **End test
+mode**, after 30 minutes, or when HA-liday Show restarts. A pick that's already playing when you turn it
+on finishes on the lights as usual. If a scene is on, it may pause during a test pick and comes back
+afterwards, as it does after any show.
+
 You still need the link with your code. Your phone remembers the unlock until you change or empty the
 admin PIN (or press **Lock this phone** in the card). Five wrong PINs from one place make it wait ten
 minutes. If the admin PIN is the same as the listening PIN, the editor warns you, as anyone with the

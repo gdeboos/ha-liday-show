@@ -318,3 +318,8 @@ body.pp-tour-open { overflow: hidden; }
 .pp-tour-buttons .primary { flex: 1; font-size: 1.05em; font-weight: 700; }
 .pp-tour-once { margin: 0; text-align: center; font-size: .8125em; color: var(--muted); }
 .pp-tour-again { text-align: center; margin: 8px 0 0; }
+
+/* Test mode: picks play on phones only. */
+.pp-testing { border: 2px dashed var(--warn); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pp-testing[hidden] { display: none; }
+.pp-testing p { margin: 0; flex: 1 1 14em; font-weight: 600; }

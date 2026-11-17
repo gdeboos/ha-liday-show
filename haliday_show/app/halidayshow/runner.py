@@ -42,6 +42,7 @@ START_TIMEOUT_S = 20
 # lights rather than catching up; a phone counts as listening if it asked where the song is this recently.
 PREPARE_S = 3.0
 LISTENER_FRESH_S = 5.0
+TEST_S = 30 * 60  # the public page's test mode ends by itself after this long
 SCENE_BACK_S = 2.0  # how long the lights rest after a show before the scene comes back
 FOLLOW_EVERY_S = 1.0
 RESYNC_S = 1.0  # media players report position coarsely; only correct big jumps
@@ -109,6 +110,9 @@ class Runner:
         self._run_since: float | None = None
         self._last_public_end = 0.0
         self.resting_until = 0.0
+        # The public page's test mode (your admin phone): until then, visitors' picks play on phones only,
+        # not the lights or the speaker. time.monotonic(); not saved, so a restart ends it.
+        self.test_until = 0.0
         self.public_listeners: dict[str, float] = {}
         # The visitor's show about to start while listening phones load its song: {show, ready: {pass}}.
         self.coming: dict | None = None
@@ -167,7 +171,7 @@ class Runner:
                                  position=position, offset=offset)
 
     async def _play(self, show_id: str, *, media_player: str | None = None, use_show_speaker=False,
-                    position: float = 0.0, offset: float = 0.0):
+                    position: float = 0.0, offset: float = 0.0, dry: bool = False):
         blob = self.storage.load_baked(show_id)
         show = self.storage.load_show(show_id)
         if blob is None or show is None:
@@ -176,6 +180,9 @@ class Runner:
         if use_show_speaker and not media_player:
             media_player = (show.get("media_player")
                             or self.storage.load_settings().get("show_speaker") or None)
+        if dry:
+            # Test mode: timed as usual (phones listen and join in) but nothing reaches the speaker or lights.
+            media_player = None
         late = latespeaker.now_late(self.storage.load_settings())
         silent_late = bool(media_player and late and late["mode"] == "off")
         if silent_late:
@@ -185,7 +192,7 @@ class Runner:
         await self._stop()
         self.started += 1
         self.speaker_stopped = False
-        devices = self.storage.devices_by_id()
+        devices = {} if dry else self.storage.devices_by_id()
         if not media_player:
             await self.player.play(show_id, baked, devices, position=position, offset=offset)
             audio = show.get("audio") or {}
@@ -896,7 +903,7 @@ class Runner:
                     return
                 try:
                     async with self._lock:
-                        await self._play(show_id, use_show_speaker=True)
+                        await self._play(show_id, use_show_speaker=True, dry=self.testing() > 0)
                 except asyncio.CancelledError:
                     raise
                 except Exception as e:  # a damaged or missing show is skipped
@@ -915,6 +922,14 @@ class Runner:
                 self.public_played = [p for p in self.public_played if now - p["at"] < 7200]
                 self.public_played.append({"kind": request["kind"], "ref": request["ref"],
                                            "ticket": request["ticket"], "at": now})
+
+    def testing(self) -> float:
+        """Seconds of the public page's test mode left, or 0 when it's off."""
+        return max(self.test_until - clock(), 0.0)
+
+    def set_testing(self, on: bool):
+        self.test_until = clock() + TEST_S if on else 0.0
+        log.info("public page: test mode %s", "on" if on else "off")
 
     def listeners(self) -> set[str]:
         """The phones listening now (their passes)."""

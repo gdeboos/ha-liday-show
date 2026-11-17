@@ -891,6 +891,7 @@ export function start() {
     if ($("pp-admin").hidden) return;
     $("pp-admin-pin").hidden = on;
     $("pp-admin-out").hidden = !on;
+    $("pp-admin-test").hidden = !on || st.testing > 0;
     if (on) $("pp-admin-text").textContent = "🔓 Admin: this phone skips Nearby, the opening hours, the listening PIN, the limits and cool-downs, and can queue Coming soon shows.";
     else if (!$("pp-admin-text").dataset.said) $("pp-admin-text").textContent = "";
     $("pp-admin-text").hidden = !$("pp-admin-text").textContent;
@@ -1113,6 +1114,12 @@ export function start() {
     $("pp-now-yours").textContent = yours ? yours.text : "";
     $("pp-now-yours").hidden = !yours;
     drawProgress();
+    // Test mode: why the house is still, and on your admin phone how long's left and how to end it.
+    $("pp-testing").hidden = !(st.testing > 0);
+    $("pp-testing-text").textContent = st.admin
+      ? `🧪 Test mode: picks play on phones only, not the lights or the speaker. Ends by itself in ${st.testing} min.`
+      : say_(w, "testing");
+    $("pp-testing-end").hidden = !st.admin;
     // Your admin phone: skip a visitor's pick, or stop everything.
     $("pp-admin-ctl").hidden = !(st.admin && st.now);
     $("pp-admin-skip").hidden = !st.now?.visitor;
@@ -1584,6 +1591,8 @@ export function start() {
   $("pp-admin-ok").addEventListener("click", unlockAdmin);
   $("pp-admin-input").addEventListener("keydown", (e) => { if (e.key === "Enter") unlockAdmin(); });
   $("pp-admin-close").addEventListener("click", () => { adminOpen = null; drawAdmin(); });
+  $("pp-admin-test").addEventListener("click", async () => { await send("api/admin/test", { on: true }); drawAdmin(); });
+  $("pp-testing-end").addEventListener("click", async () => { await send("api/admin/test", { on: false }); drawAdmin(); });
   $("pp-admin-out").addEventListener("click", () => { keepAdmin(""); adminOpen = null; drawAdmin(); refresh(); });
   $("pp-listen-btn").addEventListener("click", pressListen);
   $("pp-join-btn").addEventListener("click", pressJoin);
