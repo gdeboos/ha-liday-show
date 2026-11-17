@@ -8005,11 +8005,12 @@ function savePublic() {
   pubPending++;
   pubSaving = pubSaving.then(async () => {
     const { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, more_hours, words, listen, listen_pin, admin_pin,
-      repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, pick, phones } = publicView;
+      repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, pick, phones, record } = publicView;
     try {
       const view = await api("api/public", {
         method: "PUT", json: { on, items, per_phone, queue, address, nearby, distance, look, looks, hours, ...(more_hours ? { more_hours } : {}), words, listen, listen_pin, admin_pin,
-          repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, phones: !!phones, ...(pick ? { pick } : {}) },
+          repeat_minutes, phone_wait, finish_by_close, rest_after, rest_for, phones: !!phones, record: !!record,
+          ...(pick ? { pick } : {}) },
       });
       if (phonesOn !== !!view.phones) { phonesOn = !!view.phones; layoutPreview(); }
       if (pubPending === 1) {

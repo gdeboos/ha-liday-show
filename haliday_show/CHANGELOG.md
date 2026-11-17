@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.520
+
+- **Fixed: Let visitors record a video of the lights now stays ticked.** In 0.2.519 the tick under
+  **Public page → Listening** wasn't saved, so it came back unticked and visitors never saw **Record**.
+
 ## 0.2.519
 
 - **Visitors can record a video of your lights.** Tick **Let visitors record a video of the lights**
