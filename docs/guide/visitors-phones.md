@@ -114,7 +114,7 @@ How it works:
 Visitors can film your lights with their phone's camera and share the video. It's off until you tick
 **Let visitors record a video of the lights** under **Public page → Listening**.
 
-- Visitors press **Record** at the top of the page. The camera opens full screen, starting with the back
+- Visitors press **Record** (the camera button beside **Listen** and **Join**) at the top of the page. The camera opens full screen, starting with the back
   camera; **Flip** switches to the front camera and back, even while recording, and it stays one video.
 - If they're listening (**Listen**), the song goes on the video in time with the lights. The phone's
   microphone is never used, so passing cars and chatter stay out. Not listening, the video has no sound,

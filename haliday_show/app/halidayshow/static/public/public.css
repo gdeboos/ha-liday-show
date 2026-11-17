@@ -156,7 +156,11 @@ h1, h2 { color: var(--head, var(--text)); }
 /* Listen and Join side by side under what's on, so the pinned bar stays two short rows. */
 .pp-bar-btns { display: flex; gap: 8px; margin-top: 8px; }
 .pp-bar-btns:not(:has(button:not([hidden]))) { display: none; }
-.pp-bar-btns button { flex: 1 1 0; min-width: 0; }
+.pp-bar-btns button { flex: 1 1 0; min-width: 0; white-space: nowrap; }
+/* Record is a camera icon only, so Listen and Join keep their room. */
+.pp-bar-btns .pp-rec-btn { flex: 0 0 auto; width: 52px; padding: 0; }
+.pp-bar-btns .pp-rec-btn > span { display: none; }
+.pp-bar-btns .pp-rec-btn svg { width: 22px; height: 22px; }
 /* Join stands out: the page's own colour, until this phone has joined. */
 .pp-join-btn { background: var(--head, var(--accent)); border-color: var(--head, var(--accent)); color: var(--bg); }
 /* Under the bar, scrolling away with the page: joining's warning, listening's details, your Skip and Stop. */
