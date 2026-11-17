@@ -246,3 +246,14 @@ test("the welcome's picking step names the button visitors will see", () => {
   assert.deepEqual(vote.rules, []);
   assert.deepEqual(plan({ choices: [] }).steps, ["welcome"]);
 });
+
+test("while joined, the bottom strip says what's on and next, and offers Pick next", () => {
+  const s = st({ now: { name: "Party" }, queue: [{ name: "Christmas Eve" }] });
+  assert.deepEqual(page.joinStrip(s, W), { now: "On now: Party", next: "Next: Christmas Eve", pick: "Pick next" });
+  // Vote mode: Vote next, and no next line (the votes decide).
+  assert.equal(page.joinStrip({ ...s, vote: { counts: {} } }, W).pick, "Vote next");
+  assert.equal(page.joinStrip({ ...s, vote: { counts: {} } }, W).next, "");
+  // Nothing to pick: no button.
+  assert.equal(page.joinStrip({ ...s, choices: [] }, W).pick, "");
+  assert.equal(page.joinStrip({ ...s, open: false }, W), null);
+});

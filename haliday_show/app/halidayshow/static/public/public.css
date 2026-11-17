@@ -249,7 +249,23 @@ h1, h2 { color: var(--head, var(--text)); }
 /* The flashing warning, in the middle of the dark screen for the first few seconds. */
 .pp-join-text.pp-join-warning { margin: auto 0; font-size: 1.25em; font-weight: 600; }
 .pp-join-text:empty { display: none; }
-.pp-join-leave { background: rgba(0, 0, 0, 0.55); color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); }
+.pp-join-leave, .pp-join-back { background: rgba(0, 0, 0, 0.55); color: #fff; border: 1px solid rgba(255, 255, 255, 0.5); }
+.pp-join-back { position: relative; }
+.pp-join-leave { position: absolute; top: calc(16px + env(safe-area-inset-top)); right: 16px; }
+/* What's on and next, with Pick next, along the bottom while joined. */
+.pp-join-strip { position: relative; box-sizing: border-box; width: 100%; max-width: 32em; display: flex; align-items: center;
+  gap: 12px; padding: 10px 10px 10px 14px; border-radius: 16px; background: rgba(10, 14, 12, 0.82); color: #fff; }
+.pp-join-strip[hidden] { display: none; }
+.pp-join-strip-text { flex: 1; min-width: 0; }
+.pp-join-now, .pp-join-next { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-join-now { font-weight: 700; }
+.pp-join-next { font-size: .85em; opacity: .85; }
+.pp-join-strip button { flex: none; }
+/* Picking: the colours keep the top third and the page's list of shows comes up under them. */
+body.pp-join-picking .pp-join { bottom: auto; height: 33vh; height: 33dvh; justify-content: flex-end;
+  padding-bottom: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+body.pp-join-picking .pp { padding-top: calc(33vh + 12px); padding-top: calc(33dvh + 12px); }
+body.pp-join-picking #pp-pick { scroll-margin-top: calc(33dvh + 12px); }
 
 
 /* The first-visit welcome: a full screen over the page, one step at a time. */

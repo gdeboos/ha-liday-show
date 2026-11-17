@@ -169,7 +169,11 @@
         {"key": "join_warn", "label": "On the dark screen for a few seconds as a phone joins, before the colours fade in", "text": "Your screen will light up and flash in time with the lights. Turn your brightness up and hold your phone up."},
         {"key": "join_leave", "label": "Button to leave, while joined", "text": "Leave"},
         {"key": "join_waiting", "label": "Joined, waiting for the next show", "text": "You're in. Your screen lights up when the next show starts."},
-        {"key": "join_off", "label": "Joining switched off", "text": "Joining the show isn't on right now."}
+        {"key": "join_off", "label": "Joining switched off", "text": "Joining the show isn't on right now."},
+        {"key": "join_next", "label": "At the bottom while joined: what plays next", "text": "Next: {name}"},
+        {"key": "join_pick", "label": "Button at the bottom while joined, to pick a show without leaving", "text": "Pick next"},
+        {"key": "join_vote", "label": "The same button in Vote mode", "text": "Vote next"},
+        {"key": "join_back", "label": "Button to go back to the full-screen colours after picking", "text": "Back to the lights"}
       ]
     },
     {

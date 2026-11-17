@@ -17,6 +17,8 @@ const ICONS = {
   install: [["path", { d: "M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5M5 20h14" }]],
   left: [["path", { d: "M15 18l-6-6 6-6" }]],
   right: [["path", { d: "M9 18l6-6-6-6" }]],
+  up: [["path", { d: "M6 15l6-6 6 6" }]],
+  down: [["path", { d: "M6 9l6 6 6-6" }]],
   x: [["path", { d: "M17.5 6.5l-11 11M6.5 6.5l11 11" }]],
   lock: [["rect", { x: 5, y: 11, width: 14, height: 9.5, rx: 2 }], ["path", { d: "M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11" }]],
   unlock: [["rect", { x: 5, y: 11, width: 14, height: 9.5, rx: 2 }], ["path", { d: "M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2" }]],
