@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.521
+
+- **Record is now a small camera button** at the end of the row, so **Listen** and **Join** keep their
+  room and nothing breaks across two lines on the visitors' page.
+
 ## 0.2.520
 
 - **Fixed: Let visitors record a video of the lights now stays ticked.** In 0.2.519 the tick under

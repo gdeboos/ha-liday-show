@@ -893,6 +893,9 @@ export function start() {
     const btn = $("pp-rec-btn");
     btn.hidden = !(st && st.open && st.record && !st.locked && canRecord(window));
     iconLabel(btn, "video", say_(w, "rec_btn"));
+    // Shown as a camera only (public.css), so its words go to screen readers and the tooltip.
+    btn.setAttribute("aria-label", bare(say_(w, "rec_btn")));
+    btn.title = btn.getAttribute("aria-label");
   }
   function openRec() {
     if (preview) {
