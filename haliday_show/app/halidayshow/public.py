@@ -744,6 +744,8 @@ def state(storage: Storage, runner: Runner, ticket: str | None, code: str | None
         "waiting": len(runner.requests),
         # Seconds left of a rest break, while the lights rest between visitors' picks.
         "resting": round(max(runner.resting_until - _runner.clock(), 0)),
+        # Test mode: picks play on phones only. Minutes left, rounded up; 0 when off.
+        "testing": -(-int(runner.testing()) // 60),
         # Everyone's waiting picks, by show name only; a phone's own carry their id so it can cancel them.
         "queue": [{"name": r["name"], "kind": r["kind"], "ref": r["ref"], "wait": wait,
                    "yours": bool(ticket) and r["ticket"] == ticket,
@@ -1187,6 +1189,13 @@ async def post_admin_stop(request):
     body = await _admin_only(request)
     await request.app[RUNNER].stop()
     log.info("public page: admin stopped the lights")
+    return _no_store(web.json_response(_state(request, body.get("ticket") and _ticket(body["ticket"]), body.get("code"))))
+
+
+async def post_admin_test(request):
+    """Test mode on or off: visitors' picks play on phones only, not the lights or the speaker."""
+    body = await _admin_only(request)
+    request.app[RUNNER].set_testing(body.get("on") is True)
     return _no_store(web.json_response(_state(request, body.get("ticket") and _ticket(body["ticket"]), body.get("code"))))
 
 
@@ -1676,6 +1685,7 @@ def make_public_app(storage: Storage, runner: Runner, where=lambda: None,
     r.add_post("/api/admin/skip", post_admin_skip)
     r.add_post("/api/admin/stop", post_admin_stop)
     r.add_post("/api/admin/remove", post_admin_remove)
+    r.add_post("/api/admin/test", post_admin_test)
     r.add_get("/api/listen/now", get_listen_now)
     r.add_get("/api/phones/now", get_phones_now)
     r.add_get("/api/phones/colours", get_phones_colours)

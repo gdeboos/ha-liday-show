@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.517
+
+- **Test mode on the public page.** On your unlocked admin phone (tap the title five times), press
+  **Test mode** to try the page out without disturbing the neighbours. Picks work as usual on phones
+  (queue, timings, **Listen**, **Join**) but nothing goes to the lights or the speaker. Everyone on the page
+  sees a note that you're testing. Press **End test mode** when you're done; it also ends by itself after
+  30 minutes.
+
 ## 0.2.516
 
 - **The welcome's "Pick a song" step no longer looks like a real button.** The copy of one of your

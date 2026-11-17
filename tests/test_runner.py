@@ -703,3 +703,22 @@ async def test_mqtt_picks_and_plays_a_playlist(runner):
     await asyncio.sleep(0.05)
     assert runner.status()["playlist"]["id"] == "eve"
     await runner.stop()
+
+
+async def test_test_mode_plays_visitors_picks_on_phones_only(runner):
+    runner.set_testing(True)
+    assert runner.testing() > 29 * 60
+    runner.add_request({"id": "r1", "kind": "show", "ref": "party", "name": "Party", "shows": ["party"],
+                        "ticket": "t1", "gap": 0})
+    for _ in range(80):
+        if runner.player.playing:
+            break
+        await asyncio.sleep(0.05)
+    st = runner.status()
+    assert st["playing"] and st["media_player"] is None
+    assert not runner.player.devices and not runner.player.output.devices  # nothing sent to the lights
+    assert not [c for c in runner.ha.calls if c[0] == "media_player.play_media"]
+    assert st["song"] == {"source": "media", "path": "music/Party Mix.mp3"}  # phones still listen
+    await runner.stop()
+    runner.set_testing(False)
+    assert runner.testing() == 0

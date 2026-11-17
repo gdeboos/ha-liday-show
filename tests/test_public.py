@@ -1614,3 +1614,17 @@ def test_a_building_block_goes_by_its_playlists_name_with_nothing_to_hear():
     assert public.now_named({"name": "Jingle", "block": None, "playlist": {"id": "e", "name": "Evening"}, "scene": None}) \
         == {"name": "Jingle", "song": True}
     assert public.now_named({"name": "Glow", "block": None, "playlist": None, "scene": {"playing": True}})["song"] is False
+
+
+async def test_admin_test_mode_tells_everyone_and_ends_from_the_admin_phone(client):
+    await client.put("/api/public", json={"on": True, "admin_pin": "8642",
+                                          "items": [{"kind": "show", "id": "party"}]})
+    status, _, _ = await _visitor(client, "/api/admin/test", {"ticket": T1, "on": True})
+    assert status == 403  # not unlocked
+    me = await _unlock(client)
+    status, st, _ = await _visitor(client, "/api/admin/test", {"ticket": T1, "on": True}, headers=me)
+    assert status == 200 and st["testing"] == 30
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T2}")
+    assert st["testing"] == 30  # visitors see it too, so they know why the house is still
+    status, st, _ = await _visitor(client, "/api/admin/test", {"ticket": T1, "on": False}, headers=me)
+    assert st["testing"] == 0
