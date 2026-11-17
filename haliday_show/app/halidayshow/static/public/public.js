@@ -173,6 +173,25 @@ ${[40, 72, 104].map((y, k) => `<rect class="ph-row" x="14" y="${y}" width="84" h
 <path class="ph-hand" d="M88 92c4 0 7 3 7 7v18c0 8-6 14-14 14h-6c-5 0-9-3-11-7l-7-14c-1-3 2-5 4-3l6 6V86c0-3 2-5 4-5s4 2 4 5v8c1-2 3-2 4-2s3 1 4 3c1-2 2-3 4-3 2 0 3 2 3 3z"/>
 </svg>`;
 
+// Step 3's drawings, in the same style: a phone playing the song with headphones on it, and a phone held
+// up glowing with the lights' colours.
+const LISTEN_PICTURE = `<svg viewBox="0 0 112 150" width="64" height="86">
+<path class="ph-cable" d="M28 34c0-22 56-22 56 0"/>
+<rect class="ph-cup" x="18" y="30" width="14" height="22" rx="5"/><rect class="ph-cup" x="80" y="30" width="14" height="22" rx="5"/>
+<rect class="ph-body" x="34" y="42" width="44" height="80" rx="8"/>
+<rect class="ph-tile ph-t1" x="42" y="54" width="28" height="28" rx="4"/>
+<rect class="ph-line" x="42" y="90" width="28" height="4" rx="2"/><rect class="ph-head" x="42" y="90" width="12" height="4" rx="2"/>
+<path class="ph-btn" d="M52 101v10l9-5z"/>
+<path class="ph-note" d="M90 70v18a5 5 0 1 1-3-4.6V74l10-3v13a5 5 0 1 1-3-4.6V67z"/>
+</svg>`;
+const JOIN_PICTURE = `<svg viewBox="0 0 112 150" width="64" height="86">
+<defs><linearGradient id="ph-glow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e53935"/><stop offset=".5" stop-color="#fdd835"/><stop offset="1" stop-color="#1e88e5"/></linearGradient></defs>
+<path class="ph-ray" d="M56 10v12M20 28l9 8M92 28l-9 8M10 70h12M90 70h12"/>
+<rect class="ph-body" x="34" y="30" width="44" height="80" rx="8"/>
+<rect x="38" y="38" width="36" height="64" rx="4" fill="url(#ph-glow)"/>
+<path class="ph-hand" d="M40 104c-6 6-8 14-6 24l4 18h34l4-16c2-8 0-14-4-18l-6-6H44z"/>
+</svg>`;
+
 export const BUTTON_ICON = { start: "play", queue_btn: "plus", queued_btn: "check", playing_btn: "music",
   recent_btn: "clock", late_btn: "clock", vote_btn: "plus", voted_btn: "check" };
 
@@ -1230,6 +1249,18 @@ export function start() {
     b.addEventListener("click", go);
     return b;
   };
+  // A step 3 card's top: its drawing beside the heading and what it does.
+  function tourCardTop(picture, head, text) {
+    const top = el("div", "pp-tour-card-top");
+    const pic = el("span", "pp-tour-phone-pic pp-tour-phone-small");
+    pic.setAttribute("aria-hidden", "true");
+    pic.innerHTML = picture;
+    const words = el("div", "");
+    words.append(el("h2", "", head), el("p", "", text));
+    top.append(pic, words);
+    return top;
+  }
+
   function drawTour() {
     if (tourAt < 0 || !last) return;
     const st = last, plan = tourPlan(st, w), step = plan.steps[tourAt];
@@ -1303,7 +1334,7 @@ export function start() {
       box.append(head, el("p", "pp-tour-text", say_(w, "tour_join_hint")));
       if (plan.listen) {
         const card = el("section", "pp-card pp-tour-card");
-        card.append(el("h2", "", say_(w, "tour_listen_head")), el("p", "", say_(w, "tour_listen")));
+        card.append(tourCardTop(LISTEN_PICTURE, say_(w, "tour_listen_head"), say_(w, "tour_listen")));
         const on = listener.state.on;
         const b = tourButton(on ? "pp-taken" : "", on ? "check" : "headphones", say_(w, on ? "tour_listening" : "listen_short"), () => {
           pressListen();
@@ -1317,7 +1348,7 @@ export function start() {
       }
       if (plan.join) {
         const card = el("section", "pp-card pp-tour-card");
-        card.append(el("h2", "", say_(w, "tour_join_card_head")), el("p", "", say_(w, "tour_join_card")));
+        card.append(tourCardTop(JOIN_PICTURE, say_(w, "tour_join_card_head"), say_(w, "tour_join_card")));
         card.append(tourButton("", "phone", say_(w, "tour_join_card_head"), () => { closeTour(); joinShow(); }));
         box.append(card);
       }

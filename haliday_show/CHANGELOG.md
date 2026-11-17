@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.518
+
+- **The welcome's last step gets drawings too.** **Hear the music** shows a phone with headphones and
+  **Join the show** a phone held up glowing, in the same style as the phone on **Pick a song**. Their
+  **Listen** and **Join the show** buttons still work there and then.
+
 ## 0.2.517
 
 - **Test mode on the public page.** On your unlocked admin phone (tap the title five times), press
