@@ -193,6 +193,25 @@
       ]
     },
     {
+      "group": "Recording a video",
+      "words": [
+        {"key": "rec_btn", "label": "Button at the top that opens the camera", "text": "Record"},
+        {"key": "rec_title", "label": "The camera screen, for screen readers", "text": "Record a video of the lights"},
+        {"key": "rec_start", "label": "The round button, to start", "text": "Start recording"},
+        {"key": "rec_stop", "label": "The round button, to stop", "text": "Stop recording"},
+        {"key": "rec_flip", "label": "Switch between the back and front cameras", "text": "Flip"},
+        {"key": "rec_close", "label": "Leave the camera", "text": "Close"},
+        {"key": "rec_with_song", "label": "Before recording, while listening", "text": "The song goes on your video. The video stays on your phone."},
+        {"key": "rec_no_song", "label": "Before recording, not listening", "text": "Turn on Listen first to put the song on your video. The video stays on your phone."},
+        {"key": "rec_no_camera", "label": "When the camera can't be used", "text": "Your phone didn't let this page use the camera. Allow it in your browser's settings, then try again."},
+        {"key": "rec_long", "label": "Near the 5-minute limit", "text": "Videos stop by themselves at 5 minutes."},
+        {"key": "rec_share", "label": "After recording: share", "text": "Share"},
+        {"key": "rec_save", "label": "After recording: save to the phone", "text": "Save"},
+        {"key": "rec_again", "label": "After recording: make another", "text": "Record again"},
+        {"key": "rec_share_text", "label": "Words shared with the video", "text": "Our light show"}
+      ]
+    },
+    {
       "group": "The sign",
       "words": [
         {"key": "sign_scan", "label": "Under the title", "text": "Scan to start a light show"}

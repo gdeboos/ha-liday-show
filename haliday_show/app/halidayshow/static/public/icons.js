@@ -4,6 +4,9 @@ const NS = "http://www.w3.org/2000/svg";
 
 // Each icon: its shapes on a 24 × 24 grid. A shape with "fill" is solid; the rest are 2 px lines.
 const ICONS = {
+  video: [["rect", { x: 2.5, y: 6, width: 13, height: 12, rx: 2 }], ["path", { d: "M15.5 10.5l6-3.5v10l-6-3.5" }]],
+  flip: [["path", { d: "M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3" }], ["path", { d: "M18 3v4h-4M6 21v-4h4" }]],
+  share: [["path", { d: "M12 15V3.5M7.5 8L12 3.5 16.5 8" }], ["path", { d: "M5 12v7.5h14V12" }]],
   play: [["path", { d: "M7 4.5v15l12.5-7.5z", fill: true }]],
   plus: [["path", { d: "M12 5v14M5 12h14" }]],
   check: [["path", { d: "M5 12.5l4.5 4.5L19 7.5" }]],
@@ -23,7 +26,6 @@ const ICONS = {
   lock: [["rect", { x: 5, y: 11, width: 14, height: 9.5, rx: 2 }], ["path", { d: "M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11" }]],
   unlock: [["rect", { x: 5, y: 11, width: 14, height: 9.5, rx: 2 }], ["path", { d: "M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2" }]],
   again: [["path", { d: "M20 12a8 8 0 1 1-2.3-5.6M20 4.5v4h-4" }]],
-  phone: [["rect", { x: 7, y: 2.5, width: 10, height: 19, rx: 2 }], ["path", { d: "M11 18.5h2" }]],
   phone: [["rect", { x: 7, y: 2.5, width: 10, height: 19, rx: 2 }], ["path", { d: "M11 18.5h2" }]],
 };
 

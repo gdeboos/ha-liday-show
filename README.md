@@ -287,6 +287,8 @@ password, and it can still use your Home Assistant speakers, AI and MQTT if you 
     screen is a small matrix, so the lane takes matrix effects too: fire, scrolling text, pictures and GIFs,
     and a singing face (14 characters, from a snowman and Santa to a skull and a black cat, or your own from the face maker) whose mouth follows the vocals, or the
     song's lyrics, lined up word by word with the singing by an AI listening to the vocals, and tweaked by tapping along or dragging words on the Music editor's lyrics lane, kept with the song for every show and edit of it, and shown on the show timeline
+  - Visitors can record a video of the lights with their phone's camera (back or front, flipped mid-way),
+    with the song as the soundtrack and a small watermark, then share or save it; it never leaves their phone
   - Installable as an app on visitors' phones (home-screen icon, full screen, your code built in)
   - Fair turns and neighbour guardrails: no repeats, cool-downs, finish by closing time, rest breaks, and a
     quieter (or silent) speaker late at night
@@ -431,7 +433,8 @@ haliday_show/                             The app (config, Dockerfile, docs, cha
                                         index.html, public.js and public.css; colours.js has the
                                         readability sums shared with the editor; words.json is every
                                         message visitors read, with its starting wording;
-                                        listensync.js keeps a listening phone in time with the lights
+                                        listensync.js keeps a listening phone in time with the lights;
+                                        record.js films the lights with the camera for visitors' videos
     js/app.js                           Editor state, panels, inspector and playback
     js/ask.js                           HA-liday Show's own question and name windows, in place of the browser's pop-ups
     js/effecttags.js                    What each effect is like (Moving, Calm…), for the effect chooser's filters

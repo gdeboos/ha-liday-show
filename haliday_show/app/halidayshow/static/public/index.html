@@ -68,6 +68,7 @@
       <div class="pp-bar-btns">
         <button id="pp-listen-btn" type="button" class="pp-listen-btn" hidden></button>
         <button id="pp-join-btn" type="button" class="pp-listen-btn pp-join-btn" hidden></button>
+        <button id="pp-rec-btn" type="button" class="pp-listen-btn" hidden></button>
       </div>
     </section>
     <section id="pp-more" class="pp-card pp-more" hidden>
@@ -127,6 +128,28 @@
   <section id="pp-tour" class="pp-tour" role="dialog" aria-modal="true" aria-labelledby="pp-tour-head" hidden></section>
 </main>
 <canvas id="pp-snow" class="pp-snow" aria-hidden="true" hidden></canvas>
+<!-- Record a video (record.js): the camera, drawn with a watermark onto the canvas that's recorded. -->
+<div id="pp-rec" class="pp-rec" role="dialog" aria-modal="true" aria-labelledby="pp-rec-title" hidden>
+  <h2 id="pp-rec-title" class="pp-sr"></h2>
+  <video id="pp-rec-cam" class="pp-rec-cam" playsinline muted aria-hidden="true"></video>
+  <canvas id="pp-rec-canvas" class="pp-rec-view"></canvas>
+  <video id="pp-rec-preview" class="pp-rec-view" playsinline controls hidden></video>
+  <div class="pp-rec-top">
+    <button id="pp-rec-close" type="button" class="pp-rec-pill"></button>
+    <p id="pp-rec-time" class="pp-rec-pill pp-rec-time" hidden></p>
+  </div>
+  <p id="pp-rec-hint" class="pp-rec-hint" role="status" aria-live="polite"></p>
+  <div id="pp-rec-bar" class="pp-rec-bar">
+    <span class="pp-rec-side"></span>
+    <button id="pp-rec-go" type="button" class="pp-rec-go"><span></span></button>
+    <button id="pp-rec-flip" type="button" class="pp-rec-pill pp-rec-side"></button>
+  </div>
+  <div id="pp-rec-done" class="pp-rec-bar pp-rec-done" hidden>
+    <button id="pp-rec-again" type="button" class="pp-rec-pill"></button>
+    <a id="pp-rec-save" class="pp-rec-pill" href="#" download></a>
+    <button id="pp-rec-share" type="button" class="primary"></button>
+  </div>
+</div>
 <div id="pp-join" class="pp-join" hidden>
   <canvas id="pp-join-screen" class="pp-join-screen" width="54" height="96" hidden></canvas>
   <p id="pp-join-text" class="pp-join-text" role="status" aria-live="polite"></p>

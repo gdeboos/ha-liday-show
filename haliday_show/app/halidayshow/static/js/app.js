@@ -7758,6 +7758,7 @@ function drawPublicListen(view) {
   $("pub-listen").checked = !!view.listen;
   $("pub-listen-more").hidden = !view.listen;
   $("pub-phones").checked = !!view.phones;
+  $("pub-record").checked = !!view.record;
   const pinOn = $("pub-listen-pin-on");
   // Ticked with no PIN yet stays ticked while you type one.
   if (document.activeElement !== $("pub-listen-pin") && !(pinOn.checked && !view.listen_pin)) pinOn.checked = !!view.listen_pin;
@@ -7986,6 +7987,7 @@ function savePublic() {
   if (shownPage === "public") {
     publicView.listen = $("pub-listen").checked;
     publicView.phones = $("pub-phones").checked;
+    publicView.record = $("pub-record").checked;
     const pin = $("pub-listen-pin").value.trim();
     if (!$("pub-listen-pin-on").checked) publicView.listen_pin = "";
     else if (/^[0-9]{4,8}$/.test(pin)) publicView.listen_pin = pin;
@@ -8035,6 +8037,7 @@ function wirePublic() {
   $("pub-phone-wait").addEventListener("change", () => savePublic());
   $("pub-listen-card").addEventListener("change", () => savePublic());
   $("pub-phones-card").addEventListener("change", () => savePublic());
+  $("pub-record-card").addEventListener("change", () => savePublic());
   $("pub-listen-pin-on").addEventListener("change", () => {
     $("pub-listen-pin-wrap").hidden = !$("pub-listen-pin-on").checked;
     if ($("pub-listen-pin-on").checked && !$("pub-listen-pin").value) $("pub-listen-pin").focus();

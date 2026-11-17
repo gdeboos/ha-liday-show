@@ -172,7 +172,7 @@ def test_settings_are_cleaned():
                          "per_phone": 99, "queue": 0}) == {
         "on": False, "per_phone": 5, "queue": 1, "code": "", "nearby": True, "distance": 100, "address": "",
         "look": public.clean_look(None), "looks": [], "hours": public.DEFAULT_HOURS, "more_hours": [], "words": {},
-        "listen": False, "listen_pin": "", "listen_offset": 0.0, "phones": False, "admin_pin": "", "pick": "queue", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
+        "listen": False, "listen_pin": "", "listen_offset": 0.0, "phones": False, "record": False, "admin_pin": "", "pick": "queue", "repeat_minutes": 15, "phone_wait": 5, "finish_by_close": True, "rest_after": 30, "rest_for": 5,
         "items": [{"kind": "show", "id": "a", "from": "", "to": ""},
                   {"kind": "playlist", "id": "eve", "from": "12-01", "to": "01-06"},
                   {"kind": "show", "id": "c", "from": "", "to": ""}]}  # a broken range: all year
@@ -1010,7 +1010,8 @@ async def test_the_page_asks_for_its_files_by_what_is_in_them(client):
     status, js, headers = await _visitor(client, f"/public.js?v={stamp}", code=False)
     assert status == 200 and headers["Content-Type"].startswith("text/javascript")
     assert f'"./listensync.js?v={stamp}"' in js and f'"./colours.js?v={stamp}"' in js
-    for name in ("listensync.js", "colours.js", "public.css"):
+    assert f'"./record.js?v={stamp}"' in js
+    for name in ("listensync.js", "colours.js", "record.js", "public.css"):
         status, _, headers = await _visitor(client, f"/{name}?v={stamp}", code=False)
         assert status == 200 and "max-age" in headers["Cache-Control"], name
     # The editor's preview gets the same.
@@ -1628,3 +1629,13 @@ async def test_admin_test_mode_tells_everyone_and_ends_from_the_admin_phone(clie
     assert st["testing"] == 30  # visitors see it too, so they know why the house is still
     status, st, _ = await _visitor(client, "/api/admin/test", {"ticket": T1, "on": False}, headers=me)
     assert st["testing"] == 0
+
+
+async def test_recording_is_off_until_you_switch_it_on(client):
+    await client.put("/api/public", json={"on": True, "items": [{"kind": "show", "id": "party"}]})
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert st["record"] is False
+    await client.put("/api/public", json={"record": True})
+    _, st, _ = await _visitor(client, f"/api/state?ticket={T1}")
+    assert st["record"] is True
+    assert (await client.get("/api/public")).status == 200
