@@ -310,6 +310,13 @@ body.pp-tour-open { overflow: hidden; }
 .pp-tour-rules { margin: 0; padding-left: 1.2em; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
 .pp-tour-card { padding: 14px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .pp-tour-card h2 { margin: 0; font-size: 1.05em; }
+.pp-tour-card-top { display: flex; gap: 12px; align-items: center; }
+.pp-tour-card-top p { margin-top: 2px; }
+.pp-tour-phone-small { transform: rotate(-4deg); }
+.pp-tour-phone-pic .ph-cable { fill: none; stroke: var(--muted); stroke-width: 4; stroke-linecap: round; }
+.pp-tour-phone-pic .ph-cup { fill: var(--muted); }
+.pp-tour-phone-pic .ph-note { fill: var(--head, var(--accent)); }
+.pp-tour-phone-pic .ph-ray { fill: none; stroke: var(--warn); stroke-width: 3; stroke-linecap: round; }
 .pp-tour-card p { margin: 0; color: var(--muted); font-size: .9375em; }
 .pp-tour-card button { min-height: 48px; }
 .pp-tour-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }

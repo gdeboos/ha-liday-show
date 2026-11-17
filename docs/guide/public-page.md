@@ -259,7 +259,8 @@ Also on the **Shows** tab:
      steps that name the button visitors will press (**Start**, **Queue** or **Vote**, whichever applies
      right then). It's plainly a picture, so nobody tries to press it. Then when the lights stop taking requests and how many picks
      each phone can have.
-  3. **Join in from your phone**: **Listen** and **Join the show**, each with a line on what it does and a
+  3. **Join in from your phone**: **Listen** and **Join the show**, each with a drawing in the same
+     style (a phone with headphones, and a phone held up glowing), a line on what it does and a
      button that starts it there and then. Only what you've switched on appears; with neither, there's no
      third step.
 
