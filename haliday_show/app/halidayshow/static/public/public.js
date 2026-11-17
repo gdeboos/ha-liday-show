@@ -130,6 +130,17 @@ export function queueView(st, w, open = false) {
   };
 }
 
+// Along the bottom while a phone's joined the show: what's on, what's next, and Pick next (Vote next
+// in Vote mode) while there's anything to pick. Null when there's nothing to say.
+export function joinStrip(st, w) {
+  if (!st || !st.open || st.locked) return null;
+  const now = describe(st).now;
+  const first = !st.vote && (st.queue || [])[0];
+  const next = first ? say_(w, "join_next", { name: first.name || "…" }) : "";
+  const pick = (st.choices || []).length ? say_(w, st.vote ? "join_vote" : "join_pick") : "";
+  return { now, next, pick };
+}
+
 // Installed as an app (or added to the home screen on an iPhone): the Install button isn't needed.
 export const runningAsApp = (win) => !!(win.matchMedia?.("(display-mode: standalone)").matches || win.navigator?.standalone);
 
@@ -794,7 +805,28 @@ export function start() {
     drawJoin();
   }
 
+  // Pick next: the colours shrink to the top third and the page's own list comes up under them. Back
+  // to the full screen after a pick, on Back to the lights, or after a while with nothing pressed.
+  const PICK_IDLE_MS = 15000;
+  let pickTimer = 0;
+  const pickIdle = () => { clearTimeout(pickTimer); pickTimer = setTimeout(() => pickNext(false), PICK_IDLE_MS); };
+  function pickNext(open) {
+    const was = document.body.classList.contains("pp-join-picking");
+    open = open && join.on;
+    document.body.classList.toggle("pp-join-picking", open);
+    clearTimeout(pickTimer);
+    if (open) {
+      pickIdle();
+      if (!was) requestAnimationFrame(() => $("pp-pick").scrollIntoView({ block: "start" }));
+    }
+    drawJoin();
+  }
+  for (const ev of ["pointerdown", "keydown", "scroll"]) {
+    addEventListener(ev, () => { if (document.body.classList.contains("pp-join-picking")) pickIdle(); }, { passive: true });
+  }
+
   function leaveShow(message = "") {
+    pickNext(false);
     join.on = false;
     join.gen++;
     clearTimeout(join.timer);
@@ -825,6 +857,18 @@ export function start() {
     iconLabel(btn, "phone", say_(w, "join_short"));
     btn.setAttribute("aria-label", say_(w, "join").replace(/^[^\p{L}\p{N}]+/u, ""));
     btn.title = btn.getAttribute("aria-label");
+    const picking = document.body.classList.contains("pp-join-picking");
+    const strip = join.on && !picking ? joinStrip(st, w) : null;
+    $("pp-join-strip").hidden = !strip;
+    if (strip) {
+      $("pp-join-now").textContent = strip.now;
+      $("pp-join-next").textContent = strip.next;
+      $("pp-join-next").hidden = !strip.next;
+      $("pp-join-pick").hidden = !strip.pick;
+      iconLabel($("pp-join-pick"), "up", strip.pick);
+    }
+    $("pp-join-back").hidden = !(join.on && picking);
+    iconLabel($("pp-join-back"), "down", say_(w, "join_back"));
     drawMore();
   }
 
@@ -1498,6 +1542,8 @@ export function start() {
       if (res.ok) {
         gotAt = Date.now();
         render(await res.json());
+        // Picked while joined: back to the full-screen colours.
+        if (path === "api/request") pickNext(false);
       } else {
         say((await res.text()) || "That didn't work. Try again in a moment.");
         await refresh();
@@ -1528,6 +1574,8 @@ export function start() {
   $("pp-listen-btn").addEventListener("click", pressListen);
   $("pp-join-btn").addEventListener("click", pressJoin);
   $("pp-join-leave").addEventListener("click", () => leaveShow());
+  $("pp-join-pick").addEventListener("click", () => pickNext(true));
+  $("pp-join-back").addEventListener("click", () => pickNext(false));
   document.addEventListener("visibilitychange", keepAwake);
   $("pp-pin-ok").addEventListener("click", sendPin);
   $("pp-nudge-earlier").addEventListener("click", () => listener.shift(1));

@@ -63,7 +63,11 @@ until you turn it on.
    show** under **Visitors' phones**.
 3. On your phone, open the visitors' link while a show's on and press **Join** in the bar at the top. The
    screen goes dark with a warning that it will flash, and the colours fade in a few seconds later. **Leave**
-   at the bottom of the screen goes back to the page at any time.
+   at the top of the screen goes back to the page at any time.
+4. Along the bottom, visitors see what's on and what's next, with **Pick next** (**Vote next** in Vote
+   mode). It shrinks the colours to the top third of the screen, with the list of shows under them, so
+   they can pick without leaving. After a pick, on **Back to the lights**, or after 15 seconds without a
+   touch, the colours fill the screen again.
 
 What phones show:
 

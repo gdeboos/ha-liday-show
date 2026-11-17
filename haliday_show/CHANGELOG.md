@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.515
+
+- **Pick the next song without leaving the show.** While a visitor's phone has joined the show, the
+  bottom of the screen now shows what's on and what's next, with **Pick next** (**Vote next** in Vote
+  mode). It shrinks the colours to the top third and brings up the list of shows underneath. After a
+  pick, on **Back to the lights**, or after 15 seconds untouched, the colours fill the screen again.
+  **Leave** has moved to the top corner. You can change the new wording on the **Public page** tab,
+  under **Words → Joining the show**.
+
 ## 0.2.514
 
 - **House and group effects now light every bulb on your icicles.** On an icicle light with a segment

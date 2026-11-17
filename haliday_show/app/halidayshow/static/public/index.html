@@ -125,6 +125,16 @@
   <canvas id="pp-join-screen" class="pp-join-screen" width="54" height="96" hidden></canvas>
   <p id="pp-join-text" class="pp-join-text" role="status" aria-live="polite"></p>
   <button id="pp-join-leave" type="button" class="pp-join-leave"></button>
+  <!-- Pick next without leaving: what's on and next, and a button that shrinks the colours to the top
+       of the screen with the page's own list of shows under them (public.js pickNext). -->
+  <div id="pp-join-strip" class="pp-join-strip" hidden>
+    <div class="pp-join-strip-text">
+      <p id="pp-join-now" class="pp-join-now"></p>
+      <p id="pp-join-next" class="pp-join-next" hidden></p>
+    </div>
+    <button id="pp-join-pick" type="button" class="primary"></button>
+  </div>
+  <button id="pp-join-back" type="button" class="pp-join-back" hidden></button>
 </div>
 </body>
 </html>
